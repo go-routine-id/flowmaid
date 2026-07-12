@@ -517,8 +517,7 @@ fn parse_edge_op(cur: &mut Cur<'_>) -> Option<EdgeKind> {
     let rest = cur.rest();
 
     // Dotted: -.->  or  -..->
-    if rest.starts_with("-.") {
-        let after = &rest[2..];
+    if let Some(after) = rest.strip_prefix("-.") {
         let dots = after.chars().take_while(|&c| c == '.').count();
         let tail = &after[dots..];
         if tail.starts_with("->") {

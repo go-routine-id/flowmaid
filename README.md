@@ -1,5 +1,6 @@
 # flowmaid
 
+[![CI](https://github.com/go-routine-id/flowmaid/actions/workflows/ci.yml/badge.svg)](https://github.com/go-routine-id/flowmaid/actions/workflows/ci.yml)
 [![crates.io](https://img.shields.io/crates/v/flowmaid.svg)](https://crates.io/crates/flowmaid)
 [![docs.rs](https://docs.rs/flowmaid/badge.svg)](https://docs.rs/flowmaid)
 [![license](https://img.shields.io/crates/l/flowmaid.svg)](LICENSE)
@@ -22,7 +23,7 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 - [ ] `journey` — [#8](https://github.com/go-routine-id/flowmaid/issues/8)
 - [ ] `pie` — [#9](https://github.com/go-routine-id/flowmaid/issues/9)
 - [ ] `mindmap` — [#11](https://github.com/go-routine-id/flowmaid/issues/11)
-- [ ] `gantt` · `gitGraph` · `timeline` · `quadrantChart` · more — see the board
+- [ ] The complete mermaid catalog, tracked on the board: `swimlanes` · `gantt` · `gitGraph` · `timeline` · `quadrantChart` · `requirementDiagram` · `C4` · `zenuml` · `sankey` · `xychart` · `block` · `packet` · `kanban` · `architecture` · `radar` · `eventmodeling` · `treemap` · `venn` · `ishikawa` · `wardley` · `cynefin` · `treeview`
 
 **Flowchart features**
 

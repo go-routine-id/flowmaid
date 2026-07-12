@@ -4,8 +4,10 @@ use std::collections::HashMap;
 
 /// Flow direction of the diagram.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default)]
 pub enum Direction {
     /// Top-down. Alias: TB.
+    #[default]
     TD,
     /// Left to right.
     LR,
@@ -15,11 +17,6 @@ pub enum Direction {
     BT,
 }
 
-impl Default for Direction {
-    fn default() -> Self {
-        Direction::TD
-    }
-}
 
 /// Node shape.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

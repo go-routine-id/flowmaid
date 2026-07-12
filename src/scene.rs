@@ -109,8 +109,9 @@ fn scene_flat(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
 
     // Edge geometry (abstract coordinates) with parallel-edge separation.
     let offs = parallel_offsets(g);
-    let mut abs_edges: Vec<([(f64, f64); 4], Option<((f64, f64), f64)>)> =
-        Vec::with_capacity(g.edges.len());
+    /// Bezier points + optional (label centre, label box width).
+    type AbsEdge = ([(f64, f64); 4], Option<((f64, f64), f64)>);
+    let mut abs_edges: Vec<AbsEdge> = Vec::with_capacity(g.edges.len());
     for (e, off) in g.edges.iter().zip(offs) {
         let a = &lo.nodes[e.from];
         let b = &lo.nodes[e.to];

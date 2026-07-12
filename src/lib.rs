@@ -1,3 +1,8 @@
+// The layout code walks several parallel arrays (positions, sizes,
+// layers) by index on purpose — iterator zips would obscure the
+// math, not clarify it.
+#![allow(clippy::needless_range_loop)]
+
 //! flowmaid — a Mermaid-like diagram engine.
 //!
 //! Supported diagram types: flowcharts (`flowchart` / `graph`) and
