@@ -32,6 +32,7 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 - [x] Semantic color theme (shape-based) + stable ER accent palette
 - [x] Interactive scene API — drag nodes, edges re-route live (`scene`, `route`, `box_edge_bezier`)
 - [x] Explicit "not supported yet" errors for every known mermaid header
+- [ ] `$$…$$` math in labels, KaTeX-style — phased passthrough → MathML → native — [#12](https://github.com/go-routine-id/flowmaid/issues/12)
 - [ ] Fan-out `A --> B & C` + extra link types — [#3](https://github.com/go-routine-id/flowmaid/issues/3)
 - [ ] More node shapes (cylinder, subroutine, hexagon, …) — [#4](https://github.com/go-routine-id/flowmaid/issues/4)
 - [ ] Edges to/from subgraphs, `click` interactions, frontmatter themes — see the board
