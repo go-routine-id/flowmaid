@@ -9,6 +9,7 @@ sequenceDiagram
     participant DB
 
     U->>FE: open dashboard
+    Note left of U: human
     FE->>+API: GET /session
     API-->>-FE: 200 session
     Note over U,FE: cookies already set
@@ -17,6 +18,7 @@ sequenceDiagram
         FE->>API: GET /widgets
         activate API
         API->>DB: SELECT widgets
+        Note right of DB: indexed by tenant
         DB-->>API: rows
         API-->>FE: widget list
         deactivate API
@@ -30,6 +32,7 @@ sequenceDiagram
 
     loop every 30s
         FE-)API: poll status
+        Note over API: rate-limited
         API--)FE: status (async)
     end
 
@@ -39,7 +42,3 @@ sequenceDiagram
         API-xDB: write log
         U--xFE: close tab
     end
-
-    Note right of DB: indexed by tenant
-    Note left of U: human
-    Note over API: rate-limited

@@ -82,11 +82,20 @@ pub struct PieScene {
 /// makes every `frac` 0 (drawn as an empty outline by [`to_svg`]).
 pub fn scene(d: &PieChart) -> PieScene {
     let r = RADIUS;
-    let total: f64 = d.slices.iter().map(|s| s.value).sum();
+    // Normalise by the largest value so the running total can't
+    // overflow to +inf on enormous but finite inputs (e.g. several
+    // 1e308 slices) — which would make every frac 0 and blank the
+    // chart. Dividing first keeps each term <= 1 and the sum <= n.
+    let max = d.slices.iter().map(|s| s.value).fold(0.0f64, f64::max);
+    let total: f64 = if max > 0.0 {
+        d.slices.iter().map(|s| s.value / max).sum()
+    } else {
+        0.0
+    };
     let mut slices = Vec::with_capacity(d.slices.len());
     let mut cum = 0.0f64;
     for s in &d.slices {
-        let frac = if total > 0.0 { s.value / total } else { 0.0 };
+        let frac = if total > 0.0 { (s.value / max) / total } else { 0.0 };
         let start_angle = cum * TAU;
         cum += frac;
         slices.push(Slice {
@@ -198,15 +207,21 @@ pub fn to_svg(ps: &PieScene) -> String {
             continue;
         }
         let color = crate::style::accent(i);
-        if sl.frac >= 1.0 - 1e-9 {
+        let a = polar(ps.cx, ps.cy, ps.r, sl.start_angle);
+        let b = polar(ps.cx, ps.cy, ps.r, sl.end_angle);
+        // A ~100% slice — or one so dominant that its arc endpoints
+        // round to the same point — would render as a degenerate
+        // zero-length arc (dropped by SVG renderers, so the slice
+        // vanishes). Draw a full circle instead. The pixel-distance
+        // test catches any value ratio, not just near-exact 1.0.
+        let coincident = (a.0 - b.0).hypot(a.1 - b.1) < 0.2;
+        if sl.frac >= 1.0 - 1e-9 || (sl.frac > 0.5 && coincident) {
             s.push_str(&format!(
                 "<circle cx=\"{:.1}\" cy=\"{:.1}\" r=\"{:.1}\" fill=\"{}\" \
                  stroke=\"#ffffff\" stroke-width=\"1.5\"/>\n",
                 ps.cx, ps.cy, ps.r, color
             ));
         } else {
-            let a = polar(ps.cx, ps.cy, ps.r, sl.start_angle);
-            let b = polar(ps.cx, ps.cy, ps.r, sl.end_angle);
             let large = i32::from(sl.frac > 0.5);
             s.push_str(&format!(
                 "<path d=\"M {:.1} {:.1} L {:.1} {:.1} A {r:.1} {r:.1} 0 {} 1 {:.1} {:.1} Z\" \
@@ -486,5 +501,36 @@ mod tests {
         }
         // render_svg dispatches to the same output.
         assert_eq!(crate::render_svg(include_str!("../examples/pie.mmd")).unwrap(), svg);
+    }
+
+    // ------------------------ regressions --------------------------
+
+    #[test]
+    fn enormous_values_do_not_blank_the_chart() {
+        // Bug (bug hunt): summing several 1e308 slices overflowed the
+        // total to +inf, making every frac 0 and blanking the chart.
+        let sc = scene(&pie("pie\n\"a\" : 1e308\n\"b\" : 1e308\n\"c\" : 1e308"));
+        for sl in &sc.slices {
+            assert!((sl.frac - 1.0 / 3.0).abs() < 1e-6, "each slice ~1/3, got {}", sl.frac);
+        }
+        let svg = to_svg(&sc);
+        assert_eq!(svg.matches("<path").count(), 3, "three real slices drawn");
+        assert!(!svg.contains("NaN") && !svg.contains("inf"));
+    }
+
+    #[test]
+    fn dominant_slice_renders_as_a_visible_circle() {
+        // Bug (bug hunt): a slice at ratio >= ~1e5:1 (frac ~0.99999)
+        // drew a zero-length arc (start point == end point), which
+        // SVG renderers drop — the dominant slice vanished. It must
+        // become a full <circle> in its own color.
+        let svg = to_svg(&scene(&pie("pie\n\"a\" : 100000\n\"b\" : 1")));
+        let color = crate::style::accent(0);
+        assert!(
+            svg.contains(&format!("fill=\"{color}\"")) && svg.contains("<circle"),
+            "dominant slice must be a filled circle"
+        );
+        // Not the zero-total blank-outline circle (fill="none").
+        assert!(!svg.contains("fill=\"none\""), "must not be the empty outline");
     }
 }

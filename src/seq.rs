@@ -808,6 +808,15 @@ mod tests {
     }
 
     #[test]
+    fn note_over_same_participant_collapses_to_single() {
+        // Bug hunt: `Note over A,A` used to become a zero-width span
+        // Over(0, Some(0)); it must normalise to a single-participant
+        // note Over(0, None).
+        let d = sd("sequenceDiagram\nparticipant A\nNote over A,A: same");
+        assert!(matches!(d.items[0], SeqItem::Note { side: NoteSide::Over(0, None), .. }));
+    }
+
+    #[test]
     fn frames_parse_and_validate() {
         let d = sd(
             "sequenceDiagram\nalt ok\nA->>B: x\nelse bad\nB->>A: y\nend\n\

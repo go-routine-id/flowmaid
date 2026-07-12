@@ -1432,6 +1432,9 @@ fn parse_seq_note(
             }
             None => None,
         };
+        // `Note over A,A` is a note over a single participant, not a
+        // zero-width span between A and itself.
+        let bi = bi.filter(|&second| second != ai);
         NoteSide::Over(ai, bi)
     } else {
         let (left, after) = if let Some(r) = strip_keyword(place, "left") {
