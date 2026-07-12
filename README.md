@@ -1,6 +1,23 @@
 # flowmaid
 
+[![crates.io](https://img.shields.io/crates/v/flowmaid.svg)](https://crates.io/crates/flowmaid)
+[![docs.rs](https://docs.rs/flowmaid/badge.svg)](https://docs.rs/flowmaid)
+[![license](https://img.shields.io/crates/l/flowmaid.svg)](LICENSE)
+
 A small Mermaid-like flowchart diagram engine written in pure std Rust with zero external dependencies. Takes Mermaid-syntax text and produces SVG.
+
+## Installation
+
+```bash
+cargo add flowmaid
+```
+
+Or in `Cargo.toml`:
+
+```toml
+[dependencies]
+flowmaid = "0.1"
+```
 
 ## Usage
 
