@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="454" height="152" viewBox="0 0 454 152" font-family="Helvetica, Arial, sans-serif" font-size="13">
+<rect width="454" height="152" fill="#ffffff"/>
+<path d="M 209.1 76.0 C 241.1 76.0, 241.1 76.0, 273.1 76.0" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<path d="M 217.1 70.5 L 217.1 81.5" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<path d="M 222.1 70.5 L 222.1 81.5" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<path d="M 261.1 76.0 L 273.1 82.0" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<path d="M 261.1 76.0 L 273.1 70.0" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<path d="M 261.1 76.0 L 273.1 76.0" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<circle cx="254.1" cy="76.0" r="4.5" fill="#ffffff" stroke="#44507a" stroke-width="1.7"/>
+<rect x="28.0" y="39.0" width="181.1" height="74.0" rx="4" fill="#ffffff" stroke="#5b6dc0" stroke-width="1.6"/>
+<rect x="28.0" y="39.0" width="181.1" height="30.0" rx="4" fill="#5b6dc0"/>
+<text x="118.5" y="54.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">users</text>
+<text x="38.0" y="80.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="131.6" y="80.0" dy="0.33em" fill="#232840">id</text>
+<text x="199.1" y="80.0" dy="0.33em" text-anchor="end" font-weight="bold" fill="#44507a">PK</text>
+<line x1="28.0" y1="91.0" x2="209.1" y2="91.0" stroke="#d5d9ec"/>
+<text x="38.0" y="102.0" dy="0.33em" fill="#6a7086">varchar(255)</text>
+<text x="131.6" y="102.0" dy="0.33em" fill="#232840">email</text>
+<text x="199.1" y="102.0" dy="0.33em" text-anchor="end" font-weight="bold" fill="#44507a">UK</text>
+<rect x="273.1" y="28.0" width="153.0" height="96.0" rx="4" fill="#ffffff" stroke="#33a35c" stroke-width="1.6"/>
+<rect x="273.1" y="28.0" width="153.0" height="30.0" rx="4" fill="#33a35c"/>
+<text x="349.6" y="43.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">posts</text>
+<text x="283.1" y="69.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="323.9" y="69.0" dy="0.33em" fill="#232840">id</text>
+<text x="416.1" y="69.0" dy="0.33em" text-anchor="end" font-weight="bold" fill="#44507a">PK</text>
+<line x1="273.1" y1="80.0" x2="426.1" y2="80.0" stroke="#d5d9ec"/>
+<text x="283.1" y="91.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="323.9" y="91.0" dy="0.33em" fill="#232840">author_id</text>
+<text x="416.1" y="91.0" dy="0.33em" text-anchor="end" font-weight="bold" fill="#44507a">FK</text>
+<line x1="273.1" y1="102.0" x2="426.1" y2="102.0" stroke="#d5d9ec"/>
+<text x="283.1" y="113.0" dy="0.33em" fill="#6a7086">text</text>
+<text x="323.9" y="113.0" dy="0.33em" fill="#232840">body</text>
+<rect x="215.7" y="66.0" width="50.9" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="241.1" y="76.0" dy="0.33em" text-anchor="middle" fill="#232840">writes</text>
+</svg>

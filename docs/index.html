@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>flowmaid — Mermaid-like diagrams, pure Rust</title>
+<meta name="description" content="A Mermaid-like diagram engine in pure std Rust: zero dependencies, sub-millisecond renders, 166 KB in WebAssembly. Flowcharts, ER diagrams, custom colors, drag & drop.">
+<style>
+  :root {
+    --ink: #232840; --muted: #6a7086; --line: #d5d9ec; --accent: #5b6dc0;
+    --accent-dark: #44507a; --bg: #f6f7fc; --green: #33a35c; --amber: #d99114;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: Helvetica, Arial, sans-serif; color: var(--ink); background: #fff; line-height: 1.6; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: 1020px; margin: 0 auto; padding: 0 24px; }
+
+  header.hero { background: linear-gradient(160deg, #f6f7fc 60%, #eef1fb); border-bottom: 1px solid var(--line); padding: 72px 0 56px; text-align: center; }
+  .hero h1 { font-size: 56px; letter-spacing: -1px; color: var(--accent-dark); }
+  .hero h1 span { color: var(--accent); }
+  .hero p.tag { font-size: 21px; color: var(--muted); margin: 10px 0 28px; }
+  .cta { display: inline-block; padding: 12px 22px; border-radius: 8px; font-size: 16px; margin: 4px 6px; }
+  .cta.primary { background: var(--accent); color: #fff; }
+  .cta.primary:hover { background: var(--accent-dark); text-decoration: none; }
+  .cta.ghost { border: 1px solid var(--line); color: var(--ink); background: #fff; }
+  .cta.ghost:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+  .stats { display: flex; gap: 28px; justify-content: center; margin-top: 36px; flex-wrap: wrap; }
+  .stat b { display: block; font-size: 26px; color: var(--accent-dark); }
+  .stat { font-size: 13px; color: var(--muted); }
+
+  section { padding: 56px 0; }
+  section.alt { background: var(--bg); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  h2 { font-size: 30px; margin-bottom: 8px; color: var(--accent-dark); }
+  p.lead { color: var(--muted); margin-bottom: 28px; }
+
+  .example { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 24px; align-items: center; margin-bottom: 40px; }
+  @media (max-width: 760px) { .example { grid-template-columns: 1fr; } }
+  .example pre { background: #232840; color: #e6e9f5; padding: 18px; border-radius: 10px; font-size: 13px; line-height: 1.5; overflow-x: auto; }
+  .example .art { text-align: center; }
+  .example img { max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 2px 14px rgba(35,40,64,.06); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 20px; }
+  .card h3 { font-size: 17px; margin-bottom: 6px; }
+  .card p { font-size: 14px; color: var(--muted); }
+
+  ul.roadmap { list-style: none; columns: 2; gap: 40px; font-size: 15px; }
+  @media (max-width: 640px) { ul.roadmap { columns: 1; } }
+  ul.roadmap li { margin: 6px 0; break-inside: avoid; }
+  .done::before { content: "✅ "; }
+  .todo::before { content: "⬜ "; }
+  .ver { color: var(--green); font-size: 12px; }
+
+  footer { padding: 30px 0 44px; color: var(--muted); font-size: 14px; text-align: center; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>flow<span>maid</span></h1>
+    <p class="tag">Mermaid-like diagrams. Pure Rust. Zero dependencies.</p>
+    <a class="cta primary" href="https://go-routine-id.github.io/flowmaid-web/">▶ Try the playground</a>
+    <a class="cta ghost" href="https://crates.io/crates/flowmaid">crates.io</a>
+    <a class="cta ghost" href="https://docs.rs/flowmaid">docs.rs</a>
+    <a class="cta ghost" href="https://github.com/go-routine-id/flowmaid">GitHub</a>
+    <div class="stats">
+      <div class="stat"><b>0</b>dependencies</div>
+      <div class="stat"><b>166 KB</b>entire engine in wasm</div>
+      <div class="stat"><b>&lt;1 ms</b>typical render</div>
+      <div class="stat"><b>1.75</b>minimum Rust, CI-enforced</div>
+      <div class="stat"><b>GPL-3.0</b>free forever</div>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2>Every pixel below was rendered by flowmaid</h2>
+    <p class="lead">Mermaid syntax in, SVG out — these examples are the engine's actual output, committed straight from the CLI.</p>
+
+    <div class="example">
+      <pre>flowchart LR
+    U[User] --> FE(Frontend) --> API{Auth?}
+    API -->|ok| SVC[Service]
+    API -.->|denied| ERR[401]
+    SVC ==> DB[Database]:::store
+    classDef store fill:#e4f5f4,stroke:#199a8e
+    style ERR fill:#ffe3e3,stroke:#e03131
+    style U fill:#fff3bf,stroke:#f08c00</pre>
+      <div class="art"><img src="ex-flow.svg" alt="Styled flowchart rendered by flowmaid" loading="lazy"></div>
+    </div>
+
+    <div class="example">
+      <pre>flowchart TD
+    Client --> GW(API Gateway) --> Auth
+    subgraph platform [Platform]
+        direction LR
+        Auth[Auth service] --> Users[User DB]
+        subgraph events [Event bus]
+            Bus[Broker] --> C1[Consumer A]
+            Bus --> C2[Consumer B]
+        end
+        Users --> Bus
+    end
+    C1 --> Store[Warehouse]</pre>
+      <div class="art"><img src="ex-subgraph.svg" alt="Nested subgraphs rendered by flowmaid" loading="lazy"></div>
+    </div>
+
+    <div class="example">
+      <pre>erDiagram
+    users ||--o{ posts : "writes"
+    users {
+        uuid id PK
+        varchar(255) email UK "not null"
+    }
+    posts {
+        uuid id PK
+        uuid author_id FK
+        text body
+    }</pre>
+      <div class="art"><img src="ex-er.svg" alt="ER diagram with crow's foot notation rendered by flowmaid" loading="lazy"></div>
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap">
+    <h2>One engine, four faces</h2>
+    <p class="lead">The same crate powers everything — every feature lands everywhere at once.</p>
+    <div class="grid">
+      <div class="card"><h3>📦 Embed it</h3><p><code>cargo add flowmaid</code> — <code>render_svg(text)</code> for one-shot SVG, or the <code>scene</code>/<code>route</code> API for interactive canvases with live edge re-routing.</p></div>
+      <div class="card"><h3>🌐 Web</h3><p>Compiles to <code>wasm32</code> out of the box. The <a href="https://go-routine-id.github.io/flowmaid-web/">playground</a> ships the whole engine in a 166&nbsp;KB bundle — mermaid.js is ~2.5&nbsp;MB.</p></div>
+      <div class="card"><h3>🖥️ Desktop</h3><p><a href="https://github.com/go-routine-id/flowmaid-desktop">flowmaid-desktop</a>: a native editor with live text, draggable nodes, zoom/pan, and real file workflow.</p></div>
+      <div class="card"><h3>⌨️ CLI</h3><p><code>flowmaid diagram.mmd -o out.svg</code> — pipe-friendly, line-numbered errors, ~60&nbsp;ms end-to-end on 5,000-node graphs.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Mermaid parity roadmap</h2>
+    <p class="lead">Goal: mermaid.js functionality, pure-Rust edition. Full board with issues in <a href="https://github.com/go-routine-id/flowmaid/issues/10">#10</a> — contributions welcome.</p>
+    <ul class="roadmap">
+      <li class="done">flowchart — shapes, links, cycles <span class="ver">v0.1</span></li>
+      <li class="done">erDiagram — crow's foot, entity tables <span class="ver">v0.2</span></li>
+      <li class="done">style / classDef / ::: custom colors <span class="ver">v0.4</span></li>
+      <li class="done">subgraph — nesting, titles, direction <span class="ver">v0.5</span></li>
+      <li class="done">Interactive drag API (scene / route)</li>
+      <li class="todo">Fan-out <code>A --> B &amp; C</code>, more link types</li>
+      <li class="todo">classDiagram · sequenceDiagram · stateDiagram</li>
+      <li class="todo">journey · pie · mindmap</li>
+      <li class="todo"><code>$$math$$</code> in labels (KaTeX subset)</li>
+      <li class="todo">gantt · gitGraph · timeline · the whole catalog</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    flowmaid is GPL-3.0-or-later · built by <a href="https://github.com/go-routine-id">go-routine-id</a> · this page is static HTML + SVGs rendered by the engine itself
+  </div>
+</footer>
+
+</body>
+</html>
