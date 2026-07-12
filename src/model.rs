@@ -216,6 +216,7 @@ pub enum Document {
     Flowchart(Graph),
     Er(ErDiagram),
     Class(ClassDiagram),
+    Pie(PieChart),
 }
 
 /// UML class diagram (`classDiagram` header).
@@ -406,4 +407,22 @@ pub enum Card {
     ZeroMany,
     /// `}|` / `|{` one or many.
     OneMany,
+}
+
+/// Pie chart (`pie` header). Slices keep source order; a duplicate
+/// label keeps one slice whose value is the LAST one written.
+#[derive(Debug, Default)]
+pub struct PieChart {
+    /// `pie title …` or a standalone `title …` line.
+    pub title: Option<String>,
+    /// `pie showData` — legend entries carry the raw value.
+    pub show_data: bool,
+    pub slices: Vec<PieSlice>,
+}
+
+/// One pie data row: `"Quoted Label" : value` (non-negative).
+#[derive(Debug)]
+pub struct PieSlice {
+    pub label: String,
+    pub value: f64,
 }

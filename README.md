@@ -21,7 +21,7 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 - [ ] `sequenceDiagram` — [#6](https://github.com/go-routine-id/flowmaid/issues/6)
 - [ ] `stateDiagram-v2` — [#7](https://github.com/go-routine-id/flowmaid/issues/7)
 - [ ] `journey` — [#8](https://github.com/go-routine-id/flowmaid/issues/8)
-- [ ] `pie` — [#9](https://github.com/go-routine-id/flowmaid/issues/9)
+- [x] `pie` — title, showData, percentage labels + legend *(v0.10.0)*
 - [ ] `mindmap` — [#11](https://github.com/go-routine-id/flowmaid/issues/11)
 - [ ] The complete mermaid catalog, tracked on the board: `swimlanes` · `gantt` · `gitGraph` · `timeline` · `quadrantChart` · `requirementDiagram` · `C4` · `zenuml` · `sankey` · `xychart` · `block` · `packet` · `kanban` · `architecture` · `radar` · `eventmodeling` · `treemap` · `venn` · `ishikawa` · `wardley` · `cynefin` · `treeview`
 
@@ -122,6 +122,21 @@ classDiagram
 ```
 
 Supported subset: class blocks with `+ - # ~` member visibility (a member with `()` becomes a method, otherwise a field); inline members via `Name : +member`; multiple classes in one line (`class Duck, Fish`); and all UML relations — inheritance `<|--`, realization `..|>`, composition `*--`, aggregation `o--`, association `-->`, dependency `..>`, and plain link `--`/`..`, in either direction. Each relation takes optional `"cardinality"` strings on each side (a colon or operator inside the quotes is protected) and a `: label`; the diagram is normalised so the end glyph (hollow triangle, filled/hollow diamond, or open arrow) always sits at the target end. Dashed lines are used for realization and dependency. Trailing `%%` comments and `direction` / `note` lines are accepted and ignored. Not yet rendered: generics (`List~T~`), `<<stereotype>>` badges, and `namespace` blocks. See `examples/class.mmd`.
+
+## Pie charts
+
+`pie` input renders proportional slices (clockwise from 12 o'clock, in source order) with percentage labels and a color legend:
+
+```
+pie showData
+    title Key elements in Product X
+    "Calcium" : 42.96
+    "Potassium" : 50.05
+    "Magnesium" : 10.01
+    "Iron" : 6
+```
+
+Supported subset: all header forms (`pie`, `pie showData`, `pie title …`, `pie showData title …`), a standalone `title …` line, and `"Quoted Label" : value` data rows with non-negative numbers. `showData` appends the raw value to each legend entry (`Calcium [42.96]`). Slices under 4% skip their percentage label but keep their legend row, zero-value slices are legend-only, a single 100% slice renders as a full circle, and an all-zero total draws an empty outline instead of NaN geometry. A duplicate label keeps one slice — the last value wins. Colors come from the same stable accent palette as ER/class diagrams (wrapping after 8 slices). Not supported: config/theme directives (`%%{init: …}%%`), `accTitle`/`accDescr`. See `examples/pie.mmd`.
 
 Other Mermaid diagram types (`sequenceDiagram`, `stateDiagram-v2`, `gantt`, ...) are detected and produce an explicit "not supported yet" error instead of a confusing parse failure.
 

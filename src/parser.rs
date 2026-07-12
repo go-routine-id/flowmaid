@@ -17,7 +17,8 @@
 
 use crate::model::{
     Attr, Card, Class, ClassDiagram, ClassRel, Direction, Document, EdgeKind, End, ErDiagram, Graph,
-    Key, Member, NodeStyle, RelKind, Relation, Shape, SubEdge, Subgraph, Visibility,
+    Key, Member, NodeStyle, PieChart, PieSlice, RelKind, Relation, Shape, SubEdge, Subgraph,
+    Visibility,
 };
 use std::collections::HashMap;
 
@@ -156,11 +157,12 @@ pub fn parse_document(source: &str) -> Result<Document, ParseError> {
         return match diagram_type(line) {
             Some("erDiagram") => parse_er(source, i + 1).map(Document::Er),
             Some("classDiagram") => parse_class(source, i + 1).map(Document::Class),
+            Some("pie") => parse_pie(source, i + 1).map(Document::Pie),
             Some(t) => Err(err(
                 i + 1,
                 format!(
                     "diagram type '{}' is not supported yet \
-                     (supported: flowchart, graph, erDiagram, classDiagram)",
+                     (supported: flowchart, graph, erDiagram, classDiagram, pie)",
                     t
                 ),
             )),
@@ -208,10 +210,10 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
         if !header_seen {
             header_seen = true;
             if let Some(t) = diagram_type(line) {
-                let hint = if t == "erDiagram" || t == "classDiagram" {
+                let hint = if t == "erDiagram" || t == "classDiagram" || t == "pie" {
                     "this parser is flowchart-only — use parse_document() or render_svg()"
                 } else {
-                    "not supported yet (supported: flowchart, graph, erDiagram, classDiagram)"
+                    "not supported yet (supported: flowchart, graph, erDiagram, classDiagram, pie)"
                 };
                 return Err(err(lineno, format!("diagram type '{}': {}", t, hint)));
             }
@@ -1160,6 +1162,99 @@ fn split_card_end(s: &str, card_after: bool) -> (&str, Option<String>) {
         }
     }
     (s, None)
+}
+
+// ---------------------------------------------------------------
+// Pie chart (`pie`)
+// ---------------------------------------------------------------
+
+/// Parse a `pie` chart. `header_line` is the 1-indexed line of the
+/// `pie` header, which itself may carry `showData` and/or
+/// `title …`. The body is an optional standalone `title …` line and
+/// `"Quoted Label" : value` data rows (non-negative numbers). A
+/// duplicate label updates the existing slice in place — the LAST
+/// value wins, matching `Graph::ensure_node`'s latest-wins rule.
+fn parse_pie(source: &str, header_line: usize) -> Result<PieChart, ParseError> {
+    let mut d = PieChart::default();
+
+    // Header forms: `pie`, `pie showData`, `pie title T`,
+    // `pie showData title T` (title consumes the rest of the line).
+    let header = source.lines().nth(header_line - 1).unwrap_or("").trim();
+    let mut rest = strip_keyword(header, "pie").unwrap_or("").trim();
+    if let Some(r) = strip_keyword(rest, "showData") {
+        d.show_data = true;
+        rest = r.trim();
+    }
+    if let Some(r) = strip_keyword(rest, "title") {
+        set_pie_title(&mut d, r, header_line)?;
+    } else if !rest.is_empty() {
+        return Err(err(
+            header_line,
+            format!("unexpected text after 'pie': '{}' (expected showData and/or title)", rest),
+        ));
+    }
+
+    for (i, raw) in source.lines().enumerate() {
+        let lineno = i + 1;
+        if lineno <= header_line {
+            continue;
+        }
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with("%%") {
+            continue;
+        }
+        if let Some(r) = strip_keyword(line, "title") {
+            set_pie_title(&mut d, r, lineno)?;
+            continue;
+        }
+        let (label, value) = parse_pie_row(line, lineno)?;
+        match d.slices.iter_mut().find(|s| s.label == label) {
+            Some(s) => s.value = value, // duplicate label: last value wins
+            None => d.slices.push(PieSlice { label, value }),
+        }
+    }
+    Ok(d)
+}
+
+fn set_pie_title(d: &mut PieChart, text: &str, lineno: usize) -> Result<(), ParseError> {
+    let t = text.trim();
+    if t.is_empty() {
+        return Err(err(lineno, "title needs text".to_string()));
+    }
+    d.title = Some(t.to_string());
+    Ok(())
+}
+
+/// One data row: `"Quoted Label" : <non-negative number>`.
+fn parse_pie_row(line: &str, lineno: usize) -> Result<(String, f64), ParseError> {
+    let mut cur = Cur::new(line);
+    if !cur.eat("\"") {
+        return Err(err(
+            lineno,
+            format!("pie data row needs a quoted label, found: '{}'", line),
+        ));
+    }
+    let label = cur
+        .take_until("\"")
+        .ok_or_else(|| err(lineno, "pie label quote is never closed".to_string()))?;
+    cur.skip_ws();
+    if !cur.eat(":") {
+        return Err(err(
+            lineno,
+            format!("expected ':' after pie label \"{}\"", label),
+        ));
+    }
+    let vs = cur.rest().trim();
+    let value: f64 = vs
+        .parse()
+        .map_err(|_| err(lineno, format!("invalid pie value: '{}'", vs)))?;
+    if !value.is_finite() || value < 0.0 {
+        return Err(err(
+            lineno,
+            format!("pie value must be a non-negative number, got '{}'", vs),
+        ));
+    }
+    Ok((label, value))
 }
 
 #[cfg(test)]

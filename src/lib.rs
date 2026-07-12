@@ -6,8 +6,8 @@
 //! flowmaid — a Mermaid-like diagram engine.
 //!
 //! Supported diagram types: flowcharts (`flowchart` / `graph`),
-//! Entity-Relationship diagrams (`erDiagram`), and UML class
-//! diagrams (`classDiagram`).
+//! Entity-Relationship diagrams (`erDiagram`), UML class diagrams
+//! (`classDiagram`), and pie charts (`pie`).
 //!
 //! Library usage:
 //!
@@ -27,6 +27,7 @@ pub mod er;
 pub mod layout;
 pub mod model;
 pub mod parser;
+pub mod pie;
 pub mod render;
 pub mod scene;
 pub mod style;
@@ -35,11 +36,13 @@ pub use model::Document;
 pub use parser::ParseError;
 
 /// Shortcut: Mermaid-syntax text -> SVG string. Dispatches on the
-/// diagram type header (flowchart/graph, erDiagram, or classDiagram).
+/// diagram type header (flowchart/graph, erDiagram, classDiagram,
+/// or pie).
 pub fn render_svg(source: &str) -> Result<String, ParseError> {
     match parser::parse_document(source)? {
         Document::Flowchart(g) => Ok(render::render(&g)),
         Document::Er(d) => Ok(render::render_er(&d)),
         Document::Class(d) => Ok(render::render_class(&d)),
+        Document::Pie(d) => Ok(render::render_pie(&d)),
     }
 }
