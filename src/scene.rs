@@ -141,7 +141,12 @@ fn scene_flat(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
         bb.add(p.b - p.bsize / 2.0, p.l - p.lsize / 2.0);
         bb.add(p.b + p.bsize / 2.0, p.l + p.lsize / 2.0);
     }
-    for (pts, label) in &abs_edges {
+    for (e, (pts, label)) in g.edges.iter().zip(&abs_edges) {
+        // Invisible links are layout-only — keep their curve out of
+        // the canvas bbox so it isn't padded with empty space.
+        if matches!(e.kind, EdgeKind::Invisible) {
+            continue;
+        }
         for &(bp, lp) in pts {
             bb.add(bp, lp);
         }
@@ -314,6 +319,9 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
         bb.add(x + w, y + h);
     }
     for e in &edges {
+        if matches!(e.kind, EdgeKind::Invisible) {
+            continue; // layout-only link — kept out of the canvas bbox
+        }
         for &(x, y) in &e.bezier {
             bb.add(x, y);
         }
@@ -826,6 +834,12 @@ fn grow_scene(bb: &mut Bbox, nodes: &[SceneNode], edges: &[SceneEdge], clusters:
         bb.add(n.x + n.w / 2.0, n.y + n.h / 2.0);
     }
     for e in edges {
+        // Invisible links shape the layout but are never drawn, so
+        // their curve must not inflate the canvas (bughunter: they
+        // used to leave mysterious empty space).
+        if matches!(e.kind, EdgeKind::Invisible) {
+            continue;
+        }
         for &(x, y) in &e.bezier {
             bb.add(x, y);
         }

@@ -1065,6 +1065,15 @@ mod tests {
         let g = parse("A ~~~ B").unwrap();
         let s = crate::scene::scene(&g);
         assert!(s.nodes[1].y > s.nodes[0].y, "invisible link still layers");
+        // ...and it must NOT inflate the canvas: a wide invisible
+        // back-link leaves no phantom empty space (bughunter).
+        let vis = crate::scene::scene(&parse("flowchart TD\nA-->B-->C").unwrap());
+        let inv = crate::scene::scene(&parse("flowchart TD\nA-->B-->C\nA ~~~ C").unwrap());
+        assert!(
+            (vis.width - inv.width).abs() < 1.0 && (vis.height - inv.height).abs() < 1.0,
+            "invisible link must not change the canvas size ({}x{} vs {}x{})",
+            vis.width, vis.height, inv.width, inv.height
+        );
         // Unclosed inline label errors with a line number.
         let err = parse("A -- oops -> B").unwrap_err();
         assert!(err.message.contains("never closed"), "{}", err.message);
