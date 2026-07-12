@@ -1,0 +1,45 @@
+%% Sequence diagram showcase: participants & actors with aliases,
+%% every message arrow, autonumber, all four note forms, explicit
+%% and shorthand activations, and loop/opt/alt/par frames.
+sequenceDiagram
+    autonumber
+    actor U as Visitor
+    participant FE as Frontend
+    participant API as API Gateway
+    participant DB
+
+    U->>FE: open dashboard
+    FE->>+API: GET /session
+    API-->>-FE: 200 session
+    Note over U,FE: cookies already set
+
+    alt session valid
+        FE->>API: GET /widgets
+        activate API
+        API->>DB: SELECT widgets
+        DB-->>API: rows
+        API-->>FE: widget list
+        deactivate API
+    else expired
+        FE-->U: redirect to login
+    end
+
+    opt slow network
+        FE->FE: show spinner %% self-message
+    end
+
+    loop every 30s
+        FE-)API: poll status
+        API--)FE: status (async)
+    end
+
+    par cache warmup
+        API->DB: warm cache
+    and audit
+        API-xDB: write log
+        U--xFE: close tab
+    end
+
+    Note right of DB: indexed by tenant
+    Note left of U: human
+    Note over API: rate-limited

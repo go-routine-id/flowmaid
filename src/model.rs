@@ -216,6 +216,7 @@ pub enum Document {
     Flowchart(Graph),
     Er(ErDiagram),
     Class(ClassDiagram),
+    Sequence(SequenceDiagram),
     Pie(PieChart),
 }
 
@@ -319,6 +320,131 @@ pub enum RelKind {
     Dependency,
     /// `--` — plain line.
     Link,
+}
+
+/// Sequence diagram (`sequenceDiagram` header). Items keep source
+/// order — the layout is one row per item, top-down.
+#[derive(Debug, Default)]
+pub struct SequenceDiagram {
+    pub participants: Vec<Participant>,
+    pub items: Vec<SeqItem>,
+    /// `autonumber` — messages get a bold `1.` … `n.` prefix.
+    pub autonumber: bool,
+    index: HashMap<String, usize>,
+}
+
+impl SequenceDiagram {
+    /// Look up a participant by id; create it (label = id) if
+    /// missing — the first mention in a message declares one, in
+    /// order of appearance.
+    pub fn ensure_participant(&mut self, id: &str) -> usize {
+        if let Some(&i) = self.index.get(id) {
+            i
+        } else {
+            let i = self.participants.len();
+            self.participants.push(Participant {
+                id: id.to_string(),
+                label: id.to_string(),
+                actor: false,
+            });
+            self.index.insert(id.to_string(), i);
+            i
+        }
+    }
+
+    pub fn participant_index(&self, id: &str) -> Option<usize> {
+        self.index.get(id).copied()
+    }
+}
+
+/// One lifeline column: `participant A [as Label]` / `actor A`.
+#[derive(Debug)]
+pub struct Participant {
+    pub id: String,
+    pub label: String,
+    /// Declared with `actor` — drawn as an outlined box instead of
+    /// the filled participant box.
+    pub actor: bool,
+}
+
+/// One statement of a sequence diagram, in source order.
+#[derive(Debug)]
+pub enum SeqItem {
+    /// `A->>B: text` (any of the eight arrow operators, with the
+    /// optional `+`/`-` activation shorthand before the target).
+    Message {
+        from: usize,
+        to: usize,
+        text: String,
+        /// `--` operator variants — dashed line.
+        dashed: bool,
+        head: SeqHead,
+        /// `+` before the target: activate `to` at this message.
+        activate: bool,
+        /// `-` before the target: deactivate `from` at this message.
+        deactivate: bool,
+    },
+    /// `Note over A,B: text` / `Note left of A:` / `Note right of A:`.
+    Note { side: NoteSide, text: String },
+    /// `activate A`.
+    Activate(usize),
+    /// `deactivate A`.
+    Deactivate(usize),
+    /// `loop|opt|alt|par <label>` — opens a labeled frame.
+    FrameStart { kind: FrameKind, label: String },
+    /// `else <label>` (in `alt`) / `and <label>` (in `par`) —
+    /// a dashed divider inside the innermost frame.
+    FrameElse { label: String },
+    /// `end` — closes the innermost frame.
+    FrameEnd,
+}
+
+/// Arrowhead at the target end of a message.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SeqHead {
+    /// `->>` / `-->>` — filled triangle.
+    Filled,
+    /// Thin open V. No v1 operator maps to it (Mermaid's `->` is
+    /// headless) — available to hosts building scenes by hand.
+    Open,
+    /// `-x` / `--x` — cross just before the lifeline.
+    Cross,
+    /// `-)` / `--)` — async open arrow.
+    Async,
+    /// `->` / `-->` — plain line, no head (Mermaid semantics).
+    None,
+}
+
+/// Where a note attaches.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NoteSide {
+    /// `Note over A[,B]` — spans one or two lifelines.
+    Over(usize, Option<usize>),
+    /// `Note left of A`.
+    LeftOf(usize),
+    /// `Note right of A`.
+    RightOf(usize),
+}
+
+/// Kind of a `loop` / `opt` / `alt` / `par` frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FrameKind {
+    Loop,
+    Opt,
+    Alt,
+    Par,
+}
+
+impl FrameKind {
+    /// Chip keyword as written in Mermaid.
+    pub fn keyword(self) -> &'static str {
+        match self {
+            FrameKind::Loop => "loop",
+            FrameKind::Opt => "opt",
+            FrameKind::Alt => "alt",
+            FrameKind::Par => "par",
+        }
+    }
 }
 
 /// Entity-Relationship diagram (`erDiagram` header).

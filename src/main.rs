@@ -103,6 +103,10 @@ fn main() {
             eprintln!("empty diagram: no classes defined");
             process::exit(1);
         }
+        Document::Sequence(d) if d.participants.is_empty() => {
+            eprintln!("empty diagram: no participants defined");
+            process::exit(1);
+        }
         Document::Pie(d) if d.slices.is_empty() => {
             eprintln!("empty diagram: no data rows");
             process::exit(1);
@@ -110,6 +114,7 @@ fn main() {
         Document::Flowchart(g) => render::render(g),
         Document::Er(d) => render::render_er(d),
         Document::Class(d) => render::render_class(d),
+        Document::Sequence(d) => render::render_seq(d),
         Document::Pie(d) => render::render_pie(d),
     };
 

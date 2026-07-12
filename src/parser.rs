@@ -16,9 +16,9 @@
 //! [`parse`] stays flowchart-only for backwards compatibility.
 
 use crate::model::{
-    Attr, Card, Class, ClassDiagram, ClassRel, Direction, Document, EdgeKind, End, ErDiagram, Graph,
-    Key, Member, NodeStyle, PieChart, PieSlice, RelKind, Relation, Shape, SubEdge, Subgraph,
-    Visibility,
+    Attr, Card, Class, ClassDiagram, ClassRel, Direction, Document, EdgeKind, End, ErDiagram,
+    FrameKind, Graph, Key, Member, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation,
+    SeqHead, SeqItem, SequenceDiagram, Shape, SubEdge, Subgraph, Visibility,
 };
 use std::collections::HashMap;
 
@@ -157,12 +157,13 @@ pub fn parse_document(source: &str) -> Result<Document, ParseError> {
         return match diagram_type(line) {
             Some("erDiagram") => parse_er(source, i + 1).map(Document::Er),
             Some("classDiagram") => parse_class(source, i + 1).map(Document::Class),
+            Some("sequenceDiagram") => parse_sequence(source, i + 1).map(Document::Sequence),
             Some("pie") => parse_pie(source, i + 1).map(Document::Pie),
             Some(t) => Err(err(
                 i + 1,
                 format!(
-                    "diagram type '{}' is not supported yet \
-                     (supported: flowchart, graph, erDiagram, classDiagram, pie)",
+                    "diagram type '{}' is not supported yet (supported: flowchart, \
+                     graph, erDiagram, classDiagram, sequenceDiagram, pie)",
                     t
                 ),
             )),
@@ -210,10 +211,11 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
         if !header_seen {
             header_seen = true;
             if let Some(t) = diagram_type(line) {
-                let hint = if t == "erDiagram" || t == "classDiagram" || t == "pie" {
+                let hint = if matches!(t, "erDiagram" | "classDiagram" | "sequenceDiagram" | "pie") {
                     "this parser is flowchart-only — use parse_document() or render_svg()"
                 } else {
-                    "not supported yet (supported: flowchart, graph, erDiagram, classDiagram, pie)"
+                    "not supported yet (supported: flowchart, graph, erDiagram, \
+                     classDiagram, sequenceDiagram, pie)"
                 };
                 return Err(err(lineno, format!("diagram type '{}': {}", t, hint)));
             }
@@ -1165,6 +1167,380 @@ fn split_card_end(s: &str, card_after: bool) -> (&str, Option<String>) {
 }
 
 // ---------------------------------------------------------------
+// Sequence diagram (`sequenceDiagram`)
+// ---------------------------------------------------------------
+
+/// Parse a `sequenceDiagram` body. `header_line` is the 1-indexed
+/// line of the header; everything up to and including it is skipped.
+fn parse_sequence(source: &str, header_line: usize) -> Result<SequenceDiagram, ParseError> {
+    let mut d = SequenceDiagram::default();
+    // Open frames (kind, opening line) for `else`/`and`/`end`
+    // matching and a good unclosed-frame diagnostic.
+    let mut frames: Vec<(FrameKind, usize)> = Vec::new();
+    // Activation depth per participant, for balance checking.
+    let mut depth: Vec<usize> = Vec::new();
+    for (i, raw) in source.lines().enumerate() {
+        let lineno = i + 1;
+        if lineno <= header_line {
+            continue;
+        }
+        let line = raw.trim();
+        // Strip a trailing `%% comment` (kept out of quotes) so a
+        // comment after a message doesn't leak into its text.
+        let line = match find_unquoted(line, "%%") {
+            Some(p) => line[..p].trim(),
+            None => line,
+        };
+        if line.is_empty() {
+            continue;
+        }
+
+        if let Some(rest) = strip_keyword(line, "participant") {
+            parse_participant(&mut d, rest.trim(), false, lineno)?;
+            continue;
+        }
+        if let Some(rest) = strip_keyword(line, "actor") {
+            parse_participant(&mut d, rest.trim(), true, lineno)?;
+            continue;
+        }
+        if let Some(rest) = strip_keyword(line, "autonumber") {
+            if !rest.trim().is_empty() {
+                return Err(err(
+                    lineno,
+                    format!("autonumber arguments are not supported yet: '{}'", rest.trim()),
+                ));
+            }
+            d.autonumber = true;
+            continue;
+        }
+        if let Some(rest) = strip_keyword(line, "note") {
+            let item = parse_seq_note(&mut d, rest.trim(), lineno)?;
+            d.items.push(item);
+            continue;
+        }
+        if let Some(rest) = strip_keyword(line, "activate") {
+            let p = seq_participant(&mut d, rest.trim(), lineno)?;
+            grow(&mut depth, p);
+            depth[p] += 1;
+            d.items.push(SeqItem::Activate(p));
+            continue;
+        }
+        if let Some(rest) = strip_keyword(line, "deactivate") {
+            let p = seq_participant(&mut d, rest.trim(), lineno)?;
+            grow(&mut depth, p);
+            if depth[p] == 0 {
+                return Err(err(
+                    lineno,
+                    format!(
+                        "deactivate of '{}' without a matching activate",
+                        d.participants[p].id
+                    ),
+                ));
+            }
+            depth[p] -= 1;
+            d.items.push(SeqItem::Deactivate(p));
+            continue;
+        }
+        // Frames: `loop|opt|alt|par <label>` … `else|and <label>` … `end`.
+        const FRAMES: &[(&str, FrameKind)] = &[
+            ("loop", FrameKind::Loop),
+            ("opt", FrameKind::Opt),
+            ("alt", FrameKind::Alt),
+            ("par", FrameKind::Par),
+        ];
+        if let Some((kind, rest)) = FRAMES
+            .iter()
+            .find_map(|&(kw, k)| strip_keyword(line, kw).map(|r| (k, r)))
+        {
+            frames.push((kind, lineno));
+            d.items.push(SeqItem::FrameStart {
+                kind,
+                label: clean_label_1line(rest.trim()),
+            });
+            continue;
+        }
+        if let Some(rest) = strip_keyword(line, "else") {
+            if !matches!(frames.last(), Some((FrameKind::Alt, _))) {
+                return Err(err(
+                    lineno,
+                    "'else' is only valid inside an open 'alt' frame".to_string(),
+                ));
+            }
+            d.items.push(SeqItem::FrameElse {
+                label: clean_label_1line(rest.trim()),
+            });
+            continue;
+        }
+        if let Some(rest) = strip_keyword(line, "and") {
+            if !matches!(frames.last(), Some((FrameKind::Par, _))) {
+                return Err(err(
+                    lineno,
+                    "'and' is only valid inside an open 'par' frame".to_string(),
+                ));
+            }
+            d.items.push(SeqItem::FrameElse {
+                label: clean_label_1line(rest.trim()),
+            });
+            continue;
+        }
+        if let Some(rest) = strip_keyword(line, "end") {
+            if !rest.trim().is_empty() {
+                return Err(err(lineno, format!("unexpected text after 'end': '{}'", rest.trim())));
+            }
+            if frames.pop().is_none() {
+                return Err(err(
+                    lineno,
+                    "'end' without an open loop/opt/alt/par frame".to_string(),
+                ));
+            }
+            d.items.push(SeqItem::FrameEnd);
+            continue;
+        }
+        // Known sequence elements we don't support yet: explicit
+        // error instead of a confusing message-parse failure.
+        const UNSUPPORTED: &[&str] = &[
+            "box", "rect", "critical", "option", "break", "create", "destroy", "title",
+            "links", "link", "properties", "details",
+        ];
+        if let Some(kw) = UNSUPPORTED.iter().find(|k| strip_keyword(line, k).is_some()) {
+            return Err(err(lineno, format!("sequence element '{}' is not supported yet", kw)));
+        }
+        parse_seq_message(&mut d, line, lineno, &mut depth)?;
+    }
+    if let Some(&(kind, opened)) = frames.last() {
+        return Err(err(
+            opened,
+            format!("'{}' frame is never closed with 'end'", kind.keyword()),
+        ));
+    }
+    Ok(d)
+}
+
+fn grow(depth: &mut Vec<usize>, p: usize) {
+    if depth.len() <= p {
+        depth.resize(p + 1, 0);
+    }
+}
+
+/// `participant A` / `participant A as Pretty Label` (also `actor`).
+/// Re-declaring an id updates its label and actor flag in place, so
+/// declarations may follow implicit first mentions.
+fn parse_participant(
+    d: &mut SequenceDiagram,
+    rest: &str,
+    actor: bool,
+    lineno: usize,
+) -> Result<(), ParseError> {
+    let mut cur = Cur::new(rest);
+    let id = seq_ident(&mut cur, lineno)?;
+    cur.skip_ws();
+    let label = if cur.at_end() {
+        None
+    } else if let Some(after) = strip_keyword(cur.rest(), "as") {
+        let l = clean_label_1line(after.trim());
+        if l.is_empty() {
+            return Err(err(lineno, "expected a label after 'as'".to_string()));
+        }
+        Some(l)
+    } else {
+        return Err(err(
+            lineno,
+            format!("expected 'as <label>' after the id, found: '{}'", cur.rest()),
+        ));
+    };
+    let p = d.ensure_participant(&id);
+    if let Some(l) = label {
+        d.participants[p].label = l;
+    }
+    d.participants[p].actor = actor;
+    Ok(())
+}
+
+/// A participant id: alphanumerics + `_` (`-` would collide with
+/// the message operators).
+fn seq_ident(cur: &mut Cur<'_>, lineno: usize) -> Result<String, ParseError> {
+    cur.skip_ws();
+    let start = cur.pos;
+    while let Some(c) = cur.peek() {
+        if c.is_alphanumeric() || c == '_' {
+            cur.bump();
+        } else {
+            break;
+        }
+    }
+    if cur.pos == start {
+        return Err(err(
+            lineno,
+            format!("expected a participant id, found: '{}'", cur.rest()),
+        ));
+    }
+    Ok(cur.s[start..cur.pos].to_string())
+}
+
+/// A whole-string participant reference (activate / deactivate /
+/// note targets). Unknown ids are created implicitly.
+fn seq_participant(
+    d: &mut SequenceDiagram,
+    rest: &str,
+    lineno: usize,
+) -> Result<usize, ParseError> {
+    let mut cur = Cur::new(rest);
+    let id = seq_ident(&mut cur, lineno)?;
+    cur.skip_ws();
+    if !cur.at_end() {
+        return Err(err(
+            lineno,
+            format!("unexpected text after participant id: '{}'", cur.rest()),
+        ));
+    }
+    Ok(d.ensure_participant(&id))
+}
+
+/// The tail of a note line (after the `note` keyword):
+/// `over A[,B]: text` / `left of A: text` / `right of A: text`.
+/// All keywords are case-insensitive, mermaid-style.
+fn parse_seq_note(
+    d: &mut SequenceDiagram,
+    rest: &str,
+    lineno: usize,
+) -> Result<SeqItem, ParseError> {
+    let Some(colon) = rest.find(':') else {
+        return Err(err(lineno, "note needs ': text'".to_string()));
+    };
+    let (place, text) = (rest[..colon].trim(), clean_label_1line(rest[colon + 1..].trim()));
+    if text.is_empty() {
+        return Err(err(lineno, "note text is empty".to_string()));
+    }
+    let side = if let Some(ids) = strip_keyword(place, "over") {
+        let mut it = ids.split(',').map(str::trim);
+        let a = it
+            .next()
+            .filter(|s| !s.is_empty())
+            .ok_or_else(|| err(lineno, "'note over' needs a participant".to_string()))?;
+        let b = it.next();
+        if it.next().is_some() {
+            return Err(err(
+                lineno,
+                "'note over' takes at most two participants".to_string(),
+            ));
+        }
+        let ai = seq_participant(d, a, lineno)?;
+        let bi = match b {
+            Some(s) if !s.is_empty() => Some(seq_participant(d, s, lineno)?),
+            Some(_) => {
+                return Err(err(lineno, "empty participant after ',' in 'note over'".to_string()))
+            }
+            None => None,
+        };
+        NoteSide::Over(ai, bi)
+    } else {
+        let (left, after) = if let Some(r) = strip_keyword(place, "left") {
+            (true, r)
+        } else if let Some(r) = strip_keyword(place, "right") {
+            (false, r)
+        } else {
+            return Err(err(
+                lineno,
+                format!("expected 'over' / 'left of' / 'right of', found: '{}'", place),
+            ));
+        };
+        let id = strip_keyword(after.trim(), "of")
+            .ok_or_else(|| err(lineno, "expected 'of' after left/right".to_string()))?;
+        let p = seq_participant(d, id.trim(), lineno)?;
+        if left {
+            NoteSide::LeftOf(p)
+        } else {
+            NoteSide::RightOf(p)
+        }
+    };
+    Ok(SeqItem::Note { side, text })
+}
+
+/// Message arrow operators, longest first: (token, dashed, head).
+/// `->` / `-->` are headless lines, mermaid-style.
+const SEQ_OPS: &[(&str, bool, SeqHead)] = &[
+    ("-->>", true, SeqHead::Filled),
+    ("-->", true, SeqHead::None),
+    ("--x", true, SeqHead::Cross),
+    ("--)", true, SeqHead::Async),
+    ("->>", false, SeqHead::Filled),
+    ("->", false, SeqHead::None),
+    ("-x", false, SeqHead::Cross),
+    ("-)", false, SeqHead::Async),
+];
+
+/// `A->>+B: text` — id, operator, optional `+`/`-` activation
+/// shorthand, target id, `: text`.
+fn parse_seq_message(
+    d: &mut SequenceDiagram,
+    line: &str,
+    lineno: usize,
+    depth: &mut Vec<usize>,
+) -> Result<(), ParseError> {
+    let mut cur = Cur::new(line);
+    let from_id = seq_ident(&mut cur, lineno)?;
+    cur.skip_ws();
+    let found = SEQ_OPS.iter().find(|(op, _, _)| cur.rest().starts_with(op));
+    let Some(&(op, dashed, head)) = found else {
+        return Err(err(
+            lineno,
+            format!(
+                "unknown message operator near: '{}' (expected one of \
+                 ->> -->> -> --> -x --x -) --) )",
+                cur.rest()
+            ),
+        ));
+    };
+    cur.pos += op.len();
+    cur.skip_ws();
+    // `+` activates the target, `-` deactivates the SENDER (mermaid
+    // shorthand: `A->>+B:` starts B's bar, `B-->>-A:` ends B's).
+    let (activate, deactivate) = if cur.eat("+") {
+        (true, false)
+    } else if cur.eat("-") {
+        (false, true)
+    } else {
+        (false, false)
+    };
+    cur.skip_ws();
+    let to_id = seq_ident(&mut cur, lineno)?;
+    cur.skip_ws();
+    if !cur.eat(":") {
+        return Err(err(
+            lineno,
+            format!("expected ': text' after the message target, found: '{}'", cur.rest()),
+        ));
+    }
+    let text = clean_label_1line(cur.rest().trim());
+    let from = d.ensure_participant(&from_id);
+    let to = d.ensure_participant(&to_id);
+    grow(depth, from.max(to));
+    if activate {
+        depth[to] += 1;
+    }
+    if deactivate {
+        if depth[from] == 0 {
+            return Err(err(
+                lineno,
+                format!("'-' deactivates the sender, but '{}' is not activated", from_id),
+            ));
+        }
+        depth[from] -= 1;
+    }
+    d.items.push(SeqItem::Message {
+        from,
+        to,
+        text,
+        dashed,
+        head,
+        activate,
+        deactivate,
+    });
+    Ok(())
+}
+
+
+// ---------------------------------------------------------------
 // Pie chart (`pie`)
 // ---------------------------------------------------------------
 
@@ -1317,7 +1693,7 @@ mod tests {
 
     #[test]
     fn unsupported_diagram_types_get_explicit_errors() {
-        for src in ["sequenceDiagram\nA->>B: hi", "gantt\ntitle x", "stateDiagram-v2\n[*] --> A"] {
+        for src in ["journey\ntitle x", "gantt\ntitle x", "stateDiagram-v2\n[*] --> A"] {
             for res in [
                 parse(src).map(|_| ()),
                 parse_document(src).map(|_| ()),
