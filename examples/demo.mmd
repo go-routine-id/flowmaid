@@ -1,0 +1,8 @@
+%% Contoh: alur validasi input (ada siklus E -> B)
+flowchart TD
+    A([Mulai]) --> B[Baca input]
+    B --> C{Valid?}
+    C -->|ya| D[Proses data]
+    C -->|tidak| E[Tampilkan error]
+    E --> B
+    D ==> F((Selesai))

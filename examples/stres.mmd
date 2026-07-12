@@ -1,0 +1,9 @@
+%% Kasus uji: edge paralel, self-loop, siklus, edge lintas layer
+flowchart TD
+    A[Sumber] --> B[Proses 1]
+    A -->|paralel| B
+    B --> B
+    B --> C{Cek}
+    C -->|ya| D[Akhir]
+    C -.->|tidak| A
+    A ==> D

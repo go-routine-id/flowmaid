@@ -1,0 +1,8 @@
+%% Contoh arah kiri-ke-kanan dengan berbagai jenis garis
+flowchart LR
+    U[User] --> FE(Frontend) --> API{Auth?}
+    API -->|ok| SVC[Service Layer]
+    API -.->|gagal| ERR[401 Response]
+    SVC ==> DB[Database]
+    SVC --> CACHE([Redis Cache])
+    CACHE --> SVC
