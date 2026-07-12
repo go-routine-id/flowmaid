@@ -215,6 +215,109 @@ impl Graph {
 pub enum Document {
     Flowchart(Graph),
     Er(ErDiagram),
+    Class(ClassDiagram),
+}
+
+/// UML class diagram (`classDiagram` header).
+#[derive(Debug, Default)]
+pub struct ClassDiagram {
+    pub classes: Vec<Class>,
+    pub relations: Vec<ClassRel>,
+    index: HashMap<String, usize>,
+}
+
+impl ClassDiagram {
+    /// Look up a class by name; create it (empty) if missing.
+    pub fn ensure_class(&mut self, name: &str) -> usize {
+        if let Some(&i) = self.index.get(name) {
+            i
+        } else {
+            let i = self.classes.len();
+            self.classes.push(Class {
+                name: name.to_string(),
+                fields: Vec::new(),
+                methods: Vec::new(),
+            });
+            self.index.insert(name.to_string(), i);
+            i
+        }
+    }
+
+    pub fn class_index(&self, name: &str) -> Option<usize> {
+        self.index.get(name).copied()
+    }
+}
+
+/// A class box: name header + fields compartment + methods compartment.
+#[derive(Debug)]
+pub struct Class {
+    pub name: String,
+    pub fields: Vec<Member>,
+    pub methods: Vec<Member>,
+}
+
+/// One field or method row.
+#[derive(Debug)]
+pub struct Member {
+    pub visibility: Visibility,
+    /// Display text after the visibility marker
+    /// (`name: Type` / `name(args) Ret`).
+    pub text: String,
+}
+
+/// UML member visibility, shown as a leading glyph.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Visibility {
+    Public,    // +
+    Private,   // -
+    Protected, // #
+    Package,   // ~
+    None,
+}
+
+impl Visibility {
+    pub fn glyph(self) -> &'static str {
+        match self {
+            Visibility::Public => "+",
+            Visibility::Private => "-",
+            Visibility::Protected => "#",
+            Visibility::Package => "~",
+            Visibility::None => "",
+        }
+    }
+}
+
+/// A relationship between two classes. Normalised so the end glyph
+/// (triangle / diamond / arrow) always sits at the `to` end.
+#[derive(Debug)]
+pub struct ClassRel {
+    pub from: usize,
+    pub to: usize,
+    pub kind: RelKind,
+    /// Dashed line (realization, dependency, `..` link).
+    pub dashed: bool,
+    pub from_card: Option<String>,
+    pub to_card: Option<String>,
+    pub label: Option<String>,
+}
+
+/// UML relationship type (determines line style + end glyph).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RelKind {
+    /// `<|--` — hollow triangle at the parent.
+    Inheritance,
+    /// `..|>` — hollow triangle, dashed line.
+    Realization,
+    /// `*--` — filled diamond.
+    Composition,
+    /// `o--` — hollow diamond.
+    Aggregation,
+    /// `-->` — open arrow.
+    Association,
+    /// `..>` — open arrow, dashed line.
+    Dependency,
+    /// `--` — plain line.
+    Link,
 }
 
 /// Entity-Relationship diagram (`erDiagram` header).

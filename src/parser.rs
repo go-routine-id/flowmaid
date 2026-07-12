@@ -16,8 +16,8 @@
 //! [`parse`] stays flowchart-only for backwards compatibility.
 
 use crate::model::{
-    Attr, Card, Direction, Document, EdgeKind, End, ErDiagram, Graph, Key, NodeStyle, Relation,
-    Shape, SubEdge, Subgraph,
+    Attr, Card, Class, ClassDiagram, ClassRel, Direction, Document, EdgeKind, End, ErDiagram, Graph,
+    Key, Member, NodeStyle, RelKind, Relation, Shape, SubEdge, Subgraph, Visibility,
 };
 use std::collections::HashMap;
 
@@ -155,10 +155,12 @@ pub fn parse_document(source: &str) -> Result<Document, ParseError> {
         }
         return match diagram_type(line) {
             Some("erDiagram") => parse_er(source, i + 1).map(Document::Er),
+            Some("classDiagram") => parse_class(source, i + 1).map(Document::Class),
             Some(t) => Err(err(
                 i + 1,
                 format!(
-                    "diagram type '{}' is not supported yet (supported: flowchart, graph, erDiagram)",
+                    "diagram type '{}' is not supported yet \
+                     (supported: flowchart, graph, erDiagram, classDiagram)",
                     t
                 ),
             )),
@@ -206,10 +208,10 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
         if !header_seen {
             header_seen = true;
             if let Some(t) = diagram_type(line) {
-                let hint = if t == "erDiagram" {
+                let hint = if t == "erDiagram" || t == "classDiagram" {
                     "this parser is flowchart-only — use parse_document() or render_svg()"
                 } else {
-                    "not supported yet (supported: flowchart, graph, erDiagram)"
+                    "not supported yet (supported: flowchart, graph, erDiagram, classDiagram)"
                 };
                 return Err(err(lineno, format!("diagram type '{}': {}", t, hint)));
             }
@@ -926,6 +928,183 @@ fn parse_attr(line: &str, lineno: usize) -> Result<Attr, ParseError> {
         keys,
         comment,
     })
+}
+
+// ---------------------------------------------------------------
+// Class diagram (`classDiagram`)
+// ---------------------------------------------------------------
+
+/// Parse a `classDiagram` body. `header_line` is 1-indexed.
+fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseError> {
+    let mut d = ClassDiagram::default();
+    let mut open: Option<usize> = None; // class whose `{ }` block is open
+    for (i, raw) in source.lines().enumerate() {
+        let lineno = i + 1;
+        if lineno <= header_line {
+            continue;
+        }
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with("%%") {
+            continue;
+        }
+        if let Some(ci) = open {
+            if line == "}" {
+                open = None;
+            } else if !line.starts_with("<<") {
+                // Skip `<<interface>>` / `<<abstract>>` stereotypes
+                // (not yet rendered) rather than treat them as fields.
+                add_class_member(&mut d.classes[ci], line);
+            }
+            continue;
+        }
+        if let Some(rest) = strip_keyword(line, "class") {
+            let rest = rest.trim();
+            // `class Name {` opens a block; `class Name` just declares.
+            if let Some(name) = rest.strip_suffix('{') {
+                let ci = d.ensure_class(name.trim());
+                open = Some(ci);
+            } else {
+                d.ensure_class(rest);
+            }
+            continue;
+        }
+        // `Name : +member` inline member.
+        if let Some((name, member)) = line.split_once(':') {
+            if !member.trim().is_empty() && is_class_ident(name.trim()) && !looks_like_relation(line)
+            {
+                let ci = d.ensure_class(name.trim());
+                add_class_member(&mut d.classes[ci], member.trim());
+                continue;
+            }
+        }
+        parse_class_relation(&mut d, line, lineno)?;
+    }
+    if let Some(ci) = open {
+        return Err(err(
+            header_line,
+            format!("class block '{}' is never closed with '}}'", d.classes[ci].name),
+        ));
+    }
+    Ok(d)
+}
+
+fn is_class_ident(s: &str) -> bool {
+    !s.is_empty() && s.chars().all(|c| c.is_alphanumeric() || c == '_')
+}
+
+/// Does the line contain a relation operator? Used to keep
+/// `A --> B : label` out of the inline-member branch.
+fn looks_like_relation(line: &str) -> bool {
+    ["<|", "|>", "*--", "--*", "o--", "--o", "-->", "<--", "..>", "<..", "--", ".."]
+        .iter()
+        .any(|op| line.contains(op))
+}
+
+/// Add one field or method from a member line like `+name: Type` or
+/// `+doWork(x) Ret`. A `()` marks a method.
+fn add_class_member(c: &mut Class, s: &str) {
+    let s = s.trim();
+    let (vis, rest) = match s.chars().next() {
+        Some('+') => (Visibility::Public, &s[1..]),
+        Some('-') => (Visibility::Private, &s[1..]),
+        Some('#') => (Visibility::Protected, &s[1..]),
+        Some('~') => (Visibility::Package, &s[1..]),
+        _ => (Visibility::None, s),
+    };
+    let m = Member {
+        visibility: vis,
+        text: rest.trim().to_string(),
+    };
+    if rest.contains('(') {
+        c.methods.push(m);
+    } else {
+        c.fields.push(m);
+    }
+}
+
+/// Relation operators, longest first. Each maps to
+/// (kind, dashed, head_at_left).
+const CLASS_OPS: &[(&str, RelKind, bool, bool)] = &[
+    ("<|--", RelKind::Inheritance, false, true),
+    ("--|>", RelKind::Inheritance, false, false),
+    ("<|..", RelKind::Realization, true, true),
+    ("..|>", RelKind::Realization, true, false),
+    ("*--", RelKind::Composition, false, true),
+    ("--*", RelKind::Composition, false, false),
+    ("o--", RelKind::Aggregation, false, true),
+    ("--o", RelKind::Aggregation, false, false),
+    ("-->", RelKind::Association, false, false),
+    ("<--", RelKind::Association, false, true),
+    ("..>", RelKind::Dependency, true, false),
+    ("<..", RelKind::Dependency, true, true),
+    ("--", RelKind::Link, false, false),
+    ("..", RelKind::Link, true, false),
+];
+
+/// `ClassA "card" <op> "card" ClassB : label`.
+fn parse_class_relation(d: &mut ClassDiagram, line: &str, lineno: usize) -> Result<(), ParseError> {
+    // Split off a trailing `: label` (not the member colon — this
+    // line has a relation operator).
+    let (rel, label) = match line.split_once(':') {
+        Some((a, b)) => (a.trim(), Some(clean_label_1line(b.trim()))),
+        None => (line, None),
+    };
+    // Find the operator (longest match) somewhere in `rel`.
+    let (op, kind, dashed, head_left) = CLASS_OPS
+        .iter()
+        .find_map(|&(op, k, dash, hl)| rel.find(op).map(|pos| (pos, op, k, dash, hl)))
+        // Prefer the earliest, longest operator.
+        .map(|(_, op, k, dash, hl)| (op, k, dash, hl))
+        .ok_or_else(|| err(lineno, format!("unknown class relation near: '{}'", rel)))?;
+    let opos = rel.find(op).unwrap();
+    let left = rel[..opos].trim();
+    let right = rel[opos + op.len()..].trim();
+    // Strip optional cardinality quotes from the inner edges.
+    let (left_name, left_card) = split_card_end(left, true);
+    let (right_name, right_card) = split_card_end(right, false);
+    if !is_class_ident(left_name) || !is_class_ident(right_name) {
+        return Err(err(
+            lineno,
+            format!("class relation needs two class names, got '{left_name}' / '{right_name}'"),
+        ));
+    }
+    let li = d.ensure_class(left_name);
+    let ri = d.ensure_class(right_name);
+    // Normalise so the decorated end is `to`.
+    let (from, to, from_card, to_card) = if head_left {
+        (ri, li, right_card, left_card)
+    } else {
+        (li, ri, left_card, right_card)
+    };
+    d.relations.push(ClassRel {
+        from,
+        to,
+        kind,
+        dashed,
+        from_card,
+        to_card,
+        label,
+    });
+    Ok(())
+}
+
+/// Split a `Name "card"` (card on the operator side) into
+/// (name, card). `card_after` = the quote sits after the name
+/// (left operand); otherwise before (right operand).
+fn split_card_end(s: &str, card_after: bool) -> (&str, Option<String>) {
+    let s = s.trim();
+    if let (Some(q0), Some(q1)) = (s.find('"'), s.rfind('"')) {
+        if q1 > q0 {
+            let card = s[q0 + 1..q1].to_string();
+            let name = if card_after {
+                s[..q0].trim()
+            } else {
+                s[q1 + 1..].trim()
+            };
+            return (name, Some(card));
+        }
+    }
+    (s, None)
 }
 
 #[cfg(test)]

@@ -99,8 +99,13 @@ fn main() {
             eprintln!("empty diagram: no entities defined");
             process::exit(1);
         }
+        Document::Class(d) if d.classes.is_empty() => {
+            eprintln!("empty diagram: no classes defined");
+            process::exit(1);
+        }
         Document::Flowchart(g) => render::render(g),
         Document::Er(d) => render::render_er(d),
+        Document::Class(d) => render::render_class(d),
     };
 
     match &output {

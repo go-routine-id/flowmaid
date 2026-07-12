@@ -3,7 +3,7 @@
 //! so the output of render() and the interactive flow
 //! (scene/route/to_svg) are guaranteed identical.
 
-use crate::model::{ErDiagram, Graph};
+use crate::model::{ClassDiagram, ErDiagram, Graph};
 
 pub fn render(g: &Graph) -> String {
     crate::scene::to_svg(&crate::scene::scene(g))
@@ -13,6 +13,12 @@ pub fn render(g: &Graph) -> String {
 /// Geometry & serialisation live in the `er` module.
 pub fn render_er(d: &ErDiagram) -> String {
     crate::er::to_svg(&crate::er::scene(d))
+}
+
+/// Render a UML class diagram (three-compartment boxes + UML end
+/// glyphs). Geometry & serialisation live in the `class` module.
+pub fn render_class(d: &ClassDiagram) -> String {
+    crate::class::to_svg(&crate::class::scene(d))
 }
 
 #[cfg(test)]

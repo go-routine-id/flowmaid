@@ -5,8 +5,9 @@
 
 //! flowmaid — a Mermaid-like diagram engine.
 //!
-//! Supported diagram types: flowcharts (`flowchart` / `graph`) and
-//! Entity-Relationship diagrams (`erDiagram`).
+//! Supported diagram types: flowcharts (`flowchart` / `graph`),
+//! Entity-Relationship diagrams (`erDiagram`), and UML class
+//! diagrams (`classDiagram`).
 //!
 //! Library usage:
 //!
@@ -16,8 +17,12 @@
 //!
 //! let er = flowmaid::render_svg("erDiagram\nusers ||--o{ posts : writes").unwrap();
 //! assert!(er.contains("users"));
+//!
+//! let uml = flowmaid::render_svg("classDiagram\nAnimal <|-- Dog").unwrap();
+//! assert!(uml.contains("Animal"));
 //! ```
 
+pub mod class;
 pub mod er;
 pub mod layout;
 pub mod model;
@@ -30,10 +35,11 @@ pub use model::Document;
 pub use parser::ParseError;
 
 /// Shortcut: Mermaid-syntax text -> SVG string. Dispatches on the
-/// diagram type header (flowchart/graph or erDiagram).
+/// diagram type header (flowchart/graph, erDiagram, or classDiagram).
 pub fn render_svg(source: &str) -> Result<String, ParseError> {
     match parser::parse_document(source)? {
         Document::Flowchart(g) => Ok(render::render(&g)),
         Document::Er(d) => Ok(render::render_er(&d)),
+        Document::Class(d) => Ok(render::render_class(&d)),
     }
 }

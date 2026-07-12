@@ -17,7 +17,7 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 
 - [x] `flowchart` / `graph` — TD/LR/RL/BT, 5 shapes, 4 link types + labels, chains, cycles, self-loops, parallel edges
 - [x] `erDiagram` — full crow's foot cardinalities, identifying/non-identifying lines, entity attribute tables
-- [ ] `classDiagram` — [#5](https://github.com/go-routine-id/flowmaid/issues/5)
+- [x] `classDiagram` — three-compartment boxes, member visibility, all UML relations (inheritance/realization/composition/aggregation/association/dependency), cardinalities + labels *(v0.9.0)*
 - [ ] `sequenceDiagram` — [#6](https://github.com/go-routine-id/flowmaid/issues/6)
 - [ ] `stateDiagram-v2` — [#7](https://github.com/go-routine-id/flowmaid/issues/7)
 - [ ] `journey` — [#8](https://github.com/go-routine-id/flowmaid/issues/8)
@@ -104,7 +104,26 @@ erDiagram
 
 Supported subset: relationships with all crow's foot cardinalities (`||` exactly one, `|o`/`o|` zero or one, `}o`/`o{` zero or many, `}|`/`|{` one or many), identifying (`--`, solid) and non-identifying (`..`, dashed) lines, optional relationship labels, and entity blocks with `type name [PK|FK|UK] ["comment"]` rows. Types with parentheses (`varchar(255)`) and comments containing commas, parentheses, or single quotes are handled. Entities mentioned only in relationships render as title-only tables. Attribute comments are parsed into the model but not drawn. See `examples/er.mmd`.
 
-Other Mermaid diagram types (`sequenceDiagram`, `classDiagram`, `gantt`, ...) are detected and produce an explicit "not supported yet" error instead of a confusing parse failure.
+## Class diagrams
+
+`classDiagram` input renders UML classes as three-compartment boxes (name / fields / methods) connected with UML relationship glyphs:
+
+```
+classDiagram
+    class Animal {
+        +String name
+        -int age
+        +move() void
+    }
+    Animal <|-- Dog
+    Animal "1" o-- "*" Toy : owns
+    Dog "1" --> "*" Toy : plays with
+    Cat ..> Toy : ignores
+```
+
+Supported subset: class blocks with `+ - # ~` member visibility (a member with `()` becomes a method, otherwise a field); inline members via `Name : +member`; and all UML relations — inheritance `<|--`, realization `..|>`, composition `*--`, aggregation `o--`, association `-->`, dependency `..>`, and plain link `--`/`..`, in either direction. Each relation takes optional `"cardinality"` strings on each side and a `: label`; the diagram is normalised so the end glyph (hollow triangle, filled/hollow diamond, or open arrow) always sits at the target end. Dashed lines are used for realization and dependency. See `examples/class.mmd`.
+
+Other Mermaid diagram types (`sequenceDiagram`, `stateDiagram-v2`, `gantt`, ...) are detected and produce an explicit "not supported yet" error instead of a confusing parse failure.
 
 ## Architecture
 
@@ -119,6 +138,8 @@ A three-stage pipeline, one module per stage:
 For interactive apps there is the `scene` module: `scene()` produces final ready-to-draw geometry (node positions, edge bezier curves), `route()` re-routes edges for custom node positions such as user drags, and `to_svg()` exports any arrangement. `render()` is now just a wrapper over the same pipeline. See `examples/drag_sim.rs` and the egui demo app.
 
 The `er` module maps an `ErDiagram` onto the same machinery and mirrors the `scene` API: `er::scene()` for automatic layout, `er::route()` to follow dragged entity positions, `er::to_svg()` to export any arrangement. Each entity becomes one node of a synthetic left-to-right graph (sized from its attribute table via `scene::scene_sized`), each relationship one edge; only the writer differs — tables instead of shapes, crow's foot glyphs (exposed as plain geometry via `er::glyph`) instead of arrowheads.
+
+The `class` module follows the same pattern for `classDiagram`: `class::scene()`, `class::route()`, `class::to_svg()`. Each class becomes one node of a synthetic top-down graph (sized from its member list), each relationship one edge; the writer draws three-compartment boxes and UML end glyphs (exposed as plain geometry via `class::head`) at the target end.
 
 ## Performance
 
