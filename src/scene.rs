@@ -275,6 +275,41 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
     }
 }
 
+/// Cubic bezier for a single edge between two freely-positioned
+/// rectangular boxes — the same per-edge geometry [`route`] uses,
+/// exposed for hosts that own their node model (icon nodes, custom
+/// canvases) and only want flowmaid's curve: side-aware anchors
+/// with fan-out spreading, and self-loops.
+///
+/// `offset` separates parallel edges between the same pair (pass 0
+/// when unused); `self_loop` draws the loop stub instead (`a` is
+/// used, `b` ignored). Returns `[start, control1, control2, end]`
+/// in the same coordinate space as the inputs.
+pub fn box_edge_bezier(
+    a_center: (f64, f64),
+    a_size: (f64, f64),
+    b_center: (f64, f64),
+    b_size: (f64, f64),
+    offset: f64,
+    self_loop: bool,
+) -> [(f64, f64); 4] {
+    let make = |c: (f64, f64), s: (f64, f64)| Placed {
+        b: c.0,
+        l: c.1,
+        bsize: s.0,
+        lsize: s.1,
+        layer: 0,
+    };
+    free_edge(
+        &make(a_center, a_size),
+        &make(b_center, b_size),
+        Shape::Rect,
+        Shape::Rect,
+        self_loop,
+        offset,
+    )
+}
+
 /// Serialise any Scene (automatic or dragged) to SVG. Content is
 /// translated to start at MARGIN, so negative coordinates are safe.
 pub fn to_svg(sc: &Scene) -> String {
@@ -704,6 +739,23 @@ mod tests {
         assert_eq!(s.edges.len(), 2);
         assert!(s.width > 0.0 && s.height > 0.0);
         assert_eq!(to_svg(&s), crate::render::render(&g));
+    }
+
+    #[test]
+    fn box_edge_bezier_matches_route_geometry() {
+        // The standalone helper must produce the same curve route()
+        // computes for the equivalent two-node graph.
+        let g = parse("A[Left] --> B[Right]").unwrap();
+        let s0 = scene(&g);
+        let centers: Vec<(f64, f64)> = s0.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let s1 = route(&g, &centers);
+        let a = &s1.nodes[0];
+        let b = &s1.nodes[1];
+        let bez = box_edge_bezier((a.x, a.y), (a.w, a.h), (b.x, b.y), (b.w, b.h), 0.0, false);
+        assert_eq!(bez, s1.edges[0].bezier);
+        // Self-loop variant returns a stub on the node's right side.
+        let lp = box_edge_bezier((a.x, a.y), (a.w, a.h), (a.x, a.y), (a.w, a.h), 0.0, true);
+        assert!(lp[1].0 > a.x + a.w / 2.0, "loop must extend right of the box");
     }
 
     #[test]
