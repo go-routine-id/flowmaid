@@ -16,8 +16,9 @@
 //! [`parse`] stays flowchart-only for backwards compatibility.
 
 use crate::model::{
-    Attr, Card, Direction, Document, EdgeKind, ErDiagram, Graph, Key, Relation, Shape,
+    Attr, Card, Direction, Document, EdgeKind, ErDiagram, Graph, Key, NodeStyle, Relation, Shape,
 };
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct ParseError {
@@ -124,6 +125,11 @@ pub fn parse_document(source: &str) -> Result<Document, ParseError> {
 pub fn parse(source: &str) -> Result<Graph, ParseError> {
     let mut g = Graph::default();
     let mut header_seen = false;
+    // Styling is collected during the pass and resolved at the end,
+    // because Mermaid allows `classDef` to appear after its usage.
+    let mut class_defs: HashMap<String, NodeStyle> = HashMap::new();
+    let mut assigns: Vec<(usize, String)> = Vec::new(); // (node, class)
+    let mut styles: Vec<(usize, NodeStyle)> = Vec::new(); // explicit `style` lines
 
     for (i, raw) in source.lines().enumerate() {
         let lineno = i + 1;
@@ -158,9 +164,88 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
             // No header: use the default direction (TD) and
             // treat this line as a regular statement.
         }
-        parse_statement(&mut g, line, lineno)?;
+
+        // Styling statements (`style A fill:...`, `classDef name ...`,
+        // `class A,B name`). strip_keyword requires whitespace after
+        // the keyword, so `class` can't shadow `classDef`.
+        if let Some(rest) = strip_keyword(line, "classDef") {
+            let rest = rest.trim();
+            let (names, props) = rest.split_once(char::is_whitespace).ok_or_else(|| {
+                err(lineno, "classDef needs a name and properties".to_string())
+            })?;
+            let st = parse_props(props.trim(), lineno)?;
+            for name in names.split(',').filter(|n| !n.is_empty()) {
+                class_defs.insert(name.to_string(), st.clone());
+            }
+            continue;
+        }
+        if let Some(rest) = strip_keyword(line, "class") {
+            let rest = rest.trim();
+            let (ids, name) = rest.split_once(char::is_whitespace).ok_or_else(|| {
+                err(lineno, "class needs node ids and a class name".to_string())
+            })?;
+            for id in ids.split(',').filter(|i| !i.is_empty()) {
+                let n = g.ensure_node(id.trim(), None, None);
+                assigns.push((n, name.trim().to_string()));
+            }
+            continue;
+        }
+        if let Some(rest) = strip_keyword(line, "style") {
+            let rest = rest.trim();
+            let (id, props) = rest.split_once(char::is_whitespace).ok_or_else(|| {
+                err(lineno, "style needs a node id and properties".to_string())
+            })?;
+            let n = g.ensure_node(id.trim(), None, None);
+            styles.push((n, parse_props(props.trim(), lineno)?));
+            continue;
+        }
+
+        parse_statement(&mut g, line, lineno, &mut assigns)?;
+    }
+
+    // Resolve styling: classDef layers first, explicit `style`
+    // lines win. Unknown class names are ignored, mermaid-style.
+    for (n, name) in assigns {
+        if let Some(def) = class_defs.get(&name) {
+            g.nodes[n].style.apply_over(def);
+        }
+    }
+    for (n, st) in styles {
+        g.nodes[n].style.apply_over(&st);
     }
     Ok(g)
+}
+
+/// Parse `fill:#f9f,stroke:#333,stroke-width:4px,color:#fff`.
+/// Unknown properties are ignored (mermaid tolerates them too).
+fn parse_props(s: &str, lineno: usize) -> Result<NodeStyle, ParseError> {
+    let mut st = NodeStyle::default();
+    for item in s.split(',') {
+        let item = item.trim();
+        if item.is_empty() {
+            continue;
+        }
+        let Some((k, v)) = item.split_once(':') else {
+            return Err(err(
+                lineno,
+                format!("expected 'property:value', got '{}'", item),
+            ));
+        };
+        let v = v.trim();
+        match k.trim() {
+            "fill" => st.fill = Some(v.to_string()),
+            "stroke" => st.stroke = Some(v.to_string()),
+            "color" => st.color = Some(v.to_string()),
+            "stroke-width" => {
+                let n: f64 = v.trim_end_matches("px").trim().parse().map_err(|_| {
+                    err(lineno, format!("invalid stroke-width: '{}'", v))
+                })?;
+                st.stroke_width = Some(n);
+            }
+            _ => {}
+        }
+    }
+    Ok(st)
 }
 
 /// Recognise a known Mermaid diagram-type header other than
@@ -203,9 +288,14 @@ fn strip_keyword<'a>(line: &'a str, kw: &str) -> Option<&'a str> {
     }
 }
 
-fn parse_statement(g: &mut Graph, line: &str, lineno: usize) -> Result<(), ParseError> {
+fn parse_statement(
+    g: &mut Graph,
+    line: &str,
+    lineno: usize,
+    assigns: &mut Vec<(usize, String)>,
+) -> Result<(), ParseError> {
     let mut cur = Cur::new(line);
-    let mut prev = parse_node(&mut cur, g, lineno)?;
+    let mut prev = parse_node(&mut cur, g, lineno, assigns)?;
     loop {
         cur.skip_ws();
         if cur.at_end() {
@@ -217,7 +307,7 @@ fn parse_statement(g: &mut Graph, line: &str, lineno: usize) -> Result<(), Parse
             if cur.at_end() {
                 break;
             }
-            prev = parse_node(&mut cur, g, lineno)?;
+            prev = parse_node(&mut cur, g, lineno, assigns)?;
             continue;
         }
         let kind = parse_edge_op(&mut cur).ok_or_else(|| {
@@ -235,14 +325,19 @@ fn parse_statement(g: &mut Graph, line: &str, lineno: usize) -> Result<(), Parse
         } else {
             None
         };
-        let next = parse_node(&mut cur, g, lineno)?;
+        let next = parse_node(&mut cur, g, lineno, assigns)?;
         g.add_edge(prev, next, label, kind);
         prev = next;
     }
     Ok(())
 }
 
-fn parse_node(cur: &mut Cur<'_>, g: &mut Graph, lineno: usize) -> Result<usize, ParseError> {
+fn parse_node(
+    cur: &mut Cur<'_>,
+    g: &mut Graph,
+    lineno: usize,
+    assigns: &mut Vec<(usize, String)>,
+) -> Result<usize, ParseError> {
     cur.skip_ws();
     let start = cur.pos;
     while let Some(c) = cur.peek() {
@@ -279,7 +374,24 @@ fn parse_node(cur: &mut Cur<'_>, g: &mut Graph, lineno: usize) -> Result<usize, 
         Some((s, l)) => (Some(s), Some(clean_label(&l))),
         None => (None, None),
     };
-    Ok(g.ensure_node(&id, label, shape))
+    let n = g.ensure_node(&id, label, shape);
+
+    // `A:::className` — inline class assignment shorthand.
+    if cur.eat(":::") {
+        let start = cur.pos;
+        while let Some(c) = cur.peek() {
+            if c.is_alphanumeric() || c == '_' || c == '-' {
+                cur.bump();
+            } else {
+                break;
+            }
+        }
+        if cur.pos == start {
+            return Err(err(lineno, "expected a class name after ':::'".to_string()));
+        }
+        assigns.push((n, cur.s[start..cur.pos].to_string()));
+    }
+    Ok(n)
 }
 
 fn close(cur: &mut Cur<'_>, closer: &str, lineno: usize) -> Result<String, ParseError> {
@@ -679,6 +791,42 @@ mod tests {
         // Bad relationship operator.
         let e = parse_document("erDiagram\nA >>-- B\n").unwrap_err();
         assert_eq!(e.line, 2);
+    }
+
+    #[test]
+    fn style_classdef_and_triple_colon() {
+        let g = parse(
+            "flowchart TD\n\
+             A[Server] --> B{Ok?}\n\
+             B --> C:::hot\n\
+             style A fill:#f9f,stroke:#333,stroke-width:4px\n\
+             classDef hot fill:#ffe3e3,stroke:#e03131,color:#c92a2a\n\
+             class B hot\n\
+             style B stroke:#000\n",
+        )
+        .unwrap();
+        // Explicit style line.
+        assert_eq!(g.nodes[0].style.fill.as_deref(), Some("#f9f"));
+        assert_eq!(g.nodes[0].style.stroke_width, Some(4.0));
+        // classDef via `class`, then `style` overrides just the stroke.
+        assert_eq!(g.nodes[1].style.fill.as_deref(), Some("#ffe3e3"));
+        assert_eq!(g.nodes[1].style.stroke.as_deref(), Some("#000"));
+        assert_eq!(g.nodes[1].style.color.as_deref(), Some("#c92a2a"));
+        // ::: shorthand, with classDef declared later in the file.
+        assert_eq!(g.nodes[2].style.fill.as_deref(), Some("#ffe3e3"));
+        // Unknown property is ignored, bad property syntax errors.
+        assert!(parse("A --> B\nstyle A rounded").is_err());
+        assert!(parse("A --> B\nstyle A glow:heavy,fill:#fff").unwrap().nodes[0]
+            .style
+            .fill
+            .is_some());
+    }
+
+    #[test]
+    fn custom_fill_reaches_the_svg() {
+        let svg = crate::render_svg("A[X] --> B\nstyle A fill:#123456,color:#ffffff").unwrap();
+        assert!(svg.contains("fill=\"#123456\""));
+        assert!(svg.contains("fill=\"#ffffff\">X</text>"));
     }
 
     #[test]

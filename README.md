@@ -49,6 +49,8 @@ Node shapes: `A[text]` rectangle, `A(text)` rounded, `A([text])` stadium, `A{tex
 
 Edges: `-->` arrow, `---` open line, `-.->` dotted, `==>` thick. Edge labels are written `-->|text|`. Chains like `A --> B --> C` are supported, as are cycles (`E --> B` looping back up) and self-loops (`A --> A`).
 
+Custom colors use mermaid's styling syntax: `style A fill:#f9f,stroke:#333,stroke-width:4px,color:#fff`, reusable classes via `classDef hot fill:#ffe3e3,stroke:#e03131` + `class A,B hot` or the inline shorthand `A:::hot`. Supported properties: `fill`, `stroke`, `stroke-width`, `color` (label text); unknown properties are ignored. Unstyled nodes fall back to a semantic theme — shape determines color (stadium green, diamond amber, circle violet, ...; see the `style` module) — and ER entities cycle through a stable accent palette.
+
 Complete examples live in `examples/demo.mmd` and `examples/lr.mmd`.
 
 ## Entity-Relationship diagrams

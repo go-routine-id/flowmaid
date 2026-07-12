@@ -49,11 +49,47 @@ pub enum EdgeKind {
     Thick,
 }
 
+/// Custom per-node styling from Mermaid `style` / `classDef`
+/// lines. `None` fields fall back to the shape's theme color
+/// (see [`crate::style::shape_style`]).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct NodeStyle {
+    /// `fill:#rrggbb`
+    pub fill: Option<String>,
+    /// `stroke:#rrggbb`
+    pub stroke: Option<String>,
+    /// `stroke-width:4px` (pixels)
+    pub stroke_width: Option<f64>,
+    /// `color:#rrggbb` — label text color.
+    pub color: Option<String>,
+}
+
+impl NodeStyle {
+    /// Overlay `over`'s set fields onto `self` (used to layer
+    /// classDef under an explicit `style` line, which wins).
+    pub fn apply_over(&mut self, over: &NodeStyle) {
+        if let Some(v) = &over.fill {
+            self.fill = Some(v.clone());
+        }
+        if let Some(v) = &over.stroke {
+            self.stroke = Some(v.clone());
+        }
+        if let Some(v) = over.stroke_width {
+            self.stroke_width = Some(v);
+        }
+        if let Some(v) = &over.color {
+            self.color = Some(v.clone());
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Node {
     pub id: String,
     pub label: String,
     pub shape: Shape,
+    /// Custom colors; empty = follow the shape theme.
+    pub style: NodeStyle,
 }
 
 #[derive(Debug, Clone)]
@@ -91,6 +127,7 @@ impl Graph {
                 id: id.to_string(),
                 label: label.unwrap_or_else(|| id.to_string()),
                 shape: shape.unwrap_or(Shape::Rect),
+                style: NodeStyle::default(),
             });
             self.index.insert(id.to_string(), i);
             i

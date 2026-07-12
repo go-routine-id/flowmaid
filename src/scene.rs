@@ -12,7 +12,7 @@
 //! 4. `to_svg(&scene)` exports any arrangement to SVG.
 
 use crate::layout::{intrinsic_size, layout_sized, text_width, Placed};
-use crate::model::{Direction, EdgeKind, Graph, Shape};
+use crate::model::{Direction, EdgeKind, Graph, NodeStyle, Shape};
 use std::collections::HashMap;
 
 const MARGIN: f64 = 28.0;
@@ -32,6 +32,8 @@ pub struct SceneNode {
     pub h: f64,
     pub shape: Shape,
     pub label: String,
+    /// Custom colors from `style`/`classDef`; empty = shape theme.
+    pub style: NodeStyle,
 }
 
 /// Edge with a final cubic bezier curve.
@@ -162,6 +164,7 @@ pub fn scene_sized(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
                 h,
                 shape: n.shape,
                 label: n.label.clone(),
+                style: n.style.clone(),
             }
         })
         .collect();
@@ -259,6 +262,7 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
             h: sizes[i].1,
             shape: n.shape,
             label: n.label.clone(),
+            style: n.style.clone(),
         })
         .collect();
 
@@ -356,10 +360,13 @@ pub fn to_svg(sc: &Scene) -> String {
     for n in &sc.nodes {
         let (cx, cy) = t((n.x, n.y));
         let (w, h) = (n.w, n.h);
+        // Shape theme, overridden by any custom style/classDef colors.
         let ss = crate::style::shape_style(n.shape);
         let style = format!(
-            "fill=\"{}\" stroke=\"{}\" stroke-width=\"1.6\"",
-            ss.fill, ss.stroke
+            "fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\"",
+            n.style.fill.as_deref().unwrap_or(ss.fill),
+            n.style.stroke.as_deref().unwrap_or(ss.stroke),
+            n.style.stroke_width.unwrap_or(1.6)
         );
         match n.shape {
             Shape::Rect | Shape::Rounded | Shape::Stadium => {
@@ -408,7 +415,7 @@ pub fn to_svg(sc: &Scene) -> String {
              fill=\"{}\">{}</text>\n",
             cx,
             cy,
-            TEXT_COLOR,
+            n.style.color.as_deref().unwrap_or(TEXT_COLOR),
             escape(&n.label)
         ));
     }
