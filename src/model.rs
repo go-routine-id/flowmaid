@@ -31,6 +31,18 @@ pub enum Shape {
     Diamond,
     /// `A((text))` — circle.
     Circle,
+    /// `A(((text)))` — double circle (terminal).
+    DoubleCircle,
+    /// `A[(text)]` — cylinder (database).
+    Cylinder,
+    /// `A[[text]]` — subroutine.
+    Subroutine,
+    /// `A{{text}}` — hexagon.
+    Hexagon,
+    /// `A[/text/]` — parallelogram.
+    Parallelogram,
+    /// `A[\text\]` — parallelogram, slanted the other way.
+    ParallelogramAlt,
 }
 
 /// Edge line style.

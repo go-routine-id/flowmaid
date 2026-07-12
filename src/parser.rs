@@ -580,13 +580,25 @@ fn parse_node(
     }
     let id = cur.s[start..cur.pos].to_string();
 
-    // Check order matters: two-character openers first.
-    let parsed: Option<(Shape, String)> = if cur.eat("((") {
+    // Check order matters: longest / most-specific openers first.
+    let parsed: Option<(Shape, String)> = if cur.eat("(((") {
+        Some((Shape::DoubleCircle, close(cur, ")))", lineno)?))
+    } else if cur.eat("((") {
         Some((Shape::Circle, close(cur, "))", lineno)?))
     } else if cur.eat("([") {
         Some((Shape::Stadium, close(cur, "])", lineno)?))
+    } else if cur.eat("[(") {
+        Some((Shape::Cylinder, close(cur, ")]", lineno)?))
+    } else if cur.eat("[[") {
+        Some((Shape::Subroutine, close(cur, "]]", lineno)?))
+    } else if cur.eat("[/") {
+        Some((Shape::Parallelogram, close(cur, "/]", lineno)?))
+    } else if cur.eat("[\\") {
+        Some((Shape::ParallelogramAlt, close(cur, "\\]", lineno)?))
     } else if cur.eat("[") {
         Some((Shape::Rect, close(cur, "]", lineno)?))
+    } else if cur.eat("{{") {
+        Some((Shape::Hexagon, close(cur, "}}", lineno)?))
     } else if cur.eat("(") {
         Some((Shape::Rounded, close(cur, ")", lineno)?))
     } else if cur.eat("{") {
@@ -937,6 +949,28 @@ mod tests {
         assert_eq!(g.nodes.len(), 4);
         assert_eq!(g.edges.len(), 3);
         assert_eq!(g.edges[2].kind, EdgeKind::Dotted);
+    }
+
+    #[test]
+    fn classic_node_shapes() {
+        let g = parse(
+            "A[(DB)] --> B[[Sub]]\nB --> C{{Hex}}\nC --> D[/Par/]\nD --> E[\\Rev\\]\nE --> F(((Term)))",
+        )
+        .unwrap();
+        assert_eq!(g.nodes[0].shape, Shape::Cylinder);
+        assert_eq!(g.nodes[1].shape, Shape::Subroutine);
+        assert_eq!(g.nodes[2].shape, Shape::Hexagon);
+        assert_eq!(g.nodes[3].shape, Shape::Parallelogram);
+        assert_eq!(g.nodes[4].shape, Shape::ParallelogramAlt);
+        assert_eq!(g.nodes[5].shape, Shape::DoubleCircle);
+        // Labels come out clean (openers/closers consumed).
+        assert_eq!(g.nodes[0].label, "DB");
+        assert_eq!(g.nodes[5].label, "Term");
+        // Stadium `([ ])` still wins over cylinder `[( )]`.
+        assert_eq!(parse("X([Pill])").unwrap().nodes[0].shape, Shape::Stadium);
+        // Every new shape reaches the SVG without panicking + in canvas.
+        let svg = crate::render_svg("flowchart LR\nA[(DB)]-->B{{H}}-->C(((T)))").unwrap();
+        assert!(svg.contains("<path d=") && svg.contains("<polygon") && svg.contains("</svg>"));
     }
 
     #[test]

@@ -86,10 +86,23 @@ pub fn intrinsic_size(node: &Node) -> (f64, f64) {
     match node.shape {
         Shape::Rect | Shape::Rounded => ((tw + 2.0 * PAD_X).max(MIN_W), base_h),
         Shape::Stadium => ((tw + 2.0 * PAD_X + 12.0).max(MIN_W + 12.0), base_h),
+        // Subroutine has inner side bars; parallelograms slant — both
+        // need a bit of extra horizontal room.
+        Shape::Subroutine | Shape::Parallelogram | Shape::ParallelogramAlt => {
+            ((tw + 2.0 * PAD_X + 24.0).max(MIN_W + 24.0), base_h)
+        }
+        // Hexagon points eat horizontal space.
+        Shape::Hexagon => ((tw + 2.0 * PAD_X + 28.0).max(MIN_W + 28.0), base_h),
+        // Cylinder caps add vertical room.
+        Shape::Cylinder => ((tw + 2.0 * PAD_X).max(MIN_W), base_h + 16.0),
         // Diamonds need extra room so the text fits in the middle.
         Shape::Diamond => (((tw + 24.0) * 1.6).max(80.0), base_h * 1.7),
         Shape::Circle => {
             let d = (tw + 24.0).max(52.0).max(base_h);
+            (d, d)
+        }
+        Shape::DoubleCircle => {
+            let d = (tw + 32.0).max(60.0).max(base_h);
             (d, d)
         }
     }

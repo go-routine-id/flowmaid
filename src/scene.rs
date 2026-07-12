@@ -941,6 +941,57 @@ pub fn to_svg(sc: &Scene) -> String {
                     style
                 ));
             }
+            Shape::DoubleCircle => {
+                for r in [w / 2.0, w / 2.0 - 4.0] {
+                    s.push_str(&format!(
+                        "<circle cx=\"{cx:.1}\" cy=\"{cy:.1}\" r=\"{r:.1}\" {style}/>\n"
+                    ));
+                }
+            }
+            Shape::Cylinder => {
+                let (l, r, t, b) = (cx - w / 2.0, cx + w / 2.0, cy - h / 2.0, cy + h / 2.0);
+                let ry = 8.0_f64.min(h / 4.0); // cap ellipse radius
+                // Body + bottom arc, then the top ellipse on top.
+                s.push_str(&format!(
+                    "<path d=\"M {l:.1} {ty:.1} A {rx:.1} {ry:.1} 0 0 0 {r:.1} {ty:.1} \
+                     L {r:.1} {by:.1} A {rx:.1} {ry:.1} 0 0 1 {l:.1} {by:.1} Z\" {style}/>\n\
+                     <path d=\"M {l:.1} {ty:.1} A {rx:.1} {ry:.1} 0 0 1 {r:.1} {ty:.1}\" \
+                     fill=\"none\" stroke=\"{stroke}\" stroke-width=\"1.6\"/>\n",
+                    l = l, r = r, ty = t + ry, by = b - ry, rx = w / 2.0, ry = ry,
+                    stroke = n.style.stroke.as_deref().unwrap_or(ss.stroke),
+                    style = style,
+                ));
+            }
+            Shape::Subroutine => {
+                let (l, t) = (cx - w / 2.0, cy - h / 2.0);
+                s.push_str(&format!(
+                    "<rect x=\"{l:.1}\" y=\"{t:.1}\" width=\"{w:.1}\" height=\"{h:.1}\" rx=\"3\" {style}/>\n\
+                     <line x1=\"{l1:.1}\" y1=\"{t:.1}\" x2=\"{l1:.1}\" y2=\"{b:.1}\" stroke=\"{stroke}\" stroke-width=\"1.6\"/>\n\
+                     <line x1=\"{r1:.1}\" y1=\"{t:.1}\" x2=\"{r1:.1}\" y2=\"{b:.1}\" stroke=\"{stroke}\" stroke-width=\"1.6\"/>\n",
+                    l = l, t = t, w = w, h = h, b = t + h, l1 = l + 8.0, r1 = l + w - 8.0,
+                    stroke = n.style.stroke.as_deref().unwrap_or(ss.stroke), style = style,
+                ));
+            }
+            Shape::Hexagon => {
+                let (l, r, t, b) = (cx - w / 2.0, cx + w / 2.0, cy - h / 2.0, cy + h / 2.0);
+                let k = 14.0_f64.min(w / 4.0);
+                s.push_str(&format!(
+                    "<polygon points=\"{a:.1},{cy:.1} {b1:.1},{t:.1} {c:.1},{t:.1} {r:.1},{cy:.1} {c:.1},{b:.1} {b1:.1},{b:.1}\" {style}/>\n",
+                    a = l, b1 = l + k, c = r - k, r = r, t = t, b = b, cy = cy, style = style,
+                ));
+            }
+            Shape::Parallelogram | Shape::ParallelogramAlt => {
+                let (l, r, t, b) = (cx - w / 2.0, cx + w / 2.0, cy - h / 2.0, cy + h / 2.0);
+                let k = 14.0_f64.min(w / 4.0);
+                let pts = if matches!(n.shape, Shape::Parallelogram) {
+                    // bottom-left slanted right: /  /
+                    format!("{:.1},{:.1} {:.1},{:.1} {:.1},{:.1} {:.1},{:.1}", l + k, t, r, t, r - k, b, l, b)
+                } else {
+                    // \  \
+                    format!("{:.1},{:.1} {:.1},{:.1} {:.1},{:.1} {:.1},{:.1}", l, t, r - k, t, r, b, l + k, b)
+                };
+                s.push_str(&format!("<polygon points=\"{pts}\" {style}/>\n"));
+            }
         }
         svg_text_multiline(
             &mut s,
@@ -1046,7 +1097,9 @@ fn parallel_offsets(g: &Graph) -> Vec<f64> {
 /// intersection.
 fn anchor(p: &Placed, shape: Shape, other: (f64, f64), off: f64, bottom: bool) -> (f64, f64) {
     match shape {
-        Shape::Diamond | Shape::Circle => border(p, shape, (other.0 + off * 4.0, other.1)),
+        Shape::Diamond | Shape::Circle | Shape::DoubleCircle => {
+            border(p, shape, (other.0 + off * 4.0, other.1))
+        }
         _ => {
             let flat = match shape {
                 Shape::Stadium => p.bsize / 2.0 - p.lsize / 2.0 - 4.0,
@@ -1206,7 +1259,7 @@ fn border(p: &Placed, shape: Shape, toward: (f64, f64)) -> (f64, f64) {
     let hw = p.bsize / 2.0;
     let hh = p.lsize / 2.0;
     let t = match shape {
-        Shape::Circle => hw / (dx * dx + dy * dy).sqrt(),
+        Shape::Circle | Shape::DoubleCircle => hw / (dx * dx + dy * dy).sqrt(),
         // Diamond: |x/hw| + |y/hh| = 1
         Shape::Diamond => 1.0 / (dx.abs() / hw + dy.abs() / hh),
         // Other shapes are approximated as rectangles.

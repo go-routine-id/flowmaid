@@ -45,6 +45,31 @@ pub fn shape_style(shape: Shape) -> ShapeStyle {
             fill: "#f2ecfa",
             stroke: "#8a5cd6",
         },
+        // Double circle (terminal) — green like start/stop.
+        Shape::DoubleCircle => ShapeStyle {
+            fill: "#e5f5ea",
+            stroke: "#33a35c",
+        },
+        // Cylinder (database / storage) — steel blue.
+        Shape::Cylinder => ShapeStyle {
+            fill: "#e7eef7",
+            stroke: "#4d8fbf",
+        },
+        // Subroutine — indigo sibling of Rect.
+        Shape::Subroutine => ShapeStyle {
+            fill: "#eef1fb",
+            stroke: "#5b6dc0",
+        },
+        // Hexagon (preparation) — violet.
+        Shape::Hexagon => ShapeStyle {
+            fill: "#f2ecfa",
+            stroke: "#8a5cd6",
+        },
+        // Parallelograms (I/O) — amber.
+        Shape::Parallelogram | Shape::ParallelogramAlt => ShapeStyle {
+            fill: "#fcf2da",
+            stroke: "#d99114",
+        },
     }
 }
 
