@@ -206,10 +206,10 @@ pub fn to_svg(cs: &ClassScene) -> String {
         ));
         write_head(&mut s, &head(q[3], q[2], rel.kind));
         if let Some(c) = &rel.from_card {
-            card_label(&mut s, q[0], q[1], c);
+            card_label(&mut s, q[0], q[1], c, sc.width, sc.height);
         }
         if let Some(c) = &rel.to_card {
-            card_label(&mut s, q[3], q[2], c);
+            card_label(&mut s, q[3], q[2], c, sc.width, sc.height);
         }
     }
 
@@ -273,9 +273,11 @@ fn divider(s: &mut String, x0: f64, y: f64, w: f64) {
 fn write_rows(s: &mut String, rows: &[ClassRow], x0: f64, top: f64, _w: f64) {
     for (i, row) in rows.iter().enumerate() {
         let ty = top + i as f64 * ROW_H + ROW_H / 2.0;
+        // Drawn in the default font (not monospace) so the width the
+        // box was sized with (`text_width`, a Helvetica metric) matches
+        // what is rendered — otherwise long members overflow the box.
         s.push_str(&format!(
-            "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" fill=\"{}\" \
-             font-family=\"monospace\">{}</text>\n",
+            "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" fill=\"{}\">{}</text>\n",
             x0 + PAD,
             ty,
             TEXT_COLOR,
@@ -307,15 +309,18 @@ fn write_head(s: &mut String, h: &Head) {
     }
 }
 
-fn card_label(s: &mut String, e: (f64, f64), c: (f64, f64), text: &str) {
+fn card_label(s: &mut String, e: (f64, f64), c: (f64, f64), text: &str, cw: f64, ch: f64) {
     // Offset the cardinality a little inward and to the side of the
     // line so it clears the class border and the curve.
     let (dx, dy) = (c.0 - e.0, c.1 - e.1);
     let len = (dx * dx + dy * dy).sqrt().max(1e-6);
     let u = (dx / len, dy / len);
     let nv = (-u.1, u.0);
-    let px = e.0 + u.0 * 14.0 + nv.0 * 9.0;
-    let py = e.1 + u.1 * 14.0 + nv.1 * 9.0;
+    // Clamp to the canvas so a long cardinality can't spill off-edge
+    // (the scene bbox is sized for boxes/edges, not these labels).
+    let hw = text_width(text) / 2.0 + 2.0;
+    let px = (e.0 + u.0 * 14.0 + nv.0 * 9.0).clamp(hw, (cw - hw).max(hw));
+    let py = (e.1 + u.1 * 14.0 + nv.1 * 9.0).clamp(7.0, (ch - 7.0).max(7.0));
     s.push_str(&format!(
         "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"middle\" \
          fill=\"{}\" font-size=\"11\">{}</text>\n",
@@ -482,5 +487,101 @@ mod tests {
         let d = cd("classDiagram\nA <|-- B\nB *-- C\nC o-- A\nA ..> C");
         let svg = to_svg(&scene(&d));
         assert!(!svg.contains("NaN") && !svg.contains("inf"));
+    }
+
+    // --- regression: parser bugs found by the bug hunt ---
+
+    #[test]
+    fn member_text_with_operator_stays_a_member() {
+        // `--` / `..` inside member text must not be read as a relation.
+        let d = cd("classDiagram\nCounter : -count -- decrement");
+        assert_eq!(d.classes.len(), 1);
+        assert_eq!(d.relations.len(), 0);
+        assert_eq!(d.classes[0].fields[0].text, "count -- decrement");
+    }
+
+    #[test]
+    fn quoted_cardinality_may_contain_colon_and_operator() {
+        // A colon or operator INSIDE a "card" quote must be protected.
+        let d = cd("classDiagram\nA \"1:n\" --> \"*--\" B : owns");
+        assert_eq!(d.relations.len(), 1);
+        let r = &d.relations[0];
+        assert_eq!(r.kind, RelKind::Association);
+        assert_eq!(d.classes[r.from].name, "A");
+        assert_eq!(d.classes[r.to].name, "B");
+        assert_eq!(r.from_card.as_deref(), Some("1:n"));
+        assert_eq!(r.to_card.as_deref(), Some("*--"));
+        assert_eq!(r.label.as_deref(), Some("owns"));
+    }
+
+    #[test]
+    fn comma_list_declares_multiple_classes() {
+        let d = cd("classDiagram\nclass Duck, Fish, Whale");
+        assert_eq!(d.classes.len(), 3);
+        assert_eq!(d.classes.iter().map(|c| c.name.as_str()).collect::<Vec<_>>(),
+                   ["Duck", "Fish", "Whale"]);
+    }
+
+    #[test]
+    fn trailing_comment_is_stripped() {
+        let d = cd("classDiagram\nFoo --> Baz %% inline trailing comment");
+        assert_eq!(d.relations.len(), 1);
+        assert_eq!(d.classes[d.relations[0].to].name, "Baz");
+    }
+
+    #[test]
+    fn direction_and_note_directives_are_ignored() {
+        let d = cd("classDiagram\ndirection LR\nnote for A \"hi\"\nnote \"x\"\nA <|-- B");
+        assert_eq!(d.classes.len(), 2);
+        assert_eq!(d.relations.len(), 1);
+    }
+
+    #[test]
+    fn no_space_operators_parse() {
+        let d = cd("classDiagram\nAnimal<|--Dog");
+        assert_eq!(d.relations.len(), 1);
+        assert_eq!(d.classes[d.relations[0].to].name, "Animal");
+        assert_eq!(d.classes[d.relations[0].from].name, "Dog");
+    }
+
+    #[test]
+    fn unclosed_block_reports_the_opening_line() {
+        let err = parse_document("classDiagram\nclass Alpha {\n+x\n").unwrap_err();
+        assert!(err.to_string().contains("line 2"), "got: {err}");
+    }
+
+    // --- regression: render geometry ---
+
+    #[test]
+    fn long_member_and_cardinality_fit_the_canvas() {
+        let d = cd("classDiagram\n\
+            class A {\n\
+                +aVeryLongFieldNameThatMustStillFitInsideItsOwnBox: SomeLongTypeName\n\
+            }\n\
+            A \"0..manymanymanymany\" --> \"1..*exactly-one-or-more-longlabel\" B");
+        let svg = to_svg(&scene(&d));
+        // R1: members are not drawn in a wider font than they were sized in.
+        assert!(!svg.contains("monospace"));
+        let w = svg_attr(&svg, "width");
+        let h = svg_attr(&svg, "height");
+        for line in svg.lines().filter(|l| l.starts_with("<text")) {
+            let x = svg_attr(line, "x");
+            let y = svg_attr(line, "y");
+            let inner = &line[line.find('>').unwrap() + 1..line.rfind("</text>").unwrap()];
+            let tw = text_width(inner);
+            let (lo, hi) = if line.contains("text-anchor=\"middle\"") {
+                (x - tw / 2.0, x + tw / 2.0)
+            } else {
+                (x, x + tw)
+            };
+            assert!(lo >= -1.0 && hi <= w + 1.0, "text {inner:?} [{lo:.0}..{hi:.0}] outside width {w}");
+            assert!((0.0..=h).contains(&y), "text y {y} outside height {h}");
+        }
+    }
+
+    fn svg_attr(s: &str, name: &str) -> f64 {
+        let pat = format!("{name}=\"");
+        let i = s.find(&pat).unwrap() + pat.len();
+        s[i..i + s[i..].find('"').unwrap()].parse().unwrap()
     }
 }

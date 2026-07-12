@@ -937,17 +937,24 @@ fn parse_attr(line: &str, lineno: usize) -> Result<Attr, ParseError> {
 /// Parse a `classDiagram` body. `header_line` is 1-indexed.
 fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseError> {
     let mut d = ClassDiagram::default();
-    let mut open: Option<usize> = None; // class whose `{ }` block is open
+    // (class index, line where its `{` opened) for a good diagnostic.
+    let mut open: Option<(usize, usize)> = None;
     for (i, raw) in source.lines().enumerate() {
         let lineno = i + 1;
         if lineno <= header_line {
             continue;
         }
         let line = raw.trim();
-        if line.is_empty() || line.starts_with("%%") {
+        // Strip a trailing `%% comment` (kept out of quotes) so a
+        // comment after a relation/member doesn't corrupt the parse.
+        let line = match find_unquoted(line, "%%") {
+            Some(p) => line[..p].trim(),
+            None => line,
+        };
+        if line.is_empty() {
             continue;
         }
-        if let Some(ci) = open {
+        if let Some((ci, _)) = open {
             if line == "}" {
                 open = None;
             } else if !line.starts_with("<<") {
@@ -962,26 +969,43 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
             // `class Name {` opens a block; `class Name` just declares.
             if let Some(name) = rest.strip_suffix('{') {
                 let ci = d.ensure_class(name.trim());
-                open = Some(ci);
+                open = Some((ci, lineno));
             } else {
-                d.ensure_class(rest);
+                // `class A, B, C` declares several at once (Mermaid).
+                for name in rest.split(',').map(str::trim).filter(|n| !n.is_empty()) {
+                    d.ensure_class(name);
+                }
             }
             continue;
         }
-        // `Name : +member` inline member.
-        if let Some((name, member)) = line.split_once(':') {
-            if !member.trim().is_empty() && is_class_ident(name.trim()) && !looks_like_relation(line)
-            {
-                let ci = d.ensure_class(name.trim());
-                add_class_member(&mut d.classes[ci], member.trim());
-                continue;
+        // Ignore directives we don't render yet (`direction LR`,
+        // `note ...`) instead of mis-reading them as relations.
+        if strip_keyword(line, "direction").is_some() || strip_keyword(line, "note").is_some() {
+            continue;
+        }
+        // Classify by the part BEFORE the first unquoted colon: if it
+        // holds no relation operator, this is an inline member
+        // `Name : member` — quoted cardinalities and member text must
+        // not sway the decision (`Animal : has -- dashes` is a member,
+        // `A "1:n" --> B` is a relation).
+        let colon = find_unquoted(line, ":");
+        let head = colon.map_or(line, |c| line[..c].trim());
+        if find_class_op(head).is_none() {
+            if let Some(c) = colon {
+                let name = line[..c].trim();
+                let member = line[c + 1..].trim();
+                if is_class_ident(name) && !member.is_empty() {
+                    let ci = d.ensure_class(name);
+                    add_class_member(&mut d.classes[ci], member);
+                    continue;
+                }
             }
         }
         parse_class_relation(&mut d, line, lineno)?;
     }
-    if let Some(ci) = open {
+    if let Some((ci, oln)) = open {
         return Err(err(
-            header_line,
+            oln,
             format!("class block '{}' is never closed with '}}'", d.classes[ci].name),
         ));
     }
@@ -992,12 +1016,47 @@ fn is_class_ident(s: &str) -> bool {
     !s.is_empty() && s.chars().all(|c| c.is_alphanumeric() || c == '_')
 }
 
-/// Does the line contain a relation operator? Used to keep
-/// `A --> B : label` out of the inline-member branch.
-fn looks_like_relation(line: &str) -> bool {
-    ["<|", "|>", "*--", "--*", "o--", "--o", "-->", "<--", "..>", "<..", "--", ".."]
-        .iter()
-        .any(|op| line.contains(op))
+/// First byte index of `needle` in `s` that lies outside any `"..."`
+/// quoted region, so a colon or operator inside a quoted cardinality
+/// (`"1:n"`, `"*--"`) is ignored. `needle` is expected to be ASCII.
+fn find_unquoted(s: &str, needle: &str) -> Option<usize> {
+    let mut in_quote = false;
+    for (i, c) in s.char_indices() {
+        if c == '"' {
+            in_quote = !in_quote;
+        } else if !in_quote && s[i..].starts_with(needle) {
+            return Some(i);
+        }
+    }
+    None
+}
+
+/// Locate the relation operator in `rel`: the earliest position
+/// outside any quoted cardinality where a [`CLASS_OPS`] operator
+/// matches (longest wins, since the table is ordered longest-first).
+/// Returns `(byte position, op, kind, dashed, head_at_left)`.
+///
+/// `o` is a valid identifier char, so an `o--` / `--o` marker only
+/// counts at an operand boundary — never inside a name like `Foo`.
+fn find_class_op(rel: &str) -> Option<(usize, &'static str, RelKind, bool, bool)> {
+    let mut in_quote = false;
+    let mut prev: Option<char> = None;
+    for (i, c) in rel.char_indices() {
+        if c == '"' {
+            in_quote = !in_quote;
+        } else if !in_quote {
+            if let Some(&(op, k, dash, hl)) = CLASS_OPS.iter().find(|t| rel[i..].starts_with(t.0)) {
+                let before_ok = !op.starts_with('o') || prev.map_or(true, |p| !p.is_alphanumeric());
+                let after_ok = !op.ends_with('o')
+                    || !rel[i + op.len()..].starts_with(|c: char| c.is_alphanumeric());
+                if before_ok && after_ok {
+                    return Some((i, op, k, dash, hl));
+                }
+            }
+        }
+        prev = Some(c);
+    }
+    None
 }
 
 /// Add one field or method from a member line like `+name: Type` or
@@ -1043,20 +1102,16 @@ const CLASS_OPS: &[(&str, RelKind, bool, bool)] = &[
 
 /// `ClassA "card" <op> "card" ClassB : label`.
 fn parse_class_relation(d: &mut ClassDiagram, line: &str, lineno: usize) -> Result<(), ParseError> {
-    // Split off a trailing `: label` (not the member colon — this
-    // line has a relation operator).
-    let (rel, label) = match line.split_once(':') {
-        Some((a, b)) => (a.trim(), Some(clean_label_1line(b.trim()))),
+    // Split off a trailing `: label` at the first colon OUTSIDE any
+    // quoted cardinality (`"1:n"` keeps its colon).
+    let (rel, label) = match find_unquoted(line, ":") {
+        Some(c) => (line[..c].trim(), Some(clean_label_1line(line[c + 1..].trim()))),
         None => (line, None),
     };
-    // Find the operator (longest match) somewhere in `rel`.
-    let (op, kind, dashed, head_left) = CLASS_OPS
-        .iter()
-        .find_map(|&(op, k, dash, hl)| rel.find(op).map(|pos| (pos, op, k, dash, hl)))
-        // Prefer the earliest, longest operator.
-        .map(|(_, op, k, dash, hl)| (op, k, dash, hl))
+    // Locate the operator: earliest position outside quotes, longest
+    // match, honouring operand boundaries.
+    let (opos, op, kind, dashed, head_left) = find_class_op(rel)
         .ok_or_else(|| err(lineno, format!("unknown class relation near: '{}'", rel)))?;
-    let opos = rel.find(op).unwrap();
     let left = rel[..opos].trim();
     let right = rel[opos + op.len()..].trim();
     // Strip optional cardinality quotes from the inner edges.
