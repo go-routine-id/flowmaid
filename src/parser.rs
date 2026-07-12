@@ -97,6 +97,15 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
 
         if !header_seen {
             header_seen = true;
+            if let Some(t) = diagram_type(line) {
+                return Err(err(
+                    lineno,
+                    format!(
+                        "diagram type '{}' is not supported yet (supported: flowchart, graph)",
+                        t
+                    ),
+                ));
+            }
             let rest = strip_keyword(line, "flowchart").or_else(|| strip_keyword(line, "graph"));
             if let Some(rest) = rest {
                 g.direction = match rest.trim().to_uppercase().as_str() {
@@ -116,6 +125,29 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
         parse_statement(&mut g, line, lineno)?;
     }
     Ok(g)
+}
+
+/// Recognise a known Mermaid diagram-type header other than
+/// flowchart/graph, so we can fail with a clear message instead of
+/// parsing the header as a node. Longer tokens first
+/// (`stateDiagram-v2` before `stateDiagram`).
+fn diagram_type(line: &str) -> Option<&'static str> {
+    const TYPES: &[&str] = &[
+        "erDiagram",
+        "sequenceDiagram",
+        "classDiagram",
+        "stateDiagram-v2",
+        "stateDiagram",
+        "gantt",
+        "pie",
+        "journey",
+        "mindmap",
+        "timeline",
+    ];
+    TYPES.iter().copied().find(|t| {
+        line.get(..t.len()) == Some(*t)
+            && line[t.len()..].chars().next().map_or(true, char::is_whitespace)
+    })
 }
 
 /// Match a header keyword only when followed by whitespace or end of
@@ -309,6 +341,22 @@ mod tests {
     fn errors_carry_line_numbers() {
         let e = parse("flowchart TD\nA --> \n").unwrap_err();
         assert_eq!(e.line, 2);
+    }
+
+    #[test]
+    fn unsupported_diagram_types_get_explicit_errors() {
+        for src in ["erDiagram\nA ||--o{ B : has", "sequenceDiagram\nA->>B: hi", "gantt\ntitle x"] {
+            let e = parse(src).unwrap_err();
+            assert_eq!(e.line, 1);
+            assert!(
+                e.message.contains("is not supported yet"),
+                "message should name the unsupported type: {}",
+                e.message
+            );
+        }
+        // A node that merely starts with a type name is still a node.
+        let g = parse("pies[Pie Chart] --> B").unwrap();
+        assert_eq!(g.nodes[0].id, "pies");
     }
 
     #[test]
