@@ -1,9 +1,9 @@
-//! Benchmark sederhana: `cargo run --release --example bench`
-//! Mode emit:          `cargo run --release --example bench -- emit > big.mmd`
+//! Simple benchmark: `cargo run --release --example bench`
+//! Emit mode:         `cargo run --release --example bench -- emit > big.mmd`
 
 use std::time::Instant;
 
-/// LCG deterministik agar tetap pure-std dan hasilnya reproducible.
+/// Deterministic LCG to stay pure-std with reproducible results.
 struct Lcg(u64);
 impl Lcg {
     fn next(&mut self, n: usize) -> usize {
@@ -15,9 +15,10 @@ impl Lcg {
     }
 }
 
-/// Bangun teks diagram berlapis: `layers` lapis x `width` node per lapis,
-/// tiap node punya 2 edge ke lapis berikutnya, plus beberapa back-edge
-/// dari lapis terakhir ke lapis pertama (menguji routing terberat).
+/// Build a layered diagram: `layers` layers x `width` nodes per
+/// layer, each node gets 2 edges to the next layer, plus a few
+/// back-edges from the last layer to the first (stresses the
+/// heaviest routing path).
 fn synth(layers: usize, width: usize) -> String {
     let mut s = String::from("flowchart TD\n");
     let mut rng = Lcg(42);
@@ -41,7 +42,7 @@ fn synth(layers: usize, width: usize) -> String {
     s
 }
 
-/// Jalankan `f` tiga kali, ambil waktu terbaik (ms) untuk meredam noise.
+/// Run `f` three times, keep the best time (ms) to dampen noise.
 fn best<T>(mut f: impl FnMut() -> T) -> (T, f64) {
     let mut t_best = f64::INFINITY;
     let mut out = None;
@@ -61,7 +62,7 @@ fn main() {
     }
     println!(
         "{:>6} {:>6} {:>6} | {:>9} {:>9} {:>9} | {:>8}",
-        "node", "edge", "lapis", "parse", "layout", "render*", "SVG"
+        "nodes", "edges", "layers", "parse", "layout", "render*", "SVG"
     );
     let cases: &[(usize, usize)] = &[(10, 5), (20, 10), (50, 20), (100, 25), (200, 25), (2, 2500)];
     for &(l, w) in cases {
@@ -80,5 +81,5 @@ fn main() {
             svg.len() / 1024
         );
     }
-    println!("* render sudah termasuk memanggil layout di dalamnya");
+    println!("* render includes running layout internally");
 }

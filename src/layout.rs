@@ -1,30 +1,30 @@
-//! Engine layout bergaya Sugiyama (versi ringkas):
+//! Sugiyama-style layout engine (compact edition):
 //!
-//! 1. Deteksi back-edge lewat DFS agar siklus tidak merusak layering.
-//! 2. Penentuan layer dengan longest-path (topological, ala Kahn).
-//! 3. Pengurutan dalam layer memakai heuristik barycenter
-//!    (mengurangi persilangan garis).
-//! 4. Penentuan koordinat: packing per layer + penyelarasan ke
-//!    tetangga (orang tua/anak) tanpa tumpang tindih.
+//! 1. Detect back-edges via DFS so cycles don't break layering.
+//! 2. Assign layers with longest-path (topological, Kahn-style).
+//! 3. Order within layers using the barycenter heuristic
+//!    (reduces edge crossings).
+//! 4. Assign coordinates: per-layer packing + alignment towards
+//!    neighbours (parents/children) without overlap.
 //!
-//! Semua dihitung dalam koordinat abstrak (b = breadth / lebar,
-//! l = layer / kedalaman); renderer yang memetakan ke x,y final
-//! sesuai arah diagram (TD/LR/BT/RL).
+//! Everything is computed in abstract coordinates (b = breadth,
+//! l = layer / depth); the renderer maps them to final x,y
+//! according to the diagram direction (TD/LR/BT/RL).
 
 use crate::model::{Direction, Graph, Node, Shape};
 use std::collections::VecDeque;
 
-/// Posisi & ukuran satu node dalam koordinat abstrak.
+/// Position & size of one node in abstract coordinates.
 pub struct Placed {
-    /// Titik tengah pada sumbu breadth.
+    /// Centre point on the breadth axis.
     pub b: f64,
-    /// Titik tengah pada sumbu layer.
+    /// Centre point on the layer axis.
     pub l: f64,
-    /// Ukuran node sepanjang sumbu breadth.
+    /// Node size along the breadth axis.
     pub bsize: f64,
-    /// Ukuran node sepanjang sumbu layer.
+    /// Node size along the layer axis.
     pub lsize: f64,
-    /// Indeks layer.
+    /// Layer index.
     pub layer: usize,
 }
 
@@ -37,14 +37,14 @@ pub struct LayoutResult {
 const PAD_X: f64 = 16.0;
 const BASE_H: f64 = 38.0;
 const MIN_W: f64 = 54.0;
-const GAP_B: f64 = 48.0; // jarak antar node dalam satu layer
-const GAP_L: f64 = 64.0; // jarak antar layer
+const GAP_B: f64 = 48.0; // gap between nodes within a layer
+const GAP_L: f64 = 64.0; // gap between layers
 const MARGIN: f64 = 28.0;
 
-/// Estimasi lebar render teks (Helvetica ±14px) per kelas karakter.
-/// Tanpa metrik font sungguhan ini tetap perkiraan, tapi jauh lebih
-/// akurat daripada lebar rata: huruf kapital ±9.7px, i/l ±3.4px,
-/// m/W ±12-13px, CJK/emoji ±14px.
+/// Estimated rendered text width (Helvetica ~14px) per character
+/// class. Without real font metrics this stays approximate, but it
+/// is far more accurate than a flat average: capitals ~9.7px,
+/// i/l ~3.4px, m/W ~12-13px, CJK/emoji ~14px.
 pub fn text_width(s: &str) -> f64 {
     s.chars()
         .map(|c| match c {
@@ -56,20 +56,20 @@ pub fn text_width(s: &str) -> f64 {
             'w' => 10.1,
             'W' => 13.2,
             'A'..='Z' => 9.7,
-            c if (c as u32) >= 0x2E80 => 14.0, // CJK, emoji, simbol lebar
+            c if (c as u32) >= 0x2E80 => 14.0, // CJK, emoji, wide symbols
             _ => 7.8,
         })
         .sum()
 }
 
-/// Ukuran intrinsik node (lebar, tinggi) dalam piksel, berdasarkan
-/// bentuk dan estimasi lebar label.
+/// Intrinsic node size (width, height) in pixels, based on shape
+/// and the estimated label width.
 pub fn intrinsic_size(node: &Node) -> (f64, f64) {
     let tw = text_width(&node.label);
     match node.shape {
         Shape::Rect | Shape::Rounded => ((tw + 2.0 * PAD_X).max(MIN_W), BASE_H),
         Shape::Stadium => ((tw + 2.0 * PAD_X + 12.0).max(MIN_W + 12.0), BASE_H),
-        // Belah ketupat butuh ruang ekstra agar teks muat di tengah.
+        // Diamonds need extra room so the text fits in the middle.
         Shape::Diamond => (((tw + 24.0) * 1.6).max(80.0), BASE_H * 1.7),
         Shape::Circle => {
             let d = (tw + 24.0).max(52.0);
@@ -85,8 +85,8 @@ pub fn layout(g: &Graph) -> LayoutResult {
         adj[e.from].push((e.to, ei));
     }
 
-    // --- 1. Tandai back-edge (pemutus siklus) dengan DFS iteratif ---
-    let mut state = vec![0u8; n]; // 0 belum, 1 di stack, 2 selesai
+    // --- 1. Mark back-edges (cycle breakers) with iterative DFS ---
+    let mut state = vec![0u8; n]; // 0 unvisited, 1 on stack, 2 done
     let mut back = vec![false; g.edges.len()];
     for s in 0..n {
         if state[s] != 0 {
@@ -108,7 +108,7 @@ pub fn layout(g: &Graph) -> LayoutResult {
                         state[v] = 1;
                         stack.push((v, 0));
                     }
-                    1 => back[ei] = true, // edge kembali ke leluhur = siklus
+                    1 => back[ei] = true, // edge back to an ancestor = cycle
                     _ => {}
                 }
             } else {
@@ -118,7 +118,7 @@ pub fn layout(g: &Graph) -> LayoutResult {
         }
     }
 
-    // --- 2. Layering longest-path pada DAG (tanpa back-edge) ---
+    // --- 2. Longest-path layering on the DAG (back-edges excluded) ---
     let mut indeg = vec![0usize; n];
     for (ei, e) in g.edges.iter().enumerate() {
         if !back[ei] {
@@ -148,7 +148,7 @@ pub fn layout(g: &Graph) -> LayoutResult {
         layers[layer[v]].push(v);
     }
 
-    // Tetangga untuk barycenter & penyelarasan.
+    // Neighbours for barycenter & alignment.
     let mut preds: Vec<Vec<usize>> = vec![Vec::new(); n];
     let mut succs: Vec<Vec<usize>> = vec![Vec::new(); n];
     for e in &g.edges {
@@ -159,7 +159,7 @@ pub fn layout(g: &Graph) -> LayoutResult {
         preds[e.to].push(e.from);
     }
 
-    // --- 3. Kurangi persilangan: sapuan barycenter bolak-balik ---
+    // --- 3. Reduce crossings: alternating barycenter sweeps ---
     let mut pos = vec![0.0f64; n];
     for lv in &layers {
         for (i, &v) in lv.iter().enumerate() {
@@ -175,9 +175,9 @@ pub fn layout(g: &Graph) -> LayoutResult {
         }
     }
 
-    // --- 4. Koordinat ---
-    // Ukuran node pada sumbu abstrak: untuk LR/RL, layer berjalan
-    // horizontal sehingga lebar node menjadi "ukuran layer"-nya.
+    // --- 4. Coordinates ---
+    // Node sizes on the abstract axes: for LR/RL the layers run
+    // horizontally, so a node's width becomes its "layer size".
     let horizontal = matches!(g.direction, Direction::LR | Direction::RL);
     let mut bsize = vec![0.0f64; n];
     let mut lsize = vec![0.0f64; n];
@@ -192,7 +192,7 @@ pub fn layout(g: &Graph) -> LayoutResult {
         }
     }
 
-    // Posisi layer (sumbu l): setiap layer setinggi node tertingginya.
+    // Layer positions (l axis): each layer is as tall as its tallest node.
     let mut lcoord = vec![0.0f64; nlayers];
     let mut cursor = MARGIN;
     for li in 0..nlayers {
@@ -202,7 +202,7 @@ pub fn layout(g: &Graph) -> LayoutResult {
     }
     let total_l = cursor - GAP_L + MARGIN;
 
-    // Packing awal per layer, lalu ratakan ke tengah.
+    // Initial packing per layer, then centre each layer.
     let mut bpos = vec![0.0f64; n];
     let mut widths = vec![0.0f64; nlayers];
     for li in 0..nlayers {
@@ -221,8 +221,8 @@ pub fn layout(g: &Graph) -> LayoutResult {
         }
     }
 
-    // Penyelarasan: geser node mendekati rata-rata posisi tetangganya,
-    // sambil menjaga urutan dan jarak minimum (tidak tumpang tindih).
+    // Alignment: pull each node towards the mean position of its
+    // neighbours while preserving order and minimum gaps (no overlap).
     for li in 1..nlayers {
         align_pass(&layers[li], &preds, &mut bpos, &bsize);
     }
@@ -233,7 +233,7 @@ pub fn layout(g: &Graph) -> LayoutResult {
         align_pass(&layers[li], &preds, &mut bpos, &bsize);
     }
 
-    // Normalisasi supaya diagram mulai dari MARGIN.
+    // Normalise so the diagram starts at MARGIN.
     let mut minb = f64::INFINITY;
     let mut maxb = f64::NEG_INFINITY;
     for v in 0..n {
@@ -267,8 +267,9 @@ pub fn layout(g: &Graph) -> LayoutResult {
     }
 }
 
-/// Urutkan ulang satu layer berdasarkan rata-rata posisi tetangga
-/// (barycenter). Node tanpa tetangga mempertahankan posisinya.
+/// Reorder one layer by the mean position of each node's
+/// neighbours (barycenter). Nodes without neighbours keep their
+/// position.
 fn reorder(layer: &mut Vec<usize>, nbrs: &[Vec<usize>], pos: &mut [f64]) {
     let mut keyed: Vec<(f64, usize)> = layer
         .iter()
@@ -290,8 +291,9 @@ fn reorder(layer: &mut Vec<usize>, nbrs: &[Vec<usize>], pos: &mut [f64]) {
     }
 }
 
-/// Geser tiap node (urutan tetap) ke posisi rata-rata tetangganya
-/// selama tidak menabrak node di kirinya.
+/// Shift each node (order preserved) towards the mean position of
+/// its neighbours, as long as it doesn't collide with the node to
+/// its left.
 fn align_pass(order: &[usize], nbrs: &[Vec<usize>], bpos: &mut [f64], bsize: &[f64]) {
     let mut min_edge = f64::NEG_INFINITY;
     for &v in order {

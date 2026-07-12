@@ -1,0 +1,9 @@
+%% Test case: parallel edges, self-loop, cycle, cross-layer edge
+flowchart TD
+    A[Source] --> B[Process 1]
+    A -->|parallel| B
+    B --> B
+    B --> C{Check}
+    C -->|yes| D[End]
+    C -.->|no| A
+    A ==> D

@@ -1,9 +1,9 @@
-//! flowmaid — pustaka mesin diagram flowchart ala Mermaid.
+//! flowmaid — a Mermaid-like flowchart diagram engine.
 //!
-//! Pemakaian sebagai library:
+//! Library usage:
 //!
 //! ```
-//! let svg = flowmaid::render_svg("flowchart TD\nA[Mulai] --> B[Selesai]").unwrap();
+//! let svg = flowmaid::render_svg("flowchart TD\nA[Start] --> B[Done]").unwrap();
 //! assert!(svg.starts_with("<svg"));
 //! ```
 
@@ -15,7 +15,7 @@ pub mod scene;
 
 pub use parser::ParseError;
 
-/// Jalur pintas: teks bersintaks Mermaid -> string SVG.
+/// Shortcut: Mermaid-syntax text -> SVG string.
 pub fn render_svg(source: &str) -> Result<String, ParseError> {
     let g = parser::parse(source)?;
     Ok(render::render(&g))

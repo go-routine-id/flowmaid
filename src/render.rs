@@ -1,7 +1,7 @@
-//! Wrapper SVG: `render(graph)` = scene otomatis -> serialisasi SVG.
-//! Seluruh logika geometri & serialisasi kini ada di modul `scene`,
-//! sehingga output render() dan alur interaktif (scene/route/to_svg)
-//! dijamin identik.
+//! SVG wrapper: `render(graph)` = automatic scene -> SVG serialisation.
+//! All geometry & serialisation logic lives in the `scene` module,
+//! so the output of render() and the interactive flow
+//! (scene/route/to_svg) are guaranteed identical.
 
 use crate::model::Graph;
 
@@ -41,59 +41,59 @@ mod tests {
     }
 
     #[test]
-    fn edge_paralel_terpisah() {
+    fn parallel_edges_are_separated() {
         let g = parse("A -->|x| B\nA -->|y| B").unwrap();
         let svg = render(&g);
         let p = paths(&svg);
         assert_eq!(p.len(), 2);
-        assert_ne!(p[0], p[1], "edge paralel tidak boleh menumpuk persis");
+        assert_ne!(p[0], p[1], "parallel edges must not overlap exactly");
     }
 
     #[test]
-    fn semua_titik_kurva_di_dalam_kanvas() {
+    fn all_curve_points_inside_canvas() {
         let g = parse("flowchart TD\nA --> B\nB --> B\nB --> C\nC --> A").unwrap();
         let svg = render(&g);
         let w = attr(&svg, "width");
         let h = attr(&svg, "height");
         for line in svg.lines().filter(|l| l.starts_with("<path d=")) {
             for (x, y) in coords(line) {
-                assert!(x >= -0.5 && x <= w + 0.5, "x={} keluar kanvas w={}", x, w);
-                assert!(y >= -0.5 && y <= h + 0.5, "y={} keluar kanvas h={}", y, h);
+                assert!(x >= -0.5 && x <= w + 0.5, "x={} outside canvas w={}", x, w);
+                assert!(y >= -0.5 && y <= h + 0.5, "y={} outside canvas h={}", y, h);
             }
         }
     }
 
     #[test]
-    fn arah_bt_dan_rl_tidak_panik() {
+    fn bt_and_rl_directions_do_not_panic() {
         for d in ["BT", "RL"] {
             let src = format!(
-                "flowchart {}\nA[Mulai] --> B{{Cek}}\nB -->|ya| C((Ok))\nC --> A",
+                "flowchart {}\nA[Start] --> B{{Check}}\nB -->|yes| C((Ok))\nC --> A",
                 d
             );
             let svg = render(&parse(&src).unwrap());
-            assert!(svg.contains("Mulai") && svg.contains("</svg>"));
+            assert!(svg.contains("Start") && svg.contains("</svg>"));
         }
     }
 
     #[test]
-    fn fanout_titik_keluar_menyebar() {
-        let g = parse("A[Induk Lebar Sekali] --> B\nA --> C\nA --> D").unwrap();
+    fn fanout_exit_points_spread() {
+        let g = parse("A[Very Wide Parent Node] --> B\nA --> C\nA --> D").unwrap();
         let svg = render(&g);
         let starts: Vec<(f64, f64)> = paths(&svg).iter().map(|p| coords(p)[0]).collect();
         assert_eq!(starts.len(), 3);
         assert!(
             starts[0] != starts[1] && starts[1] != starts[2] && starts[0] != starts[2],
-            "titik keluar harus menyebar: {:?}",
+            "exit points must spread out: {:?}",
             starts
         );
     }
 
     #[test]
-    fn back_edge_mengitari_layer_terlebar() {
+    fn back_edge_routes_around_widest_layer() {
         let src = "flowchart TD\nA --> B1\nA --> B2\nA --> B3\nB1 --> C\nB2 --> C\nB3 --> C\nC --> A";
         let g = parse(src).unwrap();
         let svg = render(&g);
-        let back = paths(&svg).pop().unwrap(); // edge terakhir = C --> A
+        let back = paths(&svg).pop().unwrap(); // last edge = C --> A
         let c = coords(&back);
         let apex_x = 0.125 * (c[0].0 + c[3].0) + 0.75 * c[1].0;
         let mut min_left = f64::INFINITY;
@@ -106,7 +106,7 @@ mod tests {
         }
         assert!(
             apex_x > max_right + 8.0 || apex_x < min_left - 8.0,
-            "puncak back-edge ({:.0}) harus di luar node [{:.0}..{:.0}]",
+            "back-edge apex ({:.0}) must clear the nodes [{:.0}..{:.0}]",
             apex_x,
             min_left,
             max_right

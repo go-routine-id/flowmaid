@@ -1,17 +1,17 @@
-//! Model data inti: graph, node, edge.
+//! Core data model: graph, nodes, edges.
 
 use std::collections::HashMap;
 
-/// Arah aliran diagram.
+/// Flow direction of the diagram.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
-    /// Atas ke bawah (top-down). Alias: TB.
+    /// Top-down. Alias: TB.
     TD,
-    /// Kiri ke kanan.
+    /// Left to right.
     LR,
-    /// Kanan ke kiri.
+    /// Right to left.
     RL,
-    /// Bawah ke atas.
+    /// Bottom to top.
     BT,
 }
 
@@ -21,31 +21,31 @@ impl Default for Direction {
     }
 }
 
-/// Bentuk node.
+/// Node shape.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Shape {
-    /// `A[teks]` — persegi panjang.
+    /// `A[text]` — rectangle.
     Rect,
-    /// `A(teks)` — sudut membulat.
+    /// `A(text)` — rounded corners.
     Rounded,
-    /// `A([teks])` — stadium / pil.
+    /// `A([text])` — stadium / pill.
     Stadium,
-    /// `A{teks}` — belah ketupat (keputusan).
+    /// `A{text}` — diamond (decision).
     Diamond,
-    /// `A((teks))` — lingkaran.
+    /// `A((text))` — circle.
     Circle,
 }
 
-/// Jenis garis penghubung.
+/// Edge line style.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EdgeKind {
-    /// `-->` panah biasa.
+    /// `-->` regular arrow.
     Arrow,
-    /// `---` garis tanpa panah.
+    /// `---` plain line, no arrowhead.
     Open,
-    /// `-.->` garis putus-putus.
+    /// `-.->` dotted line.
     Dotted,
-    /// `==>` garis tebal.
+    /// `==>` thick line.
     Thick,
 }
 
@@ -64,7 +64,7 @@ pub struct Edge {
     pub kind: EdgeKind,
 }
 
-/// Graph hasil parsing, siap di-layout.
+/// Parsed graph, ready for layout.
 #[derive(Debug, Default)]
 pub struct Graph {
     pub direction: Direction,
@@ -74,8 +74,8 @@ pub struct Graph {
 }
 
 impl Graph {
-    /// Ambil node berdasarkan id; buat baru jika belum ada.
-    /// Label/bentuk terbaru menimpa yang lama (perilaku ala Mermaid).
+    /// Look up a node by id; create it if missing.
+    /// The latest label/shape overrides earlier ones (Mermaid behaviour).
     pub fn ensure_node(&mut self, id: &str, label: Option<String>, shape: Option<Shape>) -> usize {
         if let Some(&i) = self.index.get(id) {
             if let Some(l) = label {

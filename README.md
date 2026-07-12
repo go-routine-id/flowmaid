@@ -1,79 +1,79 @@
 # flowmaid
 
-Mesin diagram flowchart mini ala MermaidJS, ditulis dalam Rust murni tanpa dependency eksternal. Menerima teks bersintaks Mermaid dan menghasilkan SVG.
+A small Mermaid-like flowchart diagram engine written in pure std Rust with zero external dependencies. Takes Mermaid-syntax text and produces SVG.
 
-## Cara pakai
+## Usage
 
 ```bash
 cargo build --release
 
-# dari file
+# from a file
 ./target/release/flowmaid examples/demo.mmd -o demo.svg
 
-# atau lewat pipe
+# or through a pipe
 cat examples/lr.mmd | ./target/release/flowmaid > lr.svg
 
-# saat pengembangan
+# during development
 cargo run -- examples/demo.mmd -o demo.svg
 cargo test
 ```
 
-Bisa juga dipakai sebagai library (crate ini adalah lib + bin):
+It also works as a library (the crate is lib + bin):
 
 ```rust
-let svg = flowmaid::render_svg("flowchart TD\nA[Mulai] --> B[Selesai]")?;
+let svg = flowmaid::render_svg("flowchart TD\nA[Start] --> B[Done]")?;
 ```
 
-## Sintaks yang didukung
+## Supported syntax
 
-Header menentukan arah aliran: `flowchart TD` (atas-bawah, alias `TB`), `LR` (kiri-kanan), `RL`, atau `BT`. Kata `graph` juga diterima. Baris yang diawali `%%` adalah komentar, dan `;` memisahkan beberapa statement dalam satu baris.
+The header sets the flow direction: `flowchart TD` (top-down, alias `TB`), `LR` (left-right), `RL`, or `BT`. The keyword `graph` is also accepted. Lines starting with `%%` are comments, and `;` separates multiple statements on one line.
 
-Bentuk node: `A[teks]` persegi, `A(teks)` sudut bulat, `A([teks])` stadium, `A{teks}` belah ketupat, `A((teks))` lingkaran. Label boleh dibungkus kutip untuk melindungi karakter khusus: `A["teks [aneh]"]`.
+Node shapes: `A[text]` rectangle, `A(text)` rounded, `A([text])` stadium, `A{text}` diamond, `A((text))` circle. Labels may be quoted to protect special characters: `A["odd [text]"]`.
 
-Garis penghubung: `-->` panah, `---` tanpa panah, `-.->` putus-putus, `==>` tebal. Label garis ditulis `-->|teks|`. Rantai `A --> B --> C` didukung, begitu juga siklus (`E --> B` yang kembali ke atas) dan self-loop (`A --> A`).
+Edges: `-->` arrow, `---` open line, `-.->` dotted, `==>` thick. Edge labels are written `-->|text|`. Chains like `A --> B --> C` are supported, as are cycles (`E --> B` looping back up) and self-loops (`A --> A`).
 
-Contoh lengkap ada di `examples/demo.mmd` dan `examples/lr.mmd`.
+Complete examples live in `examples/demo.mmd` and `examples/lr.mmd`.
 
-## Arsitektur
+## Architecture
 
-Pipeline tiga tahap, satu modul per tahap:
+A three-stage pipeline, one module per stage:
 
-1. `parser.rs` — parser tulis-tangan berbasis kursor karakter. Setiap baris di-parse menjadi rantai node dan edge, dengan pesan error bernomor baris.
-2. `layout.rs` — algoritma Sugiyama versi ringkas: (a) DFS menandai *back-edge* agar siklus tidak merusak perhitungan, (b) *longest-path layering* menempatkan node ke lapisan, (c) sapuan *barycenter* bolak-balik mengurangi persilangan garis, (d) penentuan koordinat dengan packing per lapisan lalu penyelarasan ke rata-rata posisi tetangga tanpa tumpang tindih. Semua dihitung dalam koordinat abstrak (breadth × layer) sehingga keempat arah diagram cukup ditangani satu transformasi di akhir.
-3. `render.rs` — memetakan koordinat abstrak ke x,y sesuai arah, lalu menggambar kurva bezier dengan panah (marker SVG), memotong garis tepat di tepi bentuk (persegi, lingkaran, belah ketupat punya rumus perpotongan sendiri), dan menaruh label di titik tengah kurva.
+1. `parser.rs` — hand-written character-cursor parser. Each line is parsed into a chain of nodes and edges, with line-numbered error messages.
+2. `layout.rs` — a compact Sugiyama-style algorithm: (a) DFS marks *back-edges* so cycles can't break the layering, (b) *longest-path layering* assigns nodes to layers, (c) alternating *barycenter* sweeps reduce edge crossings, (d) coordinates come from per-layer packing followed by alignment towards the mean neighbour position without overlaps. Everything is computed in abstract coordinates (breadth × layer), so all four diagram directions are handled by a single transform at the end.
+3. `render.rs` — maps abstract coordinates to final x,y according to the direction, then draws bezier curves with arrowheads (SVG markers), clips lines exactly at shape borders (rectangles, circles, and diamonds each have their own intersection formula), and places labels at curve midpoints.
 
-`model.rs` berisi struktur data bersama (`Graph`, `Node`, `Edge`, enum bentuk dan arah).
+`model.rs` holds the shared data structures (`Graph`, `Node`, `Edge`, shape and direction enums).
 
-Untuk aplikasi interaktif ada modul `scene`: `scene()` menghasilkan geometri final siap gambar (posisi node, kurva bezier edge), `route()` merutekan ulang edge untuk posisi node kustom seperti hasil drag pengguna, dan `to_svg()` mengekspor susunan apa pun. `render()` kini hanya wrapper dari pipeline yang sama. Lihat `examples/drag_sim.rs` dan aplikasi demo egui di folder `flowrs-demo`.
+For interactive apps there is the `scene` module: `scene()` produces final ready-to-draw geometry (node positions, edge bezier curves), `route()` re-routes edges for custom node positions such as user drags, and `to_svg()` exports any arrangement. `render()` is now just a wrapper over the same pipeline. See `examples/drag_sim.rs` and the egui demo app.
 
-## Performa
+## Performance
 
-Benchmark bawaan ada di `examples/bench.rs` (pure std, graf sintetis deterministik) — jalankan dengan `cargo run --release --example bench`. Hasil pengukuran pada Linux x86_64, rustc 1.75, build release, waktu terbaik dari 3 run:
+A built-in benchmark lives in `examples/bench.rs` (pure std, deterministic synthetic graphs) — run it with `cargo run --release --example bench`. Measurements on Linux x86_64, rustc 1.75, release build, best of 3 runs:
 
-| node  | edge   | parse   | layout  | render* | SVG      |
+| nodes | edges  | parse   | layout  | render* | SVG      |
 |------:|-------:|--------:|--------:|--------:|---------:|
-| 49    | 100    | 0,04 ms | 0,03 ms | 0,29 ms | 23 KB    |
-| 200   | 400    | 0,16 ms | 0,08 ms | 1,13 ms | 97 KB    |
-| 1.000 | 2.010  | 0,84 ms | 0,50 ms | 6,16 ms | 505 KB   |
-| 2.500 | 5.050  | 1,97 ms | 1,30 ms | 16,35 ms| 1.278 KB |
-| 5.000 | 10.150 | 4,16 ms | 2,75 ms | 34,92 ms| 2.618 KB |
+| 49    | 100    | 0.04 ms | 0.03 ms | 0.29 ms | 23 KB    |
+| 200   | 400    | 0.16 ms | 0.08 ms | 1.13 ms | 97 KB    |
+| 1,000 | 2,010  | 0.84 ms | 0.50 ms | 6.16 ms | 505 KB   |
+| 2,500 | 5,050  | 1.97 ms | 1.30 ms | 16.35 ms| 1,278 KB |
+| 5,000 | 10,150 | 4.16 ms | 2.75 ms | 34.92 ms| 2,618 KB |
 
-\* kolom render sudah termasuk memanggil layout di dalamnya.
+\* the render column includes running layout internally.
 
-End-to-end lewat CLI untuk kasus 5.000 node — termasuk baca 10.151 baris input dan tulis SVG 2,7 MB — sekitar 60 ms dengan RAM puncak ±9 MB. Kasus jebakan kuadratik (2 lapis × 2.500 node selebar-lebarnya) selesai 21 ms, jadi skala praktisnya linear. Artinya untuk pemakaian realtime: re-render dari nol tiap ketikan aman untuk diagram wajar (±0,3 ms), dan budget 60 fps (16 ms) baru tersentuh sekitar 2.500 node. Bottleneck bukan algoritma melainkan pembentukan string SVG. Angka tentu bergantung hardware — ukur ulang di mesinmu dengan perintah di atas, dan selalu pakai `--release` (debug build ±10× lebih lambat).
+End-to-end through the CLI for the 5,000-node case — including reading 10,151 input lines and writing a 2.7 MB SVG — takes about 60 ms with ~9 MB peak RAM. The quadratic-trap case (2 layers × 2,500 nodes side by side) finishes in 21 ms, so practical scaling is linear. For realtime use this means: re-rendering from scratch on every keystroke is fine for reasonable diagrams (~0.3 ms), and the 60 fps budget (16 ms) is only reached around 2,500 nodes. The bottleneck is SVG string building, not the algorithms. Numbers depend on hardware — re-measure on your machine with the command above, and always use `--release` (debug builds are ~10× slower).
 
-## Interaktivitas & aplikasi desktop
+## Interactivity & desktop apps
 
-Selain SVG statis, engine mengekspos API interaktif untuk aplikasi GUI lewat modul `scene`: `scene(&graph)` mengembalikan `Scene` — posisi, ukuran, dan bentuk setiap node plus kurva bezier setiap edge dalam koordinat final — siap digambar painter framework mana pun. Saat node di-drag, panggil `route(&graph, &posisi)` untuk merutekan ulang edge mengikuti posisi kustom *tanpa* menjalankan ulang layout — sehingga node tidak melompat balik. `to_svg(&scene)` mengekspor kondisi apa pun, termasuk setelah di-drag. Hit-testing dilakukan aplikasi dari geometri `Scene` (posisi + ukuran + bentuk tiap node tersedia).
+Beyond static SVG, the engine exposes an interactive API for GUI apps through the `scene` module: `scene(&graph)` returns a `Scene` — the position, size, and shape of every node plus the bezier curve of every edge in final coordinates — ready to draw with any framework's painter. When a node is dragged, call `route(&graph, &positions)` to re-route edges for custom positions *without* re-running layout — so nodes never jump back. `to_svg(&scene)` exports any state, including after drags. Hit-testing is done by the app from the `Scene` geometry (per-node position + size + shape are all there).
 
-Demo lengkapnya ada di folder `flowrs-demo` repo ini (crate terpisah; engine tetap tanpa dependency): editor teks live di kiri dengan pola *last good render*, diagram drag & drop di kanan dengan zoom & pan, drop file `.mmd` ke jendela untuk memuatnya, dan tombol ekspor SVG. Jalankan dengan `cd flowrs-demo && cargo run --release` (butuh Rust ≥ 1.85 karena dependensi GUI; engine-nya sendiri tetap 1.75). Untuk framework lain: Tauri/Dioxus tinggal suntik string SVG ke webview; iced punya widget svg; Slint dan GTK4 merender SVG native; atau gambar `Scene` langsung dengan painter masing-masing seperti yang dilakukan demo egui ini.
+A complete demo (separate crate; the engine itself stays dependency-free) shows a live text editor with a *last good render* pattern on the left, a drag & drop canvas with zoom & pan on the right, `.mmd` file drop, and SVG export — built on eframe/egui. For other frameworks: Tauri/Dioxus can inject the SVG string into a webview; iced has an svg widget; Slint and GTK4 render SVG natively; or draw the `Scene` directly with each framework's painter like the egui demo does.
 
-## Lisensi
+## Limitations & ideas
 
-GPL-3.0-or-later — bebas dipakai siapa pun; turunan yang disebarkan wajib tetap open source dengan lisensi sama. Teks lengkap di file `LICENSE`.
+Already handled: the canvas is computed from the bounding box of all curve control points so self-loops and back-edges are never clipped; parallel edges (same node pair) separate automatically; long edges that align with a column of nodes bow sideways as a mitigation.
 
-## Keterbatasan & ide pengembangan
+Still open: text width is estimated (~character-class table) since there are no real font metrics, so very long labels or CJK can be off; the long-edge mitigation is only a heuristic — the real solution is *virtual nodes* per crossed layer; edge labels can collide with nodes on dense diagrams; escaped quotes (`\"`) inside labels aren't supported. Mermaid features that would make good next exercises: `subgraph`, fan-out `A --> B & C`, `-.-` and `--text-->` lines, cylinder shape `[( )]`, and per-node styling (`style`/`classDef`).
 
-Yang sudah ditangani: kanvas dihitung dari bounding box seluruh titik kontrol kurva sehingga self-loop dan back-edge tidak pernah terpotong; edge paralel (pasangan node sama) dipisah otomatis; edge panjang yang segaris dengan kolom node dilengkungkan ke samping sebagai mitigasi.
+## License
 
-Yang masih terbuka: lebar teks diestimasi (±8 px per karakter) karena tidak ada metrik font, jadi label sangat panjang atau CJK bisa meleset; mitigasi edge panjang hanyalah heuristik — solusi sejatinya *virtual node* per lapisan yang dilewati; label edge bisa bertabrakan dengan node lain pada diagram padat; kutip ber-escape (`\"`) dalam label belum didukung. Fitur Mermaid yang enak dijadikan latihan berikutnya: `subgraph`, fan-out `A --> B & C`, garis `-.-` dan `--teks-->`, bentuk silinder `[( )]`, serta styling per node (`style`/`classDef`).
+GPL-3.0-or-later — free for everyone to use; distributed derivatives must remain open source under the same license. Full text in the `LICENSE` file.

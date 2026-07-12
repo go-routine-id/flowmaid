@@ -1,22 +1,22 @@
-//! Geometri siap-pakai untuk aplikasi interaktif (editor drag & drop,
-//! hit-testing, ekspor). Semua koordinat di modul ini FINAL (piksel
-//! layar, sudah mengikuti arah diagram) — berbeda dengan koordinat
-//! abstrak internal `layout`.
+//! Ready-to-draw geometry for interactive apps (drag & drop
+//! editors, hit-testing, export). Every coordinate in this module
+//! is FINAL (screen pixels, already following the diagram
+//! direction) — unlike the abstract coordinates inside `layout`.
 //!
-//! Alur khas aplikasi drag & drop:
-//! 1. `scene(&graph)` — tata letak otomatis + geometri edge.
-//! 2. Simpan posisi node di state aplikasi; gambar dengan painter.
-//! 3. Saat node digeser, panggil `route(&graph, &posisi)` untuk
-//!    menghitung ulang kurva edge mengikuti posisi baru (klasifikasi
-//!    arah edge mengikuti posisi relatif aktual, bukan layer).
-//! 4. `to_svg(&scene)` untuk mengekspor susunan apa pun ke SVG.
+//! Typical drag & drop flow:
+//! 1. `scene(&graph)` — automatic layout + edge geometry.
+//! 2. Keep node positions in app state; draw with your painter.
+//! 3. When a node is dragged, call `route(&graph, &positions)` to
+//!    recompute edge curves for the new positions (edge direction
+//!    classification follows actual relative positions, not layers).
+//! 4. `to_svg(&scene)` exports any arrangement to SVG.
 
 use crate::layout::{intrinsic_size, layout, text_width, Placed};
 use crate::model::{Direction, EdgeKind, Graph, Shape};
 use std::collections::HashMap;
 
 const MARGIN: f64 = 28.0;
-/// Jarak antar edge paralel (menghubungkan pasangan node yang sama).
+/// Gap between parallel edges (connecting the same node pair).
 const PARALLEL_GAP: f64 = 16.0;
 
 const EDGE_COLOR: &str = "#44507a";
@@ -24,7 +24,7 @@ const NODE_FILL: &str = "#eef1fb";
 const NODE_STROKE: &str = "#5b6dc0";
 const TEXT_COLOR: &str = "#232840";
 
-/// Node dengan posisi & ukuran final. Pusat di (x, y).
+/// Node with final position & size. Centre at (x, y).
 #[derive(Debug, Clone)]
 pub struct SceneNode {
     pub x: f64,
@@ -35,13 +35,13 @@ pub struct SceneNode {
     pub label: String,
 }
 
-/// Edge dengan kurva bezier kubik final.
+/// Edge with a final cubic bezier curve.
 #[derive(Debug, Clone)]
 pub struct SceneEdge {
-    /// Titik bezier: awal, kontrol1, kontrol2, akhir.
+    /// Bezier points: start, control1, control2, end.
     pub bezier: [(f64, f64); 4],
     pub kind: EdgeKind,
-    /// (teks, pusat kotak, lebar kotak) bila edge berlabel.
+    /// (text, box centre, box width) when the edge has a label.
     pub label: Option<(String, (f64, f64), f64)>,
 }
 
@@ -53,14 +53,14 @@ pub struct Scene {
     pub height: f64,
 }
 
-/// Tata letak otomatis: jalankan layout lalu petakan seluruh geometri
-/// ke koordinat final. Ini sumber kebenaran yang juga dipakai
-/// `render::render`.
+/// Automatic layout: run the layout engine, then map all geometry
+/// to final coordinates. This is the source of truth that
+/// `render::render` uses as well.
 pub fn scene(g: &Graph) -> Scene {
     let lo = layout(g);
 
-    // Ekstent breadth tiap layer, dipakai back-edge untuk merutekan
-    // dirinya mengitari seluruh node pada layer-layer yang dilewati.
+    // Breadth extents per layer, used by back-edges to route
+    // themselves around every node on the layers they pass.
     let nlayers = lo.nodes.iter().map(|p| p.layer).max().map_or(0, |m| m + 1);
     let mut lay_ext = vec![(f64::INFINITY, f64::NEG_INFINITY); nlayers];
     for p in &lo.nodes {
@@ -69,7 +69,7 @@ pub fn scene(g: &Graph) -> Scene {
         e.1 = e.1.max(p.b + p.bsize / 2.0);
     }
 
-    // Geometri edge (koordinat abstrak) dengan pemisahan edge paralel.
+    // Edge geometry (abstract coordinates) with parallel-edge separation.
     let offs = parallel_offsets(g);
     let mut abs_edges: Vec<([(f64, f64); 4], Option<((f64, f64), f64)>)> =
         Vec::with_capacity(g.edges.len());
@@ -93,9 +93,10 @@ pub fn scene(g: &Graph) -> Scene {
         abs_edges.push((pts, label));
     }
 
-    // Kanvas dari bounding box node + kurva + label. Kurva bezier
-    // selalu berada dalam convex hull titik kontrolnya, sehingga bbox
-    // titik kontrol menjamin tidak ada yang terpotong.
+    // Canvas from the bounding box of nodes + curves + labels. A
+    // bezier curve always stays inside the convex hull of its
+    // control points, so the control-point bbox guarantees nothing
+    // gets clipped.
     let mut bb = Bbox::new();
     for p in &lo.nodes {
         bb.add(p.b - p.bsize / 2.0, p.l - p.lsize / 2.0);
@@ -116,7 +117,7 @@ pub fn scene(g: &Graph) -> Scene {
     let total_b = (bb.1 - bb.0) + 2.0 * MARGIN;
     let total_l = (bb.3 - bb.2) + 2.0 * MARGIN;
 
-    // Pemetaan koordinat abstrak (b, l) -> final (x, y).
+    // Map abstract coordinates (b, l) -> final (x, y).
     let dir = g.direction;
     let tf = move |p: (f64, f64)| -> (f64, f64) {
         let b = p.0 + offb;
@@ -141,7 +142,7 @@ pub fn scene(g: &Graph) -> Scene {
         .enumerate()
         .map(|(i, n)| {
             let (x, y) = tf((lo.nodes[i].b, lo.nodes[i].l));
-            let (w, h) = intrinsic_size(n); // ukuran final tak berubah oleh arah
+            let (w, h) = intrinsic_size(n); // final size is direction-independent
             SceneNode {
                 x,
                 y,
@@ -176,16 +177,16 @@ pub fn scene(g: &Graph) -> Scene {
     }
 }
 
-/// Rutekan ulang edge untuk posisi node kustom (mis. hasil drag).
-/// `centers[i]` = pusat node ke-i dalam koordinat final. Posisi node
-/// TIDAK dinormalisasi (tetap persis seperti yang diberikan) agar
-/// diagram tidak "berenang" saat digeser; `to_svg` yang menangani
-/// translasi saat ekspor.
+/// Re-route edges for custom node positions (e.g. after a drag).
+/// `centers[i]` = centre of node i in final coordinates. Node
+/// positions are NOT normalised (they stay exactly as given) so the
+/// diagram doesn't "swim" while dragging; `to_svg` handles
+/// translation at export time.
 pub fn route(g: &Graph, centers: &[(f64, f64)]) -> Scene {
     assert_eq!(
         centers.len(),
         g.nodes.len(),
-        "jumlah posisi harus sama dengan jumlah node"
+        "number of positions must match number of nodes"
     );
     let sizes: Vec<(f64, f64)> = g.nodes.iter().map(intrinsic_size).collect();
     let placed: Vec<Placed> = (0..g.nodes.len())
@@ -250,9 +251,8 @@ pub fn route(g: &Graph, centers: &[(f64, f64)]) -> Scene {
     }
 }
 
-/// Serialisasi Scene apa pun (otomatis maupun hasil drag) ke SVG.
-/// Konten ditranslasikan agar mulai dari MARGIN, jadi koordinat
-/// negatif pun aman.
+/// Serialise any Scene (automatic or dragged) to SVG. Content is
+/// translated to start at MARGIN, so negative coordinates are safe.
 pub fn to_svg(sc: &Scene) -> String {
     let mut bb = Bbox::new();
     grow_scene(&mut bb, &sc.nodes, &sc.edges);
@@ -386,10 +386,10 @@ pub fn to_svg(sc: &Scene) -> String {
 }
 
 // ---------------------------------------------------------------
-// Geometri internal
+// Internal geometry
 // ---------------------------------------------------------------
 
-/// Bounding box sederhana (minx, maxx, miny, maxy).
+/// Simple bounding box (minx, maxx, miny, maxy).
 struct Bbox(f64, f64, f64, f64);
 impl Bbox {
     fn new() -> Self {
@@ -439,7 +439,7 @@ fn pair(a: usize, b: usize) -> (usize, usize) {
     }
 }
 
-/// Offset per edge agar edge paralel (pasangan node sama) terpisah.
+/// Per-edge offsets so parallel edges (same node pair) separate.
 fn parallel_offsets(g: &Graph) -> Vec<f64> {
     let mut count: HashMap<(usize, usize), usize> = HashMap::new();
     for e in &g.edges {
@@ -456,12 +456,13 @@ fn parallel_offsets(g: &Graph) -> Vec<f64> {
         .collect()
 }
 
-/// Titik keluar/masuk edge pada tepi node.
+/// Edge exit/entry point on a node's border.
 ///
-/// Untuk bentuk kotak-kotakan, titik disebar sepanjang sisi atas/bawah
-/// ke arah node lawan (bukan menumpuk di tengah); stadium dibatasi ke
-/// bagian datarnya saja agar tidak melayang di ujung membulat. Untuk
-/// lingkaran/belah ketupat dipakai perpotongan tepi eksak.
+/// For boxy shapes, points are spread along the top/bottom side
+/// towards the opposite node (instead of piling up at the centre);
+/// stadiums are constrained to their flat section so anchors don't
+/// float on the rounded caps. Circles/diamonds use exact border
+/// intersection.
 fn anchor(p: &Placed, shape: Shape, other: (f64, f64), off: f64, bottom: bool) -> (f64, f64) {
     match shape {
         Shape::Diamond | Shape::Circle => border(p, shape, (other.0 + off * 4.0, other.1)),
@@ -482,7 +483,7 @@ fn anchor(p: &Placed, shape: Shape, other: (f64, f64), off: f64, bottom: bool) -
     }
 }
 
-/// Geometri edge untuk tata letak berlapis (dipakai `scene`).
+/// Edge geometry for the layered layout (used by `scene`).
 #[allow(clippy::too_many_arguments)]
 fn edge_points(
     a: &Placed,
@@ -506,9 +507,9 @@ fn edge_points(
         if down {
             let dl = ((p3.1 - p0.1) * 0.5).max(20.0);
             if b.layer - a.layer > 1 && (a.b - b.b).abs() < 30.0 {
-                // Mitigasi: edge panjang yang segaris dengan kolom node
-                // dilengkungkan ke samping agar tidak lewat di belakang
-                // node pada layer antara. (Solusi sejati: virtual node.)
+                // Mitigation: a long edge aligned with a column of
+                // nodes bows sideways so it doesn't run behind the
+                // nodes on intermediate layers. (Real fix: virtual nodes.)
                 let bow = if a.b >= total_b / 2.0 {
                     60.0 + off
                 } else {
@@ -524,9 +525,9 @@ fn edge_points(
             return [p0, (p0.0, p0.1 + dl), (p3.0, p3.1 - dl), p3];
         }
 
-        // Back-edge: rutekan mengitari sisi terdekat dari SEMUA layer
-        // yang dilalui. Kontrol diselesaikan analitik agar puncak kurva
-        // (t=0.5) berada ~24px di luar node terluar:
+        // Back-edge: route around the nearest side of ALL layers it
+        // crosses. Controls are solved analytically so the curve
+        // apex (t=0.5) sits ~24px outside the outermost node:
         // x(0.5) = 0.125*(x0+x3) + 0.75*BT.
         let (l0, l1) = (b.layer, a.layer);
         let mut ext_l = f64::INFINITY;
@@ -543,7 +544,7 @@ fn edge_points(
         return [p0, (bt, p0.1 - 40.0), (bt, p3.1 + 40.0), p3];
     }
 
-    // Satu layer: dari sisi ke sisi, melengkung ke bawah.
+    // Same layer: side to side, bowing downwards.
     let p0 = border(a, sa, (b.b, b.l));
     let p3 = border(b, sb, (a.b, a.l));
     let drop = a.lsize.max(b.lsize) / 2.0 + 22.0 + off;
@@ -555,8 +556,9 @@ fn edge_points(
     ]
 }
 
-/// Geometri edge untuk posisi bebas (dipakai `route`): klasifikasi
-/// vertikal/horizontal mengikuti posisi relatif aktual kedua node.
+/// Edge geometry for free positions (used by `route`): the
+/// vertical/horizontal classification follows the actual relative
+/// position of the two nodes.
 fn free_edge(
     a: &Placed,
     b: &Placed,
@@ -571,7 +573,7 @@ fn free_edge(
     let dx = b.b - a.b;
     let dy = b.l - a.l;
     if dy.abs() >= dx.abs() {
-        // Dominan vertikal: keluar bawah/atas, masuk atas/bawah.
+        // Vertically dominant: exit bottom/top, enter top/bottom.
         let down = dy >= 0.0;
         let p0 = anchor(a, sa, (b.b, b.l), off, down);
         let p3 = anchor(b, sb, (a.b, a.l), off, !down);
@@ -584,7 +586,7 @@ fn free_edge(
             p3,
         ]
     } else {
-        // Dominan horizontal: tepi ke tepi.
+        // Horizontally dominant: border to border.
         let p0 = border(a, sa, (b.b, b.l + off * 4.0));
         let p3 = border(b, sb, (a.b, a.l + off * 4.0));
         let s = if dx >= 0.0 { 1.0 } else { -1.0 };
@@ -598,7 +600,8 @@ fn free_edge(
     }
 }
 
-/// Self-loop kecil di sisi kanan node; loop paralel ditumpuk vertikal.
+/// Small self-loop on the node's right side; parallel loops stack
+/// vertically.
 fn loop_points(a: &Placed, off: f64) -> [(f64, f64); 4] {
     let r = a.b + a.bsize / 2.0;
     let ext = 48.0 + off.abs() * 0.8;
@@ -610,8 +613,9 @@ fn loop_points(a: &Placed, off: f64) -> [(f64, f64); 4] {
     ]
 }
 
-/// Titik potong garis (dari pusat node menuju `toward`) dengan
-/// tepi bentuk node — supaya panah menempel di tepi, bukan di pusat.
+/// Intersection of the line (from the node centre towards `toward`)
+/// with the node's shape border — so arrows attach at the border,
+/// not the centre.
 fn border(p: &Placed, shape: Shape, toward: (f64, f64)) -> (f64, f64) {
     let dx = toward.0 - p.b;
     let dy = toward.1 - p.l;
@@ -622,9 +626,9 @@ fn border(p: &Placed, shape: Shape, toward: (f64, f64)) -> (f64, f64) {
     let hh = p.lsize / 2.0;
     let t = match shape {
         Shape::Circle => hw / (dx * dx + dy * dy).sqrt(),
-        // Belah ketupat: |x/hw| + |y/hh| = 1
+        // Diamond: |x/hw| + |y/hh| = 1
         Shape::Diamond => 1.0 / (dx.abs() / hw + dy.abs() / hh),
-        // Bentuk lain didekati sebagai persegi panjang.
+        // Other shapes are approximated as rectangles.
         _ => {
             let tx = if dx.abs() > 1e-6 { hw / dx.abs() } else { f64::INFINITY };
             let ty = if dy.abs() > 1e-6 { hh / dy.abs() } else { f64::INFINITY };
@@ -634,7 +638,7 @@ fn border(p: &Placed, shape: Shape, toward: (f64, f64)) -> (f64, f64) {
     (p.b + dx * t, p.l + dy * t)
 }
 
-/// Titik tengah kurva bezier kubik (t = 0.5) untuk menaruh label.
+/// Midpoint of a cubic bezier (t = 0.5), used to place labels.
 fn cubic_mid(p0: (f64, f64), c1: (f64, f64), c2: (f64, f64), p3: (f64, f64)) -> (f64, f64) {
     (
         (p0.0 + 3.0 * c1.0 + 3.0 * c2.0 + p3.0) / 8.0,
@@ -656,7 +660,7 @@ mod tests {
     use crate::parser::parse;
 
     #[test]
-    fn scene_dan_render_konsisten() {
+    fn scene_and_render_are_consistent() {
         let g = parse("flowchart LR\nA --> B{X}\nB -->|y| C").unwrap();
         let s = scene(&g);
         assert_eq!(s.nodes.len(), 3);
@@ -666,22 +670,22 @@ mod tests {
     }
 
     #[test]
-    fn route_menempel_di_tepi_node() {
-        let g = parse("A[Kiri] --> B[Kanan]").unwrap();
+    fn route_attaches_to_node_borders() {
+        let g = parse("A[Left] --> B[Right]").unwrap();
         let s0 = scene(&g);
         let mut pos: Vec<(f64, f64)> = s0.nodes.iter().map(|n| (n.x, n.y)).collect();
-        pos[1] = (pos[0].0 + 400.0, pos[0].1); // "drag" B jauh ke kanan
+        pos[1] = (pos[0].0 + 400.0, pos[0].1); // "drag" B far to the right
         let s1 = route(&g, &pos);
         let e = s1.edges[0].bezier;
         let a = &s1.nodes[0];
         let b = &s1.nodes[1];
         assert!(
             (e[0].0 - (a.x + a.w / 2.0)).abs() < 1.0,
-            "edge harus keluar dari sisi kanan A"
+            "edge must leave from A's right side"
         );
         assert!(
             (e[3].0 - (b.x - b.w / 2.0)).abs() < 1.0,
-            "edge harus masuk dari sisi kiri B"
+            "edge must enter at B's left side"
         );
     }
 }

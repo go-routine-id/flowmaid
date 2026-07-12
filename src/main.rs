@@ -1,6 +1,6 @@
-//! flowmaid — CLI di atas pustaka mesin diagram flowmaid.
+//! flowmaid — CLI on top of the flowmaid diagram engine library.
 //!
-//! Pipeline: teks .mmd  ->  parser  ->  layout  ->  SVG.
+//! Pipeline: .mmd text  ->  parser  ->  layout  ->  SVG.
 
 use flowmaid::{parser, render};
 use std::env;
@@ -10,18 +10,18 @@ use std::process;
 
 fn print_help() {
     println!(
-        "flowmaid — mesin diagram flowchart mini (sintaks ala Mermaid)\n\n\
-         Pemakaian:\n\
+        "flowmaid — a small flowchart diagram engine (Mermaid-like syntax)\n\n\
+         Usage:\n\
          \x20 flowmaid <input.mmd> [-o output.svg]\n\
          \x20 cat diagram.mmd | flowmaid > out.svg\n\n\
-         Opsi:\n\
-         \x20 -o, --output <file>   tulis SVG ke file (default: stdout)\n\
-         \x20 -h, --help            tampilkan bantuan ini\n\n\
-         Contoh sintaks:\n\
+         Options:\n\
+         \x20 -o, --output <file>   write SVG to a file (default: stdout)\n\
+         \x20 -h, --help            show this help\n\n\
+         Syntax example:\n\
          \x20 flowchart TD\n\
-         \x20 A([Mulai]) --> B{{Valid?}}\n\
-         \x20 B -->|ya| C[Proses]\n\
-         \x20 B -.->|tidak| D((Selesai))"
+         \x20 A([Start]) --> B{{Valid?}}\n\
+         \x20 B -->|yes| C[Process]\n\
+         \x20 B -.->|no| D((Done))"
     );
 }
 
@@ -38,7 +38,7 @@ fn main() {
                 match args.get(i) {
                     Some(p) => output = Some(p.clone()),
                     None => {
-                        eprintln!("opsi -o membutuhkan nama file");
+                        eprintln!("option -o requires a file name");
                         process::exit(2);
                     }
                 }
@@ -48,12 +48,12 @@ fn main() {
                 return;
             }
             other if other.starts_with('-') => {
-                eprintln!("opsi tidak dikenal: '{}' (lihat --help)", other);
+                eprintln!("unknown option: '{}' (see --help)", other);
                 process::exit(2);
             }
             other => {
                 if input.is_some() {
-                    eprintln!("hanya satu file input yang didukung, kelebihan: '{}'", other);
+                    eprintln!("only one input file is supported, extra: '{}'", other);
                     process::exit(2);
                 }
                 input = Some(other.to_string());
@@ -64,19 +64,19 @@ fn main() {
 
     let source = match &input {
         Some(path) => fs::read_to_string(path).unwrap_or_else(|e| {
-            eprintln!("gagal membaca '{}': {}", path, e);
+            eprintln!("failed to read '{}': {}", path, e);
             process::exit(1);
         }),
         None => {
-            // Tanpa argumen dan tanpa pipe: jangan diam menunggu stdin,
-            // tampilkan bantuan.
+            // No argument and no pipe: don't silently wait on stdin,
+            // show the help instead.
             if io::stdin().is_terminal() {
                 print_help();
                 return;
             }
             let mut buf = String::new();
             if io::stdin().read_to_string(&mut buf).is_err() {
-                eprintln!("gagal membaca stdin");
+                eprintln!("failed to read stdin");
                 process::exit(1);
             }
             buf
@@ -86,12 +86,12 @@ fn main() {
     let graph = match parser::parse(&source) {
         Ok(g) => g,
         Err(e) => {
-            eprintln!("error parsing — {}", e);
+            eprintln!("parse error — {}", e);
             process::exit(1);
         }
     };
     if graph.nodes.is_empty() {
-        eprintln!("diagram kosong: tidak ada node yang terdefinisi");
+        eprintln!("empty diagram: no nodes defined");
         process::exit(1);
     }
 
@@ -100,10 +100,10 @@ fn main() {
     match &output {
         Some(path) => {
             if let Err(e) = fs::write(path, svg) {
-                eprintln!("gagal menulis '{}': {}", path, e);
+                eprintln!("failed to write '{}': {}", path, e);
                 process::exit(1);
             }
-            eprintln!("tersimpan: {}", path);
+            eprintln!("saved: {}", path);
         }
         None => print!("{}", svg),
     }

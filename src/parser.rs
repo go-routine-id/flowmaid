@@ -1,10 +1,10 @@
-//! Parser tulis-tangan untuk sintaks flowchart ala Mermaid.
+//! Hand-written parser for Mermaid-like flowchart syntax.
 //!
-//! Didukung:
-//! - Header:  `flowchart TD|TB|LR|RL|BT`  atau  `graph ...`
-//! - Node:    `A`, `A[teks]`, `A(teks)`, `A([teks])`, `A{teks}`, `A((teks))`
-//! - Edge:    `-->`, `---`, `-.->`, `==>`, dengan label `-->|teks|`
-//! - Rantai:  `A --> B --> C`, pemisah `;`, komentar `%%`
+//! Supported:
+//! - Header:  `flowchart TD|TB|LR|RL|BT`  or  `graph ...`
+//! - Nodes:   `A`, `A[text]`, `A(text)`, `A([text])`, `A{text}`, `A((text))`
+//! - Edges:   `-->`, `---`, `-.->`, `==>`, with labels `-->|text|`
+//! - Chains:  `A --> B --> C`, `;` separator, `%%` comments
 
 use crate::model::{Direction, EdgeKind, Graph, Shape};
 
@@ -16,7 +16,7 @@ pub struct ParseError {
 
 impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "baris {}: {}", self.line, self.message)
+        write!(f, "line {}: {}", self.line, self.message)
     }
 }
 
@@ -24,7 +24,7 @@ fn err(line: usize, message: String) -> ParseError {
     ParseError { line, message }
 }
 
-/// Kursor karakter sederhana di atas satu baris.
+/// Simple character cursor over a single line.
 struct Cur<'a> {
     s: &'a str,
     pos: usize,
@@ -65,7 +65,7 @@ impl<'a> Cur<'a> {
             false
         }
     }
-    /// Ambil teks sampai `close` (eksklusif), lalu lompati `close`.
+    /// Take text up to `close` (exclusive), then skip past `close`.
     fn take_until(&mut self, close: &str) -> Option<String> {
         let idx = self.rest().find(close)?;
         let out = self.rest()[..idx].to_string();
@@ -74,7 +74,7 @@ impl<'a> Cur<'a> {
     }
 }
 
-/// Buang kutip ganda pembungkus label, ala Mermaid: `A["teks aneh"]`.
+/// Strip wrapping double quotes from a label, Mermaid-style: `A["odd text"]`.
 fn clean_label(s: &str) -> String {
     let t = s.trim();
     if t.len() >= 2 && t.starts_with('"') && t.ends_with('"') {
@@ -105,22 +105,22 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
                     "RL" => Direction::RL,
                     "BT" => Direction::BT,
                     other => {
-                        return Err(err(lineno, format!("arah tidak dikenal: '{}'", other)))
+                        return Err(err(lineno, format!("unknown direction: '{}'", other)))
                     }
                 };
                 continue;
             }
-            // Tidak ada header: pakai arah default (TD) dan
-            // perlakukan baris ini sebagai statement biasa.
+            // No header: use the default direction (TD) and
+            // treat this line as a regular statement.
         }
         parse_statement(&mut g, line, lineno)?;
     }
     Ok(g)
 }
 
-/// Cocokkan kata kunci header hanya jika diikuti spasi atau akhir baris,
-/// supaya node bernama mis. `graphics` tidak dikira header `graph`.
-/// Memakai `get` agar aman terhadap batas karakter UTF-8.
+/// Match a header keyword only when followed by whitespace or end of
+/// line, so a node named e.g. `graphics` is not mistaken for a
+/// `graph` header. Uses `get` to stay safe on UTF-8 boundaries.
 fn strip_keyword<'a>(line: &'a str, kw: &str) -> Option<&'a str> {
     match line.get(..kw.len()) {
         Some(head) if head.eq_ignore_ascii_case(kw) => {
@@ -143,7 +143,7 @@ fn parse_statement(g: &mut Graph, line: &str, lineno: usize) -> Result<(), Parse
         if cur.at_end() {
             break;
         }
-        // `;` memisahkan statement dalam satu baris: `A-->B; C-->D`
+        // `;` separates statements on one line: `A-->B; C-->D`
         if cur.eat(";") {
             cur.skip_ws();
             if cur.at_end() {
@@ -155,13 +155,13 @@ fn parse_statement(g: &mut Graph, line: &str, lineno: usize) -> Result<(), Parse
         let kind = parse_edge_op(&mut cur).ok_or_else(|| {
             err(
                 lineno,
-                format!("operator edge tidak dikenal dekat: '{}'", cur.rest()),
+                format!("unknown edge operator near: '{}'", cur.rest()),
             )
         })?;
         cur.skip_ws();
         let label = if cur.eat("|") {
             let l = cur.take_until("|").ok_or_else(|| {
-                err(lineno, "label edge dibuka '|' tapi tidak ditutup".to_string())
+                err(lineno, "edge label opened with '|' but never closed".to_string())
             })?;
             Some(clean_label(&l))
         } else {
@@ -187,12 +187,12 @@ fn parse_node(cur: &mut Cur<'_>, g: &mut Graph, lineno: usize) -> Result<usize, 
     if cur.pos == start {
         return Err(err(
             lineno,
-            format!("diharapkan id node, ditemukan: '{}'", cur.rest()),
+            format!("expected a node id, found: '{}'", cur.rest()),
         ));
     }
     let id = cur.s[start..cur.pos].to_string();
 
-    // Urutan pengecekan penting: pembuka dua karakter lebih dulu.
+    // Check order matters: two-character openers first.
     let parsed: Option<(Shape, String)> = if cur.eat("((") {
         Some((Shape::Circle, close(cur, "))", lineno)?))
     } else if cur.eat("([") {
@@ -215,28 +215,28 @@ fn parse_node(cur: &mut Cur<'_>, g: &mut Graph, lineno: usize) -> Result<usize, 
 }
 
 fn close(cur: &mut Cur<'_>, closer: &str, lineno: usize) -> Result<String, ParseError> {
-    // Label berkutip: `A["teks [aneh]"]` — kutip melindungi karakter kurung.
+    // Quoted label: `A["odd [text]"]` — quotes protect bracket characters.
     if cur.rest().starts_with('"') {
         cur.bump();
         let inner = cur
             .take_until("\"")
-            .ok_or_else(|| err(lineno, "kutip label tidak ditutup".to_string()))?;
+            .ok_or_else(|| err(lineno, "unclosed label quote".to_string()))?;
         cur.skip_ws();
         if !cur.eat(closer) {
-            return Err(err(lineno, format!("penutup '{}' tidak ditemukan", closer)));
+            return Err(err(lineno, format!("closing '{}' not found", closer)));
         }
         return Ok(inner);
     }
     cur.take_until(closer)
-        .ok_or_else(|| err(lineno, format!("penutup '{}' tidak ditemukan", closer)))
+        .ok_or_else(|| err(lineno, format!("closing '{}' not found", closer)))
 }
 
-/// Kenali operator edge dan majukan kursor. Toleran terhadap panjang
-/// ekstra (`--->`, `-..->`, `===>`).
+/// Recognise an edge operator and advance the cursor. Tolerant of
+/// extra length (`--->`, `-..->`, `===>`).
 fn parse_edge_op(cur: &mut Cur<'_>) -> Option<EdgeKind> {
     let rest = cur.rest();
 
-    // Putus-putus: -.->  atau  -..->
+    // Dotted: -.->  or  -..->
     if rest.starts_with("-.") {
         let after = &rest[2..];
         let dots = after.chars().take_while(|&c| c == '.').count();
@@ -248,7 +248,7 @@ fn parse_edge_op(cur: &mut Cur<'_>) -> Option<EdgeKind> {
         return None;
     }
 
-    // Tebal: ==>  atau  ===>
+    // Thick: ==>  or  ===>
     if rest.starts_with("==") {
         let eqs = rest.chars().take_while(|&c| c == '=').count();
         let tail = &rest[eqs..];
@@ -259,7 +259,7 @@ fn parse_edge_op(cur: &mut Cur<'_>) -> Option<EdgeKind> {
         return None;
     }
 
-    // Panah biasa (-->) atau garis polos (---)
+    // Regular arrow (-->) or plain line (---)
     if rest.starts_with('-') {
         let dashes = rest.chars().take_while(|&c| c == '-').count();
         let tail = &rest[dashes..];
@@ -281,17 +281,17 @@ mod tests {
     use crate::model::Shape;
 
     #[test]
-    fn parse_dasar() {
-        let g = parse("flowchart TD\nA[Mulai] --> B{Cek?}\nB -->|ya| C((Selesai))\n").unwrap();
+    fn basic_parse() {
+        let g = parse("flowchart TD\nA[Start] --> B{Check?}\nB -->|yes| C((Done))\n").unwrap();
         assert_eq!(g.nodes.len(), 3);
         assert_eq!(g.edges.len(), 2);
         assert_eq!(g.nodes[1].shape, Shape::Diamond);
         assert_eq!(g.nodes[2].shape, Shape::Circle);
-        assert_eq!(g.edges[1].label.as_deref(), Some("ya"));
+        assert_eq!(g.edges[1].label.as_deref(), Some("yes"));
     }
 
     #[test]
-    fn rantai_dan_titik_koma() {
+    fn chains_and_semicolons() {
         let g = parse("graph LR\nA --> B --> C; D -.-> A\n").unwrap();
         assert_eq!(g.nodes.len(), 4);
         assert_eq!(g.edges.len(), 3);
@@ -299,22 +299,23 @@ mod tests {
     }
 
     #[test]
-    fn label_berkutip() {
-        let g = parse("A[\"teks [aneh]?\"] --> B").unwrap();
+    fn quoted_labels() {
+        let g = parse("A[\"odd [text]?\"] --> B").unwrap();
         assert_eq!(g.nodes.len(), 2);
-        assert_eq!(g.nodes[0].label, "teks [aneh]?");
+        assert_eq!(g.nodes[0].label, "odd [text]?");
     }
 
     #[test]
-    fn error_punya_nomor_baris() {
+    fn errors_carry_line_numbers() {
         let e = parse("flowchart TD\nA --> \n").unwrap_err();
         assert_eq!(e.line, 2);
     }
 
     #[test]
-    fn id_mirip_keyword_bukan_header() {
-        // Dulu: "graphics" dikira header "graph" + arah "ics[...]" -> error.
-        let g = parse("graphics[Grafis] --> B").unwrap();
+    fn keyword_like_id_is_not_a_header() {
+        // Previously: "graphics" was mistaken for the "graph" header
+        // plus direction "ics[...]" -> error.
+        let g = parse("graphics[Graphics] --> B").unwrap();
         assert_eq!(g.nodes.len(), 2);
         assert_eq!(g.nodes[0].id, "graphics");
         assert_eq!(g.direction, crate::model::Direction::TD);
