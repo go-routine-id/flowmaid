@@ -20,8 +20,6 @@ const MARGIN: f64 = 28.0;
 const PARALLEL_GAP: f64 = 16.0;
 
 pub(crate) const EDGE_COLOR: &str = "#44507a";
-pub(crate) const NODE_FILL: &str = "#eef1fb";
-pub(crate) const NODE_STROKE: &str = "#5b6dc0";
 pub(crate) const TEXT_COLOR: &str = "#232840";
 pub(crate) const LABEL_BORDER: &str = "#d5d9ec";
 
@@ -358,9 +356,10 @@ pub fn to_svg(sc: &Scene) -> String {
     for n in &sc.nodes {
         let (cx, cy) = t((n.x, n.y));
         let (w, h) = (n.w, n.h);
+        let ss = crate::style::shape_style(n.shape);
         let style = format!(
             "fill=\"{}\" stroke=\"{}\" stroke-width=\"1.6\"",
-            NODE_FILL, NODE_STROKE
+            ss.fill, ss.stroke
         );
         match n.shape {
             Shape::Rect | Shape::Rounded | Shape::Stadium => {

@@ -19,6 +19,7 @@ pub mod model;
 pub mod parser;
 pub mod render;
 pub mod scene;
+pub mod style;
 
 pub use model::Document;
 pub use parser::ParseError;

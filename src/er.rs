@@ -15,8 +15,7 @@
 use crate::layout::text_width;
 use crate::model::{Attr, Card, Direction, EdgeKind, Entity, ErDiagram, Graph, Shape};
 use crate::scene::{
-    escape, route_sized, scene_sized, svg_label_box, svg_open, Scene, EDGE_COLOR, NODE_STROKE,
-    TEXT_COLOR,
+    escape, route_sized, scene_sized, svg_label_box, svg_open, Scene, EDGE_COLOR, TEXT_COLOR,
 };
 
 /// Table header height in pixels.
@@ -196,19 +195,20 @@ pub fn to_svg(es: &ErScene) -> String {
         write_glyph(&mut s, &glyph(q[3], q[2], card_to));
     }
 
-    // Entity tables.
-    for (n, table) in sc.nodes.iter().zip(&es.tables) {
+    // Entity tables — each entity gets a stable accent color.
+    for (i, (n, table)) in sc.nodes.iter().zip(&es.tables).enumerate() {
+        let accent = crate::style::accent(i);
         let x0 = n.x - n.w / 2.0;
         let y0 = n.y - n.h / 2.0;
         s.push_str(&format!(
             "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" rx=\"4\" \
              fill=\"#ffffff\" stroke=\"{}\" stroke-width=\"1.6\"/>\n",
-            x0, y0, n.w, n.h, NODE_STROKE
+            x0, y0, n.w, n.h, accent
         ));
         s.push_str(&format!(
             "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" rx=\"4\" \
              fill=\"{}\"/>\n",
-            x0, y0, n.w, HEADER_H, NODE_STROKE
+            x0, y0, n.w, HEADER_H, accent
         ));
         s.push_str(&format!(
             "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"middle\" \
