@@ -40,10 +40,24 @@ pub enum EdgeKind {
     Arrow,
     /// `---` plain line, no arrowhead.
     Open,
-    /// `-.->` dotted line.
+    /// `-.->` dotted line with arrowhead.
     Dotted,
-    /// `==>` thick line.
+    /// `-.-` dotted line, no arrowhead.
+    DottedOpen,
+    /// `==>` thick line with arrowhead.
     Thick,
+    /// `===` thick line, no arrowhead.
+    ThickOpen,
+    /// `~~~` invisible link — participates in layout (ranking /
+    /// ordering) but is never drawn.
+    Invisible,
+}
+
+impl EdgeKind {
+    /// Whether renderers should draw an arrowhead.
+    pub fn has_arrow(self) -> bool {
+        matches!(self, EdgeKind::Arrow | EdgeKind::Dotted | EdgeKind::Thick)
+    }
 }
 
 /// Custom per-node styling from Mermaid `style` / `classDef`

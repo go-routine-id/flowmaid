@@ -33,7 +33,7 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 - [x] Interactive scene API — drag nodes, edges re-route live (`scene`, `route`, `box_edge_bezier`)
 - [x] Explicit "not supported yet" errors for every known mermaid header
 - [ ] `$$…$$` math in labels, KaTeX-style — phased passthrough → MathML → native — [#12](https://github.com/go-routine-id/flowmaid/issues/12)
-- [ ] Fan-out `A --> B & C` + extra link types — [#3](https://github.com/go-routine-id/flowmaid/issues/3)
+- [x] Fan-out `A --> B & C`, inline `-- text -->` labels, `-.-`/`===` open lines, `~~~` invisible links *(v0.6.0)*
 - [ ] More node shapes (cylinder, subroutine, hexagon, …) — [#4](https://github.com/go-routine-id/flowmaid/issues/4)
 - [ ] Edges to/from subgraphs, `click` interactions, frontmatter themes — see the board
 
@@ -80,7 +80,7 @@ The header sets the flow direction: `flowchart TD` (top-down, alias `TB`), `LR` 
 
 Node shapes: `A[text]` rectangle, `A(text)` rounded, `A([text])` stadium, `A{text}` diamond, `A((text))` circle. Labels may be quoted to protect special characters: `A["odd [text]"]`.
 
-Edges: `-->` arrow, `---` open line, `-.->` dotted, `==>` thick. Edge labels are written `-->|text|`. Chains like `A --> B --> C` are supported, as are cycles (`E --> B` looping back up) and self-loops (`A --> A`).
+Edges: `-->` arrow, `---` open line, `-.->` dotted, `-.-` dotted open, `==>` thick, `===` thick open, and `~~~` invisible links that shape the layout without being drawn. Labels come in both mermaid spellings — `-->|text|` and inline `-- text -->` (`-. text .-`, `== text ==>`). Fan-out lists work on either side: `A --> B & C`, `A & B --> C`. Chains like `A --> B & C --> D` are supported, as are cycles (`E --> B` looping back up) and self-loops (`A --> A`).
 
 Subgraphs use mermaid's block syntax — `subgraph id [Title]` … `end` — with arbitrary nesting and an optional `direction LR` line per block (inherited from the parent otherwise). A node mentioned inside a block is claimed by it, mermaid-style, even if it first appeared elsewhere. Edges may freely cross cluster borders; edges to/from a subgraph *itself* aren't supported yet and fail with a clear error. See `examples/subgraph.mmd`.
 

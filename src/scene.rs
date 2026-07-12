@@ -689,16 +689,19 @@ pub fn to_svg(sc: &Scene) -> String {
 
     let mut edge_labels = String::new();
     for e in &sc.edges {
+        if matches!(e.kind, EdgeKind::Invisible) {
+            continue; // layout-only link — never drawn
+        }
         let q: Vec<(f64, f64)> = e.bezier.iter().map(|&p| t(p)).collect();
         let (dash, sw) = match e.kind {
-            EdgeKind::Dotted => (" stroke-dasharray=\"5 4\"", 1.7),
-            EdgeKind::Thick => ("", 3.4),
+            EdgeKind::Dotted | EdgeKind::DottedOpen => (" stroke-dasharray=\"5 4\"", 1.7),
+            EdgeKind::Thick | EdgeKind::ThickOpen => ("", 3.4),
             _ => ("", 1.7),
         };
-        let marker = if matches!(e.kind, EdgeKind::Open) {
-            ""
-        } else {
+        let marker = if e.kind.has_arrow() {
             " marker-end=\"url(#arrow)\""
+        } else {
+            ""
         };
         s.push_str(&format!(
             "<path d=\"M {:.1} {:.1} C {:.1} {:.1}, {:.1} {:.1}, {:.1} {:.1}\" \

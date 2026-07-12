@@ -361,6 +361,30 @@ fn parse_subgraph_header(rest: &str, lineno: usize) -> Result<(String, String), 
     Ok((rest.to_string(), rest.to_string()))
 }
 
+/// One or more nodes joined by `&` — mermaid's fan-out lists,
+/// e.g. `A & B --> C & D`.
+fn parse_node_list(
+    cur: &mut Cur<'_>,
+    g: &mut Graph,
+    lineno: usize,
+    assigns: &mut Vec<(usize, String)>,
+    subs: &[usize],
+) -> Result<Vec<usize>, ParseError> {
+    let mut nodes = vec![parse_node(cur, g, lineno, assigns, subs)?];
+    loop {
+        let save = cur.pos;
+        cur.skip_ws();
+        if cur.eat("&") {
+            cur.skip_ws();
+            nodes.push(parse_node(cur, g, lineno, assigns, subs)?);
+        } else {
+            cur.pos = save;
+            break;
+        }
+    }
+    Ok(nodes)
+}
+
 fn parse_statement(
     g: &mut Graph,
     line: &str,
@@ -369,7 +393,7 @@ fn parse_statement(
     subs: &[usize],
 ) -> Result<(), ParseError> {
     let mut cur = Cur::new(line);
-    let mut prev = parse_node(&mut cur, g, lineno, assigns, subs)?;
+    let mut prevs = parse_node_list(&mut cur, g, lineno, assigns, subs)?;
     loop {
         cur.skip_ws();
         if cur.at_end() {
@@ -381,29 +405,90 @@ fn parse_statement(
             if cur.at_end() {
                 break;
             }
-            prev = parse_node(&mut cur, g, lineno, assigns, subs)?;
+            prevs = parse_node_list(&mut cur, g, lineno, assigns, subs)?;
             continue;
         }
-        let kind = parse_edge_op(&mut cur).ok_or_else(|| {
-            err(
-                lineno,
-                format!("unknown edge operator near: '{}'", cur.rest()),
-            )
-        })?;
+        // Inline-labelled operators (`-- text -->`) carry their own
+        // label; plain operators may take a `|text|` label after.
+        let (kind, mut label) = parse_edge_inline_label(&mut cur, lineno)?
+            .map(|(k, l)| (Some(k), Some(l)))
+            .unwrap_or((None, None));
+        let kind = match kind {
+            Some(k) => k,
+            None => parse_edge_op(&mut cur).ok_or_else(|| {
+                err(
+                    lineno,
+                    format!("unknown edge operator near: '{}'", cur.rest()),
+                )
+            })?,
+        };
         cur.skip_ws();
-        let label = if cur.eat("|") {
+        if label.is_none() && cur.eat("|") {
             let l = cur.take_until("|").ok_or_else(|| {
                 err(lineno, "edge label opened with '|' but never closed".to_string())
             })?;
-            Some(clean_label(&l))
-        } else {
-            None
-        };
-        let next = parse_node(&mut cur, g, lineno, assigns, subs)?;
-        g.add_edge(prev, next, label, kind);
-        prev = next;
+            label = Some(clean_label(&l));
+        }
+        cur.skip_ws();
+        let nexts = parse_node_list(&mut cur, g, lineno, assigns, subs)?;
+        // Fan-out: every prev connects to every next.
+        for &a in &prevs {
+            for &b in &nexts {
+                g.add_edge(a, b, label.clone(), kind);
+            }
+        }
+        prevs = nexts;
     }
     Ok(())
+}
+
+/// Mermaid's inline edge labels: `-- text -->`, `-- text ---`,
+/// `-. text .->`, `-. text .-`, `== text ==>`, `== text ===`.
+/// Returns None when the cursor isn't at an inline-label operator
+/// (plain operators like `-->` fall through to `parse_edge_op`).
+fn parse_edge_inline_label(
+    cur: &mut Cur<'_>,
+    lineno: usize,
+) -> Result<Option<(EdgeKind, String)>, ParseError> {
+    // (opener, [(closer, kind)] — longest closer first)
+    const FORMS: &[(&str, &[(&str, EdgeKind)])] = &[
+        ("-.", &[(".->", EdgeKind::Dotted), (".-", EdgeKind::DottedOpen)]),
+        ("==", &[("==>", EdgeKind::Thick), ("===", EdgeKind::ThickOpen)]),
+        ("--", &[("-->", EdgeKind::Arrow), ("---", EdgeKind::Open)]),
+    ];
+    let rest = cur.rest();
+    for (open, closers) in FORMS {
+        if !rest.starts_with(open) {
+            continue;
+        }
+        // Only label mode when the opener is followed by label text,
+        // not by more operator characters (`-->`, `---`, `-.-`, ...).
+        let after = &rest[open.len()..];
+        let Some(c0) = after.chars().next() else { continue };
+        if matches!(c0, '-' | '>' | '.' | '=') {
+            continue;
+        }
+        // Find the nearest closer; longest first so `-->` wins over `---`…
+        // (they can't overlap at the same index anyway, but keep order).
+        let mut best: Option<(usize, &str, EdgeKind)> = None;
+        for (close, kind) in *closers {
+            if let Some(i) = after.find(close) {
+                if best.map_or(true, |(bi, _, _)| i < bi) {
+                    best = Some((i, close, *kind));
+                }
+            }
+        }
+        let Some((i, close, kind)) = best else {
+            return Err(err(
+                lineno,
+                format!("inline edge label after '{}' is never closed", open),
+            ));
+        };
+        let label = clean_label(&after[..i]);
+        cur.pos += open.len() + i + close.len();
+        return Ok(Some((kind, label)));
+    }
+    Ok(None)
 }
 
 fn parse_node(
@@ -516,7 +601,14 @@ fn close(cur: &mut Cur<'_>, closer: &str, lineno: usize) -> Result<String, Parse
 fn parse_edge_op(cur: &mut Cur<'_>) -> Option<EdgeKind> {
     let rest = cur.rest();
 
-    // Dotted: -.->  or  -..->
+    // Invisible link: ~~~ (layout-only, never drawn).
+    if rest.starts_with("~~~") {
+        let tildes = rest.chars().take_while(|&c| c == '~').count();
+        cur.pos += tildes;
+        return Some(EdgeKind::Invisible);
+    }
+
+    // Dotted: -.-> / -..-> (arrow)  or  -.- / -..- (open)
     if let Some(after) = rest.strip_prefix("-.") {
         let dots = after.chars().take_while(|&c| c == '.').count();
         let tail = &after[dots..];
@@ -524,16 +616,24 @@ fn parse_edge_op(cur: &mut Cur<'_>) -> Option<EdgeKind> {
             cur.pos += 2 + dots + 2;
             return Some(EdgeKind::Dotted);
         }
+        if tail.starts_with('-') {
+            cur.pos += 2 + dots + 1;
+            return Some(EdgeKind::DottedOpen);
+        }
         return None;
     }
 
-    // Thick: ==>  or  ===>
+    // Thick: ==> / ===> (arrow)  or  === (open)
     if rest.starts_with("==") {
         let eqs = rest.chars().take_while(|&c| c == '=').count();
         let tail = &rest[eqs..];
         if tail.starts_with('>') {
             cur.pos += eqs + 1;
             return Some(EdgeKind::Thick);
+        }
+        if eqs >= 3 {
+            cur.pos += eqs;
+            return Some(EdgeKind::ThickOpen);
         }
         return None;
     }
@@ -919,6 +1019,55 @@ mod tests {
             .style
             .fill
             .is_some());
+    }
+
+    #[test]
+    fn fanout_creates_cartesian_edges() {
+        // A --> B & C: two edges. Chained: B & C --> D adds two more.
+        let g = parse("flowchart TD\nA --> B & C --> D\n").unwrap();
+        assert_eq!(g.nodes.len(), 4);
+        assert_eq!(g.edges.len(), 4);
+        // Both sides can be lists.
+        let g = parse("A & B --> C & D").unwrap();
+        assert_eq!(g.edges.len(), 4);
+        // Fan-out carries the label to every generated edge.
+        let g = parse("A -->|x| B & C").unwrap();
+        assert!(g.edges.iter().all(|e| e.label.as_deref() == Some("x")));
+    }
+
+    #[test]
+    fn inline_edge_labels_and_new_link_types() {
+        let g = parse(
+            "A -- hello --> B\nB -. maybe .- C\nC == loud ==> D\nD --- E\nE -.- F\nF === G\nG ~~~ H\n",
+        )
+        .unwrap();
+        let e = &g.edges;
+        assert_eq!(e[0].label.as_deref(), Some("hello"));
+        assert_eq!(e[0].kind, EdgeKind::Arrow);
+        assert_eq!(e[1].label.as_deref(), Some("maybe"));
+        assert_eq!(e[1].kind, EdgeKind::DottedOpen);
+        assert_eq!(e[2].label.as_deref(), Some("loud"));
+        assert_eq!(e[2].kind, EdgeKind::Thick);
+        assert_eq!(e[3].kind, EdgeKind::Open);
+        assert_eq!(e[4].kind, EdgeKind::DottedOpen);
+        assert_eq!(e[5].kind, EdgeKind::ThickOpen);
+        assert_eq!(e[6].kind, EdgeKind::Invisible);
+        // Invisible links are layout-only: not drawn in the SVG
+        // (edge paths are standalone lines; the arrow marker in
+        // <defs> doesn't count).
+        let svg = crate::render_svg("A ~~~ B").unwrap();
+        assert_eq!(
+            svg.lines().filter(|l| l.starts_with("<path d=")).count(),
+            0,
+            "invisible edge must not be drawn"
+        );
+        // ...but it still ranks the layout: B ends up below A.
+        let g = parse("A ~~~ B").unwrap();
+        let s = crate::scene::scene(&g);
+        assert!(s.nodes[1].y > s.nodes[0].y, "invisible link still layers");
+        // Unclosed inline label errors with a line number.
+        let err = parse("A -- oops -> B").unwrap_err();
+        assert!(err.message.contains("never closed"), "{}", err.message);
     }
 
     #[test]
