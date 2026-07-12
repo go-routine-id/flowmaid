@@ -19,10 +19,11 @@ const MARGIN: f64 = 28.0;
 /// Gap between parallel edges (connecting the same node pair).
 const PARALLEL_GAP: f64 = 16.0;
 
-const EDGE_COLOR: &str = "#44507a";
-const NODE_FILL: &str = "#eef1fb";
-const NODE_STROKE: &str = "#5b6dc0";
-const TEXT_COLOR: &str = "#232840";
+pub(crate) const EDGE_COLOR: &str = "#44507a";
+pub(crate) const NODE_FILL: &str = "#eef1fb";
+pub(crate) const NODE_STROKE: &str = "#5b6dc0";
+pub(crate) const TEXT_COLOR: &str = "#232840";
+pub(crate) const LABEL_BORDER: &str = "#d5d9ec";
 
 /// Node with final position & size. Centre at (x, y).
 #[derive(Debug, Clone)]
@@ -65,6 +66,11 @@ pub fn scene(g: &Graph) -> Scene {
 /// nodes whose size doesn't come from the label (ER entity tables,
 /// icon nodes, ...).
 pub fn scene_sized(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
+    assert_eq!(
+        sizes.len(),
+        g.nodes.len(),
+        "number of sizes must match number of nodes"
+    );
     let lo = layout_sized(g, sizes);
 
     // Breadth extents per layer, used by back-edges to route
@@ -191,12 +197,22 @@ pub fn scene_sized(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
 /// diagram doesn't "swim" while dragging; `to_svg` handles
 /// translation at export time.
 pub fn route(g: &Graph, centers: &[(f64, f64)]) -> Scene {
+    let sizes: Vec<(f64, f64)> = g.nodes.iter().map(intrinsic_size).collect();
+    route_sized(g, centers, &sizes)
+}
+
+/// Same as [`route`] but with caller-provided node sizes.
+pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> Scene {
     assert_eq!(
         centers.len(),
         g.nodes.len(),
         "number of positions must match number of nodes"
     );
-    let sizes: Vec<(f64, f64)> = g.nodes.iter().map(intrinsic_size).collect();
+    assert_eq!(
+        sizes.len(),
+        g.nodes.len(),
+        "number of sizes must match number of nodes"
+    );
     let placed: Vec<Placed> = (0..g.nodes.len())
         .map(|i| Placed {
             b: centers[i].0,
@@ -272,22 +288,12 @@ pub fn to_svg(sc: &Scene) -> String {
     let t = |p: (f64, f64)| (p.0 + tx, p.1 + ty);
 
     let mut s = String::new();
-    s.push_str(&format!(
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{w:.0}\" height=\"{h:.0}\" \
-         viewBox=\"0 0 {w:.0} {h:.0}\" font-family=\"Helvetica, Arial, sans-serif\" \
-         font-size=\"14\">\n",
-        w = width,
-        h = height
-    ));
+    svg_open(&mut s, width, height, 14);
     s.push_str(&format!(
         "<defs><marker id=\"arrow\" viewBox=\"0 0 10 10\" refX=\"8.5\" refY=\"5\" \
          markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\">\
          <path d=\"M 0 1 L 9 5 L 0 9 z\" fill=\"{}\"/></marker></defs>\n",
         EDGE_COLOR
-    ));
-    s.push_str(&format!(
-        "<rect width=\"{:.0}\" height=\"{:.0}\" fill=\"#ffffff\"/>\n",
-        width, height
     ));
 
     let mut edge_labels = String::new();
@@ -310,22 +316,7 @@ pub fn to_svg(sc: &Scene) -> String {
             EDGE_COLOR, sw, dash, marker
         ));
         if let Some((text, m, w)) = &e.label {
-            let qm = t(*m);
-            edge_labels.push_str(&format!(
-                "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"20\" rx=\"4\" \
-                 fill=\"#ffffff\" stroke=\"#d5d9ec\"/>\n",
-                qm.0 - w / 2.0,
-                qm.1 - 10.0,
-                w
-            ));
-            edge_labels.push_str(&format!(
-                "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"middle\" \
-                 fill=\"{}\">{}</text>\n",
-                qm.0,
-                qm.1,
-                TEXT_COLOR,
-                escape(text)
-            ));
+            svg_label_box(&mut edge_labels, text, t(*m), *w);
         }
     }
 
@@ -652,6 +643,44 @@ fn cubic_mid(p0: (f64, f64), c1: (f64, f64), c2: (f64, f64), p3: (f64, f64)) -> 
         (p0.0 + 3.0 * c1.0 + 3.0 * c2.0 + p3.0) / 8.0,
         (p0.1 + 3.0 * c1.1 + 3.0 * c2.1 + p3.1) / 8.0,
     )
+}
+
+/// Opening `<svg>` tag + white background, shared by every SVG writer.
+pub(crate) fn svg_open(s: &mut String, width: f64, height: f64, font_size: u32) {
+    s.push_str(&format!(
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{w:.0}\" height=\"{h:.0}\" \
+         viewBox=\"0 0 {w:.0} {h:.0}\" font-family=\"Helvetica, Arial, sans-serif\" \
+         font-size=\"{fs}\">\n",
+        w = width,
+        h = height,
+        fs = font_size
+    ));
+    s.push_str(&format!(
+        "<rect width=\"{:.0}\" height=\"{:.0}\" fill=\"#ffffff\"/>\n",
+        width, height
+    ));
+}
+
+/// White label box with centred text — used for flowchart edge
+/// labels and ER relationship labels alike. `center` is in final
+/// (already translated) coordinates.
+pub(crate) fn svg_label_box(s: &mut String, text: &str, center: (f64, f64), box_w: f64) {
+    s.push_str(&format!(
+        "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"20\" rx=\"4\" \
+         fill=\"#ffffff\" stroke=\"{}\"/>\n",
+        center.0 - box_w / 2.0,
+        center.1 - 10.0,
+        box_w,
+        LABEL_BORDER
+    ));
+    s.push_str(&format!(
+        "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"middle\" \
+         fill=\"{}\">{}</text>\n",
+        center.0,
+        center.1,
+        TEXT_COLOR,
+        escape(text)
+    ));
 }
 
 pub(crate) fn escape(s: &str) -> String {

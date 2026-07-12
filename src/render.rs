@@ -12,7 +12,7 @@ pub fn render(g: &Graph) -> String {
 /// Render an Entity-Relationship diagram (tables + crow's foot).
 /// Geometry & serialisation live in the `er` module.
 pub fn render_er(d: &ErDiagram) -> String {
-    crate::er::to_svg(d)
+    crate::er::to_svg(&crate::er::scene(d))
 }
 
 #[cfg(test)]

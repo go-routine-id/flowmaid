@@ -87,6 +87,11 @@ pub fn layout(g: &Graph) -> LayoutResult {
 /// height in pixels) — used by pipelines where node size doesn't
 /// come from the label, e.g. ER entity tables or icon nodes.
 pub fn layout_sized(g: &Graph, sizes: &[(f64, f64)]) -> LayoutResult {
+    assert_eq!(
+        sizes.len(),
+        g.nodes.len(),
+        "number of sizes must match number of nodes"
+    );
     let n = g.nodes.len();
     let mut adj: Vec<Vec<(usize, usize)>> = vec![Vec::new(); n];
     for (ei, e) in g.edges.iter().enumerate() {
