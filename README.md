@@ -4,7 +4,37 @@
 [![docs.rs](https://docs.rs/flowmaid/badge.svg)](https://docs.rs/flowmaid)
 [![license](https://img.shields.io/crates/l/flowmaid.svg)](LICENSE)
 
-A small Mermaid-like diagram engine written in pure std Rust with zero external dependencies. Takes Mermaid-syntax text and produces SVG. Supports flowcharts (`flowchart` / `graph`) and Entity-Relationship diagrams (`erDiagram`).
+A small Mermaid-like diagram engine written in pure std Rust with zero external dependencies. Takes Mermaid-syntax text and produces SVG — or live, draggable geometry for interactive apps.
+
+**Try it in your browser:** https://go-routine-id.github.io/flowmaid-web/ · Desktop editor: [flowmaid-desktop](https://github.com/go-routine-id/flowmaid-desktop)
+
+## Mermaid parity roadmap
+
+The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with all the details in [issue #10](https://github.com/go-routine-id/flowmaid/issues/10) — contributions welcome, every item has its own issue.
+
+**Diagram types**
+
+- [x] `flowchart` / `graph` — TD/LR/RL/BT, 5 shapes, 4 link types + labels, chains, cycles, self-loops, parallel edges
+- [x] `erDiagram` — full crow's foot cardinalities, identifying/non-identifying lines, entity attribute tables
+- [ ] `classDiagram` — [#5](https://github.com/go-routine-id/flowmaid/issues/5)
+- [ ] `sequenceDiagram` — [#6](https://github.com/go-routine-id/flowmaid/issues/6)
+- [ ] `stateDiagram-v2` — [#7](https://github.com/go-routine-id/flowmaid/issues/7)
+- [ ] `journey` — [#8](https://github.com/go-routine-id/flowmaid/issues/8)
+- [ ] `pie` — [#9](https://github.com/go-routine-id/flowmaid/issues/9)
+- [ ] `gantt` · `gitGraph` · `mindmap` · `timeline` · `quadrantChart` · more — see the board
+
+**Flowchart features**
+
+- [x] `subgraph` — nesting, titles, per-block `direction` *(v0.5.0)*
+- [x] `style` / `classDef` / `class` / `:::` custom colors *(v0.4.0)*
+- [x] Semantic color theme (shape-based) + stable ER accent palette
+- [x] Interactive scene API — drag nodes, edges re-route live (`scene`, `route`, `box_edge_bezier`)
+- [x] Explicit "not supported yet" errors for every known mermaid header
+- [ ] Fan-out `A --> B & C` + extra link types — [#3](https://github.com/go-routine-id/flowmaid/issues/3)
+- [ ] More node shapes (cylinder, subroutine, hexagon, …) — [#4](https://github.com/go-routine-id/flowmaid/issues/4)
+- [ ] Edges to/from subgraphs, `click` interactions, frontmatter themes — see the board
+
+**Why flowmaid?** Zero dependencies, `wasm32` out of the box (the whole engine is a ~166 KB wasm bundle — mermaid.js is ~2.5 MB), sub-millisecond renders, line-numbered parse errors, and one geometry source shared by SVG export and interactive canvases.
 
 ## Installation
 
