@@ -46,10 +46,25 @@ pub struct SceneEdge {
     pub label: Option<(String, (f64, f64), f64)>,
 }
 
+/// A rendered `subgraph` box. `(x, y)` is the TOP-LEFT corner
+/// (unlike nodes, which are centre-based) since clusters are drawn
+/// as container rectangles. Ordered outermost-first for painting.
+#[derive(Debug, Clone)]
+pub struct SceneCluster {
+    pub x: f64,
+    pub y: f64,
+    pub w: f64,
+    pub h: f64,
+    pub title: String,
+    /// Nesting depth, 0 = outermost.
+    pub depth: usize,
+}
+
 #[derive(Debug, Clone)]
 pub struct Scene {
     pub nodes: Vec<SceneNode>,
     pub edges: Vec<SceneEdge>,
+    pub clusters: Vec<SceneCluster>,
     pub width: f64,
     pub height: f64,
 }
@@ -71,6 +86,15 @@ pub fn scene_sized(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
         g.nodes.len(),
         "number of sizes must match number of nodes"
     );
+    if g.subgraphs.is_empty() {
+        scene_flat(g, sizes)
+    } else {
+        scene_clustered(g, sizes)
+    }
+}
+
+/// The classic single-level pipeline (no subgraphs).
+fn scene_flat(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
     let lo = layout_sized(g, sizes);
 
     // Breadth extents per layer, used by back-edges to route
@@ -187,9 +211,258 @@ pub fn scene_sized(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
     Scene {
         nodes,
         edges,
+        clusters: Vec::new(),
         width,
         height,
     }
+}
+
+/// Extra headroom above a subgraph's content for its title strip.
+const SUB_HEADER: f64 = 26.0;
+/// Padding when re-wrapping cluster boxes around dragged members.
+const SUB_PAD: f64 = 14.0;
+
+/// One laid-out subtree during hierarchical layout: node centres
+/// and cluster boxes in coordinates local to the fragment.
+struct Frag {
+    w: f64,
+    h: f64,
+    nodes: Vec<(usize, f64, f64)>,
+    clusters: Vec<(usize, f64, f64, f64, f64, usize)>, // sub, x, y, w, h, depth
+}
+
+/// Hierarchical layout for graphs with subgraphs: every subgraph
+/// lays out its own members (recursively), then appears in its
+/// parent as one supernode sized to fit. Edge geometry uses the
+/// free-position router, so cross-cluster edges attach to the real
+/// nodes rather than the cluster boxes.
+fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
+    let nsub = g.subgraphs.len();
+    let mut child_subs: Vec<Vec<usize>> = vec![Vec::new(); nsub];
+    let mut root_subs: Vec<usize> = Vec::new();
+    for (i, s) in g.subgraphs.iter().enumerate() {
+        match s.parent {
+            Some(p) => child_subs[p].push(i),
+            None => root_subs.push(i),
+        }
+    }
+    let mut owner: Vec<Option<usize>> = vec![None; g.nodes.len()];
+    for (i, s) in g.subgraphs.iter().enumerate() {
+        for &n in &s.nodes {
+            owner[n] = Some(i);
+        }
+    }
+
+    let frag = layout_frag(g, sizes, None, &root_subs, &child_subs, &owner, g.direction);
+
+    // Absolute node centres (root-local == world, pre-normalisation).
+    let mut centers = vec![(0.0, 0.0); g.nodes.len()];
+    for &(i, x, y) in &frag.nodes {
+        centers[i] = (x, y);
+    }
+    let placed: Vec<Placed> = (0..g.nodes.len())
+        .map(|i| Placed {
+            b: centers[i].0,
+            l: centers[i].1,
+            bsize: sizes[i].0,
+            lsize: sizes[i].1,
+            layer: 0,
+        })
+        .collect();
+
+    // Edge geometry: free-position routing (position-aware sides),
+    // identical to what `route` uses after a drag.
+    let offs = parallel_offsets(g);
+    let mut edges: Vec<SceneEdge> = Vec::with_capacity(g.edges.len());
+    for (e, off) in g.edges.iter().zip(offs) {
+        let pts = free_edge(
+            &placed[e.from],
+            &placed[e.to],
+            g.nodes[e.from].shape,
+            g.nodes[e.to].shape,
+            e.from == e.to,
+            off,
+        );
+        let label = e.label.as_ref().map(|l| {
+            (
+                l.clone(),
+                cubic_mid(pts[0], pts[1], pts[2], pts[3]),
+                text_width(l) + 14.0,
+            )
+        });
+        edges.push(SceneEdge {
+            bezier: pts,
+            kind: e.kind,
+            label,
+        });
+    }
+
+    // Canvas bbox over nodes, cluster boxes, curves, and labels;
+    // then translate everything so content starts at MARGIN.
+    let mut bb = Bbox::new();
+    for i in 0..g.nodes.len() {
+        bb.add(centers[i].0 - sizes[i].0 / 2.0, centers[i].1 - sizes[i].1 / 2.0);
+        bb.add(centers[i].0 + sizes[i].0 / 2.0, centers[i].1 + sizes[i].1 / 2.0);
+    }
+    for &(_, x, y, w, h, _) in &frag.clusters {
+        bb.add(x, y);
+        bb.add(x + w, y + h);
+    }
+    for e in &edges {
+        for &(x, y) in &e.bezier {
+            bb.add(x, y);
+        }
+        if let Some((_, m, w)) = &e.label {
+            bb.add(m.0 - w / 2.0, m.1 - 10.0);
+            bb.add(m.0 + w / 2.0, m.1 + 10.0);
+        }
+    }
+    let (minx, maxx, miny, maxy) = bb.finish();
+    let (tx, ty) = (MARGIN - minx, MARGIN - miny);
+
+    let nodes: Vec<SceneNode> = g
+        .nodes
+        .iter()
+        .enumerate()
+        .map(|(i, n)| SceneNode {
+            x: centers[i].0 + tx,
+            y: centers[i].1 + ty,
+            w: sizes[i].0,
+            h: sizes[i].1,
+            shape: n.shape,
+            label: n.label.clone(),
+            style: n.style.clone(),
+        })
+        .collect();
+    for e in edges.iter_mut() {
+        for p in e.bezier.iter_mut() {
+            *p = (p.0 + tx, p.1 + ty);
+        }
+        if let Some((_, m, _)) = &mut e.label {
+            *m = (m.0 + tx, m.1 + ty);
+        }
+    }
+    let mut clusters: Vec<SceneCluster> = frag
+        .clusters
+        .iter()
+        .map(|&(sub, x, y, w, h, depth)| SceneCluster {
+            x: x + tx,
+            y: y + ty,
+            w,
+            h,
+            title: g.subgraphs[sub].title.clone(),
+            depth,
+        })
+        .collect();
+    clusters.sort_by_key(|c| c.depth); // outermost first for painting
+
+    Scene {
+        nodes,
+        edges,
+        clusters,
+        width: (maxx - minx) + 2.0 * MARGIN,
+        height: (maxy - miny) + 2.0 * MARGIN,
+    }
+}
+
+/// Lay out one cluster level (`level == None` for the root):
+/// recurse into child subgraphs, then run the flat pipeline over
+/// this level's direct nodes plus one supernode per child.
+fn layout_frag(
+    g: &Graph,
+    sizes: &[(f64, f64)],
+    level: Option<usize>,
+    subs_here: &[usize],
+    child_subs: &[Vec<usize>],
+    owner: &[Option<usize>],
+    inherited_dir: Direction,
+) -> Frag {
+    let dir = level
+        .and_then(|l| g.subgraphs[l].direction)
+        .unwrap_or(inherited_dir);
+
+    let child_frags: Vec<(usize, Frag)> = subs_here
+        .iter()
+        .map(|&cs| {
+            (
+                cs,
+                layout_frag(g, sizes, Some(cs), &child_subs[cs], child_subs, owner, dir),
+            )
+        })
+        .collect();
+
+    let direct: Vec<usize> = match level {
+        Some(l) => g.subgraphs[l].nodes.clone(),
+        None => (0..g.nodes.len()).filter(|&v| owner[v].is_none()).collect(),
+    };
+
+    // Synthetic single-level graph: direct nodes, then supernodes.
+    let mut syn = Graph::default();
+    syn.direction = dir;
+    let mut slot_of_node: HashMap<usize, usize> = HashMap::new();
+    for (k, &v) in direct.iter().enumerate() {
+        syn.ensure_node(&format!("n{}", k), None, Some(Shape::Rect));
+        slot_of_node.insert(v, k);
+    }
+    let mut slot_of_sub: HashMap<usize, usize> = HashMap::new();
+    for (k, (cs, _)) in child_frags.iter().enumerate() {
+        syn.ensure_node(&format!("s{}", k), None, Some(Shape::Rect));
+        slot_of_sub.insert(*cs, direct.len() + k);
+    }
+    let mut syn_sizes: Vec<(f64, f64)> = direct.iter().map(|&v| sizes[v]).collect();
+    syn_sizes.extend(child_frags.iter().map(|(_, f)| (f.w, f.h + SUB_HEADER)));
+
+    // Project every real edge onto this level's entities: a node
+    // maps to itself when it lives here, or to the child supernode
+    // whose subtree contains it; edges that don't cross this level
+    // are handled elsewhere (deeper or higher).
+    let project = |v: usize| -> Option<usize> {
+        if owner[v] == level {
+            return slot_of_node.get(&v).copied();
+        }
+        let mut s = owner[v];
+        while let Some(si) = s {
+            if g.subgraphs[si].parent == level {
+                return slot_of_sub.get(&si).copied();
+            }
+            s = g.subgraphs[si].parent;
+        }
+        None
+    };
+    for e in &g.edges {
+        if let (Some(sa), Some(sb)) = (project(e.from), project(e.to)) {
+            if sa != sb {
+                syn.add_edge(sa, sb, None, EdgeKind::Arrow);
+            }
+        }
+    }
+
+    let sc = scene_flat(&syn, &syn_sizes);
+
+    let mut frag = Frag {
+        w: sc.width,
+        h: sc.height,
+        nodes: Vec::new(),
+        clusters: Vec::new(),
+    };
+    for (k, &v) in direct.iter().enumerate() {
+        frag.nodes.push((v, sc.nodes[k].x, sc.nodes[k].y));
+    }
+    for (k, (cs, cf)) in child_frags.into_iter().enumerate() {
+        let slot = &sc.nodes[direct.len() + k];
+        let (bw, bh) = (cf.w, cf.h + SUB_HEADER);
+        let x0 = slot.x - bw / 2.0;
+        let y0 = slot.y - bh / 2.0;
+        for (i, x, y) in cf.nodes {
+            frag.nodes.push((i, x + x0, y + y0 + SUB_HEADER));
+        }
+        for (sub, x, y, w, h, depth) in cf.clusters {
+            frag.clusters
+                .push((sub, x + x0, y + y0 + SUB_HEADER, w, h, depth + 1));
+        }
+        frag.clusters.push((cs, x0, y0, bw, bh, 0));
+    }
+    frag
 }
 
 /// Re-route edges for custom node positions (e.g. after a drag).
@@ -266,15 +539,78 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
         })
         .collect();
 
+    let clusters = route_clusters(g, &nodes);
     let mut bb = Bbox::new();
-    grow_scene(&mut bb, &nodes, &edges);
+    grow_scene(&mut bb, &nodes, &edges, &clusters);
     let (_, maxx, _, maxy) = bb.finish();
     Scene {
         nodes,
         edges,
+        clusters,
         width: maxx + MARGIN,
         height: maxy + MARGIN,
     }
+}
+
+/// Cluster boxes wrapped around the CURRENT node positions —
+/// computed deepest-first so parents enclose their children's
+/// boxes; returned outermost-first for painting.
+fn route_clusters(g: &Graph, nodes: &[SceneNode]) -> Vec<SceneCluster> {
+    let nsub = g.subgraphs.len();
+    if nsub == 0 {
+        return Vec::new();
+    }
+    let mut depth = vec![0usize; nsub];
+    for i in 0..nsub {
+        let mut p = g.subgraphs[i].parent;
+        while let Some(pi) = p {
+            depth[i] += 1;
+            p = g.subgraphs[pi].parent;
+        }
+    }
+    let mut order: Vec<usize> = (0..nsub).collect();
+    order.sort_by_key(|&i| std::cmp::Reverse(depth[i]));
+    let mut boxes: Vec<Option<(f64, f64, f64, f64)>> = vec![None; nsub];
+    for &i in &order {
+        let mut bb = Bbox::new();
+        for &v in &g.subgraphs[i].nodes {
+            let n = &nodes[v];
+            bb.add(n.x - n.w / 2.0, n.y - n.h / 2.0);
+            bb.add(n.x + n.w / 2.0, n.y + n.h / 2.0);
+        }
+        for (j, s) in g.subgraphs.iter().enumerate() {
+            if s.parent == Some(i) {
+                if let Some((x, y, w, h)) = boxes[j] {
+                    bb.add(x, y);
+                    bb.add(x + w, y + h);
+                }
+            }
+        }
+        if !bb.0.is_finite() {
+            continue; // empty subgraph: nothing to wrap
+        }
+        let (minx, maxx, miny, maxy) = bb.finish();
+        boxes[i] = Some((
+            minx - SUB_PAD,
+            miny - SUB_PAD - SUB_HEADER,
+            (maxx - minx) + 2.0 * SUB_PAD,
+            (maxy - miny) + 2.0 * SUB_PAD + SUB_HEADER,
+        ));
+    }
+    let mut out: Vec<SceneCluster> = (0..nsub)
+        .filter_map(|i| {
+            boxes[i].map(|(x, y, w, h)| SceneCluster {
+                x,
+                y,
+                w,
+                h,
+                title: g.subgraphs[i].title.clone(),
+                depth: depth[i],
+            })
+        })
+        .collect();
+    out.sort_by_key(|c| c.depth);
+    out
 }
 
 /// Cubic bezier for a single edge between two freely-positioned
@@ -316,7 +652,7 @@ pub fn box_edge_bezier(
 /// translated to start at MARGIN, so negative coordinates are safe.
 pub fn to_svg(sc: &Scene) -> String {
     let mut bb = Bbox::new();
-    grow_scene(&mut bb, &sc.nodes, &sc.edges);
+    grow_scene(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
     let (minx, maxx, miny, maxy) = bb.finish();
     let tx = MARGIN - minx;
     let ty = MARGIN - miny;
@@ -332,6 +668,23 @@ pub fn to_svg(sc: &Scene) -> String {
          <path d=\"M 0 1 L 9 5 L 0 9 z\" fill=\"{}\"/></marker></defs>\n",
         EDGE_COLOR
     ));
+
+    // Cluster boxes first (outermost-first), behind everything.
+    for c in &sc.clusters {
+        let (x, y) = t((c.x, c.y));
+        s.push_str(&format!(
+            "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" rx=\"8\" \
+             fill=\"#f7f8fd\" stroke=\"#c9cfe8\" stroke-width=\"1.4\"/>\n",
+            x, y, c.w, c.h
+        ));
+        s.push_str(&format!(
+            "<text x=\"{:.1}\" y=\"{:.1}\" font-size=\"12\" font-weight=\"bold\" \
+             fill=\"#6a7086\">{}</text>\n",
+            x + 10.0,
+            y + 17.0,
+            escape(&c.title)
+        ));
+    }
 
     let mut edge_labels = String::new();
     for e in &sc.edges {
@@ -455,7 +808,11 @@ impl Bbox {
     }
 }
 
-fn grow_scene(bb: &mut Bbox, nodes: &[SceneNode], edges: &[SceneEdge]) {
+fn grow_scene(bb: &mut Bbox, nodes: &[SceneNode], edges: &[SceneEdge], clusters: &[SceneCluster]) {
+    for c in clusters {
+        bb.add(c.x, c.y);
+        bb.add(c.x + c.w, c.y + c.h);
+    }
     for n in nodes {
         bb.add(n.x - n.w / 2.0, n.y - n.h / 2.0);
         bb.add(n.x + n.w / 2.0, n.y + n.h / 2.0);
@@ -762,6 +1119,72 @@ mod tests {
         // Self-loop variant returns a stub on the node's right side.
         let lp = box_edge_bezier((a.x, a.y), (a.w, a.h), (a.x, a.y), (a.w, a.h), 0.0, true);
         assert!(lp[1].0 > a.x + a.w / 2.0, "loop must extend right of the box");
+    }
+
+    fn cluster_contains(c: &SceneCluster, n: &SceneNode) -> bool {
+        n.x - n.w / 2.0 >= c.x
+            && n.y - n.h / 2.0 >= c.y
+            && n.x + n.w / 2.0 <= c.x + c.w
+            && n.y + n.h / 2.0 <= c.y + c.h
+    }
+
+    const NESTED: &str = "flowchart TD\n\
+        In[Request] --> A1\n\
+        subgraph backend [Backend Services]\n\
+        A1[API] --> W1\n\
+        subgraph workers\n\
+        W1[Worker 1] --> W2[Worker 2]\n\
+        end\n\
+        end\n\
+        W2 --> Out[Response]\n";
+
+    #[test]
+    fn subgraph_scene_wraps_members_and_nests() {
+        let g = parse(NESTED).unwrap();
+        let s = scene(&g);
+        assert_eq!(s.clusters.len(), 2);
+        // Outermost first for painting.
+        assert!(s.clusters[0].depth <= s.clusters[1].depth);
+        let outer = &s.clusters[0];
+        let inner = &s.clusters[1];
+        assert_eq!(outer.title, "Backend Services");
+        // Inner box fully inside outer box.
+        assert!(
+            inner.x >= outer.x
+                && inner.y >= outer.y
+                && inner.x + inner.w <= outer.x + outer.w
+                && inner.y + inner.h <= outer.y + outer.h,
+            "nested cluster must sit inside its parent"
+        );
+        // Members inside their boxes; outsiders outside the outer box.
+        for (i, n) in s.nodes.iter().enumerate() {
+            let id = g.nodes[i].id.as_str();
+            match id {
+                "W1" | "W2" => assert!(cluster_contains(inner, n), "{} in workers", id),
+                "A1" => assert!(cluster_contains(outer, n), "A1 in backend"),
+                _ => assert!(!cluster_contains(outer, n), "{} outside backend", id),
+            }
+        }
+        // Everything inside the canvas.
+        for c in &s.clusters {
+            assert!(c.x >= 0.0 && c.y >= 0.0);
+            assert!(c.x + c.w <= s.width && c.y + c.h <= s.height);
+        }
+        // Export contains the titled boxes.
+        let svg = to_svg(&s);
+        assert!(svg.contains("Backend Services") && svg.contains("workers"));
+    }
+
+    #[test]
+    fn dragging_a_member_pulls_its_cluster_along() {
+        let g = parse(NESTED).unwrap();
+        let s0 = scene(&g);
+        let mut pos: Vec<(f64, f64)> = s0.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let w2 = g.node_index("W2").unwrap();
+        pos[w2].0 += 600.0;
+        let s1 = route(&g, &pos);
+        let inner = s1.clusters.iter().find(|c| c.title == "workers").unwrap();
+        assert!(cluster_contains(inner, &s1.nodes[w2]), "cluster must follow the drag");
     }
 
     #[test]

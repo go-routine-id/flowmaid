@@ -17,8 +17,19 @@
 
 use crate::model::{
     Attr, Card, Direction, Document, EdgeKind, ErDiagram, Graph, Key, NodeStyle, Relation, Shape,
+    Subgraph,
 };
 use std::collections::HashMap;
+
+fn parse_direction(s: &str, lineno: usize) -> Result<Direction, ParseError> {
+    match s.trim().to_uppercase().as_str() {
+        "TD" | "TB" => Ok(Direction::TD),
+        "LR" => Ok(Direction::LR),
+        "RL" => Ok(Direction::RL),
+        "BT" => Ok(Direction::BT),
+        other => Err(err(lineno, format!("unknown direction: '{}'", other))),
+    }
+}
 
 #[derive(Debug)]
 pub struct ParseError {
@@ -130,6 +141,8 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
     let mut class_defs: HashMap<String, NodeStyle> = HashMap::new();
     let mut assigns: Vec<(usize, String)> = Vec::new(); // (node, class)
     let mut styles: Vec<(usize, NodeStyle)> = Vec::new(); // explicit `style` lines
+    // Stack of open `subgraph` blocks; new nodes join the top one.
+    let mut sub_stack: Vec<usize> = Vec::new();
 
     for (i, raw) in source.lines().enumerate() {
         let lineno = i + 1;
@@ -163,6 +176,38 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
             }
             // No header: use the default direction (TD) and
             // treat this line as a regular statement.
+        }
+
+        // Subgraph blocks: `subgraph id [Title]` ... `end`, nestable,
+        // with an optional `direction XX` line inside.
+        if let Some(rest) = strip_keyword(line, "subgraph") {
+            let (id, title) = parse_subgraph_header(rest.trim(), lineno)?;
+            let idx = g.subgraphs.len();
+            g.subgraphs.push(Subgraph {
+                id,
+                title,
+                nodes: Vec::new(),
+                parent: sub_stack.last().copied(),
+                direction: None,
+            });
+            sub_stack.push(idx);
+            continue;
+        }
+        if line == "end" && !sub_stack.is_empty() {
+            sub_stack.pop();
+            continue;
+        }
+        if let Some(rest) = strip_keyword(line, "direction") {
+            let Some(&cur) = sub_stack.last() else {
+                return Err(err(
+                    lineno,
+                    "'direction' is only valid inside a subgraph — use the \
+                     flowchart header for the top-level direction"
+                        .to_string(),
+                ));
+            };
+            g.subgraphs[cur].direction = Some(parse_direction(rest, lineno)?);
+            continue;
         }
 
         // Styling statements (`style A fill:...`, `classDef name ...`,
@@ -200,7 +245,16 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
             continue;
         }
 
-        parse_statement(&mut g, line, lineno, &mut assigns)?;
+        parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack)?;
+    }
+    if let Some(&open) = sub_stack.last() {
+        return Err(err(
+            source.lines().count(),
+            format!(
+                "subgraph '{}' is never closed with 'end'",
+                g.subgraphs[open].id
+            ),
+        ));
     }
 
     // Resolve styling: classDef layers first, explicit `style`
@@ -288,14 +342,34 @@ fn strip_keyword<'a>(line: &'a str, kw: &str) -> Option<&'a str> {
     }
 }
 
+/// `subgraph one`, `subgraph one [Pretty Title]`, or a bare
+/// multi-word title (`subgraph My group` → id == title).
+fn parse_subgraph_header(rest: &str, lineno: usize) -> Result<(String, String), ParseError> {
+    if rest.is_empty() {
+        return Err(err(lineno, "subgraph needs an id or title".to_string()));
+    }
+    if let Some(bi) = rest.find('[') {
+        let id = rest[..bi].trim();
+        let inner = rest[bi + 1..]
+            .strip_suffix(']')
+            .ok_or_else(|| err(lineno, "subgraph title '[' is never closed".to_string()))?;
+        if id.is_empty() {
+            return Err(err(lineno, "subgraph title needs an id before '['".to_string()));
+        }
+        return Ok((id.to_string(), clean_label(inner)));
+    }
+    Ok((rest.to_string(), rest.to_string()))
+}
+
 fn parse_statement(
     g: &mut Graph,
     line: &str,
     lineno: usize,
     assigns: &mut Vec<(usize, String)>,
+    subs: &[usize],
 ) -> Result<(), ParseError> {
     let mut cur = Cur::new(line);
-    let mut prev = parse_node(&mut cur, g, lineno, assigns)?;
+    let mut prev = parse_node(&mut cur, g, lineno, assigns, subs)?;
     loop {
         cur.skip_ws();
         if cur.at_end() {
@@ -307,7 +381,7 @@ fn parse_statement(
             if cur.at_end() {
                 break;
             }
-            prev = parse_node(&mut cur, g, lineno, assigns)?;
+            prev = parse_node(&mut cur, g, lineno, assigns, subs)?;
             continue;
         }
         let kind = parse_edge_op(&mut cur).ok_or_else(|| {
@@ -325,7 +399,7 @@ fn parse_statement(
         } else {
             None
         };
-        let next = parse_node(&mut cur, g, lineno, assigns)?;
+        let next = parse_node(&mut cur, g, lineno, assigns, subs)?;
         g.add_edge(prev, next, label, kind);
         prev = next;
     }
@@ -337,6 +411,7 @@ fn parse_node(
     g: &mut Graph,
     lineno: usize,
     assigns: &mut Vec<(usize, String)>,
+    subs: &[usize],
 ) -> Result<usize, ParseError> {
     cur.skip_ws();
     let start = cur.pos;
@@ -374,7 +449,32 @@ fn parse_node(
         Some((s, l)) => (Some(s), Some(clean_label(&l))),
         None => (None, None),
     };
+    // An id that names an already-declared subgraph (and no real
+    // node) would silently create a duplicate box — fail clearly.
+    // Edges between subgraphs themselves are a future feature (#2).
+    if g.node_index(&id).is_none() && g.subgraphs.iter().any(|s| s.id == id) {
+        return Err(err(
+            lineno,
+            format!(
+                "'{}' is a subgraph — edges to/from a subgraph are not supported yet",
+                id
+            ),
+        ));
+    }
     let n = g.ensure_node(&id, label, shape);
+    // Mermaid semantics: mentioning a node inside a `subgraph`
+    // block claims it for that block (the canonical docs example
+    // relies on this: `c1-->a2` at top level, then `a2` inside
+    // `subgraph one` puts a2 in the box). Top-level mentions never
+    // un-claim.
+    if let Some(&owner) = subs.last() {
+        if !g.subgraphs[owner].nodes.contains(&n) {
+            for s in g.subgraphs.iter_mut() {
+                s.nodes.retain(|&m| m != n);
+            }
+            g.subgraphs[owner].nodes.push(n);
+        }
+    }
 
     // `A:::className` — inline class assignment shorthand.
     if cur.eat(":::") {
@@ -820,6 +920,46 @@ mod tests {
             .style
             .fill
             .is_some());
+    }
+
+    #[test]
+    fn subgraph_membership_nesting_titles_direction() {
+        let g = parse(
+            "flowchart TD\n\
+             In[Request] --> A1\n\
+             subgraph backend [Backend Services]\n\
+             direction LR\n\
+             A1[API] --> W1\n\
+             subgraph workers\n\
+             W1[Worker 1] --> W2[Worker 2]\n\
+             end\n\
+             end\n\
+             W2 --> Out[Response]\n",
+        )
+        .unwrap();
+        assert_eq!(g.subgraphs.len(), 2);
+        assert_eq!(g.subgraphs[0].id, "backend");
+        assert_eq!(g.subgraphs[0].title, "Backend Services");
+        assert_eq!(g.subgraphs[0].direction, Some(Direction::LR));
+        assert_eq!(g.subgraphs[1].parent, Some(0));
+        // Mermaid claim rule: A1 first appears at top level but is
+        // later mentioned inside `backend`, which claims it.
+        let a1 = g.node_index("A1").unwrap();
+        assert!(g.subgraphs[0].nodes.contains(&a1), "backend claims A1");
+        // W1 is created in `backend`, then re-mentioned inside the
+        // nested `workers` block, which claims it from its parent.
+        let w1 = g.node_index("W1").unwrap();
+        assert!(g.subgraphs[1].nodes.contains(&w1), "workers claims W1");
+        assert!(!g.subgraphs[0].nodes.contains(&w1), "and backend lets it go");
+        // A later TOP-LEVEL mention (`W2 --> Out`) never un-claims.
+        let w2 = g.node_index("W2").unwrap();
+        assert!(g.subgraphs[1].nodes.contains(&w2), "W2 stays in workers");
+        // Unclosed block errors with the subgraph's name.
+        let e = parse("flowchart TD\nsubgraph x\nA\n").unwrap_err();
+        assert!(e.message.contains("never closed"), "{}", e.message);
+        // Edge to a declared subgraph is a clear error for now.
+        let e = parse("flowchart TD\nsubgraph one\nA\nend\nB --> one\n").unwrap_err();
+        assert!(e.message.contains("subgraph"), "{}", e.message);
     }
 
     #[test]

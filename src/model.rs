@@ -100,12 +100,28 @@ pub struct Edge {
     pub kind: EdgeKind,
 }
 
+/// A `subgraph ... end` block: a titled cluster of nodes, possibly
+/// nested. Membership is by node index; nested members belong to
+/// the child, not the parent (walk `parent` links for the chain).
+#[derive(Debug, Clone)]
+pub struct Subgraph {
+    pub id: String,
+    pub title: String,
+    /// Direct member node indices.
+    pub nodes: Vec<usize>,
+    /// Enclosing subgraph, when nested.
+    pub parent: Option<usize>,
+    /// Per-subgraph flow direction (`direction LR` inside the block).
+    pub direction: Option<Direction>,
+}
+
 /// Parsed graph, ready for layout.
 #[derive(Debug, Default)]
 pub struct Graph {
     pub direction: Direction,
     pub nodes: Vec<Node>,
     pub edges: Vec<Edge>,
+    pub subgraphs: Vec<Subgraph>,
     index: HashMap<String, usize>,
 }
 
@@ -141,6 +157,11 @@ impl Graph {
             label,
             kind,
         });
+    }
+
+    /// Index of an existing node by id, without creating it.
+    pub fn node_index(&self, id: &str) -> Option<usize> {
+        self.index.get(id).copied()
     }
 }
 

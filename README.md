@@ -49,6 +49,8 @@ Node shapes: `A[text]` rectangle, `A(text)` rounded, `A([text])` stadium, `A{tex
 
 Edges: `-->` arrow, `---` open line, `-.->` dotted, `==>` thick. Edge labels are written `-->|text|`. Chains like `A --> B --> C` are supported, as are cycles (`E --> B` looping back up) and self-loops (`A --> A`).
 
+Subgraphs use mermaid's block syntax — `subgraph id [Title]` … `end` — with arbitrary nesting and an optional `direction LR` line per block (inherited from the parent otherwise). A node mentioned inside a block is claimed by it, mermaid-style, even if it first appeared elsewhere. Edges may freely cross cluster borders; edges to/from a subgraph *itself* aren't supported yet and fail with a clear error. See `examples/subgraph.mmd`.
+
 Custom colors use mermaid's styling syntax: `style A fill:#f9f,stroke:#333,stroke-width:4px,color:#fff`, reusable classes via `classDef hot fill:#ffe3e3,stroke:#e03131` + `class A,B hot` or the inline shorthand `A:::hot`. Supported properties: `fill`, `stroke`, `stroke-width`, `color` (label text); unknown properties are ignored. Unstyled nodes fall back to a semantic theme — shape determines color (stadium green, diamond amber, circle violet, ...; see the `style` module) — and ER entities cycle through a stable accent palette.
 
 Complete examples live in `examples/demo.mmd` and `examples/lr.mmd`.
@@ -110,7 +112,7 @@ A complete demo (separate crate; the engine itself stays dependency-free) shows 
 
 Already handled: the canvas is computed from the bounding box of all curve control points so self-loops and back-edges are never clipped; parallel edges (same node pair) separate automatically; long edges that align with a column of nodes bow sideways as a mitigation.
 
-Still open: text width is estimated (~character-class table) since there are no real font metrics, so very long labels or CJK can be off; the long-edge mitigation is only a heuristic — the real solution is *virtual nodes* per crossed layer; edge labels can collide with nodes on dense diagrams; escaped quotes (`\"`) inside labels aren't supported. Mermaid features that would make good next exercises: `subgraph`, fan-out `A --> B & C`, `-.-` and `--text-->` lines, cylinder shape `[( )]`, and per-node styling (`style`/`classDef`).
+Still open: text width is estimated (~character-class table) since there are no real font metrics, so very long labels or CJK can be off; the long-edge mitigation is only a heuristic — the real solution is *virtual nodes* per crossed layer; edge labels can collide with nodes on dense diagrams; escaped quotes (`\"`) inside labels aren't supported; graphs with subgraphs route all edges with the position-aware free router (no layered back-edge arcs inside clusters). The full mermaid.js parity roadmap lives in [issue #10](https://github.com/go-routine-id/flowmaid/issues/10).
 
 ## License
 
