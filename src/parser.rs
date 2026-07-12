@@ -1,12 +1,23 @@
-//! Hand-written parser for Mermaid-like flowchart syntax.
+//! Hand-written parser for Mermaid-like diagram syntax.
 //!
-//! Supported:
+//! Flowchart support:
 //! - Header:  `flowchart TD|TB|LR|RL|BT`  or  `graph ...`
 //! - Nodes:   `A`, `A[text]`, `A(text)`, `A([text])`, `A{text}`, `A((text))`
 //! - Edges:   `-->`, `---`, `-.->`, `==>`, with labels `-->|text|`
 //! - Chains:  `A --> B --> C`, `;` separator, `%%` comments
+//!
+//! Entity-Relationship support (`erDiagram` header):
+//! - Relationships: `A ||--o{ B : "label"` with the full crow's foot
+//!   cardinality tokens (`||`, `|o`/`o|`, `}o`/`o{`, `}|`/`|{`) and
+//!   identifying (`--`) / non-identifying (`..`) lines
+//! - Entity blocks: `Name { type name [PK|FK|UK] ["comment"] }`
+//!
+//! Use [`parse_document`] to accept any supported diagram type;
+//! [`parse`] stays flowchart-only for backwards compatibility.
 
-use crate::model::{Direction, EdgeKind, Graph, Shape};
+use crate::model::{
+    Attr, Card, Direction, Document, EdgeKind, ErDiagram, Graph, Key, Relation, Shape,
+};
 
 #[derive(Debug)]
 pub struct ParseError {
@@ -84,6 +95,32 @@ fn clean_label(s: &str) -> String {
     }
 }
 
+/// Parse any supported Mermaid diagram type, dispatching on the
+/// header line: `flowchart`/`graph` (or none) -> flowchart,
+/// `erDiagram` -> ER. Other known Mermaid types produce an explicit
+/// "not supported yet" error.
+pub fn parse_document(source: &str) -> Result<Document, ParseError> {
+    for (i, raw) in source.lines().enumerate() {
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with("%%") {
+            continue;
+        }
+        return match diagram_type(line) {
+            Some("erDiagram") => parse_er(source, i + 1).map(Document::Er),
+            Some(t) => Err(err(
+                i + 1,
+                format!(
+                    "diagram type '{}' is not supported yet (supported: flowchart, graph, erDiagram)",
+                    t
+                ),
+            )),
+            None => parse(source).map(Document::Flowchart),
+        };
+    }
+    Ok(Document::Flowchart(Graph::default()))
+}
+
+/// Parse a flowchart. For ER diagrams use [`parse_document`].
 pub fn parse(source: &str) -> Result<Graph, ParseError> {
     let mut g = Graph::default();
     let mut header_seen = false;
@@ -98,13 +135,12 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
         if !header_seen {
             header_seen = true;
             if let Some(t) = diagram_type(line) {
-                return Err(err(
-                    lineno,
-                    format!(
-                        "diagram type '{}' is not supported yet (supported: flowchart, graph)",
-                        t
-                    ),
-                ));
+                let hint = if t == "erDiagram" {
+                    "this parser is flowchart-only — use parse_document() or render_svg()"
+                } else {
+                    "not supported yet (supported: flowchart, graph, erDiagram)"
+                };
+                return Err(err(lineno, format!("diagram type '{}': {}", t, hint)));
             }
             let rest = strip_keyword(line, "flowchart").or_else(|| strip_keyword(line, "graph"));
             if let Some(rest) = rest {
@@ -307,6 +343,205 @@ fn parse_edge_op(cur: &mut Cur<'_>) -> Option<EdgeKind> {
     None
 }
 
+// ---------------------------------------------------------------
+// Entity-Relationship (`erDiagram`)
+// ---------------------------------------------------------------
+
+/// Parse the body of an `erDiagram`. `header_line` is the
+/// 1-indexed line of the `erDiagram` header; everything before and
+/// including it is skipped.
+fn parse_er(source: &str, header_line: usize) -> Result<ErDiagram, ParseError> {
+    let mut d = ErDiagram::default();
+    // Entity currently being filled, when inside a `{ ... }` block.
+    let mut open: Option<(usize, usize)> = None; // (entity, opening line)
+    for (i, raw) in source.lines().enumerate() {
+        let lineno = i + 1;
+        if lineno <= header_line {
+            continue;
+        }
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with("%%") {
+            continue;
+        }
+
+        if let Some((ent, _)) = open {
+            if line == "}" {
+                open = None;
+                continue;
+            }
+            let attr = parse_attr(line, lineno)?;
+            d.entities[ent].attrs.push(attr);
+            continue;
+        }
+
+        if line == "}" {
+            return Err(err(lineno, "'}' without an open entity block".to_string()));
+        }
+        // Entity block start: `Name {`
+        if let Some(head) = line.strip_suffix('{') {
+            let name = head.trim();
+            if !name.is_empty() && name.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
+                open = Some((d.ensure_entity(name), lineno));
+                continue;
+            }
+            return Err(err(lineno, format!("invalid entity name before '{{': '{}'", name)));
+        }
+        parse_er_statement(&mut d, line, lineno)?;
+    }
+    if let Some((ent, opened)) = open {
+        return Err(err(
+            opened,
+            format!(
+                "entity block '{}' is never closed with '}}'",
+                d.entities[ent].name
+            ),
+        ));
+    }
+    Ok(d)
+}
+
+/// One top-level ER line: either a bare entity declaration or a
+/// relationship `A <card><line><card> B : "label"`.
+fn parse_er_statement(d: &mut ErDiagram, line: &str, lineno: usize) -> Result<(), ParseError> {
+    let mut cur = Cur::new(line);
+    let a = parse_er_name(&mut cur, lineno)?;
+    cur.skip_ws();
+    if cur.at_end() {
+        d.ensure_entity(&a);
+        return Ok(());
+    }
+    let (card_from, identifying, card_to) = parse_rel_op(&mut cur).ok_or_else(|| {
+        err(
+            lineno,
+            format!("unknown relationship operator near: '{}'", cur.rest()),
+        )
+    })?;
+    cur.skip_ws();
+    let b = parse_er_name(&mut cur, lineno)?;
+    cur.skip_ws();
+    let label = if cur.eat(":") {
+        let l = cur.rest().trim();
+        if l.is_empty() {
+            None
+        } else {
+            Some(clean_label(l))
+        }
+    } else if cur.at_end() {
+        None
+    } else {
+        return Err(err(
+            lineno,
+            format!("unexpected text after relationship: '{}'", cur.rest()),
+        ));
+    };
+    let from = d.ensure_entity(&a);
+    let to = d.ensure_entity(&b);
+    d.relations.push(Relation {
+        from,
+        to,
+        card_from,
+        card_to,
+        identifying,
+        label,
+    });
+    Ok(())
+}
+
+fn parse_er_name(cur: &mut Cur<'_>, lineno: usize) -> Result<String, ParseError> {
+    cur.skip_ws();
+    let start = cur.pos;
+    while let Some(c) = cur.peek() {
+        if c.is_alphanumeric() || c == '_' || c == '-' {
+            cur.bump();
+        } else {
+            break;
+        }
+    }
+    if cur.pos == start {
+        return Err(err(
+            lineno,
+            format!("expected an entity name, found: '{}'", cur.rest()),
+        ));
+    }
+    Ok(cur.s[start..cur.pos].to_string())
+}
+
+/// Crow's foot relationship operator, e.g. `||--o{` or `}o..o|`.
+/// The token adjacent to each entity is that entity's cardinality.
+fn parse_rel_op(cur: &mut Cur<'_>) -> Option<(Card, bool, Card)> {
+    const LEFT: &[(&str, Card)] = &[
+        ("||", Card::One),
+        ("|o", Card::ZeroOne),
+        ("}o", Card::ZeroMany),
+        ("}|", Card::OneMany),
+    ];
+    const RIGHT: &[(&str, Card)] = &[
+        ("||", Card::One),
+        ("o|", Card::ZeroOne),
+        ("o{", Card::ZeroMany),
+        ("|{", Card::OneMany),
+    ];
+    let rest = cur.rest();
+    let (lt, lc) = LEFT.iter().find(|(t, _)| rest.starts_with(t))?;
+    let after_left = &rest[lt.len()..];
+    let identifying = if after_left.starts_with("--") {
+        true
+    } else if after_left.starts_with("..") {
+        false
+    } else {
+        return None;
+    };
+    let after_line = &after_left[2..];
+    let (rt, rc) = RIGHT.iter().find(|(t, _)| after_line.starts_with(t))?;
+    cur.pos += lt.len() + 2 + rt.len();
+    Some((*lc, identifying, *rc))
+}
+
+/// One attribute row: `type name [PK|FK|UK]... ["comment"]`.
+/// The comment runs from the first `"` to the last `"`, so it may
+/// freely contain commas, parentheses, and single quotes.
+fn parse_attr(line: &str, lineno: usize) -> Result<Attr, ParseError> {
+    let (head, comment) = match line.find('"') {
+        Some(q0) => {
+            let q1 = line.rfind('"').unwrap();
+            if q1 <= q0 {
+                return Err(err(lineno, "unclosed attribute comment quote".to_string()));
+            }
+            (line[..q0].trim_end(), Some(line[q0 + 1..q1].to_string()))
+        }
+        None => (line, None),
+    };
+    let mut toks = head.split_whitespace();
+    let ty = toks
+        .next()
+        .ok_or_else(|| err(lineno, "expected an attribute type".to_string()))?
+        .to_string();
+    let name = toks
+        .next()
+        .ok_or_else(|| err(lineno, format!("expected an attribute name after type '{}'", ty)))?
+        .to_string();
+    let mut keys = Vec::new();
+    for t in toks {
+        match t.trim_end_matches(',') {
+            "PK" => keys.push(Key::Pk),
+            "FK" => keys.push(Key::Fk),
+            "UK" => keys.push(Key::Uk),
+            other => {
+                return Err(err(
+                    lineno,
+                    format!("unknown attribute key: '{}' (expected PK, FK, or UK)", other),
+                ))
+            }
+        }
+    }
+    Ok(Attr {
+        ty,
+        name,
+        keys,
+        comment,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -345,18 +580,105 @@ mod tests {
 
     #[test]
     fn unsupported_diagram_types_get_explicit_errors() {
-        for src in ["erDiagram\nA ||--o{ B : has", "sequenceDiagram\nA->>B: hi", "gantt\ntitle x"] {
-            let e = parse(src).unwrap_err();
-            assert_eq!(e.line, 1);
-            assert!(
-                e.message.contains("is not supported yet"),
-                "message should name the unsupported type: {}",
-                e.message
-            );
+        for src in ["sequenceDiagram\nA->>B: hi", "gantt\ntitle x", "stateDiagram-v2\n[*] --> A"] {
+            for res in [
+                parse(src).map(|_| ()),
+                parse_document(src).map(|_| ()),
+            ] {
+                let e = res.unwrap_err();
+                assert_eq!(e.line, 1);
+                assert!(
+                    e.message.contains("not supported yet"),
+                    "message should say the type is unsupported: {}",
+                    e.message
+                );
+            }
         }
+        // The flowchart-only `parse` refuses erDiagram with a pointer
+        // to the right entry point.
+        let e = parse("erDiagram\nA ||--o{ B : has").unwrap_err();
+        assert!(e.message.contains("parse_document"), "{}", e.message);
         // A node that merely starts with a type name is still a node.
         let g = parse("pies[Pie Chart] --> B").unwrap();
         assert_eq!(g.nodes[0].id, "pies");
+    }
+
+    // ----------------------------- ER -----------------------------
+
+    fn er(src: &str) -> ErDiagram {
+        match parse_document(src).unwrap() {
+            Document::Er(d) => d,
+            other => panic!("expected an ER document, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn er_fixture_parses_with_expected_counts() {
+        let d = er(include_str!("../examples/er.mmd"));
+        let counts: Vec<(&str, usize)> = d
+            .entities
+            .iter()
+            .map(|e| (e.name.as_str(), e.attrs.len()))
+            .collect();
+        assert_eq!(
+            counts,
+            [
+                ("categories", 9),
+                ("questions", 11),
+                ("schedules", 13),
+                ("settings", 9)
+            ]
+        );
+        assert_eq!(d.relations.len(), 1);
+        let r = &d.relations[0];
+        assert_eq!(d.entities[r.from].name, "categories");
+        assert_eq!(d.entities[r.to].name, "questions");
+        assert_eq!(r.card_from, Card::One);
+        assert_eq!(r.card_to, Card::ZeroMany);
+        assert!(r.identifying);
+        assert_eq!(r.label.as_deref(), Some("has"));
+    }
+
+    #[test]
+    fn er_type_tokens_with_parens_stay_whole() {
+        let d = er("erDiagram\nT {\n  varchar(255) name \"not null\"\n  varchar(20) code\n}");
+        assert_eq!(d.entities[0].attrs[0].ty, "varchar(255)");
+        assert_eq!(d.entities[0].attrs[1].ty, "varchar(20)");
+    }
+
+    #[test]
+    fn er_comment_survives_commas_parens_and_single_quotes() {
+        let d = er("erDiagram\nT {\n  varchar(20) difficulty \"not null, default 'medium' (see docs)\"\n}");
+        assert_eq!(
+            d.entities[0].attrs[0].comment.as_deref(),
+            Some("not null, default 'medium' (see docs)")
+        );
+    }
+
+    #[test]
+    fn er_keys_parse_and_relation_only_entities_exist() {
+        let d = er("erDiagram\nA ||..|{ B\nA {\n  uuid id PK\n  uuid b_id FK\n}");
+        assert_eq!(d.entities[0].attrs[0].keys, vec![Key::Pk]);
+        assert_eq!(d.entities[0].attrs[1].keys, vec![Key::Fk]);
+        // B exists only through the relationship: empty table.
+        assert_eq!(d.entities[1].name, "B");
+        assert!(d.entities[1].attrs.is_empty());
+        assert!(!d.relations[0].identifying);
+        assert_eq!(d.relations[0].card_to, Card::OneMany);
+        assert_eq!(d.relations[0].label, None);
+    }
+
+    #[test]
+    fn er_errors_have_line_numbers() {
+        // Unclosed entity block reports the opening line.
+        let e = parse_document("erDiagram\nA {\n  uuid id\n").unwrap_err();
+        assert_eq!(e.line, 2);
+        // Stray closing brace.
+        let e = parse_document("erDiagram\n}\n").unwrap_err();
+        assert_eq!(e.line, 2);
+        // Bad relationship operator.
+        let e = parse_document("erDiagram\nA >>-- B\n").unwrap_err();
+        assert_eq!(e.line, 2);
     }
 
     #[test]

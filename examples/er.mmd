@@ -1,0 +1,56 @@
+erDiagram
+      categories ||--o{ questions : "has"
+
+      questions {
+          uuid id PK "default gen_random_uuid()"
+          uuid organization_id "not null, index (org-scoped)"
+          uuid created_by "not null"
+          uuid category_id FK "not null, index"
+          text question "not null"
+          text answer "not null"
+          varchar(20) difficulty "not null, default 'medium'"
+          boolean is_active "default true"
+          timestamp created_at
+          timestamp updated_at
+          timestamp deleted_at "soft delete, index"
+      }
+
+      categories {
+          uuid id PK "default gen_random_uuid()"
+          uuid organization_id "not null, index (org-scoped)"
+          uuid created_by "not null"
+          varchar(255) name "not null, unique(org_id, name)"
+          varchar(255) slug "not null, unique(org_id, slug)"
+          boolean is_active "default true"
+          timestamp created_at
+          timestamp updated_at
+          timestamp deleted_at "soft delete, index"
+      }
+
+      schedules {
+          uuid id PK "default gen_random_uuid()"
+          uuid organization_id "not null, index (org-scoped)"
+          uuid created_by "not null"
+          varchar(255) candidate_name "not null"
+          varchar(255) candidate_email "not null"
+          varchar(20) scheduled_date "not null, YYYY-MM-DD"
+          varchar(10) scheduled_time "not null, HH:MM"
+          int duration "not null, default 60 (minutes)"
+          varchar(50) status "not null, default 'scheduled'"
+          text notes
+          timestamp created_at
+          timestamp updated_at
+          timestamp deleted_at "soft delete, index"
+      }
+
+      settings {
+          uuid id PK "default gen_random_uuid()"
+          uuid organization_id "not null, index (org-scoped)"
+          uuid created_by "not null"
+          varchar(255) key "not null, unique(org_id, key)"
+          text value "not null"
+          varchar(50) type "not null, default 'string'"
+          timestamp created_at
+          timestamp updated_at
+          timestamp deleted_at "soft delete, index"
+      }
