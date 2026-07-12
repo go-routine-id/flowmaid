@@ -27,7 +27,8 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 
 **Flowchart features**
 
-- [x] `subgraph` — nesting, titles, per-block `direction` *(v0.5.0)*
+- [x] `subgraph` — nesting, titles, per-block `direction`, edges to/from a subgraph *(v0.5.0, v0.7.0)*
+- [x] `<br/>` multi-line labels *(v0.7.0)*
 - [x] `style` / `classDef` / `class` / `:::` custom colors *(v0.4.0)*
 - [x] Semantic color theme (shape-based) + stable ER accent palette
 - [x] Interactive scene API — drag nodes, edges re-route live (`scene`, `route`, `box_edge_bezier`)
@@ -35,7 +36,7 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 - [ ] `$$…$$` math in labels, KaTeX-style — phased passthrough → MathML → native — [#12](https://github.com/go-routine-id/flowmaid/issues/12)
 - [x] Fan-out `A --> B & C`, inline `-- text -->` labels, `-.-`/`===` open lines, `~~~` invisible links *(v0.6.0)*
 - [ ] More node shapes (cylinder, subroutine, hexagon, …) — [#4](https://github.com/go-routine-id/flowmaid/issues/4)
-- [ ] Edges to/from subgraphs, `click` interactions, frontmatter themes — see the board
+- [ ] `click` interactions, frontmatter themes, `$$math$$` — see the board
 
 **Why flowmaid?** Zero dependencies, `wasm32` out of the box (the whole engine is a ~166 KB wasm bundle — mermaid.js is ~2.5 MB), sub-millisecond renders, line-numbered parse errors, and one geometry source shared by SVG export and interactive canvases.
 
