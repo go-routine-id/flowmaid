@@ -11,7 +11,7 @@
 //!    classification follows actual relative positions, not layers).
 //! 4. `to_svg(&scene)` exports any arrangement to SVG.
 
-use crate::layout::{intrinsic_size, layout, text_width, Placed};
+use crate::layout::{intrinsic_size, layout_sized, text_width, Placed};
 use crate::model::{Direction, EdgeKind, Graph, Shape};
 use std::collections::HashMap;
 
@@ -57,7 +57,15 @@ pub struct Scene {
 /// to final coordinates. This is the source of truth that
 /// `render::render` uses as well.
 pub fn scene(g: &Graph) -> Scene {
-    let lo = layout(g);
+    let sizes: Vec<(f64, f64)> = g.nodes.iter().map(intrinsic_size).collect();
+    scene_sized(g, &sizes)
+}
+
+/// Same as [`scene`] but with caller-provided node sizes — for
+/// nodes whose size doesn't come from the label (ER entity tables,
+/// icon nodes, ...).
+pub fn scene_sized(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
+    let lo = layout_sized(g, sizes);
 
     // Breadth extents per layer, used by back-edges to route
     // themselves around every node on the layers they pass.
@@ -142,7 +150,7 @@ pub fn scene(g: &Graph) -> Scene {
         .enumerate()
         .map(|(i, n)| {
             let (x, y) = tf((lo.nodes[i].b, lo.nodes[i].l));
-            let (w, h) = intrinsic_size(n); // final size is direction-independent
+            let (w, h) = sizes[i]; // final size is direction-independent
             SceneNode {
                 x,
                 y,
@@ -646,7 +654,7 @@ fn cubic_mid(p0: (f64, f64), c1: (f64, f64), c2: (f64, f64), p3: (f64, f64)) -> 
     )
 }
 
-fn escape(s: &str) -> String {
+pub(crate) fn escape(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")

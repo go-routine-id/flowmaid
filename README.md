@@ -4,7 +4,7 @@
 [![docs.rs](https://docs.rs/flowmaid/badge.svg)](https://docs.rs/flowmaid)
 [![license](https://img.shields.io/crates/l/flowmaid.svg)](LICENSE)
 
-A small Mermaid-like flowchart diagram engine written in pure std Rust with zero external dependencies. Takes Mermaid-syntax text and produces SVG.
+A small Mermaid-like diagram engine written in pure std Rust with zero external dependencies. Takes Mermaid-syntax text and produces SVG. Supports flowcharts (`flowchart` / `graph`) and Entity-Relationship diagrams (`erDiagram`).
 
 ## Installation
 
@@ -51,6 +51,23 @@ Edges: `-->` arrow, `---` open line, `-.->` dotted, `==>` thick. Edge labels are
 
 Complete examples live in `examples/demo.mmd` and `examples/lr.mmd`.
 
+## Entity-Relationship diagrams
+
+`erDiagram` input renders entities as attribute tables connected with crow's foot notation:
+
+```
+erDiagram
+    users ||--o{ posts : "writes"
+    users {
+        uuid id PK "default gen_random_uuid()"
+        varchar(255) email UK "not null"
+    }
+```
+
+Supported subset: relationships with all crow's foot cardinalities (`||` exactly one, `|o`/`o|` zero or one, `}o`/`o{` zero or many, `}|`/`|{` one or many), identifying (`--`, solid) and non-identifying (`..`, dashed) lines, optional relationship labels, and entity blocks with `type name [PK|FK|UK] ["comment"]` rows. Types with parentheses (`varchar(255)`) and comments containing commas, parentheses, or single quotes are handled. Entities mentioned only in relationships render as title-only tables. Attribute comments are parsed into the model but not drawn. See `examples/er.mmd`.
+
+Other Mermaid diagram types (`sequenceDiagram`, `classDiagram`, `gantt`, ...) are detected and produce an explicit "not supported yet" error instead of a confusing parse failure.
+
 ## Architecture
 
 A three-stage pipeline, one module per stage:
@@ -62,6 +79,8 @@ A three-stage pipeline, one module per stage:
 `model.rs` holds the shared data structures (`Graph`, `Node`, `Edge`, shape and direction enums).
 
 For interactive apps there is the `scene` module: `scene()` produces final ready-to-draw geometry (node positions, edge bezier curves), `route()` re-routes edges for custom node positions such as user drags, and `to_svg()` exports any arrangement. `render()` is now just a wrapper over the same pipeline. See `examples/drag_sim.rs` and the egui demo app.
+
+The `er` module maps an `ErDiagram` onto the same machinery: each entity becomes one node of a synthetic left-to-right graph (sized from its attribute table via `scene::scene_sized`), each relationship one edge; only the SVG writer differs — tables instead of shapes, crow's foot glyphs instead of arrowheads.
 
 ## Performance
 

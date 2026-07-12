@@ -3,10 +3,16 @@
 //! so the output of render() and the interactive flow
 //! (scene/route/to_svg) are guaranteed identical.
 
-use crate::model::Graph;
+use crate::model::{ErDiagram, Graph};
 
 pub fn render(g: &Graph) -> String {
     crate::scene::to_svg(&crate::scene::scene(g))
+}
+
+/// Render an Entity-Relationship diagram (tables + crow's foot).
+/// Geometry & serialisation live in the `er` module.
+pub fn render_er(d: &ErDiagram) -> String {
+    crate::er::to_svg(d)
 }
 
 #[cfg(test)]

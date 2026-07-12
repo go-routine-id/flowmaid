@@ -2,7 +2,7 @@
 //!
 //! Pipeline: .mmd text  ->  parser  ->  layout  ->  SVG.
 
-use flowmaid::{parser, render};
+use flowmaid::{parser, render, Document};
 use std::env;
 use std::fs;
 use std::io::{self, IsTerminal, Read};
@@ -83,19 +83,25 @@ fn main() {
         }
     };
 
-    let graph = match parser::parse(&source) {
-        Ok(g) => g,
+    let doc = match parser::parse_document(&source) {
+        Ok(d) => d,
         Err(e) => {
             eprintln!("parse error — {}", e);
             process::exit(1);
         }
     };
-    if graph.nodes.is_empty() {
-        eprintln!("empty diagram: no nodes defined");
-        process::exit(1);
-    }
-
-    let svg = render::render(&graph);
+    let svg = match &doc {
+        Document::Flowchart(g) if g.nodes.is_empty() => {
+            eprintln!("empty diagram: no nodes defined");
+            process::exit(1);
+        }
+        Document::Er(d) if d.entities.is_empty() => {
+            eprintln!("empty diagram: no entities defined");
+            process::exit(1);
+        }
+        Document::Flowchart(g) => render::render(g),
+        Document::Er(d) => render::render_er(d),
+    };
 
     match &output {
         Some(path) => {

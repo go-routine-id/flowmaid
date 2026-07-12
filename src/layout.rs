@@ -79,6 +79,14 @@ pub fn intrinsic_size(node: &Node) -> (f64, f64) {
 }
 
 pub fn layout(g: &Graph) -> LayoutResult {
+    let sizes: Vec<(f64, f64)> = g.nodes.iter().map(intrinsic_size).collect();
+    layout_sized(g, &sizes)
+}
+
+/// Same as [`layout`] but with caller-provided node sizes (width,
+/// height in pixels) — used by pipelines where node size doesn't
+/// come from the label, e.g. ER entity tables or icon nodes.
+pub fn layout_sized(g: &Graph, sizes: &[(f64, f64)]) -> LayoutResult {
     let n = g.nodes.len();
     let mut adj: Vec<Vec<(usize, usize)>> = vec![Vec::new(); n];
     for (ei, e) in g.edges.iter().enumerate() {
@@ -182,7 +190,7 @@ pub fn layout(g: &Graph) -> LayoutResult {
     let mut bsize = vec![0.0f64; n];
     let mut lsize = vec![0.0f64; n];
     for v in 0..n {
-        let (w, h) = intrinsic_size(&g.nodes[v]);
+        let (w, h) = sizes[v];
         if horizontal {
             bsize[v] = h;
             lsize[v] = w;
