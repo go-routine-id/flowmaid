@@ -41,11 +41,25 @@ const GAP_B: f64 = 48.0; // gap between nodes within a layer
 const GAP_L: f64 = 64.0; // gap between layers
 const MARGIN: f64 = 28.0;
 
-/// Estimated rendered text width (Helvetica ~14px) per character
-/// class. Without real font metrics this stays approximate, but it
-/// is far more accurate than a flat average: capitals ~9.7px,
-/// i/l ~3.4px, m/W ~12-13px, CJK/emoji ~14px.
+/// Line height for multi-line labels (`<br/>` → newline).
+pub const LINE_H: f64 = 17.0;
+
+/// Estimated rendered width of the WIDEST line in `s` (labels may
+/// be multi-line after `<br/>` normalisation).
 pub fn text_width(s: &str) -> f64 {
+    s.split('\n').map(line_width).fold(0.0, f64::max)
+}
+
+/// Number of text lines in a label (at least 1).
+pub fn line_count(s: &str) -> usize {
+    s.split('\n').count().max(1)
+}
+
+/// Width of a single line (Helvetica ~14px) per character class.
+/// Without real font metrics this stays approximate, but it is far
+/// more accurate than a flat average: capitals ~9.7px, i/l ~3.4px,
+/// m/W ~12-13px, CJK/emoji ~14px.
+fn line_width(s: &str) -> f64 {
     s.chars()
         .map(|c| match c {
             'i' | 'l' | 'j' => 3.4,
@@ -62,17 +76,20 @@ pub fn text_width(s: &str) -> f64 {
         .sum()
 }
 
-/// Intrinsic node size (width, height) in pixels, based on shape
-/// and the estimated label width.
+/// Intrinsic node size (width, height) in pixels, based on shape,
+/// the estimated widest-line width, and the number of label lines.
 pub fn intrinsic_size(node: &Node) -> (f64, f64) {
     let tw = text_width(&node.label);
+    // Height grows with extra label lines beyond the first.
+    let extra = (line_count(&node.label) - 1) as f64 * LINE_H;
+    let base_h = BASE_H + extra;
     match node.shape {
-        Shape::Rect | Shape::Rounded => ((tw + 2.0 * PAD_X).max(MIN_W), BASE_H),
-        Shape::Stadium => ((tw + 2.0 * PAD_X + 12.0).max(MIN_W + 12.0), BASE_H),
+        Shape::Rect | Shape::Rounded => ((tw + 2.0 * PAD_X).max(MIN_W), base_h),
+        Shape::Stadium => ((tw + 2.0 * PAD_X + 12.0).max(MIN_W + 12.0), base_h),
         // Diamonds need extra room so the text fits in the middle.
-        Shape::Diamond => (((tw + 24.0) * 1.6).max(80.0), BASE_H * 1.7),
+        Shape::Diamond => (((tw + 24.0) * 1.6).max(80.0), base_h * 1.7),
         Shape::Circle => {
-            let d = (tw + 24.0).max(52.0);
+            let d = (tw + 24.0).max(52.0).max(base_h);
             (d, d)
         }
     }

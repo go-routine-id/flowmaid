@@ -16,8 +16,8 @@
 //! [`parse`] stays flowchart-only for backwards compatibility.
 
 use crate::model::{
-    Attr, Card, Direction, Document, EdgeKind, ErDiagram, Graph, Key, NodeStyle, Relation, Shape,
-    Subgraph,
+    Attr, Card, Direction, Document, EdgeKind, End, ErDiagram, Graph, Key, NodeStyle, Relation,
+    Shape, SubEdge, Subgraph,
 };
 use std::collections::HashMap;
 
@@ -97,14 +97,41 @@ impl<'a> Cur<'a> {
     }
 }
 
-/// Strip wrapping double quotes from a label, Mermaid-style: `A["odd text"]`.
+/// Strip wrapping double quotes from a label, Mermaid-style
+/// (`A["odd text"]`), and turn `<br>` / `<br/>` / `<br />` line
+/// breaks into real newlines (mermaid renders those as line breaks).
 fn clean_label(s: &str) -> String {
     let t = s.trim();
-    if t.len() >= 2 && t.starts_with('"') && t.ends_with('"') {
-        t[1..t.len() - 1].to_string()
+    let inner = if t.len() >= 2 && t.starts_with('"') && t.ends_with('"') {
+        &t[1..t.len() - 1]
     } else {
-        t.to_string()
+        t
+    };
+    normalize_breaks(inner)
+}
+
+/// Replace `<br>` variants (case-insensitive, optional `/` and
+/// spaces) with `\n`. Everything else passes through unchanged.
+fn normalize_breaks(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut rest = s;
+    while !rest.is_empty() {
+        // `get(..3)` is char-boundary-safe (returns None mid-emoji).
+        if rest.get(..3).is_some_and(|h| h.eq_ignore_ascii_case("<br")) {
+            if let Some(gt) = rest.find('>') {
+                // Only a bare `<br ... >` (no attributes) is a break.
+                if rest[3..gt].trim().trim_end_matches('/').trim().is_empty() {
+                    out.push('\n');
+                    rest = &rest[gt + 1..];
+                    continue;
+                }
+            }
+        }
+        let c = rest.chars().next().unwrap();
+        out.push(c);
+        rest = &rest[c.len_utf8()..];
     }
+    out
 }
 
 /// Parse any supported Mermaid diagram type, dispatching on the
@@ -369,7 +396,7 @@ fn parse_node_list(
     lineno: usize,
     assigns: &mut Vec<(usize, String)>,
     subs: &[usize],
-) -> Result<Vec<usize>, ParseError> {
+) -> Result<Vec<End>, ParseError> {
     let mut nodes = vec![parse_node(cur, g, lineno, assigns, subs)?];
     loop {
         let save = cur.pos;
@@ -431,10 +458,20 @@ fn parse_statement(
         }
         cur.skip_ws();
         let nexts = parse_node_list(&mut cur, g, lineno, assigns, subs)?;
-        // Fan-out: every prev connects to every next.
+        // Fan-out: every prev connects to every next. Node→node
+        // edges go to `edges`; anything touching a subgraph to
+        // `sub_edges` (drawn against the cluster box).
         for &a in &prevs {
             for &b in &nexts {
-                g.add_edge(a, b, label.clone(), kind);
+                match (a, b) {
+                    (End::Node(x), End::Node(y)) => g.add_edge(x, y, label.clone(), kind),
+                    _ => g.sub_edges.push(SubEdge {
+                        from: a,
+                        to: b,
+                        label: label.clone(),
+                        kind,
+                    }),
+                }
             }
         }
         prevs = nexts;
@@ -497,7 +534,7 @@ fn parse_node(
     lineno: usize,
     assigns: &mut Vec<(usize, String)>,
     subs: &[usize],
-) -> Result<usize, ParseError> {
+) -> Result<End, ParseError> {
     cur.skip_ws();
     let start = cur.pos;
     while let Some(c) = cur.peek() {
@@ -534,17 +571,13 @@ fn parse_node(
         Some((s, l)) => (Some(s), Some(clean_label(&l))),
         None => (None, None),
     };
-    // An id that names an already-declared subgraph (and no real
-    // node) would silently create a duplicate box — fail clearly.
-    // Edges between subgraphs themselves are a future feature (#2).
-    if g.node_index(&id).is_none() && g.subgraphs.iter().any(|s| s.id == id) {
-        return Err(err(
-            lineno,
-            format!(
-                "'{}' is a subgraph — edges to/from a subgraph are not supported yet",
-                id
-            ),
-        ));
+    // A bare id that names a declared subgraph (and no real node,
+    // no shape) is an edge endpoint on the whole cluster
+    // (`CF --> VPC`). Mermaid attaches such edges to the cluster box.
+    if shape.is_none() && g.node_index(&id).is_none() {
+        if let Some(si) = g.subgraphs.iter().position(|s| s.id == id) {
+            return Ok(End::Sub(si));
+        }
     }
     let n = g.ensure_node(&id, label, shape);
     // Mermaid semantics: mentioning a node inside a `subgraph`
@@ -576,7 +609,7 @@ fn parse_node(
         }
         assigns.push((n, cur.s[start..cur.pos].to_string()));
     }
-    Ok(n)
+    Ok(End::Node(n))
 }
 
 fn close(cur: &mut Cur<'_>, closer: &str, lineno: usize) -> Result<String, ParseError> {
@@ -1114,9 +1147,86 @@ mod tests {
         // Unclosed block errors with the subgraph's name.
         let e = parse("flowchart TD\nsubgraph x\nA\n").unwrap_err();
         assert!(e.message.contains("never closed"), "{}", e.message);
-        // Edge to a declared subgraph is a clear error for now.
-        let e = parse("flowchart TD\nsubgraph one\nA\nend\nB --> one\n").unwrap_err();
-        assert!(e.message.contains("subgraph"), "{}", e.message);
+        // Edge to a declared subgraph is now a sub_edge, not an error.
+        let g2 = parse("flowchart TD\nsubgraph one\nA\nend\nB --> one\n").unwrap();
+        assert_eq!(g2.sub_edges.len(), 1);
+        assert_eq!(g2.sub_edges[0].to, crate::model::End::Sub(0));
+    }
+
+    #[test]
+    fn edges_to_and_from_a_subgraph() {
+        let g = parse(
+            "flowchart TD\n\
+             subgraph net [Network]\n\
+             A[Gateway] --> B[Router]\n\
+             end\n\
+             CF[CloudFront] --> net\n\
+             net --> DB[Store]\n",
+        )
+        .unwrap();
+        // Node→node edge inside the subgraph stays a normal edge.
+        assert_eq!(g.edges.len(), 1);
+        // The two subgraph-touching edges land in sub_edges.
+        assert_eq!(g.sub_edges.len(), 2);
+        use crate::model::End;
+        let cf = g.node_index("CF").unwrap();
+        assert_eq!(g.sub_edges[0].from, End::Node(cf));
+        assert_eq!(g.sub_edges[0].to, End::Sub(0));
+        assert_eq!(g.sub_edges[1].from, End::Sub(0));
+        // No stray "net" node was created.
+        assert!(g.node_index("net").is_none());
+        // Scene renders the sub-edges (2 node edges' worth extra) and
+        // stays inside the canvas.
+        let s = crate::scene::scene(&g);
+        // 1 real edge + 2 sub_edges = 3 drawn edges.
+        assert_eq!(s.edges.len(), 3);
+        // Full canvas containment for the paths.
+        let svg = crate::render_svg("flowchart TD\nsubgraph net\nA-->B\nend\nCF-->net").unwrap();
+        let head = svg_head(&svg);
+        for line in svg.lines().filter(|l| l.starts_with("<path d=")) {
+            for (x, y) in path_coords(line) {
+                assert!(x >= -0.5 && x <= head.0 + 0.5, "x={x} out of {}", head.0);
+                assert!(y >= -0.5 && y <= head.1 + 0.5, "y={y} out of {}", head.1);
+            }
+        }
+    }
+
+    fn svg_head(svg: &str) -> (f64, f64) {
+        let attr = |name: &str| -> f64 {
+            let pat = format!("{name}=\"");
+            let i = svg.find(&pat).unwrap() + pat.len();
+            svg[i..i + svg[i..].find('"').unwrap()].parse().unwrap()
+        };
+        (attr("width"), attr("height"))
+    }
+
+    fn path_coords(line: &str) -> Vec<(f64, f64)> {
+        let i = line.find("d=\"").unwrap() + 3;
+        let d = &line[i..i + line[i..].find('"').unwrap()];
+        let nums: Vec<f64> = d
+            .split(|c: char| !(c.is_ascii_digit() || c == '.' || c == '-'))
+            .filter(|s| !s.is_empty())
+            .map(|s| s.parse().unwrap())
+            .collect();
+        nums.chunks(2).map(|c| (c[0], c[1])).collect()
+    }
+
+    #[test]
+    fn br_becomes_newline_and_grows_the_node() {
+        let g = parse("flowchart TD\nA[\"CloudFront<br/>E2GQ<br />dbfu9k\"] --> B[One line]").unwrap();
+        assert_eq!(g.nodes[0].label, "CloudFront\nE2GQ\ndbfu9k");
+        // <BR> uppercase and bare <br> also work.
+        let g2 = parse("A[x<BR>y<br>z]").unwrap();
+        assert_eq!(g2.nodes[0].label, "x\ny\nz");
+        // Taller node for the multi-line label; wider = widest line.
+        let (w3, h3) = crate::layout::intrinsic_size(&g.nodes[0]);
+        let (_w1, h1) = crate::layout::intrinsic_size(&g.nodes[1]);
+        // Two extra lines add ~2×LINE_H of height.
+        assert!(h3 > h1 + 30.0, "3-line node taller by ~2 lines: {h3} vs {h1}");
+        // SVG carries one tspan per line.
+        let svg = crate::render_svg("A[a<br/>bb]").unwrap();
+        assert_eq!(svg.matches("<tspan").count(), 2);
+        assert!(w3 > 0.0);
     }
 
     #[test]

@@ -12,12 +12,17 @@
 //! 4. `to_svg(&scene)` exports any arrangement to SVG.
 
 use crate::layout::{intrinsic_size, layout_sized, text_width, Placed};
-use crate::model::{Direction, EdgeKind, Graph, NodeStyle, Shape};
+use crate::model::{Direction, EdgeKind, End, Graph, NodeStyle, Shape};
 use std::collections::HashMap;
 
 const MARGIN: f64 = 28.0;
 /// Gap between parallel edges (connecting the same node pair).
 const PARALLEL_GAP: f64 = 16.0;
+
+/// Cluster box as (centre, size) — used for subgraph edge anchors.
+type BoxCS = ((f64, f64), (f64, f64));
+/// Cluster box as (x, y, w, h); `None` = empty subgraph.
+type RawBox = Option<(f64, f64, f64, f64)>;
 
 pub(crate) const EDGE_COLOR: &str = "#44507a";
 pub(crate) const TEXT_COLOR: &str = "#232840";
@@ -307,6 +312,56 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
         });
     }
 
+    // Edges touching a subgraph: route them against the cluster box.
+    let mut cluster_box: HashMap<usize, BoxCS> = HashMap::new();
+    for &(sub, x, y, w, h, _) in &frag.clusters {
+        cluster_box.insert(sub, ((x + w / 2.0, y + h / 2.0), (w, h)));
+    }
+    let end_placed = |end: End| -> Option<(Placed, Shape)> {
+        match end {
+            End::Node(v) => Some((
+                Placed {
+                    b: centers[v].0,
+                    l: centers[v].1,
+                    bsize: sizes[v].0,
+                    lsize: sizes[v].1,
+                    layer: 0,
+                },
+                g.nodes[v].shape,
+            )),
+            End::Sub(si) => cluster_box.get(&si).map(|&((cx, cy), (w, h))| {
+                (
+                    Placed {
+                        b: cx,
+                        l: cy,
+                        bsize: w,
+                        lsize: h,
+                        layer: 0,
+                    },
+                    Shape::Rect,
+                )
+            }),
+        }
+    };
+    for e in &g.sub_edges {
+        let (Some((pa, sa)), Some((pb, sb))) = (end_placed(e.from), end_placed(e.to)) else {
+            continue;
+        };
+        let pts = free_edge(&pa, &pb, sa, sb, false, 0.0);
+        let label = e.label.as_ref().map(|l| {
+            (
+                l.clone(),
+                cubic_mid(pts[0], pts[1], pts[2], pts[3]),
+                text_width(l) + 14.0,
+            )
+        });
+        edges.push(SceneEdge {
+            bezier: pts,
+            kind: e.kind,
+            label,
+        });
+    }
+
     // Canvas bbox over nodes, cluster boxes, curves, and labels;
     // then translate everything so content starts at MARGIN.
     let mut bb = Bbox::new();
@@ -425,29 +480,50 @@ fn layout_frag(
     let mut syn_sizes: Vec<(f64, f64)> = direct.iter().map(|&v| sizes[v]).collect();
     syn_sizes.extend(child_frags.iter().map(|(_, f)| (f.w, f.h + SUB_HEADER)));
 
-    // Project every real edge onto this level's entities: a node
-    // maps to itself when it lives here, or to the child supernode
-    // whose subtree contains it; edges that don't cross this level
-    // are handled elsewhere (deeper or higher).
-    let project = |v: usize| -> Option<usize> {
-        if owner[v] == level {
-            return slot_of_node.get(&v).copied();
-        }
-        let mut s = owner[v];
-        while let Some(si) = s {
-            if g.subgraphs[si].parent == level {
-                return slot_of_sub.get(&si).copied();
+    // Project an endpoint onto this level's entities: a node maps
+    // to itself when it lives here, or to the child supernode whose
+    // subtree contains it; a subgraph maps to the child supernode
+    // that is (or contains) it. Endpoints that don't cross this
+    // level are handled at another level.
+    let project = |end: End| -> Option<usize> {
+        match end {
+            End::Node(v) => {
+                if owner[v] == level {
+                    return slot_of_node.get(&v).copied();
+                }
+                let mut s = owner[v];
+                while let Some(si) = s {
+                    if g.subgraphs[si].parent == level {
+                        return slot_of_sub.get(&si).copied();
+                    }
+                    s = g.subgraphs[si].parent;
+                }
+                None
             }
-            s = g.subgraphs[si].parent;
+            End::Sub(si) => {
+                let mut cur = Some(si);
+                while let Some(s) = cur {
+                    if g.subgraphs[s].parent == level {
+                        return slot_of_sub.get(&s).copied();
+                    }
+                    cur = g.subgraphs[s].parent;
+                }
+                None
+            }
         }
-        None
     };
-    for e in &g.edges {
-        if let (Some(sa), Some(sb)) = (project(e.from), project(e.to)) {
+    let mut rank = |a: Option<usize>, b: Option<usize>| {
+        if let (Some(sa), Some(sb)) = (a, b) {
             if sa != sb {
                 syn.add_edge(sa, sb, None, EdgeKind::Arrow);
             }
         }
+    };
+    for e in &g.edges {
+        rank(project(End::Node(e.from)), project(End::Node(e.to)));
+    }
+    for e in &g.sub_edges {
+        rank(project(e.from), project(e.to));
     }
 
     let sc = scene_flat(&syn, &syn_sizes);
@@ -553,6 +629,65 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
         .collect();
 
     let clusters = route_clusters(g, &nodes);
+
+    // Subgraph-touching edges: route against the current cluster
+    // boxes so they follow drags too. `route_clusters` returns
+    // boxes in subgraph order among the non-empty ones — match by
+    // title-free lookup via the subgraph index.
+    if !g.sub_edges.is_empty() {
+        let (raw, _) = cluster_raw_boxes(g, &nodes);
+        let mut boxes: HashMap<usize, BoxCS> = HashMap::new();
+        for (si, b) in raw.iter().enumerate() {
+            if let Some((x, y, w, h)) = *b {
+                boxes.insert(si, ((x + w / 2.0, y + h / 2.0), (w, h)));
+            }
+        }
+        let end_placed = |end: End| -> Option<(Placed, Shape)> {
+            match end {
+                End::Node(v) => Some((
+                    Placed {
+                        b: centers[v].0,
+                        l: centers[v].1,
+                        bsize: sizes[v].0,
+                        lsize: sizes[v].1,
+                        layer: 0,
+                    },
+                    g.nodes[v].shape,
+                )),
+                End::Sub(si) => boxes.get(&si).map(|&((cx, cy), (w, h))| {
+                    (
+                        Placed {
+                            b: cx,
+                            l: cy,
+                            bsize: w,
+                            lsize: h,
+                            layer: 0,
+                        },
+                        Shape::Rect,
+                    )
+                }),
+            }
+        };
+        for e in &g.sub_edges {
+            let (Some((pa, sa)), Some((pb, sb))) = (end_placed(e.from), end_placed(e.to)) else {
+                continue;
+            };
+            let pts = free_edge(&pa, &pb, sa, sb, false, 0.0);
+            let label = e.label.as_ref().map(|l| {
+                (
+                    l.clone(),
+                    cubic_mid(pts[0], pts[1], pts[2], pts[3]),
+                    text_width(l) + 14.0,
+                )
+            });
+            edges.push(SceneEdge {
+                bezier: pts,
+                kind: e.kind,
+                label,
+            });
+        }
+    }
+
     let mut bb = Bbox::new();
     grow_scene(&mut bb, &nodes, &edges, &clusters);
     let (_, maxx, _, maxy) = bb.finish();
@@ -565,14 +700,15 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
     }
 }
 
-/// Cluster boxes wrapped around the CURRENT node positions —
-/// computed deepest-first so parents enclose their children's
-/// boxes; returned outermost-first for painting.
-fn route_clusters(g: &Graph, nodes: &[SceneNode]) -> Vec<SceneCluster> {
+/// Per-subgraph box `(x, y, w, h)` wrapped around the CURRENT node
+/// positions, indexed by subgraph. Computed deepest-first so a
+/// parent encloses its children's boxes. `None` = empty subgraph.
+/// Also returns each subgraph's nesting depth.
+fn cluster_raw_boxes(
+    g: &Graph,
+    nodes: &[SceneNode],
+) -> (Vec<RawBox>, Vec<usize>) {
     let nsub = g.subgraphs.len();
-    if nsub == 0 {
-        return Vec::new();
-    }
     let mut depth = vec![0usize; nsub];
     for i in 0..nsub {
         let mut p = g.subgraphs[i].parent;
@@ -583,7 +719,7 @@ fn route_clusters(g: &Graph, nodes: &[SceneNode]) -> Vec<SceneCluster> {
     }
     let mut order: Vec<usize> = (0..nsub).collect();
     order.sort_by_key(|&i| std::cmp::Reverse(depth[i]));
-    let mut boxes: Vec<Option<(f64, f64, f64, f64)>> = vec![None; nsub];
+    let mut boxes: Vec<RawBox> = vec![None; nsub];
     for &i in &order {
         let mut bb = Bbox::new();
         for &v in &g.subgraphs[i].nodes {
@@ -610,7 +746,16 @@ fn route_clusters(g: &Graph, nodes: &[SceneNode]) -> Vec<SceneCluster> {
             (maxy - miny) + 2.0 * SUB_PAD + SUB_HEADER,
         ));
     }
-    let mut out: Vec<SceneCluster> = (0..nsub)
+    (boxes, depth)
+}
+
+/// Cluster boxes as paintable [`SceneCluster`]s, outermost-first.
+fn route_clusters(g: &Graph, nodes: &[SceneNode]) -> Vec<SceneCluster> {
+    if g.subgraphs.is_empty() {
+        return Vec::new();
+    }
+    let (boxes, depth) = cluster_raw_boxes(g, nodes);
+    let mut out: Vec<SceneCluster> = (0..g.subgraphs.len())
         .filter_map(|i| {
             boxes[i].map(|(x, y, w, h)| SceneCluster {
                 x,
@@ -779,14 +924,13 @@ pub fn to_svg(sc: &Scene) -> String {
                 ));
             }
         }
-        s.push_str(&format!(
-            "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"middle\" \
-             fill=\"{}\">{}</text>\n",
+        svg_text_multiline(
+            &mut s,
             cx,
             cy,
             n.style.color.as_deref().unwrap_or(TEXT_COLOR),
-            escape(&n.label)
-        ));
+            &n.label,
+        );
     }
 
     s.push_str(&edge_labels);
@@ -1101,6 +1245,38 @@ pub(crate) fn svg_label_box(s: &mut String, text: &str, center: (f64, f64), box_
         TEXT_COLOR,
         escape(text)
     ));
+}
+
+/// Centred `<text>` supporting `\n` line breaks — one `<tspan>`
+/// per line, block vertically centred on `(cx, cy)`.
+pub(crate) fn svg_text_multiline(s: &mut String, cx: f64, cy: f64, fill: &str, label: &str) {
+    let lines: Vec<&str> = label.split('\n').collect();
+    if lines.len() <= 1 {
+        s.push_str(&format!(
+            "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"middle\" \
+             fill=\"{}\">{}</text>\n",
+            cx,
+            cy,
+            fill,
+            escape(label)
+        ));
+        return;
+    }
+    let lh = crate::layout::LINE_H;
+    let top = cy - (lines.len() as f64 - 1.0) * lh / 2.0;
+    s.push_str(&format!(
+        "<text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\" fill=\"{}\">",
+        cx, top, fill
+    ));
+    for (i, line) in lines.iter().enumerate() {
+        s.push_str(&format!(
+            "<tspan x=\"{:.1}\" dy=\"{}\">{}</tspan>",
+            cx,
+            if i == 0 { "0.33em".to_string() } else { format!("{lh:.1}") },
+            escape(line)
+        ));
+    }
+    s.push_str("</text>\n");
 }
 
 pub(crate) fn escape(s: &str) -> String {

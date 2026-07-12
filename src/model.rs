@@ -126,6 +126,25 @@ pub struct Subgraph {
     pub direction: Option<Direction>,
 }
 
+/// One endpoint of an edge that touches a subgraph — either a
+/// regular node or a whole subgraph (its cluster box).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum End {
+    Node(usize),
+    Sub(usize),
+}
+
+/// An edge where at least one endpoint is a subgraph
+/// (`CF --> VPC`). Kept apart from [`Edge`] so the flat node→node
+/// path stays untouched; consumed only by the clustered scene.
+#[derive(Debug, Clone)]
+pub struct SubEdge {
+    pub from: End,
+    pub to: End,
+    pub label: Option<String>,
+    pub kind: EdgeKind,
+}
+
 /// Parsed graph, ready for layout.
 #[derive(Debug, Default)]
 pub struct Graph {
@@ -133,6 +152,8 @@ pub struct Graph {
     pub nodes: Vec<Node>,
     pub edges: Vec<Edge>,
     pub subgraphs: Vec<Subgraph>,
+    /// Edges with a subgraph as an endpoint (see [`SubEdge`]).
+    pub sub_edges: Vec<SubEdge>,
     index: HashMap<String, usize>,
 }
 
