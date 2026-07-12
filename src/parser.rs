@@ -107,7 +107,16 @@ fn clean_label(s: &str) -> String {
     } else {
         t
     };
-    normalize_breaks(inner)
+    // Trim leading/trailing blank lines from `<br/>` at the edges
+    // (`"<br/>"` → "" not two empty lines).
+    normalize_breaks(inner).trim_matches('\n').to_string()
+}
+
+/// Like [`clean_label`] but collapsed to a single line — for
+/// contexts without multi-line layout (edge labels, subgraph
+/// titles) whose boxes/strips are single-line.
+fn clean_label_1line(s: &str) -> String {
+    clean_label(s).replace('\n', " ")
 }
 
 /// Replace `<br>` variants (case-insensitive, optional `/` and
@@ -170,6 +179,22 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
     let mut styles: Vec<(usize, NodeStyle)> = Vec::new(); // explicit `style` lines
     // Stack of open `subgraph` blocks; new nodes join the top one.
     let mut sub_stack: Vec<usize> = Vec::new();
+
+    // Pre-scan subgraph ids so an edge may reference a subgraph
+    // declared LATER (`A --> grp` before `subgraph grp`). The scan
+    // order matches the index each block gets during the main pass.
+    let mut sub_ids: HashMap<String, usize> = HashMap::new();
+    {
+        let mut idx = 0usize;
+        for raw in source.lines() {
+            if let Some(rest) = strip_keyword(raw.trim(), "subgraph") {
+                if let Ok((id, _)) = parse_subgraph_header(rest.trim(), 0) {
+                    sub_ids.entry(id).or_insert(idx);
+                    idx += 1;
+                }
+            }
+        }
+    }
 
     for (i, raw) in source.lines().enumerate() {
         let lineno = i + 1;
@@ -272,7 +297,7 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
             continue;
         }
 
-        parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack)?;
+        parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack, &sub_ids)?;
     }
     if let Some(&open) = sub_stack.last() {
         return Err(err(
@@ -383,7 +408,7 @@ fn parse_subgraph_header(rest: &str, lineno: usize) -> Result<(String, String), 
         if id.is_empty() {
             return Err(err(lineno, "subgraph title needs an id before '['".to_string()));
         }
-        return Ok((id.to_string(), clean_label(inner)));
+        return Ok((id.to_string(), clean_label_1line(inner)));
     }
     Ok((rest.to_string(), rest.to_string()))
 }
@@ -396,14 +421,15 @@ fn parse_node_list(
     lineno: usize,
     assigns: &mut Vec<(usize, String)>,
     subs: &[usize],
+    sub_ids: &HashMap<String, usize>,
 ) -> Result<Vec<End>, ParseError> {
-    let mut nodes = vec![parse_node(cur, g, lineno, assigns, subs)?];
+    let mut nodes = vec![parse_node(cur, g, lineno, assigns, subs, sub_ids)?];
     loop {
         let save = cur.pos;
         cur.skip_ws();
         if cur.eat("&") {
             cur.skip_ws();
-            nodes.push(parse_node(cur, g, lineno, assigns, subs)?);
+            nodes.push(parse_node(cur, g, lineno, assigns, subs, sub_ids)?);
         } else {
             cur.pos = save;
             break;
@@ -418,9 +444,10 @@ fn parse_statement(
     lineno: usize,
     assigns: &mut Vec<(usize, String)>,
     subs: &[usize],
+    sub_ids: &HashMap<String, usize>,
 ) -> Result<(), ParseError> {
     let mut cur = Cur::new(line);
-    let mut prevs = parse_node_list(&mut cur, g, lineno, assigns, subs)?;
+    let mut prevs = parse_node_list(&mut cur, g, lineno, assigns, subs, sub_ids)?;
     loop {
         cur.skip_ws();
         if cur.at_end() {
@@ -432,7 +459,7 @@ fn parse_statement(
             if cur.at_end() {
                 break;
             }
-            prevs = parse_node_list(&mut cur, g, lineno, assigns, subs)?;
+            prevs = parse_node_list(&mut cur, g, lineno, assigns, subs, sub_ids)?;
             continue;
         }
         // Inline-labelled operators (`-- text -->`) carry their own
@@ -454,10 +481,10 @@ fn parse_statement(
             let l = cur.take_until("|").ok_or_else(|| {
                 err(lineno, "edge label opened with '|' but never closed".to_string())
             })?;
-            label = Some(clean_label(&l));
+            label = Some(clean_label_1line(&l));
         }
         cur.skip_ws();
-        let nexts = parse_node_list(&mut cur, g, lineno, assigns, subs)?;
+        let nexts = parse_node_list(&mut cur, g, lineno, assigns, subs, sub_ids)?;
         // Fan-out: every prev connects to every next. Node→node
         // edges go to `edges`; anything touching a subgraph to
         // `sub_edges` (drawn against the cluster box).
@@ -521,7 +548,7 @@ fn parse_edge_inline_label(
                 format!("inline edge label after '{}' is never closed", open),
             ));
         };
-        let label = clean_label(&after[..i]);
+        let label = clean_label_1line(&after[..i]);
         cur.pos += open.len() + i + close.len();
         return Ok(Some((kind, label)));
     }
@@ -534,6 +561,7 @@ fn parse_node(
     lineno: usize,
     assigns: &mut Vec<(usize, String)>,
     subs: &[usize],
+    sub_ids: &HashMap<String, usize>,
 ) -> Result<End, ParseError> {
     cur.skip_ws();
     let start = cur.pos;
@@ -571,11 +599,13 @@ fn parse_node(
         Some((s, l)) => (Some(s), Some(clean_label(&l))),
         None => (None, None),
     };
-    // A bare id that names a declared subgraph (and no real node,
-    // no shape) is an edge endpoint on the whole cluster
-    // (`CF --> VPC`). Mermaid attaches such edges to the cluster box.
-    if shape.is_none() && g.node_index(&id).is_none() {
-        if let Some(si) = g.subgraphs.iter().position(|s| s.id == id) {
+    // An id that names a declared subgraph (pre-scanned, so
+    // forward references work) is an edge endpoint on the whole
+    // cluster (`CF --> VPC`). A subgraph id wins even if a shape
+    // was written (`VPC[x]`) — you can't have a node and a
+    // subgraph sharing an id — so no duplicate node is created.
+    if g.node_index(&id).is_none() {
+        if let Some(&si) = sub_ids.get(&id) {
             return Ok(End::Sub(si));
         }
     }
@@ -768,7 +798,7 @@ fn parse_er_statement(d: &mut ErDiagram, line: &str, lineno: usize) -> Result<()
         if l.is_empty() {
             None
         } else {
-            Some(clean_label(l))
+            Some(clean_label_1line(l))
         }
     } else if cur.at_end() {
         None
@@ -1209,6 +1239,33 @@ mod tests {
             .map(|s| s.parse().unwrap())
             .collect();
         nums.chunks(2).map(|c| (c[0], c[1])).collect()
+    }
+
+    #[test]
+    fn bughunt_fixes_subgraph_edges_and_br() {
+        use crate::model::End;
+        // Forward reference: subgraph declared AFTER the edge.
+        let g = parse("flowchart TD\nA --> grp\nsubgraph grp\nX\nend\n").unwrap();
+        assert!(g.node_index("grp").is_none(), "no stray 'grp' node");
+        assert_eq!(g.sub_edges.len(), 1);
+        assert_eq!(g.sub_edges[0].to, End::Sub(0));
+        // Shape on a subgraph id doesn't create a duplicate node.
+        let g = parse("flowchart TD\nsubgraph grp\nX\nend\nA --> grp[Ignore]\n").unwrap();
+        assert!(g.node_index("grp").is_none(), "subgraph wins over shape");
+        assert_eq!(g.sub_edges.len(), 1);
+        // A label of only <br/> collapses to empty (no blank lines).
+        assert_eq!(parse("A[\"<br/>\"]").unwrap().nodes[0].label, "");
+        // Edge labels & subgraph titles are single-line.
+        let g = parse("A -->|one<br/>two| B\nsubgraph s[\"Ti<br/>tle\"]\nB\nend").unwrap();
+        assert_eq!(g.edges[0].label.as_deref(), Some("one two"));
+        assert_eq!(g.subgraphs[0].title, "Ti tle");
+        // Empty subgraph: scene and route agree (no phantom cluster).
+        let g = parse("flowchart TD\nA-->B\nsubgraph empty\nend\nB --> empty").unwrap();
+        let s = crate::scene::scene(&g);
+        let pos: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let r = crate::scene::route(&g, &pos);
+        assert_eq!(s.clusters.len(), r.clusters.len(), "cluster count consistent");
+        assert_eq!(s.edges.len(), r.edges.len(), "edge count consistent");
     }
 
     #[test]

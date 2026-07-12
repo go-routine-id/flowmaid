@@ -313,9 +313,13 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
     }
 
     // Edges touching a subgraph: route them against the cluster box.
+    // Member-less subgraphs are skipped so `scene` and `route` agree
+    // (route can't place a box with no member anchor).
     let mut cluster_box: HashMap<usize, BoxCS> = HashMap::new();
     for &(sub, x, y, w, h, _) in &frag.clusters {
-        cluster_box.insert(sub, ((x + w / 2.0, y + h / 2.0), (w, h)));
+        if has_members(g, sub) {
+            cluster_box.insert(sub, ((x + w / 2.0, y + h / 2.0), (w, h)));
+        }
     }
     let end_placed = |end: End| -> Option<(Placed, Shape)> {
         match end {
@@ -413,6 +417,9 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
     let mut clusters: Vec<SceneCluster> = frag
         .clusters
         .iter()
+        // Skip member-less subgraphs — nothing to enclose, and
+        // `route` can't reproduce their box on drag.
+        .filter(|&&(sub, ..)| has_members(g, sub))
         .map(|&(sub, x, y, w, h, depth)| SceneCluster {
             x: x + tx,
             y: y + ty,
@@ -698,6 +705,17 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
         width: maxx + MARGIN,
         height: maxy + MARGIN,
     }
+}
+
+/// Whether a subgraph has any member node, directly or through a
+/// nested child. Member-less subgraphs have no geometric anchor and
+/// are dropped from both `scene` and `route` for consistency.
+fn has_members(g: &Graph, si: usize) -> bool {
+    if !g.subgraphs[si].nodes.is_empty() {
+        return true;
+    }
+    (0..g.subgraphs.len())
+        .any(|j| g.subgraphs[j].parent == Some(si) && has_members(g, j))
 }
 
 /// Per-subgraph box `(x, y, w, h)` wrapped around the CURRENT node
