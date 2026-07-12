@@ -1,27 +1,54 @@
+%% Class diagram showcase: all six UML relations, cardinalities,
+%% labels, three-compartment boxes, comma-list declaration, and
+%% direction / note / trailing-comment lines (accepted & ignored).
 classDiagram
-    class Animal {
+    direction TB
+    note "Domain model for a small shop"
+
+    class PaymentMethod {
+        <<interface>>
+        +authorize(amount) bool
+        +capture() void
+    }
+
+    class Person {
+        +String id
         +String name
-        -int age
-        +move() void
-        +eat(food) bool
     }
 
-    class Dog {
-        +String breed
-        +bark() void
+    class Customer {
+        -String email
+        +placeOrder(cart) Order
+        +history() List
     }
 
-    class Cat {
-        +bool indoor
-        +meow() void
+    class Order {
+        +String number
+        +Date createdAt
+        -OrderStatus status
+        +total() Money
+        +addLine(item, qty) void
     }
 
-    class Toy {
-        +String kind
+    class LineItem {
+        +int quantity
+        +Money unitPrice
+        +subtotal() Money
     }
 
-    Animal <|-- Dog
-    Animal <|-- Cat
-    Animal "1" o-- "*" Toy : owns
-    Dog "1" --> "*" Toy : plays with
-    Cat ..> Toy : ignores
+    class Product {
+        +String sku
+        +String title
+        +Money price
+    }
+
+    class CreditCard, PayPal
+
+    Person <|-- Customer
+    PaymentMethod <|.. CreditCard
+    PaymentMethod <|.. PayPal
+    Customer "1" --> "*" Order : places
+    Order "1" *-- "1..*" LineItem : contains
+    LineItem "*" --> "1" Product : refers to
+    Customer "1" o-- "*" PaymentMethod : owns
+    Order ..> PaymentMethod : charges %% dependency at checkout

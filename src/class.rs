@@ -584,4 +584,60 @@ mod tests {
         let i = s.find(&pat).unwrap() + pat.len();
         s[i..i + s[i..].find('"').unwrap()].parse().unwrap()
     }
+
+    /// End-to-end showcase guarding the whole feature set as one
+    /// interacting whole: every UML relation kind, cardinalities and
+    /// labels, three-compartment boxes, comma-list declaration, and
+    /// the `direction` / `note` / trailing-`%%` lines together.
+    #[test]
+    fn class_showcase_parses_and_renders() {
+        let d = cd(include_str!("../examples/class.mmd"));
+        // 8 classes, incl. the two from `class CreditCard, PayPal`.
+        assert_eq!(d.classes.len(), 8);
+        for name in ["PaymentMethod", "Customer", "Order", "CreditCard", "PayPal"] {
+            assert!(d.classes.iter().any(|c| c.name == name), "missing {name}");
+        }
+        // All six decorated relation kinds are exercised.
+        let kinds: Vec<RelKind> = d.relations.iter().map(|r| r.kind).collect();
+        for want in [
+            RelKind::Inheritance,
+            RelKind::Realization,
+            RelKind::Composition,
+            RelKind::Aggregation,
+            RelKind::Association,
+            RelKind::Dependency,
+        ] {
+            assert!(kinds.contains(&want), "missing relation {want:?}");
+        }
+        // Cardinalities and labels reached the model (the `1..*` sits
+        // on LineItem, which the composition normalises to the `from`).
+        assert!(d
+            .relations
+            .iter()
+            .any(|r| r.from_card.as_deref() == Some("1..*") || r.to_card.as_deref() == Some("1..*")));
+        assert!(d.relations.iter().any(|r| r.label.as_deref() == Some("contains")));
+
+        // Render: finite canvas, glyphs present, dashed lines for
+        // realization/dependency, no NaN, everything inside the canvas.
+        let svg = to_svg(&scene(&d));
+        assert!(!svg.contains("NaN") && !svg.contains("inf"));
+        assert!(svg.contains("<polygon"), "triangles/diamonds");
+        assert!(svg.contains("stroke-dasharray"), "dashed realization/dependency");
+        let w = svg_attr(&svg, "width");
+        let h = svg_attr(&svg, "height");
+        assert!(w > 0.0 && h > 0.0);
+        for line in svg.lines().filter(|l| l.starts_with("<text")) {
+            let x = svg_attr(line, "x");
+            let y = svg_attr(line, "y");
+            let inner = &line[line.find('>').unwrap() + 1..line.rfind("</text>").unwrap()];
+            let tw = text_width(inner);
+            let (lo, hi) = if line.contains("text-anchor=\"middle\"") {
+                (x - tw / 2.0, x + tw / 2.0)
+            } else {
+                (x, x + tw)
+            };
+            assert!(lo >= -1.0 && hi <= w + 1.0, "text {inner:?} outside width {w}");
+            assert!((0.0..=h).contains(&y), "text y {y} outside height {h}");
+        }
+    }
 }
