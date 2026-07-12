@@ -21,7 +21,8 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 - [ ] `stateDiagram-v2` — [#7](https://github.com/go-routine-id/flowmaid/issues/7)
 - [ ] `journey` — [#8](https://github.com/go-routine-id/flowmaid/issues/8)
 - [ ] `pie` — [#9](https://github.com/go-routine-id/flowmaid/issues/9)
-- [ ] `gantt` · `gitGraph` · `mindmap` · `timeline` · `quadrantChart` · more — see the board
+- [ ] `mindmap` — [#11](https://github.com/go-routine-id/flowmaid/issues/11)
+- [ ] `gantt` · `gitGraph` · `timeline` · `quadrantChart` · more — see the board
 
 **Flowchart features**
 
