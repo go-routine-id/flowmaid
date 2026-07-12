@@ -18,7 +18,7 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 - [x] `flowchart` / `graph` — TD/LR/RL/BT, 5 shapes, 4 link types + labels, chains, cycles, self-loops, parallel edges
 - [x] `erDiagram` — full crow's foot cardinalities, identifying/non-identifying lines, entity attribute tables
 - [x] `classDiagram` — three-compartment boxes, member visibility, all UML relations (inheritance/realization/composition/aggregation/association/dependency), cardinalities + labels *(v0.9.0)*
-- [ ] `sequenceDiagram` — [#6](https://github.com/go-routine-id/flowmaid/issues/6)
+- [x] `sequenceDiagram` — participants/actors, 8 arrow types, notes, activations, autonumber, loop/opt/alt/par frames *(v0.10.0)*
 - [ ] `stateDiagram-v2` — [#7](https://github.com/go-routine-id/flowmaid/issues/7)
 - [ ] `journey` — [#8](https://github.com/go-routine-id/flowmaid/issues/8)
 - [ ] `pie` — [#9](https://github.com/go-routine-id/flowmaid/issues/9)
@@ -123,7 +123,26 @@ classDiagram
 
 Supported subset: class blocks with `+ - # ~` member visibility (a member with `()` becomes a method, otherwise a field); inline members via `Name : +member`; multiple classes in one line (`class Duck, Fish`); and all UML relations — inheritance `<|--`, realization `..|>`, composition `*--`, aggregation `o--`, association `-->`, dependency `..>`, and plain link `--`/`..`, in either direction. Each relation takes optional `"cardinality"` strings on each side (a colon or operator inside the quotes is protected) and a `: label`; the diagram is normalised so the end glyph (hollow triangle, filled/hollow diamond, or open arrow) always sits at the target end. Dashed lines are used for realization and dependency. Trailing `%%` comments and `direction` / `note` lines are accepted and ignored. Not yet rendered: generics (`List~T~`), `<<stereotype>>` badges, and `namespace` blocks. See `examples/class.mmd`.
 
-Other Mermaid diagram types (`sequenceDiagram`, `stateDiagram-v2`, `gantt`, ...) are detected and produce an explicit "not supported yet" error instead of a confusing parse failure.
+## Sequence diagrams
+
+`sequenceDiagram` input renders participant boxes across the top, dashed lifelines below, and one row per statement top-down:
+
+```
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant API
+    U->>+API: GET /profile
+    API-->>-U: 200 OK
+    Note over U,API: cached for 60s
+    loop every minute
+        API->>API: refresh token
+    end
+```
+
+Supported subset: `participant` / `actor` declarations with `as` aliases (actors draw as outlined boxes; implicit participants are created on first mention, in order of appearance); all eight message arrows — `->>` solid + filled head, `-->>` dashed + filled head, `->` / `-->` plain lines without a head, `-x` / `--x` cross ends, `-)` / `--)` async open arrows — including self-messages (`A->>A:`, drawn as a loop beside the lifeline); `autonumber` (bold `1.` prefixes on messages); notes in all four forms (`Note over A,B:`, `Note over A:`, `Note left of A:`, `Note right of A:` — keywords case-insensitive); activation bars via `activate` / `deactivate` or the `+`/`-` arrow shorthand (`A->>+B:` activates B, `B-->>-A:` deactivates B; unbalanced deactivation is a line-numbered error); and `loop` / `opt` / `alt`+`else` / `par`+`and` frames drawn as labeled boxes with dashed dividers. Trailing `%%` comments are stripped. Limitations: message and note text is single-line (`<br/>` collapses to a space), frames span the full diagram width rather than only the involved participants, and `box`, `rect`, `critical`, `break`, `create`/`destroy`, and `autonumber` arguments produce an explicit "not supported yet" error. See `examples/sequence.mmd`.
+
+Other Mermaid diagram types (`stateDiagram-v2`, `gantt`, `journey`, ...) are detected and produce an explicit "not supported yet" error instead of a confusing parse failure.
 
 ## Architecture
 
@@ -140,6 +159,8 @@ For interactive apps there is the `scene` module: `scene()` produces final ready
 The `er` module maps an `ErDiagram` onto the same machinery and mirrors the `scene` API: `er::scene()` for automatic layout, `er::route()` to follow dragged entity positions, `er::to_svg()` to export any arrangement. Each entity becomes one node of a synthetic left-to-right graph (sized from its attribute table via `scene::scene_sized`), each relationship one edge; only the writer differs — tables instead of shapes, crow's foot glyphs (exposed as plain geometry via `er::glyph`) instead of arrowheads.
 
 The `class` module follows the same pattern for `classDiagram`: `class::scene()`, `class::route()`, `class::to_svg()`. Each class becomes one node of a synthetic top-down graph (sized from its member list), each relationship one edge; the writer draws three-compartment boxes and UML end glyphs (exposed as plain geometry via `class::head`) at the target end.
+
+The `seq` module is different: sequence diagrams are not graphs, so it skips the Sugiyama pipeline entirely. `seq::scene()` computes a linear layout — columns from declaration order (gaps widened until every message label and note fits), one row per statement top-down — and returns every box, lifeline, message polyline, note, activation bar, and frame in final coordinates; `seq::to_svg()` serialises any scene, and `seq::head` exposes arrowheads as plain geometry for GUI painters.
 
 ## Performance
 

@@ -3,7 +3,7 @@
 //! so the output of render() and the interactive flow
 //! (scene/route/to_svg) are guaranteed identical.
 
-use crate::model::{ClassDiagram, ErDiagram, Graph};
+use crate::model::{ClassDiagram, ErDiagram, Graph, SequenceDiagram};
 
 pub fn render(g: &Graph) -> String {
     crate::scene::to_svg(&crate::scene::scene(g))
@@ -19,6 +19,12 @@ pub fn render_er(d: &ErDiagram) -> String {
 /// glyphs). Geometry & serialisation live in the `class` module.
 pub fn render_class(d: &ClassDiagram) -> String {
     crate::class::to_svg(&crate::class::scene(d))
+}
+
+/// Render a sequence diagram (lifelines + linear message rows).
+/// Geometry & serialisation live in the `seq` module.
+pub fn render_seq(d: &SequenceDiagram) -> String {
+    crate::seq::to_svg(&crate::seq::scene(d))
 }
 
 #[cfg(test)]
