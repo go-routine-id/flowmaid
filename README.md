@@ -1,4 +1,4 @@
-# flowrs
+# flowmaid
 
 Mesin diagram flowchart mini ala MermaidJS, ditulis dalam Rust murni tanpa dependency eksternal. Menerima teks bersintaks Mermaid dan menghasilkan SVG.
 
@@ -8,10 +8,10 @@ Mesin diagram flowchart mini ala MermaidJS, ditulis dalam Rust murni tanpa depen
 cargo build --release
 
 # dari file
-./target/release/flowrs examples/demo.mmd -o demo.svg
+./target/release/flowmaid examples/demo.mmd -o demo.svg
 
 # atau lewat pipe
-cat examples/lr.mmd | ./target/release/flowrs > lr.svg
+cat examples/lr.mmd | ./target/release/flowmaid > lr.svg
 
 # saat pengembangan
 cargo run -- examples/demo.mmd -o demo.svg
@@ -21,7 +21,7 @@ cargo test
 Bisa juga dipakai sebagai library (crate ini adalah lib + bin):
 
 ```rust
-let svg = flowrs::render_svg("flowchart TD\nA[Mulai] --> B[Selesai]")?;
+let svg = flowmaid::render_svg("flowchart TD\nA[Mulai] --> B[Selesai]")?;
 ```
 
 ## Sintaks yang didukung
@@ -64,13 +64,13 @@ End-to-end lewat CLI untuk kasus 5.000 node — termasuk baca 10.151 baris input
 
 ## Interaktivitas & aplikasi desktop
 
-Selain SVG statis, engine mengekspos API interaktif untuk aplikasi GUI: `flowrs::scene(&graph)` mengembalikan `Scene` — posisi, ukuran, dan bentuk setiap node plus kurva setiap edge dalam koordinat final — siap digambar painter framework mana pun. `Scene::hit_test(x, y)` mendeteksi node di bawah kursor (sadar-bentuk: lingkaran dan belah ketupat dites eksak), dan `Scene::move_node(i, x, y)` memindahkan node saat di-drag sambil merutekan ulang edge yang menempel, *tanpa* menjalankan ulang layout — sehingga node tidak melompat balik. `scene_to_svg(&scene)` mengekspor kondisi apa pun, termasuk setelah di-drag.
+Selain SVG statis, engine mengekspos API interaktif untuk aplikasi GUI lewat modul `scene`: `scene(&graph)` mengembalikan `Scene` — posisi, ukuran, dan bentuk setiap node plus kurva bezier setiap edge dalam koordinat final — siap digambar painter framework mana pun. Saat node di-drag, panggil `route(&graph, &posisi)` untuk merutekan ulang edge mengikuti posisi kustom *tanpa* menjalankan ulang layout — sehingga node tidak melompat balik. `to_svg(&scene)` mengekspor kondisi apa pun, termasuk setelah di-drag. Hit-testing dilakukan aplikasi dari geometri `Scene` (posisi + ukuran + bentuk tiap node tersedia).
 
-Demo lengkapnya ada di `demo-egui/` (crate terpisah; engine tetap tanpa dependency): editor teks live di kiri dengan pola *last good render*, diagram drag & drop di kanan, drop file `.mmd` ke jendela untuk memuatnya, dan tombol ekspor SVG. Jalankan dengan `cd demo-egui && cargo run --release`. `Cargo.lock`-nya sengaja dipin agar terkompilasi sampai rustc 1.75; di toolchain lebih baru bebas `cargo update`. Untuk framework lain: Tauri/Dioxus tinggal suntik string SVG ke webview; iced punya widget svg; Slint dan GTK4 merender SVG native; atau gambar `Scene` langsung dengan painter masing-masing seperti yang dilakukan demo egui ini.
+Demo lengkapnya ada di folder `flowrs-demo` repo ini (crate terpisah; engine tetap tanpa dependency): editor teks live di kiri dengan pola *last good render*, diagram drag & drop di kanan dengan zoom & pan, drop file `.mmd` ke jendela untuk memuatnya, dan tombol ekspor SVG. Jalankan dengan `cd flowrs-demo && cargo run --release` (butuh Rust ≥ 1.85 karena dependensi GUI; engine-nya sendiri tetap 1.75). Untuk framework lain: Tauri/Dioxus tinggal suntik string SVG ke webview; iced punya widget svg; Slint dan GTK4 merender SVG native; atau gambar `Scene` langsung dengan painter masing-masing seperti yang dilakukan demo egui ini.
 
-## Publikasi ke crates.io
+## Lisensi
 
-Metadata publish sudah terisi di `Cargo.toml` dan paket sudah lolos `cargo package` (termasuk build verifikasi). Tiga hal tersisa yang butuh keputusanmu: (1) **nama** — `flowrs` dan `mermaid-rs` sudah dipakai orang; `flowmaid` masih tersedia per Juli 2026 — ganti field `name`, lalu sesuaikan `use flowrs::` di `examples/` dan `flowrs-demo`; (2) **lisensi** — manifest memakai konvensi ekosistem `MIT OR Apache-2.0`, ganti bila perlu dan tambahkan file LICENSE-nya; (3) isi field `repository` setelah repo publiknya dibuat. Setelah itu tinggal `cargo login <token>` (token dari akun crates.io) lalu `cargo publish`. Nama di crates.io berlaku siapa-cepat-dia-dapat.
+GPL-3.0-or-later — bebas dipakai siapa pun; turunan yang disebarkan wajib tetap open source dengan lisensi sama. Teks lengkap di file `LICENSE`.
 
 ## Keterbatasan & ide pengembangan
 

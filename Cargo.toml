@@ -1,16 +1,13 @@
 [package]
-# CATATAN: nama "flowrs" sudah dipakai di crates.io (dan "mermaid-rs" juga).
-# Ganti nama sebelum publish — "flowmaid" masih tersedia per 2026-07-12.
-# Saat ganti nama, sesuaikan juga `use flowrs::...` di examples/ dan flowrs-demo.
-name = "flowrs"
+name = "flowmaid"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
 description = "Mermaid-like flowchart engine in pure std Rust: hand-written parser, Sugiyama-style layout, SVG renderer, and an interactive scene API for drag-and-drop apps. Zero dependencies."
-license = "MIT OR Apache-2.0"  # konvensi umum ekosistem Rust — ganti sesuai pilihanmu
+license = "GPL-3.0-or-later"
 readme = "README.md"
 keywords = ["mermaid", "diagram", "flowchart", "svg", "layout"]
 categories = ["visualization", "command-line-utilities"]
-# repository = "https://github.com/USERNAME/REPO"  # isi setelah repo dibuat
+repository = "https://github.com/go-routine-id/flowmaid"
 
 [dependencies]

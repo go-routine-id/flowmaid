@@ -1,8 +1,8 @@
-//! flowrs — CLI di atas pustaka mesin diagram flowrs.
+//! flowmaid — CLI di atas pustaka mesin diagram flowmaid.
 //!
 //! Pipeline: teks .mmd  ->  parser  ->  layout  ->  SVG.
 
-use flowrs::{parser, render};
+use flowmaid::{parser, render};
 use std::env;
 use std::fs;
 use std::io::{self, IsTerminal, Read};
@@ -10,10 +10,10 @@ use std::process;
 
 fn print_help() {
     println!(
-        "flowrs — mesin diagram flowchart mini (sintaks ala Mermaid)\n\n\
+        "flowmaid — mesin diagram flowchart mini (sintaks ala Mermaid)\n\n\
          Pemakaian:\n\
-         \x20 flowrs <input.mmd> [-o output.svg]\n\
-         \x20 cat diagram.mmd | flowrs > out.svg\n\n\
+         \x20 flowmaid <input.mmd> [-o output.svg]\n\
+         \x20 cat diagram.mmd | flowmaid > out.svg\n\n\
          Opsi:\n\
          \x20 -o, --output <file>   tulis SVG ke file (default: stdout)\n\
          \x20 -h, --help            tampilkan bantuan ini\n\n\

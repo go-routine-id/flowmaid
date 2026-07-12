@@ -1,9 +1,9 @@
-//! flowrs — pustaka mesin diagram flowchart ala Mermaid.
+//! flowmaid — pustaka mesin diagram flowchart ala Mermaid.
 //!
 //! Pemakaian sebagai library:
 //!
 //! ```
-//! let svg = flowrs::render_svg("flowchart TD\nA[Mulai] --> B[Selesai]").unwrap();
+//! let svg = flowmaid::render_svg("flowchart TD\nA[Mulai] --> B[Selesai]").unwrap();
 //! assert!(svg.starts_with("<svg"));
 //! ```
 

@@ -66,9 +66,9 @@ fn main() {
     let cases: &[(usize, usize)] = &[(10, 5), (20, 10), (50, 20), (100, 25), (200, 25), (2, 2500)];
     for &(l, w) in cases {
         let src = synth(l, w);
-        let (g, tp) = best(|| flowrs::parser::parse(&src).unwrap());
-        let (_lay, tl) = best(|| flowrs::layout::layout(&g));
-        let (svg, tr) = best(|| flowrs::render::render(&g));
+        let (g, tp) = best(|| flowmaid::parser::parse(&src).unwrap());
+        let (_lay, tl) = best(|| flowmaid::layout::layout(&g));
+        let (svg, tr) = best(|| flowmaid::render::render(&g));
         println!(
             "{:>6} {:>6} {:>6} | {:>7.2}ms {:>7.2}ms {:>7.2}ms | {:>6}KB",
             g.nodes.len(),
