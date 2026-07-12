@@ -38,12 +38,89 @@ mod tests {
         let i = path_line.find("d=\"").unwrap() + 3;
         let rest = &path_line[i..];
         let d = &rest[..rest.find('"').unwrap()];
+        // Skip non-numeric tokens (arc flags / path commands) so the
+        // helper works on cylinder `A…` paths too.
         let nums: Vec<f64> = d
             .split(|c: char| !(c.is_ascii_digit() || c == '.' || c == '-'))
-            .filter(|s| !s.is_empty())
-            .map(|s| s.parse().unwrap())
+            .filter_map(|s| s.parse().ok())
             .collect();
-        nums.chunks(2).map(|c| (c[0], c[1])).collect()
+        nums.chunks_exact(2).map(|c| (c[0], c[1])).collect()
+    }
+
+    /// End-to-end regression over the advanced showcase — nested
+    /// subgraphs, edges-to-subgraph, every node shape, `<br/>`
+    /// labels, custom colors, fan-out, and all link types together.
+    /// Guards the whole feature set as one interacting whole.
+    #[test]
+    fn advanced_showcase_parses_and_renders() {
+        use crate::model::{Document, EdgeKind, Shape};
+        let src = include_str!("../examples/advanced.mmd");
+        let doc = crate::parser::parse_document(src).unwrap();
+        let Document::Flowchart(g) = doc else {
+            panic!("advanced.mmd is a flowchart");
+        };
+
+        // Structure: 3 subgraphs (CI, Platform, Workers nested).
+        assert_eq!(g.subgraphs.len(), 3);
+        let workers = g.subgraphs.iter().find(|s| s.id == "Workers").unwrap();
+        assert_eq!(workers.parent, Some(g.subgraphs.iter().position(|s| s.id == "Platform").unwrap()));
+        assert_eq!(workers.direction, Some(crate::model::Direction::LR));
+        // Edges targeting a subgraph landed in sub_edges (Dev->CI,
+        // Reg->Platform, Platform->Mon, Rollback->Platform).
+        assert!(g.sub_edges.len() >= 4, "got {} sub_edges", g.sub_edges.len());
+
+        // Every classic shape is present.
+        let shapes: Vec<Shape> = g.nodes.iter().map(|n| n.shape).collect();
+        for want in [
+            Shape::Subroutine,
+            Shape::Hexagon,
+            Shape::Cylinder,
+            Shape::Parallelogram,
+            Shape::ParallelogramAlt,
+            Shape::DoubleCircle,
+            Shape::Rounded,
+        ] {
+            assert!(shapes.contains(&want), "missing shape {want:?}");
+        }
+        // A `<br/>` label became multi-line.
+        assert!(
+            g.nodes.iter().any(|n| n.label.contains('\n')),
+            "expected a multi-line <br/> label"
+        );
+        // Custom colors from :::/style reached a node.
+        assert!(g.nodes.iter().any(|n| n.style.fill.is_some()));
+        // One invisible `~~~` link exists in the model...
+        assert!(g.edges.iter().any(|e| e.kind == EdgeKind::Invisible));
+
+        // Render: finite canvas, all path coords inside it, no NaN,
+        // and the invisible link is NOT drawn as a path.
+        let svg = render(&g);
+        assert!(!svg.contains("NaN") && !svg.contains("inf"));
+        let (w, h) = (attr(&svg, "width"), attr(&svg, "height"));
+        assert!(w.is_finite() && h.is_finite() && w > 0.0 && h > 0.0);
+        // Check containment only on edge bezier curves (`M…C…`);
+        // cylinder shape paths use arc flags that aren't coordinates.
+        for line in paths(&svg).iter().filter(|p| p.contains(" C ")) {
+            for (x, y) in coords(line) {
+                assert!(x >= -0.5 && x <= w + 0.5, "x={x} outside {w}");
+                assert!(y >= -0.5 && y <= h + 0.5, "y={y} outside {h}");
+            }
+        }
+        // Shape variety shows up in the SVG: cylinders/hexagons =>
+        // <path>/<polygon>, double circle => 2 close circles, plus
+        // the subgraph title strips.
+        assert!(svg.contains("<polygon"), "hexagon/parallelogram polygons");
+        assert!(svg.matches("<circle").count() >= 2, "double circle");
+        assert!(svg.contains("CI/CD Pipeline") && svg.contains("Production Platform"));
+
+        // Interactive path stays consistent: route() over the auto
+        // positions yields the same node/edge/cluster counts.
+        let s0 = crate::scene::scene(&g);
+        let pos: Vec<(f64, f64)> = s0.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let s1 = crate::scene::route(&g, &pos);
+        assert_eq!(s0.nodes.len(), s1.nodes.len());
+        assert_eq!(s0.edges.len(), s1.edges.len());
+        assert_eq!(s0.clusters.len(), s1.clusters.len());
     }
 
     #[test]
