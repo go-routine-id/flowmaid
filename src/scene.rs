@@ -150,11 +150,15 @@ fn scene_flat(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
             bb.add(m.0 + w / 2.0, m.1 + 10.0);
         }
     }
-    let (minb, _maxb, minl, _maxl) = bb.finish();
+    // Use finish() (guarded against the empty bbox) — the raw
+    // fields are ±infinity for an empty level, which used to poison
+    // every coordinate downstream with NaN (found by a bughunter
+    // via empty nested subgraphs).
+    let (minb, maxb, minl, maxl) = bb.finish();
     let offb = MARGIN - minb;
     let offl = MARGIN - minl;
-    let total_b = (bb.1 - bb.0) + 2.0 * MARGIN;
-    let total_l = (bb.3 - bb.2) + 2.0 * MARGIN;
+    let total_b = (maxb - minb) + 2.0 * MARGIN;
+    let total_l = (maxl - minl) + 2.0 * MARGIN;
 
     // Map abstract coordinates (b, l) -> final (x, y).
     let dir = g.direction;
@@ -1177,6 +1181,33 @@ mod tests {
         // Export contains the titled boxes.
         let svg = to_svg(&s);
         assert!(svg.contains("Backend Services") && svg.contains("workers"));
+    }
+
+    #[test]
+    fn empty_and_nested_empty_subgraphs_stay_finite() {
+        // Regression (bughunter): empty subgraph levels used to
+        // produce -inf dimensions that poisoned the whole SVG.
+        for src in [
+            "graph TD\nA[Node1]\nsubgraph outer\nsubgraph inner\nend\nend",
+            "graph TD\nA --> B\nsubgraph l1[L1]\nsubgraph l2[L2]\nsubgraph l3[L3]\nend\nend\nend",
+            "flowchart TD\nsubgraph only\nend",
+        ] {
+            let s = scene(&parse(src).unwrap());
+            assert!(s.width.is_finite() && s.height.is_finite(), "{}", src);
+            for n in &s.nodes {
+                assert!(n.x.is_finite() && n.y.is_finite(), "{}", src);
+            }
+            for c in &s.clusters {
+                assert!(
+                    c.x.is_finite() && c.y.is_finite() && c.w.is_finite() && c.h.is_finite(),
+                    "cluster in {}",
+                    src
+                );
+                assert!(c.w >= 0.0 && c.h >= 0.0);
+            }
+            let svg = to_svg(&s);
+            assert!(!svg.contains("NaN") && !svg.contains("inf"), "{}", src);
+        }
     }
 
     #[test]
