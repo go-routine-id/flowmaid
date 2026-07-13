@@ -14,8 +14,7 @@ jobs:
           components: clippy
       - run: cargo test --all-targets
       - run: cargo test --doc
-      - run: cargo test --all-targets --features markdown
-      - run: cargo clippy --all-targets --features markdown -- -D warnings
+      - run: cargo clippy --all-targets -- -D warnings
 
   # The crate promises Rust 1.75 compatibility — hold us to it.
   msrv:

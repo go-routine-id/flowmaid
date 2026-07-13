@@ -83,29 +83,6 @@ fn main() {
         }
     };
 
-    // A Markdown input renders to an HTML fragment with every
-    // ```mermaid block inlined as SVG (optional `markdown` feature).
-    let is_md = input.as_deref().is_some_and(|p| {
-        std::path::Path::new(p)
-            .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case("md") || e.eq_ignore_ascii_case("markdown"))
-    });
-    if is_md {
-        #[cfg(feature = "markdown")]
-        {
-            write_out(&output, &flowmaid::md::render_html(&source));
-            return;
-        }
-        #[cfg(not(feature = "markdown"))]
-        {
-            eprintln!(
-                "markdown input needs the optional feature: \
-                 cargo install flowmaid --features markdown"
-            );
-            process::exit(2);
-        }
-    }
-
     let doc = match parser::parse_document(&source) {
         Ok(d) => d,
         Err(e) => {
@@ -145,19 +122,14 @@ fn main() {
         Document::Pie(d) => render::render_pie(d),
     };
 
-    write_out(&output, &svg);
-}
-
-/// Write to `-o <file>` or stdout.
-fn write_out(output: &Option<String>, data: &str) {
-    match output {
+    match &output {
         Some(path) => {
-            if let Err(e) = fs::write(path, data) {
+            if let Err(e) = fs::write(path, svg) {
                 eprintln!("failed to write '{}': {}", path, e);
                 process::exit(1);
             }
             eprintln!("saved: {}", path);
         }
-        None => print!("{}", data),
+        None => print!("{}", svg),
     }
 }

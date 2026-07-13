@@ -184,25 +184,6 @@ Supported subset: `[*]` start/end pseudostates (scoped — a composite gets its 
 
 Other Mermaid diagram types (`gantt`, `journey`, `mindmap`, ...) are detected and produce an explicit "not supported yet" error instead of a confusing parse failure.
 
-## Markdown documents (optional feature)
-
-Diagrams usually live inside docs. With the optional `markdown` feature the `flowmaid::md` module works with whole Markdown documents — and the CLI renders them to HTML:
-
-```toml
-flowmaid = { version = "0.12", features = ["markdown"] }
-```
-
-```bash
-flowmaid README.md -o readme.html   # every ```mermaid block inlined as SVG
-```
-
-- `md::mermaid_blocks(doc)` — every ```mermaid / ```mmd fence (found via the Markdown AST, so tilde fences, info strings, and fences in blockquotes all work), with its source and byte span.
-- `md::splice_block(doc, index, new_source)` — write an edited diagram back INTO its fence, leaving the rest of the document untouched (used by the desktop editor's "edit as tab" flow). Indented fences (inside lists) are refused rather than corrupted.
-- `md::render_blocks(doc)` — each block to SVG, in order.
-- `md::render_html(doc)` — the whole document to an HTML fragment: prose becomes HTML, every mermaid block becomes an inline `<figure class="flowmaid-diagram">` SVG, and a block that fails to parse becomes a `<pre class="flowmaid-error">` with the line-numbered message instead of breaking the page.
-
-The default build is untouched: without the feature, flowmaid still has **zero dependencies**. The feature adds one small pure-Rust crate ([`markdown`](https://crates.io/crates/markdown)) and stays wasm-compatible.
-
 ## Architecture
 
 A three-stage pipeline, one module per stage:
