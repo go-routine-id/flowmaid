@@ -149,6 +149,10 @@ fn normalize_breaks(s: &str) -> String {
 /// `erDiagram` -> ER. Other known Mermaid types produce an explicit
 /// "not supported yet" error.
 pub fn parse_document(source: &str) -> Result<Document, ParseError> {
+    // Editor Windows (Notepad, PowerShell `>`) menyisipkan BOM UTF-8.
+    // U+FEFF bukan whitespace Unicode, jadi lolos trim() dan membuat
+    // header tak terdeteksi dengan error yang menyesatkan.
+    let source = source.strip_prefix('\u{feff}').unwrap_or(source);
     for (i, raw) in source.lines().enumerate() {
         let line = raw.trim();
         if line.is_empty() || line.starts_with("%%") {
@@ -175,6 +179,9 @@ pub fn parse_document(source: &str) -> Result<Document, ParseError> {
 
 /// Parse a flowchart. For ER diagrams use [`parse_document`].
 pub fn parse(source: &str) -> Result<Graph, ParseError> {
+    // Lihat catatan BOM di parse_document — entry point ini publik
+    // juga, jadi dapat perlakuan yang sama.
+    let source = source.strip_prefix('\u{feff}').unwrap_or(source);
     let mut g = Graph::default();
     let mut header_seen = false;
     // Styling is collected during the pass and resolved at the end,
@@ -2043,5 +2050,25 @@ mod tests {
         assert_eq!(g.nodes.len(), 2);
         assert_eq!(g.nodes[0].id, "graphics");
         assert_eq!(g.direction, crate::model::Direction::TD);
+    }
+
+    #[test]
+    fn utf8_bom_is_stripped_for_every_diagram_type() {
+        // Bug hunt: a BOM from Windows editors survived trim() (it is
+        // not Unicode whitespace), broke header detection for all
+        // five types, and produced "expected a node id, found:
+        // 'flowchart TD'" with the BOM invisible in a terminal.
+        for src in [
+            "flowchart TD\nA --> B",
+            "erDiagram\nA ||--o{ B : has",
+            "classDiagram\nAnimal <|-- Dog",
+            "sequenceDiagram\nA->>B: hi",
+            "pie\n\"a\" : 1",
+        ] {
+            let bom = format!("\u{feff}{src}");
+            assert!(parse_document(&bom).is_ok(), "BOM must not break: {src}");
+        }
+        // The flowchart-only entry point gets the same courtesy.
+        assert!(parse("\u{feff}A --> B").is_ok());
     }
 }
