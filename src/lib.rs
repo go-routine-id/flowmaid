@@ -26,6 +26,8 @@
 pub mod class;
 pub mod er;
 pub mod layout;
+#[cfg(feature = "markdown")]
+pub mod md;
 pub mod model;
 pub mod parser;
 pub mod pie;
