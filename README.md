@@ -5,7 +5,7 @@
 [![docs.rs](https://docs.rs/flowmaid/badge.svg)](https://docs.rs/flowmaid)
 [![license](https://img.shields.io/crates/l/flowmaid.svg)](LICENSE)
 
-A small Mermaid-like diagram engine written in pure std Rust with zero external dependencies. Takes Mermaid-syntax text and produces SVG — or live, draggable geometry for interactive apps.
+A small Mermaid-like diagram engine written in pure std Rust with zero external dependencies. Takes Mermaid-syntax text and produces SVG — or live, draggable geometry for interactive apps. Six diagram types today: flowcharts, ER, UML class, sequence, pie, and state diagrams.
 
 **Website:** https://go-routine-id.github.io/flowmaid/ · **Playground:** https://go-routine-id.github.io/flowmaid-web/ · **Desktop editor:** [flowmaid-desktop](https://github.com/go-routine-id/flowmaid-desktop)
 
@@ -15,7 +15,7 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 
 **Diagram types**
 
-- [x] `flowchart` / `graph` — TD/LR/RL/BT, 5 shapes, 4 link types + labels, chains, cycles, self-loops, parallel edges
+- [x] `flowchart` / `graph` — TD/LR/RL/BT, 11 node shapes, 7 link types + labels, chains, fan-out, cycles, self-loops, parallel edges
 - [x] `erDiagram` — full crow's foot cardinalities, identifying/non-identifying lines, entity attribute tables
 - [x] `classDiagram` — three-compartment boxes, member visibility, all UML relations (inheritance/realization/composition/aggregation/association/dependency), cardinalities + labels *(v0.9.0)*
 - [x] `sequenceDiagram` — participants/actors, 8 arrow types, notes, activations, autonumber, loop/opt/alt/par frames *(v0.10.0)*
@@ -30,7 +30,7 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 - [x] `subgraph` — nesting, titles, per-block `direction`, edges to/from a subgraph *(v0.5.0, v0.7.0)*
 - [x] `<br/>` multi-line labels *(v0.7.0)*
 - [x] `style` / `classDef` / `class` / `:::` custom colors *(v0.4.0)*
-- [x] Semantic color theme (shape-based) + stable ER accent palette
+- [x] Semantic color theme (shape-based) + stable accent palette shared by ER / class / sequence / pie
 - [x] Interactive scene API — drag nodes, edges re-route live (`scene`, `route`, `box_edge_bezier`)
 - [x] Explicit "not supported yet" errors for every known mermaid header
 - [ ] `$$…$$` math in labels, KaTeX-style — phased passthrough → MathML → native — [#12](https://github.com/go-routine-id/flowmaid/issues/12)
@@ -38,7 +38,7 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 - [x] More node shapes — cylinder `[( )]`, subroutine `[[ ]]`, hexagon `{{ }}`, parallelograms `[/ /]` `[\ \]`, double circle `((( )))` *(v0.8.0)*
 - [ ] `click` interactions, frontmatter themes, `$$math$$` — see the board
 
-**Why flowmaid?** Zero dependencies, `wasm32` out of the box (the whole engine is a ~166 KB wasm bundle — mermaid.js is ~2.5 MB), sub-millisecond renders, line-numbered parse errors, and one geometry source shared by SVG export and interactive canvases.
+**Why flowmaid?** Zero dependencies, `wasm32` out of the box (all six diagram types fit in a ~290 KB wasm bundle — mermaid.js is ~2.5 MB), sub-millisecond renders, line-numbered parse errors, and one geometry source shared by SVG export and interactive canvases. Input is forgiving where it should be: UTF-8 BOMs are stripped, CRLF is fine, and every known-but-unsupported Mermaid header fails with an explicit message instead of a confusing parse error.
 
 ## Installation
 
@@ -50,7 +50,7 @@ Or in `Cargo.toml`:
 
 ```toml
 [dependencies]
-flowmaid = "0.1"
+flowmaid = "0.11"
 ```
 
 ## Usage
@@ -69,10 +69,12 @@ cargo run -- examples/demo.mmd -o demo.svg
 cargo test
 ```
 
-It also works as a library (the crate is lib + bin):
+It also works as a library (the crate is lib + bin) — one call, any supported diagram type, dispatched on the header:
 
 ```rust
-let svg = flowmaid::render_svg("flowchart TD\nA[Start] --> B[Done]")?;
+let flow = flowmaid::render_svg("flowchart TD\nA[Start] --> B[Done]")?;
+let uml  = flowmaid::render_svg("classDiagram\nAnimal <|-- Dog")?;
+let fsm  = flowmaid::render_svg("stateDiagram-v2\n[*] --> Idle")?;
 ```
 
 ## Supported syntax
@@ -87,7 +89,7 @@ Subgraphs use mermaid's block syntax — `subgraph id [Title]` … `end` — wit
 
 Custom colors use mermaid's styling syntax: `style A fill:#f9f,stroke:#333,stroke-width:4px,color:#fff`, reusable classes via `classDef hot fill:#ffe3e3,stroke:#e03131` + `class A,B hot` or the inline shorthand `A:::hot`. Supported properties: `fill`, `stroke`, `stroke-width`, `color` (label text); unknown properties are ignored. Unstyled nodes fall back to a semantic theme — shape determines color (stadium green, diamond amber, circle violet, ...; see the `style` module) — and ER entities cycle through a stable accent palette.
 
-Complete examples live in `examples/demo.mmd` and `examples/lr.mmd`.
+Complete examples live in `examples/` — `demo.mmd` and `lr.mmd` for the basics, `advanced.mmd` for everything at once (nested subgraphs, all shapes and link types, `<br/>`, custom colors), plus one showcase per diagram type (`er`, `class`, `sequence`, `pie`, `state`).
 
 ## Entity-Relationship diagrams
 
@@ -200,6 +202,10 @@ The `class` module follows the same pattern for `classDiagram`: `class::scene()`
 
 The `seq` module is different: sequence diagrams are not graphs, so it skips the Sugiyama pipeline entirely. `seq::scene()` computes a linear layout — columns from declaration order (gaps widened until every message label and note fits), one row per statement top-down — and returns every box, lifeline, message polyline, note, activation bar, and frame in final coordinates; `seq::to_svg()` serialises any scene, and `seq::head` exposes arrowheads as plain geometry for GUI painters.
 
+The `pie` module is pure geometry — no graph at all. `pie::scene()` returns the circle, per-slice angles/fractions, percentage-label anchors, and legend rows; `pie::to_svg()` serialises them (a ~100% slice becomes a real `<circle>`, since a single SVG arc cannot sweep 360°).
+
+State diagrams need no module of their own: the parser maps them straight onto `Graph` (states are rounded nodes, `[*]` pseudostates are dedicated shapes, composites are subgraph clusters), so they inherit the whole flowchart pipeline — including `route()` and dragging — for free.
+
 ## Performance
 
 A built-in benchmark lives in `examples/bench.rs` (pure std, deterministic synthetic graphs) — run it with `cargo run --release --example bench`. Measurements on Linux x86_64, rustc 1.75, release build, best of 3 runs:
@@ -218,9 +224,9 @@ End-to-end through the CLI for the 5,000-node case — including reading 10,151 
 
 ## Interactivity & desktop apps
 
-Beyond static SVG, the engine exposes an interactive API for GUI apps through the `scene` module: `scene(&graph)` returns a `Scene` — the position, size, and shape of every node plus the bezier curve of every edge in final coordinates — ready to draw with any framework's painter. When a node is dragged, call `route(&graph, &positions)` to re-route edges for custom positions *without* re-running layout — so nodes never jump back. `to_svg(&scene)` exports any state, including after drags. Hit-testing is done by the app from the `Scene` geometry (per-node position + size + shape are all there).
+Beyond static SVG, the engine exposes an interactive API for GUI apps through the `scene` module: `scene(&graph)` returns a `Scene` — the position, size, and shape of every node plus the bezier curve of every edge in final coordinates — ready to draw with any framework's painter. When a node is dragged, call `route(&graph, &positions)` to re-route edges for custom positions *without* re-running layout — so nodes never jump back. `to_svg(&scene)` exports any state, including after drags. Hit-testing is done by the app from the `Scene` geometry (per-node position + size + shape are all there). The same `scene`/`route`/`to_svg` triple exists for ER (`er::`) and class (`class::`) diagrams, and state diagrams ride the flowchart API directly; sequence diagrams and pie charts are static (their `scene()` has no `route()` — nothing sensible to drag).
 
-A complete demo (separate crate; the engine itself stays dependency-free) shows a live text editor with a *last good render* pattern on the left, a drag & drop canvas with zoom & pan on the right, `.mmd` file drop, and SVG export — built on eframe/egui. For other frameworks: Tauri/Dioxus can inject the SVG string into a webview; iced has an svg widget; Slint and GTK4 render SVG natively; or draw the `Scene` directly with each framework's painter like the egui demo does.
+Two complete consumers are built on this API (separate repos; the engine itself stays dependency-free): [flowmaid-desktop](https://github.com/go-routine-id/flowmaid-desktop), an eframe/egui editor with document tabs, a folder explorer, drag & drop canvas with zoom & pan, and SVG export; and [flowmaid-web](https://github.com/go-routine-id/flowmaid-web), the wasm playground with the same drag model in the browser. For other frameworks: Tauri/Dioxus can inject the SVG string into a webview; iced has an svg widget; Slint and GTK4 render SVG natively; or draw the `Scene` directly with each framework's painter like the desktop app does.
 
 ## Limitations & ideas
 
