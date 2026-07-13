@@ -105,6 +105,10 @@ pub fn intrinsic_size(node: &Node) -> (f64, f64) {
             let d = (tw + 32.0).max(60.0).max(base_h);
             (d, d)
         }
+        // stateDiagram pseudostates: fixed size, no label.
+        Shape::StateStart => (14.0, 14.0),
+        Shape::StateEnd => (18.0, 18.0),
+        Shape::ForkBar => (60.0, 8.0),
     }
 }
 

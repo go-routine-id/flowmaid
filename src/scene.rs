@@ -992,6 +992,36 @@ pub fn to_svg(sc: &Scene) -> String {
                 };
                 s.push_str(&format!("<polygon points=\"{pts}\" {style}/>\n"));
             }
+            Shape::StateStart => {
+                s.push_str(&format!(
+                    "<circle cx=\"{:.1}\" cy=\"{:.1}\" r=\"{:.1}\" {}/>\n",
+                    cx,
+                    cy,
+                    w / 2.0,
+                    style
+                ));
+            }
+            Shape::StateEnd => {
+                // Outer ring + filled core (UML final-state notation).
+                s.push_str(&format!(
+                    "<circle cx=\"{cx:.1}\" cy=\"{cy:.1}\" r=\"{r:.1}\" fill=\"#ffffff\" \
+                     stroke=\"{stroke}\" stroke-width=\"1.6\"/>\n\
+                     <circle cx=\"{cx:.1}\" cy=\"{cy:.1}\" r=\"{ri:.1}\" {style}/>\n",
+                    r = w / 2.0,
+                    ri = w / 2.0 - 4.0,
+                    stroke = n.style.stroke.as_deref().unwrap_or(ss.stroke),
+                ));
+            }
+            Shape::ForkBar => {
+                s.push_str(&format!(
+                    "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" rx=\"3\" {}/>\n",
+                    cx - w / 2.0,
+                    cy - h / 2.0,
+                    w,
+                    h,
+                    style
+                ));
+            }
         }
         svg_text_multiline(
             &mut s,
@@ -1097,9 +1127,11 @@ fn parallel_offsets(g: &Graph) -> Vec<f64> {
 /// intersection.
 fn anchor(p: &Placed, shape: Shape, other: (f64, f64), off: f64, bottom: bool) -> (f64, f64) {
     match shape {
-        Shape::Diamond | Shape::Circle | Shape::DoubleCircle => {
-            border(p, shape, (other.0 + off * 4.0, other.1))
-        }
+        Shape::Diamond
+        | Shape::Circle
+        | Shape::DoubleCircle
+        | Shape::StateStart
+        | Shape::StateEnd => border(p, shape, (other.0 + off * 4.0, other.1)),
         _ => {
             let flat = match shape {
                 Shape::Stadium => p.bsize / 2.0 - p.lsize / 2.0 - 4.0,
@@ -1259,7 +1291,9 @@ fn border(p: &Placed, shape: Shape, toward: (f64, f64)) -> (f64, f64) {
     let hw = p.bsize / 2.0;
     let hh = p.lsize / 2.0;
     let t = match shape {
-        Shape::Circle | Shape::DoubleCircle => hw / (dx * dx + dy * dy).sqrt(),
+        Shape::Circle | Shape::DoubleCircle | Shape::StateStart | Shape::StateEnd => {
+            hw / (dx * dx + dy * dy).sqrt()
+        }
         // Diamond: |x/hw| + |y/hh| = 1
         Shape::Diamond => 1.0 / (dx.abs() / hw + dy.abs() / hh),
         // Other shapes are approximated as rectangles.

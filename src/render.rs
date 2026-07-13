@@ -141,6 +141,47 @@ mod tests {
         assert_eq!(s0.clusters.len(), s1.clusters.len());
     }
 
+    /// End-to-end showcase for stateDiagram-v2 riding the flowchart
+    /// pipeline: pseudostates, composite with its own [*]s and
+    /// direction, choice/fork/join, labelled transitions, sub-edge
+    /// to a composite box — rendered with no NaN and full containment.
+    #[test]
+    fn state_showcase_parses_and_renders() {
+        use crate::model::{Document, End, Shape};
+        let src = include_str!("../examples/state.mmd");
+        let Document::State(g) = crate::parser::parse_document(src).unwrap() else {
+            panic!("state.mmd is a state diagram");
+        };
+        let shapes: Vec<Shape> = g.nodes.iter().map(|n| n.shape).collect();
+        for want in [Shape::StateStart, Shape::StateEnd, Shape::Diamond, Shape::ForkBar] {
+            assert!(shapes.contains(&want), "missing {want:?}");
+        }
+        assert_eq!(g.subgraphs.len(), 1, "Validating composite");
+        assert_eq!(g.subgraphs[0].direction, Some(crate::model::Direction::LR));
+        // Idle --> Validating and Validating --> decide touch the box.
+        assert!(g.sub_edges.iter().any(|e| matches!(e.to, End::Sub(0))));
+        assert!(g.sub_edges.iter().any(|e| matches!(e.from, End::Sub(0))));
+        // The description replaced Idle's label.
+        assert!(g.nodes.iter().any(|n| n.label == "waiting for input"));
+
+        let svg = render(&g);
+        assert!(!svg.contains("NaN") && !svg.contains("inf"));
+        assert!(svg.contains("Validating") && svg.contains(">submit</text>"));
+        let (w, h) = (attr(&svg, "width"), attr(&svg, "height"));
+        for line in paths(&svg).iter().filter(|p| p.contains(" C ")) {
+            for (x, y) in coords(line) {
+                assert!(x >= -0.5 && x <= w + 0.5, "x={x} outside {w}");
+                assert!(y >= -0.5 && y <= h + 0.5, "y={y} outside {h}");
+            }
+        }
+        // Interactive parity: route() over auto positions keeps counts.
+        let s0 = crate::scene::scene(&g);
+        let pos: Vec<(f64, f64)> = s0.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let s1 = crate::scene::route(&g, &pos);
+        assert_eq!(s0.nodes.len(), s1.nodes.len());
+        assert_eq!(s0.edges.len(), s1.edges.len());
+    }
+
     #[test]
     fn parallel_edges_are_separated() {
         let g = parse("A -->|x| B\nA -->|y| B").unwrap();

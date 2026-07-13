@@ -163,11 +163,15 @@ pub fn parse_document(source: &str) -> Result<Document, ParseError> {
             Some("classDiagram") => parse_class(source, i + 1).map(Document::Class),
             Some("sequenceDiagram") => parse_sequence(source, i + 1).map(Document::Sequence),
             Some("pie") => parse_pie(source, i + 1).map(Document::Pie),
+            Some("stateDiagram-v2") | Some("stateDiagram") => {
+                parse_state(source, i + 1).map(Document::State)
+            }
             Some(t) => Err(err(
                 i + 1,
                 format!(
                     "diagram type '{}' is not supported yet (supported: flowchart, \
-                     graph, erDiagram, classDiagram, sequenceDiagram, pie)",
+                     graph, erDiagram, classDiagram, sequenceDiagram, pie, \
+                     stateDiagram-v2)",
                     t
                 ),
             )),
@@ -218,11 +222,19 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
         if !header_seen {
             header_seen = true;
             if let Some(t) = diagram_type(line) {
-                let hint = if matches!(t, "erDiagram" | "classDiagram" | "sequenceDiagram" | "pie") {
+                let hint = if matches!(
+                    t,
+                    "erDiagram"
+                        | "classDiagram"
+                        | "sequenceDiagram"
+                        | "pie"
+                        | "stateDiagram-v2"
+                        | "stateDiagram"
+                ) {
                     "this parser is flowchart-only — use parse_document() or render_svg()"
                 } else {
                     "not supported yet (supported: flowchart, graph, erDiagram, \
-                     classDiagram, sequenceDiagram, pie)"
+                     classDiagram, sequenceDiagram, pie, stateDiagram-v2)"
                 };
                 return Err(err(lineno, format!("diagram type '{}': {}", t, hint)));
             }
@@ -1643,6 +1655,263 @@ fn parse_pie_row(line: &str, lineno: usize) -> Result<(String, f64), ParseError>
     Ok((label, value))
 }
 
+// ---------------------------------------------------------------
+// State diagram (`stateDiagram-v2` / `stateDiagram`)
+// ---------------------------------------------------------------
+
+/// Parse a state diagram straight onto a [`Graph`]: state = rounded
+/// node, transition = labelled edge, composite `state X { ... }` =
+/// nested subgraph, `[*]` = per-scope start/end pseudostate. The
+/// whole flowchart layout/SVG/drag pipeline is reused unchanged.
+fn parse_state(source: &str, header_line: usize) -> Result<Graph, ParseError> {
+    let mut g = Graph::default();
+
+    // Pre-scan composite ids so a transition may target a composite
+    // declared LATER (`A --> Grp` before `state Grp {`) — the same
+    // forward-reference courtesy the flowchart parser gives.
+    let mut sub_ids: HashMap<String, usize> = HashMap::new();
+    {
+        let mut idx = 0usize;
+        for raw in source.lines() {
+            if let Some(rest) = strip_keyword(raw.trim(), "state") {
+                if let Some(head) = rest.trim().strip_suffix('{') {
+                    if let Ok((id, _, _)) = state_decl_head(head.trim(), 0) {
+                        sub_ids.entry(id).or_insert(idx);
+                        idx += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    // Open composite blocks: (subgraph index, opening line).
+    let mut stack: Vec<(usize, usize)> = Vec::new();
+    let mut note_block = false;
+    for (i, raw) in source.lines().enumerate() {
+        let lineno = i + 1;
+        if lineno <= header_line {
+            continue;
+        }
+        let line = raw.trim();
+        let line = match find_unquoted(line, "%%") {
+            Some(p) => line[..p].trim(),
+            None => line,
+        };
+        if line.is_empty() {
+            continue;
+        }
+        if note_block {
+            if line.eq_ignore_ascii_case("end note") {
+                note_block = false;
+            }
+            continue;
+        }
+        if let Some(rest) = strip_keyword(line, "direction") {
+            let d = parse_direction(rest.trim(), lineno)?;
+            match stack.last() {
+                Some(&(si, _)) => g.subgraphs[si].direction = Some(d),
+                None => g.direction = d,
+            }
+            continue;
+        }
+        if line == "}" {
+            if stack.pop().is_none() {
+                return Err(err(lineno, "'}' without an open state block".to_string()));
+            }
+            continue;
+        }
+        // Notes are accepted and skipped (not rendered yet):
+        // `note left of X : text` is one line; without a ':' it is a
+        // block that runs until `end note`.
+        if let Some(rest) = strip_keyword(line, "note") {
+            if !rest.contains(':') {
+                note_block = true;
+            }
+            continue;
+        }
+        if let Some(rest) = strip_keyword(line, "state") {
+            let rest = rest.trim();
+            let (opens, head) = match rest.strip_suffix('{') {
+                Some(h) => (true, h.trim()),
+                None => (false, rest),
+            };
+            let (id, label, shape) = state_decl_head(head, lineno)?;
+            if opens {
+                // Composite: order of creation matches the pre-scan.
+                let si = g.subgraphs.len();
+                g.subgraphs.push(Subgraph {
+                    id: id.clone(),
+                    title: label.unwrap_or_else(|| id.clone()),
+                    nodes: Vec::new(),
+                    parent: stack.last().map(|&(s, _)| s),
+                    direction: None,
+                });
+                stack.push((si, lineno));
+            } else {
+                state_node(&mut g, &stack, &id, label, Some(shape));
+            }
+            continue;
+        }
+        // Transition: `A --> B [: label]`, either end may be `[*]`
+        // or a composite id.
+        if let Some(apos) = line.find("-->") {
+            let lhs = line[..apos].trim();
+            let rest = line[apos + 3..].trim();
+            let (rhs, label) = match rest.split_once(':') {
+                Some((r, l)) => (r.trim(), Some(clean_label_1line(l.trim()))),
+                None => (rest, None),
+            };
+            if lhs.is_empty() || rhs.is_empty() {
+                return Err(err(lineno, "a transition needs both endpoints".to_string()));
+            }
+            let from = state_endpoint(&mut g, &stack, &sub_ids, lhs, false, lineno)?;
+            let to = state_endpoint(&mut g, &stack, &sub_ids, rhs, true, lineno)?;
+            match (from, to) {
+                (End::Node(a), End::Node(b)) => g.add_edge(a, b, label, EdgeKind::Arrow),
+                (from, to) => g.sub_edges.push(SubEdge {
+                    from,
+                    to,
+                    label,
+                    kind: EdgeKind::Arrow,
+                }),
+            }
+            continue;
+        }
+        // `id : description` — description lines replace the default
+        // label (the id) on first use and stack below it afterwards.
+        if let Some((id_part, desc)) = line.split_once(':') {
+            let (id_part, desc) = (id_part.trim(), desc.trim());
+            if is_class_ident(id_part) && !desc.is_empty() {
+                let idx = state_node(&mut g, &stack, id_part, None, None);
+                let node = &mut g.nodes[idx];
+                if node.label == node.id {
+                    node.label = clean_label_1line(desc);
+                } else {
+                    node.label.push('\n');
+                    node.label.push_str(&clean_label_1line(desc));
+                }
+                continue;
+            }
+        }
+        // A bare id declares a state on its own line.
+        if is_class_ident(line) {
+            state_node(&mut g, &stack, line, None, None);
+            continue;
+        }
+        return Err(err(lineno, format!("unrecognised state line: '{}'", line)));
+    }
+    if let Some(&(si, oln)) = stack.last() {
+        return Err(err(
+            oln,
+            format!("state block '{}' is never closed with '}}'", g.subgraphs[si].id),
+        ));
+    }
+    Ok(g)
+}
+
+/// Head of a `state` declaration (everything after the keyword,
+/// before an optional `{`): `"desc" as id`, `id`, or
+/// `id <<choice|fork|join>>`. Returns (id, label override, shape).
+fn state_decl_head(
+    head: &str,
+    lineno: usize,
+) -> Result<(String, Option<String>, Shape), ParseError> {
+    let head = head.trim();
+    if let Some(rest) = head.strip_prefix('"') {
+        let close = rest
+            .find('"')
+            .ok_or_else(|| err(lineno, "state title quote is never closed".to_string()))?;
+        let desc = clean_label_1line(&rest[..close]);
+        let id = strip_keyword(rest[close + 1..].trim(), "as")
+            .map(str::trim)
+            .filter(|s| is_class_ident(s))
+            .ok_or_else(|| err(lineno, "a titled state needs `as <id>`".to_string()))?;
+        return Ok((id.to_string(), Some(desc), Shape::Rounded));
+    }
+    let (id, tail) = match head.split_once(char::is_whitespace) {
+        Some((a, b)) => (a, b.trim()),
+        None => (head, ""),
+    };
+    if !is_class_ident(id) {
+        return Err(err(lineno, format!("invalid state id: '{}'", id)));
+    }
+    let (shape, blank) = match tail {
+        "" => (Shape::Rounded, false),
+        "<<choice>>" => (Shape::Diamond, true),
+        "<<fork>>" | "<<join>>" => (Shape::ForkBar, true),
+        other => {
+            return Err(err(
+                lineno,
+                format!("unknown state stereotype: '{}'", other),
+            ))
+        }
+    };
+    // Pseudostates draw no text; blank out the default id label.
+    Ok((id.to_string(), blank.then(String::new), shape))
+}
+
+/// Look up / create a state node; a NEW node created inside an open
+/// composite block is claimed by that block.
+fn state_node(
+    g: &mut Graph,
+    stack: &[(usize, usize)],
+    id: &str,
+    label: Option<String>,
+    shape: Option<Shape>,
+) -> usize {
+    let is_new = g.node_index(id).is_none();
+    let idx = g.ensure_node(
+        id,
+        label,
+        shape.or(if is_new { Some(Shape::Rounded) } else { None }),
+    );
+    if is_new {
+        if let Some(&(si, _)) = stack.last() {
+            g.subgraphs[si].nodes.push(idx);
+        }
+    }
+    idx
+}
+
+/// One transition endpoint: `[*]` (per-scope start/end pseudostate),
+/// a composite id (the cluster box itself), or a plain state.
+fn state_endpoint(
+    g: &mut Graph,
+    stack: &[(usize, usize)],
+    sub_ids: &HashMap<String, usize>,
+    token: &str,
+    is_target: bool,
+    lineno: usize,
+) -> Result<End, ParseError> {
+    if token == "[*]" {
+        let key = stack
+            .last()
+            .map(|&(s, _)| s.to_string())
+            .unwrap_or_else(|| "root".to_string());
+        let (id, shape) = if is_target {
+            (format!("__end_{key}"), Shape::StateEnd)
+        } else {
+            (format!("__start_{key}"), Shape::StateStart)
+        };
+        return Ok(End::Node(state_node(
+            g,
+            stack,
+            &id,
+            Some(String::new()),
+            Some(shape),
+        )));
+    }
+    if !is_class_ident(token) {
+        return Err(err(lineno, format!("invalid state id: '{}'", token)));
+    }
+    // A composite id wins over a plain node of the same name,
+    // mermaid-style: the transition attaches to the cluster box.
+    if let Some(&si) = sub_ids.get(token) {
+        return Ok(End::Sub(si));
+    }
+    Ok(End::Node(state_node(g, stack, token, None, None)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1703,7 +1972,7 @@ mod tests {
 
     #[test]
     fn unsupported_diagram_types_get_explicit_errors() {
-        for src in ["journey\ntitle x", "gantt\ntitle x", "stateDiagram-v2\n[*] --> A"] {
+        for src in ["journey\ntitle x", "gantt\ntitle x", "mindmap\nroot"] {
             for res in [
                 parse(src).map(|_| ()),
                 parse_document(src).map(|_| ()),
@@ -2052,6 +2321,83 @@ mod tests {
         assert_eq!(g.direction, crate::model::Direction::TD);
     }
 
+    fn state(src: &str) -> crate::model::Graph {
+        match parse_document(src).unwrap() {
+            Document::State(g) => g,
+            other => panic!("expected a state diagram, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn state_pseudostates_are_scoped_and_shaped() {
+        let g = state(
+            "stateDiagram-v2\n[*] --> A\nA --> [*]\n\
+             state B {\n[*] --> Inner\nInner --> [*]\n}",
+        );
+        // Root and composite each get their OWN start/end nodes.
+        let shapes: Vec<Shape> = g.nodes.iter().map(|n| n.shape).collect();
+        assert_eq!(shapes.iter().filter(|s| **s == Shape::StateStart).count(), 2);
+        assert_eq!(shapes.iter().filter(|s| **s == Shape::StateEnd).count(), 2);
+        // Composite membership: its [*]s and Inner belong to B.
+        assert_eq!(g.subgraphs.len(), 1);
+        assert_eq!(g.subgraphs[0].nodes.len(), 3, "start + Inner + end");
+        // Pseudostates draw no text.
+        assert!(g.nodes.iter().filter(|n| n.shape == Shape::StateStart).all(|n| n.label.is_empty()));
+    }
+
+    #[test]
+    fn state_descriptions_replace_then_stack() {
+        let g = state("stateDiagram-v2\nIdle : waiting\nIdle : for input\nIdle --> Done");
+        let idle = &g.nodes[g.node_index("Idle").unwrap()];
+        assert_eq!(idle.label, "waiting\nfor input");
+        assert_eq!(idle.shape, Shape::Rounded);
+    }
+
+    #[test]
+    fn state_stereotypes_and_titles() {
+        let g = state(
+            "stateDiagram-v2\nstate \"Long name\" as ln\nstate c <<choice>>\n\
+             state f <<fork>>\nln --> c\nc --> f",
+        );
+        assert_eq!(g.nodes[g.node_index("ln").unwrap()].label, "Long name");
+        let c = &g.nodes[g.node_index("c").unwrap()];
+        assert_eq!((c.shape, c.label.as_str()), (Shape::Diamond, ""));
+        assert_eq!(g.nodes[g.node_index("f").unwrap()].shape, Shape::ForkBar);
+    }
+
+    #[test]
+    fn state_transition_to_composite_becomes_sub_edge() {
+        let g = state(
+            "stateDiagram-v2\nA --> Grp : go\nstate Grp {\n[*] --> X\n}\ndirection LR",
+        );
+        assert_eq!(g.sub_edges.len(), 1, "forward ref to the composite box");
+        assert!(matches!(g.sub_edges[0].to, End::Sub(0)));
+        assert_eq!(g.sub_edges[0].label.as_deref(), Some("go"));
+        assert_eq!(g.direction, crate::model::Direction::LR);
+    }
+
+    #[test]
+    fn state_notes_are_skipped_and_v1_header_works() {
+        let g = state(
+            "stateDiagram\nA --> B\nnote right of A : hi\n\
+             note left of B\nmulti\nline\nend note\nB --> A",
+        );
+        assert_eq!(g.nodes.len(), 2);
+        assert_eq!(g.edges.len(), 2);
+    }
+
+    #[test]
+    fn state_errors_carry_line_numbers() {
+        let e = parse_document("stateDiagram-v2\nstate X {\nA --> B").unwrap_err();
+        assert_eq!(e.line, 2, "unclosed block reports its opening line");
+        let e = parse_document("stateDiagram-v2\n}").unwrap_err();
+        assert_eq!(e.line, 2);
+        let e = parse_document("stateDiagram-v2\nstate y <<weird>>").unwrap_err();
+        assert!(e.message.contains("stereotype"), "{}", e.message);
+        let e = parse_document("stateDiagram-v2\nstate \"titled\"").unwrap_err();
+        assert!(e.message.contains("as <id>"), "{}", e.message);
+    }
+
     #[test]
     fn utf8_bom_is_stripped_for_every_diagram_type() {
         // Bug hunt: a BOM from Windows editors survived trim() (it is
@@ -2064,6 +2410,7 @@ mod tests {
             "classDiagram\nAnimal <|-- Dog",
             "sequenceDiagram\nA->>B: hi",
             "pie\n\"a\" : 1",
+            "stateDiagram-v2\n[*] --> A",
         ] {
             let bom = format!("\u{feff}{src}");
             assert!(parse_document(&bom).is_ok(), "BOM must not break: {src}");

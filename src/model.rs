@@ -43,6 +43,14 @@ pub enum Shape {
     Parallelogram,
     /// `A[\text\]` — parallelogram, slanted the other way.
     ParallelogramAlt,
+    /// stateDiagram `[*]` as a transition source — the initial
+    /// pseudostate (small filled dot).
+    StateStart,
+    /// stateDiagram `[*]` as a transition target — the final
+    /// pseudostate (ring with a filled core).
+    StateEnd,
+    /// stateDiagram `<<fork>>` / `<<join>>` — a thin filled bar.
+    ForkBar,
 }
 
 /// Edge line style.
@@ -218,6 +226,10 @@ pub enum Document {
     Class(ClassDiagram),
     Sequence(SequenceDiagram),
     Pie(PieChart),
+    /// stateDiagram-v2 — mapped straight onto a [`Graph`] (state =
+    /// rounded node, transition = edge, composite = subgraph), so the
+    /// whole flowchart layout/SVG/drag pipeline is reused as-is.
+    State(Graph),
 }
 
 /// UML class diagram (`classDiagram` header).

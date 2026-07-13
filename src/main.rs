@@ -111,7 +111,11 @@ fn main() {
             eprintln!("empty diagram: no data rows");
             process::exit(1);
         }
-        Document::Flowchart(g) => render::render(g),
+        Document::State(g) if g.nodes.is_empty() => {
+            eprintln!("empty diagram: no states defined");
+            process::exit(1);
+        }
+        Document::Flowchart(g) | Document::State(g) => render::render(g),
         Document::Er(d) => render::render_er(d),
         Document::Class(d) => render::render_class(d),
         Document::Sequence(d) => render::render_seq(d),

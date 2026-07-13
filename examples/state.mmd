@@ -1,0 +1,31 @@
+%% State diagram showcase: [*] start/end, transition labels,
+%% descriptions, a composite state with its own [*] and direction,
+%% a <<choice>> branch, and a <<fork>>/<<join>> pair.
+stateDiagram-v2
+    [*] --> Idle
+    Idle : waiting for input
+    Idle --> Validating : submit
+
+    state Validating {
+        direction LR
+        [*] --> Syntax
+        Syntax --> Semantics : ok
+        Semantics --> [*]
+    }
+
+    Validating --> decide
+    state decide <<choice>>
+    decide --> Rejected : invalid
+    decide --> forked : valid
+
+    state forked <<fork>>
+    forked --> Persist
+    forked --> Notify
+    state joined <<join>>
+    Persist --> joined
+    Notify --> joined
+    joined --> Done
+
+    Rejected --> Idle : retry
+    note right of Rejected : shown to the user
+    Done --> [*]

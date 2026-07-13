@@ -19,7 +19,7 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 - [x] `erDiagram` — full crow's foot cardinalities, identifying/non-identifying lines, entity attribute tables
 - [x] `classDiagram` — three-compartment boxes, member visibility, all UML relations (inheritance/realization/composition/aggregation/association/dependency), cardinalities + labels *(v0.9.0)*
 - [x] `sequenceDiagram` — participants/actors, 8 arrow types, notes, activations, autonumber, loop/opt/alt/par frames *(v0.10.0)*
-- [ ] `stateDiagram-v2` — [#7](https://github.com/go-routine-id/flowmaid/issues/7)
+- [x] `stateDiagram-v2` — `[*]` start/end, composites with nested `[*]`/`direction`, `<<choice>>`/`<<fork>>`/`<<join>>`, transition labels, descriptions *(v0.11.0)*
 - [ ] `journey` — [#8](https://github.com/go-routine-id/flowmaid/issues/8)
 - [x] `pie` — title, showData, percentage labels + legend *(v0.10.0)*
 - [ ] `mindmap` — [#11](https://github.com/go-routine-id/flowmaid/issues/11)
@@ -157,7 +157,30 @@ pie showData
 
 Supported subset: all header forms (`pie`, `pie showData`, `pie title …`, `pie showData title …`), a standalone `title …` line, and `"Quoted Label" : value` data rows with non-negative numbers. `showData` appends the raw value to each legend entry (`Calcium [42.96]`). Slices under 4% skip their percentage label but keep their legend row, zero-value slices are legend-only, a single 100% slice renders as a full circle, and an all-zero total draws an empty outline instead of NaN geometry. A duplicate label keeps one slice — the last value wins. Colors come from the same stable accent palette as ER/class diagrams (wrapping after 8 slices). Not supported: config/theme directives (`%%{init: …}%%`), `accTitle`/`accDescr`. See `examples/pie.mmd`.
 
-Other Mermaid diagram types (`stateDiagram-v2`, `gantt`, `journey`, ...) are detected and produce an explicit "not supported yet" error instead of a confusing parse failure.
+## State diagrams
+
+`stateDiagram-v2` (and the v1 `stateDiagram` header) rides the flowchart pipeline: states are rounded nodes, transitions are labelled edges, and composite states are the same nested clusters subgraphs use — so dragging, custom positions, and SVG export all work unchanged:
+
+```
+stateDiagram-v2
+    [*] --> Idle
+    Idle : waiting for input
+    Idle --> Validating : submit
+    state Validating {
+        direction LR
+        [*] --> Syntax
+        Syntax --> Semantics : ok
+        Semantics --> [*]
+    }
+    state decide <<choice>>
+    Validating --> decide
+    decide --> Done : valid
+    Done --> [*]
+```
+
+Supported subset: `[*]` start/end pseudostates (scoped — a composite gets its own), transitions `A --> B : label`, bare-id state declarations, `state "Long title" as id`, description lines `id : text` (the first replaces the id as the label, later ones stack), composite `state X { ... }` blocks with nesting, per-composite `direction`, transitions to/from a composite box itself (forward references included), and `<<choice>>` (diamond) / `<<fork>>` / `<<join>>` (bars). `note ...` lines and `note ... end note` blocks are accepted and skipped. Not yet: concurrency regions (`--`), rendered notes, entry/exit actions. See `examples/state.mmd`.
+
+Other Mermaid diagram types (`gantt`, `journey`, `mindmap`, ...) are detected and produce an explicit "not supported yet" error instead of a confusing parse failure.
 
 ## Architecture
 

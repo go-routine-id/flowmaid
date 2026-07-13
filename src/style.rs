@@ -70,6 +70,12 @@ pub fn shape_style(shape: Shape) -> ShapeStyle {
             fill: "#fcf2da",
             stroke: "#d99114",
         },
+        // stateDiagram pseudostates (start/end dots, fork bar) —
+        // solid dark, mermaid-style, not part of the shape theme.
+        Shape::StateStart | Shape::StateEnd | Shape::ForkBar => ShapeStyle {
+            fill: "#44507a",
+            stroke: "#44507a",
+        },
     }
 }
 

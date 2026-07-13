@@ -7,8 +7,8 @@
 //!
 //! Supported diagram types: flowcharts (`flowchart` / `graph`),
 //! Entity-Relationship diagrams (`erDiagram`), UML class diagrams
-//! (`classDiagram`), sequence diagrams (`sequenceDiagram`), and pie
-//! charts (`pie`).
+//! (`classDiagram`), sequence diagrams (`sequenceDiagram`), pie
+//! charts (`pie`), and state diagrams (`stateDiagram-v2`).
 //!
 //! Library usage:
 //!
@@ -39,10 +39,11 @@ pub use parser::ParseError;
 
 /// Shortcut: Mermaid-syntax text -> SVG string. Dispatches on the
 /// diagram type header (flowchart/graph, erDiagram, classDiagram,
-/// sequenceDiagram, or pie).
+/// sequenceDiagram, pie, or stateDiagram-v2).
 pub fn render_svg(source: &str) -> Result<String, ParseError> {
     match parser::parse_document(source)? {
-        Document::Flowchart(g) => Ok(render::render(&g)),
+        // State diagrams live on the same Graph as flowcharts.
+        Document::Flowchart(g) | Document::State(g) => Ok(render::render(&g)),
         Document::Er(d) => Ok(render::render_er(&d)),
         Document::Class(d) => Ok(render::render_class(&d)),
         Document::Sequence(d) => Ok(render::render_seq(&d)),
