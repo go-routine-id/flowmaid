@@ -133,6 +133,9 @@ fn scene_from_layout(g: &Graph, sizes: &[(f64, f64)], lo: LayoutResult) -> Scene
     for (ei, (e, off)) in g.edges.iter().zip(offs).enumerate() {
         let a = &lo.nodes[e.from];
         let b = &lo.nodes[e.to];
+        // Lebar box label (0 bila tanpa label) — busur back-edge
+        // melebar sebesar ini supaya label di apex tidak menabrak node.
+        let lbl_w = e.label.as_ref().map_or(0.0, |l| text_width(l) + 14.0);
         let pts = edge_points(
             a,
             b,
@@ -142,6 +145,7 @@ fn scene_from_layout(g: &Graph, sizes: &[(f64, f64)], lo: LayoutResult) -> Scene
             lo.total_b,
             off,
             &lay_ext,
+            lbl_w,
         );
         // A long edge threads through its virtual-node channel: its
         // node-boundary start, the per-layer channel points, then its
@@ -1051,6 +1055,7 @@ fn edge_points(
     total_b: f64,
     off: f64,
     lay_ext: &[(f64, f64)],
+    label_w: f64,
 ) -> [(f64, f64); 4] {
     if self_loop {
         return loop_points(a, off);
@@ -1084,7 +1089,9 @@ fn edge_points(
 
         // Back-edge: route around the nearest side of ALL layers it
         // crosses. Controls are solved analytically so the curve
-        // apex (t=0.5) sits ~24px outside the outermost node:
+        // apex (t=0.5) sits outside the outermost node by 24px PLUS
+        // half the label box (the label rides the apex — without the
+        // extra clearance it would overlap the nodes it bows around):
         // x(0.5) = 0.125*(x0+x3) + 0.75*BT.
         let (l0, l1) = (b.layer, a.layer);
         let mut ext_l = f64::INFINITY;
@@ -1093,10 +1100,11 @@ fn edge_points(
             ext_l = ext_l.min(lay_ext[li].0);
             ext_r = ext_r.max(lay_ext[li].1);
         }
+        let clear = 24.0 + label_w / 2.0;
         let ends = p0.0 + p3.0;
         let mid = ends / 2.0;
-        let bt_r = ((4.0 / 3.0) * (ext_r + 24.0) - ends / 6.0).max(ext_r + 40.0);
-        let bt_l = ((4.0 / 3.0) * (ext_l - 24.0) - ends / 6.0).min(ext_l - 40.0);
+        let bt_r = ((4.0 / 3.0) * (ext_r + clear) - ends / 6.0).max(ext_r + 40.0);
+        let bt_l = ((4.0 / 3.0) * (ext_l - clear) - ends / 6.0).min(ext_l - 40.0);
         let bt = (if (bt_r - mid) <= (mid - bt_l) { bt_r } else { bt_l }) + off;
         return [p0, (bt, p0.1 - 40.0), (bt, p3.1 + 40.0), p3];
     }
