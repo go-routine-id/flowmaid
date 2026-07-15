@@ -662,9 +662,52 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
     }
 }
 
-/// Whether a subgraph has any member node, directly or through a
-/// nested child. Member-less subgraphs have no geometric anchor and
-/// are dropped from both `scene` and `route` for consistency.
+/// Re-route after a drag LOCALLY: an edge whose BOTH endpoints still
+/// sit at their auto-layout position keeps its `base` geometry from
+/// [`scene`] verbatim (channel waypoints, spread anchors, label slot);
+/// only edges touching a moved node are re-routed freely, and cluster
+/// boxes are reused wholesale while nothing has moved. Dragging one
+/// node thus stays a local operation instead of degrading the whole
+/// diagram to free-route quality. Falls back to [`route`] whenever
+/// `base` no longer lines up with the graph (e.g. after an edit).
+pub fn route_partial(
+    g: &Graph,
+    centers: &[(f64, f64)],
+    base: &Scene,
+    base_centers: &[(f64, f64)],
+) -> Scene {
+    let n = g.nodes.len();
+    if base.nodes.len() != n || base_centers.len() != n || base.edges.len() < g.edges.len() {
+        return route(g, centers);
+    }
+    let sizes: Vec<(f64, f64)> = g.nodes.iter().map(intrinsic_size).collect();
+    let moved: Vec<bool> = (0..n)
+        .map(|i| {
+            (centers[i].0 - base_centers[i].0).abs() > 0.01
+                || (centers[i].1 - base_centers[i].1).abs() > 0.01
+        })
+        .collect();
+    if !moved.iter().any(|&m| m) {
+        return base.clone();
+    }
+
+    let full = route_sized(g, centers, &sizes);
+    let mut out = full;
+    for ei in 0..g.edges.len() {
+        let e = &g.edges[ei];
+        if !moved[e.from] && !moved[e.to] {
+            out.edges[ei] = base.edges[ei].clone();
+        }
+    }
+    // The base canvas already covers the preserved geometry; grow it
+    // for whatever the drag pushed outward.
+    let mut bb = Bbox::new();
+    grow_scene(&mut bb, &out.nodes, &out.edges, &out.clusters);
+    let (_, maxx, _, maxy) = bb.finish();
+    out.width = (maxx + MARGIN).max(base.width);
+    out.height = (maxy + MARGIN).max(base.height);
+    out
+}
 
 /// Per-subgraph box `(x, y, w, h)` wrapped around the CURRENT node
 /// positions, indexed by subgraph. Computed deepest-first so a
@@ -1411,12 +1454,13 @@ pub(crate) fn svg_label_box(s: &mut String, text: &str, center: (f64, f64), box_
         center.0,
         center.1,
         TEXT_COLOR,
-        escape(text)
+        rich(text)
     ));
 }
 
 /// Centred `<text>` supporting `\n` line breaks — one `<tspan>`
-/// per line, block vertically centred on `(cx, cy)`.
+/// per line, block vertically centred on `(cx, cy)`. `<b>`/`<i>`
+/// runs inside a line render as real bold/italic tspans.
 pub(crate) fn svg_text_multiline(s: &mut String, cx: f64, cy: f64, fill: &str, label: &str) {
     let lines: Vec<&str> = label.split('\n').collect();
     if lines.len() <= 1 {
@@ -1426,7 +1470,7 @@ pub(crate) fn svg_text_multiline(s: &mut String, cx: f64, cy: f64, fill: &str, l
             cx,
             cy,
             fill,
-            escape(label)
+            rich(label)
         ));
         return;
     }
@@ -1441,10 +1485,38 @@ pub(crate) fn svg_text_multiline(s: &mut String, cx: f64, cy: f64, fill: &str, l
             "<tspan x=\"{:.1}\" dy=\"{}\">{}</tspan>",
             cx,
             if i == 0 { "0.33em".to_string() } else { format!("{lh:.1}") },
-            escape(line)
+            rich(line)
         ));
     }
     s.push_str("</text>\n");
+}
+
+/// Escaped SVG runs for one label line: `<b>`/`<i>` spans become
+/// nested styled tspans — mermaid renders these tags as real
+/// formatting, so flowmaid does too instead of showing them literally.
+fn rich(line: &str) -> String {
+    let spans = crate::layout::spans(line);
+    if spans.len() == 1 && !spans[0].1 && !spans[0].2 {
+        return escape(&spans[0].0);
+    }
+    let mut s = String::new();
+    for (t, b, i) in spans {
+        if !b && !i {
+            s.push_str(&escape(&t));
+        } else {
+            s.push_str("<tspan");
+            if b {
+                s.push_str(" font-weight=\"bold\"");
+            }
+            if i {
+                s.push_str(" font-style=\"italic\"");
+            }
+            s.push('>');
+            s.push_str(&escape(&t));
+            s.push_str("</tspan>");
+        }
+    }
+    s
 }
 
 pub(crate) fn escape(s: &str) -> String {
@@ -1499,6 +1571,33 @@ mod tests {
         // A same-cluster adjacent edge stays a plain curve (no waypoints).
         let g2 = parse("flowchart TD\nsubgraph S\n  A\n  B\nend\nA --> B").unwrap();
         assert!(scene(&g2).edges[0].waypoints.is_empty());
+    }
+
+    #[test]
+    fn route_partial_keeps_unmoved_edges_and_reroutes_moved() {
+        let src = "flowchart TD\nsubgraph S1\n  A\nend\nsubgraph S2\n  B\n  C\nend\nA-->B\nA-->C\nB-->C";
+        let g = parse(src).unwrap();
+        let s0 = scene(&g);
+        let auto: Vec<(f64, f64)> = s0.nodes.iter().map(|n| (n.x, n.y)).collect();
+        // Untouched positions -> geometry identical to the base scene.
+        let same = route_partial(&g, &auto, &s0, &auto);
+        assert_eq!(same.edges.len(), s0.edges.len());
+        assert_eq!(same.edges[0].bezier, s0.edges[0].bezier);
+        assert_eq!(same.edges[0].waypoints, s0.edges[0].waypoints);
+        // Drag C: A->B keeps its engine geometry, A->C follows the drag.
+        let ic = g.node_index("C").unwrap();
+        let mut dragged = auto.clone();
+        dragged[ic].0 += 150.0;
+        dragged[ic].1 += 40.0;
+        let s1 = route_partial(&g, &dragged, &s0, &auto);
+        assert_eq!(s1.edges[0].bezier, s0.edges[0].bezier, "A->B unmoved");
+        assert_eq!(s1.edges[0].waypoints, s0.edges[0].waypoints);
+        assert_ne!(s1.edges[1].bezier, s0.edges[1].bezier, "A->C re-routed");
+        // Mismatched base (edited graph) falls back to full route().
+        let g2 = parse("flowchart TD\nA-->B").unwrap();
+        let p2: Vec<(f64, f64)> = vec![(40.0, 40.0), (40.0, 160.0)];
+        let fb = route_partial(&g2, &p2, &s0, &auto);
+        assert_eq!(fb.nodes.len(), 2);
     }
 
     #[test]

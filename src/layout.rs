@@ -70,9 +70,63 @@ const CLUSTER_HEADER: f64 = 26.0;
 pub const LINE_H: f64 = 17.0;
 
 /// Estimated rendered width of the WIDEST line in `s` (labels may
-/// be multi-line after `<br/>` normalisation).
+/// be multi-line after `<br/>` normalisation). `<b>`/`<i>` styling
+/// tags are interpreted, not measured: bold runs count ~6% wider,
+/// the tag characters themselves count zero.
 pub fn text_width(s: &str) -> f64 {
-    s.split('\n').map(line_width).fold(0.0, f64::max)
+    s.split('\n')
+        .map(|l| {
+            spans(l)
+                .iter()
+                .map(|(t, b, _)| line_width(t) * if *b { 1.06 } else { 1.0 })
+                .sum()
+        })
+        .fold(0.0, f64::max)
+}
+
+/// Split one label line into styled runs `(text, bold, italic)`,
+/// interpreting `<b>`/`<strong>` and `<i>`/`<em>` tags the way
+/// mermaid does. Unknown tags stay literal text; unclosed tags just
+/// style to the end of the line. Always returns at least one run.
+pub fn spans(line: &str) -> Vec<(String, bool, bool)> {
+    let chars: Vec<char> = line.chars().collect();
+    let mut out: Vec<(String, bool, bool)> = Vec::new();
+    let (mut bold, mut italic) = (false, false);
+    let mut cur = String::new();
+    let mut i = 0;
+    while i < chars.len() {
+        if chars[i] == '<' {
+            if let Some(j) = chars[i..].iter().position(|&c| c == '>') {
+                let tag: String = chars[i + 1..i + j]
+                    .iter()
+                    .collect::<String>()
+                    .to_ascii_lowercase();
+                let known = matches!(
+                    tag.as_str(),
+                    "b" | "/b" | "strong" | "/strong" | "i" | "/i" | "em" | "/em"
+                );
+                if known {
+                    if !cur.is_empty() {
+                        out.push((std::mem::take(&mut cur), bold, italic));
+                    }
+                    match tag.as_str() {
+                        "b" | "strong" => bold = true,
+                        "/b" | "/strong" => bold = false,
+                        "i" | "em" => italic = true,
+                        _ => italic = false,
+                    }
+                    i += j + 1;
+                    continue;
+                }
+            }
+        }
+        cur.push(chars[i]);
+        i += 1;
+    }
+    if !cur.is_empty() || out.is_empty() {
+        out.push((cur, bold, italic));
+    }
+    out
 }
 
 /// Number of text lines in a label (at least 1).
@@ -1158,4 +1212,50 @@ fn arrange(
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn spans_interpret_bold_italic_and_keep_unknown_tags() {
+        assert_eq!(spans("plain"), vec![("plain".into(), false, false)]);
+        assert_eq!(
+            spans("<b>Go</b> · MongoDB"),
+            vec![("Go".into(), true, false), (" · MongoDB".into(), false, false)]
+        );
+        assert_eq!(
+            spans("a <i>b</i> <strong>c</strong>"),
+            vec![
+                ("a ".into(), false, false),
+                ("b".into(), false, true),
+                (" ".into(), false, false),
+                ("c".into(), true, false),
+            ]
+        );
+        // Unknown tags stay literal; unclosed styles run to line end.
+        assert_eq!(spans("<x>y"), vec![("<x>y".into(), false, false)]);
+        assert_eq!(spans("<b>y"), vec![("y".into(), true, false)]);
+        // Comparison `a < b` is untouched (no closing '>').
+        assert_eq!(spans("a < b"), vec![("a < b".into(), false, false)]);
+    }
+
+    #[test]
+    fn styling_tags_do_not_inflate_text_width() {
+        let tagged = text_width("<b>Rust</b> · Tonic gRPC");
+        let plain = text_width("Rust · Tonic gRPC");
+        assert!(tagged >= plain, "bold run measures slightly wider");
+        assert!(
+            tagged < plain * 1.1,
+            "tags themselves must not count: {tagged} vs {plain}"
+        );
+    }
+
+    #[test]
+    fn bold_labels_render_as_svg_tspans_not_literal_tags() {
+        let svg = crate::render_svg("flowchart TD\nA[\"<b>Go</b> service\"] --> B").unwrap();
+        assert!(svg.contains("font-weight=\"bold\">Go</tspan>"), "bold tspan");
+        assert!(!svg.contains("&lt;b&gt;"), "no literal <b> in output");
+    }
 }
