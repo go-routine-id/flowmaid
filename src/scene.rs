@@ -320,6 +320,35 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
         })
         .collect();
 
+    // Top-level cluster box per subgraph (depth 0), for cross-cluster
+    // edge routing: an edge between two DIFFERENT top-level clusters is
+    // threaded through the gap between them (channel) instead of drawn
+    // straight through their interiors.
+    let vertical = matches!(g.direction, Direction::TD | Direction::BT);
+    let mut top_box: HashMap<usize, (f64, f64, f64, f64)> = HashMap::new();
+    for &(sub, x, y, w, h, depth) in &frag.clusters {
+        if depth == 0 && has_members(g, sub) {
+            top_box.insert(sub, (x, y, w, h));
+        }
+    }
+    let top_of = |n: usize| -> Option<usize> {
+        let mut s = owner[n]?;
+        while let Some(p) = g.subgraphs[s].parent {
+            s = p;
+        }
+        Some(s)
+    };
+    let box_of = |n: usize| -> (f64, f64, f64, f64) {
+        top_of(n)
+            .and_then(|s| top_box.get(&s).copied())
+            .unwrap_or((
+                centers[n].0 - sizes[n].0 / 2.0,
+                centers[n].1 - sizes[n].1 / 2.0,
+                sizes[n].0,
+                sizes[n].1,
+            ))
+    };
+
     // Edge geometry: free-position routing (position-aware sides),
     // identical to what `route` uses after a drag.
     let offs = parallel_offsets(g);
@@ -333,16 +362,30 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
             e.from == e.to,
             off,
         );
-        let label = e.label.as_ref().map(|l| {
-            (
-                l.clone(),
-                cubic_mid(pts[0], pts[1], pts[2], pts[3]),
-                text_width(l) + 14.0,
+        let wps = if e.from != e.to && top_of(e.from) != top_of(e.to) {
+            cross_cluster_route(
+                centers[e.from],
+                sizes[e.from],
+                box_of(e.from),
+                centers[e.to],
+                sizes[e.to],
+                box_of(e.to),
+                vertical,
             )
+        } else {
+            Vec::new()
+        };
+        let label = e.label.as_ref().map(|l| {
+            let mid = if wps.is_empty() {
+                cubic_mid(pts[0], pts[1], pts[2], pts[3])
+            } else {
+                wps[wps.len() / 2]
+            };
+            (l.clone(), mid, text_width(l) + 14.0)
         });
         edges.push(SceneEdge {
             bezier: pts,
-            waypoints: Vec::new(),
+            waypoints: wps,
             kind: e.kind,
             label,
         });
@@ -418,8 +461,15 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
         if matches!(e.kind, EdgeKind::Invisible) {
             continue; // layout-only link — kept out of the canvas bbox
         }
-        for &(x, y) in &e.bezier {
-            bb.add(x, y);
+        // Bound by whichever the painter draws: waypoint route or curve.
+        if e.waypoints.is_empty() {
+            for &(x, y) in &e.bezier {
+                bb.add(x, y);
+            }
+        } else {
+            for &(x, y) in &e.waypoints {
+                bb.add(x, y);
+            }
         }
         if let Some((_, m, w)) = &e.label {
             bb.add(m.0 - w / 2.0, m.1 - 10.0);
@@ -445,6 +495,9 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
         .collect();
     for e in edges.iter_mut() {
         for p in e.bezier.iter_mut() {
+            *p = (p.0 + tx, p.1 + ty);
+        }
+        for p in e.waypoints.iter_mut() {
             *p = (p.0 + tx, p.1 + ty);
         }
         if let Some((_, m, _)) = &mut e.label {
@@ -1274,6 +1327,58 @@ fn edge_points(
 /// Edge geometry for free positions (used by `route`): the
 /// vertical/horizontal classification follows the actual relative
 /// position of the two nodes.
+/// Waypoints (final coords) that route a cross-cluster edge OUT of its
+/// source cluster/box and INTO the target's, so the edge threads the
+/// gap between clusters instead of cutting through their interiors.
+/// `a_box`/`b_box` = `(x, y, w, h)` of the endpoint's top-level cluster
+/// (or the node's own box when it has no cluster). Returns empty when
+/// the clusters aren't cleanly stacked along the flow axis (fall back
+/// to the direct curve then).
+fn cross_cluster_route(
+    a_c: (f64, f64),
+    a_sz: (f64, f64),
+    a_box: (f64, f64, f64, f64),
+    b_c: (f64, f64),
+    b_sz: (f64, f64),
+    b_box: (f64, f64, f64, f64),
+    vertical: bool,
+) -> Vec<(f64, f64)> {
+    const GAP: f64 = 16.0;
+    if vertical {
+        let down = b_c.1 >= a_c.1;
+        // Only route when the two boxes are clearly separated along the
+        // flow axis (source fully above target, or vice-versa).
+        let ok = if down {
+            a_box.1 + a_box.3 < b_box.1
+        } else {
+            b_box.1 + b_box.3 < a_box.1
+        };
+        if !ok {
+            return Vec::new();
+        }
+        let a_edge = if down { a_c.1 + a_sz.1 / 2.0 } else { a_c.1 - a_sz.1 / 2.0 };
+        let a_out = if down { a_box.1 + a_box.3 + GAP } else { a_box.1 - GAP };
+        let b_in = if down { b_box.1 - GAP } else { b_box.1 + b_box.3 + GAP };
+        let b_edge = if down { b_c.1 - b_sz.1 / 2.0 } else { b_c.1 + b_sz.1 / 2.0 };
+        vec![(a_c.0, a_edge), (a_c.0, a_out), (b_c.0, b_in), (b_c.0, b_edge)]
+    } else {
+        let right = b_c.0 >= a_c.0;
+        let ok = if right {
+            a_box.0 + a_box.2 < b_box.0
+        } else {
+            b_box.0 + b_box.2 < a_box.0
+        };
+        if !ok {
+            return Vec::new();
+        }
+        let a_edge = if right { a_c.0 + a_sz.0 / 2.0 } else { a_c.0 - a_sz.0 / 2.0 };
+        let a_out = if right { a_box.0 + a_box.2 + GAP } else { a_box.0 - GAP };
+        let b_in = if right { b_box.0 - GAP } else { b_box.0 + b_box.2 + GAP };
+        let b_edge = if right { b_c.0 - b_sz.0 / 2.0 } else { b_c.0 + b_sz.0 / 2.0 };
+        vec![(a_edge, a_c.1), (a_out, a_c.1), (b_in, b_c.1), (b_edge, b_c.1)]
+    }
+}
+
 fn free_edge(
     a: &Placed,
     b: &Placed,
