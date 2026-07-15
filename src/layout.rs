@@ -315,36 +315,12 @@ pub fn layout_sized(g: &Graph, sizes: &[(f64, f64)]) -> LayoutResult {
     }
     let total_l = cursor - GAP_L + MARGIN;
 
-    // Initial packing per layer, then centre each layer.
-    let mut bpos = vec![0.0f64; na];
-    let mut widths = vec![0.0f64; nlayers];
-    for li in 0..nlayers {
-        let mut c = 0.0;
-        for &v in &layers[li] {
-            bpos[v] = c + absize[v] / 2.0;
-            c += absize[v] + GAP_B;
-        }
-        widths[li] = if layers[li].is_empty() { 0.0 } else { c - GAP_B };
-    }
-    let maxw = widths.iter().fold(0.0f64, |a, &b| a.max(b));
-    for li in 0..nlayers {
-        let off = MARGIN + (maxw - widths[li]) / 2.0;
-        for &v in &layers[li] {
-            bpos[v] += off;
-        }
-    }
-
-    // Alignment: pull each node towards its neighbours' mean, order &
-    // min-gaps preserved (dummies included → channels stay open).
-    for li in 1..nlayers {
-        align_pass(&layers[li], &preds, &mut bpos, &absize);
-    }
-    for li in (0..nlayers.saturating_sub(1)).rev() {
-        align_pass(&layers[li], &succs, &mut bpos, &absize);
-    }
-    for li in 1..nlayers {
-        align_pass(&layers[li], &preds, &mut bpos, &absize);
-    }
+    // Breadth positions (b axis) via Brandes-Köpf: four vertical
+    // alignments (up/down × left/right), each compacted independently,
+    // then combined by the per-node median. This is dagre's coordinate
+    // assignment — it pins each long edge's dummy chain into a straight
+    // vertical run and centres nodes over their aligned neighbours.
+    let mut bpos = coordinates_bk(n, na, nlayers, &layers, &preds, &succs, &alayer, &absize);
 
     // Normalise so the diagram starts at MARGIN (real-node extent).
     let mut minb = f64::INFINITY;
@@ -534,20 +510,307 @@ fn count_crossings(
     total
 }
 
-/// Shift each node (order preserved) towards the mean position of
-/// its neighbours, as long as it doesn't collide with the node to
-/// its left.
-fn align_pass(order: &[usize], nbrs: &[Vec<usize>], bpos: &mut [f64], bsize: &[f64]) {
-    let mut min_edge = f64::NEG_INFINITY;
-    for &v in order {
-        let ns = &nbrs[v];
-        let desired = if ns.is_empty() {
-            bpos[v]
+/// Brandes-Köpf coordinate assignment (breadth axis). Runs the four
+/// vertical alignments (down/up × left/right), compacts each into a
+/// non-overlapping layout, aligns them to the narrowest, and returns
+/// the per-node median of the four candidates. Long-edge dummy chains
+/// share a block per alignment, so they come out as straight vertical
+/// runs — the hallmark of dagre's output.
+fn coordinates_bk(
+    n: usize,
+    na: usize,
+    nlayers: usize,
+    layers: &[Vec<usize>],
+    preds: &[Vec<usize>],
+    succs: &[Vec<usize>],
+    alayer: &[usize],
+    absize: &[f64],
+) -> Vec<f64> {
+    if na == 0 {
+        return Vec::new();
+    }
+
+    // Adjacent-layer neighbour sets (back/invisible links that skip a
+    // layer are excluded — BK only reasons about layer±1 segments).
+    let mut up: Vec<Vec<usize>> = vec![Vec::new(); na];
+    let mut down: Vec<Vec<usize>> = vec![Vec::new(); na];
+    for v in 0..na {
+        for &u in &preds[v] {
+            if alayer[u] + 1 == alayer[v] {
+                up[v].push(u);
+            }
+        }
+        for &w in &succs[v] {
+            if alayer[v] + 1 == alayer[w] {
+                down[v].push(w);
+            }
+        }
+    }
+
+    // Position of each node within its layer (natural, un-adjusted).
+    let mut order0 = vec![0usize; na];
+    for lay in layers {
+        for (i, &v) in lay.iter().enumerate() {
+            order0[v] = i;
+        }
+    }
+
+    let conflicts = type1_conflicts(n, nlayers, layers, &up, &order0);
+
+    // Four candidate assignments, keyed by (vert_up, horiz_right).
+    let mut cands: Vec<Vec<f64>> = Vec::with_capacity(4);
+    for &vert_up in &[false, true] {
+        for &horiz_right in &[false, true] {
+            // Build the adjusted layering: reverse layer order for the
+            // "up" sweeps, reverse within-layer order for the "right".
+            let mut al: Vec<Vec<usize>> = layers.to_vec();
+            if vert_up {
+                al.reverse();
+            }
+            if horiz_right {
+                for lay in al.iter_mut() {
+                    lay.reverse();
+                }
+            }
+            let mut aorder = vec![0usize; na];
+            for lay in &al {
+                for (i, &v) in lay.iter().enumerate() {
+                    aorder[v] = i;
+                }
+            }
+            // Align towards the already-processed layer: predecessors
+            // for a downward sweep, successors for an upward one.
+            let neighbor = if vert_up { &down } else { &up };
+            let (root, _align) =
+                vertical_alignment(na, &al, neighbor, &aorder, &conflicts);
+            let mut xs = horizontal_compaction(na, &al, &root, absize);
+            if horiz_right {
+                for x in xs.iter_mut() {
+                    *x = -*x;
+                }
+            }
+            cands.push(xs);
+        }
+    }
+
+    // Align the four to the narrowest, then take each node's median.
+    align_candidates(&mut cands, n, absize);
+    let mut bpos = vec![0.0f64; na];
+    for v in 0..na {
+        let mut q = [cands[0][v], cands[1][v], cands[2][v], cands[3][v]];
+        q.sort_by(f64::total_cmp);
+        bpos[v] = (q[1] + q[2]) / 2.0;
+    }
+    bpos
+}
+
+/// Mark type-1 conflicts: a non-inner segment that crosses an inner
+/// segment (one strung between two dummy nodes). Aligning across such a
+/// pair would kink the long edge, so BK forbids it. Stored symmetrically.
+fn type1_conflicts(
+    n: usize,
+    nlayers: usize,
+    layers: &[Vec<usize>],
+    up: &[Vec<usize>],
+    order: &[usize],
+) -> std::collections::HashSet<(usize, usize)> {
+    let is_dummy = |v: usize| v >= n;
+    let mut conflicts = std::collections::HashSet::new();
+    for li in 1..nlayers {
+        let lower = &layers[li];
+        let prev_len = layers[li - 1].len();
+        let mut k0 = 0usize;
+        let mut scan = 0usize;
+        for (l1, &v) in lower.iter().enumerate() {
+            // Inner segment: v is a dummy whose upper neighbour is a dummy.
+            let w = if is_dummy(v) {
+                up[v].iter().copied().find(|&u| is_dummy(u))
+            } else {
+                None
+            };
+            let is_last = l1 + 1 == lower.len();
+            if w.is_some() || is_last {
+                let k1 = w.map(|ww| order[ww]).unwrap_or(prev_len);
+                for &scan_node in &lower[scan..=l1] {
+                    for &u in &up[scan_node] {
+                        let upos = order[u];
+                        if (upos < k0 || upos > k1) && !(is_dummy(u) && is_dummy(scan_node)) {
+                            let pair = if u < scan_node { (u, scan_node) } else { (scan_node, u) };
+                            conflicts.insert(pair);
+                        }
+                    }
+                }
+                scan = l1 + 1;
+                k0 = k1;
+            }
+        }
+    }
+    conflicts
+}
+
+/// One BK vertical alignment. Walks layers top-to-bottom (in adjusted
+/// order); each node tries to align with its median neighbour in the
+/// already-placed layer, forming blocks identified by a shared root.
+fn vertical_alignment(
+    na: usize,
+    al: &[Vec<usize>],
+    neighbor: &[Vec<usize>],
+    aorder: &[usize],
+    conflicts: &std::collections::HashSet<(usize, usize)>,
+) -> (Vec<usize>, Vec<usize>) {
+    let mut root: Vec<usize> = (0..na).collect();
+    let mut align: Vec<usize> = (0..na).collect();
+    for lay in al {
+        let mut prev_idx: i64 = -1;
+        for &v in lay {
+            let mut ws: Vec<usize> = neighbor[v].clone();
+            if ws.is_empty() {
+                continue;
+            }
+            ws.sort_by_key(|&w| aorder[w]);
+            let m = ws.len();
+            let lo = (m - 1) / 2;
+            let hi = m / 2;
+            for &w in &ws[lo..=hi] {
+                let pair = if v < w { (v, w) } else { (w, v) };
+                if align[v] == v
+                    && prev_idx < aorder[w] as i64
+                    && !conflicts.contains(&pair)
+                {
+                    align[w] = v;
+                    root[v] = root[w];
+                    align[v] = root[w];
+                    prev_idx = aorder[w] as i64;
+                }
+            }
+        }
+    }
+    (root, align)
+}
+
+/// Compact the blocks of one alignment along the breadth axis. Builds
+/// the block graph (min-separation edges between consecutive roots in a
+/// layer), pushes every block as far left as its predecessors allow,
+/// then pulls it back right toward its successors without overlap.
+fn horizontal_compaction(
+    na: usize,
+    al: &[Vec<usize>],
+    root: &[usize],
+    absize: &[f64],
+) -> Vec<f64> {
+    // Block graph as adjacency lists over root nodes.
+    let mut bin: Vec<Vec<(usize, f64)>> = vec![Vec::new(); na]; // (pred_root, sep)
+    let mut bout: Vec<Vec<(usize, f64)>> = vec![Vec::new(); na]; // (succ_root, sep)
+    let mut is_block = vec![false; na];
+    for lay in al {
+        let mut prev: Option<usize> = None;
+        for &v in lay {
+            let vr = root[v];
+            is_block[vr] = true;
+            if let Some(u) = prev {
+                let ur = root[u];
+                let sep = absize[u] / 2.0 + GAP_B + absize[v] / 2.0;
+                // Merge parallel separations by their max.
+                if let Some(e) = bout[ur].iter_mut().find(|(t, _)| *t == vr) {
+                    if sep > e.1 {
+                        e.1 = sep;
+                    }
+                    if let Some(e2) = bin[vr].iter_mut().find(|(t, _)| *t == ur) {
+                        e2.1 = e.1;
+                    }
+                } else {
+                    bout[ur].push((vr, sep));
+                    bin[vr].push((ur, sep));
+                }
+            }
+            prev = Some(v);
+        }
+    }
+
+    let mut xs = vec![0.0f64; na];
+    // Pass 1 — leftmost feasible: post-order DFS so every predecessor
+    // block is placed before the block that leans on it.
+    let mut visited = vec![false; na];
+    let mut stack: Vec<usize> = (0..na).filter(|&v| is_block[v]).collect();
+    while let Some(elem) = stack.pop() {
+        if visited[elem] {
+            let mut x = 0.0f64;
+            for &(p, sep) in &bin[elem] {
+                x = x.max(xs[p] + sep);
+            }
+            xs[elem] = x;
         } else {
-            ns.iter().map(|&u| bpos[u]).sum::<f64>() / ns.len() as f64
-        };
-        let c = desired.max(min_edge + bsize[v] / 2.0);
-        bpos[v] = c;
-        min_edge = c + bsize[v] / 2.0 + GAP_B;
+            visited[elem] = true;
+            stack.push(elem);
+            for &(p, _) in &bin[elem] {
+                stack.push(p);
+            }
+        }
+    }
+    // Pass 2 — pull right toward successors to centre, never overlapping.
+    let mut visited2 = vec![false; na];
+    let mut stack2: Vec<usize> = (0..na).filter(|&v| is_block[v]).collect();
+    while let Some(elem) = stack2.pop() {
+        if visited2[elem] {
+            let mut min = f64::INFINITY;
+            for &(s, sep) in &bout[elem] {
+                min = min.min(xs[s] - sep);
+            }
+            if min.is_finite() {
+                xs[elem] = xs[elem].max(min);
+            }
+        } else {
+            visited2[elem] = true;
+            stack2.push(elem);
+            for &(s, _) in &bout[elem] {
+                stack2.push(s);
+            }
+        }
+    }
+
+    // Project block coordinates back onto every member node.
+    let mut out = vec![0.0f64; na];
+    for v in 0..na {
+        out[v] = xs[root[v]];
+    }
+    out
+}
+
+/// Shift the four alignments so they share a reference frame, then leave
+/// them for the median blend. Left-biased alignments align on their min
+/// edge, right-biased on their max, matching dagre's `alignCoordinates`.
+fn align_candidates(cands: &mut [Vec<f64>], n: usize, absize: &[f64]) {
+    // Pick the narrowest (by real-node extent) as the anchor frame.
+    let extent = |xs: &[f64]| -> (f64, f64) {
+        let mut lo = f64::INFINITY;
+        let mut hi = f64::NEG_INFINITY;
+        for v in 0..n {
+            lo = lo.min(xs[v] - absize[v] / 2.0);
+            hi = hi.max(xs[v] + absize[v] / 2.0);
+        }
+        (lo, hi)
+    };
+    let mut anchor = 0usize;
+    let mut best_w = f64::INFINITY;
+    for (i, xs) in cands.iter().enumerate() {
+        let (lo, hi) = extent(xs);
+        if hi - lo < best_w {
+            best_w = hi - lo;
+            anchor = i;
+        }
+    }
+    let (amin, amax) = extent(&cands[anchor]);
+    for (i, xs) in cands.iter_mut().enumerate() {
+        if i == anchor {
+            continue;
+        }
+        let (lo, hi) = extent(xs);
+        // Even indices are left-biased (l), odd are right-biased (r).
+        let delta = if i % 2 == 0 { amin - lo } else { amax - hi };
+        if delta != 0.0 {
+            for x in xs.iter_mut() {
+                *x += delta;
+            }
+        }
     }
 }
