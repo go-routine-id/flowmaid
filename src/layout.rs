@@ -285,6 +285,22 @@ fn layout_core(
         if !ascending {
             chain.reverse(); // store low→high chain in from→to order
         }
+        // Reserve space for a long edge's label at the middle dummy of
+        // its chain: sizing that dummy makes it a real obstacle, so the
+        // labels of converging edges spread apart instead of piling up
+        // (dagre models edge labels as nodes for exactly this reason).
+        if let (Some(lbl), false) = (&e.label, chain.is_empty()) {
+            let mid = chain[chain.len() / 2];
+            let lw = text_width(lbl) + 14.0;
+            let lh = LINE_H * line_count(lbl) as f64 + 6.0;
+            if horizontal {
+                absize[mid] = absize[mid].max(lh);
+                alsize[mid] = alsize[mid].max(lw);
+            } else {
+                absize[mid] = absize[mid].max(lw);
+                alsize[mid] = alsize[mid].max(lh);
+            }
+        }
         edge_chain[ei] = chain;
     }
     let clustered = node_cluster.is_some();
