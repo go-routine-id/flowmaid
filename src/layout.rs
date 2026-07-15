@@ -265,19 +265,41 @@ pub fn layout_sized(g: &Graph, sizes: &[(f64, f64)]) -> LayoutResult {
         layers[alayer[v]].push(v);
     }
 
-    // --- 3. Reduce crossings: alternating barycenter sweeps ---
+    // --- 3. Reduce crossings: dagre-style ordering. Weighted-median
+    // sweeps (down via preds, up via succs) followed by a local
+    // adjacent-swap transpose each round. The median heuristic can
+    // transiently worsen an ordering, so we keep the layering with the
+    // fewest crossings seen across all rounds (keep-best) — this also
+    // guards against regressing the natural insertion order on ties.
     let mut pos = vec![0.0f64; na];
     for lv in &layers {
         for (i, &v) in lv.iter().enumerate() {
             pos[v] = i as f64;
         }
     }
-    for _ in 0..4 {
+    let mut best_layers = layers.clone();
+    let mut best_cross = count_crossings(&layers, &succs, &alayer, nlayers);
+    for _ in 0..8 {
         for li in 1..nlayers {
             reorder(&mut layers[li], &preds, &mut pos);
         }
         for li in (0..nlayers.saturating_sub(1)).rev() {
             reorder(&mut layers[li], &succs, &mut pos);
+        }
+        transpose(&mut layers, &preds, &succs, &mut pos, nlayers);
+        let c = count_crossings(&layers, &succs, &alayer, nlayers);
+        if c < best_cross {
+            best_cross = c;
+            best_layers = layers.clone();
+        }
+        if best_cross == 0 {
+            break;
+        }
+    }
+    layers = best_layers;
+    for lv in &layers {
+        for (i, &v) in lv.iter().enumerate() {
+            pos[v] = i as f64;
         }
     }
 
@@ -371,9 +393,10 @@ pub fn layout_sized(g: &Graph, sizes: &[(f64, f64)]) -> LayoutResult {
     }
 }
 
-/// Reorder one layer by the mean position of each node's
-/// neighbours (barycenter). Nodes without neighbours keep their
-/// position.
+/// Reorder one layer by the weighted median of each node's neighbour
+/// positions (dagre's heuristic — more robust to outliers than the
+/// barycenter mean). Nodes without neighbours keep their position;
+/// ties break by node index so the pass is deterministic.
 fn reorder(layer: &mut Vec<usize>, nbrs: &[Vec<usize>], pos: &mut [f64]) {
     let mut keyed: Vec<(f64, usize)> = layer
         .iter()
@@ -382,17 +405,133 @@ fn reorder(layer: &mut Vec<usize>, nbrs: &[Vec<usize>], pos: &mut [f64]) {
             let key = if ns.is_empty() {
                 pos[v]
             } else {
-                ns.iter().map(|&u| pos[u]).sum::<f64>() / ns.len() as f64
+                wmedian(ns.iter().map(|&u| pos[u]))
             };
             (key, v)
         })
         .collect();
-    keyed.sort_by(|a, b| a.0.total_cmp(&b.0));
+    keyed.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
     layer.clear();
     for (i, (_, v)) in keyed.into_iter().enumerate() {
         layer.push(v);
         pos[v] = i as f64;
     }
+}
+
+/// Dagre's weighted median of a set of neighbour positions. For an even
+/// count the two central values are blended by the widths of the gaps
+/// on either side, which biases towards the denser cluster.
+fn wmedian(vals: impl Iterator<Item = f64>) -> f64 {
+    let mut ps: Vec<f64> = vals.collect();
+    ps.sort_by(f64::total_cmp);
+    let m = ps.len();
+    match m {
+        0 => -1.0,
+        1 => ps[0],
+        2 => (ps[0] + ps[1]) / 2.0,
+        _ => {
+            let mid = m / 2;
+            if m % 2 == 1 {
+                ps[mid]
+            } else {
+                let left = ps[mid - 1] - ps[0];
+                let right = ps[m - 1] - ps[mid];
+                if left + right == 0.0 {
+                    (ps[mid - 1] + ps[mid]) / 2.0
+                } else {
+                    (ps[mid - 1] * right + ps[mid] * left) / (left + right)
+                }
+            }
+        }
+    }
+}
+
+/// Local adjacent-swap pass (dagre's transpose). Repeatedly walk every
+/// layer and swap neighbouring nodes whenever doing so lowers the count
+/// of crossings they induce with the layers above and below. Converges
+/// quickly; a small guard caps the worst case.
+fn transpose(
+    layers: &mut [Vec<usize>],
+    preds: &[Vec<usize>],
+    succs: &[Vec<usize>],
+    pos: &mut [f64],
+    nlayers: usize,
+) {
+    let mut improved = true;
+    let mut guard = 0;
+    while improved && guard < 4 {
+        improved = false;
+        guard += 1;
+        for li in 0..nlayers {
+            let len = layers[li].len();
+            for i in 0..len.saturating_sub(1) {
+                let v = layers[li][i];
+                let w = layers[li][i + 1];
+                let before = local_crossings(v, w, preds, pos)
+                    + local_crossings(v, w, succs, pos);
+                let after = local_crossings(w, v, preds, pos)
+                    + local_crossings(w, v, succs, pos);
+                if after < before {
+                    layers[li].swap(i, i + 1);
+                    pos[v] = (i + 1) as f64;
+                    pos[w] = i as f64;
+                    improved = true;
+                }
+            }
+        }
+    }
+}
+
+/// Crossings induced by placing `v` immediately left of `w`: every pair
+/// of edges (v→a, w→b) into the same adjacent layer crosses when a sits
+/// to the right of b.
+fn local_crossings(v: usize, w: usize, nbrs: &[Vec<usize>], pos: &[f64]) -> usize {
+    let mut c = 0;
+    for &a in &nbrs[v] {
+        for &b in &nbrs[w] {
+            if pos[a] > pos[b] {
+                c += 1;
+            }
+        }
+    }
+    c
+}
+
+/// Total edge crossings across every adjacent-layer boundary, counted
+/// as position inversions among the lower endpoints. Only genuine
+/// layer+1 segments participate (back/invisible links route elsewhere).
+fn count_crossings(
+    layers: &[Vec<usize>],
+    succs: &[Vec<usize>],
+    alayer: &[usize],
+    nlayers: usize,
+) -> usize {
+    let mut pos = vec![0usize; alayer.len()];
+    for lv in layers {
+        for (i, &v) in lv.iter().enumerate() {
+            pos[v] = i;
+        }
+    }
+    let mut total = 0;
+    for li in 0..nlayers.saturating_sub(1) {
+        let mut es: Vec<(usize, usize)> = Vec::new();
+        for &u in &layers[li] {
+            for &v in &succs[u] {
+                if alayer[v] == li + 1 {
+                    es.push((pos[u], pos[v]));
+                }
+            }
+        }
+        es.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)));
+        for i in 0..es.len() {
+            for j in (i + 1)..es.len() {
+                if es[i].1 > es[j].1 {
+                    total += 1;
+                }
+            }
+        }
+    }
+    total
 }
 
 /// Shift each node (order preserved) towards the mean position of
