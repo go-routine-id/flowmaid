@@ -17,9 +17,9 @@
 
 use crate::model::{
     Attr, Card, Class, ClassDiagram, ClassRel, Direction, Document, EdgeKind, End, ErDiagram,
-    FrameKind, Graph, Key, Member, MindNode, MindShape, Mindmap, NodeStyle, NoteSide, PieChart,
-    PieSlice, RelKind, Relation, SeqHead, SeqItem, SequenceDiagram, Shape, SubEdge, Subgraph,
-    Visibility,
+    FrameKind, Graph, Journey, JourneySection, JourneyTask, Key, Member, MindNode, MindShape,
+    Mindmap, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation, SeqHead, SeqItem,
+    SequenceDiagram, Shape, SubEdge, Subgraph, Visibility,
 };
 use std::collections::HashMap;
 
@@ -168,12 +168,13 @@ pub fn parse_document(source: &str) -> Result<Document, ParseError> {
                 parse_state(source, i + 1).map(Document::State)
             }
             Some("mindmap") => parse_mindmap(source, i + 1).map(Document::Mindmap),
+            Some("journey") => parse_journey(source, i + 1).map(Document::Journey),
             Some(t) => Err(err(
                 i + 1,
                 format!(
                     "diagram type '{}' is not supported yet (supported: flowchart, \
                      graph, erDiagram, classDiagram, sequenceDiagram, pie, \
-                     stateDiagram-v2, mindmap)",
+                     stateDiagram-v2, mindmap, journey)",
                     t
                 ),
             )),
@@ -236,7 +237,7 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
                     "this parser is flowchart-only — use parse_document() or render_svg()"
                 } else {
                     "not supported yet (supported: flowchart, graph, erDiagram, \
-                     classDiagram, sequenceDiagram, pie, stateDiagram-v2, mindmap)"
+                     classDiagram, sequenceDiagram, pie, stateDiagram-v2, mindmap, journey)"
                 };
                 return Err(err(lineno, format!("diagram type '{}': {}", t, hint)));
             }
@@ -1762,10 +1763,14 @@ fn parse_mind_node(t: &str) -> (String, MindShape) {
     ];
     for &(open, close, shape) in WRAPS {
         if let Some(oi) = t.find(open) {
-            let adjacent = oi == 0 || t.as_bytes()[oi - 1] != b' ';
+            // The prefix before the opener is the node's optional id,
+            // which cannot contain whitespace. If it does, this isn't an
+            // `id + wrapper` — the whole line is plain text (e.g.
+            // "call foo(x)" must stay literal, not become "x").
+            let prefix_is_id = !t[..oi].contains(char::is_whitespace);
             let inner_start = oi + open.len();
             let has_close = t.ends_with(close) && t.len() >= inner_start + close.len();
-            if adjacent && has_close {
+            if prefix_is_id && has_close {
                 let inner = &t[inner_start..t.len() - close.len()];
                 return (mind_br(inner), shape);
             }
@@ -1787,6 +1792,95 @@ fn mind_br(s: &str) -> String {
         .join("\n")
         .trim()
         .to_string()
+}
+
+// ---------------------------------------------------------------
+// User journey (`journey`)
+// ---------------------------------------------------------------
+
+/// Parse a user-journey diagram: `title …`, `section …`, and task rows
+/// `Name: score: Actor1, Actor2`. The score is clamped to 1..=5. Tasks
+/// before the first `section` go into a leading unnamed section.
+fn parse_journey(source: &str, header_line: usize) -> Result<Journey, ParseError> {
+    let mut d = Journey::default();
+    // Ensure there is always a current section to push tasks into.
+    let ensure_section = |d: &mut Journey| {
+        if d.sections.is_empty() {
+            d.sections.push(JourneySection {
+                name: String::new(),
+                tasks: Vec::new(),
+            });
+        }
+    };
+
+    for (i, raw) in source.lines().enumerate() {
+        let lineno = i + 1;
+        if lineno <= header_line {
+            continue;
+        }
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with("%%") {
+            continue;
+        }
+        if let Some(rest) = strip_keyword(line, "title") {
+            let t = rest.trim();
+            if !t.is_empty() {
+                d.title = Some(t.to_string());
+            }
+            continue;
+        }
+        if let Some(rest) = strip_keyword(line, "section") {
+            let name = rest.trim();
+            if name.is_empty() {
+                return Err(err(lineno, "section needs a name".to_string()));
+            }
+            d.sections.push(JourneySection {
+                name: name.to_string(),
+                tasks: Vec::new(),
+            });
+            continue;
+        }
+        // Task row: `Name: score[: Actor1, Actor2]`.
+        let mut parts = line.splitn(3, ':');
+        let name = parts.next().unwrap_or("").trim();
+        let score_str = parts.next().map(str::trim);
+        let actors_str = parts.next().map(str::trim).unwrap_or("");
+        let Some(score_str) = score_str else {
+            return Err(err(
+                lineno,
+                format!("journey task needs a score: '{}: <1-5>'", name),
+            ));
+        };
+        if name.is_empty() {
+            return Err(err(lineno, "journey task needs a name".to_string()));
+        }
+        let score: u8 = score_str
+            .parse()
+            .map_err(|_| err(lineno, format!("invalid journey score: '{}'", score_str)))?;
+        let score = score.clamp(1, 5);
+        // Resolve actors to stable indices (dedup, first-appearance order).
+        let mut actor_ids = Vec::new();
+        for a in actors_str.split(',') {
+            let a = a.trim();
+            if a.is_empty() {
+                continue;
+            }
+            let id = d.actors.iter().position(|x| x == a).unwrap_or_else(|| {
+                d.actors.push(a.to_string());
+                d.actors.len() - 1
+            });
+            if !actor_ids.contains(&id) {
+                actor_ids.push(id);
+            }
+        }
+        ensure_section(&mut d);
+        d.sections.last_mut().unwrap().tasks.push(JourneyTask {
+            name: name.to_string(),
+            score,
+            actors: actor_ids,
+        });
+    }
+    Ok(d)
 }
 
 // ---------------------------------------------------------------
@@ -2106,7 +2200,7 @@ mod tests {
 
     #[test]
     fn unsupported_diagram_types_get_explicit_errors() {
-        for src in ["journey\ntitle x", "gantt\ntitle x", "timeline\nx"] {
+        for src in ["gantt\ntitle x", "timeline\nx"] {
             for res in [
                 parse(src).map(|_| ()),
                 parse_document(src).map(|_| ()),

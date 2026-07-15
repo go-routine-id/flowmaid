@@ -231,6 +231,7 @@ pub enum Document {
     /// whole flowchart layout/SVG/drag pipeline is reused as-is.
     State(Graph),
     Mindmap(Mindmap),
+    Journey(Journey),
 }
 
 /// UML class diagram (`classDiagram` header).
@@ -586,6 +587,34 @@ pub struct MindNode {
     pub children: Vec<usize>,
     pub depth: usize,
     pub branch: Option<usize>,
+}
+
+/// A user-journey diagram (`journey` header): an ordered list of
+/// sections, each holding scored tasks. `actors` is the de-duplicated
+/// set of every participant, in first-appearance order — its index is
+/// the stable color key for the legend and per-task dots.
+#[derive(Debug, Default)]
+pub struct Journey {
+    pub title: Option<String>,
+    pub sections: Vec<JourneySection>,
+    pub actors: Vec<String>,
+}
+
+/// A named group of consecutive tasks (`section X`). Tasks before the
+/// first `section` land in one leading section with an empty name.
+#[derive(Debug)]
+pub struct JourneySection {
+    pub name: String,
+    pub tasks: Vec<JourneyTask>,
+}
+
+/// One step: `Task name: score: Actor1, Actor2`. `score` is clamped to
+/// 1..=5 (satisfaction); `actors` are indices into [`Journey::actors`].
+#[derive(Debug)]
+pub struct JourneyTask {
+    pub name: String,
+    pub score: u8,
+    pub actors: Vec<usize>,
 }
 
 /// Node outline in a mindmap, from the wrapper around its text.

@@ -133,17 +133,12 @@ fn branch_color(order: usize) -> &'static str {
     crate::style::accent(order)
 }
 
-/// Compute all geometry. An empty mindmap yields a minimal canvas.
+/// Auto-layout: radial placement, then [`route`] with those centres.
+/// An empty mindmap yields a minimal canvas.
 pub fn scene(d: &Mindmap) -> MindScene {
     if d.nodes.is_empty() {
-        return MindScene {
-            width: 2.0 * MARGIN,
-            height: 2.0 * MARGIN,
-            nodes: Vec::new(),
-            edges: Vec::new(),
-        };
+        return route(d, &[]);
     }
-
     let sizes: Vec<(f64, f64)> = d.nodes.iter().map(|n| node_size(&n.text, n.shape)).collect();
 
     // Angular allocation by leaf weight; radiate from the top, clockwise.
@@ -152,35 +147,51 @@ pub fn scene(d: &Mindmap) -> MindScene {
     let mut c = vec![(0.0f64, 0.0f64); d.nodes.len()];
     place(d, &w, 0, -FRAC_PI_2, TAU - FRAC_PI_2, &mut c);
 
-    // Branch order → accent index (root's children, in order).
+    // Normalise so the whole tree's bounding box starts at MARGIN, then
+    // hand the resulting centres to route().
+    let (mut minx, mut miny) = (f64::MAX, f64::MAX);
+    for (i, &(x, y)) in c.iter().enumerate() {
+        minx = minx.min(x - sizes[i].0 / 2.0);
+        miny = miny.min(y - sizes[i].1 / 2.0);
+    }
+    let centres: Vec<(f64, f64)> = c
+        .iter()
+        .map(|&(x, y)| (x + MARGIN - minx, y + MARGIN - miny))
+        .collect();
+    route(d, &centres)
+}
+
+/// Build a scene from EXPLICIT node centres (`pos[i]` = centre of node
+/// `i`, in world coords). Used for interactive drag: the caller moves a
+/// centre and the connectors are recomputed to follow, without touching
+/// the radial layout. Positions are taken as-is (not re-normalised), so
+/// dragging never makes the diagram slide. `pos` must match node count.
+pub fn route(d: &Mindmap, pos: &[(f64, f64)]) -> MindScene {
+    if d.nodes.is_empty() || pos.len() != d.nodes.len() {
+        return MindScene {
+            width: 2.0 * MARGIN,
+            height: 2.0 * MARGIN,
+            nodes: Vec::new(),
+            edges: Vec::new(),
+        };
+    }
+
     let mut branch_order = vec![0usize; d.nodes.len()];
     for (order, &ch) in d.nodes[0].children.iter().enumerate() {
         branch_order[ch] = order;
     }
 
-    // Shift centres so the whole bounding box starts at MARGIN.
-    let (mut minx, mut miny) = (f64::MAX, f64::MAX);
-    let (mut maxx, mut maxy) = (f64::MIN, f64::MIN);
-    for (i, &(x, y)) in c.iter().enumerate() {
-        let (w2, h2) = (sizes[i].0 / 2.0, sizes[i].1 / 2.0);
-        minx = minx.min(x - w2);
-        miny = miny.min(y - h2);
-        maxx = maxx.max(x + w2);
-        maxy = maxy.max(y + h2);
-    }
-    let (ox, oy) = (MARGIN - minx, MARGIN - miny);
-
     let mut nodes = Vec::with_capacity(d.nodes.len());
     for (i, n) in d.nodes.iter().enumerate() {
-        let (w2, h2) = (sizes[i].0, sizes[i].1);
+        let (w2, h2) = node_size(&n.text, n.shape);
         let (fill, text_color) = if n.depth == 0 {
             (ROOT_FILL, ROOT_TEXT)
         } else {
             (branch_color(branch_order[n.branch.unwrap_or(i)]), BRANCH_TEXT)
         };
         nodes.push(MindNodeBox {
-            x: c[i].0 + ox - w2 / 2.0,
-            y: c[i].1 + oy - h2 / 2.0,
+            x: pos[i].0 - w2 / 2.0,
+            y: pos[i].1 - h2 / 2.0,
             w: w2,
             h: h2,
             text: n.text.clone(),
@@ -206,8 +217,8 @@ pub fn scene(d: &Mindmap) -> MindScene {
         });
     }
 
-    let width = maxx - minx + 2.0 * MARGIN;
-    let height = maxy - miny + 2.0 * MARGIN;
+    let width = nodes.iter().map(|n| n.x + n.w).fold(0.0, f64::max) + MARGIN;
+    let height = nodes.iter().map(|n| n.y + n.h).fold(0.0, f64::max) + MARGIN;
     MindScene {
         width,
         height,
@@ -394,6 +405,17 @@ mod tests {
     }
 
     #[test]
+    fn multiword_text_before_paren_stays_literal() {
+        // An id can't contain a space, so "call foo(x)" is plain text,
+        // not a rounded node labeled "x".
+        let m = mind("mindmap\nRoot\n  call foo(x)\n  id(real)\n");
+        assert_eq!(m.nodes[1].text, "call foo(x)");
+        assert_eq!(m.nodes[1].shape, MindShape::Rounded);
+        // A genuine adjacent id still strips.
+        assert_eq!(m.nodes[2].text, "real");
+    }
+
+    #[test]
     fn radial_layout_stays_inside_canvas() {
         let ms = scene(&mind(
             "mindmap\n  root((Order))\n    Customer\n      Buat Order\n      Lihat Order\n    \
@@ -428,6 +450,22 @@ mod tests {
         assert!(svg.contains("<polygon"), "bang/cloud/hexagon polygons");
         assert!(svg.contains("<path"), "connectors");
         assert!(svg.contains("fill=\"#ffffff\""), "branch text is white");
+    }
+
+    #[test]
+    fn route_follows_dragged_positions() {
+        let m = mind("mindmap\nroot((R))\n  A\n  B\n");
+        let auto = scene(&m);
+        // Seed from auto, then "drag" node A far to the right.
+        let mut pos: Vec<(f64, f64)> = auto.nodes.iter().map(|n| (n.cx(), n.cy())).collect();
+        pos[1] = (pos[1].0 + 500.0, pos[1].1);
+        let routed = route(&m, &pos);
+        // Node A's box moved with it; the root→A connector's end follows.
+        assert!((routed.nodes[1].cx() - pos[1].0).abs() < 0.01);
+        let a_edge = &routed.edges[0];
+        assert!((a_edge.bezier[3].0 - pos[1].0).abs() < routed.nodes[1].w);
+        // Canvas grew to keep the dragged node inside.
+        assert!(routed.width > auto.width);
     }
 
     #[test]

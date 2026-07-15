@@ -119,12 +119,17 @@ fn main() {
             eprintln!("empty diagram: no mindmap nodes");
             process::exit(1);
         }
+        Document::Journey(d) if d.sections.iter().all(|s| s.tasks.is_empty()) => {
+            eprintln!("empty diagram: no journey tasks");
+            process::exit(1);
+        }
         Document::Flowchart(g) | Document::State(g) => render::render(g),
         Document::Er(d) => render::render_er(d),
         Document::Class(d) => render::render_class(d),
         Document::Sequence(d) => render::render_seq(d),
         Document::Pie(d) => render::render_pie(d),
         Document::Mindmap(d) => render::render_mindmap(d),
+        Document::Journey(d) => render::render_journey(d),
     };
 
     match &output {
