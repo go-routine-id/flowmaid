@@ -50,7 +50,7 @@ Or in `Cargo.toml`:
 
 ```toml
 [dependencies]
-flowmaid = "0.11"
+flowmaid = "0.16"
 ```
 
 ## Usage
@@ -189,7 +189,7 @@ Other Mermaid diagram types (`gantt`, `timeline`, `gitGraph`, ...) are detected 
 A three-stage pipeline, one module per stage:
 
 1. `parser.rs` — hand-written character-cursor parser. Each line is parsed into a chain of nodes and edges, with line-numbered error messages.
-2. `layout.rs` — a compact Sugiyama-style algorithm: (a) DFS marks *back-edges* so cycles can't break the layering, (b) *longest-path layering* assigns nodes to layers, (c) alternating *barycenter* sweeps reduce edge crossings, (d) coordinates come from per-layer packing followed by alignment towards the mean neighbour position without overlaps. Everything is computed in abstract coordinates (breadth × layer), so all four diagram directions are handled by a single transform at the end.
+2. `layout.rs` — a Sugiyama pipeline following [dagre](https://github.com/dagrejs/dagre) (the algorithm mermaid.js uses): (a) DFS marks *back-edges* so cycles can't break the layering, (b) *longest-path layering* assigns nodes to layers, (c) long edges are split into per-layer *dummy chains* so they reserve straight routing channels, (d) *ordering* reduces crossings with weighted-median sweeps plus a local adjacent-swap transpose, keeping the layering with the fewest crossings across eight rounds, (e) *Brandes-Köpf* coordinate assignment runs four vertical alignments (up/down × left/right) and blends them by the per-node median, so long edges come out as straight vertical runs and fan-in/out nodes centre over their neighbours. Everything is computed in abstract coordinates (breadth × layer), so all four diagram directions are handled by a single transform at the end.
 3. `render.rs` — maps abstract coordinates to final x,y according to the direction, then draws bezier curves with arrowheads (SVG markers), clips lines exactly at shape borders (rectangles, circles, and diamonds each have their own intersection formula), and places labels at curve midpoints.
 
 `model.rs` holds the shared data structures (`Graph`, `Node`, `Edge`, shape and direction enums).
