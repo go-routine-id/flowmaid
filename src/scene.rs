@@ -1257,35 +1257,39 @@ fn cubic_mid(p0: (f64, f64), c1: (f64, f64), c2: (f64, f64), p3: (f64, f64)) -> 
     )
 }
 
-/// Catmull-Rom → cubic-bezier control points for the segment `p1→p2`
-/// of a spline (neighbours `p0`, `p3` shape the tangents). Endpoints
-/// are clamped by the caller passing `p1`/`p2` for the missing side.
-pub(crate) fn catmull_rom(
-    p0: (f64, f64),
-    p1: (f64, f64),
-    p2: (f64, f64),
-    p3: (f64, f64),
-) -> ((f64, f64), (f64, f64)) {
-    let c1 = (p1.0 + (p2.0 - p0.0) / 6.0, p1.1 + (p2.1 - p0.1) / 6.0);
-    let c2 = (p2.0 - (p3.0 - p1.0) / 6.0, p2.1 - (p3.1 - p1.1) / 6.0);
-    (c1, c2)
-}
-
-/// SVG path `d` for a smooth Catmull-Rom spline through `pts` (>= 2
-/// points), so a routed edge curves through its channel waypoints.
+/// SVG path `d` for a smooth B-spline (d3's `curveBasis` — what
+/// mermaid uses) through `pts` (>= 2 points): starts and ends exactly
+/// at the endpoints while only *approximating* the channel waypoints,
+/// so a routed edge flows in gentle lanes instead of ballooning
+/// through every point the way an interpolating spline would.
 fn spline_d(pts: &[(f64, f64)]) -> String {
     let n = pts.len();
     let mut d = format!("M {:.1} {:.1}", pts[0].0, pts[0].1);
-    for i in 0..n - 1 {
-        let p0 = pts[i.saturating_sub(1)];
-        let (p1, p2) = (pts[i], pts[i + 1]);
-        let p3 = pts[(i + 2).min(n - 1)];
-        let (c1, c2) = catmull_rom(p0, p1, p2, p3);
+    if n < 3 {
+        d.push_str(&format!(" L {:.1} {:.1}", pts[n - 1].0, pts[n - 1].1));
+        return d;
+    }
+    d.push_str(&format!(
+        " L {:.1} {:.1}",
+        (5.0 * pts[0].0 + pts[1].0) / 6.0,
+        (5.0 * pts[0].1 + pts[1].1) / 6.0
+    ));
+    let bez = |d: &mut String, a: (f64, f64), b: (f64, f64), p: (f64, f64)| {
         d.push_str(&format!(
             " C {:.1} {:.1}, {:.1} {:.1}, {:.1} {:.1}",
-            c1.0, c1.1, c2.0, c2.1, p2.0, p2.1
+            (2.0 * a.0 + b.0) / 3.0,
+            (2.0 * a.1 + b.1) / 3.0,
+            (a.0 + 2.0 * b.0) / 3.0,
+            (a.1 + 2.0 * b.1) / 3.0,
+            (a.0 + 4.0 * b.0 + p.0) / 6.0,
+            (a.1 + 4.0 * b.1 + p.1) / 6.0
         ));
+    };
+    for i in 2..n {
+        bez(&mut d, pts[i - 2], pts[i - 1], pts[i]);
     }
+    bez(&mut d, pts[n - 2], pts[n - 1], pts[n - 1]);
+    d.push_str(&format!(" L {:.1} {:.1}", pts[n - 1].0, pts[n - 1].1));
     d
 }
 

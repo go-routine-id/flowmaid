@@ -46,9 +46,13 @@ pub struct LayoutResult {
 const PAD_X: f64 = 16.0;
 const BASE_H: f64 = 38.0;
 const MIN_W: f64 = 54.0;
-const GAP_B: f64 = 62.0; // gap between nodes within a layer
+const GAP_B: f64 = 62.0; // gap between REAL nodes within a layer
 const GAP_L: f64 = 84.0; // gap between layers
 const MARGIN: f64 = 28.0;
+/// Gap contribution of an edge DUMMY within a layer (dagre's
+/// `edgesep`): parallel long edges bundle into tight lanes instead of
+/// spreading a full node-gap apart — key to mermaid's flowing look.
+const EDGE_GAP: f64 = 18.0;
 /// Extra half-gap added per subgraph boundary crossed between two
 /// adjacent nodes in a layer — reserves each cluster box its padding.
 const CLUSTER_PAD: f64 = 18.0;
@@ -316,6 +320,10 @@ fn layout_core(
     // and other nodes are held outside the band. `border_meta` records
     // (node, side, cluster-path-incl-c) for the nodes pushed here.
     let mut border_meta: Vec<(usize, u8, Vec<usize>)> = Vec::new();
+    // cluster id -> (lo, hi) layer span over members — walls cover it,
+    // and edge dummies use it to know when they are inside a cluster.
+    let mut cluster_span: std::collections::HashMap<usize, (usize, usize)> =
+        std::collections::HashMap::new();
     if let Some(nc) = node_cluster {
         // cluster id -> (path incl. c, lo layer, hi layer over members)
         let mut span: std::collections::HashMap<usize, (Vec<usize>, usize, usize)> =
@@ -329,6 +337,9 @@ fn layout_core(
                 e.1 = e.1.min(alayer[v]);
                 e.2 = e.2.max(alayer[v]);
             }
+        }
+        for (&c, &(_, lo, hi)) in &span {
+            cluster_span.insert(c, (lo, hi));
         }
         let mut cids: Vec<usize> = span.keys().copied().collect();
         cids.sort_unstable(); // deterministic node numbering
@@ -363,23 +374,45 @@ fn layout_core(
     }
 
     // Cluster path per augmented node: real nodes take the caller's
-    // path; an edge dummy inherits the deepest cluster its edge's
-    // endpoints share (so an intra-cluster long edge stays boxed inside,
-    // while a cross-cluster edge's channel sits outside both boxes); a
-    // border dummy carries its own cluster's path. `border_side[v]` is
-    // 0 (none) / 1 (left wall) / 2 (right wall).
+    // path; an edge dummy takes a PROGRESSIVE path (dagre's nesting
+    // behaviour) — at layers inside an endpoint's cluster span it
+    // adopts that endpoint's cluster path (target wins over source),
+    // so a cross-cluster edge exits its source box through the bottom,
+    // runs outside only while between boxes, then enters the target
+    // box from the top and descends inside it — instead of orbiting
+    // around the walled band. A border dummy carries its own cluster's
+    // path. `border_side[v]` is 0 (none) / 1 (left) / 2 (right wall).
     let mut border_side = vec![0u8; na];
     let apath: Vec<Vec<usize>> = if let Some(nc) = node_cluster {
         let mut p: Vec<Vec<usize>> = vec![Vec::new(); na];
         p[..n].clone_from_slice(nc);
+        // Longest prefix of `path` whose every cluster spans layer `l`.
+        let fit = |path: &[usize], l: usize| -> usize {
+            let mut k = 0;
+            for &c in path {
+                match cluster_span.get(&c) {
+                    Some(&(lo, hi)) if lo <= l && l <= hi => k += 1,
+                    _ => break,
+                }
+            }
+            k
+        };
         for (ei, chain) in edge_chain.iter().enumerate() {
             if chain.is_empty() {
                 continue;
             }
             let e = &g.edges[ei];
-            let cp = common_prefix(&nc[e.from], &nc[e.to]);
             for &d in chain {
-                p[d] = cp.clone();
+                let l = alayer[d];
+                let kv = fit(&nc[e.to], l);
+                let ku = fit(&nc[e.from], l);
+                p[d] = if kv > 0 {
+                    nc[e.to][..kv].to_vec()
+                } else if ku > 0 {
+                    nc[e.from][..ku].to_vec()
+                } else {
+                    common_prefix(&nc[e.from], &nc[e.to])
+                };
             }
         }
         for (d, side, path) in &border_meta {
@@ -735,7 +768,7 @@ fn coordinates_bk(
             let neighbor = if vert_up { &down } else { &up };
             let (root, _align) =
                 vertical_alignment(na, &al, neighbor, &aorder, &conflicts);
-            let mut xs = horizontal_compaction(na, &al, &root, absize, apath, border);
+            let mut xs = horizontal_compaction(n, na, &al, &root, absize, apath, border);
             if horiz_right {
                 for x in xs.iter_mut() {
                     *x = -*x;
@@ -845,6 +878,7 @@ fn vertical_alignment(
 /// layer), pushes every block as far left as its predecessors allow,
 /// then pulls it back right toward its successors without overlap.
 fn horizontal_compaction(
+    n: usize,
     na: usize,
     al: &[Vec<usize>],
     root: &[usize],
@@ -856,6 +890,10 @@ fn horizontal_compaction(
     let mut bin: Vec<Vec<(usize, f64)>> = vec![Vec::new(); na]; // (pred_root, sep)
     let mut bout: Vec<Vec<(usize, f64)>> = vec![Vec::new(); na]; // (succ_root, sep)
     let mut is_block = vec![false; na];
+    // Each node contributes half its separation class (dagre): a real
+    // node half of GAP_B, an edge dummy half of EDGE_GAP — so parallel
+    // edge channels bundle tightly while real nodes keep their room.
+    let half = |v: usize| if v < n { GAP_B / 2.0 } else { EDGE_GAP / 2.0 };
     for lay in al {
         let mut prev: Option<usize> = None;
         for &v in lay {
@@ -867,9 +905,9 @@ fn horizontal_compaction(
                 // gets its padding and cross-cluster channels have room.
                 let cgap = apath.map_or(0.0, |p| cluster_gap(&p[u], &p[v]));
                 // A wall hugs its members (only pins the band); ordinary
-                // neighbours keep the full inter-node gap.
+                // neighbours pay their separation-class halves.
                 let is_wall = border.map_or(false, |b| b[u] != 0 || b[v] != 0);
-                let base = if is_wall { BORDER_GAP } else { GAP_B };
+                let base = if is_wall { BORDER_GAP } else { half(u) + half(v) };
                 let sep = absize[u] / 2.0 + base + absize[v] / 2.0 + cgap;
                 // Merge parallel separations by their max.
                 if let Some(e) = bout[ur].iter_mut().find(|(t, _)| *t == vr) {
