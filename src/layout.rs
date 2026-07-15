@@ -46,8 +46,11 @@ pub struct LayoutResult {
 const PAD_X: f64 = 16.0;
 const BASE_H: f64 = 38.0;
 const MIN_W: f64 = 54.0;
-const GAP_B: f64 = 62.0; // gap between REAL nodes within a layer
-const GAP_L: f64 = 84.0; // gap between layers
+// Mermaid's dagre defaults (nodeSpacing / rankSpacing ≈ 50) — labels
+// no longer ride between ranks (they own dummy slots), so the extra
+// breathing room the old 62/84 reserved is dead space now.
+const GAP_B: f64 = 50.0; // gap between REAL nodes within a layer
+const GAP_L: f64 = 60.0; // gap between layers
 const MARGIN: f64 = 28.0;
 /// Gap contribution of an edge DUMMY within a layer (dagre's
 /// `edgesep`): parallel long edges bundle into tight lanes instead of
@@ -59,6 +62,9 @@ const CLUSTER_PAD: f64 = 18.0;
 /// Gap between a cluster's invisible border wall and its members —
 /// small, since the wall only pins the band, not the visible box.
 const BORDER_GAP: f64 = 4.0;
+/// Rank room reserved for a cluster's title strip (mirrors the
+/// scene-side `SUB_HEADER` box headroom).
+const CLUSTER_HEADER: f64 = 26.0;
 
 /// Line height for multi-line labels (`<br/>` → newline).
 pub const LINE_H: f64 = 17.0;
@@ -341,6 +347,20 @@ fn layout_core(
         for (&c, &(_, lo, hi)) in &span {
             cluster_span.insert(c, (lo, hi));
         }
+        // Reserve rank room for each box's TITLE STRIP: a member at its
+        // cluster's top layer grows its layer-slot by a header's worth
+        // per cluster that starts there (dagre solves this with ranked
+        // border-top nodes; the inflated slot is the compact stand-in),
+        // so labels between ranks never land on the header text.
+        for v in 0..n {
+            let mut extra = 0.0;
+            for &c in &nc[v] {
+                if span[&c].1 == alayer[v] {
+                    extra += CLUSTER_HEADER;
+                }
+            }
+            alsize[v] += extra * 2.0;
+        }
         let mut cids: Vec<usize> = span.keys().copied().collect();
         cids.sort_unstable(); // deterministic node numbering
         for c in cids {
@@ -453,7 +473,15 @@ fn layout_core(
         for li in (0..nlayers.saturating_sub(1)).rev() {
             reorder(&mut layers[li], &succs, &mut pos);
         }
-        transpose(&mut layers, &preds, &succs, &mut pos, nlayers);
+        transpose(
+            &mut layers,
+            &preds,
+            &succs,
+            &mut pos,
+            nlayers,
+            if clustered { Some(&apath) } else { None },
+            if clustered { Some(&border_side) } else { None },
+        );
         if clustered {
             for lv in layers.iter_mut() {
                 enforce_contiguity(lv, &apath, &border_side, &mut pos);
@@ -607,18 +635,23 @@ fn wmedian(vals: impl Iterator<Item = f64>) -> f64 {
 
 /// Local adjacent-swap pass (dagre's transpose). Repeatedly walk every
 /// layer and swap neighbouring nodes whenever doing so lowers the count
-/// of crossings they induce with the layers above and below. Converges
-/// quickly; a small guard caps the worst case.
+/// of crossings they induce with the layers above and below, running to
+/// convergence like dagre (a generous cap guards pathological inputs).
+/// In clustered mode only same-cluster-path pairs swap — a cross-group
+/// swap would be undone by the contiguity pass anyway (its "gain" was
+/// an illusion), and border walls never move off their group's edge.
 fn transpose(
     layers: &mut [Vec<usize>],
     preds: &[Vec<usize>],
     succs: &[Vec<usize>],
     pos: &mut [f64],
     nlayers: usize,
+    apath: Option<&[Vec<usize>]>,
+    border: Option<&[u8]>,
 ) {
     let mut improved = true;
     let mut guard = 0;
-    while improved && guard < 4 {
+    while improved && guard < 20 {
         improved = false;
         guard += 1;
         for li in 0..nlayers {
@@ -626,6 +659,11 @@ fn transpose(
             for i in 0..len.saturating_sub(1) {
                 let v = layers[li][i];
                 let w = layers[li][i + 1];
+                if border.is_some_and(|b| b[v] != 0 || b[w] != 0)
+                    || apath.is_some_and(|p| p[v] != p[w])
+                {
+                    continue;
+                }
                 let before = local_crossings(v, w, preds, pos)
                     + local_crossings(v, w, succs, pos);
                 let after = local_crossings(w, v, preds, pos)
