@@ -230,6 +230,7 @@ pub enum Document {
     /// rounded node, transition = edge, composite = subgraph), so the
     /// whole flowchart layout/SVG/drag pipeline is reused as-is.
     State(Graph),
+    Mindmap(Mindmap),
 }
 
 /// UML class diagram (`classDiagram` header).
@@ -563,4 +564,44 @@ pub struct PieChart {
 pub struct PieSlice {
     pub label: String,
     pub value: f64,
+}
+
+/// A mindmap (`mindmap` header): a single-rooted tree of text nodes
+/// whose hierarchy comes from source indentation. `nodes[0]` is always
+/// the root; every other node has a `parent`. Parse order is preserved,
+/// so sibling order (and thus layout order) is stable across renders.
+#[derive(Debug, Default)]
+pub struct Mindmap {
+    pub nodes: Vec<MindNode>,
+}
+
+/// One mindmap node. `text` may contain `\n` (from `<br/>`) for a
+/// multi-line label. `branch` is the index of the depth-1 ancestor
+/// this node descends from (its colored branch); `None` for the root.
+#[derive(Debug, Clone)]
+pub struct MindNode {
+    pub text: String,
+    pub shape: MindShape,
+    pub parent: Option<usize>,
+    pub children: Vec<usize>,
+    pub depth: usize,
+    pub branch: Option<usize>,
+}
+
+/// Node outline in a mindmap, from the wrapper around its text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum MindShape {
+    /// `id(text)` or no wrapper — the default.
+    #[default]
+    Rounded,
+    /// `id[text]`.
+    Square,
+    /// `id((text))`.
+    Circle,
+    /// `id{{text}}`.
+    Hexagon,
+    /// `id))text((` — a "bang"/explosion; approximated as a bold pill.
+    Bang,
+    /// `id)text(` — a cloud; approximated as an ellipse.
+    Cloud,
 }

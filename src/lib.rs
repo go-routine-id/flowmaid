@@ -8,7 +8,8 @@
 //! Supported diagram types: flowcharts (`flowchart` / `graph`),
 //! Entity-Relationship diagrams (`erDiagram`), UML class diagrams
 //! (`classDiagram`), sequence diagrams (`sequenceDiagram`), pie
-//! charts (`pie`), and state diagrams (`stateDiagram-v2`).
+//! charts (`pie`), state diagrams (`stateDiagram-v2`), and mindmaps
+//! (`mindmap`).
 //!
 //! Library usage:
 //!
@@ -26,6 +27,7 @@
 pub mod class;
 pub mod er;
 pub mod layout;
+pub mod mindmap;
 pub mod model;
 pub mod parser;
 pub mod pie;
@@ -48,5 +50,6 @@ pub fn render_svg(source: &str) -> Result<String, ParseError> {
         Document::Class(d) => Ok(render::render_class(&d)),
         Document::Sequence(d) => Ok(render::render_seq(&d)),
         Document::Pie(d) => Ok(render::render_pie(&d)),
+        Document::Mindmap(d) => Ok(render::render_mindmap(&d)),
     }
 }

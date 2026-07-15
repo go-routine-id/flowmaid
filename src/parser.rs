@@ -17,8 +17,9 @@
 
 use crate::model::{
     Attr, Card, Class, ClassDiagram, ClassRel, Direction, Document, EdgeKind, End, ErDiagram,
-    FrameKind, Graph, Key, Member, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation,
-    SeqHead, SeqItem, SequenceDiagram, Shape, SubEdge, Subgraph, Visibility,
+    FrameKind, Graph, Key, Member, MindNode, MindShape, Mindmap, NodeStyle, NoteSide, PieChart,
+    PieSlice, RelKind, Relation, SeqHead, SeqItem, SequenceDiagram, Shape, SubEdge, Subgraph,
+    Visibility,
 };
 use std::collections::HashMap;
 
@@ -166,12 +167,13 @@ pub fn parse_document(source: &str) -> Result<Document, ParseError> {
             Some("stateDiagram-v2") | Some("stateDiagram") => {
                 parse_state(source, i + 1).map(Document::State)
             }
+            Some("mindmap") => parse_mindmap(source, i + 1).map(Document::Mindmap),
             Some(t) => Err(err(
                 i + 1,
                 format!(
                     "diagram type '{}' is not supported yet (supported: flowchart, \
                      graph, erDiagram, classDiagram, sequenceDiagram, pie, \
-                     stateDiagram-v2)",
+                     stateDiagram-v2, mindmap)",
                     t
                 ),
             )),
@@ -234,7 +236,7 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
                     "this parser is flowchart-only — use parse_document() or render_svg()"
                 } else {
                     "not supported yet (supported: flowchart, graph, erDiagram, \
-                     classDiagram, sequenceDiagram, pie, stateDiagram-v2)"
+                     classDiagram, sequenceDiagram, pie, stateDiagram-v2, mindmap)"
                 };
                 return Err(err(lineno, format!("diagram type '{}': {}", t, hint)));
             }
@@ -1656,6 +1658,138 @@ fn parse_pie_row(line: &str, lineno: usize) -> Result<(String, f64), ParseError>
 }
 
 // ---------------------------------------------------------------
+// Mindmap (`mindmap`)
+// ---------------------------------------------------------------
+
+/// Parse a mindmap: source INDENTATION builds a single-rooted tree.
+/// Each line is one node; deeper indent = child of the nearest
+/// shallower line. Node text may be wrapped to pick a shape
+/// (`[..]` square, `(..)` rounded, `((..))` circle, `{{..}}` hexagon,
+/// `))..((` bang, `)..(` cloud); an optional leading id is dropped.
+/// `::icon(..)` and `:::class` decoration lines are ignored.
+fn parse_mindmap(source: &str, header_line: usize) -> Result<Mindmap, ParseError> {
+    let mut d = Mindmap::default();
+    // Stack of open ancestors as (indent, node index), shallow -> deep.
+    let mut stack: Vec<(usize, usize)> = Vec::new();
+
+    for (i, raw) in source.lines().enumerate() {
+        let lineno = i + 1;
+        if lineno <= header_line {
+            continue;
+        }
+        let trimmed = raw.trim();
+        if trimmed.is_empty() || trimmed.starts_with("%%") {
+            continue;
+        }
+        // Decoration lines attach to the previous node — we don't draw
+        // icons/classes, so skip them without creating a node.
+        if trimmed.starts_with("::icon(") || trimmed.starts_with(":::") {
+            continue;
+        }
+
+        let indent = mind_indent(raw);
+        let (text, shape) = parse_mind_node(trimmed);
+        if text.is_empty() {
+            continue;
+        }
+
+        // Parent = nearest ancestor with strictly smaller indent.
+        while matches!(stack.last(), Some(&(ind, _)) if ind >= indent) {
+            stack.pop();
+        }
+        let mut parent = stack.last().map(|&(_, idx)| idx);
+        // A single root is required; a stray shallow line after the
+        // root is forgiven by hanging it off the root instead of
+        // creating a second one.
+        if parent.is_none() && !d.nodes.is_empty() {
+            parent = Some(0);
+        }
+
+        let idx = d.nodes.len();
+        let depth = parent.map_or(0, |p| d.nodes[p].depth + 1);
+        // A node's colored branch is its depth-1 ancestor; the root
+        // has none. depth-1 nodes seed their own branch.
+        let branch = match depth {
+            0 => None,
+            1 => Some(idx),
+            _ => d.nodes[parent.unwrap()].branch,
+        };
+        d.nodes.push(MindNode {
+            text,
+            shape,
+            parent,
+            children: Vec::new(),
+            depth,
+            branch,
+        });
+        if let Some(p) = parent {
+            d.nodes[p].children.push(idx);
+        }
+        stack.push((indent, idx));
+    }
+
+    if d.nodes.is_empty() {
+        return Err(err(
+            header_line,
+            "mindmap has no nodes (expected an indented tree under the header)".to_string(),
+        ));
+    }
+    Ok(d)
+}
+
+/// Indent width of a raw line: leading spaces count 1, tabs count 4.
+fn mind_indent(raw: &str) -> usize {
+    raw.chars()
+        .take_while(|c| *c == ' ' || *c == '\t')
+        .map(|c| if c == '\t' { 4 } else { 1 })
+        .sum()
+}
+
+/// Split a trimmed mindmap line into (display text, shape). A wrapper
+/// picks the shape and its inner text becomes the label; any leading
+/// id (adjacent to the wrapper) is discarded. `<br>` becomes a newline.
+fn parse_mind_node(t: &str) -> (String, MindShape) {
+    // Longest / most specific delimiters first. A wrapper only counts
+    // when its opener is adjacent to the id (not preceded by a space),
+    // so ordinary text ending in a parenthetical stays plain text.
+    const WRAPS: &[(&str, &str, MindShape)] = &[
+        ("((", "))", MindShape::Circle),
+        ("))", "((", MindShape::Bang),
+        ("{{", "}}", MindShape::Hexagon),
+        ("[", "]", MindShape::Square),
+        (")", "(", MindShape::Cloud),
+        ("(", ")", MindShape::Rounded),
+    ];
+    for &(open, close, shape) in WRAPS {
+        if let Some(oi) = t.find(open) {
+            let adjacent = oi == 0 || t.as_bytes()[oi - 1] != b' ';
+            let inner_start = oi + open.len();
+            let has_close = t.ends_with(close) && t.len() >= inner_start + close.len();
+            if adjacent && has_close {
+                let inner = &t[inner_start..t.len() - close.len()];
+                return (mind_br(inner), shape);
+            }
+        }
+    }
+    (mind_br(t), MindShape::Rounded)
+}
+
+/// Normalise a mindmap label: `<br>` / `<br/>` / `<br />` -> newline,
+/// then trim each line. Empty result is possible (caller skips it).
+fn mind_br(s: &str) -> String {
+    let mut out = s.to_string();
+    for br in ["<br/>", "<br />", "<br>"] {
+        out = out.replace(br, "\n");
+    }
+    out.split('\n')
+        .map(str::trim)
+        .collect::<Vec<_>>()
+        .join("\n")
+        .trim()
+        .to_string()
+}
+
+// ---------------------------------------------------------------
 // State diagram (`stateDiagram-v2` / `stateDiagram`)
 // ---------------------------------------------------------------
 
@@ -1972,7 +2106,7 @@ mod tests {
 
     #[test]
     fn unsupported_diagram_types_get_explicit_errors() {
-        for src in ["journey\ntitle x", "gantt\ntitle x", "mindmap\nroot"] {
+        for src in ["journey\ntitle x", "gantt\ntitle x", "timeline\nx"] {
             for res in [
                 parse(src).map(|_| ()),
                 parse_document(src).map(|_| ()),

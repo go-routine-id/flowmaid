@@ -3,7 +3,7 @@
 //! so the output of render() and the interactive flow
 //! (scene/route/to_svg) are guaranteed identical.
 
-use crate::model::{ClassDiagram, ErDiagram, Graph, PieChart, SequenceDiagram};
+use crate::model::{ClassDiagram, ErDiagram, Graph, Mindmap, PieChart, SequenceDiagram};
 
 pub fn render(g: &Graph) -> String {
     crate::scene::to_svg(&crate::scene::scene(g))
@@ -31,6 +31,12 @@ pub fn render_pie(d: &PieChart) -> String {
 /// Geometry & serialisation live in the `seq` module.
 pub fn render_seq(d: &SequenceDiagram) -> String {
     crate::seq::to_svg(&crate::seq::scene(d))
+}
+
+/// Render a mindmap (left-to-right tidy tree with colored branches).
+/// Geometry & serialisation live in the `mindmap` module.
+pub fn render_mindmap(d: &Mindmap) -> String {
+    crate::mindmap::to_svg(&crate::mindmap::scene(d))
 }
 
 #[cfg(test)]

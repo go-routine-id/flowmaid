@@ -5,7 +5,7 @@
 [![docs.rs](https://docs.rs/flowmaid/badge.svg)](https://docs.rs/flowmaid)
 [![license](https://img.shields.io/crates/l/flowmaid.svg)](LICENSE)
 
-A small Mermaid-like diagram engine written in pure std Rust with zero external dependencies. Takes Mermaid-syntax text and produces SVG — or live, draggable geometry for interactive apps. Six diagram types today: flowcharts, ER, UML class, sequence, pie, and state diagrams.
+A small Mermaid-like diagram engine written in pure std Rust with zero external dependencies. Takes Mermaid-syntax text and produces SVG — or live, draggable geometry for interactive apps. Seven diagram types today: flowcharts, ER, UML class, sequence, pie, state, and mindmap diagrams.
 
 **Website:** https://go-routine-id.github.io/flowmaid/ · **Playground:** https://go-routine-id.github.io/flowmaid-web/ · **Desktop editor:** [flowmaid-desktop](https://github.com/go-routine-id/flowmaid-desktop)
 
@@ -22,7 +22,7 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 - [x] `stateDiagram-v2` — `[*]` start/end, composites with nested `[*]`/`direction`, `<<choice>>`/`<<fork>>`/`<<join>>`, transition labels, descriptions *(v0.11.0)*
 - [ ] `journey` — [#8](https://github.com/go-routine-id/flowmaid/issues/8)
 - [x] `pie` — title, showData, percentage labels + legend *(v0.10.0)*
-- [ ] `mindmap` — [#11](https://github.com/go-routine-id/flowmaid/issues/11)
+- [x] `mindmap` — indentation-built tree, radial layout with colored branches, six node shapes (square/rounded/circle/hexagon/bang/cloud) *(v0.13.0)*
 - [ ] The complete mermaid catalog, tracked on the board: `swimlanes` · `gantt` · `gitGraph` · `timeline` · `quadrantChart` · `requirementDiagram` · `C4` · `zenuml` · `sankey` · `xychart` · `block` · `packet` · `kanban` · `architecture` · `radar` · `eventmodeling` · `treemap` · `venn` · `ishikawa` · `wardley` · `cynefin` · `treeview`
 
 **Flowchart features**
@@ -38,7 +38,7 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 - [x] More node shapes — cylinder `[( )]`, subroutine `[[ ]]`, hexagon `{{ }}`, parallelograms `[/ /]` `[\ \]`, double circle `((( )))` *(v0.8.0)*
 - [ ] `click` interactions, frontmatter themes, `$$math$$` — see the board
 
-**Why flowmaid?** Zero dependencies, `wasm32` out of the box (all six diagram types fit in a ~290 KB wasm bundle — mermaid.js is ~2.5 MB), sub-millisecond renders, line-numbered parse errors, and one geometry source shared by SVG export and interactive canvases. Input is forgiving where it should be: UTF-8 BOMs are stripped, CRLF is fine, and every known-but-unsupported Mermaid header fails with an explicit message instead of a confusing parse error.
+**Why flowmaid?** Zero dependencies, `wasm32` out of the box (all seven diagram types fit in a compact wasm bundle — mermaid.js is ~2.5 MB), sub-millisecond renders, line-numbered parse errors, and one geometry source shared by SVG export and interactive canvases. Input is forgiving where it should be: UTF-8 BOMs are stripped, CRLF is fine, and every known-but-unsupported Mermaid header fails with an explicit message instead of a confusing parse error.
 
 ## Installation
 

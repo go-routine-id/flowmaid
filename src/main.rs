@@ -115,11 +115,16 @@ fn main() {
             eprintln!("empty diagram: no states defined");
             process::exit(1);
         }
+        Document::Mindmap(d) if d.nodes.is_empty() => {
+            eprintln!("empty diagram: no mindmap nodes");
+            process::exit(1);
+        }
         Document::Flowchart(g) | Document::State(g) => render::render(g),
         Document::Er(d) => render::render_er(d),
         Document::Class(d) => render::render_class(d),
         Document::Sequence(d) => render::render_seq(d),
         Document::Pie(d) => render::render_pie(d),
+        Document::Mindmap(d) => render::render_mindmap(d),
     };
 
     match &output {
