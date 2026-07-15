@@ -11,7 +11,7 @@
 //!    classification follows actual relative positions, not layers).
 //! 4. `to_svg(&scene)` exports any arrangement to SVG.
 
-use crate::layout::{intrinsic_size, layout_sized, text_width, Placed};
+use crate::layout::{intrinsic_size, layout_clustered, layout_sized, text_width, LayoutResult, Placed};
 use crate::model::{Direction, EdgeKind, End, Graph, NodeStyle, Shape};
 use std::collections::HashMap;
 
@@ -107,8 +107,13 @@ pub fn scene_sized(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
 
 /// The classic single-level pipeline (no subgraphs).
 fn scene_flat(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
-    let lo = layout_sized(g, sizes);
+    scene_from_layout(g, sizes, layout_sized(g, sizes))
+}
 
+/// Turn an abstract [`LayoutResult`] into a positioned [`Scene`]:
+/// edge geometry, canvas bbox, and the direction transform. Shared by
+/// the flat and clustered pipelines so both route edges identically.
+fn scene_from_layout(g: &Graph, sizes: &[(f64, f64)], lo: LayoutResult) -> Scene {
     // Breadth extents per layer, used by back-edges to route
     // themselves around every node on the layers they pass.
     let nlayers = lo.nodes.iter().map(|p| p.layer).max().map_or(0, |m| m + 1);
@@ -272,383 +277,131 @@ const SUB_HEADER: f64 = 26.0;
 /// Padding when re-wrapping cluster boxes around dragged members.
 const SUB_PAD: f64 = 14.0;
 
-/// One laid-out subtree during hierarchical layout: node centres
-/// and cluster boxes in coordinates local to the fragment.
-struct Frag {
-    w: f64,
-    h: f64,
-    nodes: Vec<(usize, f64, f64)>,
-    clusters: Vec<(usize, f64, f64, f64, f64, usize)>, // sub, x, y, w, h, depth
-}
-
-/// Hierarchical layout for graphs with subgraphs: every subgraph
-/// lays out its own members (recursively), then appears in its
-/// parent as one supernode sized to fit. Edge geometry uses the
-/// free-position router, so cross-cluster edges attach to the real
-/// nodes rather than the cluster boxes.
+/// Global cluster-aware pipeline: lay every real node out in ONE
+/// Sugiyama pass (no supernode collapse) with subgraph members kept
+/// contiguous, then wrap each subgraph around its final members. This
+/// keeps cross-cluster edges ordered globally so they route through the
+/// gaps between boxes instead of tangling straight through them.
 fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
-    let nsub = g.subgraphs.len();
-    let mut child_subs: Vec<Vec<usize>> = vec![Vec::new(); nsub];
-    let mut root_subs: Vec<usize> = Vec::new();
-    for (i, s) in g.subgraphs.iter().enumerate() {
-        match s.parent {
-            Some(p) => child_subs[p].push(i),
-            None => root_subs.push(i),
-        }
-    }
-    let mut owner: Vec<Option<usize>> = vec![None; g.nodes.len()];
-    for (i, s) in g.subgraphs.iter().enumerate() {
-        for &n in &s.nodes {
-            owner[n] = Some(i);
-        }
-    }
+    let node_cluster = node_cluster_paths(g);
+    let lo = layout_clustered(g, sizes, &node_cluster);
+    let mut sc = scene_from_layout(g, sizes, lo);
 
-    let frag = layout_frag(g, sizes, None, &root_subs, &child_subs, &owner, g.direction);
+    // Wrap boxes around the laid-out members.
+    sc.clusters = route_clusters(g, &sc.nodes);
 
-    // Absolute node centres (root-local == world, pre-normalisation).
-    let mut centers = vec![(0.0, 0.0); g.nodes.len()];
-    for &(i, x, y) in &frag.nodes {
-        centers[i] = (x, y);
-    }
-    let placed: Vec<Placed> = (0..g.nodes.len())
-        .map(|i| Placed {
-            b: centers[i].0,
-            l: centers[i].1,
-            bsize: sizes[i].0,
-            lsize: sizes[i].1,
-            layer: 0,
-        })
-        .collect();
-
-    // Top-level cluster box per subgraph (depth 0), for cross-cluster
-    // edge routing: an edge between two DIFFERENT top-level clusters is
-    // threaded through the gap between them (channel) instead of drawn
-    // straight through their interiors.
-    let vertical = matches!(g.direction, Direction::TD | Direction::BT);
-    let mut top_box: HashMap<usize, (f64, f64, f64, f64)> = HashMap::new();
-    for &(sub, x, y, w, h, depth) in &frag.clusters {
-        if depth == 0 && has_members(g, sub) {
-            top_box.insert(sub, (x, y, w, h));
-        }
-    }
-    let top_of = |n: usize| -> Option<usize> {
-        let mut s = owner[n]?;
-        while let Some(p) = g.subgraphs[s].parent {
-            s = p;
-        }
-        Some(s)
-    };
-    let box_of = |n: usize| -> (f64, f64, f64, f64) {
-        top_of(n)
-            .and_then(|s| top_box.get(&s).copied())
-            .unwrap_or((
-                centers[n].0 - sizes[n].0 / 2.0,
-                centers[n].1 - sizes[n].1 / 2.0,
-                sizes[n].0,
-                sizes[n].1,
-            ))
-    };
-
-    // Edge geometry: free-position routing (position-aware sides),
-    // identical to what `route` uses after a drag.
-    let offs = parallel_offsets(g);
-    let mut edges: Vec<SceneEdge> = Vec::with_capacity(g.edges.len());
-    for (e, off) in g.edges.iter().zip(offs) {
-        let pts = free_edge(
-            &placed[e.from],
-            &placed[e.to],
-            g.nodes[e.from].shape,
-            g.nodes[e.to].shape,
-            e.from == e.to,
-            off,
-        );
-        let wps = if e.from != e.to && top_of(e.from) != top_of(e.to) {
-            cross_cluster_route(
-                centers[e.from],
-                sizes[e.from],
-                box_of(e.from),
-                centers[e.to],
-                sizes[e.to],
-                box_of(e.to),
-                vertical,
-            )
-        } else {
-            Vec::new()
-        };
-        let label = e.label.as_ref().map(|l| {
-            let mid = if wps.is_empty() {
-                cubic_mid(pts[0], pts[1], pts[2], pts[3])
-            } else {
-                wps[wps.len() / 2]
-            };
-            (l.clone(), mid, text_width(l) + 14.0)
-        });
-        edges.push(SceneEdge {
-            bezier: pts,
-            waypoints: wps,
-            kind: e.kind,
-            label,
-        });
-    }
-
-    // Edges touching a subgraph: route them against the cluster box.
-    // Member-less subgraphs are skipped so `scene` and `route` agree
-    // (route can't place a box with no member anchor).
-    let mut cluster_box: HashMap<usize, BoxCS> = HashMap::new();
-    for &(sub, x, y, w, h, _) in &frag.clusters {
-        if has_members(g, sub) {
-            cluster_box.insert(sub, ((x + w / 2.0, y + h / 2.0), (w, h)));
-        }
-    }
-    let end_placed = |end: End| -> Option<(Placed, Shape)> {
-        match end {
-            End::Node(v) => Some((
-                Placed {
-                    b: centers[v].0,
-                    l: centers[v].1,
-                    bsize: sizes[v].0,
-                    lsize: sizes[v].1,
-                    layer: 0,
-                },
-                g.nodes[v].shape,
-            )),
-            End::Sub(si) => cluster_box.get(&si).map(|&((cx, cy), (w, h))| {
-                (
+    // Edges that touch a whole subgraph box (state-diagram composites,
+    // `A --> subgraph`) route against the cluster rectangle rather than
+    // a node — the node-to-node pass in `scene_from_layout` skips them.
+    if !g.sub_edges.is_empty() {
+        let (raw, _) = cluster_raw_boxes(g, &sc.nodes);
+        let end_placed = |end: End| -> Option<(Placed, Shape)> {
+            match end {
+                End::Node(v) => Some((
                     Placed {
-                        b: cx,
-                        l: cy,
-                        bsize: w,
-                        lsize: h,
+                        b: sc.nodes[v].x,
+                        l: sc.nodes[v].y,
+                        bsize: sc.nodes[v].w,
+                        lsize: sc.nodes[v].h,
                         layer: 0,
                     },
-                    Shape::Rect,
-                )
-            }),
-        }
-    };
-    for e in &g.sub_edges {
-        let (Some((pa, sa)), Some((pb, sb))) = (end_placed(e.from), end_placed(e.to)) else {
-            continue;
+                    g.nodes[v].shape,
+                )),
+                End::Sub(si) => raw.get(si).copied().flatten().map(|(x, y, w, h)| {
+                    (
+                        Placed {
+                            b: x + w / 2.0,
+                            l: y + h / 2.0,
+                            bsize: w,
+                            lsize: h,
+                            layer: 0,
+                        },
+                        Shape::Rect,
+                    )
+                }),
+            }
         };
-        let pts = free_edge(&pa, &pb, sa, sb, false, 0.0);
-        let label = e.label.as_ref().map(|l| {
-            (
-                l.clone(),
-                cubic_mid(pts[0], pts[1], pts[2], pts[3]),
-                text_width(l) + 14.0,
-            )
-        });
-        edges.push(SceneEdge {
-            bezier: pts,
-            waypoints: Vec::new(),
-            kind: e.kind,
-            label,
-        });
+        for e in &g.sub_edges {
+            let (Some((pa, sa)), Some((pb, sb))) = (end_placed(e.from), end_placed(e.to)) else {
+                continue;
+            };
+            let pts = free_edge(&pa, &pb, sa, sb, false, 0.0);
+            let label = e.label.as_ref().map(|l| {
+                (
+                    l.clone(),
+                    cubic_mid(pts[0], pts[1], pts[2], pts[3]),
+                    text_width(l) + 14.0,
+                )
+            });
+            sc.edges.push(SceneEdge {
+                bezier: pts,
+                waypoints: Vec::new(),
+                kind: e.kind,
+                label,
+            });
+        }
     }
 
-    // Canvas bbox over nodes, cluster boxes, curves, and labels;
-    // then translate everything so content starts at MARGIN.
-    let mut bb = Bbox::new();
-    for i in 0..g.nodes.len() {
-        bb.add(centers[i].0 - sizes[i].0 / 2.0, centers[i].1 - sizes[i].1 / 2.0);
-        bb.add(centers[i].0 + sizes[i].0 / 2.0, centers[i].1 + sizes[i].1 / 2.0);
+    // Re-normalise so the boxes' padding/header and any box-routed
+    // sub-edges (which reach past the nodes) can't clip the canvas.
+    if !sc.clusters.is_empty() {
+        let mut bb = Bbox::new();
+        grow_scene(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
+        let (minx, maxx, miny, maxy) = bb.finish();
+        let (dx, dy) = (MARGIN - minx, MARGIN - miny);
+        if dx != 0.0 || dy != 0.0 {
+            shift_scene(&mut sc, dx, dy);
+        }
+        sc.width = (maxx - minx) + 2.0 * MARGIN;
+        sc.height = (maxy - miny) + 2.0 * MARGIN;
     }
-    for &(_, x, y, w, h, _) in &frag.clusters {
-        bb.add(x, y);
-        bb.add(x + w, y + h);
-    }
-    for e in &edges {
-        if matches!(e.kind, EdgeKind::Invisible) {
-            continue; // layout-only link — kept out of the canvas bbox
-        }
-        // Bound by whichever the painter draws: waypoint route or curve.
-        if e.waypoints.is_empty() {
-            for &(x, y) in &e.bezier {
-                bb.add(x, y);
-            }
-        } else {
-            for &(x, y) in &e.waypoints {
-                bb.add(x, y);
-            }
-        }
-        if let Some((_, m, w)) = &e.label {
-            bb.add(m.0 - w / 2.0, m.1 - 10.0);
-            bb.add(m.0 + w / 2.0, m.1 + 10.0);
-        }
-    }
-    let (minx, maxx, miny, maxy) = bb.finish();
-    let (tx, ty) = (MARGIN - minx, MARGIN - miny);
-
-    let nodes: Vec<SceneNode> = g
-        .nodes
-        .iter()
-        .enumerate()
-        .map(|(i, n)| SceneNode {
-            x: centers[i].0 + tx,
-            y: centers[i].1 + ty,
-            w: sizes[i].0,
-            h: sizes[i].1,
-            shape: n.shape,
-            label: n.label.clone(),
-            style: n.style.clone(),
-        })
-        .collect();
-    for e in edges.iter_mut() {
-        for p in e.bezier.iter_mut() {
-            *p = (p.0 + tx, p.1 + ty);
-        }
-        for p in e.waypoints.iter_mut() {
-            *p = (p.0 + tx, p.1 + ty);
-        }
-        if let Some((_, m, _)) = &mut e.label {
-            *m = (m.0 + tx, m.1 + ty);
-        }
-    }
-    let mut clusters: Vec<SceneCluster> = frag
-        .clusters
-        .iter()
-        // Skip member-less subgraphs — nothing to enclose, and
-        // `route` can't reproduce their box on drag.
-        .filter(|&&(sub, ..)| has_members(g, sub))
-        .map(|&(sub, x, y, w, h, depth)| SceneCluster {
-            x: x + tx,
-            y: y + ty,
-            w,
-            h,
-            title: g.subgraphs[sub].title.clone(),
-            depth,
-        })
-        .collect();
-    clusters.sort_by_key(|c| c.depth); // outermost first for painting
-
-    Scene {
-        nodes,
-        edges,
-        clusters,
-        width: (maxx - minx) + 2.0 * MARGIN,
-        height: (maxy - miny) + 2.0 * MARGIN,
-    }
+    sc
 }
 
-/// Lay out one cluster level (`level == None` for the root):
-/// recurse into child subgraphs, then run the flat pipeline over
-/// this level's direct nodes plus one supernode per child.
-fn layout_frag(
-    g: &Graph,
-    sizes: &[(f64, f64)],
-    level: Option<usize>,
-    subs_here: &[usize],
-    child_subs: &[Vec<usize>],
-    owner: &[Option<usize>],
-    inherited_dir: Direction,
-) -> Frag {
-    let dir = level
-        .and_then(|l| g.subgraphs[l].direction)
-        .unwrap_or(inherited_dir);
-
-    let child_frags: Vec<(usize, Frag)> = subs_here
-        .iter()
-        .map(|&cs| {
-            (
-                cs,
-                layout_frag(g, sizes, Some(cs), &child_subs[cs], child_subs, owner, dir),
-            )
+/// Cluster path (outermost subgraph id first) for every node; empty
+/// for a top-level node. Constrains the global clustered layout.
+fn node_cluster_paths(g: &Graph) -> Vec<Vec<usize>> {
+    let mut owner: Vec<Option<usize>> = vec![None; g.nodes.len()];
+    for (si, s) in g.subgraphs.iter().enumerate() {
+        for &v in &s.nodes {
+            owner[v] = Some(si);
+        }
+    }
+    (0..g.nodes.len())
+        .map(|v| {
+            let mut path = Vec::new();
+            let mut cur = owner[v];
+            while let Some(s) = cur {
+                path.push(s);
+                cur = g.subgraphs[s].parent;
+            }
+            path.reverse(); // outermost first
+            path
         })
-        .collect();
+        .collect()
+}
 
-    let direct: Vec<usize> = match level {
-        Some(l) => g.subgraphs[l].nodes.clone(),
-        None => (0..g.nodes.len()).filter(|&v| owner[v].is_none()).collect(),
-    };
-
-    // Synthetic single-level graph: direct nodes, then supernodes.
-    let mut syn = Graph::default();
-    syn.direction = dir;
-    let mut slot_of_node: HashMap<usize, usize> = HashMap::new();
-    for (k, &v) in direct.iter().enumerate() {
-        syn.ensure_node(&format!("n{}", k), None, Some(Shape::Rect));
-        slot_of_node.insert(v, k);
+/// Translate every node, edge and cluster box in a scene by `(dx, dy)`.
+fn shift_scene(sc: &mut Scene, dx: f64, dy: f64) {
+    for n in &mut sc.nodes {
+        n.x += dx;
+        n.y += dy;
     }
-    let mut slot_of_sub: HashMap<usize, usize> = HashMap::new();
-    for (k, (cs, _)) in child_frags.iter().enumerate() {
-        syn.ensure_node(&format!("s{}", k), None, Some(Shape::Rect));
-        slot_of_sub.insert(*cs, direct.len() + k);
-    }
-    let mut syn_sizes: Vec<(f64, f64)> = direct.iter().map(|&v| sizes[v]).collect();
-    syn_sizes.extend(child_frags.iter().map(|(_, f)| (f.w, f.h + SUB_HEADER)));
-
-    // Project an endpoint onto this level's entities: a node maps
-    // to itself when it lives here, or to the child supernode whose
-    // subtree contains it; a subgraph maps to the child supernode
-    // that is (or contains) it. Endpoints that don't cross this
-    // level are handled at another level.
-    let project = |end: End| -> Option<usize> {
-        match end {
-            End::Node(v) => {
-                if owner[v] == level {
-                    return slot_of_node.get(&v).copied();
-                }
-                let mut s = owner[v];
-                while let Some(si) = s {
-                    if g.subgraphs[si].parent == level {
-                        return slot_of_sub.get(&si).copied();
-                    }
-                    s = g.subgraphs[si].parent;
-                }
-                None
-            }
-            End::Sub(si) => {
-                let mut cur = Some(si);
-                while let Some(s) = cur {
-                    if g.subgraphs[s].parent == level {
-                        return slot_of_sub.get(&s).copied();
-                    }
-                    cur = g.subgraphs[s].parent;
-                }
-                None
-            }
+    for e in &mut sc.edges {
+        for p in e.bezier.iter_mut() {
+            *p = (p.0 + dx, p.1 + dy);
         }
-    };
-    let mut rank = |a: Option<usize>, b: Option<usize>| {
-        if let (Some(sa), Some(sb)) = (a, b) {
-            if sa != sb {
-                syn.add_edge(sa, sb, None, EdgeKind::Arrow);
-            }
+        for p in e.waypoints.iter_mut() {
+            *p = (p.0 + dx, p.1 + dy);
         }
-    };
-    for e in &g.edges {
-        rank(project(End::Node(e.from)), project(End::Node(e.to)));
-    }
-    for e in &g.sub_edges {
-        rank(project(e.from), project(e.to));
-    }
-
-    let sc = scene_flat(&syn, &syn_sizes);
-
-    let mut frag = Frag {
-        w: sc.width,
-        h: sc.height,
-        nodes: Vec::new(),
-        clusters: Vec::new(),
-    };
-    for (k, &v) in direct.iter().enumerate() {
-        frag.nodes.push((v, sc.nodes[k].x, sc.nodes[k].y));
-    }
-    for (k, (cs, cf)) in child_frags.into_iter().enumerate() {
-        let slot = &sc.nodes[direct.len() + k];
-        let (bw, bh) = (cf.w, cf.h + SUB_HEADER);
-        let x0 = slot.x - bw / 2.0;
-        let y0 = slot.y - bh / 2.0;
-        for (i, x, y) in cf.nodes {
-            frag.nodes.push((i, x + x0, y + y0 + SUB_HEADER));
+        if let Some((_, m, _)) = &mut e.label {
+            *m = (m.0 + dx, m.1 + dy);
         }
-        for (sub, x, y, w, h, depth) in cf.clusters {
-            frag.clusters
-                .push((sub, x + x0, y + y0 + SUB_HEADER, w, h, depth + 1));
-        }
-        frag.clusters.push((cs, x0, y0, bw, bh, 0));
     }
-    frag
+    for c in &mut sc.clusters {
+        c.x += dx;
+        c.y += dy;
+    }
 }
 
 /// Re-route edges for custom node positions (e.g. after a drag).
@@ -845,13 +598,6 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
 /// Whether a subgraph has any member node, directly or through a
 /// nested child. Member-less subgraphs have no geometric anchor and
 /// are dropped from both `scene` and `route` for consistency.
-fn has_members(g: &Graph, si: usize) -> bool {
-    if !g.subgraphs[si].nodes.is_empty() {
-        return true;
-    }
-    (0..g.subgraphs.len())
-        .any(|j| g.subgraphs[j].parent == Some(si) && has_members(g, j))
-}
 
 /// Per-subgraph box `(x, y, w, h)` wrapped around the CURRENT node
 /// positions, indexed by subgraph. Computed deepest-first so a
@@ -1637,27 +1383,32 @@ mod tests {
     }
 
     #[test]
-    fn cross_cluster_edges_route_through_channels_in_scene_and_route() {
+    fn cross_cluster_layout_separates_boxes_and_stays_contained() {
         // Two stacked subgraphs with an edge between their members: the
-        // edge must get channel waypoints (not a straight curve) in BOTH
-        // the static scene() and the interactive route() paths.
+        // global cluster layout ranks them into separate layers, so the
+        // boxes never overlap and the edge routes cleanly in the gap.
         let src = "flowchart TD\n\
                    subgraph Top\n  A\nend\n\
                    subgraph Bot\n  B\nend\n\
                    A --> B";
         let g = parse(src).unwrap();
         let s = scene(&g);
-        assert!(
-            s.edges[0].waypoints.len() >= 4,
-            "cross-cluster edge should route via waypoints in scene()"
-        );
+        assert_eq!(s.clusters.len(), 2);
+        let top = s.clusters.iter().find(|c| c.title == "Top").unwrap();
+        let bot = s.clusters.iter().find(|c| c.title == "Bot").unwrap();
+        // Top box sits entirely above the Bot box (clean vertical split).
+        assert!(top.y + top.h <= bot.y + 0.5, "Top must sit above Bot");
+        // The drawn edge stays inside the canvas.
+        for p in &s.edges[0].bezier {
+            assert!(p.0 >= -0.5 && p.0 <= s.width + 0.5);
+            assert!(p.1 >= -0.5 && p.1 <= s.height + 0.5);
+        }
+        // route() over the auto positions keeps the same counts.
         let centers: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
         let r = route(&g, &centers);
-        assert!(
-            r.edges[0].waypoints.len() >= 4,
-            "cross-cluster edge should route via waypoints in route() too"
-        );
-        // A same-cluster edge stays a plain curve (no waypoints).
+        assert_eq!(s.edges.len(), r.edges.len());
+        assert_eq!(s.clusters.len(), r.clusters.len());
+        // A same-cluster adjacent edge stays a plain curve (no waypoints).
         let g2 = parse("flowchart TD\nsubgraph S\n  A\n  B\nend\nA --> B").unwrap();
         assert!(scene(&g2).edges[0].waypoints.is_empty());
     }

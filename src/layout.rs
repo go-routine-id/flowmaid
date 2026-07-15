@@ -45,6 +45,9 @@ const MIN_W: f64 = 54.0;
 const GAP_B: f64 = 62.0; // gap between nodes within a layer
 const GAP_L: f64 = 84.0; // gap between layers
 const MARGIN: f64 = 28.0;
+/// Extra half-gap added per subgraph boundary crossed between two
+/// adjacent nodes in a layer — reserves each cluster box its padding.
+const CLUSTER_PAD: f64 = 18.0;
 
 /// Line height for multi-line labels (`<br/>` → newline).
 pub const LINE_H: f64 = 17.0;
@@ -126,6 +129,29 @@ pub fn layout(g: &Graph) -> LayoutResult {
 /// height in pixels) — used by pipelines where node size doesn't
 /// come from the label, e.g. ER entity tables or icon nodes.
 pub fn layout_sized(g: &Graph, sizes: &[(f64, f64)]) -> LayoutResult {
+    layout_core(g, sizes, None)
+}
+
+/// Cluster-aware layout. `node_cluster[v]` is v's subgraph path,
+/// outermost id first (empty = top level). All real nodes and edges
+/// are laid out in one global Sugiyama pass — no supernode collapse —
+/// while each subgraph's members are kept contiguous within every
+/// layer and separated from siblings, so cross-cluster edges route in
+/// the channels between boxes instead of tangling through them. The
+/// caller builds cluster rectangles from the returned member centres.
+pub fn layout_clustered(
+    g: &Graph,
+    sizes: &[(f64, f64)],
+    node_cluster: &[Vec<usize>],
+) -> LayoutResult {
+    layout_core(g, sizes, Some(node_cluster))
+}
+
+fn layout_core(
+    g: &Graph,
+    sizes: &[(f64, f64)],
+    node_cluster: Option<&[Vec<usize>]>,
+) -> LayoutResult {
     assert_eq!(
         sizes.len(),
         g.nodes.len(),
@@ -265,16 +291,47 @@ pub fn layout_sized(g: &Graph, sizes: &[(f64, f64)]) -> LayoutResult {
         layers[alayer[v]].push(v);
     }
 
+    // Cluster path per augmented node: real nodes take the caller's
+    // path; a dummy inherits the deepest cluster its edge's endpoints
+    // share (so an intra-cluster long edge stays boxed inside, while a
+    // cross-cluster edge's channel sits outside both boxes).
+    let clustered = node_cluster.is_some();
+    let apath: Vec<Vec<usize>> = if let Some(nc) = node_cluster {
+        let mut p: Vec<Vec<usize>> = vec![Vec::new(); na];
+        p[..n].clone_from_slice(nc);
+        for (ei, chain) in edge_chain.iter().enumerate() {
+            if chain.is_empty() {
+                continue;
+            }
+            let e = &g.edges[ei];
+            let cp = common_prefix(&nc[e.from], &nc[e.to]);
+            for &d in chain {
+                p[d] = cp.clone();
+            }
+        }
+        p
+    } else {
+        Vec::new()
+    };
+
     // --- 3. Reduce crossings: dagre-style ordering. Weighted-median
     // sweeps (down via preds, up via succs) followed by a local
     // adjacent-swap transpose each round. The median heuristic can
     // transiently worsen an ordering, so we keep the layering with the
     // fewest crossings seen across all rounds (keep-best) — this also
     // guards against regressing the natural insertion order on ties.
+    // When clustered, each round finishes by regrouping every layer so
+    // subgraph members stay contiguous, and the crossing count (hence
+    // keep-best) is measured on that contiguous ordering.
     let mut pos = vec![0.0f64; na];
     for lv in &layers {
         for (i, &v) in lv.iter().enumerate() {
             pos[v] = i as f64;
+        }
+    }
+    if clustered {
+        for lv in layers.iter_mut() {
+            enforce_contiguity(lv, &apath, &mut pos);
         }
     }
     let mut best_layers = layers.clone();
@@ -287,6 +344,11 @@ pub fn layout_sized(g: &Graph, sizes: &[(f64, f64)]) -> LayoutResult {
             reorder(&mut layers[li], &succs, &mut pos);
         }
         transpose(&mut layers, &preds, &succs, &mut pos, nlayers);
+        if clustered {
+            for lv in layers.iter_mut() {
+                enforce_contiguity(lv, &apath, &mut pos);
+            }
+        }
         let c = count_crossings(&layers, &succs, &alayer, nlayers);
         if c < best_cross {
             best_cross = c;
@@ -320,7 +382,17 @@ pub fn layout_sized(g: &Graph, sizes: &[(f64, f64)]) -> LayoutResult {
     // then combined by the per-node median. This is dagre's coordinate
     // assignment — it pins each long edge's dummy chain into a straight
     // vertical run and centres nodes over their aligned neighbours.
-    let mut bpos = coordinates_bk(n, na, nlayers, &layers, &preds, &succs, &alayer, &absize);
+    let mut bpos = coordinates_bk(
+        n,
+        na,
+        nlayers,
+        &layers,
+        &preds,
+        &succs,
+        &alayer,
+        &absize,
+        if clustered { Some(&apath) } else { None },
+    );
 
     // Normalise so the diagram starts at MARGIN (real-node extent).
     let mut minb = f64::INFINITY;
@@ -525,6 +597,7 @@ fn coordinates_bk(
     succs: &[Vec<usize>],
     alayer: &[usize],
     absize: &[f64],
+    apath: Option<&[Vec<usize>]>,
 ) -> Vec<f64> {
     if na == 0 {
         return Vec::new();
@@ -583,7 +656,7 @@ fn coordinates_bk(
             let neighbor = if vert_up { &down } else { &up };
             let (root, _align) =
                 vertical_alignment(na, &al, neighbor, &aorder, &conflicts);
-            let mut xs = horizontal_compaction(na, &al, &root, absize);
+            let mut xs = horizontal_compaction(na, &al, &root, absize, apath);
             if horiz_right {
                 for x in xs.iter_mut() {
                     *x = -*x;
@@ -697,6 +770,7 @@ fn horizontal_compaction(
     al: &[Vec<usize>],
     root: &[usize],
     absize: &[f64],
+    apath: Option<&[Vec<usize>]>,
 ) -> Vec<f64> {
     // Block graph as adjacency lists over root nodes.
     let mut bin: Vec<Vec<(usize, f64)>> = vec![Vec::new(); na]; // (pred_root, sep)
@@ -709,7 +783,10 @@ fn horizontal_compaction(
             is_block[vr] = true;
             if let Some(u) = prev {
                 let ur = root[u];
-                let sep = absize[u] / 2.0 + GAP_B + absize[v] / 2.0;
+                // Widen the gap across a subgraph boundary so each box
+                // gets its padding and cross-cluster channels have room.
+                let cgap = apath.map_or(0.0, |p| cluster_gap(&p[u], &p[v]));
+                let sep = absize[u] / 2.0 + GAP_B + absize[v] / 2.0 + cgap;
                 // Merge parallel separations by their max.
                 if let Some(e) = bout[ur].iter_mut().find(|(t, _)| *t == vr) {
                     if sep > e.1 {
@@ -813,4 +890,90 @@ fn align_candidates(cands: &mut [Vec<f64>], n: usize, absize: &[f64]) {
             }
         }
     }
+}
+
+/// Longest shared prefix of two cluster paths (their deepest common
+/// ancestor subgraph, as a path).
+fn common_prefix(a: &[usize], b: &[usize]) -> Vec<usize> {
+    a.iter()
+        .zip(b)
+        .take_while(|(x, y)| x == y)
+        .map(|(x, _)| *x)
+        .collect()
+}
+
+/// Breadth padding to reserve between two adjacent nodes whose cluster
+/// paths differ — one `CLUSTER_PAD` per subgraph boundary crossed
+/// (leaving one nesting level + entering another counts both).
+fn cluster_gap(a: &[usize], b: &[usize]) -> f64 {
+    let common = a.iter().zip(b).take_while(|(x, y)| x == y).count();
+    let boundaries = (a.len() - common) + (b.len() - common);
+    boundaries as f64 * CLUSTER_PAD
+}
+
+/// Reorder one layer so every subgraph's members are contiguous
+/// (recursively for nested subgraphs), while ordering the groups and
+/// free nodes by their current mean position — keeping the crossing-
+/// minimised arrangement as intact as the contiguity constraint allows.
+fn enforce_contiguity(layer: &mut Vec<usize>, apath: &[Vec<usize>], pos: &mut [f64]) {
+    if layer.len() <= 1 {
+        return;
+    }
+    let arranged = arrange(layer, 0, apath, pos);
+    *layer = arranged;
+    for (i, &v) in layer.iter().enumerate() {
+        pos[v] = i as f64;
+    }
+}
+
+/// Recursive helper for [`enforce_contiguity`]: at `depth`, split items
+/// into subgraph groups (by cluster id at that depth) and free
+/// singletons, order those units by mean position, then recurse into
+/// each multi-member group at `depth + 1`.
+fn arrange(items: &[usize], depth: usize, apath: &[Vec<usize>], pos: &[f64]) -> Vec<usize> {
+    if items.len() <= 1 {
+        return items.to_vec();
+    }
+    let cid = |v: usize| -> Option<usize> {
+        let p = &apath[v];
+        if p.len() > depth {
+            Some(p[depth])
+        } else {
+            None
+        }
+    };
+    // Group by cluster id at this depth, preserving first-seen order;
+    // each free node (no cluster here) becomes its own unit.
+    let mut groups: Vec<(Option<usize>, Vec<usize>)> = Vec::new();
+    let mut index: std::collections::HashMap<usize, usize> = std::collections::HashMap::new();
+    for &v in items {
+        match cid(v) {
+            Some(c) => {
+                if let Some(&gi) = index.get(&c) {
+                    groups[gi].1.push(v);
+                } else {
+                    index.insert(c, groups.len());
+                    groups.push((Some(c), vec![v]));
+                }
+            }
+            None => groups.push((None, vec![v])),
+        }
+    }
+    let mut keyed: Vec<(f64, Option<usize>, Vec<usize>)> = groups
+        .into_iter()
+        .map(|(c, members)| {
+            let mean = members.iter().map(|&v| pos[v]).sum::<f64>() / members.len() as f64;
+            (mean, c, members)
+        })
+        .collect();
+    keyed.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let mut out = Vec::with_capacity(items.len());
+    for (_, c, members) in keyed {
+        if c.is_some() && members.len() > 1 {
+            out.extend(arrange(&members, depth + 1, apath, pos));
+        } else {
+            out.extend(members);
+        }
+    }
+    out
 }
