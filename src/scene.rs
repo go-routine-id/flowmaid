@@ -150,13 +150,21 @@ fn scene_from_layout(g: &Graph, sizes: &[(f64, f64)], lo: LayoutResult) -> Scene
         // A long edge threads through its virtual-node channel: its
         // node-boundary start, the per-layer channel points, then its
         // end. Short/adjacent edges keep the single curve (no waypoints).
+        // The endpoints anchor towards the ADJACENT CHANNEL POINT (not
+        // the far node's centre): the lanes are already spread apart,
+        // so converging arrows land at distinct spots along the border
+        // instead of stabbing one point — mermaid's fan-in look.
         let wps: Vec<(f64, f64)> = if lo.edge_paths[ei].is_empty() {
             Vec::new()
         } else {
-            let mut v = Vec::with_capacity(lo.edge_paths[ei].len() + 2);
-            v.push(pts[0]);
-            v.extend(lo.edge_paths[ei].iter().copied());
-            v.push(pts[3]);
+            let chain = &lo.edge_paths[ei];
+            let a_bottom = b.layer > a.layer; // exit side of the source
+            let p0 = anchor(a, g.nodes[e.from].shape, chain[0], off, a_bottom);
+            let p3 = anchor(b, g.nodes[e.to].shape, *chain.last().unwrap(), off, !a_bottom);
+            let mut v = Vec::with_capacity(chain.len() + 2);
+            v.push(p0);
+            v.extend(chain.iter().copied());
+            v.push(p3);
             v
         };
         let label = e.label.as_ref().map(|l| {
