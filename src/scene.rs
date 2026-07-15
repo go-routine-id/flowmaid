@@ -291,8 +291,63 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
     let lo = layout_clustered(g, sizes, &node_cluster);
     let mut sc = scene_from_layout(g, sizes, lo);
 
-    // Wrap boxes around the laid-out members.
-    sc.clusters = route_clusters(g, &sc.nodes);
+    // Wrap boxes around the laid-out members, then widen each box to
+    // also cover the channel lanes of its members' edges: a lane that
+    // enters the box from the top may sit beside the outermost member
+    // node (between it and the invisible border wall), which the
+    // node-only bbox would leave poking outside the drawn rectangle.
+    sc.clusters = {
+        let (mut boxes, depth) = cluster_raw_boxes(g, &sc.nodes);
+        for si in 0..g.subgraphs.len() {
+            let Some((x, y, w, h)) = boxes[si] else { continue };
+            let (mut x0, mut x1) = (x, x + w);
+            for (ge, se) in g.edges.iter().zip(sc.edges.iter()) {
+                if se.waypoints.is_empty()
+                    || !(node_cluster[ge.from].contains(&si)
+                        || node_cluster[ge.to].contains(&si))
+                {
+                    continue;
+                }
+                for &(wx, wy) in &se.waypoints {
+                    if wy >= y && wy <= y + h {
+                        x0 = x0.min(wx - 12.0);
+                        x1 = x1.max(wx + 12.0);
+                    }
+                }
+            }
+            boxes[si] = Some((x0, y, x1 - x0, h));
+        }
+        // Re-enforce nesting: a parent must still enclose its
+        // (possibly widened) children. Deepest-first, one level up.
+        let mut order: Vec<usize> = (0..g.subgraphs.len()).collect();
+        order.sort_by_key(|&i| std::cmp::Reverse(depth[i]));
+        for &c in &order {
+            let (Some(p), Some((cx, cy, cw, ch))) = (g.subgraphs[c].parent, boxes[c]) else {
+                continue;
+            };
+            if let Some((px, py, pw, ph)) = boxes[p] {
+                let nx0 = px.min(cx - SUB_PAD);
+                let ny0 = py.min(cy - SUB_PAD);
+                let nx1 = (px + pw).max(cx + cw + SUB_PAD);
+                let ny1 = (py + ph).max(cy + ch + SUB_PAD);
+                boxes[p] = Some((nx0, ny0, nx1 - nx0, ny1 - ny0));
+            }
+        }
+        let mut out: Vec<SceneCluster> = (0..g.subgraphs.len())
+            .filter_map(|i| {
+                boxes[i].map(|(x, y, w, h)| SceneCluster {
+                    x,
+                    y,
+                    w,
+                    h,
+                    title: g.subgraphs[i].title.clone(),
+                    depth: depth[i],
+                })
+            })
+            .collect();
+        out.sort_by_key(|c| c.depth);
+        out
+    };
 
     // Edges that touch a whole subgraph box (state-diagram composites,
     // `A --> subgraph`) route against the cluster rectangle rather than
@@ -730,7 +785,11 @@ pub fn to_svg(sc: &Scene) -> String {
         EDGE_COLOR
     ));
 
-    // Cluster boxes first (outermost-first), behind everything.
+    // Cluster boxes first (outermost-first), behind everything. The
+    // TITLES are deferred to the very end (`cluster_titles`) so edges
+    // passing the header strip never strike through the text — each
+    // gets a translucent chip, mermaid-style.
+    let mut cluster_titles = String::new();
     for c in &sc.clusters {
         let (x, y) = t((c.x, c.y));
         s.push_str(&format!(
@@ -738,7 +797,15 @@ pub fn to_svg(sc: &Scene) -> String {
              fill=\"#f7f8fd\" stroke=\"#c9cfe8\" stroke-width=\"1.4\"/>\n",
             x, y, c.w, c.h
         ));
-        s.push_str(&format!(
+        let tw = text_width(&c.title) * 12.0 / 14.0; // title font is 12px
+        cluster_titles.push_str(&format!(
+            "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"16\" rx=\"4\" \
+             fill=\"#f7f8fd\" fill-opacity=\"0.9\"/>\n",
+            x + 6.0,
+            y + 5.0,
+            tw + 8.0
+        ));
+        cluster_titles.push_str(&format!(
             "<text x=\"{:.1}\" y=\"{:.1}\" font-size=\"12\" font-weight=\"bold\" \
              fill=\"#6a7086\">{}</text>\n",
             x + 10.0,
@@ -928,6 +995,7 @@ pub fn to_svg(sc: &Scene) -> String {
     }
 
     s.push_str(&edge_labels);
+    s.push_str(&cluster_titles);
     s.push_str("</svg>\n");
     s
 }
