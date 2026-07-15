@@ -44,8 +44,15 @@ pub struct SceneNode {
 /// Edge with a final cubic bezier curve.
 #[derive(Debug, Clone)]
 pub struct SceneEdge {
-    /// Bezier points: start, control1, control2, end.
+    /// Bezier points: start, control1, control2, end. This is the
+    /// single-curve form used when `waypoints` is empty (adjacent
+    /// layers, free-routed edges) and as the fallback everywhere.
     pub bezier: [(f64, f64); 4],
+    /// Routed polyline (final coords) a long edge threads through — its
+    /// node-boundary start, the per-layer channel points, and its end.
+    /// Empty = draw `bezier`. A painter splines a smooth curve through
+    /// these so the edge stays in its channel instead of cutting across.
+    pub waypoints: Vec<(f64, f64)>,
     pub kind: EdgeKind,
     /// (text, box centre, box width) when the edge has a label.
     pub label: Option<(String, (f64, f64), f64)>,
@@ -114,10 +121,11 @@ fn scene_flat(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
 
     // Edge geometry (abstract coordinates) with parallel-edge separation.
     let offs = parallel_offsets(g);
-    /// Bezier points + optional (label centre, label box width).
-    type AbsEdge = ([(f64, f64); 4], Option<((f64, f64), f64)>);
+    /// Bezier points + routed waypoints (empty = none) + optional
+    /// (label centre, label box width).
+    type AbsEdge = ([(f64, f64); 4], Vec<(f64, f64)>, Option<((f64, f64), f64)>);
     let mut abs_edges: Vec<AbsEdge> = Vec::with_capacity(g.edges.len());
-    for (e, off) in g.edges.iter().zip(offs) {
+    for (ei, (e, off)) in g.edges.iter().zip(offs).enumerate() {
         let a = &lo.nodes[e.from];
         let b = &lo.nodes[e.to];
         let pts = edge_points(
@@ -130,11 +138,29 @@ fn scene_flat(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
             off,
             &lay_ext,
         );
+        // A long edge threads through its virtual-node channel: its
+        // node-boundary start, the per-layer channel points, then its
+        // end. Short/adjacent edges keep the single curve (no waypoints).
+        let wps: Vec<(f64, f64)> = if lo.edge_paths[ei].is_empty() {
+            Vec::new()
+        } else {
+            let mut v = Vec::with_capacity(lo.edge_paths[ei].len() + 2);
+            v.push(pts[0]);
+            v.extend(lo.edge_paths[ei].iter().copied());
+            v.push(pts[3]);
+            v
+        };
         let label = e.label.as_ref().map(|l| {
-            let mid = cubic_mid(pts[0], pts[1], pts[2], pts[3]);
+            // On a routed edge the label sits at a channel point, so
+            // labels of converging edges spread out instead of piling.
+            let mid = if wps.is_empty() {
+                cubic_mid(pts[0], pts[1], pts[2], pts[3])
+            } else {
+                wps[wps.len() / 2]
+            };
             (mid, text_width(l) + 14.0)
         });
-        abs_edges.push((pts, label));
+        abs_edges.push((pts, wps, label));
     }
 
     // Canvas from the bounding box of nodes + curves + labels. A
@@ -146,14 +172,22 @@ fn scene_flat(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
         bb.add(p.b - p.bsize / 2.0, p.l - p.lsize / 2.0);
         bb.add(p.b + p.bsize / 2.0, p.l + p.lsize / 2.0);
     }
-    for (e, (pts, label)) in g.edges.iter().zip(&abs_edges) {
+    for (e, (pts, wps, label)) in g.edges.iter().zip(&abs_edges) {
         // Invisible links are layout-only — keep their curve out of
         // the canvas bbox so it isn't padded with empty space.
         if matches!(e.kind, EdgeKind::Invisible) {
             continue;
         }
-        for &(bp, lp) in pts {
-            bb.add(bp, lp);
+        // Routed edges are drawn through their waypoints, not the
+        // fallback curve — bound the canvas by whichever is drawn.
+        if wps.is_empty() {
+            for &(bp, lp) in pts {
+                bb.add(bp, lp);
+            }
+        } else {
+            for &(bp, lp) in wps {
+                bb.add(bp, lp);
+            }
         }
         if let Some((m, w)) = label {
             bb.add(m.0 - w / 2.0, m.1 - 10.0);
@@ -212,8 +246,9 @@ fn scene_flat(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
         .edges
         .iter()
         .zip(abs_edges)
-        .map(|(e, (pts, label))| SceneEdge {
+        .map(|(e, (pts, wps, label))| SceneEdge {
             bezier: [tf(pts[0]), tf(pts[1]), tf(pts[2]), tf(pts[3])],
+            waypoints: wps.iter().map(|&p| tf(p)).collect(),
             kind: e.kind,
             label: e
                 .label
@@ -307,6 +342,7 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
         });
         edges.push(SceneEdge {
             bezier: pts,
+            waypoints: Vec::new(),
             kind: e.kind,
             label,
         });
@@ -361,6 +397,7 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
         });
         edges.push(SceneEdge {
             bezier: pts,
+            waypoints: Vec::new(),
             kind: e.kind,
             label,
         });
@@ -615,6 +652,7 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
         });
         edges.push(SceneEdge {
             bezier: pts,
+            waypoints: Vec::new(),
             kind: e.kind,
             label,
         });
@@ -689,6 +727,7 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
             });
             edges.push(SceneEdge {
                 bezier: pts,
+                waypoints: Vec::new(),
                 kind: e.kind,
                 label,
             });
@@ -867,7 +906,6 @@ pub fn to_svg(sc: &Scene) -> String {
         if matches!(e.kind, EdgeKind::Invisible) {
             continue; // layout-only link — never drawn
         }
-        let q: Vec<(f64, f64)> = e.bezier.iter().map(|&p| t(p)).collect();
         let (dash, sw) = match e.kind {
             EdgeKind::Dotted | EdgeKind::DottedOpen => (" stroke-dasharray=\"5 4\"", 1.7),
             EdgeKind::Thick | EdgeKind::ThickOpen => ("", 3.4),
@@ -878,11 +916,22 @@ pub fn to_svg(sc: &Scene) -> String {
         } else {
             ""
         };
+        // A routed edge splines through its waypoints; otherwise the
+        // single cubic. The arrow marker orients to the end tangent
+        // (last segment) either way.
+        let path_d = if e.waypoints.len() >= 2 {
+            let q: Vec<(f64, f64)> = e.waypoints.iter().map(|&p| t(p)).collect();
+            spline_d(&q)
+        } else {
+            let q: Vec<(f64, f64)> = e.bezier.iter().map(|&p| t(p)).collect();
+            format!(
+                "M {:.1} {:.1} C {:.1} {:.1}, {:.1} {:.1}, {:.1} {:.1}",
+                q[0].0, q[0].1, q[1].0, q[1].1, q[2].0, q[2].1, q[3].0, q[3].1
+            )
+        };
         s.push_str(&format!(
-            "<path d=\"M {:.1} {:.1} C {:.1} {:.1}, {:.1} {:.1}, {:.1} {:.1}\" \
-             fill=\"none\" stroke=\"{}\" stroke-width=\"{}\"{}{}/>\n",
-            q[0].0, q[0].1, q[1].0, q[1].1, q[2].0, q[2].1, q[3].0, q[3].1,
-            EDGE_COLOR, sw, dash, marker
+            "<path d=\"{}\" fill=\"none\" stroke=\"{}\" stroke-width=\"{}\"{}{}/>\n",
+            path_d, EDGE_COLOR, sw, dash, marker
         ));
         if let Some((text, m, w)) = &e.label {
             svg_label_box(&mut edge_labels, text, t(*m), *w);
@@ -1312,6 +1361,38 @@ fn cubic_mid(p0: (f64, f64), c1: (f64, f64), c2: (f64, f64), p3: (f64, f64)) -> 
         (p0.0 + 3.0 * c1.0 + 3.0 * c2.0 + p3.0) / 8.0,
         (p0.1 + 3.0 * c1.1 + 3.0 * c2.1 + p3.1) / 8.0,
     )
+}
+
+/// Catmull-Rom → cubic-bezier control points for the segment `p1→p2`
+/// of a spline (neighbours `p0`, `p3` shape the tangents). Endpoints
+/// are clamped by the caller passing `p1`/`p2` for the missing side.
+pub(crate) fn catmull_rom(
+    p0: (f64, f64),
+    p1: (f64, f64),
+    p2: (f64, f64),
+    p3: (f64, f64),
+) -> ((f64, f64), (f64, f64)) {
+    let c1 = (p1.0 + (p2.0 - p0.0) / 6.0, p1.1 + (p2.1 - p0.1) / 6.0);
+    let c2 = (p2.0 - (p3.0 - p1.0) / 6.0, p2.1 - (p3.1 - p1.1) / 6.0);
+    (c1, c2)
+}
+
+/// SVG path `d` for a smooth Catmull-Rom spline through `pts` (>= 2
+/// points), so a routed edge curves through its channel waypoints.
+fn spline_d(pts: &[(f64, f64)]) -> String {
+    let n = pts.len();
+    let mut d = format!("M {:.1} {:.1}", pts[0].0, pts[0].1);
+    for i in 0..n - 1 {
+        let p0 = pts[i.saturating_sub(1)];
+        let (p1, p2) = (pts[i], pts[i + 1]);
+        let p3 = pts[(i + 2).min(n - 1)];
+        let (c1, c2) = catmull_rom(p0, p1, p2, p3);
+        d.push_str(&format!(
+            " C {:.1} {:.1}, {:.1} {:.1}, {:.1} {:.1}",
+            c1.0, c1.1, c2.0, c2.1, p2.0, p2.1
+        ));
+    }
+    d
 }
 
 /// Opening `<svg>` tag + white background, shared by every SVG writer.

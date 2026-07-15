@@ -11,7 +11,7 @@
 //! l = layer / depth); the renderer maps them to final x,y
 //! according to the diagram direction (TD/LR/BT/RL).
 
-use crate::model::{Direction, Graph, Node, Shape};
+use crate::model::{Direction, EdgeKind, Graph, Node, Shape};
 use std::collections::VecDeque;
 
 /// Position & size of one node in abstract coordinates.
@@ -32,6 +32,11 @@ pub struct LayoutResult {
     pub nodes: Vec<Placed>,
     pub total_b: f64,
     pub total_l: f64,
+    /// Per original edge: the abstract `(b, l)` waypoints its virtual-
+    /// node chain passes through (empty for adjacent-layer edges). A
+    /// renderer can spline through these so a long edge routes in the
+    /// channel between layers instead of straight across the nodes.
+    pub edge_paths: Vec<Vec<(f64, f64)>>,
 }
 
 const PAD_X: f64 = 16.0;
@@ -189,25 +194,79 @@ pub fn layout_sized(g: &Graph, sizes: &[(f64, f64)]) -> LayoutResult {
         }
     }
 
-    let nlayers = layer.iter().copied().max().unwrap_or(0) + 1;
-    let mut layers: Vec<Vec<usize>> = vec![Vec::new(); nlayers];
-    for v in 0..n {
-        layers[layer[v]].push(v);
-    }
-
-    // Neighbours for barycenter & alignment.
+    // --- Virtual (dummy) nodes over an AUGMENTED graph. An edge that
+    // spans >1 layer is broken into a chain of dummies (one per crossed
+    // layer) so it takes part in ordering and RESERVES a routing channel
+    // — real nodes spread around it instead of it cutting straight
+    // across them. Augmented index space: real nodes `0..n`, dummies
+    // `n..`. `absize`/`alsize` are the breadth/layer sizes per aug node.
+    const DUMMY_B: f64 = 16.0;
+    let horizontal = matches!(g.direction, Direction::LR | Direction::RL);
+    let mut alayer = layer.clone();
+    let mut absize: Vec<f64> = (0..n)
+        .map(|v| if horizontal { sizes[v].1 } else { sizes[v].0 })
+        .collect();
+    let mut alsize: Vec<f64> = (0..n)
+        .map(|v| if horizontal { sizes[v].0 } else { sizes[v].1 })
+        .collect();
     let mut preds: Vec<Vec<usize>> = vec![Vec::new(); n];
     let mut succs: Vec<Vec<usize>> = vec![Vec::new(); n];
-    for e in &g.edges {
+    // Per original edge: dummy chain in the edge's own from→to order.
+    let mut edge_chain: Vec<Vec<usize>> = vec![Vec::new(); g.edges.len()];
+    for (ei, e) in g.edges.iter().enumerate() {
         if e.from == e.to {
+            continue; // self-loop — no layered path
+        }
+        // Order the endpoints by layer (lo below hi) to build the chain.
+        let ascending = alayer[e.from] <= alayer[e.to];
+        let (lo, hi) = if ascending { (e.from, e.to) } else { (e.to, e.from) };
+        let (llo, lhi) = (alayer[lo], alayer[hi]);
+        if lhi <= llo + 1 {
+            if llo < lhi {
+                succs[lo].push(hi);
+                preds[hi].push(lo);
+            }
+            continue; // same or adjacent layer — no dummies
+        }
+        // Invisible links (ranking-only) and back-edges get NO channel:
+        // the former must not inflate the canvas, and a back-edge routed
+        // up the middle would cross every forward edge — it keeps the
+        // sideways bow instead. Both still influence ordering directly.
+        if matches!(e.kind, EdgeKind::Invisible) || back[ei] {
+            succs[lo].push(hi);
+            preds[hi].push(lo);
             continue;
         }
-        succs[e.from].push(e.to);
-        preds[e.to].push(e.from);
+        let mut prev = lo;
+        let mut chain = Vec::with_capacity(lhi - llo - 1);
+        for lay in (llo + 1)..lhi {
+            let d = alayer.len();
+            alayer.push(lay);
+            absize.push(DUMMY_B);
+            alsize.push(0.0);
+            preds.push(Vec::new());
+            succs.push(Vec::new());
+            succs[prev].push(d);
+            preds[d].push(prev);
+            chain.push(d);
+            prev = d;
+        }
+        succs[prev].push(hi);
+        preds[hi].push(prev);
+        if !ascending {
+            chain.reverse(); // store low→high chain in from→to order
+        }
+        edge_chain[ei] = chain;
+    }
+    let na = alayer.len();
+    let nlayers = alayer.iter().copied().max().unwrap_or(0) + 1;
+    let mut layers: Vec<Vec<usize>> = vec![Vec::new(); nlayers];
+    for v in 0..na {
+        layers[alayer[v]].push(v);
     }
 
     // --- 3. Reduce crossings: alternating barycenter sweeps ---
-    let mut pos = vec![0.0f64; n];
+    let mut pos = vec![0.0f64; na];
     for lv in &layers {
         for (i, &v) in lv.iter().enumerate() {
             pos[v] = i as f64;
@@ -223,40 +282,25 @@ pub fn layout_sized(g: &Graph, sizes: &[(f64, f64)]) -> LayoutResult {
     }
 
     // --- 4. Coordinates ---
-    // Node sizes on the abstract axes: for LR/RL the layers run
-    // horizontally, so a node's width becomes its "layer size".
-    let horizontal = matches!(g.direction, Direction::LR | Direction::RL);
-    let mut bsize = vec![0.0f64; n];
-    let mut lsize = vec![0.0f64; n];
-    for v in 0..n {
-        let (w, h) = sizes[v];
-        if horizontal {
-            bsize[v] = h;
-            lsize[v] = w;
-        } else {
-            bsize[v] = w;
-            lsize[v] = h;
-        }
-    }
-
-    // Layer positions (l axis): each layer is as tall as its tallest node.
+    // Layer positions (l axis): each layer is as tall as its tallest
+    // REAL node (dummies contribute zero layer-size).
     let mut lcoord = vec![0.0f64; nlayers];
     let mut cursor = MARGIN;
     for li in 0..nlayers {
-        let lh = layers[li].iter().map(|&v| lsize[v]).fold(0.0f64, f64::max);
+        let lh = layers[li].iter().map(|&v| alsize[v]).fold(0.0f64, f64::max);
         lcoord[li] = cursor + lh / 2.0;
         cursor += lh + GAP_L;
     }
     let total_l = cursor - GAP_L + MARGIN;
 
     // Initial packing per layer, then centre each layer.
-    let mut bpos = vec![0.0f64; n];
+    let mut bpos = vec![0.0f64; na];
     let mut widths = vec![0.0f64; nlayers];
     for li in 0..nlayers {
         let mut c = 0.0;
         for &v in &layers[li] {
-            bpos[v] = c + bsize[v] / 2.0;
-            c += bsize[v] + GAP_B;
+            bpos[v] = c + absize[v] / 2.0;
+            c += absize[v] + GAP_B;
         }
         widths[li] = if layers[li].is_empty() { 0.0 } else { c - GAP_B };
     }
@@ -268,31 +312,31 @@ pub fn layout_sized(g: &Graph, sizes: &[(f64, f64)]) -> LayoutResult {
         }
     }
 
-    // Alignment: pull each node towards the mean position of its
-    // neighbours while preserving order and minimum gaps (no overlap).
+    // Alignment: pull each node towards its neighbours' mean, order &
+    // min-gaps preserved (dummies included → channels stay open).
     for li in 1..nlayers {
-        align_pass(&layers[li], &preds, &mut bpos, &bsize);
+        align_pass(&layers[li], &preds, &mut bpos, &absize);
     }
     for li in (0..nlayers.saturating_sub(1)).rev() {
-        align_pass(&layers[li], &succs, &mut bpos, &bsize);
+        align_pass(&layers[li], &succs, &mut bpos, &absize);
     }
     for li in 1..nlayers {
-        align_pass(&layers[li], &preds, &mut bpos, &bsize);
+        align_pass(&layers[li], &preds, &mut bpos, &absize);
     }
 
-    // Normalise so the diagram starts at MARGIN.
+    // Normalise so the diagram starts at MARGIN (real-node extent).
     let mut minb = f64::INFINITY;
     let mut maxb = f64::NEG_INFINITY;
     for v in 0..n {
-        minb = minb.min(bpos[v] - bsize[v] / 2.0);
-        maxb = maxb.max(bpos[v] + bsize[v] / 2.0);
+        minb = minb.min(bpos[v] - absize[v] / 2.0);
+        maxb = maxb.max(bpos[v] + absize[v] / 2.0);
     }
     if n == 0 {
         minb = 0.0;
         maxb = 0.0;
     }
     let shift = MARGIN - minb;
-    for v in 0..n {
+    for v in 0..na {
         bpos[v] += shift;
     }
     let total_b = (maxb - minb) + 2.0 * MARGIN;
@@ -300,10 +344,22 @@ pub fn layout_sized(g: &Graph, sizes: &[(f64, f64)]) -> LayoutResult {
     let nodes = (0..n)
         .map(|v| Placed {
             b: bpos[v],
-            l: lcoord[layer[v]],
-            bsize: bsize[v],
-            lsize: lsize[v],
-            layer: layer[v],
+            l: lcoord[alayer[v]],
+            bsize: absize[v],
+            lsize: alsize[v],
+            layer: alayer[v],
+        })
+        .collect();
+
+    // Edge waypoints (abstract b,l) from each edge's dummy chain, for a
+    // renderer that wants to spline the edge through its channel.
+    let edge_paths = edge_chain
+        .iter()
+        .map(|chain| {
+            chain
+                .iter()
+                .map(|&d| (bpos[d], lcoord[alayer[d]]))
+                .collect()
         })
         .collect();
 
@@ -311,6 +367,7 @@ pub fn layout_sized(g: &Graph, sizes: &[(f64, f64)]) -> LayoutResult {
         nodes,
         total_b,
         total_l,
+        edge_paths,
     }
 }
 
