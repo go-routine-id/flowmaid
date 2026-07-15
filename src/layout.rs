@@ -1,11 +1,15 @@
-//! Sugiyama-style layout engine (compact edition):
+//! Sugiyama layout engine, following dagre (the algorithm mermaid.js
+//! uses):
 //!
 //! 1. Detect back-edges via DFS so cycles don't break layering.
 //! 2. Assign layers with longest-path (topological, Kahn-style).
-//! 3. Order within layers using the barycenter heuristic
-//!    (reduces edge crossings).
-//! 4. Assign coordinates: per-layer packing + alignment towards
-//!    neighbours (parents/children) without overlap.
+//! 3. Split long edges into per-layer dummy chains (routing channels);
+//!    a labelled long edge sizes its middle dummy to the label.
+//! 4. Order within layers to cut crossings: weighted-median sweeps plus
+//!    a local adjacent-swap transpose, keeping the fewest-crossing round.
+//!    Subgraph members are held contiguous, bracketed by border walls.
+//! 5. Assign coordinates with Brandes-Köpf: four vertical alignments
+//!    blended by the per-node median (straight long edges, centred fans).
 //!
 //! Everything is computed in abstract coordinates (b = breadth,
 //! l = layer / depth); the renderer maps them to final x,y
