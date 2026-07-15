@@ -42,8 +42,8 @@ pub struct LayoutResult {
 const PAD_X: f64 = 16.0;
 const BASE_H: f64 = 38.0;
 const MIN_W: f64 = 54.0;
-const GAP_B: f64 = 48.0; // gap between nodes within a layer
-const GAP_L: f64 = 64.0; // gap between layers
+const GAP_B: f64 = 62.0; // gap between nodes within a layer
+const GAP_L: f64 = 84.0; // gap between layers
 const MARGIN: f64 = 28.0;
 
 /// Line height for multi-line labels (`<br/>` → newline).
