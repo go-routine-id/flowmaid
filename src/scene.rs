@@ -683,34 +683,6 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
         })
         .collect();
 
-    let offs = parallel_offsets(g);
-    let mut edges = Vec::with_capacity(g.edges.len());
-    for (e, off) in g.edges.iter().zip(offs) {
-        let a = &placed[e.from];
-        let b = &placed[e.to];
-        let pts = free_edge(
-            a,
-            b,
-            g.nodes[e.from].shape,
-            g.nodes[e.to].shape,
-            e.from == e.to,
-            off,
-        );
-        let label = e.label.as_ref().map(|l| {
-            (
-                l.clone(),
-                cubic_mid(pts[0], pts[1], pts[2], pts[3]),
-                text_width(l) + 14.0,
-            )
-        });
-        edges.push(SceneEdge {
-            bezier: pts,
-            waypoints: Vec::new(),
-            kind: e.kind,
-            label,
-        });
-    }
-
     let nodes: Vec<SceneNode> = g
         .nodes
         .iter()
@@ -725,6 +697,77 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
             style: n.style.clone(),
         })
         .collect();
+
+    // Cross-cluster edge routing — same as `scene_clustered` so the
+    // interactive canvas matches the static layout. Uses the CURRENT
+    // cluster boxes, so it follows drags too.
+    let vertical = matches!(g.direction, Direction::TD | Direction::BT);
+    let mut owner: Vec<Option<usize>> = vec![None; g.nodes.len()];
+    for (si, s) in g.subgraphs.iter().enumerate() {
+        for &nn in &s.nodes {
+            owner[nn] = Some(si);
+        }
+    }
+    let top_of = |v: usize| -> Option<usize> {
+        let mut s = owner[v]?;
+        while let Some(p) = g.subgraphs[s].parent {
+            s = p;
+        }
+        Some(s)
+    };
+    let (raw_boxes, _) = cluster_raw_boxes(g, &nodes);
+    let box_of = |v: usize| -> (f64, f64, f64, f64) {
+        top_of(v)
+            .and_then(|s| raw_boxes.get(s).copied().flatten())
+            .unwrap_or((
+                centers[v].0 - sizes[v].0 / 2.0,
+                centers[v].1 - sizes[v].1 / 2.0,
+                sizes[v].0,
+                sizes[v].1,
+            ))
+    };
+
+    let offs = parallel_offsets(g);
+    let mut edges = Vec::with_capacity(g.edges.len());
+    for (e, off) in g.edges.iter().zip(offs) {
+        let a = &placed[e.from];
+        let b = &placed[e.to];
+        let pts = free_edge(
+            a,
+            b,
+            g.nodes[e.from].shape,
+            g.nodes[e.to].shape,
+            e.from == e.to,
+            off,
+        );
+        let wps = if e.from != e.to && top_of(e.from) != top_of(e.to) {
+            cross_cluster_route(
+                centers[e.from],
+                sizes[e.from],
+                box_of(e.from),
+                centers[e.to],
+                sizes[e.to],
+                box_of(e.to),
+                vertical,
+            )
+        } else {
+            Vec::new()
+        };
+        let label = e.label.as_ref().map(|l| {
+            let mid = if wps.is_empty() {
+                cubic_mid(pts[0], pts[1], pts[2], pts[3])
+            } else {
+                wps[wps.len() / 2]
+            };
+            (l.clone(), mid, text_width(l) + 14.0)
+        });
+        edges.push(SceneEdge {
+            bezier: pts,
+            waypoints: wps,
+            kind: e.kind,
+            label,
+        });
+    }
 
     let clusters = route_clusters(g, &nodes);
 
@@ -1591,6 +1634,32 @@ mod tests {
         assert_eq!(s.edges.len(), 2);
         assert!(s.width > 0.0 && s.height > 0.0);
         assert_eq!(to_svg(&s), crate::render::render(&g));
+    }
+
+    #[test]
+    fn cross_cluster_edges_route_through_channels_in_scene_and_route() {
+        // Two stacked subgraphs with an edge between their members: the
+        // edge must get channel waypoints (not a straight curve) in BOTH
+        // the static scene() and the interactive route() paths.
+        let src = "flowchart TD\n\
+                   subgraph Top\n  A\nend\n\
+                   subgraph Bot\n  B\nend\n\
+                   A --> B";
+        let g = parse(src).unwrap();
+        let s = scene(&g);
+        assert!(
+            s.edges[0].waypoints.len() >= 4,
+            "cross-cluster edge should route via waypoints in scene()"
+        );
+        let centers: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let r = route(&g, &centers);
+        assert!(
+            r.edges[0].waypoints.len() >= 4,
+            "cross-cluster edge should route via waypoints in route() too"
+        );
+        // A same-cluster edge stays a plain curve (no waypoints).
+        let g2 = parse("flowchart TD\nsubgraph S\n  A\n  B\nend\nA --> B").unwrap();
+        assert!(scene(&g2).edges[0].waypoints.is_empty());
     }
 
     #[test]
