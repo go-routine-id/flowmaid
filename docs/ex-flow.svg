@@ -1,25 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="731" height="193" viewBox="0 0 731 193" font-family="Helvetica, Arial, sans-serif" font-size="14">
-<rect width="731" height="193" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="715" height="182" viewBox="0 0 715 182" font-family="Helvetica, Arial, sans-serif" font-size="14">
+<rect width="715" height="182" fill="#ffffff"/>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
-<path d="M 89.2 60.3 C 121.2 60.3, 121.2 60.3, 153.2 60.3" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"/>
-<path d="M 242.5 60.3 C 274.5 60.3, 274.5 60.3, 306.5 60.3" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"/>
-<path d="M 404.1 60.3 C 436.1 60.3, 436.1 60.3, 468.1 60.3" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"/>
-<path d="M 381.6 75.2 C 430.9 75.2, 430.9 139.3, 480.1 139.3" fill="none" stroke="#44507a" stroke-width="1.7" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
-<path d="M 547.5 60.3 C 579.5 60.3, 579.5 60.3, 611.5 60.3" fill="none" stroke="#44507a" stroke-width="3.4" marker-end="url(#arrow)"/>
-<rect x="28.0" y="41.3" width="61.2" height="38.0" rx="3.0" fill="#fff3bf" stroke="#f08c00" stroke-width="3"/>
-<text x="58.6" y="60.3" dy="0.33em" text-anchor="middle" fill="#232840">User</text>
-<rect x="153.2" y="41.3" width="89.3" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
-<text x="197.8" y="60.3" dy="0.33em" text-anchor="middle" fill="#232840">Frontend</text>
-<polygon points="355.3,28.0 404.1,60.3 355.3,92.6 306.5,60.3" fill="#fcf2da" stroke="#d99114" stroke-width="1.6"/>
-<text x="355.3" y="60.3" dy="0.33em" text-anchor="middle" fill="#232840">Auth?</text>
-<rect x="468.1" y="41.3" width="79.4" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
-<text x="507.8" y="60.3" dy="0.33em" text-anchor="middle" fill="#232840">Service</text>
-<rect x="480.1" y="127.3" width="55.4" height="38.0" rx="3.0" fill="#ffe3e3" stroke="#e03131" stroke-width="1.6"/>
-<text x="507.8" y="146.3" dy="0.33em" text-anchor="middle" fill="#c92a2a">401</text>
-<rect x="611.5" y="41.3" width="91.6" height="38.0" rx="3.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
-<text x="657.3" y="60.3" dy="0.33em" text-anchor="middle" fill="#0b6e66">Database</text>
-<rect x="421.7" y="50.3" width="28.8" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
-<text x="436.1" y="60.3" dy="0.33em" text-anchor="middle" fill="#232840">ok</text>
-<rect x="402.7" y="97.2" width="56.4" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
-<text x="430.9" y="107.2" dy="0.33em" text-anchor="middle" fill="#232840">denied</text>
+<path d="M 89.2 91.0 C 119.2 91.0, 119.2 91.0, 149.2 91.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M 238.5 91.0 C 268.5 91.0, 268.5 91.0, 298.5 91.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M 381.0 81.0 C 418.6 81.0, 418.6 54.0, 456.1 54.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M 381.0 101.0 C 424.6 101.0, 424.6 128.0, 468.1 128.0" fill="none" stroke="#44507a" stroke-width="1.7" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+<path d="M 535.5 47.0 C 565.5 47.0, 565.5 47.0, 595.5 47.0" fill="none" stroke="#44507a" stroke-width="3.4" marker-end="url(#arrow)"/>
+<rect x="28.0" y="72.0" width="61.2" height="38.0" rx="3.0" fill="#fff3bf" stroke="#f08c00" stroke-width="1.6"/>
+<text x="58.6" y="91.0" dy="0.33em" text-anchor="middle" fill="#232840">User</text>
+<rect x="149.2" y="72.0" width="89.3" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="193.8" y="91.0" dy="0.33em" text-anchor="middle" fill="#232840">Frontend</text>
+<polygon points="347.3,58.7 396.1,91.0 347.3,123.3 298.5,91.0" fill="#fcf2da" stroke="#d99114" stroke-width="1.6"/>
+<text x="347.3" y="91.0" dy="0.33em" text-anchor="middle" fill="#232840">Auth?</text>
+<rect x="456.1" y="28.0" width="79.4" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="495.8" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">Service</text>
+<rect x="468.1" y="116.0" width="55.4" height="38.0" rx="3.0" fill="#ffe3e3" stroke="#e03131" stroke-width="1.6"/>
+<text x="495.8" y="135.0" dy="0.33em" text-anchor="middle" fill="#232840">401</text>
+<rect x="595.5" y="28.0" width="91.6" height="38.0" rx="3.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="641.3" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">Database</text>
+<rect x="404.2" y="57.5" width="28.8" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="418.6" y="67.5" dy="0.33em" text-anchor="middle" fill="#232840">ok</text>
+<rect x="396.4" y="104.5" width="56.4" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="424.6" y="114.5" dy="0.33em" text-anchor="middle" fill="#232840">denied</text>
 </svg>

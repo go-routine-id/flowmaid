@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>flowmaid — documentation</title>
+<meta name="description" content="flowmaid documentation: a Mermaid-compatible diagram engine in pure, zero-dependency Rust. Installation, CLI, library API, WebAssembly, and supported diagram types.">
+<style>
+  :root {
+    --ink: #232840; --line: #d5d9ec; --accent: #5b6dc0; --bg: #f6f7fc;
+    --muted: #6a7086; --code-bg: #f0f2fa;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: Helvetica, Arial, sans-serif; color: var(--ink);
+    background: var(--bg); line-height: 1.6;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px; padding: 10px 20px;
+    background: #fff; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 10;
+  }
+  header h1 { font-size: 18px; margin: 0; color: var(--accent); }
+  header h1 a { color: inherit; text-decoration: none; }
+  header .sub { font-size: 12px; color: var(--muted); }
+  header .spacer { flex: 1; }
+  header nav a {
+    font-size: 13px; color: var(--ink); text-decoration: none; padding: 6px 10px;
+    border-radius: 6px;
+  }
+  header nav a:hover { color: var(--accent); background: var(--bg); }
+  .wrap { display: flex; max-width: 1200px; margin: 0 auto; gap: 32px; padding: 28px 20px; }
+  aside {
+    width: 220px; flex-shrink: 0; position: sticky; top: 66px;
+    align-self: flex-start; font-size: 13.5px;
+  }
+  aside .group { font-weight: bold; margin: 14px 0 4px; color: var(--muted); font-size: 12px;
+    text-transform: uppercase; letter-spacing: .04em; }
+  aside a { display: block; color: var(--ink); text-decoration: none; padding: 3px 10px;
+    border-left: 2px solid transparent; border-radius: 0 6px 6px 0; }
+  aside a:hover { color: var(--accent); background: #fff; border-left-color: var(--accent); }
+  article { flex: 1; min-width: 0; }
+  article section {
+    background: #fff; border: 1px solid var(--line); border-radius: 10px;
+    padding: 22px 26px; margin-bottom: 22px;
+  }
+  h2 { margin: 0 0 12px; font-size: 22px; }
+  h3 { margin: 22px 0 8px; font-size: 16px; }
+  p, li { font-size: 14.5px; }
+  a { color: var(--accent); }
+  code {
+    font: 12.5px/1.5 ui-monospace, Menlo, monospace; background: var(--code-bg);
+    padding: 1.5px 5px; border-radius: 4px;
+  }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px 14px; overflow-x: auto;
+  }
+  pre code { background: none; padding: 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-size: 12.5px; text-transform: uppercase; letter-spacing: .03em; }
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 4px; }
+  .badges a {
+    font-size: 12.5px; text-decoration: none; border: 1px solid var(--line);
+    border-radius: 6px; padding: 4px 10px; color: var(--ink); background: var(--bg);
+  }
+  .badges a:hover { border-color: var(--accent); color: var(--accent); }
+  .tip {
+    border-left: 3px solid var(--accent); background: var(--bg);
+    padding: 8px 14px; border-radius: 0 8px 8px 0; font-size: 13.5px; margin: 12px 0;
+  }
+  footer {
+    max-width: 1200px; margin: 0 auto; padding: 10px 20px 30px; font-size: 12.5px;
+    color: var(--muted);
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+  @media (max-width: 800px) {
+    .wrap { flex-direction: column; }
+    aside { position: static; width: auto; display: flex; flex-wrap: wrap; gap: 2px 10px; }
+    aside .group { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1><a href="../">flowmaid</a></h1>
+  <span class="sub">documentation</span>
+  <span class="spacer"></span>
+  <nav>
+    <a href="/flowmaid-web/">Playground</a>
+    <a href="https://crates.io/crates/flowmaid" target="_blank">crates.io</a>
+    <a href="https://docs.rs/flowmaid" target="_blank">API docs</a>
+    <a href="https://github.com/go-routine-id/flowmaid" target="_blank">GitHub</a>
+  </nav>
+</header>
+
+<div class="wrap">
+<aside>
+  <div class="group">Start</div>
+  <a href="#overview">Overview</a>
+  <a href="#install">Installation</a>
+  <a href="#cli">Quick start — CLI</a>
+  <a href="#library">Quick start — Rust</a>
+  <div class="group">Guides</div>
+  <a href="#interactive">Interactive apps</a>
+  <a href="#wasm">WebAssembly</a>
+  <a href="#types">Diagram types</a>
+  <a href="#layout">How layout works</a>
+  <div class="group">More</div>
+  <a href="#ecosystem">Ecosystem</a>
+  <a href="#license">License</a>
+</aside>
+
+<article>
+
+<section id="overview">
+  <h2>Overview</h2>
+  <p><strong>flowmaid</strong> is a diagram engine that speaks Mermaid syntax and is written in
+  pure Rust with <strong>zero dependencies</strong> — no C libraries, no JavaScript runtime,
+  nothing beyond the Rust standard library. Feed it Mermaid-like text, get back an SVG string
+  or plain positioned geometry you can paint with any UI toolkit.</p>
+  <div class="badges">
+    <a href="https://crates.io/crates/flowmaid" target="_blank">📦 crates.io/crates/flowmaid</a>
+    <a href="https://docs.rs/flowmaid" target="_blank">📚 docs.rs/flowmaid</a>
+    <a href="https://github.com/go-routine-id/flowmaid" target="_blank">⭐ go-routine-id/flowmaid</a>
+    <a href="/flowmaid-web/">▶ Live playground</a>
+  </div>
+  <h3>Highlights</h3>
+  <ul>
+    <li><strong>8 diagram types</strong> — flowchart, ER, class, sequence, state, pie, mindmap, user journey.</li>
+    <li><strong>Mermaid-grade layout</strong> — a faithful dagre-style pipeline: crossing
+      minimization, Brandes-Köpf coordinates, subgraph clusters with border walls,
+      edge labels that reserve their own space, smooth <code>curveBasis</code> splines.</li>
+    <li><strong>Interactive by design</strong> — a <code>scene</code>/<code>route</code> API exposes every node
+      and edge as plain geometry, so hosts can implement drag &amp; drop and re-route
+      edges without re-running layout.</li>
+    <li><strong>Runs anywhere Rust runs</strong> — native CLI, desktop apps, or the browser via
+      a ~380&nbsp;KB WebAssembly bundle (that is what powers the <a href="/flowmaid-web/">playground</a>).</li>
+    <li><strong>Line-numbered errors</strong> — parse failures tell you the offending line.</li>
+  </ul>
+</section>
+
+<section id="install">
+  <h2>Installation</h2>
+  <p>Requires Rust <strong>1.75</strong> or newer. flowmaid has no other requirements.</p>
+  <h3>As a library</h3>
+  <pre><code>cargo add flowmaid</code></pre>
+  <p>or in <code>Cargo.toml</code>:</p>
+  <pre><code>[dependencies]
+flowmaid = "0.17"</code></pre>
+  <h3>As a command-line tool</h3>
+  <pre><code>cargo install flowmaid</code></pre>
+  <p>This installs a <code>flowmaid</code> binary that converts <code>.mmd</code> files to SVG.</p>
+</section>
+
+<section id="cli">
+  <h2>Quick start — CLI</h2>
+  <pre><code># file in, file out
+flowmaid diagram.mmd -o diagram.svg
+
+# or classic UNIX pipes
+cat diagram.mmd | flowmaid &gt; diagram.svg</code></pre>
+  <p>Try it with this <code>diagram.mmd</code>:</p>
+  <pre><code>flowchart TD
+    A([Start]) --&gt; B[Read input]
+    B --&gt; C{Valid?}
+    C --&gt;|yes| D[Process data]
+    C --&gt;|no| E[Show error]
+    E --&gt; B
+    D ==&gt; F((Done))</code></pre>
+  <p><code>flowmaid --help</code> lists the options.</p>
+</section>
+
+<section id="library">
+  <h2>Quick start — Rust library</h2>
+  <p>The one-call API renders any supported source straight to an SVG string:</p>
+  <pre><code>fn main() {
+    let svg = flowmaid::render_svg("flowchart TD\nA --&gt; B{OK?}").unwrap();
+    std::fs::write("out.svg", svg).unwrap();
+}</code></pre>
+  <p>For more control, parse first and match on the document type:</p>
+  <pre><code>use flowmaid::{parser, model::Document};
+
+match parser::parse_document(src) {
+    Ok(Document::Flowchart(g)) | Ok(Document::State(g)) =&gt; {
+        let scene = flowmaid::scene::scene(&amp;g);   // positioned geometry
+        let svg   = flowmaid::scene::to_svg(&amp;scene);
+    }
+    Ok(Document::Er(d))       =&gt; { /* flowmaid::er::scene(&amp;d) … */ }
+    Ok(Document::Sequence(d)) =&gt; { /* flowmaid::seq::scene(&amp;d) … */ }
+    Ok(other)                 =&gt; { /* class, pie, mindmap, journey … */ }
+    Err(e) =&gt; eprintln!("parse error: {e}"),      // line-numbered
+}</code></pre>
+  <p>Labels support Mermaid's inline markup: <code>&lt;br/&gt;</code> line breaks and
+  <code>&lt;b&gt;</code>/<code>&lt;i&gt;</code> styling render as real bold/italic text.</p>
+</section>
+
+<section id="interactive">
+  <h2>Interactive apps (drag &amp; drop)</h2>
+  <p>Every diagram type exposes its geometry as a <em>scene</em>: node centres, sizes,
+  shapes, edge curves, cluster boxes — plain data, no canvas assumed. The flow for an
+  editor with draggable nodes:</p>
+  <pre><code>use flowmaid::scene;
+
+let s0 = scene::scene(&amp;graph);                 // 1. automatic layout
+let mut pos: Vec&lt;(f64, f64)&gt; =                 // 2. host owns positions
+    s0.nodes.iter().map(|n| (n.x, n.y)).collect();
+
+// … user drags node i, host updates pos[i] …
+
+let s1 = scene::route_partial(                 // 3. LOCAL re-route:
+    &amp;graph, &amp;pos, &amp;s0, &amp;auto_pos);             //    untouched edges keep
+                                               //    engine-quality routing
+let svg = scene::to_svg(&amp;s1);                  // 4. export any state</code></pre>
+  <ul>
+    <li><code>scene()</code> — full automatic layout (what the CLI and playground use).</li>
+    <li><code>route(g, &amp;pos)</code> — re-route <em>every</em> edge for arbitrary positions.</li>
+    <li><code>route_partial(g, &amp;pos, &amp;base, &amp;base_pos)</code> — re-route only edges touching
+      moved nodes; the rest keep their channel-routed geometry.</li>
+    <li>The same triple exists for ER (<code>er::</code>), class (<code>class::</code>) and mindmap
+      (<code>mindmap::</code>) diagrams; sequence, pie and journey are static.</li>
+  </ul>
+</section>
+
+<section id="wasm">
+  <h2>WebAssembly</h2>
+  <p>The <a href="https://github.com/go-routine-id/flowmaid-web" target="_blank">flowmaid-web</a>
+  repository compiles the engine to a ~380&nbsp;KB wasm bundle with tiny JS bindings —
+  the <a href="/flowmaid-web/">playground</a> is built on exactly this:</p>
+  <pre><code>import init, { render_svg } from "./pkg/flowmaid_web.js";
+
+await init();
+document.body.innerHTML =
+    render_svg("flowchart TD\nA([Start]) --&gt; B{OK?}");</code></pre>
+  <p>Additional bindings power interactivity: <code>auto_positions</code>,
+  <code>node_sizes</code>, <code>node_keys</code>, and <code>render_routed(src, positions)</code>
+  for drag-and-drop, plus <code>engine_version()</code>.</p>
+  <h3>Building the bundle yourself</h3>
+  <pre><code>git clone https://github.com/go-routine-id/flowmaid-web
+cd flowmaid-web
+wasm-pack build --target web --release   # emits pkg/
+python3 -m http.server                   # open http://localhost:8000</code></pre>
+</section>
+
+<section id="types">
+  <h2>Diagram types</h2>
+  <table>
+    <tr><th>Type</th><th>Header</th><th>Supports</th></tr>
+    <tr><td>Flowchart</td><td><code>flowchart TD</code> / <code>graph LR</code></td>
+      <td>13 node shapes, 6 edge kinds + labels, fan-out lists (<code>A --&gt; B &amp; C</code>),
+      chains, cycles, self-loops, nested <code>subgraph</code>s,
+      <code>style</code>/<code>classDef</code>/<code>:::</code> colors, invisible <code>~~~</code> links</td></tr>
+    <tr><td>ER</td><td><code>erDiagram</code></td>
+      <td>Crow's-foot cardinalities, attribute tables with <code>PK/FK/UK</code> keys and comments</td></tr>
+    <tr><td>Class</td><td><code>classDiagram</code></td>
+      <td>Fields/methods with visibility, inheritance, composition/aggregation,
+      dependencies, association labels &amp; multiplicities</td></tr>
+    <tr><td>Sequence</td><td><code>sequenceDiagram</code></td>
+      <td>Participants/actors, 8 arrow types, activations, notes,
+      <code>autonumber</code>, <code>loop/opt/alt/par</code> frames</td></tr>
+    <tr><td>State</td><td><code>stateDiagram-v2</code></td>
+      <td><code>[*]</code> start/end, composite states with own direction,
+      <code>&lt;&lt;choice&gt;&gt;</code>/<code>&lt;&lt;fork&gt;&gt;</code>/<code>&lt;&lt;join&gt;&gt;</code>, transition labels</td></tr>
+    <tr><td>Pie</td><td><code>pie</code></td>
+      <td>Title, <code>showData</code>, percentage labels + legend</td></tr>
+    <tr><td>Mindmap</td><td><code>mindmap</code></td>
+      <td>Indentation tree, radial layout, colored branches, six node shapes</td></tr>
+    <tr><td>User journey</td><td><code>journey</code></td>
+      <td>Sections, scored tasks (1–5 smiley faces), actor legend &amp; dots</td></tr>
+  </table>
+  <div class="tip">Every type above is runnable in the <a href="/flowmaid-web/">playground</a> — pick one
+  from the examples dropdown and edit live.</div>
+</section>
+
+<section id="layout">
+  <h2>How layout works</h2>
+  <p>Flowcharts go through a Sugiyama pipeline modelled on
+  <a href="https://github.com/dagrejs/dagre" target="_blank">dagre</a> — the same algorithm
+  family mermaid.js uses:</p>
+  <ol>
+    <li>DFS marks <em>back-edges</em> so cycles cannot break the layering.</li>
+    <li><em>Longest-path layering</em> assigns nodes to ranks.</li>
+    <li>Long edges split into per-rank <em>dummy chains</em> that reserve routing channels;
+      a labelled edge sizes a dummy to its label so labels claim real space.</li>
+    <li><em>Ordering</em> cuts crossings with weighted-median sweeps plus an adjacent-swap
+      transpose, keeping the best round. Subgraph members stay contiguous, bracketed by
+      invisible border walls.</li>
+    <li><em>Brandes-Köpf</em> coordinate assignment straightens long edges and centres
+      fan-in/outs; edges then flow through their channels as
+      <code>curveBasis</code> splines.</li>
+  </ol>
+  <p>Sequence, pie, mindmap and journey diagrams use their own dedicated layouts.</p>
+</section>
+
+<section id="ecosystem">
+  <h2>Ecosystem</h2>
+  <table>
+    <tr><th>Project</th><th>What it is</th></tr>
+    <tr><td><a href="https://github.com/go-routine-id/flowmaid" target="_blank">flowmaid</a></td>
+      <td>The engine — parser, layout, SVG renderer, interactive scene API (this documentation).</td></tr>
+    <tr><td><a href="https://crates.io/crates/markmaid" target="_blank">markmaid</a></td>
+      <td>Framework-agnostic Markdown rendering engine (GFM subset → positioned geometry)
+      with first-class inline <code>```mermaid</code> blocks rendered by flowmaid.</td></tr>
+    <tr><td><a href="https://github.com/go-routine-id/flowmaid-web" target="_blank">flowmaid-web</a></td>
+      <td>WebAssembly bindings + the <a href="/flowmaid-web/">live playground</a>.</td></tr>
+    <tr><td>flowmaid-desktop</td>
+      <td>Native editor (egui): tabs, file tree, live preview, drag-and-drop nodes,
+      Markdown documents via markmaid.</td></tr>
+  </table>
+</section>
+
+<section id="license">
+  <h2>License &amp; contributing</h2>
+  <p>flowmaid, markmaid and the playground are licensed
+  <strong>GPL-3.0-or-later</strong>.</p>
+  <p>Bug reports and feature requests: use the
+  <a href="https://github.com/go-routine-id/flowmaid/issues" target="_blank">GitHub issues</a>;
+  the diagram-type roadmap lives in
+  <a href="https://github.com/go-routine-id/flowmaid/issues/10" target="_blank">issue #10</a>.
+  A good bug report includes the <code>.mmd</code> source and, for rendering issues,
+  a screenshot of what you got vs what you expected.</p>
+</section>
+
+</article>
+</div>
+
+<footer>
+  © PT GO ROUTINE TECH · <a href="/flowmaid-web/">playground</a> ·
+  <a href="https://github.com/go-routine-id/flowmaid" target="_blank">engine source</a> ·
+  <a href="https://github.com/go-routine-id/flowmaid-web" target="_blank">site source</a>
+</footer>
+</body>
+</html>

@@ -62,12 +62,14 @@
     <h1>flow<span>maid</span></h1>
     <p class="tag">Mermaid-like diagrams. Pure Rust. Zero dependencies.</p>
     <a class="cta primary" href="/flowmaid-web/">▶ Try the playground</a>
+    <a class="cta primary" href="docs/" style="background:var(--accent-dark)">📖 Documentation</a>
     <a class="cta ghost" href="https://crates.io/crates/flowmaid">crates.io</a>
     <a class="cta ghost" href="https://docs.rs/flowmaid">docs.rs</a>
     <a class="cta ghost" href="https://github.com/go-routine-id/flowmaid">GitHub</a>
     <div class="stats">
       <div class="stat"><b>0</b>dependencies</div>
-      <div class="stat"><b>166 KB</b>entire engine in wasm</div>
+      <div class="stat"><b>8</b>diagram types</div>
+      <div class="stat"><b>382 KB</b>entire engine in wasm</div>
       <div class="stat"><b>&lt;1 ms</b>typical render</div>
       <div class="stat"><b>1.75</b>minimum Rust, CI-enforced</div>
       <div class="stat"><b>GPL-3.0</b>free forever</div>
@@ -147,10 +149,12 @@
       <li class="done">erDiagram — crow's foot, entity tables <span class="ver">v0.2</span></li>
       <li class="done">style / classDef / ::: custom colors <span class="ver">v0.4</span></li>
       <li class="done">subgraph — nesting, titles, direction <span class="ver">v0.5</span></li>
-      <li class="done">Interactive drag API (scene / route)</li>
-      <li class="todo">Fan-out <code>A --> B &amp; C</code>, more link types</li>
-      <li class="todo">classDiagram · sequenceDiagram · stateDiagram</li>
-      <li class="todo">journey · pie · mindmap</li>
+      <li class="done">Interactive drag API (scene / route / route_partial)</li>
+      <li class="done">Fan-out <code>A --> B &amp; C</code>, all 6 link types <span class="ver">v0.6</span></li>
+      <li class="done">classDiagram · sequenceDiagram · stateDiagram <span class="ver">v0.9–0.11</span></li>
+      <li class="done">pie · mindmap · journey <span class="ver">v0.10–0.14</span></li>
+      <li class="done">Mermaid-grade dagre layout — clusters, label slots, curveBasis <span class="ver">v0.16–0.17</span></li>
+      <li class="done">Real <code>&lt;b&gt;</code>/<code>&lt;i&gt;</code> in labels <span class="ver">v0.17</span></li>
       <li class="todo"><code>$$math$$</code> in labels (KaTeX subset)</li>
       <li class="todo">gantt · gitGraph · timeline · the whole catalog</li>
     </ul>
@@ -159,7 +163,7 @@
 
 <footer>
   <div class="wrap">
-    flowmaid is GPL-3.0-or-later · built by <a href="https://github.com/go-routine-id">go-routine-id</a> · this page is static HTML + SVGs rendered by the engine itself
+    flowmaid is GPL-3.0-or-later · <a href="docs/">documentation</a> · built by <a href="https://github.com/go-routine-id">go-routine-id</a> · this page is static HTML + SVGs rendered by the engine itself
   </div>
 </footer>
 

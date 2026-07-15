@@ -1,32 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="738" height="650" viewBox="0 0 738 650" font-family="Helvetica, Arial, sans-serif" font-size="14">
-<rect width="738" height="650" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="382" height="786" viewBox="0 0 382 786" font-family="Helvetica, Arial, sans-serif" font-size="14">
+<rect width="382" height="786" fill="#ffffff"/>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
-<rect x="28.0" y="232.0" width="681.9" height="288.0" rx="8" fill="#f7f8fd" stroke="#c9cfe8" stroke-width="1.4"/>
-<text x="38.0" y="249.0" font-size="12" font-weight="bold" fill="#6a7086">Platform</text>
-<rect x="378.3" y="286.0" width="303.6" height="206.0" rx="8" fill="#f7f8fd" stroke="#c9cfe8" stroke-width="1.4"/>
-<text x="388.3" y="303.0" font-size="12" font-weight="bold" fill="#6a7086">Event bus</text>
-<path d="M 368.9 66.0 C 368.9 111.9, 368.9 84.1, 368.9 130.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"/>
-<path d="M 348.5 168.0 C 232.4 168.0, 247.5 370.0, 131.3 370.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"/>
-<path d="M 165.8 389.0 C 238.3 389.0, 157.3 389.0, 229.8 389.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"/>
-<path d="M 314.3 381.6 C 391.3 381.6, 329.3 365.5, 406.3 365.5" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"/>
-<path d="M 480.0 359.0 C 550.1 359.0, 473.9 359.0, 544.0 359.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"/>
-<path d="M 477.6 378.0 C 547.7 378.0, 494.4 426.0, 564.5 426.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"/>
-<path d="M 556.0 378.0 C 556.0 487.8, 408.8 474.2, 408.8 584.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"/>
-<path d="M 571.3 464.0 C 467.8 464.0, 500.1 584.0, 396.6 584.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"/>
-<rect x="334.9" y="28.0" width="68.0" height="38.0" rx="3.0" fill="#fff3bf" stroke="#f08c00" stroke-width="1.6"/>
-<text x="368.9" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">Client</text>
-<rect x="312.3" y="130.0" width="113.3" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
-<text x="368.9" y="149.0" dy="0.33em" text-anchor="middle" fill="#232840">API Gateway</text>
-<rect x="56.0" y="370.0" width="109.8" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
-<text x="110.9" y="389.0" dy="0.33em" text-anchor="middle" fill="#232840">Auth service</text>
-<rect x="229.8" y="370.0" width="84.5" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
-<text x="272.1" y="389.0" dy="0.33em" text-anchor="middle" fill="#232840">User DB</text>
-<rect x="406.3" y="340.0" width="73.7" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
-<text x="443.2" y="359.0" dy="0.33em" text-anchor="middle" fill="#232840">Broker</text>
-<rect x="544.0" y="340.0" width="109.9" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
-<text x="599.0" y="359.0" dy="0.33em" text-anchor="middle" fill="#232840">Consumer A</text>
-<rect x="544.0" y="426.0" width="109.9" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
-<text x="599.0" y="445.0" dy="0.33em" text-anchor="middle" fill="#232840">Consumer B</text>
-<rect x="317.1" y="584.0" width="103.7" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
-<text x="368.9" y="603.0" dy="0.33em" text-anchor="middle" fill="#232840">Warehouse</text>
+<rect x="28.0" y="210.0" width="325.8" height="452.0" rx="8" fill="#f7f8fd" stroke="#c9cfe8" stroke-width="1.4"/>
+<rect x="42.0" y="556.0" width="297.8" height="92.0" rx="8" fill="#f7f8fd" stroke="#c9cfe8" stroke-width="1.4"/>
+<path d="M 190.9 66.0 C 190.9 96.0, 190.9 96.0, 190.9 126.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M 190.9 164.0 C 190.9 194.0, 190.9 194.0, 190.9 224.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M 190.9 314.0 C 190.9 344.0, 190.9 344.0, 190.9 374.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M 166.1 510.0 C 166.1 540.0, 138.9 540.0, 138.9 570.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M 215.8 510.0 C 215.8 540.0, 242.9 540.0, 242.9 570.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M 190.9 412.0 C 190.9 442.0, 190.9 442.0, 190.9 472.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M 111.0 660.0 C 111.0 690.0, 111.0 690.0, 111.0 720.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"/>
+<rect x="156.9" y="28.0" width="68.0" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="190.9" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">Client</text>
+<rect x="134.2" y="126.0" width="113.3" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="190.9" y="145.0" dy="0.33em" text-anchor="middle" fill="#232840">API Gateway</text>
+<rect x="136.0" y="250.0" width="109.8" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="190.9" y="269.0" dy="0.33em" text-anchor="middle" fill="#232840">Auth service</text>
+<rect x="148.7" y="374.0" width="84.5" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="190.9" y="393.0" dy="0.33em" text-anchor="middle" fill="#232840">User DB</text>
+<rect x="154.1" y="472.0" width="73.7" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="190.9" y="491.0" dy="0.33em" text-anchor="middle" fill="#232840">Broker</text>
+<rect x="56.0" y="596.0" width="109.9" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="111.0" y="615.0" dy="0.33em" text-anchor="middle" fill="#232840">Consumer A</text>
+<rect x="215.9" y="596.0" width="109.9" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="270.9" y="615.0" dy="0.33em" text-anchor="middle" fill="#232840">Consumer B</text>
+<rect x="59.1" y="720.0" width="103.7" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="111.0" y="739.0" dy="0.33em" text-anchor="middle" fill="#232840">Warehouse</text>
+<rect x="34.0" y="215.0" width="53.3" height="16" rx="4" fill="#f7f8fd" fill-opacity="0.9"/>
+<text x="38.0" y="227.0" font-size="12" font-weight="bold" fill="#6a7086">Platform</text>
+<rect x="48.0" y="561.0" width="61.7" height="16" rx="4" fill="#f7f8fd" fill-opacity="0.9"/>
+<text x="52.0" y="573.0" font-size="12" font-weight="bold" fill="#6a7086">Event bus</text>
 </svg>
