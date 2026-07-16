@@ -5,10 +5,37 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>flowmaid — documentation</title>
 <meta name="description" content="flowmaid documentation: a Mermaid-compatible diagram engine in pure, zero-dependency Rust. Installation, CLI, library API, WebAssembly, and supported diagram types.">
+<script>
+  // Terapkan tema tersimpan SEBELUM paint pertama (hindari kedip).
+  (function () {
+    var t = localStorage.getItem("theme");
+    if (t) document.documentElement.dataset.theme = t;
+  })();
+  function toggleTheme() {
+    var cur = document.documentElement.dataset.theme ||
+      (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    var next = cur === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem("theme", next);
+  }
+</script>
 <style>
   :root {
     --ink: #232840; --line: #d5d9ec; --accent: #5b6dc0; --bg: #f6f7fc;
-    --muted: #6a7086; --code-bg: #f0f2fa;
+    --muted: #6a7086; --code-bg: #f0f2fa; --card: #ffffff;
+    color-scheme: light;
+  }
+  :root[data-theme="dark"] {
+    --ink: #dfe3f2; --line: #31374f; --accent: #8b9aec; --bg: #14161e;
+    --muted: #9298b0; --code-bg: #232840; --card: #1b1e2b;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #dfe3f2; --line: #31374f; --accent: #8b9aec; --bg: #14161e;
+      --muted: #9298b0; --code-bg: #232840; --card: #1b1e2b;
+      color-scheme: dark;
+    }
   }
   * { box-sizing: border-box; }
   body {
@@ -17,7 +44,7 @@
   }
   header {
     display: flex; align-items: center; gap: 12px; padding: 10px 20px;
-    background: #fff; border-bottom: 1px solid var(--line);
+    background: var(--card); border-bottom: 1px solid var(--line);
     position: sticky; top: 0; z-index: 10;
   }
   header h1 { font-size: 18px; margin: 0; color: var(--accent); }
@@ -38,10 +65,10 @@
     text-transform: uppercase; letter-spacing: .04em; }
   aside a { display: block; color: var(--ink); text-decoration: none; padding: 3px 10px;
     border-left: 2px solid transparent; border-radius: 0 6px 6px 0; }
-  aside a:hover { color: var(--accent); background: #fff; border-left-color: var(--accent); }
+  aside a:hover { color: var(--accent); background: var(--card); border-left-color: var(--accent); }
   article { flex: 1; min-width: 0; }
   article section {
-    background: #fff; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
     padding: 22px 26px; margin-bottom: 22px;
   }
   h2 { margin: 0 0 12px; font-size: 22px; }
@@ -92,6 +119,7 @@
     <a href="https://crates.io/crates/flowmaid" target="_blank">crates.io</a>
     <a href="https://docs.rs/flowmaid" target="_blank">API docs</a>
     <a href="https://github.com/go-routine-id/flowmaid" target="_blank">GitHub</a>
+    <a href="#" id="theme" title="Toggle dark mode" onclick="toggleTheme();return false;">🌓</a>
   </nav>
 </header>
 
