@@ -49,6 +49,15 @@ fn err(line: usize, message: String) -> ParseError {
     ParseError { line, message }
 }
 
+/// Hard cap on nesting depth — subgraph blocks and mindmap branches.
+/// Real diagrams nest a handful of levels; this exists only to turn a
+/// pathological input (thousands of levels) into a clean, line-numbered
+/// parse error instead of a stack overflow: the layout pass recurses one
+/// frame per level, so unbounded nesting would abort the process. Set
+/// well above any sane diagram yet far below the native stack limit —
+/// and low enough to stay safe on the smaller wasm stack.
+const MAX_NEST_DEPTH: usize = 500;
+
 /// Simple character cursor over a single line.
 struct Cur<'a> {
     s: &'a str,
@@ -261,6 +270,12 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
         // Subgraph blocks: `subgraph id [Title]` ... `end`, nestable,
         // with an optional `direction XX` line inside.
         if let Some(rest) = strip_keyword(line, "subgraph") {
+            if sub_stack.len() >= MAX_NEST_DEPTH {
+                return Err(err(
+                    lineno,
+                    format!("subgraph nesting too deep (max {MAX_NEST_DEPTH} levels)"),
+                ));
+            }
             let (id, title) = parse_subgraph_header(rest.trim(), lineno)?;
             let idx = g.subgraphs.len();
             g.subgraphs.push(Subgraph {
@@ -1708,6 +1723,12 @@ fn parse_mindmap(source: &str, header_line: usize) -> Result<Mindmap, ParseError
 
         let idx = d.nodes.len();
         let depth = parent.map_or(0, |p| d.nodes[p].depth + 1);
+        if depth >= MAX_NEST_DEPTH {
+            return Err(err(
+                lineno,
+                format!("mindmap nesting too deep (max {MAX_NEST_DEPTH} levels)"),
+            ));
+        }
         // A node's colored branch is its depth-1 ancestor; the root
         // has none. depth-1 nodes seed their own branch.
         let branch = match depth {
@@ -2645,5 +2666,53 @@ mod tests {
         }
         // The flowchart-only entry point gets the same courtesy.
         assert!(parse("\u{feff}A --> B").is_ok());
+    }
+
+    #[test]
+    fn deeply_nested_subgraphs_error_instead_of_overflowing_the_stack() {
+        // Before the guard, ~18k nested `subgraph` blocks overflowed the
+        // stack in the layout pass (`arrange()` recurses one frame per
+        // level). The parser now rejects anything past MAX_NEST_DEPTH
+        // with a clean, line-numbered error — no crash.
+        let n = MAX_NEST_DEPTH + 5;
+        let mut s = String::from("flowchart TD\n");
+        for i in 0..n {
+            s.push_str(&format!("subgraph s{i}\n"));
+        }
+        s.push_str("A --> B\n");
+        for _ in 0..n {
+            s.push_str("end\n");
+        }
+        let e = parse(&s).expect_err("over-deep nesting must be rejected");
+        assert!(e.message.contains("too deep"), "got: {}", e.message);
+    }
+
+    #[test]
+    fn deeply_nested_mindmap_errors_instead_of_overflowing() {
+        // Same hazard on the mindmap side (`weigh`/`place` recursion).
+        let n = MAX_NEST_DEPTH + 5;
+        let mut s = String::from("mindmap\n");
+        for d in 0..n {
+            s.push_str(&"  ".repeat(d + 1));
+            s.push_str(&format!("n{d}\n"));
+        }
+        let e = parse_document(&s).expect_err("over-deep mindmap must be rejected");
+        assert!(e.message.contains("too deep"), "got: {}", e.message);
+    }
+
+    #[test]
+    fn nesting_within_the_limit_still_parses() {
+        // A generous-but-sane 100 levels — far under the cap — must work,
+        // so the guard never gets in a real diagram's way.
+        let n = 100;
+        let mut s = String::from("flowchart TD\n");
+        for i in 0..n {
+            s.push_str(&format!("subgraph s{i}\n"));
+        }
+        s.push_str("A --> B\n");
+        for _ in 0..n {
+            s.push_str("end\n");
+        }
+        assert!(parse(&s).is_ok(), "100-deep nesting is legitimate");
     }
 }
