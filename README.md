@@ -32,6 +32,7 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 - [x] `style` / `classDef` / `class` / `:::` custom colors *(v0.4.0)*
 - [x] Semantic color theme (shape-based) + stable accent palette shared by ER / class / sequence / pie
 - [x] Interactive scene API — drag nodes, edges re-route live; stable node/edge identity (`SceneNode.id`, `SceneEdge.from`/`to`) and local drag re-routing (`scene`, `route`, `route_partial`, `box_edge_bezier`) *(v0.18.0)*
+- [x] Hit-testing / picking — `Scene::{hit_test, node_at, edge_at, cluster_at, hits_in_rect, nearest_node}`, shape-precise, pick-matches-render; completes pick → drag → route for editors *(v0.19.0)*
 - [x] Compact / serpentine layout — fold a long linear chain into balanced rows to fit a viewport (`fold::scene_compact`, CLI `--compact <px>`) *(v0.18.0)*
 - [x] Accessible SVG — `role="img"` + `aria-label` + per-node/edge `<title>`, deterministic byte-identical output *(v0.18.0)*
 - [x] Injectable font metrics for embedders using a real font (`layout::intrinsic_size_with`, `TEXT_CALIBRATION`) *(v0.18.0)*
@@ -53,7 +54,7 @@ Or in `Cargo.toml`:
 
 ```toml
 [dependencies]
-flowmaid = "0.18"
+flowmaid = "0.19"
 ```
 
 ## Usage
