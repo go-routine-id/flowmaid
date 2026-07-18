@@ -411,10 +411,9 @@ fn layout_core(
     let mut border_meta: Vec<(usize, u8, Vec<usize>)> = Vec::new();
     // cluster id -> (lo, hi) layer span over members — walls cover it,
     // and edge dummies use it to know when they are inside a cluster.
-    // BTreeMap (not HashMap) BY DESIGN: wall-dummy numbering below
-    // iterates these keys, and node numbering must be deterministic
-    // for byte-identical output (issue #16) — ordered iteration makes
-    // that structural instead of relying on a remembered sort.
+    // Only point-read (`get`), never iterated: BTreeMap purely for
+    // hygiene / consistency with `span` below (whose KEY ITERATION is
+    // the one that must stay ordered for deterministic node numbering).
     let mut cluster_span: std::collections::BTreeMap<usize, (usize, usize)> =
         std::collections::BTreeMap::new();
     if let Some(nc) = node_cluster {

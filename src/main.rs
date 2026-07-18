@@ -136,10 +136,19 @@ fn main() {
             eprintln!("empty diagram: no journey tasks");
             process::exit(1);
         }
-        Document::Flowchart(g) | Document::State(g) => match compact {
-            Some(px) => fold::render_compact(g, &fold::CompactOptions::for_extent(px)),
-            None => render::render(g),
-        },
+        Document::Flowchart(g) | Document::State(g) => {
+            let title = if matches!(doc, Document::State(_)) {
+                "State diagram"
+            } else {
+                "Flowchart diagram"
+            };
+            match compact {
+                Some(px) => {
+                    fold::render_compact_titled(g, &fold::CompactOptions::for_extent(px), title)
+                }
+                None => render::render_titled(g, title),
+            }
+        }
         Document::Er(d) => render::render_er(d),
         Document::Class(d) => render::render_class(d),
         Document::Sequence(d) => render::render_seq(d),

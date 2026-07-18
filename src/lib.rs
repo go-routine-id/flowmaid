@@ -47,7 +47,8 @@ pub use parser::ParseError;
 pub fn render_svg(source: &str) -> Result<String, ParseError> {
     match parser::parse_document(source)? {
         // State diagrams live on the same Graph as flowcharts.
-        Document::Flowchart(g) | Document::State(g) => Ok(render::render(&g)),
+        Document::Flowchart(g) => Ok(render::render(&g)),
+        Document::State(g) => Ok(render::render_titled(&g, "State diagram")),
         Document::Er(d) => Ok(render::render_er(&d)),
         Document::Class(d) => Ok(render::render_class(&d)),
         Document::Sequence(d) => Ok(render::render_seq(&d)),

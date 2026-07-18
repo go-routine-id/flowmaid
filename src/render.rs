@@ -6,7 +6,13 @@
 use crate::model::{ClassDiagram, ErDiagram, Graph, Journey, Mindmap, PieChart, SequenceDiagram};
 
 pub fn render(g: &Graph) -> String {
-    crate::scene::to_svg(&crate::scene::scene(g))
+    render_titled(g, "Flowchart diagram")
+}
+
+/// [`render`] with a caller-chosen accessible name (a `stateDiagram-v2`
+/// rides the flowchart `Graph` but should announce "State diagram").
+pub fn render_titled(g: &Graph, title: &str) -> String {
+    crate::scene::to_svg_titled(&crate::scene::scene(g), title)
 }
 
 /// Render an Entity-Relationship diagram (tables + crow's foot).

@@ -920,7 +920,17 @@ pub fn box_edge_bezier(
 
 /// Serialise any Scene (automatic or dragged) to SVG. Content is
 /// translated to start at MARGIN, so negative coordinates are safe.
+/// The accessible name is `"Flowchart diagram"`; use [`to_svg_titled`]
+/// for another diagram class (e.g. state machines).
 pub fn to_svg(sc: &Scene) -> String {
+    to_svg_titled(sc, "Flowchart diagram")
+}
+
+/// [`to_svg`] with a caller-supplied accessible name — the root
+/// `<title>` / `aria-label`. Callers that know the document type (a
+/// `stateDiagram-v2` rides the flowchart `Scene`) pass the right one
+/// so screen readers and hover tooltips announce it correctly (#16).
+pub fn to_svg_titled(sc: &Scene, title: &str) -> String {
     let mut bb = Bbox::new();
     grow_scene(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
     let (minx, maxx, miny, maxy) = bb.finish();
@@ -930,8 +940,22 @@ pub fn to_svg(sc: &Scene) -> String {
     let height = (maxy - miny) + 2.0 * MARGIN;
     let t = |p: (f64, f64)| (p.0 + tx, p.1 + ty);
 
+    // Endpoint display name: pseudostates announce "start"/"end", not
+    // their parser-synthesized `__start_*`/`__end_*` ids (#16). Keyed
+    // on Shape (not the id prefix) so a user node literally named
+    // "__start_x" is unaffected. BTreeMap keeps it zero-dep + ordered.
+    let shape_of: std::collections::BTreeMap<&str, Shape> =
+        sc.nodes.iter().map(|n| (n.id.as_str(), n.shape)).collect();
+    let display = |id: &str| -> String {
+        match shape_of.get(id) {
+            Some(Shape::StateStart) => "start".to_string(),
+            Some(Shape::StateEnd) => "end".to_string(),
+            _ => id.to_string(),
+        }
+    };
+
     let mut s = String::new();
-    svg_open(&mut s, width, height, 14, "Flowchart diagram");
+    svg_open(&mut s, width, height, 14, title);
     s.push_str(&format!(
         "<defs><marker id=\"arrow\" viewBox=\"0 0 10 10\" refX=\"8.5\" refY=\"5\" \
          markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\">\
@@ -998,8 +1022,10 @@ pub fn to_svg(sc: &Scene) -> String {
         };
         // <title> child = screen-reader / hover description (issue #16).
         let edge_title = match &e.label {
-            Some((text, ..)) => format!("{} \u{2192} {}: {}", e.from, e.to, plain_text(text)),
-            None => format!("{} \u{2192} {}", e.from, e.to),
+            Some((text, ..)) => {
+                format!("{} \u{2192} {}: {}", display(&e.from), display(&e.to), plain_text(text))
+            }
+            None => format!("{} \u{2192} {}", display(&e.from), display(&e.to)),
         };
         s.push_str(&format!(
             "<path d=\"{}\" fill=\"none\" stroke=\"{}\" stroke-width=\"{}\"{}{}>\
@@ -1015,8 +1041,27 @@ pub fn to_svg(sc: &Scene) -> String {
         let (cx, cy) = t((n.x, n.y));
         let (w, h) = (n.w, n.h);
         // Group per node so the <title> (a11y + hover tooltip) covers
-        // shape AND label together (issue #16).
-        s.push_str(&format!("<g><title>{}</title>\n", escape(&plain_text(&n.label))));
+        // shape AND label together (issue #16). An unlabelled node
+        // (pseudostate / choice / fork) uses a shape-derived name, and
+        // never emits an empty `<title>` (a11y anti-pattern).
+        let node_title = {
+            let lbl = plain_text(&n.label);
+            if !lbl.is_empty() {
+                lbl
+            } else {
+                match n.shape {
+                    Shape::StateStart => "start".to_string(),
+                    Shape::StateEnd => "end".to_string(),
+                    Shape::ForkBar => "fork/join".to_string(),
+                    _ => String::new(),
+                }
+            }
+        };
+        if node_title.is_empty() {
+            s.push_str("<g>\n");
+        } else {
+            s.push_str(&format!("<g><title>{}</title>\n", escape(&node_title)));
+        }
         // Shape theme, overridden by any custom style/classDef colors.
         let ss = crate::style::shape_style(n.shape);
         let style = format!(
@@ -1720,6 +1765,16 @@ mod tests {
         assert!(svg.contains("<title>Flowchart diagram</title>"));
         assert!(svg.contains("<title>Start here</title>"), "node title, tags stripped");
         assert!(svg.contains("<title>A \u{2192} B: go</title>"), "edge title with label");
+        // State diagrams announce themselves correctly (issue #16 fix):
+        // right accessible name, no synthesized `__start_*`/`__end_*`
+        // ids in tooltips, no empty <title> for pseudostate nodes.
+        let st = crate::render_svg("stateDiagram-v2\n[*] --> Idle\nIdle --> [*]").unwrap();
+        assert!(st.contains("aria-label=\"State diagram\""), "state aria-label");
+        assert!(st.contains("<title>State diagram</title>"), "state root title");
+        assert!(!st.contains("__start_"), "no synthesized start id leaked");
+        assert!(!st.contains("__end_"), "no synthesized end id leaked");
+        assert!(st.contains("start \u{2192} Idle"), "pseudostate named 'start'");
+        assert!(!st.contains("<title></title>"), "no empty node titles");
         // … and byte-identical output for repeated renders of every
         // bundled example (same-process guard; cross-process identity
         // is guaranteed by ordered collections in the layout path).

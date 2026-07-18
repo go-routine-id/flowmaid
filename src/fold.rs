@@ -184,9 +184,15 @@ pub fn scene_compact_sized(g: &Graph, sizes: &[(f64, f64)], opts: &CompactOption
     }
 }
 
-/// SVG convenience: fold, then serialise.
+/// SVG convenience: fold, then serialise (accessible name
+/// "Flowchart diagram"; use [`render_compact_titled`] for others).
 pub fn render_compact(g: &Graph, opts: &CompactOptions) -> String {
-    crate::scene::to_svg(&scene_compact(g, opts).scene)
+    render_compact_titled(g, opts, "Flowchart diagram")
+}
+
+/// [`render_compact`] with a caller-chosen accessible name.
+pub fn render_compact_titled(g: &Graph, opts: &CompactOptions, title: &str) -> String {
+    crate::scene::to_svg_titled(&scene_compact(g, opts).scene, title)
 }
 
 /// The graph as one linear run of node indices, or the reason it
