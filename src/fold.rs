@@ -20,11 +20,11 @@
 //!   drags use `scene::route_partial` with the compact scene as base
 //!   (bare `route()` would free-route the fold turns away).
 
-use crate::layout::{intrinsic_size, Placed, GAP_L};
+use crate::layout::{intrinsic_size, GAP_L};
 use crate::model::{Direction, Edge, EdgeKind, Graph};
 use crate::scene::{
-    anchor, flip_scene, grow_scene, parallel_offsets, scene_sized, shift_scene, Bbox, Scene,
-    SceneEdge, MARGIN,
+    flip_scene, grow_scene, parallel_offsets, scene_sized, shift_scene, Bbox, Scene, SceneEdge,
+    MARGIN,
 };
 
 /// Minimum chain length worth folding — below this the fold would
@@ -92,6 +92,10 @@ impl CompactOptions {
 pub enum FoldSkip {
     /// The ordinary layout already fits the budget.
     AlreadyFits,
+    /// A single band is already the optimal fold — no split reduces the
+    /// flow extent further (the residual overflow is just margins and
+    /// turn headroom the flat scene spends anyway).
+    NoBenefit,
     /// Subgraphs / sub-edges present — folding boxes is a v2 concern.
     HasSubgraphs,
     /// A node with fan-in/out > 1, or a cycle: not a linear chain.
@@ -158,23 +162,32 @@ pub fn scene_compact_sized(g: &Graph, sizes: &[(f64, f64)], opts: &CompactOption
         pos_of[v] = i;
     }
     let mut labelled_gap = vec![false; run.len().saturating_sub(1)];
+    // Visible edges per hop — a hop with >1 is a parallel bundle, whose
+    // extra U-turn lanes the DP must reserve headroom for.
+    let mut par_at = vec![0usize; run.len().saturating_sub(1)];
     for e in &g.edges {
-        if e.from == e.to || e.label.is_none() {
+        if e.from == e.to || matches!(e.kind, EdgeKind::Invisible) {
             continue;
         }
-        let (a, b) = (pos_of[e.from], pos_of[e.to]);
-        let lo = a.min(b);
-        if lo + 1 == a.max(b) {
-            labelled_gap[lo] = true;
+        let (pa, pb) = (pos_of[e.from], pos_of[e.to]);
+        if pa == usize::MAX || pb == usize::MAX {
+            continue;
+        }
+        let lo = pa.min(pb);
+        if lo + 1 == pa.max(pb) {
+            par_at[lo] += 1;
+            if e.label.is_some() {
+                labelled_gap[lo] = true;
+            }
         }
     }
 
-    let bands = match fold_points(&ext, &labelled_gap, opts.max_extent) {
+    let bands = match fold_points(&ext, &labelled_gap, &par_at, opts.max_extent) {
         Ok(b) => b,
         Err(why) => return skip(base, why),
     };
     if bands.len() <= 1 {
-        return skip(base, FoldSkip::AlreadyFits);
+        return skip(base, FoldSkip::NoBenefit);
     }
     let scene = compose(g, sizes, &run, &pos_of, &bands, horizontal, opts);
     CompactScene {
@@ -238,8 +251,11 @@ fn chain_run(g: &Graph) -> Result<Vec<usize>, FoldSkip> {
     while let Some(v) = cur {
         run.push(v);
         cur = next[v];
+        // Defensive: unreachable — the single-predecessor guard above
+        // means no simple path can lead into a cycle, so this walk
+        // halts in <= n steps. Kept as a belt-and-suspenders bound.
         if run.len() > n {
-            return Err(FoldSkip::NotLinear); // lasso: chain into a cycle
+            return Err(FoldSkip::NotLinear);
         }
     }
     if run.len() != n {
@@ -256,6 +272,7 @@ fn chain_run(g: &Graph) -> Result<Vec<usize>, FoldSkip> {
 fn fold_points(
     ext: &[f64],
     labelled_gap: &[bool],
+    par_at: &[usize],
     max_extent: f64,
 ) -> Result<Vec<(usize, usize)>, FoldSkip> {
     let n = ext.len();
@@ -263,12 +280,23 @@ fn fold_points(
     for i in 0..n {
         prefix[i + 1] = prefix[i] + ext[i];
     }
+    // Flow headroom to reserve for the U-turn at hop `h`: the base
+    // drop plus one lane per EXTRA parallel edge on that hop (the
+    // outermost lane bows `(par-1)*LANE` further — see fold_connector),
+    // so a chain with parallel edges across a fold still fits budget.
+    let turn_res = |h: usize| -> f64 { TURN_PAD + par_at[h].saturating_sub(1) as f64 * LANE };
     // Band of run positions j..=i: node extents + inter-rank gaps +
-    // U-turn headroom for each folded end.
+    // U-turn headroom for each folded end (left fold at hop j-1, right
+    // fold at hop i).
     let band_len = |j: usize, i: usize| -> f64 {
-        let body = prefix[i + 1] - prefix[j] + GAP_L * (i - j) as f64;
-        let turns = (j > 0) as u32 + (i + 1 < n) as u32;
-        body + TURN_PAD * f64::from(turns)
+        let mut len = prefix[i + 1] - prefix[j] + GAP_L * (i - j) as f64;
+        if j > 0 {
+            len += turn_res(j - 1);
+        }
+        if i + 1 < n {
+            len += turn_res(i);
+        }
+        len
     };
     for (i, _) in ext.iter().enumerate() {
         if band_len(i, i) > max_extent {
@@ -282,7 +310,12 @@ fn fold_points(
         for j in (0..i).rev() {
             let len = band_len(j, i - 1);
             if len > max_extent {
-                break; // longer bands only get longer
+                // `continue`, not `break`: band_len is NOT monotonic in
+                // j — widening a band from j=1 to j=0 loses that band's
+                // left-turn reservation, so a larger band can be
+                // cheaper. Scanning all j (O(n^2), n = chain length) is
+                // both correct and cheap.
+                continue;
             }
             let slack = max_extent - len;
             let mut cost = best[j].0 + slack * slack;
@@ -423,7 +456,7 @@ fn compose(
             let gutter = band_of(e.from).min(band_of(e.to));
             let lane = gutter_lane[gutter];
             gutter_lane[gutter] += 1;
-            fold_connector(g, sizes, e, a, b, horizontal, lane, offs[ei], global_top, global_bot)
+            fold_connector(e, a, b, horizontal, lane, offs[ei], global_top, global_bot)
         })
         .collect();
 
@@ -443,10 +476,13 @@ fn compose(
 /// fold side, runs a crossbar through the gutter (staggered per lane),
 /// and enters the next band from the same side. The waypoints feed the
 /// standard curveBasis spline, so the turn renders as a smooth hook.
-#[allow(clippy::too_many_arguments)] // internal: one bundle of fold state
+///
+/// All geometry is flow/breadth-abstracted so it is correct for every
+/// direction: `fl`/`br` project a point onto the flow and breadth
+/// axes, `mk` rebuilds an (x,y) from them, and a connector always
+/// leaves and enters through its nodes' FLOW faces (not the top/bottom
+/// faces, which would be the breadth faces under LR/RL).
 fn fold_connector(
-    g: &Graph,
-    sizes: &[(f64, f64)],
     e: &Edge,
     a: &crate::scene::SceneNode,
     b: &crate::scene::SceneNode,
@@ -474,26 +510,22 @@ fn fold_connector(
     let to_top = fl(a).min(fl(b)) - global_top;
     let to_bot = global_bot - fl(a).max(fl(b));
     let bottom = to_bot <= to_top;
-    let half = |n: &crate::scene::SceneNode| if horizontal { n.w / 2.0 } else { n.h / 2.0 };
+    let half_flow = |n: &crate::scene::SceneNode| if horizontal { n.w / 2.0 } else { n.h / 2.0 };
     let apex = if bottom {
-        fl(a).max(fl(b)) + half(a).max(half(b)) + TURN_DROP + lane as f64 * LANE
+        fl(a).max(fl(b)) + half_flow(a).max(half_flow(b)) + TURN_DROP + lane as f64 * LANE
     } else {
-        fl(a).min(fl(b)) - half(a).max(half(b)) - TURN_DROP - lane as f64 * LANE
+        fl(a).min(fl(b)) - half_flow(a).max(half_flow(b)) - TURN_DROP - lane as f64 * LANE
     };
-    let placed = |n: &crate::scene::SceneNode, i: usize| Placed {
-        b: n.x,
-        l: n.y,
-        bsize: sizes[i].0,
-        lsize: sizes[i].1,
-        layer: 0,
+    // Leave/enter each node through its FLOW face, on the fold side,
+    // at its own breadth (with the parallel-edge offset). Correct for
+    // TD/BT (flow = y → top/bottom face) and LR/RL (flow = x → left/
+    // right face) alike, with no dependence on `anchor`'s y-convention.
+    let exit = |n: &crate::scene::SceneNode| -> (f64, f64) {
+        let s = if bottom { 1.0 } else { -1.0 };
+        mk(fl(n) + s * half_flow(n), br(n) + off)
     };
-    // `anchor`'s bottom flag is along the scene's own y for vertical
-    // flow; for horizontal flow the "outer" side is along x, which
-    // anchor() handles via the target point's position.
-    let pa = placed(a, e.from);
-    let pb = placed(b, e.to);
-    let p0 = anchor(&pa, g.nodes[e.from].shape, mk(apex, br(a)), off, bottom == !horizontal || (horizontal && fl(a) < apex));
-    let p3 = anchor(&pb, g.nodes[e.to].shape, mk(apex, br(b)), off, bottom == !horizontal || (horizontal && fl(b) < apex));
+    let p0 = exit(a);
+    let p3 = exit(b);
     let mut wps = Vec::with_capacity(5);
     wps.push(p0);
     wps.push(mk(apex, br(a)));
@@ -651,6 +683,69 @@ mod tests {
         assert_eq!(r.edges.len(), c.scene.edges.len());
         for (ri, ci) in r.edges.iter().zip(c.scene.edges.iter()).skip(2) {
             assert_eq!(ri.waypoints, ci.waypoints, "untouched edges keep fold turns");
+        }
+    }
+
+    #[test]
+    fn budget_holds_with_parallel_edges_across_a_fold() {
+        // Parallel edges on one hop stack U-turn lanes; the DP must
+        // reserve for them or the folded flow extent blows the budget.
+        let mut src = chain(12);
+        // duplicate the middle hop several times (parallel bundle)
+        for _ in 0..4 {
+            src.push_str("N5 --> N6\n");
+        }
+        let g = parse(&src).unwrap();
+        let budget = 360.0;
+        let c = scene_compact(&g, &CompactOptions::for_extent(budget));
+        assert!(c.skipped.is_none(), "must fold: {:?}", c.skipped);
+        // Flow extent (height, TD) stays within budget + the outer
+        // margins/turn the reservation accounts for.
+        assert!(
+            c.scene.height <= budget + 2.0 * MARGIN + 1.0,
+            "parallel-fold flow extent {} exceeded budget {}",
+            c.scene.height,
+            budget
+        );
+        assert_eq!(c.scene.edges.len(), g.edges.len(), "edges stay 1:1");
+        assert!(!crate::scene::to_svg(&c.scene).contains("NaN"));
+    }
+
+    #[test]
+    fn lr_fold_connectors_leave_the_flow_face_not_the_breadth_face() {
+        // LR: flow axis is x. A fold connector must exit its nodes on
+        // the LEFT/RIGHT (x) face, so the connector's first waypoint
+        // shares the node's y (breadth) and sits beyond its x edge.
+        let src = chain(12).replace("flowchart TD", "flowchart LR");
+        let g = parse(&src).unwrap();
+        let c = scene_compact(&g, &CompactOptions::for_extent(420.0));
+        assert!(c.skipped.is_none(), "LR must fold");
+        let by_id: std::collections::HashMap<&str, &crate::scene::SceneNode> =
+            c.scene.nodes.iter().map(|n| (n.id.as_str(), n)).collect();
+        let folded = c
+            .scene
+            .edges
+            .iter()
+            .filter(|e| e.waypoints.len() >= 4)
+            .collect::<Vec<_>>();
+        assert!(!folded.is_empty(), "expected fold connectors");
+        for e in folded {
+            let a = by_id[e.from.as_str()];
+            let p0 = e.waypoints[0];
+            // Exit point shares the node's y (breadth) within half a px…
+            assert!(
+                (p0.1 - a.y).abs() <= a.h / 2.0 + 0.5,
+                "LR exit left the breadth (y) face: node y={}, exit y={}",
+                a.y,
+                p0.1
+            );
+            // …and sits on the node's x edge, not its centre.
+            assert!(
+                (p0.0 - a.x).abs() >= a.w / 2.0 - 0.5,
+                "LR exit not on the flow (x) face: node x={}, exit x={}",
+                a.x,
+                p0.0
+            );
         }
     }
 }
