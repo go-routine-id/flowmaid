@@ -175,7 +175,9 @@ impl Scene {
                 continue; // never drawn — never picked
             }
             let d = edge_distance(e, x, y);
-            if d <= tol && best.map_or(true, |(_, bd)| d < bd) {
+            // `<=` so a later-drawn edge wins a distance tie, matching
+            // node_at's topmost-wins z-order.
+            if d <= tol && best.map_or(true, |(_, bd)| d <= bd) {
                 best = Some((i, d));
             }
         }
@@ -190,7 +192,12 @@ impl Scene {
         let mut best: Option<(usize, usize)> = None; // (index, depth)
         for (i, c) in self.clusters.iter().enumerate() {
             let inside = x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h;
-            if inside && best.map_or(true, |(_, d)| c.depth >= d) {
+            // Deepest wins; at equal depth prefer the SMALLER (more
+            // specific) box so the pick is deterministic by geometry.
+            let better = best.map_or(true, |(bi, d)| {
+                c.depth > d || (c.depth == d && c.w * c.h < self.clusters[bi].w * self.clusters[bi].h)
+            });
+            if inside && better {
                 best = Some((i, c.depth));
             }
         }
@@ -216,9 +223,12 @@ impl Scene {
             if matches!(e.kind, EdgeKind::Invisible) {
                 continue;
             }
-            if edge_polyline(e).iter().any(|&(px, py)| {
-                px >= rx0 && px <= rx1 && py >= ry0 && py <= ry1
-            }) {
+            // Segment-vs-rect, not vertex-in-rect: an edge that crosses
+            // the marquee between two far-apart samples must still count.
+            if edge_polyline(e)
+                .windows(2)
+                .any(|w| seg_aabb(w[0], w[1], rx0, ry0, rx1, ry1))
+            {
                 out.push(Hit::Edge(i));
             }
         }
@@ -256,10 +266,11 @@ fn node_contains(n: &SceneNode, x: f64, y: f64) -> bool {
     match n.shape {
         // Rhombus: |dx|/hw + |dy|/hh <= 1.
         Shape::Diamond => dx / hw + dy / hh <= 1.0,
-        // Ellipse (circle when hw == hh).
-        Shape::Circle | Shape::DoubleCircle => {
-            let (px, py) = (dx / hw, dy / hh);
-            px * px + py * py <= 1.0
+        // Circle: the renderer draws `<circle r=w/2>` (state
+        // pseudostates too) — a DISC of radius w/2 on both axes, not an
+        // ellipse — so match that exactly for any w/h.
+        Shape::Circle | Shape::DoubleCircle | Shape::StateStart | Shape::StateEnd => {
+            dx * dx + dy * dy <= hw * hw
         }
         // Everything else: bounding rectangle.
         _ => dx <= hw && dy <= hh,
@@ -274,23 +285,94 @@ fn edge_distance(e: &SceneEdge, x: f64, y: f64) -> f64 {
         .fold(f64::INFINITY, f64::min)
 }
 
-/// The polyline an edge is drawn as: its routed waypoints, else a
-/// sampling of the cubic bezier (matches how it renders).
+/// A dense sampling of the curve an edge is actually DRAWN as, so
+/// picking matches the pixels: a routed edge follows the same
+/// curveBasis spline `spline_d` emits (which pulls away from the raw
+/// waypoints), a plain edge follows its single cubic.
 fn edge_polyline(e: &SceneEdge) -> Vec<(f64, f64)> {
     if e.waypoints.len() >= 2 {
-        return e.waypoints.clone();
+        return basis_sample(&e.waypoints);
     }
-    let [p0, c1, c2, p3] = e.bezier;
-    (0..=16)
-        .map(|i| {
-            let t = i as f64 / 16.0;
-            let u = 1.0 - t;
-            (
-                u * u * u * p0.0 + 3.0 * u * u * t * c1.0 + 3.0 * u * t * t * c2.0 + t * t * t * p3.0,
-                u * u * u * p0.1 + 3.0 * u * u * t * c1.1 + 3.0 * u * t * t * c2.1 + t * t * t * p3.1,
-            )
-        })
+    sample_cubic(&e.bezier, 24)
+}
+
+/// Sample a cubic bezier `[p0, c1, c2, p3]` into `steps + 1` points.
+fn sample_cubic(b: &[(f64, f64); 4], steps: usize) -> Vec<(f64, f64)> {
+    (0..=steps)
+        .map(|i| cubic_at(b, i as f64 / steps as f64))
         .collect()
+}
+
+fn cubic_at(b: &[(f64, f64); 4], t: f64) -> (f64, f64) {
+    let u = 1.0 - t;
+    (
+        u * u * u * b[0].0 + 3.0 * u * u * t * b[1].0 + 3.0 * u * t * t * b[2].0 + t * t * t * b[3].0,
+        u * u * u * b[0].1 + 3.0 * u * u * t * b[1].1 + 3.0 * u * t * t * b[2].1 + t * t * t * b[3].1,
+    )
+}
+
+/// Densely sample the same open-uniform B-spline (`curveBasis`) that
+/// [`spline_d`] draws through `pts`, so hit geometry == drawn geometry.
+fn basis_sample(pts: &[(f64, f64)]) -> Vec<(f64, f64)> {
+    let n = pts.len();
+    if n < 3 {
+        return vec![pts[0], pts[n - 1]];
+    }
+    let mut out = vec![pts[0]];
+    // Straight run into the first control point (mirrors spline_d's `L`).
+    let mut cur = ((5.0 * pts[0].0 + pts[1].0) / 6.0, (5.0 * pts[0].1 + pts[1].1) / 6.0);
+    out.push(cur);
+    // One cubic per interior triple, then the closing cubic — identical
+    // control points to spline_d's `bez`.
+    let emit = |out: &mut Vec<(f64, f64)>, cur: &mut (f64, f64), a: (f64, f64), b: (f64, f64), p: (f64, f64)| {
+        let seg = [
+            *cur,
+            ((2.0 * a.0 + b.0) / 3.0, (2.0 * a.1 + b.1) / 3.0),
+            ((a.0 + 2.0 * b.0) / 3.0, (a.1 + 2.0 * b.1) / 3.0),
+            ((a.0 + 4.0 * b.0 + p.0) / 6.0, (a.1 + 4.0 * b.1 + p.1) / 6.0),
+        ];
+        for k in 1..=6 {
+            out.push(cubic_at(&seg, k as f64 / 6.0));
+        }
+        *cur = seg[3];
+    };
+    for i in 2..n {
+        emit(&mut out, &mut cur, pts[i - 2], pts[i - 1], pts[i]);
+    }
+    emit(&mut out, &mut cur, pts[n - 2], pts[n - 1], pts[n - 1]);
+    out.push(pts[n - 1]);
+    out
+}
+
+/// Does segment `a`–`b` intersect the axis-aligned rectangle
+/// `[rx0,rx1] × [ry0,ry1]`? Liang-Barsky clip (true when either
+/// endpoint is inside, too).
+fn seg_aabb(a: (f64, f64), b: (f64, f64), rx0: f64, ry0: f64, rx1: f64, ry1: f64) -> bool {
+    let (dx, dy) = (b.0 - a.0, b.1 - a.1);
+    let p = [-dx, dx, -dy, dy];
+    let q = [a.0 - rx0, rx1 - a.0, a.1 - ry0, ry1 - a.1];
+    let (mut t0, mut t1) = (0.0f64, 1.0f64);
+    for i in 0..4 {
+        if p[i] == 0.0 {
+            if q[i] < 0.0 {
+                return false; // parallel to this edge and outside it
+            }
+        } else {
+            let r = q[i] / p[i];
+            if p[i] < 0.0 {
+                if r > t1 {
+                    return false;
+                }
+                t0 = t0.max(r);
+            } else {
+                if r < t0 {
+                    return false;
+                }
+                t1 = t1.min(r);
+            }
+        }
+    }
+    true
 }
 
 /// Distance from a point to a line segment `a`–`b`.
@@ -1947,6 +2029,62 @@ mod tests {
             );
             assert_eq!(corner, inside_corner, "{id} corner should be outside its shape");
         }
+    }
+
+    #[test]
+    fn hit_geometry_matches_the_drawn_shape_after_review_fixes() {
+        // (review #17) A non-square circle is drawn as a disc of radius
+        // w/2; a point past h/2 but within w/2 must still hit it.
+        let g = parse("flowchart TD\nA((C)) --> B").unwrap();
+        let sizes = vec![(60.0, 40.0), crate::layout::intrinsic_size(&g.nodes[1])];
+        let s = scene_sized(&g, &sizes);
+        let a = &s.nodes[0];
+        assert!(super::node_contains(a, a.x, a.y + 25.0), "disc cap pickable");
+        assert!(!super::node_contains(a, a.x + 29.0, a.y + 29.0), "corner still outside");
+        // (review #17) StateStart/StateEnd draw as circles → corner miss.
+        let crate::model::Document::State(st) =
+            crate::parser::parse_document("stateDiagram-v2\n[*] --> Idle\nIdle --> [*]").unwrap()
+        else {
+            panic!("state diagram");
+        };
+        let ss = scene(&st);
+        let end = ss
+            .nodes
+            .iter()
+            .find(|n| matches!(n.shape, Shape::StateEnd | Shape::StateStart))
+            .unwrap();
+        let (hw, hh) = (end.w / 2.0, end.h / 2.0);
+        assert!(
+            !super::node_contains(end, end.x + hw - 0.3, end.y + hh - 0.3),
+            "pseudostate corner is outside its drawn circle"
+        );
+        // (review #17) A routed edge picks along the DRAWN curveBasis
+        // spline: a point on the sampled curve is within a small tol.
+        let g2 = parse("flowchart TD\nA-->B\nA-->C\nB-->C\nA-->D\nD-->C").unwrap();
+        let s2 = scene(&g2);
+        let routed = s2.edges.iter().position(|e| e.waypoints.len() >= 2);
+        if let Some(ri) = routed {
+            let poly = super::edge_polyline(&s2.edges[ri]);
+            let mid = poly[poly.len() / 2];
+            assert_eq!(s2.edge_at(mid.0, mid.1, 1.0), Some(ri), "curve point picks its edge");
+        }
+    }
+
+    #[test]
+    fn marquee_catches_an_edge_that_crosses_without_a_vertex_inside() {
+        // (review #17) A tall marquee sliver over the middle of a long
+        // A→B edge must select it even though no sampled vertex lands
+        // in the sliver.
+        let g = parse("flowchart TD\nA[Start] --> B[End]").unwrap();
+        let s = scene(&g);
+        let a = &s.nodes[0];
+        let b = &s.nodes[1];
+        let midy = (a.y + b.y) / 2.0;
+        let hits = s.hits_in_rect(a.x - 0.5, midy - 0.5, a.x + 0.5, midy + 0.5);
+        assert!(
+            hits.iter().any(|h| matches!(h, Hit::Edge(_))),
+            "segment-crossing edge selected by a thin marquee"
+        );
     }
 
     #[test]
