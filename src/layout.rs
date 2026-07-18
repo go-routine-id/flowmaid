@@ -69,8 +69,16 @@ const CLUSTER_HEADER: f64 = 26.0;
 /// Line height for multi-line labels (`<br/>` → newline).
 pub const LINE_H: f64 = 17.0;
 
+/// Font size (px) the estimated-width table is calibrated at:
+/// [`text_width`]'s per-character advances are Helvetica values at
+/// this size. To lay the same text out at another size, rescale —
+/// `text_width(s) * size / TEXT_CALIBRATION` — instead of guessing
+/// the table's base size.
+pub const TEXT_CALIBRATION: f64 = 14.0;
+
 /// Estimated rendered width of the WIDEST line in `s` (labels may
-/// be multi-line after `<br/>` normalisation). `<b>`/`<i>` styling
+/// be multi-line after `<br/>` normalisation), in px at
+/// [`TEXT_CALIBRATION`]. `<b>`/`<i>` styling
 /// tags are interpreted, not measured: bold runs count ~6% wider,
 /// the tag characters themselves count zero.
 pub fn text_width(s: &str) -> f64 {
@@ -134,7 +142,8 @@ pub fn line_count(s: &str) -> usize {
     s.split('\n').count().max(1)
 }
 
-/// Width of a single line (Helvetica ~14px) per character class.
+/// Width of a single line (Helvetica at [`TEXT_CALIBRATION`] px)
+/// per character class.
 /// Without real font metrics this stays approximate, but it is far
 /// more accurate than a flat average: capitals ~9.7px, i/l ~3.4px,
 /// m/W ~12-13px, CJK/emoji ~14px.
@@ -791,6 +800,7 @@ fn count_crossings(
 /// the per-node median of the four candidates. Long-edge dummy chains
 /// share a block per alignment, so they come out as straight vertical
 /// runs — the hallmark of dagre's output.
+#[allow(clippy::too_many_arguments)] // internal: one bundle of layered-graph state
 fn coordinates_bk(
     n: usize,
     na: usize,
@@ -998,7 +1008,7 @@ fn horizontal_compaction(
                 let cgap = apath.map_or(0.0, |p| cluster_gap(&p[u], &p[v]));
                 // A wall hugs its members (only pins the band); ordinary
                 // neighbours pay their separation-class halves.
-                let is_wall = border.map_or(false, |b| b[u] != 0 || b[v] != 0);
+                let is_wall = border.is_some_and(|b| b[u] != 0 || b[v] != 0);
                 let base = if is_wall { BORDER_GAP } else { half(u) + half(v) };
                 let sep = absize[u] / 2.0 + base + absize[v] / 2.0 + cgap;
                 // Merge parallel separations by their max.
