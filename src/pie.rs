@@ -178,7 +178,7 @@ fn polar(cx: f64, cy: f64, rad: f64, a: f64) -> (f64, f64) {
 /// Serialise a pie scene to SVG.
 pub fn to_svg(ps: &PieScene) -> String {
     let mut s = String::new();
-    svg_open(&mut s, ps.width, ps.height, 13);
+    svg_open(&mut s, ps.width, ps.height, 13, "Pie chart");
 
     if let Some(t) = &ps.title {
         s.push_str(&format!(

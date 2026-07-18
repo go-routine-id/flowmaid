@@ -43,9 +43,13 @@ pub struct LayoutResult {
     pub edge_paths: Vec<Vec<(f64, f64)>>,
 }
 
-const PAD_X: f64 = 16.0;
-const BASE_H: f64 = 38.0;
-const MIN_W: f64 = 54.0;
+/// Horizontal padding inside a node box, each side (issue #14: public
+/// so embedders measuring text themselves can reproduce node sizes).
+pub const PAD_X: f64 = 16.0;
+/// Base node height for a single-line label.
+pub const BASE_H: f64 = 38.0;
+/// Minimum node width.
+pub const MIN_W: f64 = 54.0;
 // Mermaid's dagre defaults (nodeSpacing / rankSpacing ≈ 50) — labels
 // no longer ride between ranks (they own dummy slots), so the extra
 // breathing room the old 62/84 reserved is dead space now.
@@ -166,8 +170,24 @@ fn line_width(s: &str) -> f64 {
 
 /// Intrinsic node size (width, height) in pixels, based on shape,
 /// the estimated widest-line width, and the number of label lines.
+///
+/// Uses the built-in Helvetica estimate ([`text_width`]). Embedders
+/// whose renderer uses a REAL font should use [`intrinsic_size_with`]
+/// and feed the sizes to `scene::scene_sized` — that is the documented
+/// path for accurate node boxes (issue #14).
 pub fn intrinsic_size(node: &Node) -> (f64, f64) {
-    let tw = text_width(&node.label);
+    intrinsic_size_with(node, text_width)
+}
+
+/// [`intrinsic_size`] with an injectable text measurer: `measure`
+/// receives one raw label LINE (may contain `<b>`/`<i>` tags — strip
+/// or style them via [`spans`]) and returns its rendered width in px
+/// at the diagram's 14px base font ([`TEXT_CALIBRATION`]). Shape
+/// padding, multi-line growth and minimums are applied on top, using
+/// the same public constants ([`PAD_X`], [`BASE_H`], [`MIN_W`],
+/// [`LINE_H`]) the engine uses.
+pub fn intrinsic_size_with(node: &Node, measure: impl Fn(&str) -> f64) -> (f64, f64) {
+    let tw = node.label.split('\n').map(&measure).fold(0.0, f64::max);
     // Height grows with extra label lines beyond the first.
     let extra = (line_count(&node.label) - 1) as f64 * LINE_H;
     let base_h = BASE_H + extra;
@@ -391,12 +411,16 @@ fn layout_core(
     let mut border_meta: Vec<(usize, u8, Vec<usize>)> = Vec::new();
     // cluster id -> (lo, hi) layer span over members — walls cover it,
     // and edge dummies use it to know when they are inside a cluster.
-    let mut cluster_span: std::collections::HashMap<usize, (usize, usize)> =
-        std::collections::HashMap::new();
+    // BTreeMap (not HashMap) BY DESIGN: wall-dummy numbering below
+    // iterates these keys, and node numbering must be deterministic
+    // for byte-identical output (issue #16) — ordered iteration makes
+    // that structural instead of relying on a remembered sort.
+    let mut cluster_span: std::collections::BTreeMap<usize, (usize, usize)> =
+        std::collections::BTreeMap::new();
     if let Some(nc) = node_cluster {
         // cluster id -> (path incl. c, lo layer, hi layer over members)
-        let mut span: std::collections::HashMap<usize, (Vec<usize>, usize, usize)> =
-            std::collections::HashMap::new();
+        let mut span: std::collections::BTreeMap<usize, (Vec<usize>, usize, usize)> =
+            std::collections::BTreeMap::new();
         for v in 0..n {
             let p = &nc[v];
             for i in 0..p.len() {
@@ -424,8 +448,9 @@ fn layout_core(
             }
             alsize[v] += extra * 2.0;
         }
-        let mut cids: Vec<usize> = span.keys().copied().collect();
-        cids.sort_unstable(); // deterministic node numbering
+        // BTreeMap iterates keys in order — wall numbering is
+        // deterministic by construction.
+        let cids: Vec<usize> = span.keys().copied().collect();
         for c in cids {
             let (prefix, lo, hi) = span[&c].clone();
             let (mut prev_bl, mut prev_br): (Option<usize>, Option<usize>) = (None, None);

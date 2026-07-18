@@ -497,7 +497,7 @@ fn bracketed(label: &str) -> String {
 /// Serialise a sequence scene to SVG.
 pub fn to_svg(sc: &SeqScene) -> String {
     let mut s = String::new();
-    svg_open(&mut s, sc.width, sc.height, 13);
+    svg_open(&mut s, sc.width, sc.height, 13, "Sequence diagram");
 
     // Frame borders first (background)…
     for f in &sc.frames {

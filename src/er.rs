@@ -176,7 +176,7 @@ fn row_of(a: &Attr) -> ErRow {
 pub fn to_svg(es: &ErScene) -> String {
     let sc = &es.scene;
     let mut s = String::new();
-    svg_open(&mut s, sc.width, sc.height, 13);
+    svg_open(&mut s, sc.width, sc.height, 13, "Entity-relationship diagram");
 
     // Relationship lines + crow's foot glyphs (under the tables).
     for (e, &(card_from, card_to)) in sc.edges.iter().zip(&es.cards) {

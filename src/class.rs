@@ -189,7 +189,7 @@ fn compartment_h(rows: usize) -> f64 {
 pub fn to_svg(cs: &ClassScene) -> String {
     let sc = &cs.scene;
     let mut s = String::new();
-    svg_open(&mut s, sc.width, sc.height, 13);
+    svg_open(&mut s, sc.width, sc.height, 13, "Class diagram");
 
     // Relationship lines + UML end glyphs (under the boxes).
     for (e, rel) in sc.edges.iter().zip(&cs.rels) {

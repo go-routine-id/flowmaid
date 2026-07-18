@@ -231,7 +231,7 @@ pub fn scene(d: &Journey) -> JourneyScene {
 /// Serialise a [`JourneyScene`] to a standalone SVG document.
 pub fn to_svg(js: &JourneyScene) -> String {
     let mut s = String::new();
-    svg_open(&mut s, js.width, js.height, FONT);
+    svg_open(&mut s, js.width, js.height, FONT, "User journey");
 
     // Section bands.
     for b in &js.sections {

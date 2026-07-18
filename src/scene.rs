@@ -29,8 +29,16 @@ pub(crate) const TEXT_COLOR: &str = "#232840";
 pub(crate) const LABEL_BORDER: &str = "#d5d9ec";
 
 /// Node with final position & size. Centre at (x, y).
+///
+/// Order guarantee: `Scene::nodes[i]` always describes `Graph::nodes[i]`
+/// (index-parallel) — and each node also carries its source `id` so
+/// consumers can correlate geometry robustly without relying on it.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct SceneNode {
+    /// Source node id from the parsed model (`Graph::nodes[i].id`;
+    /// entity/class name for ER and class diagrams).
+    pub id: String,
     pub x: f64,
     pub y: f64,
     pub w: f64,
@@ -42,8 +50,18 @@ pub struct SceneNode {
 }
 
 /// Edge with a final cubic bezier curve.
+///
+/// Order guarantee: the first `Graph::edges.len()` entries of
+/// `Scene::edges` are index-parallel with `Graph::edges`; any
+/// subgraph-touching edges (`Graph::sub_edges`) follow after them.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct SceneEdge {
+    /// Source-endpoint id: the `from` node's id, or the subgraph id
+    /// for a sub-edge anchored on a cluster box.
+    pub from: String,
+    /// Target-endpoint id (node id, or subgraph id for sub-edges).
+    pub to: String,
     /// Bezier points: start, control1, control2, end. This is the
     /// single-curve form used when `waypoints` is empty (adjacent
     /// layers, free-routed edges) and as the fallback everywhere.
@@ -62,7 +80,10 @@ pub struct SceneEdge {
 /// (unlike nodes, which are centre-based) since clusters are drawn
 /// as container rectangles. Ordered outermost-first for painting.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct SceneCluster {
+    /// Source subgraph id from the parsed model.
+    pub id: String,
     pub x: f64,
     pub y: f64,
     pub w: f64,
@@ -72,13 +93,37 @@ pub struct SceneCluster {
     pub depth: usize,
 }
 
+/// Positioned geometry for one diagram, ready to paint or serialise.
+///
+/// The output structs (`Scene`, `SceneNode`, `SceneEdge`,
+/// `SceneCluster`) are `#[non_exhaustive]`: future flowmaid versions
+/// may add fields without a breaking release. Construct an empty scene
+/// with [`Scene::empty`]; field ACCESS and mutation stay ordinary.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct Scene {
+    /// Index-parallel with `Graph::nodes` (see [`SceneNode`]).
     pub nodes: Vec<SceneNode>,
+    /// `Graph::edges` first (index-parallel), then any sub-edges.
     pub edges: Vec<SceneEdge>,
     pub clusters: Vec<SceneCluster>,
     pub width: f64,
     pub height: f64,
+}
+
+impl Scene {
+    /// An empty scene with the given canvas size — the only way to
+    /// construct a `Scene` outside this crate (the structs are
+    /// non-exhaustive), for hosts that need a blank placeholder.
+    pub fn empty(width: f64, height: f64) -> Scene {
+        Scene {
+            nodes: Vec::new(),
+            edges: Vec::new(),
+            clusters: Vec::new(),
+            width,
+            height,
+        }
+    }
 }
 
 /// Automatic layout: run the layout engine, then map all geometry
@@ -248,6 +293,7 @@ fn scene_from_layout(g: &Graph, sizes: &[(f64, f64)], lo: LayoutResult) -> Scene
             let (x, y) = tf((lo.nodes[i].b, lo.nodes[i].l));
             let (w, h) = sizes[i]; // final size is direction-independent
             SceneNode {
+                id: n.id.clone(),
                 x,
                 y,
                 w,
@@ -264,6 +310,8 @@ fn scene_from_layout(g: &Graph, sizes: &[(f64, f64)], lo: LayoutResult) -> Scene
         .iter()
         .zip(abs_edges)
         .map(|(e, (pts, wps, label))| SceneEdge {
+            from: g.nodes[e.from].id.clone(),
+            to: g.nodes[e.to].id.clone(),
             bezier: [tf(pts[0]), tf(pts[1]), tf(pts[2]), tf(pts[3])],
             waypoints: wps.iter().map(|&p| tf(p)).collect(),
             kind: e.kind,
@@ -344,6 +392,7 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
         let mut out: Vec<SceneCluster> = (0..g.subgraphs.len())
             .filter_map(|i| {
                 boxes[i].map(|(x, y, w, h)| SceneCluster {
+                    id: g.subgraphs[i].id.clone(),
                     x,
                     y,
                     w,
@@ -388,6 +437,12 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
                 }),
             }
         };
+        let end_id = |end: End| -> String {
+            match end {
+                End::Node(v) => g.nodes[v].id.clone(),
+                End::Sub(si) => g.subgraphs[si].id.clone(),
+            }
+        };
         for e in &g.sub_edges {
             let (Some((pa, sa)), Some((pb, sb))) = (end_placed(e.from), end_placed(e.to)) else {
                 continue;
@@ -401,6 +456,8 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
                 )
             });
             sc.edges.push(SceneEdge {
+                from: end_id(e.from),
+                to: end_id(e.to),
                 bezier: pts,
                 waypoints: Vec::new(),
                 kind: e.kind,
@@ -508,6 +565,7 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
         .iter()
         .enumerate()
         .map(|(i, n)| SceneNode {
+            id: n.id.clone(),
             x: centers[i].0,
             y: centers[i].1,
             w: sizes[i].0,
@@ -582,6 +640,8 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
             (l.clone(), mid, text_width(l) + 14.0)
         });
         edges.push(SceneEdge {
+            from: g.nodes[e.from].id.clone(),
+            to: g.nodes[e.to].id.clone(),
             bezier: pts,
             waypoints: wps,
             kind: e.kind,
@@ -629,6 +689,12 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
                 }),
             }
         };
+        let end_id = |end: End| -> String {
+            match end {
+                End::Node(v) => g.nodes[v].id.clone(),
+                End::Sub(si) => g.subgraphs[si].id.clone(),
+            }
+        };
         for e in &g.sub_edges {
             let (Some((pa, sa)), Some((pb, sb))) = (end_placed(e.from), end_placed(e.to)) else {
                 continue;
@@ -642,6 +708,8 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
                 )
             });
             edges.push(SceneEdge {
+                from: end_id(e.from),
+                to: end_id(e.to),
                 bezier: pts,
                 waypoints: Vec::new(),
                 kind: e.kind,
@@ -767,6 +835,7 @@ fn route_clusters(g: &Graph, nodes: &[SceneNode]) -> Vec<SceneCluster> {
     let mut out: Vec<SceneCluster> = (0..g.subgraphs.len())
         .filter_map(|i| {
             boxes[i].map(|(x, y, w, h)| SceneCluster {
+                id: g.subgraphs[i].id.clone(),
                 x,
                 y,
                 w,
@@ -828,7 +897,7 @@ pub fn to_svg(sc: &Scene) -> String {
     let t = |p: (f64, f64)| (p.0 + tx, p.1 + ty);
 
     let mut s = String::new();
-    svg_open(&mut s, width, height, 14);
+    svg_open(&mut s, width, height, 14, "Flowchart diagram");
     s.push_str(&format!(
         "<defs><marker id=\"arrow\" viewBox=\"0 0 10 10\" refX=\"8.5\" refY=\"5\" \
          markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\">\
@@ -893,9 +962,15 @@ pub fn to_svg(sc: &Scene) -> String {
                 q[0].0, q[0].1, q[1].0, q[1].1, q[2].0, q[2].1, q[3].0, q[3].1
             )
         };
+        // <title> child = screen-reader / hover description (issue #16).
+        let edge_title = match &e.label {
+            Some((text, ..)) => format!("{} \u{2192} {}: {}", e.from, e.to, plain_text(text)),
+            None => format!("{} \u{2192} {}", e.from, e.to),
+        };
         s.push_str(&format!(
-            "<path d=\"{}\" fill=\"none\" stroke=\"{}\" stroke-width=\"{}\"{}{}/>\n",
-            path_d, EDGE_COLOR, sw, dash, marker
+            "<path d=\"{}\" fill=\"none\" stroke=\"{}\" stroke-width=\"{}\"{}{}>\
+             <title>{}</title></path>\n",
+            path_d, EDGE_COLOR, sw, dash, marker, escape(&edge_title)
         ));
         if let Some((text, m, w)) = &e.label {
             svg_label_box(&mut edge_labels, text, t(*m), *w);
@@ -905,6 +980,9 @@ pub fn to_svg(sc: &Scene) -> String {
     for n in &sc.nodes {
         let (cx, cy) = t((n.x, n.y));
         let (w, h) = (n.w, n.h);
+        // Group per node so the <title> (a11y + hover tooltip) covers
+        // shape AND label together (issue #16).
+        s.push_str(&format!("<g><title>{}</title>\n", escape(&plain_text(&n.label))));
         // Shape theme, overridden by any custom style/classDef colors.
         let ss = crate::style::shape_style(n.shape);
         let style = format!(
@@ -1043,6 +1121,7 @@ pub fn to_svg(sc: &Scene) -> String {
             n.style.color.as_deref().unwrap_or(TEXT_COLOR),
             &n.label,
         );
+        s.push_str("</g>\n");
     }
 
     s.push_str(&edge_labels);
@@ -1420,16 +1499,21 @@ fn spline_d(pts: &[(f64, f64)]) -> String {
     d
 }
 
-/// Opening `<svg>` tag + white background, shared by every SVG writer.
-pub(crate) fn svg_open(s: &mut String, width: f64, height: f64, font_size: u32) {
+/// Opening `<svg>` tag + white background, shared by every SVG
+/// writer. `title` makes the diagram screen-reader friendly (issue
+/// #16): it becomes the root `<title>`, the `aria-label`, and the
+/// element gets `role="img"`.
+pub(crate) fn svg_open(s: &mut String, width: f64, height: f64, font_size: u32, title: &str) {
     s.push_str(&format!(
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{w:.0}\" height=\"{h:.0}\" \
          viewBox=\"0 0 {w:.0} {h:.0}\" font-family=\"Helvetica, Arial, sans-serif\" \
-         font-size=\"{fs}\">\n",
+         font-size=\"{fs}\" role=\"img\" aria-label=\"{t}\">\n",
         w = width,
         h = height,
-        fs = font_size
+        fs = font_size,
+        t = escape(title)
     ));
+    s.push_str(&format!("<title>{}</title>\n", escape(title)));
     s.push_str(&format!(
         "<rect width=\"{:.0}\" height=\"{:.0}\" fill=\"#ffffff\"/>\n",
         width, height
@@ -1489,6 +1573,22 @@ pub(crate) fn svg_text_multiline(s: &mut String, cx: f64, cy: f64, fill: &str, l
         ));
     }
     s.push_str("</text>\n");
+}
+
+/// Label as plain text: lines joined with spaces, `<b>`/`<i>` styling
+/// tags interpreted away — for `<title>`/`aria-label` content where
+/// markup must not leak (issue #16).
+fn plain_text(label: &str) -> String {
+    label
+        .split('\n')
+        .map(|l| {
+            crate::layout::spans(l)
+                .into_iter()
+                .map(|(t, ..)| t)
+                .collect::<String>()
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// Escaped SVG runs for one label line: `<b>`/`<i>` spans become
@@ -1571,6 +1671,70 @@ mod tests {
         // A same-cluster adjacent edge stays a plain curve (no waypoints).
         let g2 = parse("flowchart TD\nsubgraph S\n  A\n  B\nend\nA --> B").unwrap();
         assert!(scene(&g2).edges[0].waypoints.is_empty());
+    }
+
+    #[test]
+    fn svg_is_accessible_and_deterministic() {
+        // Issue #16: role/aria/title on the root, <title> per node and
+        // per edge (plain text, styling tags stripped) …
+        let svg = crate::render_svg(
+            "flowchart TD\nA[\"<b>Start</b> here\"] -->|go| B",
+        )
+        .unwrap();
+        assert!(svg.contains("role=\"img\""));
+        assert!(svg.contains("aria-label=\"Flowchart diagram\""));
+        assert!(svg.contains("<title>Flowchart diagram</title>"));
+        assert!(svg.contains("<title>Start here</title>"), "node title, tags stripped");
+        assert!(svg.contains("<title>A \u{2192} B: go</title>"), "edge title with label");
+        // … and byte-identical output for repeated renders of every
+        // bundled example (same-process guard; cross-process identity
+        // is guaranteed by ordered collections in the layout path).
+        for src in [
+            include_str!("../examples/demo.mmd"),
+            include_str!("../examples/advanced.mmd"),
+            include_str!("../examples/subgraph.mmd"),
+            include_str!("../examples/er.mmd"),
+            include_str!("../examples/class.mmd"),
+            include_str!("../examples/sequence.mmd"),
+            include_str!("../examples/state.mmd"),
+            include_str!("../examples/pie.mmd"),
+        ] {
+            assert_eq!(crate::render_svg(src).unwrap(), crate::render_svg(src).unwrap());
+        }
+    }
+
+    #[test]
+    fn scene_carries_stable_identity_and_stays_index_parallel() {
+        // Issue #13 contract: nodes are index-parallel with the graph
+        // AND carry ids; edges carry from/to ids; sub-edges use the
+        // subgraph id; clusters carry their subgraph id.
+        let g = parse(
+            "flowchart TD\nsubgraph grp [Group]\n  B\nend\nA --> B\nA --> grp",
+        )
+        .unwrap();
+        let s = scene(&g);
+        for (sn, n) in s.nodes.iter().zip(&g.nodes) {
+            assert_eq!(sn.id, n.id, "scene.nodes index-parallel with graph.nodes");
+        }
+        assert_eq!(s.edges[0].from, "A");
+        assert_eq!(s.edges[0].to, "B");
+        let sub = s.edges.last().unwrap();
+        assert_eq!((sub.from.as_str(), sub.to.as_str()), ("A", "grp"));
+        assert_eq!(s.clusters[0].id, "grp");
+        // route() preserves the same identity.
+        let centers: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let r = route(&g, &centers);
+        assert_eq!(r.nodes[0].id, s.nodes[0].id);
+        assert_eq!(r.edges[0].from, "A");
+        // ER / class scenes use the real entity / class names as ids.
+        let crate::model::Document::Er(er) =
+            crate::parser::parse_document("erDiagram\nusers ||--o{ posts : has").unwrap()
+        else {
+            panic!("er document");
+        };
+        let es = crate::er::scene(&er);
+        assert_eq!(es.scene.nodes[0].id, "users");
+        assert_eq!(es.scene.edges[0].to, "posts");
     }
 
     #[test]

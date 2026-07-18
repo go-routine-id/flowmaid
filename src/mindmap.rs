@@ -286,7 +286,7 @@ fn cloud_pts(n: &MindNodeBox) -> Vec<(f64, f64)> {
 /// Serialise a [`MindScene`] to a standalone SVG document.
 pub fn to_svg(ms: &MindScene) -> String {
     let mut s = String::new();
-    svg_open(&mut s, ms.width, ms.height, FONT);
+    svg_open(&mut s, ms.width, ms.height, FONT, "Mind map");
 
     // Connectors behind the nodes.
     for e in &ms.edges {
