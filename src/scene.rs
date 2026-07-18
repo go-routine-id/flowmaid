@@ -111,6 +111,20 @@ pub struct Scene {
     pub height: f64,
 }
 
+/// An element picked out of a [`Scene`] by [`Scene::hit_test`] and
+/// friends. Carries the INDEX into the matching `scene.{nodes,edges,
+/// clusters}` vec — O(1), and `scene.nodes[i].id` recovers the stable
+/// id. Coordinates handed to the pick methods are SCENE-space: a host
+/// converts screen→scene once (`(screen - pan) / zoom`) and passes a
+/// tolerance in scene units (`screen_tol / zoom`), so zoom/pan never
+/// enter the engine.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Hit {
+    Node(usize),
+    Edge(usize),
+    Cluster(usize),
+}
+
 impl Scene {
     /// An empty scene with the given canvas size — the only way to
     /// construct a `Scene` outside this crate (the structs are
@@ -124,6 +138,171 @@ impl Scene {
             height,
         }
     }
+
+    /// The topmost element at scene point `(x, y)`, or `None`. Z-order
+    /// mirrors paint order: a node beats an overlapping edge, which
+    /// beats a cluster box behind them. `tol` (scene units) widens edge
+    /// picking so thin curves are still selectable.
+    pub fn hit_test(&self, x: f64, y: f64, tol: f64) -> Option<Hit> {
+        if let Some(i) = self.node_at(x, y) {
+            return Some(Hit::Node(i));
+        }
+        if let Some(i) = self.edge_at(x, y, tol) {
+            return Some(Hit::Edge(i));
+        }
+        self.cluster_at(x, y).map(Hit::Cluster)
+    }
+
+    /// Index of the topmost node whose shape contains `(x, y)`. Nodes
+    /// are tested back-to-front (later-drawn wins, as painted), and the
+    /// test is shape-precise for diamonds and (double) circles — their
+    /// bounding box would over-select the empty corners — and the
+    /// bounding rectangle for every other shape.
+    pub fn node_at(&self, x: f64, y: f64) -> Option<usize> {
+        self.nodes
+            .iter()
+            .rposition(|n| node_contains(n, x, y))
+    }
+
+    /// Index of the edge closest to `(x, y)` within `tol` scene units,
+    /// or `None`. Distance is measured to the drawn geometry — the
+    /// routed waypoint polyline, or a sampling of the cubic bezier —
+    /// and the NEAREST edge wins so overlapping edges resolve cleanly.
+    pub fn edge_at(&self, x: f64, y: f64, tol: f64) -> Option<usize> {
+        let mut best: Option<(usize, f64)> = None;
+        for (i, e) in self.edges.iter().enumerate() {
+            if matches!(e.kind, EdgeKind::Invisible) {
+                continue; // never drawn — never picked
+            }
+            let d = edge_distance(e, x, y);
+            if d <= tol && best.map_or(true, |(_, bd)| d < bd) {
+                best = Some((i, d));
+            }
+        }
+        best.map(|(i, _)| i)
+    }
+
+    /// Index of the deepest cluster whose box contains `(x, y)`. Nested
+    /// clusters resolve to the innermost (largest `depth`). Clusters
+    /// paint behind nodes and edges, so prefer [`hit_test`] when you
+    /// want proper z-order.
+    pub fn cluster_at(&self, x: f64, y: f64) -> Option<usize> {
+        let mut best: Option<(usize, usize)> = None; // (index, depth)
+        for (i, c) in self.clusters.iter().enumerate() {
+            let inside = x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h;
+            if inside && best.map_or(true, |(_, d)| c.depth >= d) {
+                best = Some((i, c.depth));
+            }
+        }
+        best.map(|(i, _)| i)
+    }
+
+    /// Every element intersecting the (unordered) rectangle — for
+    /// rubber-band / marquee multi-select. Returns nodes, then edges,
+    /// then clusters, each in index order.
+    pub fn hits_in_rect(&self, x0: f64, y0: f64, x1: f64, y1: f64) -> Vec<Hit> {
+        let (rx0, rx1) = (x0.min(x1), x0.max(x1));
+        let (ry0, ry1) = (y0.min(y1), y0.max(y1));
+        let overlaps = |ax0: f64, ay0: f64, ax1: f64, ay1: f64| {
+            ax0 <= rx1 && ax1 >= rx0 && ay0 <= ry1 && ay1 >= ry0
+        };
+        let mut out = Vec::new();
+        for (i, n) in self.nodes.iter().enumerate() {
+            if overlaps(n.x - n.w / 2.0, n.y - n.h / 2.0, n.x + n.w / 2.0, n.y + n.h / 2.0) {
+                out.push(Hit::Node(i));
+            }
+        }
+        for (i, e) in self.edges.iter().enumerate() {
+            if matches!(e.kind, EdgeKind::Invisible) {
+                continue;
+            }
+            if edge_polyline(e).iter().any(|&(px, py)| {
+                px >= rx0 && px <= rx1 && py >= ry0 && py <= ry1
+            }) {
+                out.push(Hit::Edge(i));
+            }
+        }
+        for (i, c) in self.clusters.iter().enumerate() {
+            if overlaps(c.x, c.y, c.x + c.w, c.y + c.h) {
+                out.push(Hit::Cluster(i));
+            }
+        }
+        out
+    }
+
+    /// The node nearest to `(x, y)` and its distance in scene units
+    /// (0 when the point is inside the node's box). For edge-drawing
+    /// snap — "drop near B → connect to B".
+    pub fn nearest_node(&self, x: f64, y: f64) -> Option<(usize, f64)> {
+        self.nodes
+            .iter()
+            .enumerate()
+            .map(|(i, n)| {
+                let dx = (x - n.x).abs() - n.w / 2.0;
+                let dy = (y - n.y).abs() - n.h / 2.0;
+                (i, dx.max(0.0).hypot(dy.max(0.0)))
+            })
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+    }
+}
+
+/// Whether a node's SHAPE (not just its bounding box) contains a point.
+fn node_contains(n: &SceneNode, x: f64, y: f64) -> bool {
+    let (hw, hh) = (n.w / 2.0, n.h / 2.0);
+    if hw <= 0.0 || hh <= 0.0 {
+        return false;
+    }
+    let (dx, dy) = ((x - n.x).abs(), (y - n.y).abs());
+    match n.shape {
+        // Rhombus: |dx|/hw + |dy|/hh <= 1.
+        Shape::Diamond => dx / hw + dy / hh <= 1.0,
+        // Ellipse (circle when hw == hh).
+        Shape::Circle | Shape::DoubleCircle => {
+            let (px, py) = (dx / hw, dy / hh);
+            px * px + py * py <= 1.0
+        }
+        // Everything else: bounding rectangle.
+        _ => dx <= hw && dy <= hh,
+    }
+}
+
+/// Distance from `(x, y)` to an edge's drawn geometry.
+fn edge_distance(e: &SceneEdge, x: f64, y: f64) -> f64 {
+    let pts = edge_polyline(e);
+    pts.windows(2)
+        .map(|w| point_seg_dist(x, y, w[0], w[1]))
+        .fold(f64::INFINITY, f64::min)
+}
+
+/// The polyline an edge is drawn as: its routed waypoints, else a
+/// sampling of the cubic bezier (matches how it renders).
+fn edge_polyline(e: &SceneEdge) -> Vec<(f64, f64)> {
+    if e.waypoints.len() >= 2 {
+        return e.waypoints.clone();
+    }
+    let [p0, c1, c2, p3] = e.bezier;
+    (0..=16)
+        .map(|i| {
+            let t = i as f64 / 16.0;
+            let u = 1.0 - t;
+            (
+                u * u * u * p0.0 + 3.0 * u * u * t * c1.0 + 3.0 * u * t * t * c2.0 + t * t * t * p3.0,
+                u * u * u * p0.1 + 3.0 * u * u * t * c1.1 + 3.0 * u * t * t * c2.1 + t * t * t * p3.1,
+            )
+        })
+        .collect()
+}
+
+/// Distance from a point to a line segment `a`–`b`.
+fn point_seg_dist(px: f64, py: f64, a: (f64, f64), b: (f64, f64)) -> f64 {
+    let (abx, aby) = (b.0 - a.0, b.1 - a.1);
+    let len2 = abx * abx + aby * aby;
+    let t = if len2 <= f64::EPSILON {
+        0.0
+    } else {
+        (((px - a.0) * abx + (py - a.1) * aby) / len2).clamp(0.0, 1.0)
+    };
+    ((a.0 + t * abx) - px).hypot((a.1 + t * aby) - py)
 }
 
 /// Automatic layout: run the layout engine, then map all geometry
@@ -1710,6 +1889,90 @@ pub(crate) fn escape(s: &str) -> String {
 mod tests {
     use super::*;
     use crate::parser::parse;
+
+    #[test]
+    fn hit_test_picks_nodes_edges_clusters_with_z_order() {
+        // A diamond B in the middle, a subgraph around C, an edge A→B.
+        let g = parse(
+            "flowchart TD\nA[Start] --> B{Decide}\nsubgraph grp [Group]\n  C[Leaf]\nend\nB --> C",
+        )
+        .unwrap();
+        let s = scene(&g);
+        let node = |id: &str| s.nodes.iter().position(|n| n.id == id).unwrap();
+        // A point at a node centre picks that node.
+        let a = &s.nodes[node("A")];
+        assert_eq!(s.hit_test(a.x, a.y, 4.0), Some(Hit::Node(node("A"))));
+        assert_eq!(s.node_at(a.x, a.y), Some(node("A")));
+        // A miss returns nothing.
+        assert_eq!(s.hit_test(a.x, a.y - a.h, 0.5), None);
+        // The A→B edge midpoint picks an edge (not a node/cluster).
+        let (ai, bi) = (node("A"), node("B"));
+        let e = s
+            .edges
+            .iter()
+            .position(|e| e.from == "A" && e.to == "B")
+            .unwrap();
+        let mid = cubic_mid(
+            s.edges[e].bezier[0],
+            s.edges[e].bezier[1],
+            s.edges[e].bezier[2],
+            s.edges[e].bezier[3],
+        );
+        assert_eq!(s.edge_at(mid.0, mid.1, 6.0), Some(e));
+        assert!(matches!(s.hit_test(mid.0, mid.1, 6.0), Some(Hit::Edge(_))));
+        let _ = (ai, bi);
+        // Inside the Group box but not on a node → the cluster.
+        let c = &s.nodes[node("C")];
+        let cl = s.clusters.iter().position(|c| c.title == "Group").unwrap();
+        let corner = (s.clusters[cl].x + 3.0, s.clusters[cl].y + 3.0);
+        assert_eq!(s.cluster_at(corner.0, corner.1), Some(cl));
+        assert_eq!(s.hit_test(corner.0, corner.1, 2.0), Some(Hit::Cluster(cl)));
+        // But a point on node C inside the cluster picks the NODE (z-order).
+        assert_eq!(s.hit_test(c.x, c.y, 2.0), Some(Hit::Node(node("C"))));
+    }
+
+    #[test]
+    fn node_hit_is_shape_precise_for_diamonds_and_circles() {
+        let g = parse("flowchart TD\nX{Diamond} --> Y((Circle))").unwrap();
+        let s = scene(&g);
+        for (id, inside_corner) in [("X", false), ("Y", false)] {
+            let n = &s.nodes[s.nodes.iter().position(|n| n.id == id).unwrap()];
+            // Dead centre: inside.
+            assert!(super::node_contains(n, n.x, n.y));
+            // The bounding-box corner is OUTSIDE a diamond / circle.
+            let corner = super::node_contains(
+                n,
+                n.x + n.w / 2.0 - 0.5,
+                n.y + n.h / 2.0 - 0.5,
+            );
+            assert_eq!(corner, inside_corner, "{id} corner should be outside its shape");
+        }
+    }
+
+    #[test]
+    fn marquee_and_nearest_and_invisible_edges() {
+        let g = parse("flowchart LR\nA --> B\nB ~~~ C\nC --> D").unwrap();
+        let s = scene(&g);
+        // A marquee over the whole canvas grabs every node + visible edge,
+        // but NOT the invisible B~~~C link.
+        let all = s.hits_in_rect(-1e6, -1e6, 1e6, 1e6);
+        let node_hits = all.iter().filter(|h| matches!(h, Hit::Node(_))).count();
+        let edge_hits = all.iter().filter(|h| matches!(h, Hit::Edge(_))).count();
+        assert_eq!(node_hits, 4);
+        assert_eq!(edge_hits, 2, "invisible link is not selectable");
+        // nearest_node: a point on top of A returns A at distance 0.
+        let a = &s.nodes[s.nodes.iter().position(|n| n.id == "A").unwrap()];
+        assert_eq!(s.nearest_node(a.x, a.y), Some((0, 0.0)));
+        // A far-away point still finds the closest node with a positive gap.
+        let (idx, d) = s.nearest_node(-500.0, a.y).unwrap();
+        assert!(d > 0.0 && idx < s.nodes.len());
+        // Invisible links are never picked directly either.
+        let inv = s.edges.iter().position(|e| matches!(e.kind, EdgeKind::Invisible));
+        if let Some(iv) = inv {
+            let m = s.edges[iv].bezier[1];
+            assert_ne!(s.edge_at(m.0, m.1, 100.0), Some(iv));
+        }
+    }
 
     #[test]
     fn scene_and_render_are_consistent() {
