@@ -2,7 +2,7 @@
 //!
 //! Pipeline: .mmd text  ->  parser  ->  layout  ->  SVG.
 
-use flowmaid::{parser, render, Document};
+use flowmaid::{fold, parser, render, Document};
 use std::env;
 use std::fs;
 use std::io::{self, IsTerminal, Read};
@@ -16,6 +16,8 @@ fn print_help() {
          \x20 cat diagram.mmd | flowmaid > out.svg\n\n\
          Options:\n\
          \x20 -o, --output <file>   write SVG to a file (default: stdout)\n\
+         \x20 --compact <px>        fold a long linear chain to fit <px> along\n\
+         \x20                       the flow axis (serpentine layout)\n\
          \x20 -h, --help            show this help\n\n\
          Syntax example:\n\
          \x20 flowchart TD\n\
@@ -29,6 +31,7 @@ fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
     let mut input: Option<String> = None;
     let mut output: Option<String> = None;
+    let mut compact: Option<f64> = None;
 
     let mut i = 0;
     while i < args.len() {
@@ -39,6 +42,16 @@ fn main() {
                     Some(p) => output = Some(p.clone()),
                     None => {
                         eprintln!("option -o requires a file name");
+                        process::exit(2);
+                    }
+                }
+            }
+            "--compact" => {
+                i += 1;
+                match args.get(i).and_then(|v| v.parse::<f64>().ok()) {
+                    Some(px) if px > 0.0 => compact = Some(px),
+                    _ => {
+                        eprintln!("option --compact requires a pixel budget, e.g. --compact 600");
                         process::exit(2);
                     }
                 }
@@ -123,7 +136,10 @@ fn main() {
             eprintln!("empty diagram: no journey tasks");
             process::exit(1);
         }
-        Document::Flowchart(g) | Document::State(g) => render::render(g),
+        Document::Flowchart(g) | Document::State(g) => match compact {
+            Some(px) => fold::render_compact(g, &fold::CompactOptions::for_extent(px)),
+            None => render::render(g),
+        },
         Document::Er(d) => render::render_er(d),
         Document::Class(d) => render::render_class(d),
         Document::Sequence(d) => render::render_seq(d),

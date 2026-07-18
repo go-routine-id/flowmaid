@@ -54,7 +54,7 @@ pub const MIN_W: f64 = 54.0;
 // no longer ride between ranks (they own dummy slots), so the extra
 // breathing room the old 62/84 reserved is dead space now.
 const GAP_B: f64 = 50.0; // gap between REAL nodes within a layer
-const GAP_L: f64 = 60.0; // gap between layers
+pub(crate) const GAP_L: f64 = 60.0; // gap between layers (fold DP glue too)
 const MARGIN: f64 = 28.0;
 /// Gap contribution of an edge DUMMY within a layer (dagre's
 /// `edgesep`): parallel long edges bundle into tight lanes instead of

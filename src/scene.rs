@@ -15,7 +15,7 @@ use crate::layout::{intrinsic_size, layout_clustered, layout_sized, text_width, 
 use crate::model::{Direction, EdgeKind, End, Graph, NodeStyle, Shape};
 use std::collections::HashMap;
 
-const MARGIN: f64 = 28.0;
+pub(crate) const MARGIN: f64 = 28.0;
 /// Gap between parallel edges (connecting the same node pair).
 const PARALLEL_GAP: f64 = 16.0;
 
@@ -506,7 +506,41 @@ fn node_cluster_paths(g: &Graph) -> Vec<Vec<usize>> {
 }
 
 /// Translate every node, edge and cluster box in a scene by `(dx, dy)`.
-fn shift_scene(sc: &mut Scene, dx: f64, dy: f64) {
+/// Mirror a scene along its FLOW axis (`horizontal=false` flips y in
+/// `[0, extent]`, `true` flips x) — used by the serpentine fold to make
+/// odd bands run backwards. Reflection is an isometry, so every curve,
+/// waypoint and label the pipeline produced stays exactly as valid.
+pub(crate) fn flip_scene(sc: &mut Scene, extent: f64, horizontal: bool) {
+    let f = |p: (f64, f64)| -> (f64, f64) {
+        if horizontal { (extent - p.0, p.1) } else { (p.0, extent - p.1) }
+    };
+    for n in &mut sc.nodes {
+        let (x, y) = f((n.x, n.y));
+        n.x = x;
+        n.y = y;
+    }
+    for e in &mut sc.edges {
+        for p in e.bezier.iter_mut() {
+            *p = f(*p);
+        }
+        for p in e.waypoints.iter_mut() {
+            *p = f(*p);
+        }
+        if let Some((_, m, _)) = &mut e.label {
+            *m = f(*m);
+        }
+    }
+    for c in &mut sc.clusters {
+        // Boxes are top-left anchored: re-anchor after mirroring.
+        if horizontal {
+            c.x = extent - c.x - c.w;
+        } else {
+            c.y = extent - c.y - c.h;
+        }
+    }
+}
+
+pub(crate) fn shift_scene(sc: &mut Scene, dx: f64, dy: f64) {
     for n in &mut sc.nodes {
         n.x += dx;
         n.y += dy;
@@ -1135,9 +1169,9 @@ pub fn to_svg(sc: &Scene) -> String {
 // ---------------------------------------------------------------
 
 /// Simple bounding box (minx, maxx, miny, maxy).
-struct Bbox(f64, f64, f64, f64);
+pub(crate) struct Bbox(pub f64, pub f64, pub f64, pub f64);
 impl Bbox {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Bbox(
             f64::INFINITY,
             f64::NEG_INFINITY,
@@ -1145,13 +1179,13 @@ impl Bbox {
             f64::NEG_INFINITY,
         )
     }
-    fn add(&mut self, x: f64, y: f64) {
+    pub(crate) fn add(&mut self, x: f64, y: f64) {
         self.0 = self.0.min(x);
         self.1 = self.1.max(x);
         self.2 = self.2.min(y);
         self.3 = self.3.max(y);
     }
-    fn finish(&self) -> (f64, f64, f64, f64) {
+    pub(crate) fn finish(&self) -> (f64, f64, f64, f64) {
         if self.0.is_finite() {
             (self.0, self.1, self.2, self.3)
         } else {
@@ -1160,7 +1194,7 @@ impl Bbox {
     }
 }
 
-fn grow_scene(bb: &mut Bbox, nodes: &[SceneNode], edges: &[SceneEdge], clusters: &[SceneCluster]) {
+pub(crate) fn grow_scene(bb: &mut Bbox, nodes: &[SceneNode], edges: &[SceneEdge], clusters: &[SceneCluster]) {
     for c in clusters {
         bb.add(c.x, c.y);
         bb.add(c.x + c.w, c.y + c.h);
@@ -1195,7 +1229,7 @@ fn pair(a: usize, b: usize) -> (usize, usize) {
 }
 
 /// Per-edge offsets so parallel edges (same node pair) separate.
-fn parallel_offsets(g: &Graph) -> Vec<f64> {
+pub(crate) fn parallel_offsets(g: &Graph) -> Vec<f64> {
     let mut count: HashMap<(usize, usize), usize> = HashMap::new();
     for e in &g.edges {
         *count.entry(pair(e.from, e.to)).or_insert(0) += 1;
@@ -1218,7 +1252,7 @@ fn parallel_offsets(g: &Graph) -> Vec<f64> {
 /// stadiums are constrained to their flat section so anchors don't
 /// float on the rounded caps. Circles/diamonds use exact border
 /// intersection.
-fn anchor(p: &Placed, shape: Shape, other: (f64, f64), off: f64, bottom: bool) -> (f64, f64) {
+pub(crate) fn anchor(p: &Placed, shape: Shape, other: (f64, f64), off: f64, bottom: bool) -> (f64, f64) {
     match shape {
         Shape::Diamond
         | Shape::Circle

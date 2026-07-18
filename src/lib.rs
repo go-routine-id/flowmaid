@@ -26,6 +26,7 @@
 
 pub mod class;
 pub mod er;
+pub mod fold;
 pub mod journey;
 pub mod layout;
 pub mod mindmap;
