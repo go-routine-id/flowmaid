@@ -426,11 +426,11 @@ fn compose(
     let flow = |p: &crate::scene::SceneNode| if horizontal { p.x } else { p.y };
     let global_top = nodes
         .iter()
-        .map(|p| flow(p))
+        .map(&flow)
         .fold(f64::INFINITY, f64::min);
     let global_bot = nodes
         .iter()
-        .map(|p| flow(p))
+        .map(&flow)
         .fold(f64::NEG_INFINITY, f64::max);
     let edges: Vec<SceneEdge> = g
         .edges
@@ -482,6 +482,7 @@ fn compose(
 /// axes, `mk` rebuilds an (x,y) from them, and a connector always
 /// leaves and enters through its nodes' FLOW faces (not the top/bottom
 /// faces, which would be the breadth faces under LR/RL).
+#[allow(clippy::too_many_arguments)] // internal: one bundle of fold state
 fn fold_connector(
     e: &Edge,
     a: &crate::scene::SceneNode,
@@ -492,12 +493,13 @@ fn fold_connector(
     global_top: f64,
     global_bot: f64,
 ) -> SceneEdge {
-    let (fl, br): (fn(&crate::scene::SceneNode) -> f64, fn(&crate::scene::SceneNode) -> f64) =
-        if horizontal {
-            (|n| n.x, |n| n.y)
-        } else {
-            (|n| n.y, |n| n.x)
-        };
+    // Project a node onto the flow / breadth axes for this direction.
+    type Axis = fn(&crate::scene::SceneNode) -> f64;
+    let (fl, br): (Axis, Axis) = if horizontal {
+        (|n| n.x, |n| n.y)
+    } else {
+        (|n| n.y, |n| n.x)
+    };
     let mk = |flow: f64, breadth: f64| -> (f64, f64) {
         if horizontal {
             (flow, breadth)
