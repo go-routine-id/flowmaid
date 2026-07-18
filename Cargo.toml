@@ -1,6 +1,6 @@
 [package]
 name = "flowmaid"
-version = "0.17.3"
+version = "0.18.0"
 edition = "2021"
 rust-version = "1.75"
 description = "Mermaid-like diagram engine in pure std Rust (flowcharts, ER, UML class, sequence, pie, state, mindmap & user-journey diagrams): hand-written parser, Sugiyama-style layout, SVG renderer, and an interactive scene API for drag-and-drop apps. Zero dependencies."
