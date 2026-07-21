@@ -115,17 +115,31 @@ pub fn spans(line: &str) -> Vec<(String, bool, bool)> {
     let mut i = 0;
     while i < chars.len() {
         if chars[i] == '$' && i + 1 < chars.len() && chars[i + 1] == '$' {
-            // Find the closing `$$` after a non-empty body.
+            // Find the closing `$$` after a non-empty body. KaTeX
+            // convention: the fences hug their content — a body
+            // that starts or ends with whitespace (`fee $$ plus $$
+            // tax` prose), starts with yet another `$`, or carries
+            // a style tag stays literal text, so pre-math diagrams
+            // keep rendering exactly as before.
             let close = (i + 4..chars.len())
                 .find(|&k| chars[k - 1] == '$' && chars[k] == '$')
                 .map(|k| k - 1);
             if let Some(k) = close {
-                if !cur.is_empty() {
-                    out.push((std::mem::take(&mut cur), bold, italic));
+                let body = &chars[i + 2..k];
+                let hugs = body
+                    .first()
+                    .zip(body.last())
+                    .is_some_and(|(a, b)| {
+                        *a != '$' && !a.is_whitespace() && !b.is_whitespace()
+                    });
+                if hugs && !body.contains(&'<') {
+                    if !cur.is_empty() {
+                        out.push((std::mem::take(&mut cur), bold, italic));
+                    }
+                    out.push((body.iter().collect(), bold, true));
+                    i = k + 2;
+                    continue;
                 }
-                out.push((chars[i + 2..k].iter().collect(), bold, true));
-                i = k + 2;
-                continue;
             }
         }
         if chars[i] == '<' {
@@ -1318,6 +1332,25 @@ mod tests {
         assert_eq!(spans("$$ 100"), vec![("$$ 100".into(), false, false)]);
         assert_eq!(spans("$$$$"), vec![("$$$$".into(), false, false)]);
         assert_eq!(spans("a $5 b $7"), vec![("a $5 b $7".into(), false, false)]);
+        // Fences must HUG their body (KaTeX convention) — prose with
+        // stray double-dollars keeps rendering as it did pre-math.
+        assert_eq!(
+            spans("fee $$ plus $$ tax"),
+            vec![("fee $$ plus $$ tax".into(), false, false)]
+        );
+        // A style tag inside a would-be body keeps the dollars
+        // literal, so the tag is still interpreted and bold can't
+        // get stuck on past its `</b>`.
+        assert_eq!(
+            spans("<b>x $$a</b>$$ y"),
+            vec![("x $$a".into(), true, false), ("$$ y".into(), false, false)]
+        );
+        // Odd runs: the leading dollars stay literal, the real
+        // hugging pair still becomes math.
+        assert_eq!(
+            spans("$$$$$a$$"),
+            vec![("$$$".into(), false, false), ("a".into(), false, true)]
+        );
         // The fences don't count toward measured width.
         assert!(text_width("$$xy$$") < text_width("$$xy$$ ") + 1.0);
         assert_eq!(text_width("$$xy$$"), text_width("<i>xy</i>"));

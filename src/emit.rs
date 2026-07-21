@@ -10,10 +10,12 @@
 //! mutate → `to_mermaid`), not a source-code formatter.
 //!
 //! Characters mermaid's grammar reserves (`"` anywhere, `|` in edge
-//! labels, a `#` that would read as an entity) are written as
-//! mermaid entity codes (`#quot;`, `#124;`, `#35;`) — valid standard
-//! mermaid, decoded back by the parser, so those labels round-trip
-//! **losslessly**. The honest limits that remain are mermaid's own:
+//! labels, `<`, a leading markdown backtick, and any `#` that would
+//! read as an entity — mermaid.js decodes the whole `#\w+;` family)
+//! are written as mermaid entity codes (`#quot;`, `#124;`, `#60;`,
+//! `#96;`, `#35;`) — valid standard mermaid, decoded back by the
+//! parser, so those labels round-trip **losslessly**. The honest
+//! limits that remain are mermaid's own:
 //!
 //! - Labels round-trip modulo the parser's normalization: outer
 //!   whitespace is trimmed, `<br/>` becomes `\n` (we emit `\n` back
@@ -32,7 +34,12 @@
 //!   it produces obey them; debug builds assert it).
 //! - stateDiagram-only shapes (`StateStart`, `StateEnd`, `ForkBar`)
 //!   have no flowchart syntax; they degrade to a circle / rect.
-//! - A non-finite `stroke_width` is dropped.
+//! - A non-finite `stroke_width` is dropped, as is any style value
+//!   with a depth-0 comma or unbalanced parens (a `style` line
+//!   cannot carry them — mermaid's grammar splits on commas).
+//!   CSS function values (`rgb(255,0,0)`) DO survive flowmaid's
+//!   round-trip, but note mermaid.js's own style parser rejects
+//!   parens — hex colors are the portable choice.
 
 use crate::model::{Direction, EdgeKind, End, Graph, NodeStyle, Shape};
 
@@ -119,9 +126,30 @@ fn check_preconditions(g: &Graph) {
             n.id
         );
     }
+    for e in &g.edges {
+        debug_assert!(
+            e.from < g.nodes.len() && e.to < g.nodes.len(),
+            "to_mermaid: edge endpoint index out of bounds ({}→{}, {} nodes)",
+            e.from,
+            e.to,
+            g.nodes.len()
+        );
+    }
     let mut seen = std::collections::HashSet::new();
     for s in &g.subgraphs {
+        debug_assert!(
+            s.parent.map_or(true, |p| p < g.subgraphs.len()),
+            "to_mermaid: subgraph {:?} has an out-of-bounds parent index",
+            s.id
+        );
         for &m in &s.nodes {
+            debug_assert!(
+                m < g.nodes.len(),
+                "to_mermaid: subgraph {:?} member index {} out of bounds ({} nodes)",
+                s.id,
+                m,
+                g.nodes.len()
+            );
             debug_assert!(
                 seen.insert(m),
                 "to_mermaid: node {:?} is a direct member of two subgraphs — unrepresentable",
@@ -152,24 +180,29 @@ fn is_reserved(id: &str) -> bool {
     RESERVED.iter().any(|k| k.eq_ignore_ascii_case(id))
 }
 
-/// Escape a label for mermaid: `#` that would itself read as an
-/// entity becomes `#35;`, then `"` (and, where the grammar needs
-/// it, extra characters like `|`) become entities. The parser's
-/// `decode_entities` is the exact inverse.
+/// Escape a label for mermaid: any `#` that could read as an entity
+/// (mermaid.js decodes the whole `#\w+;` family — `#amp;`, `#nbsp;`,
+/// `#65;` — so all of it must be defused) becomes `#35;`; `<` rides
+/// as `#60;` so literal `<br/>`-looking text survives the parser's
+/// break folding; then `"` (and, where the grammar needs it, extra
+/// characters like `|`) become entities. The parser's
+/// `decode_entities` is the exact inverse of everything emitted.
 fn encode(label: &str, extra: &[char]) -> String {
     let mut out = String::with_capacity(label.len());
     let mut rest = label;
     while let Some(h) = rest.find('#') {
         out.push_str(&rest[..h]);
         let tail = &rest[h + 1..];
-        let digits = tail.chars().take_while(|c| c.is_ascii_digit()).count();
-        let is_entity =
-            tail.starts_with("quot;") || (digits > 0 && tail[digits..].starts_with(';'));
+        let word = tail
+            .chars()
+            .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+            .count();
+        let is_entity = word > 0 && tail[word..].starts_with(';');
         out.push_str(if is_entity { "#35;" } else { "#" });
         rest = tail;
     }
     out.push_str(rest);
-    let mut out = out.replace('"', "#quot;");
+    let mut out = out.replace('<', "#60;").replace('"', "#quot;");
     for &c in extra {
         out = out.replace(c, &format!("#{};", c as u32));
     }
@@ -230,20 +263,30 @@ fn shape_delims(s: Shape) -> (&'static str, &'static str) {
 
 /// A label as written between shape delimiters — always the quoted
 /// form (quotes protect brackets, pipes, edge-operator lookalikes),
-/// with `"`/entity-`#` escaped as entities so the quoted form can
-/// hold ANY text. Newlines become `<br/>`; an empty label becomes a
-/// single space (mermaid.js rejects `[""]`; the parser trims it
-/// back to empty).
+/// with `"`/`<`/entity-`#` escaped as entities so the quoted form
+/// can hold ANY text. Escaping runs FIRST so a literal `<br/>` in
+/// the text is defused (`#60;br/>`), and only then do real newlines
+/// become genuine `<br/>` tags. An empty label becomes a single
+/// space (mermaid.js rejects `[""]`; the parser trims it back to
+/// empty). A label that both starts and ends with a backtick would
+/// lex as a mermaid markdown string — the leading one rides as
+/// `#96;`.
 fn label_text(label: &str) -> String {
     if label.trim().is_empty() {
         return "\" \"".to_string();
     }
-    format!("\"{}\"", encode(&label.replace('\n', "<br/>"), &[]))
+    let mut enc = encode(label, &[]).replace('\n', "<br/>");
+    if enc.starts_with('`') && enc.ends_with('`') {
+        enc = format!("#96;{}", &enc[1..]);
+    }
+    format!("\"{}\"", enc)
 }
 
-/// `-->` / `-.->` / `==>` / … plus the `|label|` slot. Edge labels
-/// are single-line by grammar (newlines flatten to spaces) and `|`
-/// is the slot delimiter, so it rides as `#124;`. An empty or
+/// `-->` / `-.->` / `==>` / … plus the `|label|` slot. The label
+/// rides QUOTED inside the pipes — mermaid.js hard-rejects raw
+/// brackets in an unquoted `|…|` slot — with `|` itself as `#124;`
+/// (quotes don't protect the slot delimiter). Edge labels are
+/// single-line by grammar (newlines flatten to spaces). An empty or
 /// whitespace-only label normalizes away to no label.
 fn push_edge_op(out: &mut String, kind: EdgeKind, label: Option<&str>) {
     let op = match kind {
@@ -259,9 +302,9 @@ fn push_edge_op(out: &mut String, kind: EdgeKind, label: Option<&str>) {
     out.push_str(op);
     if let Some(l) = label {
         if !l.trim().is_empty() {
-            out.push('|');
-            out.push_str(&encode(&l.replace('\n', " "), &['|']));
-            out.push('|');
+            out.push_str("|\"");
+            out.push_str(&encode(l, &['|']).replace('\n', " "));
+            out.push_str("\"|");
         }
     }
     out.push(' ');
@@ -283,9 +326,16 @@ fn emit_subgraph(g: &Graph, si: usize, depth: usize, visited: &mut [bool], out: 
     out.push_str("subgraph ");
     out.push_str(&s.id);
     if s.title != s.id {
-        out.push('[');
-        out.push_str(&label_text(&s.title.replace('\n', " ")));
-        out.push(']');
+        if s.title.trim().is_empty() {
+            // `[""]` reads back as an empty title; label_text's
+            // `" "` placeholder would come back as a real space
+            // (the title path trims before quote-stripping).
+            out.push_str("[\"\"]");
+        } else {
+            out.push('[');
+            out.push_str(&label_text(&s.title.replace('\n', " ")));
+            out.push(']');
+        }
     }
     out.push('\n');
     if let Some(d) = s.direction {
@@ -315,16 +365,42 @@ fn emit_subgraph(g: &Graph, si: usize, depth: usize, visited: &mut [bool], out: 
     out.push_str("end\n");
 }
 
+/// True when a style value can survive a `style` line: `parse_props`
+/// splits on depth-0 commas and rejects unbalanced parens, so a
+/// value violating either can't be written back (mermaid's own
+/// grammar has the same limit). Such values are dropped — the
+/// documented degrade — rather than corrupting neighbours.
+fn style_value_ok(v: &str) -> bool {
+    let mut depth = 0i32;
+    for c in v.chars() {
+        match c {
+            '(' => depth += 1,
+            ')' => depth -= 1,
+            ',' if depth == 0 => return false,
+            _ => {}
+        }
+        if depth < 0 {
+            return false;
+        }
+    }
+    depth == 0
+}
+
 /// `fill:…,stroke:…,stroke-width:…px,color:…` for the set fields,
 /// in that fixed order; `None` when the style is all-default. A
-/// non-finite stroke-width is dropped (nothing sane to write).
+/// non-finite stroke-width and any comma/paren-broken value are
+/// dropped (nothing sane to write).
 fn style_props(st: &NodeStyle) -> Option<String> {
     let mut parts: Vec<String> = Vec::new();
     if let Some(f) = &st.fill {
-        parts.push(format!("fill:{}", f));
+        if style_value_ok(f) {
+            parts.push(format!("fill:{}", f));
+        }
     }
     if let Some(s) = &st.stroke {
-        parts.push(format!("stroke:{}", s));
+        if style_value_ok(s) {
+            parts.push(format!("stroke:{}", s));
+        }
     }
     if let Some(w) = st.stroke_width {
         if w.is_finite() {
@@ -334,7 +410,9 @@ fn style_props(st: &NodeStyle) -> Option<String> {
         }
     }
     if let Some(c) = &st.color {
-        parts.push(format!("color:{}", c));
+        if style_value_ok(c) {
+            parts.push(format!("color:{}", c));
+        }
     }
     if parts.is_empty() {
         None
@@ -610,6 +688,8 @@ mod tests {
             "plain", "with space", "a[b]c", "p|q", "()", "{}", "-->", "==>", "x\ny",
             "he said \"hi\"", "\"wrapped\"", "says \"hi\" :)", "see \"n\" [1]", "#f00",
             "#quot; raw", "#65;", "subgraph", "end", "100%", "a & b", "C#",
+            "Tom #amp; Jerry", "literal <br/> text", "a < b", "`md text`", "#0;",
+            "$$x^2$$", "fee $$ plus $$ tax",
         ];
         let mut rng = Lcg(7);
         for round in 0..60 {
@@ -669,7 +749,78 @@ mod tests {
         let text = to_mermaid(&g);
         assert_eq!(
             text,
-            "flowchart TD\n    a([\"A label\"])\n    b\n    a ==>|ok| b\n"
+            "flowchart TD\n    a([\"A label\"])\n    b\n    a ==>|\"ok\"| b\n"
         );
+    }
+
+    #[test]
+    fn round2_entity_lookalikes_and_angle_brackets_survive() {
+        // Round-2 findings: mermaid.js decodes the whole `#\w+;`
+        // family, and literal `<br/>` TEXT must not mutate into a
+        // real line break on re-parse.
+        let mut g = Graph::default();
+        let a = g.ensure_node("a", Some("Tom #amp; Jerry".into()), None);
+        let b = g.ensure_node("b", Some("literal <br/> tag".into()), None);
+        let c = g.ensure_node("c", Some("`**md** text`".into()), None);
+        let d = g.ensure_node("d", Some("a < b".into()), None);
+        g.add_edge(a, b, Some("cost #eur; 5".into()), EdgeKind::Arrow);
+        g.add_edge(c, d, None, EdgeKind::Arrow);
+        assert_roundtrip(&g);
+        let text = to_mermaid(&g);
+        assert!(text.contains("#35;amp;"), "named lookalike escaped:\n{text}");
+        assert!(text.contains("#60;br/>"), "literal break tag defused:\n{text}");
+        assert!(text.contains("#96;"), "leading markdown backtick defused:\n{text}");
+    }
+
+    #[test]
+    fn round2_entities_cannot_mint_control_characters() {
+        // `#0;` / `#27;` must stay literal text, not become NUL/ESC
+        // bytes that poison the SVG.
+        let g = parse("flowchart TD\nA[\"x #0; y #27; z\"] --> B\n").unwrap();
+        assert_eq!(g.nodes[0].label, "x #0; y #27; z");
+        assert_roundtrip(&g);
+        // The whitespace trio still decodes (mermaid parity).
+        let g = parse("flowchart TD\nA[\"a#10;b\"] --> B\n").unwrap();
+        assert_eq!(g.nodes[0].label, "a\nb");
+    }
+
+    #[test]
+    fn round2_keyword_named_subgraph_as_edge_source_round_trips() {
+        // `subgraph style` … `style --> B`: the statement dispatcher
+        // must see the edge op and not eat the line as a `style`
+        // statement. Parser-producible, so full round-trip required.
+        for kw in ["style", "class", "classDef", "direction"] {
+            let src = format!("flowchart TD\nsubgraph {kw}\nA\nend\nX --> {kw} --> B\n");
+            let g = parse(&src).unwrap_or_else(|e| panic!("{kw}: {e}"));
+            assert_eq!(g.sub_edges.len(), 2, "{kw} sub-edges");
+            assert_roundtrip(&g);
+        }
+    }
+
+    #[test]
+    fn round2_bad_style_values_drop_instead_of_corrupting() {
+        // A depth-0 comma or unbalanced paren can't ride a `style`
+        // line; the property drops, neighbours survive.
+        let mut g = Graph::default();
+        let a = g.ensure_node("a", None, None);
+        g.ensure_node("b", None, None);
+        g.add_edge(0, 1, None, EdgeKind::Arrow);
+        g.nodes[a].style.fill = Some("red, blue".into());
+        g.nodes[a].style.stroke = Some("#900".into());
+        let text = to_mermaid(&g);
+        assert!(!text.contains("red, blue"), "{text}");
+        assert!(text.contains("stroke:#900"), "{text}");
+        let back = parse(&text).unwrap();
+        assert_eq!(back.nodes[0].style.stroke.as_deref(), Some("#900"));
+        // Parser side: unbalanced '(' is a clean error, not a silent
+        // property swallow.
+        assert!(parse("flowchart TD\nA\nstyle A fill:rgb(255,stroke:#900\n").is_err());
+    }
+
+    #[test]
+    fn round2_empty_subgraph_title_round_trips() {
+        let g = parse("flowchart TD\nsubgraph s[\"\"]\nA\nend\n").unwrap();
+        assert_eq!(g.subgraphs[0].title, "");
+        assert_roundtrip(&g);
     }
 }

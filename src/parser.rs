@@ -145,7 +145,15 @@ fn decode_entities(s: &str) -> String {
         }
         let digits: String = tail.chars().take_while(|c| c.is_ascii_digit()).collect();
         if !digits.is_empty() && tail[digits.len()..].starts_with(';') {
-            if let Some(c) = digits.parse::<u32>().ok().and_then(char::from_u32) {
+            // Refuse to manufacture control characters (except the
+            // whitespace trio): `#0;` / `#27;` would poison labels —
+            // and the emitted SVG — with bytes XML can't carry.
+            let ok = digits
+                .parse::<u32>()
+                .ok()
+                .and_then(char::from_u32)
+                .filter(|c| matches!(c, '\t' | '\n' | '\r') || !c.is_control());
+            if let Some(c) = ok {
                 out.push(c);
                 rest = &tail[digits.len() + 1..];
                 continue;
@@ -327,23 +335,38 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
             sub_stack.pop();
             continue;
         }
+        // A keyword followed by an edge operator is not a statement —
+        // it's an edge whose FROM side is a subgraph (or node) that
+        // happens to be NAMED like the keyword (`subgraph style` …
+        // `style --> B`). Statements never put an edge op right
+        // after the keyword, so the lookahead is unambiguous.
+        let edge_follows = |rest: &str| {
+            let r = rest.trim_start();
+            r.starts_with("--") || r.starts_with("-.") || r.starts_with("==") || r.starts_with("~~~")
+        };
         if let Some(rest) = strip_keyword(line, "direction") {
-            let Some(&cur) = sub_stack.last() else {
-                return Err(err(
-                    lineno,
-                    "'direction' is only valid inside a subgraph — use the \
-                     flowchart header for the top-level direction"
-                        .to_string(),
-                ));
-            };
-            g.subgraphs[cur].direction = Some(parse_direction(rest, lineno)?);
-            continue;
+            if !edge_follows(rest) {
+                let Some(&cur) = sub_stack.last() else {
+                    return Err(err(
+                        lineno,
+                        "'direction' is only valid inside a subgraph — use the \
+                         flowchart header for the top-level direction"
+                            .to_string(),
+                    ));
+                };
+                g.subgraphs[cur].direction = Some(parse_direction(rest, lineno)?);
+                continue;
+            }
         }
 
         // Styling statements (`style A fill:...`, `classDef name ...`,
         // `class A,B name`). strip_keyword requires whitespace after
         // the keyword, so `class` can't shadow `classDef`.
         if let Some(rest) = strip_keyword(line, "classDef") {
+            if edge_follows(rest) {
+                parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack, &sub_ids)?;
+                continue;
+            }
             let rest = rest.trim();
             let (names, props) = rest.split_once(char::is_whitespace).ok_or_else(|| {
                 err(lineno, "classDef needs a name and properties".to_string())
@@ -355,6 +378,10 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
             continue;
         }
         if let Some(rest) = strip_keyword(line, "class") {
+            if edge_follows(rest) {
+                parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack, &sub_ids)?;
+                continue;
+            }
             let rest = rest.trim();
             let (ids, name) = rest.split_once(char::is_whitespace).ok_or_else(|| {
                 err(lineno, "class needs node ids and a class name".to_string())
@@ -366,6 +393,10 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
             continue;
         }
         if let Some(rest) = strip_keyword(line, "style") {
+            if edge_follows(rest) {
+                parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack, &sub_ids)?;
+                continue;
+            }
             let rest = rest.trim();
             let (id, props) = rest.split_once(char::is_whitespace).ok_or_else(|| {
                 err(lineno, "style needs a node id and properties".to_string())
@@ -405,7 +436,9 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
 fn parse_props(s: &str, lineno: usize) -> Result<NodeStyle, ParseError> {
     let mut st = NodeStyle::default();
     // Split on commas at paren depth 0 only, so CSS function values
-    // (`fill:rgb(255,0,0)`) survive as one property.
+    // (`fill:rgb(255,0,0)`) survive as one property. An unbalanced
+    // '(' would otherwise swallow every later property silently —
+    // reject it with a proper error instead.
     let mut items: Vec<&str> = Vec::new();
     let (mut depth, mut start) = (0usize, 0usize);
     for (i, c) in s.char_indices() {
@@ -418,6 +451,9 @@ fn parse_props(s: &str, lineno: usize) -> Result<NodeStyle, ParseError> {
             }
             _ => {}
         }
+    }
+    if depth != 0 {
+        return Err(err(lineno, format!("unbalanced '(' in style properties: '{s}'")));
     }
     items.push(&s[start..]);
     for item in items {
