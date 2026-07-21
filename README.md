@@ -33,11 +33,13 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 - [x] Semantic color theme (shape-based) + stable accent palette shared by ER / class / sequence / pie
 - [x] Interactive scene API — drag nodes, edges re-route live; stable node/edge identity (`SceneNode.id`, `SceneEdge.from`/`to`) and local drag re-routing (`scene`, `route`, `route_partial`, `box_edge_bezier`) *(v0.18.0)*
 - [x] Hit-testing / picking — `Scene::{hit_test, node_at, edge_at, cluster_at, hits_in_rect, nearest_node}`, shape-precise, pick-matches-render; completes pick → drag → route for editors *(v0.19.0)*
+- [x] Graph → mermaid serializer — `to_mermaid(g)`, the inverse of `parse`: lossless editor round-trip via mermaid entity codes (`#quot;`, `#124;`), valid standard mermaid out; completes pick → drag → route → **persist** *(v0.20.0)*
+- [x] `$$math$$` tokenized in labels (Phase A: italic TeX passthrough, correct widths) *(v0.20.0)*
 - [x] Compact / serpentine layout — fold a long linear chain into balanced rows to fit a viewport (`fold::scene_compact`, CLI `--compact <px>`) *(v0.18.0)*
 - [x] Accessible SVG — `role="img"` + `aria-label` + per-node/edge `<title>`, deterministic byte-identical output *(v0.18.0)*
 - [x] Injectable font metrics for embedders using a real font (`layout::intrinsic_size_with`, `TEXT_CALIBRATION`) *(v0.18.0)*
 - [x] Explicit "not supported yet" errors for every known mermaid header
-- [ ] `$$…$$` math in labels, KaTeX-style — phased passthrough → MathML → native — [#12](https://github.com/go-routine-id/flowmaid/issues/12)
+- [ ] `$$…$$` math in labels, KaTeX-style — Phase A passthrough ✅ v0.20.0; next: MathML subset → native — [#12](https://github.com/go-routine-id/flowmaid/issues/12)
 - [x] Fan-out `A --> B & C`, inline `-- text -->` labels, `-.-`/`===` open lines, `~~~` invisible links *(v0.6.0)*
 - [x] More node shapes — cylinder `[( )]`, subroutine `[[ ]]`, hexagon `{{ }}`, parallelograms `[/ /]` `[\ \]`, double circle `((( )))` *(v0.8.0)*
 - [ ] `click` interactions, frontmatter themes, `$$math$$` — see the board
@@ -54,7 +56,7 @@ Or in `Cargo.toml`:
 
 ```toml
 [dependencies]
-flowmaid = "0.19"
+flowmaid = "0.20"
 ```
 
 ## Usage

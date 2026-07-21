@@ -25,6 +25,7 @@
 //! ```
 
 pub mod class;
+pub mod emit;
 pub mod er;
 pub mod fold;
 pub mod journey;
@@ -38,6 +39,7 @@ pub mod scene;
 pub mod seq;
 pub mod style;
 
+pub use emit::to_mermaid;
 pub use model::Document;
 pub use parser::ParseError;
 

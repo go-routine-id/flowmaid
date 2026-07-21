@@ -109,8 +109,9 @@ impl<'a> Cur<'a> {
 }
 
 /// Strip wrapping double quotes from a label, Mermaid-style
-/// (`A["odd text"]`), and turn `<br>` / `<br/>` / `<br />` line
-/// breaks into real newlines (mermaid renders those as line breaks).
+/// (`A["odd text"]`), turn `<br>` / `<br/>` / `<br />` line breaks
+/// into real newlines (mermaid renders those as line breaks), and
+/// decode mermaid entity codes (`#quot;`, `#35;`, …).
 fn clean_label(s: &str) -> String {
     let t = s.trim();
     let inner = if t.len() >= 2 && t.starts_with('"') && t.ends_with('"') {
@@ -120,7 +121,41 @@ fn clean_label(s: &str) -> String {
     };
     // Trim leading/trailing blank lines from `<br/>` at the edges
     // (`"<br/>"` → "" not two empty lines).
-    normalize_breaks(inner).trim_matches('\n').to_string()
+    decode_entities(&normalize_breaks(inner))
+        .trim_matches('\n')
+        .to_string()
+}
+
+/// Decode mermaid's escape entities: `#quot;` → `"` and numeric
+/// `#NN;` → the character with that decimal code point. This is how
+/// mermaid smuggles characters its grammar reserves (`"`, `|`, `#`)
+/// into labels — and how [`crate::emit::to_mermaid`] writes them
+/// back out losslessly. Anything not matching the pattern passes
+/// through unchanged (`#f00`, `C#`, a lone `#`).
+fn decode_entities(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut rest = s;
+    while let Some(h) = rest.find('#') {
+        out.push_str(&rest[..h]);
+        let tail = &rest[h + 1..];
+        if let Some(t) = tail.strip_prefix("quot;") {
+            out.push('"');
+            rest = t;
+            continue;
+        }
+        let digits: String = tail.chars().take_while(|c| c.is_ascii_digit()).collect();
+        if !digits.is_empty() && tail[digits.len()..].starts_with(';') {
+            if let Some(c) = digits.parse::<u32>().ok().and_then(char::from_u32) {
+                out.push(c);
+                rest = &tail[digits.len() + 1..];
+                continue;
+            }
+        }
+        out.push('#');
+        rest = tail;
+    }
+    out.push_str(rest);
+    out
 }
 
 /// Like [`clean_label`] but collapsed to a single line — for
@@ -369,7 +404,23 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
 /// Unknown properties are ignored (mermaid tolerates them too).
 fn parse_props(s: &str, lineno: usize) -> Result<NodeStyle, ParseError> {
     let mut st = NodeStyle::default();
-    for item in s.split(',') {
+    // Split on commas at paren depth 0 only, so CSS function values
+    // (`fill:rgb(255,0,0)`) survive as one property.
+    let mut items: Vec<&str> = Vec::new();
+    let (mut depth, mut start) = (0usize, 0usize);
+    for (i, c) in s.char_indices() {
+        match c {
+            '(' => depth += 1,
+            ')' => depth = depth.saturating_sub(1),
+            ',' if depth == 0 => {
+                items.push(&s[start..i]);
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    items.push(&s[start..]);
+    for item in items {
         let item = item.trim();
         if item.is_empty() {
             continue;

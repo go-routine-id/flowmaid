@@ -100,6 +100,13 @@ pub fn text_width(s: &str) -> f64 {
 /// interpreting `<b>`/`<strong>` and `<i>`/`<em>` tags the way
 /// mermaid does. Unknown tags stay literal text; unclosed tags just
 /// style to the end of the line. Always returns at least one run.
+///
+/// KaTeX-style math (`$$…$$`, mermaid's math syntax) is tokenized as
+/// its own *italic* run with the `$$` fences stripped — issue #12
+/// Phase A: mermaid sources with math render as recognizable italic
+/// TeX text (and are measured without the fences) instead of
+/// breaking; real math layout is a later phase. An unclosed `$$`
+/// stays literal.
 pub fn spans(line: &str) -> Vec<(String, bool, bool)> {
     let chars: Vec<char> = line.chars().collect();
     let mut out: Vec<(String, bool, bool)> = Vec::new();
@@ -107,6 +114,20 @@ pub fn spans(line: &str) -> Vec<(String, bool, bool)> {
     let mut cur = String::new();
     let mut i = 0;
     while i < chars.len() {
+        if chars[i] == '$' && i + 1 < chars.len() && chars[i + 1] == '$' {
+            // Find the closing `$$` after a non-empty body.
+            let close = (i + 4..chars.len())
+                .find(|&k| chars[k - 1] == '$' && chars[k] == '$')
+                .map(|k| k - 1);
+            if let Some(k) = close {
+                if !cur.is_empty() {
+                    out.push((std::mem::take(&mut cur), bold, italic));
+                }
+                out.push((chars[i + 2..k].iter().collect(), bold, true));
+                i = k + 2;
+                continue;
+            }
+        }
         if chars[i] == '<' {
             if let Some(j) = chars[i..].iter().position(|&c| c == '>') {
                 let tag: String = chars[i + 1..i + j]
@@ -1273,6 +1294,33 @@ mod tests {
         assert_eq!(spans("<b>y"), vec![("y".into(), true, false)]);
         // Comparison `a < b` is untouched (no closing '>').
         assert_eq!(spans("a < b"), vec![("a < b".into(), false, false)]);
+    }
+
+    #[test]
+    fn math_spans_render_as_italic_tex_with_fences_stripped() {
+        // #12 Phase A: mermaid math syntax tokenizes instead of
+        // breaking; the TeX body shows as an italic run.
+        assert_eq!(spans("$$x^2$$"), vec![("x^2".into(), false, true)]);
+        assert_eq!(
+            spans("area $$\\frac{1}{2}$$ done"),
+            vec![
+                ("area ".into(), false, false),
+                ("\\frac{1}{2}".into(), false, true),
+                (" done".into(), false, false),
+            ]
+        );
+        // Inside bold, math keeps the bold and adds italic.
+        assert_eq!(
+            spans("<b>E = $$mc^2$$</b>"),
+            vec![("E = ".into(), true, false), ("mc^2".into(), true, true)]
+        );
+        // Unclosed / empty fences stay literal (prices, shell text).
+        assert_eq!(spans("$$ 100"), vec![("$$ 100".into(), false, false)]);
+        assert_eq!(spans("$$$$"), vec![("$$$$".into(), false, false)]);
+        assert_eq!(spans("a $5 b $7"), vec![("a $5 b $7".into(), false, false)]);
+        // The fences don't count toward measured width.
+        assert!(text_width("$$xy$$") < text_width("$$xy$$ ") + 1.0);
+        assert_eq!(text_width("$$xy$$"), text_width("<i>xy</i>"));
     }
 
     #[test]
