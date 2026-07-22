@@ -152,7 +152,7 @@ fn decode_entities(s: &str) -> String {
                 .parse::<u32>()
                 .ok()
                 .and_then(char::from_u32)
-                .filter(|c| matches!(c, '\t' | '\n' | '\r') || !c.is_control());
+                .filter(|c| matches!(c, '\t' | '\n') || !c.is_control());
             if let Some(c) = ok {
                 out.push(c);
                 rest = &tail[digits.len() + 1..];
@@ -259,6 +259,12 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
         let mut idx = 0usize;
         for raw in source.lines() {
             if let Some(rest) = strip_keyword(raw.trim(), "subgraph") {
+                // `subgraph --> B` is an edge FROM a subgraph named
+                // "subgraph", not a header — a header's id never
+                // starts with an edge operator.
+                if edge_op_follows(rest) {
+                    continue;
+                }
                 if let Ok((id, _)) = parse_subgraph_header(rest.trim(), 0) {
                     sub_ids.entry(id).or_insert(idx);
                     idx += 1;
@@ -310,9 +316,22 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
             // treat this line as a regular statement.
         }
 
+        // A statement keyword followed by an edge operator (or a
+        // fan-out `&`) is not that statement — it's an edge whose
+        // FROM side is a subgraph or node NAMED like the keyword
+        // (`subgraph style` … `style --> B`). Only divert when the
+        // name actually exists as a subgraph or node, so a stray
+        // `direction --> B` still gets its targeted diagnostic.
+        let names_an_entity =
+            |kw: &str, g: &Graph| sub_ids.contains_key(kw) || g.node_index(kw).is_some();
+
         // Subgraph blocks: `subgraph id [Title]` ... `end`, nestable,
         // with an optional `direction XX` line inside.
         if let Some(rest) = strip_keyword(line, "subgraph") {
+            if edge_op_follows(rest) && names_an_entity("subgraph", &g) {
+                parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack, &sub_ids)?;
+                continue;
+            }
             if sub_stack.len() >= MAX_NEST_DEPTH {
                 return Err(err(
                     lineno,
@@ -335,17 +354,8 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
             sub_stack.pop();
             continue;
         }
-        // A keyword followed by an edge operator is not a statement —
-        // it's an edge whose FROM side is a subgraph (or node) that
-        // happens to be NAMED like the keyword (`subgraph style` …
-        // `style --> B`). Statements never put an edge op right
-        // after the keyword, so the lookahead is unambiguous.
-        let edge_follows = |rest: &str| {
-            let r = rest.trim_start();
-            r.starts_with("--") || r.starts_with("-.") || r.starts_with("==") || r.starts_with("~~~")
-        };
         if let Some(rest) = strip_keyword(line, "direction") {
-            if !edge_follows(rest) {
+            if !(edge_op_follows(rest) && names_an_entity("direction", &g)) {
                 let Some(&cur) = sub_stack.last() else {
                     return Err(err(
                         lineno,
@@ -363,7 +373,7 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
         // `class A,B name`). strip_keyword requires whitespace after
         // the keyword, so `class` can't shadow `classDef`.
         if let Some(rest) = strip_keyword(line, "classDef") {
-            if edge_follows(rest) {
+            if edge_op_follows(rest) && names_an_entity("classDef", &g) {
                 parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack, &sub_ids)?;
                 continue;
             }
@@ -378,7 +388,7 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
             continue;
         }
         if let Some(rest) = strip_keyword(line, "class") {
-            if edge_follows(rest) {
+            if edge_op_follows(rest) && names_an_entity("class", &g) {
                 parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack, &sub_ids)?;
                 continue;
             }
@@ -393,7 +403,7 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
             continue;
         }
         if let Some(rest) = strip_keyword(line, "style") {
-            if edge_follows(rest) {
+            if edge_op_follows(rest) && names_an_entity("style", &g) {
                 parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack, &sub_ids)?;
                 continue;
             }
@@ -799,6 +809,17 @@ fn close(cur: &mut Cur<'_>, closer: &str, lineno: usize) -> Result<String, Parse
     }
     cur.take_until(closer)
         .ok_or_else(|| err(lineno, format!("closing '{}' not found", closer)))
+}
+
+/// Whether `rest` (the text after a statement keyword) begins with a
+/// COMPLETE edge operator or a fan-out `&` — i.e. the "keyword" is
+/// really a node/subgraph name starting an edge (`style --> B`,
+/// `style & A --> B`), not a statement. Uses the real operator
+/// recognizer so `--x` (a legal statement argument in old files)
+/// does NOT count as an edge.
+fn edge_op_follows(rest: &str) -> bool {
+    let r = rest.trim_start();
+    r.starts_with('&') || parse_edge_op(&mut Cur::new(r)).is_some()
 }
 
 /// Recognise an edge operator and advance the cursor. Tolerant of

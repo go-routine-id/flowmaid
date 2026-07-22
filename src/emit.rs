@@ -275,11 +275,20 @@ fn label_text(label: &str) -> String {
     if label.trim().is_empty() {
         return "\" \"".to_string();
     }
-    let mut enc = encode(label, &[]).replace('\n', "<br/>");
-    if enc.starts_with('`') && enc.ends_with('`') {
-        enc = format!("#96;{}", &enc[1..]);
-    }
+    let enc = defuse_md(encode(label, &[]).replace('\n', "<br/>"));
     format!("\"{}\"", enc)
+}
+
+/// A quoted body that both starts and ends with a backtick would lex
+/// as a mermaid markdown string (`"​`…`​"`); riding the leading one as
+/// `#96;` keeps it plain text. Applies to node labels and edge
+/// labels alike — both sit inside `"…"`.
+fn defuse_md(enc: String) -> String {
+    if enc.starts_with('`') && enc.ends_with('`') {
+        format!("#96;{}", &enc[1..])
+    } else {
+        enc
+    }
 }
 
 /// `-->` / `-.->` / `==>` / … plus the `|label|` slot. The label
@@ -303,7 +312,7 @@ fn push_edge_op(out: &mut String, kind: EdgeKind, label: Option<&str>) {
     if let Some(l) = label {
         if !l.trim().is_empty() {
             out.push_str("|\"");
-            out.push_str(&encode(l, &['|']).replace('\n', " "));
+            out.push_str(&defuse_md(encode(l, &['|']).replace('\n', " ")));
             out.push_str("\"|");
         }
     }
@@ -366,13 +375,21 @@ fn emit_subgraph(g: &Graph, si: usize, depth: usize, visited: &mut [bool], out: 
 }
 
 /// True when a style value can survive a `style` line: `parse_props`
-/// splits on depth-0 commas and rejects unbalanced parens, so a
-/// value violating either can't be written back (mermaid's own
-/// grammar has the same limit). Such values are dropped — the
-/// documented degrade — rather than corrupting neighbours.
+/// splits on depth-0 commas and rejects unbalanced parens, and the
+/// line itself is single-line (a control character would terminate
+/// the statement mid-value and inject the tail as free-standing
+/// mermaid text). Values violating any of it can't be written back
+/// (mermaid's own grammar has the same limits) and are dropped —
+/// the documented degrade — rather than corrupting neighbours.
 fn style_value_ok(v: &str) -> bool {
+    if v.trim().is_empty() {
+        return false;
+    }
     let mut depth = 0i32;
     for c in v.chars() {
+        if c.is_control() {
+            return false;
+        }
         match c {
             '(' => depth += 1,
             ')' => depth -= 1,
@@ -392,14 +409,16 @@ fn style_value_ok(v: &str) -> bool {
 /// dropped (nothing sane to write).
 fn style_props(st: &NodeStyle) -> Option<String> {
     let mut parts: Vec<String> = Vec::new();
+    // Values are emitted trimmed — parse_props trims on the way back
+    // in, so emitting the padding would only fake a difference.
     if let Some(f) = &st.fill {
         if style_value_ok(f) {
-            parts.push(format!("fill:{}", f));
+            parts.push(format!("fill:{}", f.trim()));
         }
     }
     if let Some(s) = &st.stroke {
         if style_value_ok(s) {
-            parts.push(format!("stroke:{}", s));
+            parts.push(format!("stroke:{}", s.trim()));
         }
     }
     if let Some(w) = st.stroke_width {
@@ -411,7 +430,7 @@ fn style_props(st: &NodeStyle) -> Option<String> {
     }
     if let Some(c) = &st.color {
         if style_value_ok(c) {
-            parts.push(format!("color:{}", c));
+            parts.push(format!("color:{}", c.trim()));
         }
     }
     if parts.is_empty() {
@@ -821,6 +840,58 @@ mod tests {
     fn round2_empty_subgraph_title_round_trips() {
         let g = parse("flowchart TD\nsubgraph s[\"\"]\nA\nend\n").unwrap();
         assert_eq!(g.subgraphs[0].title, "");
+        assert_roundtrip(&g);
+    }
+
+    #[test]
+    fn round3_subgraph_named_subgraph_survives_as_edge_source() {
+        // The keyword-dispatch guard must cover `subgraph` itself.
+        let src = "flowchart TD\nB\nsubgraph subgraph\nend\nsubgraph --> B\n";
+        let g = parse(src).unwrap();
+        assert_eq!(g.sub_edges.len(), 1);
+        assert_roundtrip(&g);
+        // Fan-out from a keyword-named source too.
+        let g = parse("flowchart TD\nsubgraph style\nend\nstyle & A --> B\n").unwrap();
+        assert_eq!(g.sub_edges.len(), 1, "fan-out lead-in");
+        assert_roundtrip(&g);
+    }
+
+    #[test]
+    fn round3_old_dashed_statement_arguments_still_parse() {
+        // 0.19.1 accepted these; the edge lookahead must not eat them
+        // (`--x` is not a complete edge operator).
+        assert!(parse("flowchart TD\nA\nstyle --x fill:red\n").is_ok());
+        assert!(parse("flowchart TD\nclassDef --x fill:red\nA\n").is_ok());
+        // And a stray `direction -->` with no such entity keeps its
+        // targeted diagnostic instead of minting a node.
+        assert!(parse("flowchart TD\ndirection --> B\n").is_err());
+    }
+
+    #[test]
+    fn round3_style_values_with_newlines_cannot_inject_statements() {
+        let mut g = Graph::default();
+        let a = g.ensure_node("a", None, None);
+        g.ensure_node("b", None, None);
+        g.nodes[a].style.fill = Some("red\nB --> C".into());
+        g.nodes[a].style.stroke = Some(" #900 ".into());
+        let text = to_mermaid(&g);
+        assert!(!text.contains("B --> C"), "no injected statement:\n{text}");
+        assert!(text.contains("stroke:#900"), "trimmed neighbour survives:\n{text}");
+        let back = parse(&text).unwrap();
+        assert_eq!(back.nodes.len(), 2, "no phantom nodes:\n{text}");
+    }
+
+    #[test]
+    fn round3_backtick_edge_labels_and_cr_entities_are_defused() {
+        // Edge labels get the same markdown-string guard as nodes.
+        let g = parse("flowchart TD\nA -->|\"`pow`\"| B\n").unwrap();
+        assert_eq!(g.edges[0].label.as_deref(), Some("`pow`"));
+        let text = to_mermaid(&g);
+        assert!(text.contains("#96;"), "leading backtick defused:\n{text}");
+        assert_roundtrip(&g);
+        // `#13;` may not mint a raw CR anymore.
+        let g = parse("flowchart TD\nA[\"a#13;b\"] --> B\n").unwrap();
+        assert_eq!(g.nodes[0].label, "a#13;b");
         assert_roundtrip(&g);
     }
 }

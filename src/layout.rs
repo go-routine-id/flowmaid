@@ -107,6 +107,16 @@ pub fn text_width(s: &str) -> f64 {
 /// TeX text (and are measured without the fences) instead of
 /// breaking; real math layout is a later phase. An unclosed `$$`
 /// stays literal.
+///
+/// Span boundaries follow mermaid's lazy `/\$\$(.*?)\$\$/` — but the
+/// body must additionally HUG its fences (non-empty, no edge
+/// whitespace, not starting with `$`). That is a **deliberate
+/// divergence** from mermaid ≥10.9, which happily maths any padded
+/// body and thereby mangles prose like `fee $$ plus $$ tax` into a
+/// centered formula; here such spans stay literal text so pre-math
+/// diagrams keep rendering as they always did. A body carrying a
+/// style tag (`</b>` …) also stays literal so bold/italic state
+/// can't get stuck.
 pub fn spans(line: &str) -> Vec<(String, bool, bool)> {
     let chars: Vec<char> = line.chars().collect();
     let mut out: Vec<(String, bool, bool)> = Vec::new();
@@ -115,31 +125,38 @@ pub fn spans(line: &str) -> Vec<(String, bool, bool)> {
     let mut i = 0;
     while i < chars.len() {
         if chars[i] == '$' && i + 1 < chars.len() && chars[i + 1] == '$' {
-            // Find the closing `$$` after a non-empty body. KaTeX
-            // convention: the fences hug their content — a body
-            // that starts or ends with whitespace (`fee $$ plus $$
-            // tax` prose), starts with yet another `$`, or carries
-            // a style tag stays literal text, so pre-math diagrams
-            // keep rendering exactly as before.
-            let close = (i + 4..chars.len())
-                .find(|&k| chars[k - 1] == '$' && chars[k] == '$')
-                .map(|k| k - 1);
+            // Earliest closing `$$` — mermaid's lazy match.
+            let close = (i + 2..chars.len().saturating_sub(1))
+                .find(|&k| chars[k] == '$' && chars[k + 1] == '$');
             if let Some(k) = close {
-                let body = &chars[i + 2..k];
-                let hugs = body
-                    .first()
-                    .zip(body.last())
-                    .is_some_and(|(a, b)| {
-                        *a != '$' && !a.is_whitespace() && !b.is_whitespace()
-                    });
-                if hugs && !body.contains(&'<') {
+                let body: String = chars[i + 2..k].iter().collect();
+                let has_tag = {
+                    let low = body.to_ascii_lowercase();
+                    ["<b>", "</b>", "<i>", "</i>", "<em>", "</em>", "<strong>", "</strong>", "<br"]
+                        .iter()
+                        .any(|t| low.contains(t))
+                };
+                let hugs = !body.is_empty()
+                    && !body.starts_with('$')
+                    && !body.starts_with(char::is_whitespace)
+                    && !body.ends_with(char::is_whitespace);
+                if hugs && !has_tag {
                     if !cur.is_empty() {
                         out.push((std::mem::take(&mut cur), bold, italic));
                     }
-                    out.push((body.iter().collect(), bold, true));
+                    out.push((body, bold, true));
                     i = k + 2;
                     continue;
                 }
+                if !has_tag {
+                    // Padded/empty body: keep mermaid's span
+                    // boundaries but as literal text.
+                    cur.extend(&chars[i..k + 2]);
+                    i = k + 2;
+                    continue;
+                }
+                // A style tag inside: fall through so the tag
+                // machinery still interprets it.
             }
         }
         if chars[i] == '<' {
@@ -1332,12 +1349,18 @@ mod tests {
         assert_eq!(spans("$$ 100"), vec![("$$ 100".into(), false, false)]);
         assert_eq!(spans("$$$$"), vec![("$$$$".into(), false, false)]);
         assert_eq!(spans("a $5 b $7"), vec![("a $5 b $7".into(), false, false)]);
-        // Fences must HUG their body (KaTeX convention) — prose with
-        // stray double-dollars keeps rendering as it did pre-math.
+        // Fences must HUG their body — a deliberate divergence from
+        // mermaid's lazy regex (which would math the padded body and
+        // mangle prose): stray double-dollars keep rendering as they
+        // did pre-math.
         assert_eq!(
             spans("fee $$ plus $$ tax"),
             vec![("fee $$ plus $$ tax".into(), false, false)]
         );
+        assert_eq!(spans("$$ x^2 $$"), vec![("$$ x^2 $$".into(), false, false)]);
+        // A genuine TeX less-than IS math (only real style tags keep
+        // a body literal).
+        assert_eq!(spans("$$x<y$$"), vec![("x<y".into(), false, true)]);
         // A style tag inside a would-be body keeps the dollars
         // literal, so the tag is still interpreted and bold can't
         // get stuck on past its `</b>`.
@@ -1345,11 +1368,13 @@ mod tests {
             spans("<b>x $$a</b>$$ y"),
             vec![("x $$a".into(), true, false), ("$$ y".into(), false, false)]
         );
-        // Odd runs: the leading dollars stay literal, the real
-        // hugging pair still becomes math.
+        // Odd runs pair lazily like mermaid: the empty first match
+        // degrades to literal, and everything stays one text run.
+        assert_eq!(spans("$$$$$a$$"), vec![("$$$$$a$$".into(), false, false)]);
+        // Adjacent maths both tokenize.
         assert_eq!(
-            spans("$$$$$a$$"),
-            vec![("$$$".into(), false, false), ("a".into(), false, true)]
+            spans("$$a$$$$b$$"),
+            vec![("a".into(), false, true), ("b".into(), false, true)]
         );
         // The fences don't count toward measured width.
         assert!(text_width("$$xy$$") < text_width("$$xy$$ ") + 1.0);
