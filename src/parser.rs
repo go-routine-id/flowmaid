@@ -361,7 +361,7 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
         // never need this path: the emitter writes them in full
         // `id["label"]` form.
         let kw_head_is_edge = |kw: &str, rest: &str| {
-            edge_op_follows(rest)
+            edge_lead_follows(rest)
                 && (&line[..kw.len()] != kw || sub_ids.contains_key(&line[..kw.len()]))
         };
 
@@ -493,7 +493,7 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
         // EDGE from a node named click.
         for kw in ["linkStyle", "click"] {
             if let Some(rest) = strip_keyword(line, kw) {
-                if &line[..kw.len()] == kw && !edge_op_follows(rest) {
+                if &line[..kw.len()] == kw && !edge_lead_follows(rest) {
                     return Err(err(
                         lineno,
                         format!("'{kw}' statements aren't supported yet"),
@@ -905,16 +905,44 @@ fn close(cur: &mut Cur<'_>, closer: &str, lineno: usize) -> Result<String, Parse
 /// does NOT count as an edge.
 fn edge_op_follows(rest: &str) -> bool {
     let r = rest.trim_start();
-    if r.starts_with('&') || parse_edge_op(&mut Cur::new(r)).is_some() {
+    r.starts_with('&') || parse_edge_op(&mut Cur::new(r)).is_some()
+}
+
+/// Like [`edge_op_follows`] but also recognizing the inline-label
+/// edge forms (`-- text -->`, `-. text .->`, `== text ==>` and their
+/// open-line closers). The opener alone is ambiguous with statement
+/// arguments like `--x`, so the closing operator must appear later
+/// on the line, BEFORE any `(`/`:` (a prop value like
+/// `fill:url(#a-->b)` never precedes a real edge closer) and with a
+/// target after it (a line ENDING in the closer is a bare-title
+/// subgraph header, not an edge). Used by the statement-keyword
+/// gates only — the `subgraph` header branch sticks to complete
+/// operators so 0.19-era headers titled `-- Phase 1 ---` keep
+/// parsing as headers.
+fn edge_lead_follows(rest: &str) -> bool {
+    let r = rest.trim_start();
+    if edge_op_follows(rest) {
         return true;
     }
-    // Inline-label edge forms: `-- text -->`, `-. text .->`,
-    // `== text ==>` (and their open-line closers). The opener alone
-    // is ambiguous with statement arguments like `--x`, so require
-    // the closing operator later on the line.
-    (r.starts_with("--") && (r.contains("-->") || r[2..].contains("---")))
-        || (r.starts_with("-.") && (r.contains(".->") || r[2..].contains(".-")))
-        || (r.starts_with("==") && (r.contains("==>") || r[2..].contains("===")))
+    let scan = &r[..r.find(['(', ':']).unwrap_or(r.len())];
+    let closers: &[&str] = if r.starts_with("--") {
+        &["-->", "---"]
+    } else if r.starts_with("-.") {
+        &[".->", ".-"]
+    } else if r.starts_with("==") {
+        &["==>", "==="]
+    } else {
+        return false;
+    };
+    if scan.len() < 2 {
+        return false;
+    }
+    // Earliest closer wins (that's what the edge parser would eat).
+    let end = closers
+        .iter()
+        .filter_map(|c| scan[2..].find(c).map(|p| 2 + p + c.len()))
+        .min();
+    end.is_some_and(|end| !r[end..].trim().is_empty())
 }
 
 /// A `class`/`style` statement id must be word-like — an id such as

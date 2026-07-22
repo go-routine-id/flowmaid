@@ -145,6 +145,26 @@ fn check_preconditions(g: &Graph) {
             "to_mermaid: subgraph {:?} has an out-of-bounds parent index",
             s.id
         );
+        // The parser refuses nesting past its depth cap — emitting
+        // deeper would persist a file that can never be reloaded.
+        // (A parent CYCLE is exempt: the forced-root pass flattens
+        // it, so the walk just stops at the subgraph count.)
+        let mut depth = 0usize;
+        let mut cur = s.parent;
+        while let Some(p) = cur {
+            depth += 1;
+            if depth > g.subgraphs.len() {
+                depth = 0; // cycle — flattened at emit, not deep
+                break;
+            }
+            cur = g.subgraphs.get(p).and_then(|s| s.parent);
+        }
+        debug_assert!(
+            depth < 500,
+            "to_mermaid: subgraph {:?} nests deeper than the parser's 500-level cap — \
+             the emitted file could not be re-parsed",
+            s.id
+        );
         for &m in &s.nodes {
             debug_assert!(
                 m < g.nodes.len(),
@@ -538,6 +558,24 @@ mod tests {
             let pid = |g: &Graph, p: Option<usize>| p.map(|i| g.subgraphs[i].id.clone());
             assert_eq!(pid(g, s.parent), pid(&back, t.parent), "parent of {}\n--\n{text}", s.id);
             assert_eq!(s.direction, t.direction, "direction of {}\n--\n{text}", s.id);
+        }
+        // Sub-edges (whole-cluster endpoints) — endpoints resolved to
+        // tagged ids so node-vs-sub misbinds can't hide.
+        assert_eq!(back.sub_edges.len(), g.sub_edges.len(), "sub-edge count\n--\n{text}");
+        let end_id = |g: &Graph, e: End| match e {
+            End::Node(i) => format!("n:{}", g.nodes[i].id),
+            End::Sub(i) => format!("s:{}", g.subgraphs[i].id),
+        };
+        for (a, b) in g.sub_edges.iter().zip(&back.sub_edges) {
+            assert_eq!(end_id(g, a.from), end_id(&back, b.from), "sub-edge from\n--\n{text}");
+            assert_eq!(end_id(g, a.to), end_id(&back, b.to), "sub-edge to\n--\n{text}");
+            assert_eq!(a.kind, b.kind, "sub-edge kind\n--\n{text}");
+            let norm = |l: &Option<String>| {
+                l.as_deref()
+                    .map(|s| s.replace('\n', " ").trim().to_string())
+                    .filter(|s| !s.is_empty())
+            };
+            assert_eq!(norm(&a.label), norm(&b.label), "sub-edge label\n--\n{text}");
         }
     }
 
@@ -987,6 +1025,34 @@ mod tests {
         let text = to_mermaid(&g);
         assert!(text.contains("#96;"), "{text}");
         assert_roundtrip(&g);
+    }
+
+    #[test]
+    fn round7_bare_titles_and_prop_values_never_divert() {
+        // A bare-title header starting with `--` was legal in 0.19 —
+        // the subgraph branch diverts on COMPLETE operators only, so
+        // these stay headers even beside a subgraph named "subgraph".
+        let g = parse(
+            "flowchart TD\nsubgraph subgraph\nA\nend\nsubgraph -- why --> done\nB\nend\n",
+        )
+        .unwrap();
+        assert_eq!(g.subgraphs.len(), 2, "second block stays a header");
+        assert!(g.nodes.iter().all(|n| n.id != "end"), "no phantom end node");
+        let g = parse("flowchart TD\nsubgraph subgraph\nA\nend\nsubgraph -- Phase 1 ---\nB\nend\n")
+            .unwrap();
+        assert_eq!(g.subgraphs.len(), 2);
+        // An edge closer inside a prop value (`url(#a-->b)`) is not
+        // an edge lead-in.
+        let g = parse(
+            "flowchart TD\nsubgraph classDef\nA\nend\nclassDef --x fill:url(#a-->b)\nB\n",
+        )
+        .unwrap();
+        assert!(g.nodes.iter().any(|n| n.id == "B"));
+        // But a real inline-label edge from a keyword-named subgraph
+        // still diverts.
+        let g = parse("flowchart TD\nsubgraph style\nA\nend\nstyle -- go --> B\n").unwrap();
+        assert_eq!(g.sub_edges.len(), 1);
+        assert_eq!(g.sub_edges[0].label.as_deref(), Some("go"));
     }
 
     #[test]
