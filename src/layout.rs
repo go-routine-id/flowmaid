@@ -123,19 +123,24 @@ pub fn spans(line: &str) -> Vec<(String, bool, bool)> {
     let (mut bold, mut italic) = (false, false);
     let mut cur = String::new();
     let mut i = 0;
+    // Closing fence of a tag-carrying `$$…$$` that fell through to
+    // normal processing: that exact `$$` must stay literal, or it
+    // would re-open a span and shift every later fence out of phase.
+    let mut spent_close: Option<usize> = None;
     while i < chars.len() {
+        if spent_close == Some(i) {
+            cur.push_str("$$");
+            spent_close = None;
+            i += 2;
+            continue;
+        }
         if chars[i] == '$' && i + 1 < chars.len() && chars[i + 1] == '$' {
             // Earliest closing `$$` — mermaid's lazy match.
             let close = (i + 2..chars.len().saturating_sub(1))
                 .find(|&k| chars[k] == '$' && chars[k + 1] == '$');
             if let Some(k) = close {
                 let body: String = chars[i + 2..k].iter().collect();
-                let has_tag = {
-                    let low = body.to_ascii_lowercase();
-                    ["<b>", "</b>", "<i>", "</i>", "<em>", "</em>", "<strong>", "</strong>", "<br"]
-                        .iter()
-                        .any(|t| low.contains(t))
-                };
+                let has_tag = has_style_tag(&body);
                 let hugs = !body.is_empty()
                     && !body.starts_with('$')
                     && !body.starts_with(char::is_whitespace)
@@ -156,7 +161,9 @@ pub fn spans(line: &str) -> Vec<(String, bool, bool)> {
                     continue;
                 }
                 // A style tag inside: fall through so the tag
-                // machinery still interprets it.
+                // machinery still interprets it, but remember the
+                // closing fence — it may not open a new span.
+                spent_close = Some(k);
             }
         }
         if chars[i] == '<' {
@@ -191,6 +198,24 @@ pub fn spans(line: &str) -> Vec<(String, bool, bool)> {
         out.push((cur, bold, italic));
     }
     out
+}
+
+/// Whether a would-be math body carries a style tag the span
+/// machinery interprets (`<b>`, `</em>`, `<br/>`, …). A bare TeX
+/// less-than (`x<y`, even `p<br_rate`) is NOT a tag: `<br` counts
+/// only when followed (after optional spaces) by `>` or `/`.
+fn has_style_tag(body: &str) -> bool {
+    let low = body.to_ascii_lowercase();
+    if ["<b>", "</b>", "<i>", "</i>", "<em>", "</em>", "<strong>", "</strong>"]
+        .iter()
+        .any(|t| low.contains(t))
+    {
+        return true;
+    }
+    low.match_indices("<br").any(|(p, _)| {
+        let tail = low[p + 3..].trim_start();
+        tail.starts_with('>') || tail.starts_with('/')
+    })
 }
 
 /// Number of text lines in a label (at least 1).
@@ -1376,6 +1401,29 @@ mod tests {
             spans("$$a$$$$b$$"),
             vec![("a".into(), false, true), ("b".into(), false, true)]
         );
+        // A tag-carrying span's closing fence is SPENT — it may not
+        // re-open and shift later fences out of phase: `y` stays
+        // literal, and a later hugging pair is still math.
+        assert_eq!(
+            spans("$$<b>x</b>$$y$$"),
+            vec![
+                ("$$".into(), false, false),
+                ("x".into(), true, false),
+                ("$$y$$".into(), false, false),
+            ]
+        );
+        assert_eq!(
+            spans("$$<i>a</i>$$ $$c$$"),
+            vec![
+                ("$$".into(), false, false),
+                ("a".into(), false, true),
+                ("$$ ".into(), false, false),
+                ("c".into(), false, true),
+            ]
+        );
+        // `<br` only counts as a tag when it actually closes as one —
+        // a genuine TeX less-than stays math.
+        assert_eq!(spans("$$p<br_rate$$"), vec![("p<br_rate".into(), false, true)]);
         // The fences don't count toward measured width.
         assert!(text_width("$$xy$$") < text_width("$$xy$$ ") + 1.0);
         assert_eq!(text_width("$$xy$$"), text_width("<i>xy</i>"));

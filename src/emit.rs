@@ -35,11 +35,14 @@
 //! - stateDiagram-only shapes (`StateStart`, `StateEnd`, `ForkBar`)
 //!   have no flowchart syntax; they degrade to a circle / rect.
 //! - A non-finite `stroke_width` is dropped, as is any style value
-//!   with a depth-0 comma or unbalanced parens (a `style` line
-//!   cannot carry them — mermaid's grammar splits on commas).
+//!   with a depth-0 comma, a control character, or unbalanced
+//!   parens (a `style` line cannot carry them — mermaid's grammar
+//!   splits on commas). Style values round-trip modulo trim.
 //!   CSS function values (`rgb(255,0,0)`) DO survive flowmaid's
 //!   round-trip, but note mermaid.js's own style parser rejects
 //!   parens — hex colors are the portable choice.
+//! - Control characters in labels (other than newline/tab)
+//!   sanitize to spaces — mermaid text cannot carry them.
 
 use crate::model::{Direction, EdgeKind, End, Graph, NodeStyle, Shape};
 
@@ -188,8 +191,22 @@ fn is_reserved(id: &str) -> bool {
 /// characters like `|`) become entities. The parser's
 /// `decode_entities` is the exact inverse of everything emitted.
 fn encode(label: &str, extra: &[char]) -> String {
+    // Control characters (except the newline handled by the caller
+    // and tab) cannot ride in mermaid text at all — the parser
+    // refuses to mint them from entities, and raw bytes would break
+    // the line grammar and the SVG. They sanitize to a space.
+    let label: String = label
+        .chars()
+        .map(|c| {
+            if c.is_control() && !matches!(c, '\n' | '\t') {
+                ' '
+            } else {
+                c
+            }
+        })
+        .collect();
     let mut out = String::with_capacity(label.len());
-    let mut rest = label;
+    let mut rest = label.as_str();
     while let Some(h) = rest.find('#') {
         out.push_str(&rest[..h]);
         let tail = &rest[h + 1..];
@@ -279,12 +296,12 @@ fn label_text(label: &str) -> String {
     format!("\"{}\"", enc)
 }
 
-/// A quoted body that both starts and ends with a backtick would lex
-/// as a mermaid markdown string (`"​`…`​"`); riding the leading one as
-/// `#96;` keeps it plain text. Applies to node labels and edge
-/// labels alike — both sit inside `"…"`.
+/// A quoted body that STARTS with a backtick opens mermaid.js's
+/// markdown-string lexer state (`"​`…`), whether or not it closes;
+/// riding the leading one as `#96;` keeps it plain text. Applies to
+/// node labels and edge labels alike — both sit inside `"…"`.
 fn defuse_md(enc: String) -> String {
-    if enc.starts_with('`') && enc.ends_with('`') {
+    if enc.starts_with('`') {
         format!("#96;{}", &enc[1..])
     } else {
         enc
@@ -382,7 +399,11 @@ fn emit_subgraph(g: &Graph, si: usize, depth: usize, visited: &mut [bool], out: 
 /// (mermaid's own grammar has the same limits) and are dropped —
 /// the documented degrade — rather than corrupting neighbours.
 fn style_value_ok(v: &str) -> bool {
-    if v.trim().is_empty() {
+    // Judge the TRIMMED value — that's what gets emitted; padding
+    // (including a stray trailing newline) shouldn't doom an
+    // otherwise fine value.
+    let v = v.trim();
+    if v.is_empty() {
         return false;
     }
     let mut depth = 0i32;
@@ -460,9 +481,17 @@ mod tests {
             assert_eq!(a.id, b.id, "node id\n--\n{text}");
             assert_eq!(a.label.trim(), b.label, "label of {}\n--\n{text}", a.id);
             assert_eq!(a.shape, b.shape, "shape of {}\n--\n{text}", a.id);
+            // Style values round-trip modulo trim (both the emitter
+            // and parse_props trim), and unwritable values (commas,
+            // control chars, unbalanced parens) drop to None.
+            let sv = |v: &Option<String>| {
+                v.as_deref()
+                    .filter(|s| super::style_value_ok(s))
+                    .map(|s| s.trim().to_string())
+            };
             assert_eq!(
-                (&a.style.fill, &a.style.stroke, a.style.stroke_width, &a.style.color),
-                (&b.style.fill, &b.style.stroke, b.style.stroke_width, &b.style.color),
+                (sv(&a.style.fill), sv(&a.style.stroke), a.style.stroke_width, sv(&a.style.color)),
+                (sv(&b.style.fill), sv(&b.style.stroke), b.style.stroke_width, sv(&b.style.color)),
                 "style of {}\n--\n{text}",
                 a.id
             );
@@ -857,11 +886,15 @@ mod tests {
     }
 
     #[test]
-    fn round3_old_dashed_statement_arguments_still_parse() {
-        // 0.19.1 accepted these; the edge lookahead must not eat them
-        // (`--x` is not a complete edge operator).
-        assert!(parse("flowchart TD\nA\nstyle --x fill:red\n").is_ok());
+    fn round3_old_dashed_statement_arguments_get_targeted_errors() {
+        // The edge lookahead must not eat these as half-an-edge
+        // (`--x` is not a complete edge operator). `classDef` names
+        // are free-form and still parse; a `style` id like `--x`
+        // (which 0.19.1 silently minted as an unreferenceable
+        // phantom node) now gets the targeted id diagnostic.
         assert!(parse("flowchart TD\nclassDef --x fill:red\nA\n").is_ok());
+        let e = parse("flowchart TD\nA\nstyle --x fill:red\n").unwrap_err();
+        assert!(e.message.contains("node id"), "targeted, not misleading: {}", e.message);
         // And a stray `direction -->` with no such entity keeps its
         // targeted diagnostic instead of minting a node.
         assert!(parse("flowchart TD\ndirection --> B\n").is_err());
@@ -879,6 +912,71 @@ mod tests {
         assert!(text.contains("stroke:#900"), "trimmed neighbour survives:\n{text}");
         let back = parse(&text).unwrap();
         assert_eq!(back.nodes.len(), 2, "no phantom nodes:\n{text}");
+    }
+
+    #[test]
+    fn round4_prescan_and_main_loop_agree_on_subgraph_lines() {
+        // `subgraph & X` / `subgraph --> B` headers (no subgraph
+        // actually named "subgraph") must be classified identically
+        // by the pre-scan and the main loop, or sub-edge indices
+        // drift and edges bind the WRONG box.
+        let g = parse("flowchart TD\nsubgraph & X\nend\nsubgraph two\nC\nend\nD --> two\n").unwrap();
+        assert_eq!(g.sub_edges.len(), 1);
+        let crate::model::End::Sub(si) = g.sub_edges[0].to else {
+            panic!("expected a sub end")
+        };
+        assert_eq!(g.subgraphs[si].id, "two", "edge must bind the box it names");
+        // Same with an edge-op-looking header.
+        let g = parse("flowchart TD\nsubgraph --> B\nend\nsubgraph two\nC\nend\nD --> two\n").unwrap();
+        let crate::model::End::Sub(si) = g.sub_edges[0].to else {
+            panic!("expected a sub end")
+        };
+        assert_eq!(g.subgraphs[si].id, "two");
+    }
+
+    #[test]
+    fn round4_keyword_gate_is_order_independent() {
+        // The divert gate consults the PRE-SCANNED subgraph ids, so
+        // an edge from a keyword-named subgraph parses no matter
+        // where the block sits in the file.
+        let g = parse("flowchart TD\nstyle --> B\nsubgraph style\nA\nend\n").unwrap();
+        assert_eq!(g.sub_edges.len(), 1);
+        assert_roundtrip(&g);
+    }
+
+    #[test]
+    fn round4_mangled_statement_ids_error_instead_of_phantom_nodes() {
+        // `class --> B` with no subgraph named class: the statement
+        // path must reject the id `-->` (0.19.1 silently minted a
+        // node named "-->" that no mermaid text can express again).
+        let e = parse("flowchart TD\nclass --> B\n").unwrap_err();
+        assert!(e.message.contains("node id"), "{}", e.message);
+        let e = parse("flowchart TD\nstyle --> B:::green\n").unwrap_err();
+        assert!(e.message.contains("node id"), "{}", e.message);
+    }
+
+    #[test]
+    fn round4_control_chars_sanitize_and_one_sided_backticks_defuse() {
+        // Raw C0 bytes in programmatic labels sanitize to spaces —
+        // mermaid text can't carry them.
+        let mut g = Graph::default();
+        g.ensure_node("a", Some("bell\u{7}!".into()), None);
+        let b = g.ensure_node("b", None, None);
+        g.add_edge(0, b, Some("x\ry".into()), EdgeKind::Arrow);
+        let text = to_mermaid(&g);
+        assert!(
+            !text.chars().any(|c| c.is_control() && c != '\n'),
+            "no raw control bytes:\n{text:?}"
+        );
+        let back = parse(&text).unwrap();
+        assert_eq!(back.nodes[0].label, "bell !");
+        // A leading backtick ALONE opens mermaid's markdown-string
+        // state — defused even without a closing one.
+        let g = parse("flowchart TD\nA[\"#96;hello\"] --> B\n").unwrap();
+        assert_eq!(g.nodes[0].label, "`hello");
+        let text = to_mermaid(&g);
+        assert!(text.contains("#96;"), "{text}");
+        assert_roundtrip(&g);
     }
 
     #[test]
