@@ -119,10 +119,12 @@ fn clean_label(s: &str) -> String {
     } else {
         t
     };
-    // Trim leading/trailing blank lines from `<br/>` at the edges
-    // (`"<br/>"` → "" not two empty lines).
+    // Trim the edges again AFTER folding `<br/>` — folding can
+    // expose whitespace that the pre-fold trim couldn't see
+    // (`"x <br/>"` → "x", not "x "). str::trim subsumes the old
+    // newline-only trim.
     decode_entities(&normalize_breaks(inner))
-        .trim_matches('\n')
+        .trim()
         .to_string()
 }
 
@@ -256,23 +258,32 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
     // order matches the index each block gets during the main pass —
     // so the pre-scan and the main loop MUST classify every
     // `subgraph …` line identically, or sub-edges bind to the wrong
-    // box. `subgraph --> B` is only ever an edge (not a header) when
-    // a subgraph literally NAMED "subgraph" exists; that existence
-    // check is decidable up front because such a header line can't
-    // itself look like an edge.
-    let has_sg_named_subgraph = source.lines().any(|raw| {
-        strip_keyword(raw.trim(), "subgraph").is_some_and(|rest| {
-            let r = rest.trim();
-            r == "subgraph" || r.starts_with("subgraph[") || r.starts_with("subgraph [")
+    // box. A line like `subgraph --> B` (or `SUBGRAPH --> B` —
+    // strip_keyword matches case-insensitively, so the as-written
+    // HEAD token matters) is an edge, not a header, exactly when a
+    // subgraph whose id equals that head exists. That's decidable up
+    // front: real headers never start with an edge operator, so
+    // their ids can be collected first without circularity.
+    let header_sg_ids: std::collections::HashSet<String> = source
+        .lines()
+        .filter_map(|raw| {
+            let line = raw.trim();
+            let rest = strip_keyword(line, "subgraph")?;
+            if edge_op_follows(rest) {
+                return None;
+            }
+            parse_subgraph_header(rest.trim(), 0).ok().map(|(id, _)| id)
         })
-    });
-    let sg_line_is_edge = |rest: &str| edge_op_follows(rest) && has_sg_named_subgraph;
+        .collect();
+    let sg_line_is_edge =
+        |line: &str, rest: &str| edge_op_follows(rest) && header_sg_ids.contains(&line[..8]);
     let mut sub_ids: HashMap<String, usize> = HashMap::new();
     {
         let mut idx = 0usize;
         for raw in source.lines() {
-            if let Some(rest) = strip_keyword(raw.trim(), "subgraph") {
-                if sg_line_is_edge(rest) {
+            let line = raw.trim();
+            if let Some(rest) = strip_keyword(line, "subgraph") {
+                if sg_line_is_edge(line, rest) {
                     continue;
                 }
                 if let Ok((id, _)) = parse_subgraph_header(rest.trim(), 0) {
@@ -334,14 +345,16 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
         // this loop runs, so the decision can't depend on line order
         // (nodes-so-far would), and a stray `style --> B` with no
         // such subgraph keeps its 0.19-era statement diagnostic.
-        // (Keyword-named NODES never need this path: the emitter
-        // always writes them in full `id["label"]` form.)
-        let names_a_subgraph = |kw: &str| sub_ids.contains_key(kw);
+        // The lookup uses the head token AS WRITTEN (`Class --> B`
+        // must find a subgraph named "Class" — strip_keyword matches
+        // case-insensitively). Keyword-named NODES never need this
+        // path: the emitter writes them in full `id["label"]` form.
+        let names_a_subgraph = |kw_len: usize| sub_ids.contains_key(&line[..kw_len]);
 
         // Subgraph blocks: `subgraph id [Title]` ... `end`, nestable,
         // with an optional `direction XX` line inside.
         if let Some(rest) = strip_keyword(line, "subgraph") {
-            if sg_line_is_edge(rest) {
+            if sg_line_is_edge(line, rest) {
                 parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack, &sub_ids)?;
                 continue;
             }
@@ -368,7 +381,7 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
             continue;
         }
         if let Some(rest) = strip_keyword(line, "direction") {
-            if !(edge_op_follows(rest) && names_a_subgraph("direction")) {
+            if !(edge_op_follows(rest) && names_a_subgraph("direction".len())) {
                 let Some(&cur) = sub_stack.last() else {
                     return Err(err(
                         lineno,
@@ -386,7 +399,7 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
         // `class A,B name`). strip_keyword requires whitespace after
         // the keyword, so `class` can't shadow `classDef`.
         if let Some(rest) = strip_keyword(line, "classDef") {
-            if edge_op_follows(rest) && names_a_subgraph("classDef") {
+            if edge_op_follows(rest) && names_a_subgraph("classDef".len()) {
                 parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack, &sub_ids)?;
                 continue;
             }
@@ -401,22 +414,33 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
             continue;
         }
         if let Some(rest) = strip_keyword(line, "class") {
-            if edge_op_follows(rest) && names_a_subgraph("class") {
+            if edge_op_follows(rest) && names_a_subgraph("class".len()) {
                 parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack, &sub_ids)?;
                 continue;
             }
             let rest = rest.trim();
-            let (ids, name) = rest.split_once(char::is_whitespace).ok_or_else(|| {
+            // The LAST token is the class name; everything before is
+            // the id list, so `class A, B hot` (space after comma)
+            // styles both A and B.
+            let (ids, name) = rest.rsplit_once(char::is_whitespace).ok_or_else(|| {
                 err(lineno, "class needs node ids and a class name".to_string())
             })?;
-            for id in ids.split(',').filter(|i| !i.is_empty()) {
-                let n = g.ensure_node(check_stmt_id(id.trim(), "class", lineno)?, None, None);
+            for id in ids.split(',').filter(|i| !i.trim().is_empty()) {
+                let id = check_stmt_id(id.trim(), "class", lineno)?;
+                // Styling a SUBGRAPH box by id is legal mermaid;
+                // flowmaid doesn't paint subgraph styles yet, so the
+                // assignment is accepted and dropped — minting a
+                // node here would collide with the subgraph id.
+                if sub_ids.contains_key(id) {
+                    continue;
+                }
+                let n = g.ensure_node(id, None, None);
                 assigns.push((n, name.trim().to_string()));
             }
             continue;
         }
         if let Some(rest) = strip_keyword(line, "style") {
-            if edge_op_follows(rest) && names_a_subgraph("style") {
+            if edge_op_follows(rest) && names_a_subgraph("style".len()) {
                 parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack, &sub_ids)?;
                 continue;
             }
@@ -424,9 +448,27 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
             let (id, props) = rest.split_once(char::is_whitespace).ok_or_else(|| {
                 err(lineno, "style needs a node id and properties".to_string())
             })?;
-            let n = g.ensure_node(check_stmt_id(id.trim(), "style", lineno)?, None, None);
-            styles.push((n, parse_props(props.trim(), lineno)?));
+            let id = check_stmt_id(id.trim(), "style", lineno)?;
+            // Subgraph-box styling: accepted, not painted (see the
+            // `class` branch note) — never mint a colliding node.
+            if !sub_ids.contains_key(id) {
+                let n = g.ensure_node(id, None, None);
+                styles.push((n, parse_props(props.trim(), lineno)?));
+            }
             continue;
+        }
+        // Known mermaid statements flowmaid doesn't implement get a
+        // targeted message instead of a baffling edge-operator error.
+        // (`click --> B` stays an EDGE from a node named click.)
+        for kw in ["linkStyle", "click"] {
+            if let Some(rest) = strip_keyword(line, kw) {
+                if !edge_op_follows(rest) {
+                    return Err(err(
+                        lineno,
+                        format!("'{kw}' statements aren't supported yet"),
+                    ));
+                }
+            }
         }
 
         parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack, &sub_ids)?;

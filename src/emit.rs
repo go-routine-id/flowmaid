@@ -477,9 +477,18 @@ mod tests {
         let back = parse(&text).unwrap_or_else(|e| panic!("re-parse failed: {e}\n--\n{text}"));
         assert_eq!(back.direction, g.direction, "direction\n--\n{text}");
         assert_eq!(back.nodes.len(), g.nodes.len(), "node count\n--\n{text}");
+        // Labels round-trip modulo the documented normalization:
+        // control chars sanitize to spaces, outer whitespace trims.
+        let norm_label = |s: &str| {
+            s.chars()
+                .map(|c| if c.is_control() && !matches!(c, '\n' | '\t') { ' ' } else { c })
+                .collect::<String>()
+                .trim()
+                .to_string()
+        };
         for (a, b) in g.nodes.iter().zip(&back.nodes) {
             assert_eq!(a.id, b.id, "node id\n--\n{text}");
-            assert_eq!(a.label.trim(), b.label, "label of {}\n--\n{text}", a.id);
+            assert_eq!(norm_label(&a.label), b.label, "label of {}\n--\n{text}", a.id);
             assert_eq!(a.shape, b.shape, "shape of {}\n--\n{text}", a.id);
             // Style values round-trip modulo trim (both the emitter
             // and parse_props trim), and unwritable values (commas,
@@ -518,7 +527,7 @@ mod tests {
                 .iter()
                 .find(|t| t.id == s.id)
                 .unwrap_or_else(|| panic!("subgraph {} lost\n--\n{text}", s.id));
-            assert_eq!(s.title, t.title, "title of {}\n--\n{text}", s.id);
+            assert_eq!(s.title.trim(), t.title, "title of {}\n--\n{text}", s.id);
             let ids = |g: &Graph, m: &[usize]| {
                 let mut v: Vec<String> = m.iter().map(|&i| g.nodes[i].id.clone()).collect();
                 v.sort();
@@ -977,6 +986,65 @@ mod tests {
         let text = to_mermaid(&g);
         assert!(text.contains("#96;"), "{text}");
         assert_roundtrip(&g);
+    }
+
+    #[test]
+    fn round5_case_variant_and_padded_subgraph_keyword_ids() {
+        // strip_keyword matches case-insensitively, so the divert
+        // gate must look up the head token AS WRITTEN.
+        for id in ["SUBGRAPH", "Class", "subgraph"] {
+            let mut g = Graph::default();
+            let b = g.ensure_node("B", None, None);
+            g.subgraphs.push(crate::model::Subgraph {
+                id: id.into(),
+                title: id.into(),
+                nodes: vec![],
+                parent: None,
+                direction: None,
+            });
+            g.sub_edges.push(crate::model::SubEdge {
+                from: End::Sub(0),
+                to: End::Node(b),
+                label: None,
+                kind: EdgeKind::Arrow,
+            });
+            assert_roundtrip(&g);
+        }
+        // Header detection survives extra spacing before the title.
+        let g = parse("flowchart TD\nsubgraph subgraph  [T]\nend\nsubgraph --> B\n").unwrap();
+        assert_eq!(g.sub_edges.len(), 1);
+        assert_roundtrip(&g);
+    }
+
+    #[test]
+    fn round5_subgraph_styling_is_accepted_without_phantom_nodes() {
+        // mermaid.js styles subgraph boxes by id; flowmaid accepts
+        // (and drops) it — no colliding node, no debug panic.
+        let g = parse(
+            "flowchart TD\nsubgraph grp\nA\nend\nstyle grp fill:#f9f\nclassDef hot fill:#f00\nclass grp hot\n",
+        )
+        .unwrap();
+        assert!(g.nodes.iter().all(|n| n.id != "grp"));
+        assert_roundtrip(&g);
+        // `class A, B hot` (space after comma) styles BOTH nodes.
+        let g = parse("flowchart TD\nA --> B\nclassDef hot fill:#f00\nclass A, B hot\n").unwrap();
+        assert!(g.nodes.iter().take(2).all(|n| n.style.fill.is_some()), "both styled");
+    }
+
+    #[test]
+    fn round5_label_edge_whitespace_and_unsupported_statements() {
+        // Whitespace exposed by <br/> folding trims away on parse.
+        let mut g = Graph::default();
+        g.ensure_node("a", Some("x \n".into()), None);
+        g.ensure_node("b", Some("bell\u{7}\n".into()), None);
+        g.add_edge(0, 1, None, EdgeKind::Arrow);
+        assert_roundtrip(&g);
+        // linkStyle/click: targeted message, not an edge-op error —
+        // but `click --> B` is still an edge from a node named click.
+        let e = parse("flowchart TD\nA --> B\nlinkStyle 0 stroke:#f00\n").unwrap_err();
+        assert!(e.message.contains("aren't supported"), "{}", e.message);
+        let g = parse("flowchart TD\nclick --> B\n").unwrap();
+        assert_eq!(g.edges.len(), 1);
     }
 
     #[test]
