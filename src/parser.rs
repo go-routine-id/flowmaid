@@ -275,8 +275,15 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
             parse_subgraph_header(rest.trim(), 0).ok().map(|(id, _)| id)
         })
         .collect();
-    let sg_line_is_edge =
-        |line: &str, rest: &str| edge_op_follows(rest) && header_sg_ids.contains(&line[..8]);
+    // Mermaid keywords are case-sensitive, so a case-variant head
+    // (`SUBGRAPH --> B`) can never be the `subgraph` statement — it
+    // routes to the edge path unconditionally. An exact-lowercase
+    // head is an edge only when a subgraph with that literal id
+    // exists (else it keeps the header diagnostics).
+    let sg_line_is_edge = |line: &str, rest: &str| {
+        edge_op_follows(rest)
+            && (&line[..8] != "subgraph" || header_sg_ids.contains(&line[..8]))
+    };
     let mut sub_ids: HashMap<String, usize> = HashMap::new();
     {
         let mut idx = 0usize;
@@ -345,11 +352,18 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
         // this loop runs, so the decision can't depend on line order
         // (nodes-so-far would), and a stray `style --> B` with no
         // such subgraph keeps its 0.19-era statement diagnostic.
-        // The lookup uses the head token AS WRITTEN (`Class --> B`
-        // must find a subgraph named "Class" — strip_keyword matches
-        // case-insensitively). Keyword-named NODES never need this
-        // path: the emitter writes them in full `id["label"]` form.
-        let names_a_subgraph = |kw_len: usize| sub_ids.contains_key(&line[..kw_len]);
+        // The head token AS WRITTEN decides (`Class --> B` —
+        // strip_keyword matches case-insensitively, but mermaid
+        // keywords are case-SENSITIVE, so a case-variant head can
+        // never be the statement keyword and always routes to the
+        // edge path). An exact-lowercase head diverts only when a
+        // subgraph with that literal id exists. Keyword-named NODES
+        // never need this path: the emitter writes them in full
+        // `id["label"]` form.
+        let kw_head_is_edge = |kw: &str, rest: &str| {
+            edge_op_follows(rest)
+                && (&line[..kw.len()] != kw || sub_ids.contains_key(&line[..kw.len()]))
+        };
 
         // Subgraph blocks: `subgraph id [Title]` ... `end`, nestable,
         // with an optional `direction XX` line inside.
@@ -381,7 +395,7 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
             continue;
         }
         if let Some(rest) = strip_keyword(line, "direction") {
-            if !(edge_op_follows(rest) && names_a_subgraph("direction".len())) {
+            if !(kw_head_is_edge("direction", rest)) {
                 let Some(&cur) = sub_stack.last() else {
                     return Err(err(
                         lineno,
@@ -399,7 +413,7 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
         // `class A,B name`). strip_keyword requires whitespace after
         // the keyword, so `class` can't shadow `classDef`.
         if let Some(rest) = strip_keyword(line, "classDef") {
-            if edge_op_follows(rest) && names_a_subgraph("classDef".len()) {
+            if kw_head_is_edge("classDef", rest) {
                 parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack, &sub_ids)?;
                 continue;
             }
@@ -414,7 +428,7 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
             continue;
         }
         if let Some(rest) = strip_keyword(line, "class") {
-            if edge_op_follows(rest) && names_a_subgraph("class".len()) {
+            if kw_head_is_edge("class", rest) {
                 parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack, &sub_ids)?;
                 continue;
             }
@@ -426,21 +440,32 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
                 err(lineno, "class needs node ids and a class name".to_string())
             })?;
             for id in ids.split(',').filter(|i| !i.trim().is_empty()) {
-                let id = check_stmt_id(id.trim(), "class", lineno)?;
+                let id = id.trim();
                 // Styling a SUBGRAPH box by id is legal mermaid;
                 // flowmaid doesn't paint subgraph styles yet, so the
                 // assignment is accepted and dropped — minting a
-                // node here would collide with the subgraph id.
+                // node here would collide with the subgraph id. The
+                // subgraph check runs FIRST: subgraph ids are
+                // free-form (`my-group`), node ids are word-like.
                 if sub_ids.contains_key(id) {
                     continue;
                 }
-                let n = g.ensure_node(id, None, None);
+                if id.contains(char::is_whitespace) {
+                    return Err(err(
+                        lineno,
+                        format!(
+                            "class takes a comma-separated id list then ONE class name; \
+                             unexpected extra token in: '{id}'"
+                        ),
+                    ));
+                }
+                let n = g.ensure_node(check_stmt_id(id, "class", lineno)?, None, None);
                 assigns.push((n, name.trim().to_string()));
             }
             continue;
         }
         if let Some(rest) = strip_keyword(line, "style") {
-            if edge_op_follows(rest) && names_a_subgraph("style".len()) {
+            if kw_head_is_edge("style", rest) {
                 parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack, &sub_ids)?;
                 continue;
             }
@@ -448,21 +473,27 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
             let (id, props) = rest.split_once(char::is_whitespace).ok_or_else(|| {
                 err(lineno, "style needs a node id and properties".to_string())
             })?;
-            let id = check_stmt_id(id.trim(), "style", lineno)?;
+            let id = id.trim();
             // Subgraph-box styling: accepted, not painted (see the
             // `class` branch note) — never mint a colliding node.
-            if !sub_ids.contains_key(id) {
-                let n = g.ensure_node(id, None, None);
+            // Checked BEFORE the word-like id rule (subgraph ids are
+            // free-form), and the props still get validated.
+            if sub_ids.contains_key(id) {
+                parse_props(props.trim(), lineno)?;
+            } else {
+                let n = g.ensure_node(check_stmt_id(id, "style", lineno)?, None, None);
                 styles.push((n, parse_props(props.trim(), lineno)?));
             }
             continue;
         }
         // Known mermaid statements flowmaid doesn't implement get a
         // targeted message instead of a baffling edge-operator error.
-        // (`click --> B` stays an EDGE from a node named click.)
+        // Exact-case head only — mermaid keywords are case-sensitive,
+        // so `Click` is a plain node id — and `click --> B` stays an
+        // EDGE from a node named click.
         for kw in ["linkStyle", "click"] {
             if let Some(rest) = strip_keyword(line, kw) {
-                if !edge_op_follows(rest) {
+                if &line[..kw.len()] == kw && !edge_op_follows(rest) {
                     return Err(err(
                         lineno,
                         format!("'{kw}' statements aren't supported yet"),
@@ -874,7 +905,16 @@ fn close(cur: &mut Cur<'_>, closer: &str, lineno: usize) -> Result<String, Parse
 /// does NOT count as an edge.
 fn edge_op_follows(rest: &str) -> bool {
     let r = rest.trim_start();
-    r.starts_with('&') || parse_edge_op(&mut Cur::new(r)).is_some()
+    if r.starts_with('&') || parse_edge_op(&mut Cur::new(r)).is_some() {
+        return true;
+    }
+    // Inline-label edge forms: `-- text -->`, `-. text .->`,
+    // `== text ==>` (and their open-line closers). The opener alone
+    // is ambiguous with statement arguments like `--x`, so require
+    // the closing operator later on the line.
+    (r.starts_with("--") && (r.contains("-->") || r[2..].contains("---")))
+        || (r.starts_with("-.") && (r.contains(".->") || r[2..].contains(".-")))
+        || (r.starts_with("==") && (r.contains("==>") || r[2..].contains("===")))
 }
 
 /// A `class`/`style` statement id must be word-like — an id such as
@@ -1552,11 +1592,19 @@ fn parse_participant(
     let label = if cur.at_end() {
         None
     } else if let Some(after) = strip_keyword(cur.rest(), "as") {
-        let l = clean_label_1line(after.trim());
-        if l.is_empty() {
+        // Error only when there's literally nothing after `as`; an
+        // alias that merely CLEANS to empty (quoted whitespace,
+        // `#32;`) falls back to no-alias instead of failing files
+        // that used to load.
+        if after.trim().is_empty() {
             return Err(err(lineno, "expected a label after 'as'".to_string()));
         }
-        Some(l)
+        let l = clean_label_1line(after.trim());
+        if l.is_empty() {
+            None
+        } else {
+            Some(l)
+        }
     } else {
         return Err(err(
             lineno,
@@ -1622,10 +1670,15 @@ fn parse_seq_note(
     let Some(colon) = rest.find(':') else {
         return Err(err(lineno, "note needs ': text'".to_string()));
     };
-    let (place, text) = (rest[..colon].trim(), clean_label_1line(rest[colon + 1..].trim()));
-    if text.is_empty() {
+    // Emptiness is judged on the RAW text: a note that merely CLEANS
+    // to empty (quoted whitespace, `#32;`) renders as a blank chip,
+    // it doesn't fail the file.
+    let raw = rest[colon + 1..].trim();
+    if raw.is_empty() {
         return Err(err(lineno, "note text is empty".to_string()));
     }
+    let (place, text) = (rest[..colon].trim(), clean_label_1line(raw));
+    let text = if text.is_empty() { " ".to_string() } else { text };
     let side = if let Some(ids) = strip_keyword(place, "over") {
         let mut it = ids.split(',').map(str::trim);
         let a = it

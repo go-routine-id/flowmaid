@@ -177,6 +177,7 @@ fn dir_token(d: Direction) -> &'static str {
 /// otherwise be eaten by the `class` statement branch.
 const RESERVED: &[&str] = &[
     "end", "subgraph", "direction", "style", "classDef", "class", "flowchart", "graph",
+    "linkStyle", "click",
 ];
 
 fn is_reserved(id: &str) -> bool {
@@ -986,6 +987,59 @@ mod tests {
         let text = to_mermaid(&g);
         assert!(text.contains("#96;"), "{text}");
         assert_roundtrip(&g);
+    }
+
+    #[test]
+    fn round6_click_named_nodes_and_case_variant_keywords() {
+        // A node named `click`/`linkStyle` must round-trip (emitter
+        // writes the full form; the parser branch is exact-case).
+        for id in ["click", "linkStyle", "Click"] {
+            let g = parse(&format!("flowchart TD\nA --> {id}\n")).unwrap();
+            assert_roundtrip(&g);
+        }
+        // Bare case-variant lines are plain nodes (mermaid keywords
+        // are case-sensitive); exact-lowercase gets the targeted err.
+        assert!(parse("flowchart TD\nClick\nClick --> B\n").is_ok());
+        assert!(parse("flowchart TD\nclick A callback\n").is_err());
+        // Inline-label edge from a keyword-named node still parses.
+        let g = parse("flowchart TD\nclick -- go --> B\n").unwrap();
+        assert_eq!(g.edges.len(), 1);
+        assert_eq!(g.edges[0].label.as_deref(), Some("go"));
+    }
+
+    #[test]
+    fn round6_case_variant_heads_route_to_the_edge_path() {
+        // subgraph named lowercase keyword + case-variant head:
+        // `Class --> B` is an edge from a distinct plain node.
+        let g = parse("flowchart TD\nsubgraph class\nA\nend\nClass --> B\n").unwrap();
+        assert!(g.nodes.iter().any(|n| n.id == "Class"));
+        assert_eq!(g.edges.len(), 1);
+        // Case-variant subgraph head over a differently-cased id.
+        let g = parse("flowchart TD\nsubgraph Subgraph\nA\nend\nSUBGRAPH --> B\n").unwrap();
+        assert!(g.nodes.iter().any(|n| n.id == "SUBGRAPH"));
+        // Exact-case head naming the subgraph is still a sub-edge.
+        let g = parse("flowchart TD\nsubgraph Subgraph\nA\nend\nSubgraph --> B\n").unwrap();
+        assert_eq!(g.sub_edges.len(), 1);
+    }
+
+    #[test]
+    fn round6_subgraph_style_props_validated_and_dashed_ids_ok() {
+        // Dashed subgraph ids style-drop cleanly (checked before the
+        // word-like node-id rule)…
+        assert!(parse("flowchart TD\nsubgraph my-group\nA\nend\nstyle my-group fill:#f9f\n").is_ok());
+        // …but garbage props are still a hard error.
+        assert!(parse("flowchart TD\nsubgraph grp\nA\nend\nstyle grp NOTAPROP\n").is_err());
+    }
+
+    #[test]
+    fn round6_seq_whitespace_only_labels_still_load() {
+        use crate::parser::parse_document;
+        // Whitespace-only note text / participant alias came from
+        // real 0.19-era files; they normalize instead of erroring.
+        assert!(parse_document("sequenceDiagram\nnote over A: #32;\nA->>B: y\n").is_ok());
+        assert!(parse_document("sequenceDiagram\nparticipant A as \" \"\nA->>B: y\n").is_ok());
+        // Truly empty is still an error.
+        assert!(parse_document("sequenceDiagram\nnote over A:\nA->>B: y\n").is_err());
     }
 
     #[test]
