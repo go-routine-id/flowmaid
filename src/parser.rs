@@ -3065,6 +3065,72 @@ mod tests {
     }
 
     #[test]
+    fn fence_indent_recognizes_only_true_fences() {
+        // Exactly three dashes, leading spaces/tabs and trailing
+        // whitespace allowed; the returned indent is the leading run.
+        assert_eq!(fence_indent("---"), Some(""));
+        assert_eq!(fence_indent("---   "), Some(""));
+        assert_eq!(fence_indent("  ---"), Some("  "));
+        assert_eq!(fence_indent("\t ---  \t"), Some("\t "));
+        // Not fences: wrong dash count, content after the dashes, an
+        // open-link edge, or a non-fence line.
+        assert_eq!(fence_indent("----"), None);
+        assert_eq!(fence_indent("--"), None);
+        assert_eq!(fence_indent("--- x"), None);
+        assert_eq!(fence_indent("A --- B"), None);
+        assert_eq!(fence_indent("title: X"), None);
+        assert_eq!(fence_indent(""), None);
+    }
+
+    #[test]
+    fn frontmatter_edge_cases_are_robust() {
+        // CRLF line endings (Windows / GitHub exports).
+        assert!(parse_document("---\r\ntitle: X\r\n---\r\nflowchart TD\r\nA --> B").is_ok());
+        // Trailing whitespace on the fences themselves.
+        assert!(parse("---  \ntitle: X\n---\t\nA --> B").is_ok());
+        // Multi-key config block, and a body line that itself looks
+        // like an edge operator must not confuse the fence scan.
+        assert!(parse_document(
+            "---\ntitle: My Flow\nconfig:\n  theme: dark\n  flowchart:\n    curve: basis\n---\nflowchart LR\nA --> B"
+        )
+        .is_ok());
+        // Mismatched-indent close: open at col 0, only an indented
+        // `---` later → never closes → unterminated (not a silent
+        // early close).
+        assert!(parse("---\nx: 1\n  ---\nA --> B").is_err());
+        // Open indented, close at col 0 → indents differ → unterminated.
+        assert!(parse("  ---\nx: 1\n---\nA --> B").is_err());
+        // Frontmatter directly followed by the header, no body keys.
+        assert!(parse_document("---\n---\nflowchart TD\nA --> B").is_ok());
+        // A `%%` comment as the first line means NO frontmatter (the
+        // fence isn't the first line), so a later bare `---` is body.
+        assert!(parse_document("%% note\n---\nA --> B").is_err());
+
+        // The dropped block never leaks into node/edge content: the
+        // graph equals the same diagram with no frontmatter.
+        let fm = parse("---\ntitle: Ignore Me\nauthor: nobody\n---\nA[Start] --> B[End]").unwrap();
+        let plain = parse("A[Start] --> B[End]").unwrap();
+        assert_eq!(fm.nodes.len(), plain.nodes.len());
+        assert_eq!(fm.nodes[0].label, "Start");
+        assert_eq!(fm.nodes[1].label, "End");
+        assert_eq!(fm.edges.len(), 1);
+
+        // Line numbers stay exact under a MULTI-line frontmatter for a
+        // non-flowchart type (sub-parsers see the blanked source).
+        let e = parse_document("---\ntitle: X\nconfig: {}\n---\nsequenceDiagram\nnote over A:").unwrap_err();
+        assert_eq!(e.line, 6, "seq body error line must survive blanking");
+
+        // Both entry points agree on a frontmatter'd flowchart.
+        let a = parse("---\nt: x\n---\nA --> B").unwrap();
+        let b = match parse_document("---\nt: x\n---\nA --> B").unwrap() {
+            Document::Flowchart(g) => g,
+            _ => panic!(),
+        };
+        assert_eq!(a.nodes.len(), b.nodes.len());
+        assert_eq!(a.edges.len(), b.edges.len());
+    }
+
+    #[test]
     fn deeply_nested_subgraphs_error_instead_of_overflowing_the_stack() {
         // Before the guard, ~18k nested `subgraph` blocks overflowed the
         // stack in the layout pass (`arrange()` recurses one frame per
