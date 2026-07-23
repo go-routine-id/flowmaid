@@ -260,6 +260,80 @@ fn fence_indent(line: &str) -> Option<&str> {
     (body.trim_end() == "---").then_some(indent)
 }
 
+/// Split one physical line into logical statements on top-level `;`
+/// separators — a `;` inside a quoted label (`"…"`), an edge-label
+/// `|…|`, or shape brackets (`[]`/`()`/`{}`) is literal text, not a
+/// separator. A line with no top-level `;` yields itself unchanged.
+/// Fragments are returned untrimmed.
+fn split_statements(line: &str) -> Vec<&str> {
+    if !line.contains(';') {
+        return vec![line];
+    }
+    let mut out = Vec::new();
+    // A quote is the outermost context (it protects brackets/pipes/`;`);
+    // an edge-label `|…|` and shape brackets `[]/()/{}` are their own
+    // literal contexts. A `|` only OPENS an edge label at top level —
+    // a `|` inside brackets (`A[read|write]`, `A[Yes|No]`) is label
+    // text, never a delimiter.
+    let mut depth = 0i32;
+    let mut in_quote = false;
+    let mut in_pipe = false;
+    let mut start = 0usize;
+    for (i, c) in line.char_indices() {
+        if in_quote {
+            if c == '"' {
+                in_quote = false;
+            }
+            continue;
+        }
+        if in_pipe {
+            match c {
+                '"' => in_quote = true,
+                '|' => in_pipe = false,
+                _ => {}
+            }
+            continue;
+        }
+        match c {
+            '"' => in_quote = true,
+            '[' | '(' | '{' => depth += 1,
+            ']' | ')' | '}' if depth > 0 => depth -= 1,
+            '|' if depth == 0 => in_pipe = true,
+            ';' if depth == 0 => {
+                out.push(&line[start..i]);
+                start = i + 1; // ';' is one ASCII byte
+            }
+            _ => {}
+        }
+    }
+    out.push(&line[start..]);
+    out
+}
+
+/// The logical statements of a flowchart source as `(1-based physical
+/// line number, trimmed fragment)`: blank lines and full-line `%%`
+/// comments are dropped, every other line is split on top-level `;`,
+/// and empty fragments are skipped. The subgraph pre-scan and the main
+/// pass BOTH iterate this, so they classify every statement
+/// identically — the no-drift invariant that keeps sub-edges bound to
+/// the right box depends on it (`;` must never desync the two passes).
+fn statements(source: &str) -> Vec<(usize, &str)> {
+    let mut out = Vec::new();
+    for (i, raw) in source.lines().enumerate() {
+        let phys = raw.trim();
+        if phys.is_empty() || phys.starts_with("%%") {
+            continue;
+        }
+        for frag in split_statements(raw) {
+            let f = frag.trim();
+            if !f.is_empty() {
+                out.push((i + 1, f));
+            }
+        }
+    }
+    out
+}
+
 pub fn parse_document(source: &str) -> Result<Document, ParseError> {
     // Editor Windows (Notepad, PowerShell `>`) menyisipkan BOM UTF-8.
     // U+FEFF bukan whitespace Unicode, jadi lolos trim() dan membuat
@@ -335,10 +409,13 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
     // subgraph whose id equals that head exists. That's decidable up
     // front: real headers never start with an edge operator, so
     // their ids can be collected first without circularity.
-    let header_sg_ids: std::collections::HashSet<String> = source
-        .lines()
-        .filter_map(|raw| {
-            let line = raw.trim();
+    // Logical statements (physical lines split on top-level `;`).
+    // Computed ONCE and shared by the pre-scan and the main pass so a
+    // `;` can never make them classify a `subgraph` line differently.
+    let stmts = statements(source);
+    let header_sg_ids: std::collections::HashSet<String> = stmts
+        .iter()
+        .filter_map(|&(_, line)| {
             let rest = strip_keyword(line, "subgraph")?;
             if edge_op_follows(rest) {
                 return None;
@@ -358,8 +435,7 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
     let mut sub_ids: HashMap<String, usize> = HashMap::new();
     {
         let mut idx = 0usize;
-        for raw in source.lines() {
-            let line = raw.trim();
+        for &(_, line) in &stmts {
             if let Some(rest) = strip_keyword(line, "subgraph") {
                 if sg_line_is_edge(line, rest) {
                     continue;
@@ -372,13 +448,9 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
         }
     }
 
-    for (i, raw) in source.lines().enumerate() {
-        let lineno = i + 1;
-        let line = raw.trim();
-        if line.is_empty() || line.starts_with("%%") {
-            continue;
-        }
-
+    for &(lineno, line) in &stmts {
+        // `line` is trimmed and non-empty; blanks and full-line `%%`
+        // comments were already dropped by `statements`.
         if !header_seen {
             header_seen = true;
             if let Some(t) = diagram_type(line) {
@@ -2508,6 +2580,60 @@ mod tests {
         assert_eq!(g.nodes.len(), 4);
         assert_eq!(g.edges.len(), 3);
         assert_eq!(g.edges[2].kind, EdgeKind::Dotted);
+    }
+
+    #[test]
+    fn semicolon_one_liners_and_header_split() {
+        // #19: the classic compact form from mermaid's README and
+        // countless LLM/chat outputs — `;` on the HEADER line too.
+        let g = parse("graph TD;A-->B;").unwrap();
+        assert_eq!(g.direction, Direction::TD);
+        assert_eq!(g.nodes.len(), 2);
+        assert_eq!(g.edges.len(), 1);
+        // Multiple statements sharing the header line.
+        let g = parse("flowchart LR;A-->B;C-->D").unwrap();
+        assert_eq!(g.direction, Direction::LR);
+        assert_eq!(g.edges.len(), 2);
+        // A `;` after a KEYWORD line: `subgraph two; A --> B` (the
+        // issue's exact case) — the edge must not vanish into the id.
+        let g = parse_document("flowchart TD\nsubgraph two; A --> B\nend\nC --> two").unwrap();
+        let Document::Flowchart(g) = g else { panic!() };
+        assert_eq!(g.subgraphs.len(), 1);
+        assert_eq!(g.subgraphs[0].id, "two");
+        assert_eq!(g.edges.len(), 1, "A --> B inside the block");
+        assert_eq!(g.sub_edges.len(), 1, "C --> two binds the box");
+        // A whole subgraph block on one line.
+        let g = parse("flowchart TD\nsubgraph s; X; Y; end\nX --> Y").unwrap();
+        assert_eq!(g.subgraphs[0].nodes.len(), 2);
+    }
+
+    #[test]
+    fn semicolons_inside_labels_are_literal() {
+        // `;` inside a quoted label, an edge label, or shape brackets
+        // is text, not a separator.
+        let g = parse("flowchart TD\nA[\"a; b\"] --> C").unwrap();
+        assert_eq!(g.nodes.len(), 2, "quoted ';' must not split");
+        assert_eq!(g.nodes[0].label, "a; b");
+        let g = parse("flowchart TD\nA -->|\"go; stop\"| B").unwrap();
+        assert_eq!(g.edges.len(), 1);
+        assert_eq!(g.edges[0].label.as_deref(), Some("go; stop"));
+        let g = parse("flowchart TD\nA[a;b] --> C").unwrap();
+        assert_eq!(g.nodes[0].label, "a;b", "bracketed ';' must not split");
+        // A `;` in a comment line stays a comment (whole line dropped).
+        let g = parse("flowchart TD\n%% one; two\nA --> B").unwrap();
+        assert_eq!(g.nodes.len(), 2, "no phantom node from comment ';'");
+        // A single literal `|` inside a shape label (`read|write`,
+        // `Yes|No`) must NOT get stuck and swallow a later top-level
+        // `;` — legal mermaid, common in practice.
+        let g = parse("flowchart TD\nA[read|write]; B[x]").unwrap();
+        assert_eq!(g.nodes.len(), 2, "bracketed '|' must not eat the ';'");
+        assert_eq!(g.nodes[0].label, "read|write");
+        let g = parse("flowchart TD\nA[Yes|No]; C[a|b|c]; D{e|f}").unwrap();
+        assert_eq!(g.nodes.len(), 3, "odd and even bracketed pipes both fine");
+        // A `;` right after a normal edge label still splits cleanly.
+        let g = parse("flowchart TD\nA -->|go stop| B; C --> D").unwrap();
+        assert_eq!(g.edges.len(), 2);
+        assert_eq!(g.edges[0].label.as_deref(), Some("go stop"));
     }
 
     #[test]
