@@ -172,7 +172,7 @@
       <div class="card"><h3>📦 Embed it</h3><p><code>cargo add flowmaid</code> — <code>render_svg(text)</code> for one-shot SVG, or the <code>scene</code>/<code>route</code> API for interactive canvases with live edge re-routing.</p></div>
       <div class="card"><h3>🌐 Web</h3><p>Compiles to <code>wasm32</code> out of the box. The <a href="/flowmaid-web/">playground</a> ships the whole engine in a ~380&nbsp;KB bundle — mermaid.js is ~2.5&nbsp;MB.</p></div>
       <div class="card"><h3>🖥️ Desktop</h3><p><a href="https://github.com/go-routine-id/flowmaid-desktop">flowmaid-desktop</a>: a native editor with live text, draggable nodes, zoom/pan, and real file workflow.</p></div>
-      <div class="card"><h3>⌨️ CLI</h3><p><code>flowmaid diagram.mmd -o out.svg</code> — pipe-friendly, line-numbered errors, ~60&nbsp;ms end-to-end on 5,000-node graphs.</p></div>
+      <div class="card"><h3>⌨️ CLI</h3><p><code>flowmaid diagram.mmd -o out.svg</code> — pipe-friendly, line-numbered errors, sub-millisecond renders on typical diagrams.</p></div>
       <div class="card"><h3>📟 Terminal</h3><p><a href="https://github.com/go-routine-id/flowcli">flowcli</a>: renders diagrams as Unicode box- and line-drawing in your terminal (ratatui) — <strong>no SVG</strong>, drawn straight from the <code>scene</code> geometry.</p></div>
     </div>
   </div>
@@ -187,13 +187,15 @@
       <li class="done">erDiagram — crow's foot, entity tables <span class="ver">v0.2</span></li>
       <li class="done">style / classDef / ::: custom colors <span class="ver">v0.4</span></li>
       <li class="done">subgraph — nesting, titles, direction <span class="ver">v0.5</span></li>
-      <li class="done">Interactive drag API (scene / route / route_partial)</li>
+      <li class="done">Visual-editor loop — pick (<code>hit_test</code>) → drag (<code>route_partial</code>) → route → persist (<code>to_mermaid</code>) <span class="ver">v0.18–0.20</span></li>
       <li class="done">Fan-out <code>A --> B &amp; C</code>, all 6 link types <span class="ver">v0.6</span></li>
       <li class="done">classDiagram · sequenceDiagram · stateDiagram <span class="ver">v0.9–0.11</span></li>
       <li class="done">pie · mindmap · journey <span class="ver">v0.10–0.14</span></li>
       <li class="done">Mermaid-grade dagre layout — clusters, label slots, curveBasis <span class="ver">v0.16–0.17</span></li>
       <li class="done">Real <code>&lt;b&gt;</code>/<code>&lt;i&gt;</code> in labels <span class="ver">v0.17</span></li>
-      <li class="todo"><code>$$math$$</code> in labels (KaTeX subset)</li>
+      <li class="done">Loads mermaid-live / GitHub exports — YAML frontmatter, <code>;</code> one-liners, entity codes <span class="ver">v0.20.1</span></li>
+      <li class="done"><code>$$math$$</code> in labels — Phase A passthrough <span class="ver">v0.20</span></li>
+      <li class="todo"><code>$$math$$</code> Phase B — TeX → MathML subset</li>
       <li class="todo">gantt · gitGraph · timeline · the whole catalog</li>
     </ul>
   </div>
