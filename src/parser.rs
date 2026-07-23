@@ -218,21 +218,24 @@ fn normalize_breaks(s: &str) -> String {
 /// untouched when there's no frontmatter; errors on an unterminated
 /// block. Call it AFTER the BOM strip.
 fn strip_frontmatter(source: &str) -> Result<Cow<'_, str>, ParseError> {
+    // Matches mermaid's fence regex
+    // `/^([^\S\n\r]*)-{3}\s*[\n\r](.*?)[\n\r]\1-{3}\s*[\n\r]+/s`:
+    // the OPEN `---` is the very first line (indented by spaces/tabs
+    // at most — no leading blank lines), and the CLOSE must sit at the
+    // SAME indent (the `\1` backreference). So a `---` that is
+    // indented differently — e.g. inside a `title: |` block scalar —
+    // is body, not a fence, and never closes the block early.
     let mut lines = source.lines().enumerate();
-    let open = loop {
-        match lines.next() {
-            Some((_, l)) if l.trim().is_empty() => continue,
-            Some((i, l)) if l.trim() == "---" => break i,
-            // First real content isn't a fence → no frontmatter.
-            _ => return Ok(Cow::Borrowed(source)),
-        }
+    let Some((_, first)) = lines.next() else {
+        return Ok(Cow::Borrowed(source));
     };
-    // Close only on `---`, exactly as mermaid does — a YAML block
-    // scalar body can legitimately contain a `...` document-end
-    // marker, so treating that as a fence would close the block early.
-    let Some(close) = lines.find_map(|(i, l)| (l.trim() == "---").then_some(i)) else {
+    let Some(open_indent) = fence_indent(first) else {
+        return Ok(Cow::Borrowed(source)); // no frontmatter
+    };
+    let Some(close) = lines.find_map(|(i, l)| (fence_indent(l) == Some(open_indent)).then_some(i))
+    else {
         return Err(err(
-            open + 1,
+            1,
             "unterminated frontmatter — the leading '---' block is never closed with '---'"
                 .to_string(),
         ));
@@ -242,10 +245,19 @@ fn strip_frontmatter(source: &str) -> Result<Cow<'_, str>, ParseError> {
     let out = source
         .lines()
         .enumerate()
-        .map(|(i, l)| if (open..=close).contains(&i) { "" } else { l })
+        .map(|(i, l)| if i <= close { "" } else { l })
         .collect::<Vec<_>>()
         .join("\n");
     Ok(Cow::Owned(out))
+}
+
+/// If `line` is a YAML frontmatter fence — leading spaces/tabs, then
+/// exactly `---`, then only trailing whitespace — return its leading
+/// indent (so open and close can be required to match); else `None`.
+fn fence_indent(line: &str) -> Option<&str> {
+    let body = line.trim_start_matches([' ', '\t']);
+    let indent = &line[..line.len() - body.len()];
+    (body.trim_end() == "---").then_some(indent)
 }
 
 pub fn parse_document(source: &str) -> Result<Document, ParseError> {
@@ -2998,18 +3010,23 @@ mod tests {
             let fm = format!("---\ntitle: My Diagram\nconfig:\n  theme: dark\n---\n{body}");
             assert!(parse_document(&fm).is_ok(), "frontmatter must not break: {body}");
         }
-        // Blank lines before the block are allowed.
-        assert!(parse_document("\n\n---\ntitle: X\n---\nflowchart TD\nA --> B").is_ok());
         // BOM + frontmatter together.
         assert!(parse_document("\u{feff}---\ntitle: X\n---\nflowchart TD\nA --> B").is_ok());
         // The flowchart-only entry point too.
         assert!(parse("---\ntitle: X\n---\nA --> B").is_ok());
 
-        // A `...` inside a YAML block scalar is NOT a close fence
-        // (only `---` closes, like mermaid) — the block runs to the
-        // real `---` and the diagram is intact.
+        // Fence lines carry an indent in mermaid; open and close must
+        // SHARE it, so a differently-indented `---` inside a `title:|`
+        // block scalar is body, not an early close (regression fix).
+        let g = parse("---\ntitle: |\n  first\n  ---\n  second\nkey: v\n---\nA --> B").unwrap();
+        assert_eq!(g.nodes.len(), 2, "indented '---' must not close the block early");
+        // A `...` document-end marker inside the body is likewise not
+        // a fence (only `---` closes).
         let g = parse("---\ntitle: |\n  ...\n  more\n---\nA --> B").unwrap();
         assert_eq!(g.nodes.len(), 2, "'...' must not close the block early");
+        // An indented open fence is honoured, and its close must match
+        // that same indent.
+        assert!(parse("  ---\n  title: X\n  ---\nA --> B").is_ok());
 
         // Frontmatter is stripped EXACTLY once: parse_document must
         // not re-strip inside its flowchart arm (a body `---` line is
@@ -3032,9 +3049,19 @@ mod tests {
         // A `---` that never closes is a clean error, not silent junk.
         let e = parse_document("---\ntitle: X\nflowchart TD\nA --> B").unwrap_err();
         assert!(e.message.contains("unterminated frontmatter"), "{}", e.message);
-        // A bare `---` mid-diagram is NOT frontmatter (and an open
-        // link `A --- B` is never confused with a fence).
+        // An indented `---` does NOT satisfy the (un-indented) close,
+        // so a block with only that is still unterminated — flowmaid
+        // errors where a silent success would corrupt the diagram.
+        let e = parse("---\ntitle: |\n  ...\n  ---\nA --> B").unwrap_err();
+        assert!(e.message.contains("unterminated"), "{}", e.message);
+        // A bare `---` mid-diagram is NOT frontmatter (only the FIRST
+        // line opens a block), and an open link `A --- B` is never a
+        // fence.
         assert!(parse("flowchart TD\nA --- B").is_ok());
+        // Frontmatter must be the very first line — a leading blank
+        // means no frontmatter (matches mermaid's `^` anchor), so the
+        // stray `---` on line 2 is not stripped.
+        assert!(parse_document("\n---\ntitle: X\n---\nflowchart TD\nA --> B").is_err());
     }
 
     #[test]
