@@ -912,19 +912,18 @@ fn edge_op_follows(rest: &str) -> bool {
 /// edge forms (`-- text -->`, `-. text .->`, `== text ==>` and their
 /// open-line closers). The opener alone is ambiguous with statement
 /// arguments like `--x`, so the closing operator must appear later
-/// on the line, BEFORE any `(`/`:` (a prop value like
-/// `fill:url(#a-->b)` never precedes a real edge closer) and with a
-/// target after it (a line ENDING in the closer is a bare-title
-/// subgraph header, not an edge). Used by the statement-keyword
-/// gates only — the `subgraph` header branch sticks to complete
-/// operators so 0.19-era headers titled `-- Phase 1 ---` keep
-/// parsing as headers.
+/// on the line, with a target after it (a line ENDING in the closer
+/// is a bare-title subgraph header, not an edge). Label text is
+/// unrestricted — `-- (note) -->` and `-- open: docs -->` are real
+/// edges — mirroring what the inline-label edge parser consumes.
+/// Used by the statement-keyword gates only — the `subgraph` header
+/// branch sticks to complete operators so 0.19-era headers titled
+/// `-- Phase 1 ---` keep parsing as headers.
 fn edge_lead_follows(rest: &str) -> bool {
     let r = rest.trim_start();
     if edge_op_follows(rest) {
         return true;
     }
-    let scan = &r[..r.find(['(', ':']).unwrap_or(r.len())];
     let closers: &[&str] = if r.starts_with("--") {
         &["-->", "---"]
     } else if r.starts_with("-.") {
@@ -934,13 +933,10 @@ fn edge_lead_follows(rest: &str) -> bool {
     } else {
         return false;
     };
-    if scan.len() < 2 {
-        return false;
-    }
     // Earliest closer wins (that's what the edge parser would eat).
     let end = closers
         .iter()
-        .filter_map(|c| scan[2..].find(c).map(|p| 2 + p + c.len()))
+        .filter_map(|c| r[2..].find(c).map(|p| 2 + p + c.len()))
         .min();
     end.is_some_and(|end| !r[end..].trim().is_empty())
 }

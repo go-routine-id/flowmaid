@@ -43,6 +43,9 @@
 //!   parens — hex colors are the portable choice.
 //! - Control characters in labels (other than newline/tab)
 //!   sanitize to spaces — mermaid text cannot carry them.
+//! - Subgraph nesting deeper than the parser's 500-level cap is
+//!   unemittable (the output could never be reloaded); debug
+//!   builds assert it.
 
 use crate::model::{Direction, EdgeKind, End, Graph, NodeStyle, Shape};
 
@@ -145,26 +148,9 @@ fn check_preconditions(g: &Graph) {
             "to_mermaid: subgraph {:?} has an out-of-bounds parent index",
             s.id
         );
-        // The parser refuses nesting past its depth cap — emitting
-        // deeper would persist a file that can never be reloaded.
-        // (A parent CYCLE is exempt: the forced-root pass flattens
-        // it, so the walk just stops at the subgraph count.)
-        let mut depth = 0usize;
-        let mut cur = s.parent;
-        while let Some(p) = cur {
-            depth += 1;
-            if depth > g.subgraphs.len() {
-                depth = 0; // cycle — flattened at emit, not deep
-                break;
-            }
-            cur = g.subgraphs.get(p).and_then(|s| s.parent);
-        }
-        debug_assert!(
-            depth < 500,
-            "to_mermaid: subgraph {:?} nests deeper than the parser's 500-level cap — \
-             the emitted file could not be re-parsed",
-            s.id
-        );
+        // (Nesting depth is asserted in emit_subgraph on the ACTUAL
+        // emitted depth — that accounts for cycle flattening, which
+        // a parent-chain walk here cannot.)
         for &m in &s.nodes {
             debug_assert!(
                 m < g.nodes.len(),
@@ -367,6 +353,16 @@ fn emit_subgraph(g: &Graph, si: usize, depth: usize, visited: &mut [bool], out: 
         return;
     }
     visited[si] = true;
+    // The parser refuses nesting past its 500-level cap — emitting
+    // deeper would persist a file that can never be reloaded. This
+    // is the ACTUAL emitted depth (cycle flattening included), so
+    // the assertion is exact by construction.
+    debug_assert!(
+        depth <= 500,
+        "to_mermaid: subgraph {:?} nests deeper than the parser's 500-level cap — \
+         the emitted file could not be re-parsed",
+        g.subgraphs[si].id
+    );
     let s = &g.subgraphs[si];
     let pad = "    ".repeat(depth);
     out.push_str(&pad);
@@ -532,13 +528,10 @@ mod tests {
             assert_eq!(eid(g, a.from), eid(&back, b.from), "edge from\n--\n{text}");
             assert_eq!(eid(g, a.to), eid(&back, b.to), "edge to\n--\n{text}");
             assert_eq!(a.kind, b.kind, "edge kind\n--\n{text}");
-            // Single-line-slot normalization (documented): newlines
-            // flatten to spaces, outer whitespace trims, empty → None.
-            let norm = |l: &Option<String>| {
-                l.as_deref()
-                    .map(|s| s.replace('\n', " ").trim().to_string())
-                    .filter(|s| !s.is_empty())
-            };
+            // Single-line-slot normalization (documented): control
+            // chars sanitize to spaces, newlines flatten, outer
+            // whitespace trims, empty → None.
+            let norm = norm_1line;
             assert_eq!(norm(&a.label), norm(&b.label), "edge label\n--\n{text}");
         }
         assert_eq!(back.subgraphs.len(), g.subgraphs.len(), "subgraph count\n--\n{text}");
@@ -570,13 +563,24 @@ mod tests {
             assert_eq!(end_id(g, a.from), end_id(&back, b.from), "sub-edge from\n--\n{text}");
             assert_eq!(end_id(g, a.to), end_id(&back, b.to), "sub-edge to\n--\n{text}");
             assert_eq!(a.kind, b.kind, "sub-edge kind\n--\n{text}");
-            let norm = |l: &Option<String>| {
-                l.as_deref()
-                    .map(|s| s.replace('\n', " ").trim().to_string())
-                    .filter(|s| !s.is_empty())
-            };
-            assert_eq!(norm(&a.label), norm(&b.label), "sub-edge label\n--\n{text}");
+            assert_eq!(norm_1line(&a.label), norm_1line(&b.label), "sub-edge label\n--\n{text}");
         }
+    }
+
+    /// One shared single-line label normalization for the round-trip
+    /// comparators (edge + sub-edge labels): control characters
+    /// sanitize to spaces (the emitter's documented degrade),
+    /// newlines flatten, outer whitespace trims, empty → None.
+    fn norm_1line(l: &Option<String>) -> Option<String> {
+        l.as_deref()
+            .map(|s| {
+                s.chars()
+                    .map(|c| if c.is_control() && c != '\t' { ' ' } else { c })
+                    .collect::<String>()
+                    .trim()
+                    .to_string()
+            })
+            .filter(|s| !s.is_empty())
     }
 
     /// Round-trip a source string: parse → emit → parse ≡ parse.
@@ -1041,18 +1045,22 @@ mod tests {
         let g = parse("flowchart TD\nsubgraph subgraph\nA\nend\nsubgraph -- Phase 1 ---\nB\nend\n")
             .unwrap();
         assert_eq!(g.subgraphs.len(), 2);
-        // An edge closer inside a prop value (`url(#a-->b)`) is not
-        // an edge lead-in.
-        let g = parse(
-            "flowchart TD\nsubgraph classDef\nA\nend\nclassDef --x fill:url(#a-->b)\nB\n",
-        )
-        .unwrap();
+        // With no subgraph named classDef, an edge closer inside a
+        // prop value never diverts (the sub_ids gate is closed).
+        let g = parse("flowchart TD\nclassDef --x fill:url(#a-->b)\nB\n").unwrap();
         assert!(g.nodes.iter().any(|n| n.id == "B"));
-        // But a real inline-label edge from a keyword-named subgraph
-        // still diverts.
+        // A real inline-label edge from a keyword-named subgraph
+        // diverts — including labels carrying ':' or '(' (round 8).
         let g = parse("flowchart TD\nsubgraph style\nA\nend\nstyle -- go --> B\n").unwrap();
         assert_eq!(g.sub_edges.len(), 1);
         assert_eq!(g.sub_edges[0].label.as_deref(), Some("go"));
+        let g = parse("flowchart TD\nsubgraph style\nA\nend\nstyle -- (note) --> B\n").unwrap();
+        assert_eq!(g.sub_edges[0].label.as_deref(), Some("(note)"));
+        let g = parse("flowchart TD\nsubgraph style\nA\nend\nstyle -- ratio 1:2 --> B\n").unwrap();
+        assert_eq!(g.sub_edges[0].label.as_deref(), Some("ratio 1:2"));
+        // The click branch needs no subgraph at all.
+        let g = parse("flowchart TD\nclick -- open: docs --> B\n").unwrap();
+        assert_eq!(g.edges[0].label.as_deref(), Some("open: docs"));
     }
 
     #[test]
