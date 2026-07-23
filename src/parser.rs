@@ -21,6 +21,7 @@ use crate::model::{
     Mindmap, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation, SeqHead, SeqItem,
     SequenceDiagram, Shape, SubEdge, Subgraph, Visibility,
 };
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 fn parse_direction(s: &str, lineno: usize) -> Result<Direction, ParseError> {
@@ -203,11 +204,57 @@ fn normalize_breaks(s: &str) -> String {
 /// header line: `flowchart`/`graph` (or none) -> flowchart,
 /// `erDiagram` -> ER. Other known Mermaid types produce an explicit
 /// "not supported yet" error.
+/// mermaid.js accepts a leading YAML frontmatter block fenced by
+/// `---`, carrying `title:` / `config:` / theme keys. flowmaid
+/// doesn't interpret those yet, but files exported from mermaid-live
+/// or GitHub almost always carry the block — so we accept-and-drop
+/// it (the same posture as `%%{init}` config comments): every line
+/// of the block is blanked to empty, which every diagram parser
+/// already skips, and blanking (rather than removing) keeps every
+/// later line number exact so error messages still point true.
+///
+/// The block must be the very first content — only blank lines may
+/// precede the opening `---`, matching mermaid. Returns the source
+/// untouched when there's no frontmatter; errors on an unterminated
+/// block. Call it AFTER the BOM strip.
+fn strip_frontmatter(source: &str) -> Result<Cow<'_, str>, ParseError> {
+    let mut lines = source.lines().enumerate();
+    let open = loop {
+        match lines.next() {
+            Some((_, l)) if l.trim().is_empty() => continue,
+            Some((i, l)) if l.trim() == "---" => break i,
+            // First real content isn't a fence → no frontmatter.
+            _ => return Ok(Cow::Borrowed(source)),
+        }
+    };
+    // Close only on `---`, exactly as mermaid does — a YAML block
+    // scalar body can legitimately contain a `...` document-end
+    // marker, so treating that as a fence would close the block early.
+    let Some(close) = lines.find_map(|(i, l)| (l.trim() == "---").then_some(i)) else {
+        return Err(err(
+            open + 1,
+            "unterminated frontmatter — the leading '---' block is never closed with '---'"
+                .to_string(),
+        ));
+    };
+    // Blank the fence + body lines; line count (and thus every later
+    // line number) is preserved.
+    let out = source
+        .lines()
+        .enumerate()
+        .map(|(i, l)| if (open..=close).contains(&i) { "" } else { l })
+        .collect::<Vec<_>>()
+        .join("\n");
+    Ok(Cow::Owned(out))
+}
+
 pub fn parse_document(source: &str) -> Result<Document, ParseError> {
     // Editor Windows (Notepad, PowerShell `>`) menyisipkan BOM UTF-8.
     // U+FEFF bukan whitespace Unicode, jadi lolos trim() dan membuat
     // header tak terdeteksi dengan error yang menyesatkan.
     let source = source.strip_prefix('\u{feff}').unwrap_or(source);
+    let stripped = strip_frontmatter(source)?;
+    let source: &str = &stripped;
     for (i, raw) in source.lines().enumerate() {
         let line = raw.trim();
         if line.is_empty() || line.starts_with("%%") {
@@ -232,7 +279,9 @@ pub fn parse_document(source: &str) -> Result<Document, ParseError> {
                     t
                 ),
             )),
-            None => parse(source).map(Document::Flowchart),
+            // `source` here is already BOM+frontmatter-stripped —
+            // go straight to the body so it isn't re-stripped.
+            None => parse_flowchart(source).map(Document::Flowchart),
         };
     }
     Ok(Document::Flowchart(Graph::default()))
@@ -241,8 +290,18 @@ pub fn parse_document(source: &str) -> Result<Document, ParseError> {
 /// Parse a flowchart. For ER diagrams use [`parse_document`].
 pub fn parse(source: &str) -> Result<Graph, ParseError> {
     // Lihat catatan BOM di parse_document — entry point ini publik
-    // juga, jadi dapat perlakuan yang sama.
+    // juga, jadi dapat perlakuan yang sama (BOM + frontmatter).
     let source = source.strip_prefix('\u{feff}').unwrap_or(source);
+    let stripped = strip_frontmatter(source)?;
+    parse_flowchart(&stripped)
+}
+
+/// The flowchart parse body, on a source that has ALREADY had its BOM
+/// and frontmatter stripped. `parse` (public) and `parse_document`'s
+/// flowchart arm both funnel through here so the strip happens exactly
+/// once — otherwise a diagram BODY whose first line is itself `---`
+/// would be mistaken for a second frontmatter block on the re-strip.
+fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
     let mut g = Graph::default();
     let mut header_seen = false;
     // Styling is collected during the pass and resolved at the end,
@@ -2921,6 +2980,61 @@ mod tests {
         }
         // The flowchart-only entry point gets the same courtesy.
         assert!(parse("\u{feff}A --> B").is_ok());
+    }
+
+    #[test]
+    fn yaml_frontmatter_is_accepted_and_dropped_for_every_diagram_type() {
+        // mermaid-live / GitHub exports lead with a `---` block (#20).
+        for body in [
+            "flowchart TD\nA --> B",
+            "erDiagram\nA ||--o{ B : has",
+            "classDiagram\nAnimal <|-- Dog",
+            "sequenceDiagram\nA->>B: hi",
+            "pie\n\"a\" : 1",
+            "stateDiagram-v2\n[*] --> A",
+            "mindmap\n  root\n    child",
+            "journey\n  title T\n  section S\n    Task: 5: Me",
+        ] {
+            let fm = format!("---\ntitle: My Diagram\nconfig:\n  theme: dark\n---\n{body}");
+            assert!(parse_document(&fm).is_ok(), "frontmatter must not break: {body}");
+        }
+        // Blank lines before the block are allowed.
+        assert!(parse_document("\n\n---\ntitle: X\n---\nflowchart TD\nA --> B").is_ok());
+        // BOM + frontmatter together.
+        assert!(parse_document("\u{feff}---\ntitle: X\n---\nflowchart TD\nA --> B").is_ok());
+        // The flowchart-only entry point too.
+        assert!(parse("---\ntitle: X\n---\nA --> B").is_ok());
+
+        // A `...` inside a YAML block scalar is NOT a close fence
+        // (only `---` closes, like mermaid) — the block runs to the
+        // real `---` and the diagram is intact.
+        let g = parse("---\ntitle: |\n  ...\n  more\n---\nA --> B").unwrap();
+        assert_eq!(g.nodes.len(), 2, "'...' must not close the block early");
+
+        // Frontmatter is stripped EXACTLY once: parse_document must
+        // not re-strip inside its flowchart arm (a body `---` line is
+        // a flowchart statement, not a second frontmatter block).
+        let with_fm = parse_document("---\ntitle: X\n---\nflowchart TD\nA --> B").unwrap();
+        let plain = parse_document("flowchart TD\nA --> B").unwrap();
+        let ids = |d: &Document| match d {
+            Document::Flowchart(g) => g.nodes.iter().map(|n| n.id.clone()).collect::<Vec<_>>(),
+            _ => panic!(),
+        };
+        assert_eq!(ids(&with_fm), ids(&plain), "frontmatter must not alter the body");
+    }
+
+    #[test]
+    fn frontmatter_preserves_line_numbers_and_rejects_when_unterminated() {
+        // An error in the body still points at the true source line.
+        let src = "---\ntitle: X\n---\nflowchart TD\nstyle\n";
+        let e = parse_document(src).unwrap_err();
+        assert_eq!(e.line, 5, "line number must survive the frontmatter blanking");
+        // A `---` that never closes is a clean error, not silent junk.
+        let e = parse_document("---\ntitle: X\nflowchart TD\nA --> B").unwrap_err();
+        assert!(e.message.contains("unterminated frontmatter"), "{}", e.message);
+        // A bare `---` mid-diagram is NOT frontmatter (and an open
+        // link `A --- B` is never confused with a fence).
+        assert!(parse("flowchart TD\nA --- B").is_ok());
     }
 
     #[test]
