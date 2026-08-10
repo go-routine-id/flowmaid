@@ -5,7 +5,7 @@
 [![docs.rs](https://docs.rs/flowmaid/badge.svg)](https://docs.rs/flowmaid)
 [![license](https://img.shields.io/crates/l/flowmaid.svg)](LICENSE)
 
-A small Mermaid-like diagram engine written in pure std Rust with zero external dependencies. Takes Mermaid-syntax text and produces SVG — or live, draggable geometry for interactive apps. Eight diagram types today: flowcharts, ER, UML class, sequence, pie, state, mindmap, and user-journey diagrams.
+A small Mermaid-like diagram engine written in pure std Rust with zero external dependencies. Takes Mermaid-syntax text and produces SVG — or live, draggable geometry for interactive apps. Nine diagram types today: flowcharts, ER, UML class, sequence, pie, state, mindmap, user-journey, git graphs, and architecture-beta diagrams.
 
 **Website:** https://go-routine-id.github.io/flowmaid/ · **Playground:** https://go-routine-id.github.io/flowmaid-web/ · **Desktop editor:** [flowmaid-desktop](https://github.com/go-routine-id/flowmaid-desktop) · **Terminal:** [flowcli](https://github.com/go-routine-id/flowcli)
 
@@ -23,7 +23,9 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 - [x] `journey` — title/section/task, score-colored smiley faces (1–5), section bands, actor legend + per-task dots *(v0.14.0)*
 - [x] `pie` — title, showData, percentage labels + legend *(v0.10.0)*
 - [x] `mindmap` — indentation-built tree, radial layout with colored branches, six node shapes (square/rounded/circle/hexagon/bang/cloud) *(v0.13.0)*
-- [ ] The complete mermaid catalog, tracked on the board: `swimlanes` · `gantt` · `gitGraph` · `timeline` · `quadrantChart` · `requirementDiagram` · `C4` · `zenuml` · `sankey` · `xychart` · `block` · `packet` · `kanban` · `architecture` · `radar` · `eventmodeling` · `treemap` · `venn` · `ishikawa` · `wardley` · `cynefin` · `treeview`
+- [x] `gitGraph` — LR/TB/BT orientations, commits, branches, checkouts/switches, merges with ids and tags *(v0.22.0)*
+- [x] `architecture-beta` — nested groups, services, and port-based edges (`id:L -- R:other`, `-->`) *(v0.23.0)*
+- [ ] The complete mermaid catalog, tracked on the board: `swimlanes` · `gantt` · `timeline` · `quadrantChart` · `requirementDiagram` · `C4` · `zenuml` · `sankey` · `xychart` · `block` · `packet` · `kanban` · `radar` · `eventmodeling` · `treemap` · `venn` · `ishikawa` · `wardley` · `cynefin` · `treeview`
 
 **Flowchart features**
 
@@ -44,7 +46,7 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 - [x] More node shapes — cylinder `[( )]`, subroutine `[[ ]]`, hexagon `{{ }}`, parallelograms `[/ /]` `[\ \]`, double circle `((( )))` *(v0.8.0)*
 - [ ] `click` interactions, frontmatter themes, `$$math$$` — see the board
 
-**Why flowmaid?** Zero dependencies, `wasm32` out of the box (all eight diagram types fit in a compact wasm bundle — mermaid.js is ~2.5 MB), sub-millisecond renders, line-numbered parse errors, and one geometry source shared by SVG export and interactive canvases. Input is forgiving where it should be: UTF-8 BOMs are stripped, CRLF is fine, and every known-but-unsupported Mermaid header fails with an explicit message instead of a confusing parse error.
+**Why flowmaid?** Zero dependencies, `wasm32` out of the box (all nine diagram types fit in a compact wasm bundle — mermaid.js is ~2.5 MB), sub-millisecond renders, line-numbered parse errors, and one geometry source shared by SVG export and interactive canvases. Input is forgiving where it should be: UTF-8 BOMs are stripped, CRLF is fine, and every known-but-unsupported Mermaid header fails with an explicit message instead of a confusing parse error.
 
 ## Installation
 
@@ -56,7 +58,7 @@ Or in `Cargo.toml`:
 
 ```toml
 [dependencies]
-flowmaid = "0.20"
+flowmaid = "0.23"
 ```
 
 ## Usage
