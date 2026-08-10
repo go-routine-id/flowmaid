@@ -3,8 +3,7 @@
 use std::collections::HashMap;
 
 /// Flow direction of the diagram.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Direction {
     /// Top-down. Alias: TB.
     #[default]
@@ -16,7 +15,6 @@ pub enum Direction {
     /// Bottom to top.
     BT,
 }
-
 
 /// Node shape.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -232,6 +230,8 @@ pub enum Document {
     State(Graph),
     Mindmap(Mindmap),
     Journey(Journey),
+    GitGraph(GitGraph),
+    Architecture(Architecture),
 }
 
 /// UML class diagram (`classDiagram` header).
@@ -633,4 +633,141 @@ pub enum MindShape {
     Bang,
     /// `id)text(` — a cloud; approximated as an ellipse.
     Cloud,
+}
+
+/// Git graph orientation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum GitOrientation {
+    /// Left-to-right (mermaid default).
+    #[default]
+    LR,
+    /// Top-to-bottom.
+    TB,
+    /// Bottom-to-top.
+    BT,
+}
+
+/// Visual weight of a git commit node.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum CommitKind {
+    /// Default solid commit.
+    #[default]
+    Normal,
+    /// Hollow / reversed style.
+    Reverse,
+    /// Emphasised / highlighted style.
+    Highlight,
+}
+
+/// One commit in a `gitGraph`.
+#[derive(Debug)]
+pub struct GitCommit {
+    /// Display id ("1", "init", ...).
+    pub id: String,
+    /// Index into [`GitGraph::branches`].
+    pub branch: usize,
+    /// Parent commit index on the same branch, or `None` for the first commit.
+    pub parent: Option<usize>,
+    /// Second parent for merge commits.
+    pub second_parent: Option<usize>,
+    /// Optional tag rendered above the commit.
+    pub tag: Option<String>,
+    /// Visual style.
+    pub kind: CommitKind,
+    /// Global commit sequence number (0-based), used for x placement.
+    pub seq: usize,
+}
+
+/// One branch lane in a `gitGraph`.
+#[derive(Debug)]
+pub struct GitBranch {
+    pub name: String,
+    /// Parent branch index, if this branch was created with `branch`.
+    pub parent_branch: Option<usize>,
+    /// Commit index this branch was forked from.
+    pub parent_commit: Option<usize>,
+    /// Index of the latest commit on this branch.
+    pub head: Option<usize>,
+    /// Vertical ordering (main = 0, then creation order).
+    pub order: usize,
+}
+
+/// A `gitGraph` diagram: branches, commits, and the current branch.
+#[derive(Debug)]
+pub struct GitGraph {
+    pub orientation: GitOrientation,
+    pub branches: Vec<GitBranch>,
+    pub commits: Vec<GitCommit>,
+    /// Index into [`GitGraph::branches`] of the active branch.
+    pub current_branch: usize,
+}
+
+impl Default for GitGraph {
+    /// A default git graph contains a single `main` branch, matching the
+    /// parser's initial state. This keeps `GitGraph::default()` usable
+    /// without panicking on `branches[0]`.
+    fn default() -> Self {
+        Self {
+            orientation: GitOrientation::LR,
+            branches: vec![GitBranch {
+                name: "main".to_string(),
+                parent_branch: None,
+                parent_commit: None,
+                head: None,
+                order: 0,
+            }],
+            commits: Vec::new(),
+            current_branch: 0,
+        }
+    }
+}
+
+/// Architecture diagram (`architecture-beta`).
+#[derive(Debug, Default)]
+pub struct Architecture {
+    pub groups: Vec<ArchGroup>,
+    pub services: Vec<ArchService>,
+    pub edges: Vec<ArchEdge>,
+}
+
+/// A container of services.
+#[derive(Debug)]
+pub struct ArchGroup {
+    pub id: String,
+    pub title: String,
+    pub icon: Option<String>,
+    pub parent: Option<usize>,
+}
+
+/// A single service/node inside an architecture diagram.
+#[derive(Debug)]
+pub struct ArchService {
+    pub id: String,
+    pub title: String,
+    pub icon: Option<String>,
+    pub group: Option<usize>,
+}
+
+/// One connection between two services via named ports.
+#[derive(Debug)]
+pub struct ArchEdge {
+    pub from: usize,
+    pub from_side: ArchSide,
+    pub to: usize,
+    pub to_side: ArchSide,
+    pub arrow: bool,
+}
+
+/// Port side on an architecture service.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ArchSide {
+    /// Top.
+    #[default]
+    T,
+    /// Bottom.
+    B,
+    /// Left.
+    L,
+    /// Right.
+    R,
 }
