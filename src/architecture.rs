@@ -435,4 +435,37 @@ mod tests {
         let sc = scene(&a);
         assert_eq!(sc.scene.edges[0].kind, crate::model::EdgeKind::Arrow);
     }
+
+    #[test]
+    fn nested_groups_place_services_inside() {
+        let a = arch(
+            "architecture-beta\n\
+             group outer[Outer]\n\
+             group inner[Inner] in outer\n\
+             service s(S)[Service] in inner",
+        );
+        assert_eq!(a.groups.len(), 2);
+        assert_eq!(a.services.len(), 1);
+        let sc = scene(&a);
+        assert_eq!(sc.scene.clusters.len(), 2);
+        let inner_cluster = &sc.scene.clusters[1];
+        let service_node = &sc.scene.nodes[0];
+        // Service centre must sit inside the inner cluster box.
+        assert!(service_node.x > inner_cluster.x);
+        assert!(service_node.x < inner_cluster.x + inner_cluster.w);
+        assert!(service_node.y > inner_cluster.y);
+        assert!(service_node.y < inner_cluster.y + inner_cluster.h);
+    }
+
+    #[test]
+    fn duplicate_service_id_is_rejected() {
+        let err = parse_document(
+            "architecture-beta\n\
+             group g[Group]\n\
+             service a(A)[A] in g\n\
+             service a(B)[B] in g",
+        )
+        .unwrap_err();
+        assert!(err.message.contains("duplicate service id"));
+    }
 }

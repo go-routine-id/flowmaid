@@ -2707,6 +2707,9 @@ fn parse_architecture(source: &str, header_line: usize) -> Result<Architecture, 
 
         if let Some(rest) = strip_keyword(line, "group") {
             let (id, icon, title, parent) = parse_arch_decl(rest, lineno, &group_ids, "group")?;
+            if group_ids.contains_key(&id) {
+                return Err(err(lineno, format!("duplicate group id: '{}'", id)));
+            }
             let idx = d.groups.len();
             d.groups.push(ArchGroup {
                 id: id.clone(),
@@ -2720,6 +2723,9 @@ fn parse_architecture(source: &str, header_line: usize) -> Result<Architecture, 
 
         if let Some(rest) = strip_keyword(line, "service") {
             let (id, icon, title, parent) = parse_arch_decl(rest, lineno, &group_ids, "service")?;
+            if service_ids.contains_key(&id) {
+                return Err(err(lineno, format!("duplicate service id: '{}'", id)));
+            }
             let idx = d.services.len();
             d.services.push(ArchService {
                 id: id.clone(),
