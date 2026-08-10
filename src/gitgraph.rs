@@ -86,6 +86,8 @@ pub fn scene(d: &GitGraph) -> GitScene {
     for c in &d.commits {
         let (x, y) = pos(c);
         let color = commit_color(d, c);
+        // The generic Scene label is left empty: commit ids/tags are drawn
+        // from GitScene labels so their placement can differ per orientation.
         nodes.push(SceneNode {
             id: c.id.clone(),
             x,
@@ -93,7 +95,7 @@ pub fn scene(d: &GitGraph) -> GitScene {
             w: 2.0 * R,
             h: 2.0 * R,
             shape: Shape::Circle,
-            label: c.id.clone(),
+            label: String::new(),
             style: crate::model::NodeStyle {
                 fill: Some(color.fill.to_string()),
                 stroke: Some(color.stroke.to_string()),
@@ -102,11 +104,22 @@ pub fn scene(d: &GitGraph) -> GitScene {
             },
         });
 
+        // In vertical modes, place the id to the right of the circle and the
+        // tag to the left so they don't overlap the branch lane.
+        let (id_x, id_anchor) = match d.orientation {
+            GitOrientation::LR => (x, "middle"),
+            GitOrientation::TB | GitOrientation::BT => (x + R + 4.0, "start"),
+        };
+        let (tag_x, tag_anchor) = match d.orientation {
+            GitOrientation::LR => (x, "middle"),
+            GitOrientation::TB | GitOrientation::BT => (x - R - 4.0, "end"),
+        };
+
         commit_ids.push(GitLabel {
-            x,
+            x: id_x,
             y: y + R + 14.0,
             text: c.id.clone(),
-            anchor: "middle",
+            anchor: id_anchor,
             baseline: "middle",
             font_size: FONT,
             font_weight: None,
@@ -115,10 +128,10 @@ pub fn scene(d: &GitGraph) -> GitScene {
 
         if let Some(tag) = &c.tag {
             tags.push(GitLabel {
-                x,
+                x: tag_x,
                 y: y - R - 10.0,
                 text: tag.clone(),
-                anchor: "middle",
+                anchor: tag_anchor,
                 baseline: "middle",
                 font_size: FONT,
                 font_weight: Some("bold"),
@@ -170,6 +183,7 @@ pub fn scene(d: &GitGraph) -> GitScene {
     }
 
     // Merge curves: from source branch head to the merge commit.
+    // Use an arrowhead so the merge direction reads clearly.
     for c in d.commits.iter() {
         if let Some(sp) = c.second_parent {
             let p0 = pos(&d.commits[sp]);
@@ -179,7 +193,7 @@ pub fn scene(d: &GitGraph) -> GitScene {
                 to: c.id.clone(),
                 bezier: edge_bezier(p0, p1, d.orientation),
                 waypoints: Vec::new(),
-                kind: crate::model::EdgeKind::Open,
+                kind: crate::model::EdgeKind::Arrow,
                 label: None,
             });
         }
