@@ -4,7 +4,8 @@
 //! (scene/route/to_svg) are guaranteed identical.
 
 use crate::model::{
-    ClassDiagram, ErDiagram, GitGraph, Graph, Journey, Mindmap, PieChart, SequenceDiagram,
+    Architecture, ClassDiagram, ErDiagram, GitGraph, Graph, Journey, Mindmap, PieChart,
+    SequenceDiagram,
 };
 
 pub fn render(g: &Graph) -> String {
@@ -59,6 +60,12 @@ pub fn render_gitgraph(d: &GitGraph) -> String {
     crate::gitgraph::to_svg(&crate::gitgraph::scene(d))
 }
 
+/// Render an architecture-beta diagram (nested groups + services + edges).
+/// Geometry & serialisation live in the `architecture` module.
+pub fn render_architecture(d: &Architecture) -> String {
+    crate::architecture::to_svg(&crate::architecture::scene(d))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -107,11 +114,18 @@ mod tests {
         // Structure: 3 subgraphs (CI, Platform, Workers nested).
         assert_eq!(g.subgraphs.len(), 3);
         let workers = g.subgraphs.iter().find(|s| s.id == "Workers").unwrap();
-        assert_eq!(workers.parent, Some(g.subgraphs.iter().position(|s| s.id == "Platform").unwrap()));
+        assert_eq!(
+            workers.parent,
+            Some(g.subgraphs.iter().position(|s| s.id == "Platform").unwrap())
+        );
         assert_eq!(workers.direction, Some(crate::model::Direction::LR));
         // Edges targeting a subgraph landed in sub_edges (Dev->CI,
         // Reg->Platform, Platform->Mon, Rollback->Platform).
-        assert!(g.sub_edges.len() >= 4, "got {} sub_edges", g.sub_edges.len());
+        assert!(
+            g.sub_edges.len() >= 4,
+            "got {} sub_edges",
+            g.sub_edges.len()
+        );
 
         // Every classic shape is present.
         let shapes: Vec<Shape> = g.nodes.iter().map(|n| n.shape).collect();
@@ -179,7 +193,12 @@ mod tests {
             panic!("state.mmd is a state diagram");
         };
         let shapes: Vec<Shape> = g.nodes.iter().map(|n| n.shape).collect();
-        for want in [Shape::StateStart, Shape::StateEnd, Shape::Diamond, Shape::ForkBar] {
+        for want in [
+            Shape::StateStart,
+            Shape::StateEnd,
+            Shape::Diamond,
+            Shape::ForkBar,
+        ] {
             assert!(shapes.contains(&want), "missing {want:?}");
         }
         assert_eq!(g.subgraphs.len(), 1, "Validating composite");
@@ -258,7 +277,8 @@ mod tests {
 
     #[test]
     fn back_edge_routes_around_widest_layer() {
-        let src = "flowchart TD\nA --> B1\nA --> B2\nA --> B3\nB1 --> C\nB2 --> C\nB3 --> C\nC --> A";
+        let src =
+            "flowchart TD\nA --> B1\nA --> B2\nA --> B3\nB1 --> C\nB2 --> C\nB3 --> C\nC --> A";
         let g = parse(src).unwrap();
         let svg = render(&g);
         let back = paths(&svg).pop().unwrap(); // last edge = C --> A

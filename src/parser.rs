@@ -16,11 +16,11 @@
 //! [`parse`] stays flowchart-only for backwards compatibility.
 
 use crate::model::{
-    Attr, Card, Class, ClassDiagram, ClassRel, CommitKind, Direction, Document, EdgeKind, End,
-    ErDiagram, FrameKind, GitBranch, GitCommit, GitGraph, GitOrientation, Graph, Journey,
-    JourneySection, JourneyTask, Key, Member, MindNode, MindShape, Mindmap, NodeStyle, NoteSide,
-    PieChart, PieSlice, RelKind, Relation, SeqHead, SeqItem, SequenceDiagram, Shape, SubEdge,
-    Subgraph, Visibility,
+    ArchEdge, ArchGroup, ArchService, ArchSide, Architecture, Attr, Card, Class, ClassDiagram,
+    ClassRel, CommitKind, Direction, Document, EdgeKind, End, ErDiagram, FrameKind, GitBranch,
+    GitCommit, GitGraph, GitOrientation, Graph, Journey, JourneySection, JourneyTask, Key, Member,
+    MindNode, MindShape, Mindmap, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation,
+    SeqHead, SeqItem, SequenceDiagram, Shape, SubEdge, Subgraph, Visibility,
 };
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
@@ -372,12 +372,15 @@ pub fn parse_document(source: &str) -> Result<Document, ParseError> {
             Some("mindmap") => parse_mindmap(source, i + 1).map(Document::Mindmap),
             Some("journey") => parse_journey(source, i + 1).map(Document::Journey),
             Some("gitGraph") => parse_gitgraph(source, i + 1).map(Document::GitGraph),
+            Some("architecture-beta") | Some("architecture") => {
+                parse_architecture(source, i + 1).map(Document::Architecture)
+            }
             Some(t) => Err(err(
                 i + 1,
                 format!(
                     "diagram type '{}' is not supported yet (supported: flowchart, \
                      graph, erDiagram, classDiagram, sequenceDiagram, pie, \
-                     stateDiagram-v2, mindmap, journey, gitGraph)",
+                     stateDiagram-v2, mindmap, journey, gitGraph, architecture-beta)",
                     t
                 ),
             )),
@@ -747,6 +750,7 @@ fn parse_props(s: &str, lineno: usize) -> Result<NodeStyle, ParseError> {
 /// (`stateDiagram-v2` before `stateDiagram`).
 fn diagram_type(line: &str) -> Option<&'static str> {
     const TYPES: &[&str] = &[
+        "architecture-beta",
         "erDiagram",
         "sequenceDiagram",
         "classDiagram",
@@ -2675,6 +2679,195 @@ fn parse_commit_kind(s: &str, lineno: usize) -> Result<CommitKind, ParseError> {
                 "unknown commit type: '{}' (expected NORMAL, REVERSE, HIGHLIGHT)",
                 other
             ),
+        )),
+    }
+}
+
+// ---------------------------------------------------------------
+// Architecture diagram (`architecture-beta`)
+// ---------------------------------------------------------------
+
+/// Parse an architecture-beta diagram. Groups and services are declared
+/// with `group` / `service`, and edges connect named port sides
+/// (`svc:L -- R:other`).
+fn parse_architecture(source: &str, header_line: usize) -> Result<Architecture, ParseError> {
+    let mut d = Architecture::default();
+    let mut group_ids: HashMap<String, usize> = HashMap::new();
+    let mut service_ids: HashMap<String, usize> = HashMap::new();
+
+    for (i, raw) in source.lines().enumerate() {
+        let lineno = i + 1;
+        if lineno <= header_line {
+            continue;
+        }
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with("%%") {
+            continue;
+        }
+
+        if let Some(rest) = strip_keyword(line, "group") {
+            let (id, icon, title, parent) = parse_arch_decl(rest, lineno, &group_ids, "group")?;
+            let idx = d.groups.len();
+            d.groups.push(ArchGroup {
+                id: id.clone(),
+                title,
+                icon,
+                parent,
+            });
+            group_ids.insert(id, idx);
+            continue;
+        }
+
+        if let Some(rest) = strip_keyword(line, "service") {
+            let (id, icon, title, parent) = parse_arch_decl(rest, lineno, &group_ids, "service")?;
+            let idx = d.services.len();
+            d.services.push(ArchService {
+                id: id.clone(),
+                title,
+                icon,
+                group: parent,
+            });
+            service_ids.insert(id, idx);
+            continue;
+        }
+
+        if line.contains("--") {
+            let e = parse_arch_edge(line, lineno, &service_ids)?;
+            d.edges.push(e);
+            continue;
+        }
+
+        return Err(err(
+            lineno,
+            format!("unknown architecture statement: '{}'", line),
+        ));
+    }
+
+    Ok(d)
+}
+
+/// Parse `id(icon)[title] in parent`. `icon` is optional; `in parent` is
+/// optional and must name a group already declared.
+fn parse_arch_decl(
+    rest: &str,
+    lineno: usize,
+    groups: &HashMap<String, usize>,
+    kind: &str,
+) -> Result<(String, Option<String>, String, Option<usize>), ParseError> {
+    let rest = rest.trim();
+    if rest.is_empty() {
+        return Err(err(lineno, format!("{} needs an id", kind)));
+    }
+    let id_end = rest
+        .find(|c: char| c == '(' || c == '[' || c.is_whitespace())
+        .unwrap_or(rest.len());
+    let id = rest[..id_end].trim().to_string();
+    if id.is_empty() {
+        return Err(err(lineno, format!("{} needs an id", kind)));
+    }
+    let mut tail = &rest[id_end..];
+    let icon = if tail.starts_with('(') {
+        let close = tail
+            .find(')')
+            .ok_or_else(|| err(lineno, "unclosed icon '()'".to_string()))?;
+        let ic = tail[1..close].trim().to_string();
+        tail = &tail[close + 1..];
+        Some(ic)
+    } else {
+        None
+    };
+    if !tail.starts_with('[') {
+        return Err(err(
+            lineno,
+            format!("{} title must be wrapped in […]", kind),
+        ));
+    }
+    let close = tail
+        .find(']')
+        .ok_or_else(|| err(lineno, "unclosed title '['".to_string()))?;
+    let title = tail[1..close].trim().to_string();
+    tail = tail[close + 1..].trim();
+    let parent = if let Some(pname) = strip_keyword(tail, "in") {
+        let pname = pname.trim();
+        if pname.is_empty() {
+            return Err(err(lineno, "missing parent group name".to_string()));
+        }
+        Some(
+            *groups
+                .get(pname)
+                .ok_or_else(|| err(lineno, format!("parent group '{}' not found", pname)))?,
+        )
+    } else if !tail.is_empty() {
+        return Err(err(lineno, format!("unexpected trailing text: '{}'", tail)));
+    } else {
+        None
+    };
+    Ok((id, icon, title, parent))
+}
+
+/// Parse an edge such as `svc1:L -- R:svc2` or `a:T --> B:b`.
+fn parse_arch_edge(
+    line: &str,
+    lineno: usize,
+    services: &HashMap<String, usize>,
+) -> Result<ArchEdge, ParseError> {
+    let arrow = line.contains("-->");
+    let mut parts = line.splitn(2, "--");
+    let left = parts.next().unwrap_or("").trim();
+    let right = parts
+        .next()
+        .ok_or_else(|| err(lineno, "edge must contain '--'".to_string()))?
+        .trim();
+    let right = right.strip_prefix('>').unwrap_or(right).trim();
+
+    let (from_id, from_side) = parse_arch_endpoint_left(left, lineno)?;
+    let (to_side, to_id) = parse_arch_endpoint_right(right, lineno)?;
+
+    let from = *services
+        .get(&from_id)
+        .ok_or_else(|| err(lineno, format!("service '{}' not found", from_id)))?;
+    let to = *services
+        .get(&to_id)
+        .ok_or_else(|| err(lineno, format!("service '{}' not found", to_id)))?;
+
+    Ok(ArchEdge {
+        from,
+        from_side,
+        to,
+        to_side,
+        arrow,
+    })
+}
+
+fn parse_arch_endpoint_left(s: &str, lineno: usize) -> Result<(String, ArchSide), ParseError> {
+    let s = s.trim();
+    let colon = s
+        .rfind(':')
+        .ok_or_else(|| err(lineno, format!("expected id:side, got '{}'", s)))?;
+    let id = s[..colon].trim().to_string();
+    let side = parse_arch_side(&s[colon + 1..], lineno)?;
+    Ok((id, side))
+}
+
+fn parse_arch_endpoint_right(s: &str, lineno: usize) -> Result<(ArchSide, String), ParseError> {
+    let s = s.trim();
+    let colon = s
+        .find(':')
+        .ok_or_else(|| err(lineno, format!("expected side:id, got '{}'", s)))?;
+    let side = parse_arch_side(&s[..colon], lineno)?;
+    let id = s[colon + 1..].trim().to_string();
+    Ok((side, id))
+}
+
+fn parse_arch_side(s: &str, lineno: usize) -> Result<ArchSide, ParseError> {
+    match s.trim().to_ascii_uppercase().as_str() {
+        "T" => Ok(ArchSide::T),
+        "B" => Ok(ArchSide::B),
+        "L" => Ok(ArchSide::L),
+        "R" => Ok(ArchSide::R),
+        other => Err(err(
+            lineno,
+            format!("unknown port side: '{}' (expected T, B, L, R)", other),
         )),
     }
 }

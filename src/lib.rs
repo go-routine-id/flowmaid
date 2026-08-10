@@ -9,8 +9,8 @@
 //! Entity-Relationship diagrams (`erDiagram`), UML class diagrams
 //! (`classDiagram`), sequence diagrams (`sequenceDiagram`), pie
 //! charts (`pie`), state diagrams (`stateDiagram-v2`), mindmaps
-//! (`mindmap`), user-journey diagrams (`journey`), and git graphs
-//! (`gitGraph`).
+//! (`mindmap`), user-journey diagrams (`journey`), git graphs
+//! (`gitGraph`), and architecture diagrams (`architecture-beta`).
 //!
 //! Library usage:
 //!
@@ -28,6 +28,7 @@
 //! assert!(git.contains("main"));
 //! ```
 
+pub mod architecture;
 pub mod class;
 pub mod emit;
 pub mod er;
@@ -50,7 +51,8 @@ pub use parser::ParseError;
 
 /// Shortcut: Mermaid-syntax text -> SVG string. Dispatches on the
 /// diagram type header (flowchart/graph, erDiagram, classDiagram,
-/// sequenceDiagram, pie, stateDiagram-v2, mindmap, journey, gitGraph).
+/// sequenceDiagram, pie, stateDiagram-v2, mindmap, journey, gitGraph,
+/// architecture-beta).
 pub fn render_svg(source: &str) -> Result<String, ParseError> {
     match parser::parse_document(source)? {
         // State diagrams live on the same Graph as flowcharts.
@@ -63,5 +65,6 @@ pub fn render_svg(source: &str) -> Result<String, ParseError> {
         Document::Mindmap(d) => Ok(render::render_mindmap(&d)),
         Document::Journey(d) => Ok(render::render_journey(&d)),
         Document::GitGraph(d) => Ok(render::render_gitgraph(&d)),
+        Document::Architecture(d) => Ok(render::render_architecture(&d)),
     }
 }

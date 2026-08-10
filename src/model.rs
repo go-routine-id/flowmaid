@@ -231,6 +231,7 @@ pub enum Document {
     Mindmap(Mindmap),
     Journey(Journey),
     GitGraph(GitGraph),
+    Architecture(Architecture),
 }
 
 /// UML class diagram (`classDiagram` header).
@@ -719,4 +720,54 @@ impl Default for GitGraph {
             current_branch: 0,
         }
     }
+}
+
+/// Architecture diagram (`architecture-beta`).
+#[derive(Debug, Default)]
+pub struct Architecture {
+    pub groups: Vec<ArchGroup>,
+    pub services: Vec<ArchService>,
+    pub edges: Vec<ArchEdge>,
+}
+
+/// A container of services.
+#[derive(Debug)]
+pub struct ArchGroup {
+    pub id: String,
+    pub title: String,
+    pub icon: Option<String>,
+    pub parent: Option<usize>,
+}
+
+/// A single service/node inside an architecture diagram.
+#[derive(Debug)]
+pub struct ArchService {
+    pub id: String,
+    pub title: String,
+    pub icon: Option<String>,
+    pub group: Option<usize>,
+}
+
+/// One connection between two services via named ports.
+#[derive(Debug)]
+pub struct ArchEdge {
+    pub from: usize,
+    pub from_side: ArchSide,
+    pub to: usize,
+    pub to_side: ArchSide,
+    pub arrow: bool,
+}
+
+/// Port side on an architecture service.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ArchSide {
+    /// Top.
+    #[default]
+    T,
+    /// Bottom.
+    B,
+    /// Left.
+    L,
+    /// Right.
+    R,
 }
