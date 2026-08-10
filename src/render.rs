@@ -3,7 +3,9 @@
 //! so the output of render() and the interactive flow
 //! (scene/route/to_svg) are guaranteed identical.
 
-use crate::model::{ClassDiagram, ErDiagram, Graph, Journey, Mindmap, PieChart, SequenceDiagram};
+use crate::model::{
+    ClassDiagram, ErDiagram, GitGraph, Graph, Journey, Mindmap, PieChart, SequenceDiagram,
+};
 
 pub fn render(g: &Graph) -> String {
     render_titled(g, "Flowchart diagram")
@@ -49,6 +51,12 @@ pub fn render_mindmap(d: &Mindmap) -> String {
 /// Geometry & serialisation live in the `journey` module.
 pub fn render_journey(d: &Journey) -> String {
     crate::journey::to_svg(&crate::journey::scene(d))
+}
+
+/// Render a git graph (branch lanes + commit circles + merge curves).
+/// Geometry & serialisation live in the `gitgraph` module.
+pub fn render_gitgraph(d: &GitGraph) -> String {
+    crate::gitgraph::to_svg(&crate::gitgraph::scene(d))
 }
 
 #[cfg(test)]

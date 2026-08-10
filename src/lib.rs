@@ -9,25 +9,30 @@
 //! Entity-Relationship diagrams (`erDiagram`), UML class diagrams
 //! (`classDiagram`), sequence diagrams (`sequenceDiagram`), pie
 //! charts (`pie`), state diagrams (`stateDiagram-v2`), mindmaps
-//! (`mindmap`), and user-journey diagrams (`journey`).
+//! (`mindmap`), user-journey diagrams (`journey`), and git graphs
+//! (`gitGraph`).
 //!
 //! Library usage:
 //!
 //! ```
-//! let svg = flowmaid::render_svg("flowchart TD\nA[Start] --> B[Done]").unwrap();
-//! assert!(svg.starts_with("<svg"));
+//! let flow = flowmaid::render_svg("flowchart TD\nA[Start] --> B[Done]").unwrap();
+//! assert!(flow.starts_with("<svg"));
 //!
 //! let er = flowmaid::render_svg("erDiagram\nusers ||--o{ posts : writes").unwrap();
 //! assert!(er.contains("users"));
 //!
 //! let uml = flowmaid::render_svg("classDiagram\nAnimal <|-- Dog").unwrap();
 //! assert!(uml.contains("Animal"));
+//!
+//! let git = flowmaid::render_svg("gitGraph\ncommit\nbranch feat\ncommit").unwrap();
+//! assert!(git.contains("main"));
 //! ```
 
 pub mod class;
 pub mod emit;
 pub mod er;
 pub mod fold;
+pub mod gitgraph;
 pub mod journey;
 pub mod layout;
 pub mod mindmap;
@@ -45,7 +50,7 @@ pub use parser::ParseError;
 
 /// Shortcut: Mermaid-syntax text -> SVG string. Dispatches on the
 /// diagram type header (flowchart/graph, erDiagram, classDiagram,
-/// sequenceDiagram, pie, or stateDiagram-v2).
+/// sequenceDiagram, pie, stateDiagram-v2, mindmap, journey, gitGraph).
 pub fn render_svg(source: &str) -> Result<String, ParseError> {
     match parser::parse_document(source)? {
         // State diagrams live on the same Graph as flowcharts.
@@ -57,5 +62,6 @@ pub fn render_svg(source: &str) -> Result<String, ParseError> {
         Document::Pie(d) => Ok(render::render_pie(&d)),
         Document::Mindmap(d) => Ok(render::render_mindmap(&d)),
         Document::Journey(d) => Ok(render::render_journey(&d)),
+        Document::GitGraph(d) => Ok(render::render_gitgraph(&d)),
     }
 }

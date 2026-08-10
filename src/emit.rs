@@ -308,8 +308,8 @@ fn label_text(label: &str) -> String {
 /// riding the leading one as `#96;` keeps it plain text. Applies to
 /// node labels and edge labels alike — both sit inside `"…"`.
 fn defuse_md(enc: String) -> String {
-    if enc.starts_with('`') {
-        format!("#96;{}", &enc[1..])
+    if let Some(rest) = enc.strip_prefix('`') {
+        format!("#96;{}", rest)
     } else {
         enc
     }
@@ -648,8 +648,10 @@ mod tests {
         g.add_edge(0, 1, None, EdgeKind::Arrow);
         assert_roundtrip(&g);
         // Non-finite widths are dropped, not written as "NaNpx".
-        let mut st = NodeStyle::default();
-        st.stroke_width = Some(f64::NAN);
+        let st = crate::model::NodeStyle {
+            stroke_width: Some(f64::NAN),
+            ..Default::default()
+        };
         assert_eq!(style_props(&st), None);
     }
 

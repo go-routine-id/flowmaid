@@ -23,7 +23,9 @@ fn print_help() {
          \x20 flowchart TD\n\
          \x20 A([Start]) --> B{{Valid?}}\n\
          \x20 B -->|yes| C[Process]\n\
-         \x20 B -.->|no| D((Done))"
+         \x20 B -.->|no| D((Done))\n\n\
+         Other supported headers: erDiagram, classDiagram, sequenceDiagram, \
+         pie, stateDiagram-v2, mindmap, journey, gitGraph"
     );
 }
 
@@ -136,6 +138,10 @@ fn main() {
             eprintln!("empty diagram: no journey tasks");
             process::exit(1);
         }
+        Document::GitGraph(d) if d.commits.is_empty() => {
+            eprintln!("empty diagram: no commits defined");
+            process::exit(1);
+        }
         Document::Flowchart(g) | Document::State(g) => {
             let title = if matches!(doc, Document::State(_)) {
                 "State diagram"
@@ -155,6 +161,7 @@ fn main() {
         Document::Pie(d) => render::render_pie(d),
         Document::Mindmap(d) => render::render_mindmap(d),
         Document::Journey(d) => render::render_journey(d),
+        Document::GitGraph(d) => render::render_gitgraph(d),
     };
 
     match &output {

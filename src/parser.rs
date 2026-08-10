@@ -16,13 +16,14 @@
 //! [`parse`] stays flowchart-only for backwards compatibility.
 
 use crate::model::{
-    Attr, Card, Class, ClassDiagram, ClassRel, Direction, Document, EdgeKind, End, ErDiagram,
-    FrameKind, Graph, Journey, JourneySection, JourneyTask, Key, Member, MindNode, MindShape,
-    Mindmap, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation, SeqHead, SeqItem,
-    SequenceDiagram, Shape, SubEdge, Subgraph, Visibility,
+    Attr, Card, Class, ClassDiagram, ClassRel, CommitKind, Direction, Document, EdgeKind, End,
+    ErDiagram, FrameKind, GitBranch, GitCommit, GitGraph, Graph, Journey, JourneySection,
+    JourneyTask, Key, Member, MindNode, MindShape, Mindmap, NodeStyle, NoteSide, PieChart,
+    PieSlice, RelKind, Relation, SeqHead, SeqItem, SequenceDiagram, Shape, SubEdge, Subgraph,
+    Visibility,
 };
 use std::borrow::Cow;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 fn parse_direction(s: &str, lineno: usize) -> Result<Direction, ParseError> {
     match s.trim().to_uppercase().as_str() {
@@ -356,12 +357,13 @@ pub fn parse_document(source: &str) -> Result<Document, ParseError> {
             }
             Some("mindmap") => parse_mindmap(source, i + 1).map(Document::Mindmap),
             Some("journey") => parse_journey(source, i + 1).map(Document::Journey),
+            Some("gitGraph") => parse_gitgraph(source, i + 1).map(Document::GitGraph),
             Some(t) => Err(err(
                 i + 1,
                 format!(
                     "diagram type '{}' is not supported yet (supported: flowchart, \
                      graph, erDiagram, classDiagram, sequenceDiagram, pie, \
-                     stateDiagram-v2, mindmap, journey)",
+                     stateDiagram-v2, mindmap, journey, gitGraph)",
                     t
                 ),
             )),
@@ -466,7 +468,7 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
                     "this parser is flowchart-only — use parse_document() or render_svg()"
                 } else {
                     "not supported yet (supported: flowchart, graph, erDiagram, \
-                     classDiagram, sequenceDiagram, pie, stateDiagram-v2, mindmap, journey)"
+                     classDiagram, sequenceDiagram, pie, stateDiagram-v2, mindmap, journey, gitGraph)"
                 };
                 return Err(err(lineno, format!("diagram type '{}': {}", t, hint)));
             }
@@ -739,6 +741,7 @@ fn diagram_type(line: &str) -> Option<&'static str> {
         "journey",
         "mindmap",
         "timeline",
+        "gitGraph",
     ];
     TYPES.iter().copied().find(|t| {
         line.get(..t.len()) == Some(*t)
@@ -2303,6 +2306,283 @@ fn parse_journey(source: &str, header_line: usize) -> Result<Journey, ParseError
 }
 
 // ---------------------------------------------------------------
+// Git graph (`gitGraph`)
+// ---------------------------------------------------------------
+
+/// Parse a git graph. The default branch `main` exists from the start;
+/// `branch` creates a new branch from the current branch's HEAD, and
+/// `checkout`/`switch` moves the active branch. `merge` produces a
+/// merge commit whose second parent is the named branch's HEAD.
+fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseError> {
+    let mut d = GitGraph::default();
+    let mut used_ids = HashSet::new();
+
+    for (i, raw) in source.lines().enumerate() {
+        let lineno = i + 1;
+        if lineno <= header_line {
+            continue;
+        }
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with("%%") {
+            continue;
+        }
+
+        if let Some(rest) = strip_keyword(line, "commit") {
+            let attrs = parse_git_attrs(rest, lineno, false)?;
+            let id = match attrs.get("id").cloned() {
+                Some(id) => id,
+                None => {
+                    // Default ids are 1-based, matching the common gitGraph look.
+                    // Skip any numeric id already claimed by an explicit id:.
+                    let mut n = d.commits.len() + 1;
+                    while used_ids.contains(&n.to_string()) {
+                        n += 1;
+                    }
+                    n.to_string()
+                }
+            };
+            if !used_ids.insert(id.clone()) {
+                return Err(err(
+                    lineno,
+                    format!("duplicate commit id: '{}'", id),
+                ));
+            }
+            let kind = attrs
+                .get("type")
+                .map(|t| parse_commit_kind(t, lineno))
+                .transpose()?
+                .unwrap_or_default();
+            let tag = attrs.get("tag").cloned();
+            let branch_idx = d.current_branch;
+            let parent = d.branches[branch_idx].head;
+            let seq = d.commits.len();
+            let idx = d.commits.len();
+            d.commits.push(GitCommit {
+                id: id.clone(),
+                branch: branch_idx,
+                parent,
+                second_parent: None,
+                tag,
+                kind,
+                seq,
+            });
+            d.branches[branch_idx].head = Some(idx);
+            continue;
+        }
+
+        if let Some(rest) = strip_keyword(line, "branch") {
+            let name = rest.trim();
+            if name.is_empty() {
+                return Err(err(lineno, "branch needs a name".to_string()));
+            }
+            if d.branches.iter().any(|b| b.name == name) {
+                return Err(err(
+                    lineno,
+                    format!("branch '{}' already exists", name),
+                ));
+            }
+            let from_branch = d.current_branch;
+            let from_commit = d.branches[from_branch].head;
+            let order = d.branches.len();
+            d.branches.push(GitBranch {
+                name: name.to_string(),
+                parent_branch: Some(from_branch),
+                parent_commit: from_commit,
+                head: from_commit,
+                order,
+            });
+            d.current_branch = order;
+            continue;
+        }
+
+        if let Some(rest) = strip_keyword(line, "checkout") {
+            let name = rest.trim();
+            let idx = d
+                .branches
+                .iter()
+                .position(|b| b.name == name)
+                .ok_or_else(|| err(lineno, format!("branch '{}' does not exist", name)))?;
+            d.current_branch = idx;
+            continue;
+        }
+
+        if let Some(rest) = strip_keyword(line, "switch") {
+            let name = rest.trim();
+            let idx = d
+                .branches
+                .iter()
+                .position(|b| b.name == name)
+                .ok_or_else(|| err(lineno, format!("branch '{}' does not exist", name)))?;
+            d.current_branch = idx;
+            continue;
+        }
+
+        if let Some(rest) = strip_keyword(line, "merge") {
+            // `merge branch [id: "x"] [tag: "y"]`.
+            let attrs = parse_git_attrs(rest, lineno, true)?;
+            let branch_name = attrs
+                .get("__head")
+                .cloned()
+                .filter(|s| !s.is_empty())
+                .ok_or_else(|| err(lineno, "merge needs a branch name".to_string()))?;
+            let src_idx = d
+                .branches
+                .iter()
+                .position(|b| b.name == branch_name)
+                .ok_or_else(|| err(lineno, format!("branch '{}' does not exist", branch_name)))?;
+            if src_idx == d.current_branch {
+                return Err(err(lineno, "cannot merge a branch into itself".to_string()));
+            }
+            let src_head = d.branches[src_idx].head.ok_or_else(|| {
+                err(lineno, format!("branch '{}' has no commits to merge", branch_name))
+            })?;
+            let branch_idx = d.current_branch;
+            let parent = d.branches[branch_idx].head;
+            let id = match attrs.get("id").cloned() {
+                Some(id) => id,
+                None => {
+                    let mut n = d.commits.len() + 1;
+                    while used_ids.contains(&n.to_string()) {
+                        n += 1;
+                    }
+                    n.to_string()
+                }
+            };
+            if !used_ids.insert(id.clone()) {
+                return Err(err(
+                    lineno,
+                    format!("duplicate commit id: '{}'", id),
+                ));
+            }
+            let tag = attrs.get("tag").cloned();
+            let seq = d.commits.len();
+            let idx = d.commits.len();
+            d.commits.push(GitCommit {
+                id,
+                branch: branch_idx,
+                parent,
+                second_parent: Some(src_head),
+                tag,
+                kind: CommitKind::Normal,
+                seq,
+            });
+            d.branches[branch_idx].head = Some(idx);
+            continue;
+        }
+
+        return Err(err(
+            lineno,
+            format!("unknown gitGraph command: '{}'", line),
+        ));
+    }
+
+    Ok(d)
+}
+
+/// Parse `key: "value"` attributes for git commands.
+///
+/// When `allow_head` is true, the leading bare token (if any) is
+/// returned under the synthetic key `__head` — this is used by `merge`
+/// to read the source branch name. `commit` passes `false` so that any
+/// bare token is parsed as an attribute key and unknown keys surface as
+/// errors.
+fn parse_git_attrs(
+    text: &str,
+    lineno: usize,
+    allow_head: bool,
+) -> Result<HashMap<String, String>, ParseError> {
+    let mut out = HashMap::new();
+    let text = text.trim();
+    if text.is_empty() {
+        return Ok(out);
+    }
+
+    // The first whitespace-separated token is the head argument
+    // (branch name for merge/branch/checkout) unless it is itself an
+    // attribute key like `id:`.
+    let rest: &str = if allow_head {
+        if let Some((first, tail)) = text.split_once(char::is_whitespace) {
+            if is_git_attr_key(first.trim_end_matches(':')) {
+                text
+            } else {
+                out.insert("__head".to_string(), first.to_string());
+                tail.trim_start()
+            }
+        } else if is_git_attr_key(text.trim_end_matches(':')) {
+            text
+        } else {
+            out.insert("__head".to_string(), text.to_string());
+            ""
+        }
+    } else {
+        text
+    };
+
+    // Parse `key: "value"` / `key: value` / `key:"value"` pairs from `rest`.
+    let mut cur = Cur::new(rest);
+    while !cur.at_end() {
+        cur.skip_ws();
+        if cur.at_end() {
+            break;
+        }
+        let key = cur
+            .take_until(":")
+            .ok_or_else(|| err(lineno, format!("expected attribute key:value, got '{}'", rest)))?;
+        let key = key.trim();
+        if key.is_empty() {
+            return Err(err(lineno, "empty attribute key".to_string()));
+        }
+        if !is_git_attr_key(key) {
+            return Err(err(
+                lineno,
+                format!("unknown gitGraph attribute: '{}'", key),
+            ));
+        }
+        cur.skip_ws();
+        let value = parse_git_value(&mut cur, lineno)?;
+        out.insert(key.to_string(), value);
+        cur.skip_ws();
+    }
+    Ok(out)
+}
+
+fn is_git_attr_key(s: &str) -> bool {
+    matches!(s, "id" | "tag" | "type")
+}
+
+fn parse_git_value(cur: &mut Cur<'_>, lineno: usize) -> Result<String, ParseError> {
+    cur.skip_ws();
+    if cur.eat("\"") {
+        let value = cur
+            .take_until("\"")
+            .ok_or_else(|| err(lineno, "attribute value quote is never closed".to_string()))?;
+        return Ok(value);
+    }
+    // Bare token value (e.g. `type: HIGHLIGHT`).
+    let start = cur.pos;
+    while !cur.at_end() && !cur.rest().starts_with(char::is_whitespace) {
+        cur.bump();
+    }
+    let value = &cur.s[start..cur.pos];
+    if value.is_empty() {
+        return Err(err(lineno, "missing attribute value".to_string()));
+    }
+    Ok(value.to_string())
+}
+
+fn parse_commit_kind(s: &str, lineno: usize) -> Result<CommitKind, ParseError> {
+    match s.trim().to_uppercase().as_str() {
+        "NORMAL" => Ok(CommitKind::Normal),
+        "REVERSE" => Ok(CommitKind::Reverse),
+        "HIGHLIGHT" => Ok(CommitKind::Highlight),
+        other => Err(err(
+            lineno,
+            format!("unknown commit type: '{}' (expected NORMAL, REVERSE, HIGHLIGHT)", other),
+        )),
+    }
+}
+
+// ---------------------------------------------------------------
 // State diagram (`stateDiagram-v2` / `stateDiagram`)
 // ---------------------------------------------------------------
 
@@ -3302,5 +3582,51 @@ mod tests {
             s.push_str("end\n");
         }
         assert!(parse(&s).is_ok(), "100-deep nesting is legitimate");
+    }
+
+    #[test]
+    fn gitgraph_duplicate_commit_id_errors() {
+        let e = parse_document("gitGraph\ncommit id: \"a\"\ncommit id: \"a\"").unwrap_err();
+        assert!(e.message.contains("duplicate commit id"), "got: {}", e.message);
+    }
+
+    #[test]
+    fn gitgraph_default_id_skips_claimed_numbers() {
+        let d = match parse_document("gitGraph\ncommit id: \"2\"\ncommit").unwrap() {
+            Document::GitGraph(g) => g,
+            other => panic!("expected gitGraph, got {:?}", other),
+        };
+        assert_eq!(d.commits[0].id, "2");
+        assert_eq!(d.commits[1].id, "3");
+    }
+
+    #[test]
+    fn gitgraph_unknown_command_errors() {
+        let e = parse_document("gitGraph\ncherry-pick foo").unwrap_err();
+        assert!(e.message.contains("unknown gitGraph command"), "got: {}", e.message);
+    }
+
+    #[test]
+    fn gitgraph_duplicate_branch_errors() {
+        let e = parse_document("gitGraph\nbranch feat\nbranch feat").unwrap_err();
+        assert!(e.message.contains("already exists"), "got: {}", e.message);
+    }
+
+    #[test]
+    fn gitgraph_merge_missing_branch_errors() {
+        let e = parse_document("gitGraph\ncommit\nmerge nosuch").unwrap_err();
+        assert!(e.message.contains("does not exist"), "got: {}", e.message);
+    }
+
+    #[test]
+    fn gitgraph_merge_self_errors() {
+        let e = parse_document("gitGraph\ncommit\nmerge main").unwrap_err();
+        assert!(e.message.contains("into itself"), "got: {}", e.message);
+    }
+
+    #[test]
+    fn gitgraph_unknown_attribute_errors() {
+        let e = parse_document("gitGraph\ncommit foo: \"bar\"").unwrap_err();
+        assert!(e.message.contains("unknown gitGraph attribute"), "got: {}", e.message);
     }
 }
