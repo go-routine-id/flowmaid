@@ -3,8 +3,7 @@
 use std::collections::HashMap;
 
 /// Flow direction of the diagram.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Direction {
     /// Top-down. Alias: TB.
     #[default]
@@ -16,7 +15,6 @@ pub enum Direction {
     /// Bottom to top.
     BT,
 }
-
 
 /// Node shape.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -636,13 +634,16 @@ pub enum MindShape {
     Cloud,
 }
 
-/// Git graph orientation. Only `LR` is implemented today; the variant
-/// exists so future `TB:` / `BT:` support does not break the model.
+/// Git graph orientation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum GitOrientation {
     /// Left-to-right (mermaid default).
     #[default]
     LR,
+    /// Top-to-bottom.
+    TB,
+    /// Bottom-to-top.
+    BT,
 }
 
 /// Visual weight of a git commit node.

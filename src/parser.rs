@@ -17,10 +17,10 @@
 
 use crate::model::{
     Attr, Card, Class, ClassDiagram, ClassRel, CommitKind, Direction, Document, EdgeKind, End,
-    ErDiagram, FrameKind, GitBranch, GitCommit, GitGraph, Graph, Journey, JourneySection,
-    JourneyTask, Key, Member, MindNode, MindShape, Mindmap, NodeStyle, NoteSide, PieChart,
-    PieSlice, RelKind, Relation, SeqHead, SeqItem, SequenceDiagram, Shape, SubEdge, Subgraph,
-    Visibility,
+    ErDiagram, FrameKind, GitBranch, GitCommit, GitGraph, GitOrientation, Graph, Journey,
+    JourneySection, JourneyTask, Key, Member, MindNode, MindShape, Mindmap, NodeStyle, NoteSide,
+    PieChart, PieSlice, RelKind, Relation, SeqHead, SeqItem, SequenceDiagram, Shape, SubEdge,
+    Subgraph, Visibility,
 };
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
@@ -32,6 +32,22 @@ fn parse_direction(s: &str, lineno: usize) -> Result<Direction, ParseError> {
         "RL" => Ok(Direction::RL),
         "BT" => Ok(Direction::BT),
         other => Err(err(lineno, format!("unknown direction: '{}'", other))),
+    }
+}
+
+fn parse_git_orientation(line: &str, lineno: usize) -> Result<GitOrientation, ParseError> {
+    let rest = strip_keyword(line, "gitGraph").unwrap_or(line).trim();
+    if rest.is_empty() {
+        return Ok(GitOrientation::LR);
+    }
+    match rest.to_uppercase().as_str() {
+        "LR" => Ok(GitOrientation::LR),
+        "TB" => Ok(GitOrientation::TB),
+        "BT" => Ok(GitOrientation::BT),
+        other => Err(err(
+            lineno,
+            format!("unknown gitGraph orientation: '{}'", other),
+        )),
     }
 }
 
@@ -125,9 +141,7 @@ fn clean_label(s: &str) -> String {
     // expose whitespace that the pre-fold trim couldn't see
     // (`"x <br/>"` → "x", not "x "). str::trim subsumes the old
     // newline-only trim.
-    decode_entities(&normalize_breaks(inner))
-        .trim()
-        .to_string()
+    decode_entities(&normalize_breaks(inner)).trim().to_string()
 }
 
 /// Decode mermaid's escape entities: `#quot;` → `"` and numeric
@@ -397,7 +411,7 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
     let mut class_defs: HashMap<String, NodeStyle> = HashMap::new();
     let mut assigns: Vec<(usize, String)> = Vec::new(); // (node, class)
     let mut styles: Vec<(usize, NodeStyle)> = Vec::new(); // explicit `style` lines
-    // Stack of open `subgraph` blocks; new nodes join the top one.
+                                                          // Stack of open `subgraph` blocks; new nodes join the top one.
     let mut sub_stack: Vec<usize> = Vec::new();
 
     // Pre-scan subgraph ids so an edge may reference a subgraph
@@ -431,8 +445,7 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
     // head is an edge only when a subgraph with that literal id
     // exists (else it keeps the header diagnostics).
     let sg_line_is_edge = |line: &str, rest: &str| {
-        edge_op_follows(rest)
-            && (&line[..8] != "subgraph" || header_sg_ids.contains(&line[..8]))
+        edge_op_follows(rest) && (&line[..8] != "subgraph" || header_sg_ids.contains(&line[..8]))
     };
     let mut sub_ids: HashMap<String, usize> = HashMap::new();
     {
@@ -479,9 +492,7 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
                     "LR" => Direction::LR,
                     "RL" => Direction::RL,
                     "BT" => Direction::BT,
-                    other => {
-                        return Err(err(lineno, format!("unknown direction: '{}'", other)))
-                    }
+                    other => return Err(err(lineno, format!("unknown direction: '{}'", other))),
                 };
                 continue;
             }
@@ -563,9 +574,9 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
                 continue;
             }
             let rest = rest.trim();
-            let (names, props) = rest.split_once(char::is_whitespace).ok_or_else(|| {
-                err(lineno, "classDef needs a name and properties".to_string())
-            })?;
+            let (names, props) = rest
+                .split_once(char::is_whitespace)
+                .ok_or_else(|| err(lineno, "classDef needs a name and properties".to_string()))?;
             let st = parse_props(props.trim(), lineno)?;
             for name in names.split(',').filter(|n| !n.is_empty()) {
                 class_defs.insert(name.to_string(), st.clone());
@@ -581,9 +592,9 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
             // The LAST token is the class name; everything before is
             // the id list, so `class A, B hot` (space after comma)
             // styles both A and B.
-            let (ids, name) = rest.rsplit_once(char::is_whitespace).ok_or_else(|| {
-                err(lineno, "class needs node ids and a class name".to_string())
-            })?;
+            let (ids, name) = rest
+                .rsplit_once(char::is_whitespace)
+                .ok_or_else(|| err(lineno, "class needs node ids and a class name".to_string()))?;
             for id in ids.split(',').filter(|i| !i.trim().is_empty()) {
                 let id = id.trim();
                 // Styling a SUBGRAPH box by id is legal mermaid;
@@ -615,9 +626,9 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
                 continue;
             }
             let rest = rest.trim();
-            let (id, props) = rest.split_once(char::is_whitespace).ok_or_else(|| {
-                err(lineno, "style needs a node id and properties".to_string())
-            })?;
+            let (id, props) = rest
+                .split_once(char::is_whitespace)
+                .ok_or_else(|| err(lineno, "style needs a node id and properties".to_string()))?;
             let id = id.trim();
             // Subgraph-box styling: accepted, not painted (see the
             // `class` branch note) — never mint a colliding node.
@@ -694,7 +705,10 @@ fn parse_props(s: &str, lineno: usize) -> Result<NodeStyle, ParseError> {
         }
     }
     if depth != 0 {
-        return Err(err(lineno, format!("unbalanced '(' in style properties: '{s}'")));
+        return Err(err(
+            lineno,
+            format!("unbalanced '(' in style properties: '{s}'"),
+        ));
     }
     items.push(&s[start..]);
     for item in items {
@@ -714,9 +728,11 @@ fn parse_props(s: &str, lineno: usize) -> Result<NodeStyle, ParseError> {
             "stroke" => st.stroke = Some(v.to_string()),
             "color" => st.color = Some(v.to_string()),
             "stroke-width" => {
-                let n: f64 = v.trim_end_matches("px").trim().parse().map_err(|_| {
-                    err(lineno, format!("invalid stroke-width: '{}'", v))
-                })?;
+                let n: f64 = v
+                    .trim_end_matches("px")
+                    .trim()
+                    .parse()
+                    .map_err(|_| err(lineno, format!("invalid stroke-width: '{}'", v)))?;
                 st.stroke_width = Some(n);
             }
             _ => {}
@@ -745,7 +761,10 @@ fn diagram_type(line: &str) -> Option<&'static str> {
     ];
     TYPES.iter().copied().find(|t| {
         line.get(..t.len()) == Some(*t)
-            && line[t.len()..].chars().next().map_or(true, char::is_whitespace)
+            && line[t.len()..]
+                .chars()
+                .next()
+                .map_or(true, char::is_whitespace)
     })
 }
 
@@ -778,7 +797,10 @@ fn parse_subgraph_header(rest: &str, lineno: usize) -> Result<(String, String), 
             .strip_suffix(']')
             .ok_or_else(|| err(lineno, "subgraph title '[' is never closed".to_string()))?;
         if id.is_empty() {
-            return Err(err(lineno, "subgraph title needs an id before '['".to_string()));
+            return Err(err(
+                lineno,
+                "subgraph title needs an id before '['".to_string(),
+            ));
         }
         return Ok((id.to_string(), clean_label_1line(inner)));
     }
@@ -851,7 +873,10 @@ fn parse_statement(
         cur.skip_ws();
         if label.is_none() && cur.eat("|") {
             let l = cur.take_until("|").ok_or_else(|| {
-                err(lineno, "edge label opened with '|' but never closed".to_string())
+                err(
+                    lineno,
+                    "edge label opened with '|' but never closed".to_string(),
+                )
             })?;
             label = Some(clean_label_1line(&l));
         }
@@ -888,8 +913,14 @@ fn parse_edge_inline_label(
 ) -> Result<Option<(EdgeKind, String)>, ParseError> {
     // (opener, [(closer, kind)] — longest closer first)
     const FORMS: &[(&str, &[(&str, EdgeKind)])] = &[
-        ("-.", &[(".->", EdgeKind::Dotted), (".-", EdgeKind::DottedOpen)]),
-        ("==", &[("==>", EdgeKind::Thick), ("===", EdgeKind::ThickOpen)]),
+        (
+            "-.",
+            &[(".->", EdgeKind::Dotted), (".-", EdgeKind::DottedOpen)],
+        ),
+        (
+            "==",
+            &[("==>", EdgeKind::Thick), ("===", EdgeKind::ThickOpen)],
+        ),
         ("--", &[("-->", EdgeKind::Arrow), ("---", EdgeKind::Open)]),
     ];
     let rest = cur.rest();
@@ -900,7 +931,9 @@ fn parse_edge_inline_label(
         // Only label mode when the opener is followed by label text,
         // not by more operator characters (`-->`, `---`, `-.-`, ...).
         let after = &rest[open.len()..];
-        let Some(c0) = after.chars().next() else { continue };
+        let Some(c0) = after.chars().next() else {
+            continue;
+        };
         if matches!(c0, '-' | '>' | '.' | '=') {
             continue;
         }
@@ -1197,11 +1230,18 @@ fn parse_er(source: &str, header_line: usize) -> Result<ErDiagram, ParseError> {
         // Entity block start: `Name {`
         if let Some(head) = line.strip_suffix('{') {
             let name = head.trim();
-            if !name.is_empty() && name.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
+            if !name.is_empty()
+                && name
+                    .chars()
+                    .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+            {
                 open = Some((d.ensure_entity(name), lineno));
                 continue;
             }
-            return Err(err(lineno, format!("invalid entity name before '{{': '{}'", name)));
+            return Err(err(
+                lineno,
+                format!("invalid entity name before '{{': '{}'", name),
+            ));
         }
         parse_er_statement(&mut d, line, lineno)?;
     }
@@ -1335,7 +1375,12 @@ fn parse_attr(line: &str, lineno: usize) -> Result<Attr, ParseError> {
         .to_string();
     let name = toks
         .next()
-        .ok_or_else(|| err(lineno, format!("expected an attribute name after type '{}'", ty)))?
+        .ok_or_else(|| {
+            err(
+                lineno,
+                format!("expected an attribute name after type '{}'", ty),
+            )
+        })?
         .to_string();
     let mut keys = Vec::new();
     for t in toks {
@@ -1346,7 +1391,10 @@ fn parse_attr(line: &str, lineno: usize) -> Result<Attr, ParseError> {
             other => {
                 return Err(err(
                     lineno,
-                    format!("unknown attribute key: '{}' (expected PK, FK, or UK)", other),
+                    format!(
+                        "unknown attribute key: '{}' (expected PK, FK, or UK)",
+                        other
+                    ),
                 ))
             }
         }
@@ -1435,7 +1483,10 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
     if let Some((ci, oln)) = open {
         return Err(err(
             oln,
-            format!("class block '{}' is never closed with '}}'", d.classes[ci].name),
+            format!(
+                "class block '{}' is never closed with '}}'",
+                d.classes[ci].name
+            ),
         ));
     }
     Ok(d)
@@ -1534,7 +1585,10 @@ fn parse_class_relation(d: &mut ClassDiagram, line: &str, lineno: usize) -> Resu
     // Split off a trailing `: label` at the first colon OUTSIDE any
     // quoted cardinality (`"1:n"` keeps its colon).
     let (rel, label) = match find_unquoted(line, ":") {
-        Some(c) => (line[..c].trim(), Some(clean_label_1line(line[c + 1..].trim()))),
+        Some(c) => (
+            line[..c].trim(),
+            Some(clean_label_1line(line[c + 1..].trim())),
+        ),
         None => (line, None),
     };
     // Locate the operator: earliest position outside quotes, longest
@@ -1632,7 +1686,10 @@ fn parse_sequence(source: &str, header_line: usize) -> Result<SequenceDiagram, P
             if !rest.trim().is_empty() {
                 return Err(err(
                     lineno,
-                    format!("autonumber arguments are not supported yet: '{}'", rest.trim()),
+                    format!(
+                        "autonumber arguments are not supported yet: '{}'",
+                        rest.trim()
+                    ),
                 ));
             }
             d.autonumber = true;
@@ -1710,7 +1767,10 @@ fn parse_sequence(source: &str, header_line: usize) -> Result<SequenceDiagram, P
         }
         if let Some(rest) = strip_keyword(line, "end") {
             if !rest.trim().is_empty() {
-                return Err(err(lineno, format!("unexpected text after 'end': '{}'", rest.trim())));
+                return Err(err(
+                    lineno,
+                    format!("unexpected text after 'end': '{}'", rest.trim()),
+                ));
             }
             if frames.pop().is_none() {
                 return Err(err(
@@ -1724,11 +1784,27 @@ fn parse_sequence(source: &str, header_line: usize) -> Result<SequenceDiagram, P
         // Known sequence elements we don't support yet: explicit
         // error instead of a confusing message-parse failure.
         const UNSUPPORTED: &[&str] = &[
-            "box", "rect", "critical", "option", "break", "create", "destroy", "title",
-            "links", "link", "properties", "details",
+            "box",
+            "rect",
+            "critical",
+            "option",
+            "break",
+            "create",
+            "destroy",
+            "title",
+            "links",
+            "link",
+            "properties",
+            "details",
         ];
-        if let Some(kw) = UNSUPPORTED.iter().find(|k| strip_keyword(line, k).is_some()) {
-            return Err(err(lineno, format!("sequence element '{}' is not supported yet", kw)));
+        if let Some(kw) = UNSUPPORTED
+            .iter()
+            .find(|k| strip_keyword(line, k).is_some())
+        {
+            return Err(err(
+                lineno,
+                format!("sequence element '{}' is not supported yet", kw),
+            ));
         }
         parse_seq_message(&mut d, line, lineno, &mut depth)?;
     }
@@ -1778,7 +1854,10 @@ fn parse_participant(
     } else {
         return Err(err(
             lineno,
-            format!("expected 'as <label>' after the id, found: '{}'", cur.rest()),
+            format!(
+                "expected 'as <label>' after the id, found: '{}'",
+                cur.rest()
+            ),
         ));
     };
     let p = d.ensure_participant(&id);
@@ -1848,7 +1927,11 @@ fn parse_seq_note(
         return Err(err(lineno, "note text is empty".to_string()));
     }
     let (place, text) = (rest[..colon].trim(), clean_label_1line(raw));
-    let text = if text.is_empty() { " ".to_string() } else { text };
+    let text = if text.is_empty() {
+        " ".to_string()
+    } else {
+        text
+    };
     let side = if let Some(ids) = strip_keyword(place, "over") {
         let mut it = ids.split(',').map(str::trim);
         let a = it
@@ -1866,7 +1949,10 @@ fn parse_seq_note(
         let bi = match b {
             Some(s) if !s.is_empty() => Some(seq_participant(d, s, lineno)?),
             Some(_) => {
-                return Err(err(lineno, "empty participant after ',' in 'note over'".to_string()))
+                return Err(err(
+                    lineno,
+                    "empty participant after ',' in 'note over'".to_string(),
+                ))
             }
             None => None,
         };
@@ -1882,7 +1968,10 @@ fn parse_seq_note(
         } else {
             return Err(err(
                 lineno,
-                format!("expected 'over' / 'left of' / 'right of', found: '{}'", place),
+                format!(
+                    "expected 'over' / 'left of' / 'right of', found: '{}'",
+                    place
+                ),
             ));
         };
         let id = strip_keyword(after.trim(), "of")
@@ -1949,7 +2038,10 @@ fn parse_seq_message(
     if !cur.eat(":") {
         return Err(err(
             lineno,
-            format!("expected ': text' after the message target, found: '{}'", cur.rest()),
+            format!(
+                "expected ': text' after the message target, found: '{}'",
+                cur.rest()
+            ),
         ));
     }
     let text = clean_label_1line(cur.rest().trim());
@@ -1963,7 +2055,10 @@ fn parse_seq_message(
         if depth[from] == 0 {
             return Err(err(
                 lineno,
-                format!("'-' deactivates the sender, but '{}' is not activated", from_id),
+                format!(
+                    "'-' deactivates the sender, but '{}' is not activated",
+                    from_id
+                ),
             ));
         }
         depth[from] -= 1;
@@ -1979,7 +2074,6 @@ fn parse_seq_message(
     });
     Ok(())
 }
-
 
 // ---------------------------------------------------------------
 // Pie chart (`pie`)
@@ -2007,7 +2101,10 @@ fn parse_pie(source: &str, header_line: usize) -> Result<PieChart, ParseError> {
     } else if !rest.is_empty() {
         return Err(err(
             header_line,
-            format!("unexpected text after 'pie': '{}' (expected showData and/or title)", rest),
+            format!(
+                "unexpected text after 'pie': '{}' (expected showData and/or title)",
+                rest
+            ),
         ));
     }
 
@@ -2315,6 +2412,9 @@ fn parse_journey(source: &str, header_line: usize) -> Result<Journey, ParseError
 /// merge commit whose second parent is the named branch's HEAD.
 fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseError> {
     let mut d = GitGraph::default();
+    if let Some(header) = source.lines().nth(header_line.saturating_sub(1)) {
+        d.orientation = parse_git_orientation(header, header_line)?;
+    }
     let mut used_ids = HashSet::new();
 
     for (i, raw) in source.lines().enumerate() {
@@ -2342,10 +2442,7 @@ fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseErr
                 }
             };
             if !used_ids.insert(id.clone()) {
-                return Err(err(
-                    lineno,
-                    format!("duplicate commit id: '{}'", id),
-                ));
+                return Err(err(lineno, format!("duplicate commit id: '{}'", id)));
             }
             let kind = attrs
                 .get("type")
@@ -2376,10 +2473,7 @@ fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseErr
                 return Err(err(lineno, "branch needs a name".to_string()));
             }
             if d.branches.iter().any(|b| b.name == name) {
-                return Err(err(
-                    lineno,
-                    format!("branch '{}' already exists", name),
-                ));
+                return Err(err(lineno, format!("branch '{}' already exists", name)));
             }
             let from_branch = d.current_branch;
             let from_commit = d.branches[from_branch].head;
@@ -2434,7 +2528,10 @@ fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseErr
                 return Err(err(lineno, "cannot merge a branch into itself".to_string()));
             }
             let src_head = d.branches[src_idx].head.ok_or_else(|| {
-                err(lineno, format!("branch '{}' has no commits to merge", branch_name))
+                err(
+                    lineno,
+                    format!("branch '{}' has no commits to merge", branch_name),
+                )
             })?;
             let branch_idx = d.current_branch;
             let parent = d.branches[branch_idx].head;
@@ -2449,10 +2546,7 @@ fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseErr
                 }
             };
             if !used_ids.insert(id.clone()) {
-                return Err(err(
-                    lineno,
-                    format!("duplicate commit id: '{}'", id),
-                ));
+                return Err(err(lineno, format!("duplicate commit id: '{}'", id)));
             }
             let tag = attrs.get("tag").cloned();
             let seq = d.commits.len();
@@ -2470,10 +2564,7 @@ fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseErr
             continue;
         }
 
-        return Err(err(
-            lineno,
-            format!("unknown gitGraph command: '{}'", line),
-        ));
+        return Err(err(lineno, format!("unknown gitGraph command: '{}'", line)));
     }
 
     Ok(d)
@@ -2525,9 +2616,12 @@ fn parse_git_attrs(
         if cur.at_end() {
             break;
         }
-        let key = cur
-            .take_until(":")
-            .ok_or_else(|| err(lineno, format!("expected attribute key:value, got '{}'", rest)))?;
+        let key = cur.take_until(":").ok_or_else(|| {
+            err(
+                lineno,
+                format!("expected attribute key:value, got '{}'", rest),
+            )
+        })?;
         let key = key.trim();
         if key.is_empty() {
             return Err(err(lineno, "empty attribute key".to_string()));
@@ -2577,7 +2671,10 @@ fn parse_commit_kind(s: &str, lineno: usize) -> Result<CommitKind, ParseError> {
         "HIGHLIGHT" => Ok(CommitKind::Highlight),
         other => Err(err(
             lineno,
-            format!("unknown commit type: '{}' (expected NORMAL, REVERSE, HIGHLIGHT)", other),
+            format!(
+                "unknown commit type: '{}' (expected NORMAL, REVERSE, HIGHLIGHT)",
+                other
+            ),
         )),
     }
 }
@@ -2730,7 +2827,10 @@ fn parse_state(source: &str, header_line: usize) -> Result<Graph, ParseError> {
     if let Some(&(si, oln)) = stack.last() {
         return Err(err(
             oln,
-            format!("state block '{}' is never closed with '}}'", g.subgraphs[si].id),
+            format!(
+                "state block '{}' is never closed with '}}'",
+                g.subgraphs[si].id
+            ),
         ));
     }
     Ok(g)
@@ -2954,10 +3054,7 @@ mod tests {
     #[test]
     fn unsupported_diagram_types_get_explicit_errors() {
         for src in ["gantt\ntitle x", "timeline\nx"] {
-            for res in [
-                parse(src).map(|_| ()),
-                parse_document(src).map(|_| ()),
-            ] {
+            for res in [parse(src).map(|_| ()), parse_document(src).map(|_| ())] {
                 let e = res.unwrap_err();
                 assert_eq!(e.line, 1);
                 assert!(
@@ -3021,7 +3118,9 @@ mod tests {
 
     #[test]
     fn er_comment_survives_commas_parens_and_single_quotes() {
-        let d = er("erDiagram\nT {\n  varchar(20) difficulty \"not null, default 'medium' (see docs)\"\n}");
+        let d = er(
+            "erDiagram\nT {\n  varchar(20) difficulty \"not null, default 'medium' (see docs)\"\n}",
+        );
         assert_eq!(
             d.entities[0].attrs[0].comment.as_deref(),
             Some("not null, default 'medium' (see docs)")
@@ -3077,7 +3176,9 @@ mod tests {
         assert_eq!(g.nodes[2].style.fill.as_deref(), Some("#ffe3e3"));
         // Unknown property is ignored, bad property syntax errors.
         assert!(parse("A --> B\nstyle A rounded").is_err());
-        assert!(parse("A --> B\nstyle A glow:heavy,fill:#fff").unwrap().nodes[0]
+        assert!(parse("A --> B\nstyle A glow:heavy,fill:#fff")
+            .unwrap()
+            .nodes[0]
             .style
             .fill
             .is_some());
@@ -3134,7 +3235,10 @@ mod tests {
         assert!(
             (vis.width - inv.width).abs() < 1.0 && (vis.height - inv.height).abs() < 1.0,
             "invisible link must not change the canvas size ({}x{} vs {}x{})",
-            vis.width, vis.height, inv.width, inv.height
+            vis.width,
+            vis.height,
+            inv.width,
+            inv.height
         );
         // Unclosed inline label errors with a line number.
         let err = parse("A -- oops -> B").unwrap_err();
@@ -3169,7 +3273,10 @@ mod tests {
         // nested `workers` block, which claims it from its parent.
         let w1 = g.node_index("W1").unwrap();
         assert!(g.subgraphs[1].nodes.contains(&w1), "workers claims W1");
-        assert!(!g.subgraphs[0].nodes.contains(&w1), "and backend lets it go");
+        assert!(
+            !g.subgraphs[0].nodes.contains(&w1),
+            "and backend lets it go"
+        );
         // A later TOP-LEVEL mention (`W2 --> Out`) never un-claims.
         let w2 = g.node_index("W2").unwrap();
         assert!(g.subgraphs[1].nodes.contains(&w2), "W2 stays in workers");
@@ -3263,13 +3370,18 @@ mod tests {
         let s = crate::scene::scene(&g);
         let pos: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
         let r = crate::scene::route(&g, &pos);
-        assert_eq!(s.clusters.len(), r.clusters.len(), "cluster count consistent");
+        assert_eq!(
+            s.clusters.len(),
+            r.clusters.len(),
+            "cluster count consistent"
+        );
         assert_eq!(s.edges.len(), r.edges.len(), "edge count consistent");
     }
 
     #[test]
     fn br_becomes_newline_and_grows_the_node() {
-        let g = parse("flowchart TD\nA[\"CloudFront<br/>E2GQ<br />dbfu9k\"] --> B[One line]").unwrap();
+        let g =
+            parse("flowchart TD\nA[\"CloudFront<br/>E2GQ<br />dbfu9k\"] --> B[One line]").unwrap();
         assert_eq!(g.nodes[0].label, "CloudFront\nE2GQ\ndbfu9k");
         // <BR> uppercase and bare <br> also work.
         let g2 = parse("A[x<BR>y<br>z]").unwrap();
@@ -3278,7 +3390,10 @@ mod tests {
         let (w3, h3) = crate::layout::intrinsic_size(&g.nodes[0]);
         let (_w1, h1) = crate::layout::intrinsic_size(&g.nodes[1]);
         // Two extra lines add ~2×LINE_H of height.
-        assert!(h3 > h1 + 30.0, "3-line node taller by ~2 lines: {h3} vs {h1}");
+        assert!(
+            h3 > h1 + 30.0,
+            "3-line node taller by ~2 lines: {h3} vs {h1}"
+        );
         // SVG carries one tspan per line.
         let svg = crate::render_svg("A[a<br/>bb]").unwrap();
         assert_eq!(svg.matches("<tspan").count(), 2);
@@ -3317,13 +3432,20 @@ mod tests {
         );
         // Root and composite each get their OWN start/end nodes.
         let shapes: Vec<Shape> = g.nodes.iter().map(|n| n.shape).collect();
-        assert_eq!(shapes.iter().filter(|s| **s == Shape::StateStart).count(), 2);
+        assert_eq!(
+            shapes.iter().filter(|s| **s == Shape::StateStart).count(),
+            2
+        );
         assert_eq!(shapes.iter().filter(|s| **s == Shape::StateEnd).count(), 2);
         // Composite membership: its [*]s and Inner belong to B.
         assert_eq!(g.subgraphs.len(), 1);
         assert_eq!(g.subgraphs[0].nodes.len(), 3, "start + Inner + end");
         // Pseudostates draw no text.
-        assert!(g.nodes.iter().filter(|n| n.shape == Shape::StateStart).all(|n| n.label.is_empty()));
+        assert!(g
+            .nodes
+            .iter()
+            .filter(|n| n.shape == Shape::StateStart)
+            .all(|n| n.label.is_empty()));
     }
 
     #[test]
@@ -3348,9 +3470,7 @@ mod tests {
 
     #[test]
     fn state_transition_to_composite_becomes_sub_edge() {
-        let g = state(
-            "stateDiagram-v2\nA --> Grp : go\nstate Grp {\n[*] --> X\n}\ndirection LR",
-        );
+        let g = state("stateDiagram-v2\nA --> Grp : go\nstate Grp {\n[*] --> X\n}\ndirection LR");
         assert_eq!(g.sub_edges.len(), 1, "forward ref to the composite box");
         assert!(matches!(g.sub_edges[0].to, End::Sub(0)));
         assert_eq!(g.sub_edges[0].label.as_deref(), Some("go"));
@@ -3414,7 +3534,10 @@ mod tests {
             "journey\n  title T\n  section S\n    Task: 5: Me",
         ] {
             let fm = format!("---\ntitle: My Diagram\nconfig:\n  theme: dark\n---\n{body}");
-            assert!(parse_document(&fm).is_ok(), "frontmatter must not break: {body}");
+            assert!(
+                parse_document(&fm).is_ok(),
+                "frontmatter must not break: {body}"
+            );
         }
         // BOM + frontmatter together.
         assert!(parse_document("\u{feff}---\ntitle: X\n---\nflowchart TD\nA --> B").is_ok());
@@ -3425,7 +3548,11 @@ mod tests {
         // SHARE it, so a differently-indented `---` inside a `title:|`
         // block scalar is body, not an early close (regression fix).
         let g = parse("---\ntitle: |\n  first\n  ---\n  second\nkey: v\n---\nA --> B").unwrap();
-        assert_eq!(g.nodes.len(), 2, "indented '---' must not close the block early");
+        assert_eq!(
+            g.nodes.len(),
+            2,
+            "indented '---' must not close the block early"
+        );
         // A `...` document-end marker inside the body is likewise not
         // a fence (only `---` closes).
         let g = parse("---\ntitle: |\n  ...\n  more\n---\nA --> B").unwrap();
@@ -3443,7 +3570,11 @@ mod tests {
             Document::Flowchart(g) => g.nodes.iter().map(|n| n.id.clone()).collect::<Vec<_>>(),
             _ => panic!(),
         };
-        assert_eq!(ids(&with_fm), ids(&plain), "frontmatter must not alter the body");
+        assert_eq!(
+            ids(&with_fm),
+            ids(&plain),
+            "frontmatter must not alter the body"
+        );
     }
 
     #[test]
@@ -3451,10 +3582,17 @@ mod tests {
         // An error in the body still points at the true source line.
         let src = "---\ntitle: X\n---\nflowchart TD\nstyle\n";
         let e = parse_document(src).unwrap_err();
-        assert_eq!(e.line, 5, "line number must survive the frontmatter blanking");
+        assert_eq!(
+            e.line, 5,
+            "line number must survive the frontmatter blanking"
+        );
         // A `---` that never closes is a clean error, not silent junk.
         let e = parse_document("---\ntitle: X\nflowchart TD\nA --> B").unwrap_err();
-        assert!(e.message.contains("unterminated frontmatter"), "{}", e.message);
+        assert!(
+            e.message.contains("unterminated frontmatter"),
+            "{}",
+            e.message
+        );
         // An indented `---` does NOT satisfy the (un-indented) close,
         // so a block with only that is still unterminated — flowmaid
         // errors where a silent success would corrupt the diagram.
@@ -3523,7 +3661,8 @@ mod tests {
 
         // Line numbers stay exact under a MULTI-line frontmatter for a
         // non-flowchart type (sub-parsers see the blanked source).
-        let e = parse_document("---\ntitle: X\nconfig: {}\n---\nsequenceDiagram\nnote over A:").unwrap_err();
+        let e = parse_document("---\ntitle: X\nconfig: {}\n---\nsequenceDiagram\nnote over A:")
+            .unwrap_err();
         assert_eq!(e.line, 6, "seq body error line must survive blanking");
 
         // Both entry points agree on a frontmatter'd flowchart.
@@ -3587,7 +3726,11 @@ mod tests {
     #[test]
     fn gitgraph_duplicate_commit_id_errors() {
         let e = parse_document("gitGraph\ncommit id: \"a\"\ncommit id: \"a\"").unwrap_err();
-        assert!(e.message.contains("duplicate commit id"), "got: {}", e.message);
+        assert!(
+            e.message.contains("duplicate commit id"),
+            "got: {}",
+            e.message
+        );
     }
 
     #[test]
@@ -3603,7 +3746,11 @@ mod tests {
     #[test]
     fn gitgraph_unknown_command_errors() {
         let e = parse_document("gitGraph\ncherry-pick foo").unwrap_err();
-        assert!(e.message.contains("unknown gitGraph command"), "got: {}", e.message);
+        assert!(
+            e.message.contains("unknown gitGraph command"),
+            "got: {}",
+            e.message
+        );
     }
 
     #[test]
@@ -3627,6 +3774,10 @@ mod tests {
     #[test]
     fn gitgraph_unknown_attribute_errors() {
         let e = parse_document("gitGraph\ncommit foo: \"bar\"").unwrap_err();
-        assert!(e.message.contains("unknown gitGraph attribute"), "got: {}", e.message);
+        assert!(
+            e.message.contains("unknown gitGraph attribute"),
+            "got: {}",
+            e.message
+        );
     }
 }

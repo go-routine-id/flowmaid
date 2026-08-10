@@ -1,5 +1,5 @@
-//! Git graph rendering: branches as horizontal lanes, commits as
-//! circles, merges as curved joins.
+//! Git graph rendering: branches as lanes, commits as circles, merges as
+//! curved joins.
 //!
 //! Like `pie`/`journey`/`mindmap` there is nothing draggable and no
 //! `route()`: [`scene`] computes every coordinate and [`to_svg`]
@@ -8,17 +8,18 @@
 //! topology with no extra code; the SVG writer adds commit ids, tags,
 //! and branch labels on top of the geometry.
 
-use crate::model::{CommitKind, GitGraph, Shape};
+use crate::model::{CommitKind, GitGraph, GitOrientation, Shape};
 use crate::scene::{escape, svg_open, Scene, SceneEdge, SceneNode, EDGE_COLOR, TEXT_COLOR};
 use crate::style::accent;
 
 /// Canvas margin.
 pub const PAD: f64 = 30.0;
-/// Horizontal space reserved for branch name labels on the left.
+/// Space reserved for branch-name labels on the perpendicular axis
+/// (left in LR, top/bottom in TB/BT).
 pub const BRANCH_LABEL_W: f64 = 70.0;
-/// Horizontal distance between commit columns.
+/// Distance between commit columns / rows along the commit-flow axis.
 pub const COMMIT_DX: f64 = 90.0;
-/// Vertical distance between branch lanes.
+/// Distance between branch lanes on the branch axis.
 pub const BRANCH_DY: f64 = 70.0;
 /// Commit circle radius.
 pub const R: f64 = 12.0;
@@ -57,18 +58,34 @@ pub fn scene(d: &GitGraph) -> GitScene {
     let mut commit_ids = Vec::new();
     let mut tags = Vec::new();
 
-    // Pre-compute branch lane Y positions.
-    let branch_y: Vec<f64> = d
-        .branches
-        .iter()
-        .map(|b| PAD + b.order as f64 * BRANCH_DY)
-        .collect();
+    let max_seq = d.commits.iter().map(|c| c.seq).max().unwrap_or(0) as f64;
+    let max_order = d.branches.iter().map(|b| b.order).max().unwrap_or(0) as f64;
 
-    // Commit circles.
-    for (i, c) in d.commits.iter().enumerate() {
-        let x = PAD + BRANCH_LABEL_W + c.seq as f64 * COMMIT_DX;
-        let y = branch_y[c.branch];
-        let color = commit_color(d, i);
+    let commit_axis_len = PAD + BRANCH_LABEL_W + max_seq * COMMIT_DX + R + PAD;
+    let branch_axis_len = PAD + max_order * BRANCH_DY + R + PAD;
+
+    let (width, height) = match d.orientation {
+        GitOrientation::LR => (commit_axis_len, branch_axis_len),
+        GitOrientation::TB | GitOrientation::BT => (branch_axis_len, commit_axis_len),
+    };
+    let width = width.max(PAD + BRANCH_LABEL_W + PAD);
+    let height = height.max(PAD + PAD);
+
+    let branch_pos = |order: usize| PAD + order as f64 * BRANCH_DY;
+    let commit_pos = |seq: usize| PAD + BRANCH_LABEL_W + seq as f64 * COMMIT_DX;
+
+    let pos = |c: &crate::model::GitCommit| -> (f64, f64) {
+        match d.orientation {
+            GitOrientation::LR => (commit_pos(c.seq), branch_pos(c.branch)),
+            GitOrientation::TB => (branch_pos(c.branch), commit_pos(c.seq)),
+            GitOrientation::BT => (branch_pos(c.branch), height - commit_pos(c.seq)),
+        }
+    };
+
+    // Commit circles, ids, and tags.
+    for c in &d.commits {
+        let (x, y) = pos(c);
+        let color = commit_color(d, c);
         nodes.push(SceneNode {
             id: c.id.clone(),
             x,
@@ -110,8 +127,7 @@ pub fn scene(d: &GitGraph) -> GitScene {
         }
     }
 
-    // Branch lines: connect consecutive commits on the same branch,
-    // and connect a branch's fork point to its first commit.
+    // Branch lines and fork joins.
     for b in &d.branches {
         let mut seq: Vec<usize> = d
             .commits
@@ -124,14 +140,12 @@ pub fn scene(d: &GitGraph) -> GitScene {
 
         if let Some(parent_idx) = b.parent_commit {
             if let Some(&first) = seq.first() {
-                let x0 = PAD + BRANCH_LABEL_W + d.commits[parent_idx].seq as f64 * COMMIT_DX;
-                let y0 = branch_y[d.commits[parent_idx].branch];
-                let x1 = PAD + BRANCH_LABEL_W + d.commits[first].seq as f64 * COMMIT_DX;
-                let y1 = branch_y[d.commits[first].branch];
+                let p0 = pos(&d.commits[parent_idx]);
+                let p1 = pos(&d.commits[first]);
                 edges.push(SceneEdge {
                     from: d.commits[parent_idx].id.clone(),
                     to: d.commits[first].id.clone(),
-                    bezier: [(x0, y0), (x0, y0), (x1, y1), (x1, y1)],
+                    bezier: edge_bezier(p0, p1, d.orientation),
                     waypoints: Vec::new(),
                     kind: crate::model::EdgeKind::Open,
                     label: None,
@@ -141,15 +155,13 @@ pub fn scene(d: &GitGraph) -> GitScene {
 
         for w in seq.windows(2) {
             let a = &d.commits[w[0]];
-            let x0 = PAD + BRANCH_LABEL_W + a.seq as f64 * COMMIT_DX;
-            let y0 = branch_y[a.branch];
             let b = &d.commits[w[1]];
-            let x1 = PAD + BRANCH_LABEL_W + b.seq as f64 * COMMIT_DX;
-            let y1 = branch_y[b.branch];
+            let p0 = pos(a);
+            let p1 = pos(b);
             edges.push(SceneEdge {
                 from: a.id.clone(),
                 to: b.id.clone(),
-                bezier: [(x0, y0), (x0, y0), (x1, y1), (x1, y1)],
+                bezier: edge_bezier(p0, p1, d.orientation),
                 waypoints: Vec::new(),
                 kind: crate::model::EdgeKind::Open,
                 label: None,
@@ -160,19 +172,12 @@ pub fn scene(d: &GitGraph) -> GitScene {
     // Merge curves: from source branch head to the merge commit.
     for c in d.commits.iter() {
         if let Some(sp) = c.second_parent {
-            let x1 = PAD + BRANCH_LABEL_W + c.seq as f64 * COMMIT_DX;
-            let y1 = branch_y[c.branch];
-            let x0 = PAD + BRANCH_LABEL_W + d.commits[sp].seq as f64 * COMMIT_DX;
-            let y0 = branch_y[d.commits[sp].branch];
-            // Quadratic control point: halfway horizontally, at the
-            // source branch's lane, so the curve hugs the lane and then
-            // bends to the merge commit.
-            let cx = (x0 + x1) / 2.0;
-            let cy = y0;
+            let p0 = pos(&d.commits[sp]);
+            let p1 = pos(c);
             edges.push(SceneEdge {
                 from: d.commits[sp].id.clone(),
                 to: c.id.clone(),
-                bezier: [(x0, y0), (cx, cy), (cx, cy), (x1, y1)],
+                bezier: edge_bezier(p0, p1, d.orientation),
                 waypoints: Vec::new(),
                 kind: crate::model::EdgeKind::Open,
                 label: None,
@@ -180,26 +185,41 @@ pub fn scene(d: &GitGraph) -> GitScene {
         }
     }
 
-    // Branch name labels on the left of each lane.
+    // Branch name labels.
     for b in &d.branches {
-        branch_labels.push(GitLabel {
-            x: PAD,
-            y: branch_y[b.order],
-            text: b.name.clone(),
-            anchor: "start",
-            baseline: "middle",
-            font_size: FONT,
-            font_weight: Some("bold"),
-            color: accent(b.order),
+        branch_labels.push(match d.orientation {
+            GitOrientation::LR => GitLabel {
+                x: PAD,
+                y: branch_pos(b.order),
+                text: b.name.clone(),
+                anchor: "start",
+                baseline: "middle",
+                font_size: FONT,
+                font_weight: Some("bold"),
+                color: accent(b.order),
+            },
+            GitOrientation::TB => GitLabel {
+                x: branch_pos(b.order),
+                y: PAD,
+                text: b.name.clone(),
+                anchor: "middle",
+                baseline: "middle",
+                font_size: FONT,
+                font_weight: Some("bold"),
+                color: accent(b.order),
+            },
+            GitOrientation::BT => GitLabel {
+                x: branch_pos(b.order),
+                y: height - PAD,
+                text: b.name.clone(),
+                anchor: "middle",
+                baseline: "middle",
+                font_size: FONT,
+                font_weight: Some("bold"),
+                color: accent(b.order),
+            },
         });
     }
-
-    let max_seq = d.commits.iter().map(|c| c.seq).max().unwrap_or(0) as f64;
-    let max_order = d.branches.iter().map(|b| b.order).max().unwrap_or(0) as f64;
-    let width = PAD + BRANCH_LABEL_W + max_seq * COMMIT_DX + R + PAD;
-    let height = PAD + max_order * BRANCH_DY + R + PAD;
-    let width = width.max(PAD + BRANCH_LABEL_W + PAD);
-    let height = height.max(PAD + PAD);
 
     GitScene {
         scene: Scene {
@@ -221,8 +241,7 @@ struct CommitStyle {
     stroke: &'static str,
 }
 
-fn commit_color(d: &GitGraph, idx: usize) -> CommitStyle {
-    let c = &d.commits[idx];
+fn commit_color(_d: &GitGraph, c: &crate::model::GitCommit) -> CommitStyle {
     let branch_color = accent(c.branch);
     match c.kind {
         CommitKind::Normal => CommitStyle {
@@ -237,6 +256,30 @@ fn commit_color(d: &GitGraph, idx: usize) -> CommitStyle {
             fill: branch_color,
             stroke: TEXT_COLOR,
         },
+    }
+}
+
+/// Build a bezier for an edge. Same-branch edges are straight; edges that
+/// cross from one lane to another bend from the source lane toward the
+/// target, with the control point staying on the source lane so the curve
+/// hugs the branch axis before turning.
+fn edge_bezier(p0: (f64, f64), p1: (f64, f64), orientation: GitOrientation) -> [(f64, f64); 4] {
+    let same_lane = match orientation {
+        GitOrientation::LR => (p0.1 - p1.1).abs() < f64::EPSILON,
+        GitOrientation::TB | GitOrientation::BT => (p0.0 - p1.0).abs() < f64::EPSILON,
+    };
+    if same_lane {
+        return [p0, p0, p1, p1];
+    }
+    match orientation {
+        GitOrientation::LR => {
+            let cx = (p0.0 + p1.0) / 2.0;
+            [(p0.0, p0.1), (cx, p0.1), (cx, p0.1), (p1.0, p1.1)]
+        }
+        GitOrientation::TB | GitOrientation::BT => {
+            let cy = (p0.1 + p1.1) / 2.0;
+            [(p0.0, p0.1), (p0.0, cy), (p0.0, cy), (p1.0, p1.1)]
+        }
     }
 }
 
@@ -382,5 +425,48 @@ mod tests {
         assert_eq!(g.commits[0].kind, CommitKind::Normal);
         assert_eq!(g.commits[1].kind, CommitKind::Reverse);
         assert_eq!(g.commits[2].kind, CommitKind::Highlight);
+    }
+
+    #[test]
+    fn default_orientation_is_lr() {
+        let g = git("gitGraph\ncommit");
+        assert_eq!(g.orientation, GitOrientation::LR);
+        let sc = scene(&g);
+        assert!(sc.scene.width > sc.scene.height);
+    }
+
+    #[test]
+    fn tb_orientation_swaps_axes() {
+        let g = git("gitGraph TB\ncommit\ncommit");
+        assert_eq!(g.orientation, GitOrientation::TB);
+        let sc = scene(&g);
+        assert!(sc.scene.height > sc.scene.width);
+        // Branch label sits above the lane.
+        let main_label = sc.branch_labels.iter().find(|l| l.text == "main").unwrap();
+        assert_eq!(main_label.anchor, "middle");
+        assert!(main_label.y < sc.scene.nodes[0].y);
+    }
+
+    #[test]
+    fn bt_orientation_flows_upward() {
+        let g = git("gitGraph BT\ncommit id: \"first\"\ncommit id: \"second\"");
+        assert_eq!(g.orientation, GitOrientation::BT);
+        let sc = scene(&g);
+        let first = sc.scene.nodes.iter().find(|n| n.id == "first").unwrap();
+        let second = sc.scene.nodes.iter().find(|n| n.id == "second").unwrap();
+        // In BT, sequence grows upward: second is above first.
+        assert!(second.y < first.y);
+        let main_label = sc.branch_labels.iter().find(|l| l.text == "main").unwrap();
+        assert!(main_label.y > first.y);
+    }
+
+    #[test]
+    fn unknown_orientation_is_rejected() {
+        let e = parse_document("gitGraph XX\ncommit").unwrap_err();
+        assert!(
+            e.message.contains("unknown gitGraph orientation"),
+            "got: {}",
+            e.message
+        );
     }
 }
