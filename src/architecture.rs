@@ -27,11 +27,49 @@ pub const CHILD_GAP_X: f64 = 28.0;
 pub const CHILD_GAP_Y: f64 = 28.0;
 /// Font size for service and group labels.
 pub const FONT: u32 = 13;
+/// Font size for icon glyphs inside service boxes.
+pub const ICON_FONT: u32 = 16;
+
+/// Map a Mermaid-style icon name to a Unicode glyph.
+///
+/// flowmaid is zero-dependency and has no icon font, so we render a
+/// single glyph as a lightweight visual hint. Unknown icon names are
+/// silently ignored (only the title is drawn).
+pub fn icon_glyph(name: &str) -> Option<&'static str> {
+    Some(match name.trim().to_ascii_lowercase().as_str() {
+        "cloud" => "☁",
+        "database" | "db" => "🗄",
+        "server" => "🖥",
+        "disk" | "storage" => "💾",
+        "internet" | "web" | "globe" => "🌐",
+        "user" => "👤",
+        "users" | "group" => "👥",
+        "lock" | "secure" => "🔒",
+        "key" => "🔑",
+        "mail" | "email" | "envelope" => "✉",
+        "phone" | "mobile" => "📱",
+        "desktop" | "laptop" => "💻",
+        "file" => "📄",
+        "folder" => "📁",
+        "code" => "🖥",
+        "bug" => "🐛",
+        "search" => "🔍",
+        "chart" | "graph" => "📊",
+        "cpu" | "processor" => "🧠",
+        "memory" | "ram" => "🧮",
+        "network" | "firewall" | "router" | "switch" => "🌐",
+        "queue" | "message" => "📬",
+        "cache" => "⚡",
+        _ => return None,
+    })
+}
 
 /// Positioned geometry for an architecture diagram.
 #[derive(Debug, Clone)]
 pub struct ArchScene {
     pub scene: Scene,
+    /// Optional icon glyph for each service node, index-parallel with `scene.nodes`.
+    pub icons: Vec<Option<String>>,
 }
 
 /// A child of a group while it is being laid out.
@@ -107,24 +145,36 @@ pub fn scene(d: &Architecture) -> ArchScene {
     let height = height + PAD * 2.0;
 
     let mut clusters = Vec::with_capacity(d.groups.len());
-    let mut nodes = Vec::with_capacity(d.services.len());
 
     for (i, g) in d.groups.iter().enumerate() {
         let (gx, gy) = abs_group[i];
         let (gw, gh) = group_size[i];
+        let title = match g.icon.as_deref().and_then(icon_glyph) {
+            Some(glyph) => format!("{} {}", glyph, g.title),
+            None => g.title.clone(),
+        };
         clusters.push(SceneCluster {
             id: g.id.clone(),
             x: gx,
             y: gy,
             w: gw,
             h: gh,
-            title: g.title.clone(),
+            title,
             depth: depth_of(i, d),
         });
     }
 
+    let mut nodes = Vec::with_capacity(d.services.len());
+    let mut icons: Vec<Option<String>> = Vec::with_capacity(d.services.len());
+
     for (i, s) in d.services.iter().enumerate() {
         let (sx, sy) = abs_service[i];
+        icons.push(
+            s.icon
+                .as_deref()
+                .and_then(icon_glyph)
+                .map(|g| g.to_string()),
+        );
         nodes.push(SceneNode {
             id: s.id.clone(),
             x: sx + SERVICE_W / 2.0,
@@ -153,7 +203,7 @@ pub fn scene(d: &Architecture) -> ArchScene {
             to: d.services[e.to].id.clone(),
             bezier,
             waypoints,
-            kind: if e.arrow {
+            kind: if e.arrow_start || e.arrow_end {
                 crate::model::EdgeKind::Arrow
             } else {
                 crate::model::EdgeKind::Open
@@ -170,6 +220,7 @@ pub fn scene(d: &Architecture) -> ArchScene {
             width,
             height,
         },
+        icons,
     }
 }
 
@@ -204,11 +255,27 @@ fn layout_group(
     let mut max_w = GROUP_PAD;
     let mut max_h = y;
 
+    #[derive(Debug)]
+    struct Row {
+        start: usize,
+        end: usize,
+        width: f64,
+    }
+    let mut rows: Vec<Row> = Vec::new();
+    let mut row_start = 0usize;
+
     for (i, child) in kids.iter().enumerate() {
         if i > 0 && i % cols == 0 {
+            let row_right = x - CHILD_GAP_X;
+            rows.push(Row {
+                start: row_start,
+                end: i,
+                width: row_right + GROUP_PAD,
+            });
             x = GROUP_PAD;
             y += row_h + CHILD_GAP_Y;
             row_h = 0.0;
+            row_start = i;
         }
 
         let (cw, ch) = match *child {
@@ -229,9 +296,34 @@ fn layout_group(
         x += cw + CHILD_GAP_X;
     }
 
+    // Close the final row.
+    if row_start < n {
+        let row_right = x - CHILD_GAP_X;
+        rows.push(Row {
+            start: row_start,
+            end: n,
+            width: row_right + GROUP_PAD,
+        });
+    }
+
     let w = max_w.max(GROUP_PAD * 2.0 + 80.0);
     let h = max_h.max(GROUP_PAD + GROUP_TITLE_H + GROUP_PAD);
     sizes[idx] = (w, h);
+
+    // Center each row horizontally inside the computed group width.
+    for row in &rows {
+        let offset = (w - row.width) / 2.0;
+        if offset.abs() < f64::EPSILON {
+            continue;
+        }
+        for child in &kids[row.start..row.end] {
+            match *child {
+                Child::Service(s) => service_rel[s].0 += offset,
+                Child::Group(g) => group_rel[g].0 += offset,
+            }
+        }
+    }
+
     (w, h)
 }
 
@@ -341,19 +433,19 @@ pub fn to_svg(as_: &ArchScene) -> String {
             .map(|(x, y)| format!("{:.1},{:.1}", x, y))
             .collect::<Vec<_>>()
             .join(" ");
-        let marker = if e.kind == crate::model::EdgeKind::Arrow {
-            " marker-end='url(#flowmaid-arch-arrow)'"
-        } else {
-            ""
-        };
+        let mut markers = String::new();
+        if e.kind == crate::model::EdgeKind::Arrow {
+            markers.push_str(" marker-end='url(#flowmaid-arch-arrow)'");
+            markers.push_str(" marker-start='url(#flowmaid-arch-arrow)'");
+        }
         s.push_str(&format!(
             "<polyline points='{}' fill='none' stroke='{}' stroke-width='2'{} />\n",
-            points, EDGE_COLOR, marker
+            points, EDGE_COLOR, markers
         ));
     }
 
     // Service boxes.
-    for n in &as_.scene.nodes {
+    for (i, n) in as_.scene.nodes.iter().enumerate() {
         let fill = n.style.fill.as_deref().unwrap_or("#ffffff");
         let stroke = n.style.stroke.as_deref().unwrap_or(EDGE_COLOR);
         s.push_str(&format!(
@@ -367,15 +459,27 @@ pub fn to_svg(as_: &ArchScene) -> String {
             stroke,
             n.style.stroke_width.unwrap_or(2.0)
         ));
+        let label_y = if as_.icons[i].is_some() {
+            n.y + 4.0
+        } else {
+            n.y
+        };
         s.push_str(&format!(
             "<text x='{:.1}' y='{:.1}' dy='0.33em' text-anchor='middle' \
-             font-size='{}' fill='{}'>{}</text>\n",
+             font-size='{}' fill='{}'>{}\n",
             n.x,
-            n.y,
+            label_y,
             FONT,
             TEXT_COLOR,
             escape(&n.label)
         ));
+        if let Some(icon) = as_.icons[i].as_deref() {
+            s.push_str(&format!(
+                "<tspan x='{:.1}' dy='-20' font-size='{}'>{}</tspan>\n",
+                n.x, ICON_FONT, icon
+            ));
+        }
+        s.push_str("</text>\n");
     }
 
     s.push_str("</svg>\n");
@@ -432,8 +536,81 @@ mod tests {
              service b(B)[B] in g\n\
              a:R --> L:b",
         );
+        let e = &a.edges[0];
+        assert!(!e.arrow_start);
+        assert!(e.arrow_end);
         let sc = scene(&a);
         assert_eq!(sc.scene.edges[0].kind, crate::model::EdgeKind::Arrow);
+    }
+
+    #[test]
+    fn bidirectional_edge() {
+        let a = arch(
+            "architecture-beta\n\
+             group g[Group]\n\
+             service a(A)[A] in g\n\
+             service b(B)[B] in g\n\
+             a:R <--> L:b",
+        );
+        let e = &a.edges[0];
+        assert!(e.arrow_start);
+        assert!(e.arrow_end);
+    }
+
+    #[test]
+    fn reverse_arrow_edge() {
+        let a = arch(
+            "architecture-beta\n\
+             group g[Group]\n\
+             service a(A)[A] in g\n\
+             service b(B)[B] in g\n\
+             a:R <-- L:b",
+        );
+        let e = &a.edges[0];
+        assert!(e.arrow_start);
+        assert!(!e.arrow_end);
+    }
+
+    #[test]
+    fn group_qualifier_on_edge() {
+        let a = arch(
+            "architecture-beta\n\
+             group g1[One]\n\
+             group g2[Two]\n\
+             service a(A)[A] in g1\n\
+             service b(B)[B] in g2\n\
+             a{g1}:R --> L:b{g2}",
+        );
+        assert_eq!(a.edges.len(), 1);
+        let sc = scene(&a);
+        assert_eq!(sc.scene.edges[0].kind, crate::model::EdgeKind::Arrow);
+    }
+
+    #[test]
+    fn group_qualifier_mismatch_is_rejected() {
+        let err = parse_document(
+            "architecture-beta\n\
+             group g1[One]\n\
+             group g2[Two]\n\
+             service a(A)[A] in g1\n\
+             service b(B)[B] in g2\n\
+             a{g2}:R --> L:b",
+        )
+        .unwrap_err();
+        assert!(err.message.contains("not inside group"));
+    }
+
+    #[test]
+    fn icon_is_rendered_to_svg() {
+        let a = arch(
+            "architecture-beta\n\
+             group infra(cloud)[Infra]\n\
+             service db(database)[Database] in infra",
+        );
+        let sc = scene(&a);
+        let svg = to_svg(&sc);
+        assert!(svg.contains("🗄"));
+        assert!(svg.contains("☁"));
     }
 
     #[test]

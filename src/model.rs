@@ -755,7 +755,10 @@ pub struct ArchEdge {
     pub from_side: ArchSide,
     pub to: usize,
     pub to_side: ArchSide,
-    pub arrow: bool,
+    /// Arrowhead on the `from` side (pointing toward `from`).
+    pub arrow_start: bool,
+    /// Arrowhead on the `to` side (pointing toward `to`).
+    pub arrow_end: bool,
 }
 
 /// Port side on an architecture service.
