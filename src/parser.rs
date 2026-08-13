@@ -2738,7 +2738,7 @@ fn parse_architecture(source: &str, header_line: usize) -> Result<Architecture, 
         }
 
         if line.contains("--") {
-            let e = parse_arch_edge(line, lineno, &service_ids)?;
+            let e = parse_arch_edge(line, lineno, &service_ids, &group_ids, &d.services)?;
             d.edges.push(e);
             continue;
         }
@@ -2811,23 +2811,33 @@ fn parse_arch_decl(
     Ok((id, icon, title, parent))
 }
 
-/// Parse an edge such as `svc1:L -- R:svc2` or `a:T --> B:b`.
+/// Parse an edge such as `svc1:L -- R:svc2`, `a:T --> B:b`, or
+/// `svc1:L <--> R:svc2`. Optional `{group}` qualifiers after a service id
+/// (`svc1{group}:L`) are accepted and validated against the service's parent.
 fn parse_arch_edge(
     line: &str,
     lineno: usize,
     services: &HashMap<String, usize>,
+    groups: &HashMap<String, usize>,
+    arch_services: &[ArchService],
 ) -> Result<ArchEdge, ParseError> {
-    let arrow = line.contains("-->");
-    let mut parts = line.splitn(2, "--");
-    let left = parts.next().unwrap_or("").trim();
-    let right = parts
-        .next()
-        .ok_or_else(|| err(lineno, "edge must contain '--'".to_string()))?
-        .trim();
-    let right = right.strip_prefix('>').unwrap_or(right).trim();
+    let idx = line
+        .find("--")
+        .ok_or_else(|| err(lineno, "edge must contain '--'".to_string()))?;
+    let mut left = line[..idx].trim();
+    let mut right = line[idx + 2..].trim();
 
-    let (from_id, from_side) = parse_arch_endpoint_left(left, lineno)?;
-    let (to_side, to_id) = parse_arch_endpoint_right(right, lineno)?;
+    let arrow_start = left.ends_with('<');
+    if arrow_start {
+        left = left[..left.len() - 1].trim_end();
+    }
+    let arrow_end = right.starts_with('>');
+    if arrow_end {
+        right = right[1..].trim_start();
+    }
+
+    let (from_id, from_group, from_side) = parse_arch_endpoint_left(left, lineno)?;
+    let (to_side, to_group, to_id) = parse_arch_endpoint_right(right, lineno)?;
 
     let from = *services
         .get(&from_id)
@@ -2836,33 +2846,98 @@ fn parse_arch_edge(
         .get(&to_id)
         .ok_or_else(|| err(lineno, format!("service '{}' not found", to_id)))?;
 
+    validate_arch_group_qualifier(from, from_group, "from", lineno, groups, arch_services)?;
+    validate_arch_group_qualifier(to, to_group, "to", lineno, groups, arch_services)?;
+
     Ok(ArchEdge {
         from,
         from_side,
         to,
         to_side,
-        arrow,
+        arrow_start,
+        arrow_end,
     })
 }
 
-fn parse_arch_endpoint_left(s: &str, lineno: usize) -> Result<(String, ArchSide), ParseError> {
+fn validate_arch_group_qualifier(
+    service_idx: usize,
+    qualifier: Option<String>,
+    side: &str,
+    lineno: usize,
+    groups: &HashMap<String, usize>,
+    arch_services: &[ArchService],
+) -> Result<(), ParseError> {
+    let Some(name) = qualifier else {
+        return Ok(());
+    };
+    let group_idx = *groups.get(&name).ok_or_else(|| {
+        err(
+            lineno,
+            format!("{} group qualifier '{}' not found", side, name),
+        )
+    })?;
+    if arch_services[service_idx].group != Some(group_idx) {
+        return Err(err(
+            lineno,
+            format!(
+                "service '{}' is not inside group '{}'",
+                arch_services[service_idx].id, name
+            ),
+        ));
+    }
+    Ok(())
+}
+
+fn parse_arch_endpoint_left(
+    s: &str,
+    lineno: usize,
+) -> Result<(String, Option<String>, ArchSide), ParseError> {
     let s = s.trim();
     let colon = s
         .rfind(':')
         .ok_or_else(|| err(lineno, format!("expected id:side, got '{}'", s)))?;
-    let id = s[..colon].trim().to_string();
+    let (id, group) = parse_arch_id_with_group(&s[..colon], lineno)?;
     let side = parse_arch_side(&s[colon + 1..], lineno)?;
-    Ok((id, side))
+    Ok((id, group, side))
 }
 
-fn parse_arch_endpoint_right(s: &str, lineno: usize) -> Result<(ArchSide, String), ParseError> {
+fn parse_arch_endpoint_right(
+    s: &str,
+    lineno: usize,
+) -> Result<(ArchSide, Option<String>, String), ParseError> {
     let s = s.trim();
     let colon = s
         .find(':')
         .ok_or_else(|| err(lineno, format!("expected side:id, got '{}'", s)))?;
     let side = parse_arch_side(&s[..colon], lineno)?;
-    let id = s[colon + 1..].trim().to_string();
-    Ok((side, id))
+    let (id, group) = parse_arch_id_with_group(&s[colon + 1..], lineno)?;
+    Ok((side, group, id))
+}
+
+fn parse_arch_id_with_group(
+    s: &str,
+    lineno: usize,
+) -> Result<(String, Option<String>), ParseError> {
+    let s = s.trim();
+    let Some(open) = s.find('{') else {
+        return Ok((s.to_string(), None));
+    };
+    let close = s
+        .rfind('}')
+        .filter(|c| *c > open)
+        .ok_or_else(|| err(lineno, format!("unclosed group qualifier in '{}'", s)))?;
+    let id = s[..open].trim().to_string();
+    let group = s[open + 1..close].trim().to_string();
+    if id.is_empty() {
+        return Err(err(
+            lineno,
+            "service id missing before group qualifier".to_string(),
+        ));
+    }
+    if group.is_empty() {
+        return Err(err(lineno, "empty group qualifier".to_string()));
+    }
+    Ok((id, Some(group)))
 }
 
 fn parse_arch_side(s: &str, lineno: usize) -> Result<ArchSide, ParseError> {
