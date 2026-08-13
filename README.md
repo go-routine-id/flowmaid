@@ -24,7 +24,7 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 - [x] `pie` — title, showData, percentage labels + legend *(v0.10.0)*
 - [x] `mindmap` — indentation-built tree, radial layout with colored branches, six node shapes (square/rounded/circle/hexagon/bang/cloud) *(v0.13.0)*
 - [x] `gitGraph` — LR/TB/BT orientations, commits, branches, checkouts/switches, merges with ids and tags *(v0.22.0)*
-- [x] `architecture-beta` — nested groups, services, and port-based edges (`id:L -- R:other`, `-->`) *(v0.23.0)*
+- [x] `architecture-beta` — nested groups, services, icons, and port-based edges (`id:L -- R:other`, `-->`, `<-->`, `{group}` qualifiers) *(v0.24.0)*
 - [ ] The complete mermaid catalog, tracked on the board: `swimlanes` · `gantt` · `timeline` · `quadrantChart` · `requirementDiagram` · `C4` · `zenuml` · `sankey` · `xychart` · `block` · `packet` · `kanban` · `radar` · `eventmodeling` · `treemap` · `venn` · `ishikawa` · `wardley` · `cynefin` · `treeview`
 
 **Flowchart features**
@@ -58,7 +58,7 @@ Or in `Cargo.toml`:
 
 ```toml
 [dependencies]
-flowmaid = "0.23"
+flowmaid = "0.24"
 ```
 
 ## Usage
