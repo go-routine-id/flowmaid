@@ -1,10 +1,12 @@
 //! Mindmap rendering, in the Mermaid style: the root sits at the centre
 //! and branches radiate outward. Nodes at depth `k` land on a ring of
 //! radius `k · RING`; each subtree owns an angular wedge sized by its
-//! leaf count, so busy branches get more room. Every top-level branch
-//! gets a stable accent that its whole subtree fills, and the six node
-//! shapes (rounded / square / circle / hexagon / bang / cloud) are drawn
-//! for real.
+//! box footprint (diagonal-bound), so wide nodes and busy branches get
+//! room without overlapping. If a ring can't hold all its nodes, its
+//! radius grows until they fit. Every top-level branch gets a stable
+//! accent that its whole subtree fills, and the six node shapes
+//! (rounded / square / circle / hexagon / bang / cloud) are drawn for
+//! real.
 //!
 //! Like `pie`/`seq` there is nothing draggable and no `route()`:
 //! [`scene`] computes every coordinate a painter needs and [`to_svg`]
@@ -24,6 +26,9 @@ pub const PAD_Y: f64 = 7.0;
 pub const LINE_H: f64 = 18.0;
 /// Radius added per depth level (root = 0).
 pub const RING: f64 = 172.0;
+/// Angular separation (radians) kept between adjacent sibling wedges, so
+/// neighbouring boxes never touch even when both are wide.
+const GAP: f64 = 0.06;
 /// Canvas margin around the whole tree.
 pub const MARGIN: f64 = 28.0;
 /// Base font size (px).
@@ -96,34 +101,53 @@ fn node_size(text: &str, shape: MindShape) -> (f64, f64) {
     }
 }
 
-/// Leaf-count weight of each subtree (min 1), for angular allocation.
-fn weigh(d: &Mindmap, i: usize, w: &mut [usize]) -> usize {
+/// Angular half-width (radians) a node occupies on its ring: the node's
+/// box diagonal is projected onto the circle and turned into an angle.
+/// The root (depth 0, radius 0) occupies nothing.
+fn angular_half(diag: f64, r: f64) -> f64 {
+    if r <= 0.0 {
+        return 0.0;
+    }
+    ((diag * 0.5) / r).min(1.0).asin()
+}
+
+/// Bottom-up angular extent (radians) of each subtree: the node's own
+/// footprint, or the sum of its children's extents — whichever is wider.
+/// `rad` maps a depth to its ring radius.
+fn extent(d: &Mindmap, i: usize, diag: &[f64], rad: &[f64], e: &mut [f64]) -> f64 {
+    let own = if d.nodes[i].depth == 0 {
+        0.0
+    } else {
+        2.0 * angular_half(diag[i], rad[d.nodes[i].depth]) + GAP
+    };
     let kids = &d.nodes[i].children;
     let total = if kids.is_empty() {
-        1
+        own
     } else {
-        kids.iter().map(|&c| weigh(d, c, w)).sum()
+        own.max(kids.iter().map(|&c| extent(d, c, diag, rad, e)).sum())
     };
-    w[i] = total;
+    e[i] = total;
     total
 }
 
-/// Place subtree `i` inside the angular wedge `[a0, a1]`. Node centres
-/// are relative to the root at the origin; converted to boxes later.
-fn place(d: &Mindmap, w: &[usize], i: usize, a0: f64, a1: f64, c: &mut [(f64, f64)]) {
+/// Place subtree `i` inside the angular wedge `[a0, a1]` (radians from
+/// 12 o'clock, clockwise). Children sit on the next ring and share the
+/// wedge proportionally to their computed extents; a leaf records only
+/// its centre. Node centres are relative to the root at the origin.
+fn place(d: &Mindmap, e: &[f64], rad: &[f64], i: usize, a0: f64, a1: f64, c: &mut [(f64, f64)]) {
     let kids = &d.nodes[i].children;
     if kids.is_empty() {
         return;
     }
-    let total: f64 = kids.iter().map(|&k| w[k] as f64).sum();
+    let total: f64 = kids.iter().map(|&k| e[k]).sum();
     let mut acc = a0;
     for &k in kids {
-        let span = (a1 - a0) * (w[k] as f64 / total);
+        let span = if total > 0.0 { (a1 - a0) * (e[k] / total) } else { 0.0 };
         let (cs, ce) = (acc, acc + span);
         let mid = (cs + ce) / 2.0;
-        let r = RING * d.nodes[k].depth as f64;
+        let r = rad[d.nodes[k].depth];
         c[k] = (r * mid.cos(), r * mid.sin());
-        place(d, w, k, cs, ce, c);
+        place(d, e, rad, k, cs, ce, c);
         acc = ce;
     }
 }
@@ -140,12 +164,29 @@ pub fn scene(d: &Mindmap) -> MindScene {
         return route(d, &[]);
     }
     let sizes: Vec<(f64, f64)> = d.nodes.iter().map(|n| node_size(&n.text, n.shape)).collect();
+    let diag: Vec<f64> = sizes.iter().map(|&(w, h)| w.hypot(h)).collect();
+    let max_depth = d.nodes.iter().map(|n| n.depth).max().unwrap_or(0);
+    // Ring radius per depth. A depth whose nodes' combined angular
+    // footprints exceed 2π cannot fit on its base radius, so it grows
+    // until every node fits (leaves GAP between neighbours).
+    let mut rad: Vec<f64> = (0..=max_depth).map(|k| RING * k as f64).collect();
+    let mut demand: Vec<f64> = vec![0.0; max_depth + 1];
+    for (i, n) in d.nodes.iter().enumerate() {
+        if n.depth > 0 {
+            demand[n.depth] += 2.0 * angular_half(diag[i], rad[n.depth]) + GAP;
+        }
+    }
+    for k in 1..=max_depth {
+        if demand[k] > TAU {
+            rad[k] *= demand[k] / TAU;
+        }
+    }
 
-    // Angular allocation by leaf weight; radiate from the top, clockwise.
-    let mut w = vec![0usize; d.nodes.len()];
-    weigh(d, 0, &mut w);
+    // Angular allocation by box footprint; radiate from the top, clockwise.
+    let mut e = vec![0.0f64; d.nodes.len()];
+    extent(d, 0, &diag, &rad, &mut e);
     let mut c = vec![(0.0f64, 0.0f64); d.nodes.len()];
-    place(d, &w, 0, -FRAC_PI_2, TAU - FRAC_PI_2, &mut c);
+    place(d, &e, &rad, 0, -FRAC_PI_2, TAU - FRAC_PI_2, &mut c);
 
     // Normalise so the whole tree's bounding box starts at MARGIN, then
     // hand the resulting centres to route().
@@ -437,6 +478,31 @@ mod tests {
         // Children radiate around the root, so it lands near the middle.
         assert!((root.cx() - ms.width / 2.0).abs() < ms.width * 0.28);
         assert!((root.cy() - ms.height / 2.0).abs() < ms.height * 0.28);
+    }
+
+    #[test]
+    fn wide_siblings_do_not_overlap() {
+        // Many long labels on the same ring: the old leaf-count layout
+        // collapsed them onto one another; the footprint-aware wedge
+        // grows the ring so every box keeps its own slice.
+        let mut src = String::from("mindmap\n  root(Center)\n");
+        for i in 0..12 {
+            src.push_str(&format!("    A very long branch label number {i:02}\n"));
+        }
+        let ms = scene(&mind(&src));
+        let boxes: Vec<(f64, f64, f64, f64)> =
+            ms.nodes.iter().map(|n| (n.x, n.y, n.x + n.w, n.y + n.h)).collect();
+        for i in 0..boxes.len() {
+            for j in (i + 1)..boxes.len() {
+                let (a, b) = (boxes[i], boxes[j]);
+                let overlap = a.0 < b.2 && b.0 < a.2 && a.1 < b.3 && b.1 < a.3;
+                assert!(
+                    !overlap,
+                    "node {i} ({:?}) overlaps node {j} ({:?})",
+                    a, b
+                );
+            }
+        }
     }
 
     #[test]
