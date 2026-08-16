@@ -10,7 +10,7 @@
 
 use crate::layout::text_width;
 use crate::model::Journey;
-use crate::scene::{escape, svg_open, TEXT_COLOR};
+use crate::scene::{escape, svg_open, SvgOptions, TEXT_COLOR};
 use crate::style::accent;
 
 /// Canvas margin.
@@ -230,8 +230,13 @@ pub fn scene(d: &Journey) -> JourneyScene {
 
 /// Serialise a [`JourneyScene`] to a standalone SVG document.
 pub fn to_svg(js: &JourneyScene) -> String {
+    to_svg_with(js, &SvgOptions::default())
+}
+
+/// [`to_svg`] with explicit viewport options (see [`SvgOptions`]).
+pub fn to_svg_with(js: &JourneyScene, opts: &SvgOptions) -> String {
     let mut s = String::new();
-    svg_open(&mut s, js.width, js.height, FONT, "User journey");
+    svg_open(&mut s, js.width, js.height, FONT, "User journey", opts);
 
     // Section bands.
     for b in &js.sections {

@@ -9,7 +9,7 @@
 //! and branch labels on top of the geometry.
 
 use crate::model::{CommitKind, GitGraph, GitOrientation, Shape};
-use crate::scene::{escape, svg_open, Scene, SceneEdge, SceneNode, EDGE_COLOR, TEXT_COLOR};
+use crate::scene::{escape, svg_open, Scene, SceneEdge, SceneNode, SvgOptions, EDGE_COLOR, TEXT_COLOR};
 use crate::style::accent;
 
 /// Canvas margin.
@@ -299,6 +299,11 @@ fn edge_bezier(p0: (f64, f64), p1: (f64, f64), orientation: GitOrientation) -> [
 
 /// Serialise a git graph scene to SVG.
 pub fn to_svg(gs: &GitScene) -> String {
+    to_svg_with(gs, &SvgOptions::default())
+}
+
+/// [`to_svg`] with explicit viewport options (see [`SvgOptions`]).
+pub fn to_svg_with(gs: &GitScene, opts: &SvgOptions) -> String {
     let mut s = String::new();
     svg_open(
         &mut s,
@@ -306,6 +311,7 @@ pub fn to_svg(gs: &GitScene) -> String {
         gs.scene.height,
         FONT,
         "Git graph diagram",
+        opts,
     );
 
     // Branch name labels.

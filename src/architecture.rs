@@ -7,7 +7,7 @@
 
 use crate::model::{ArchSide, Architecture, NodeStyle, Shape};
 use crate::scene::{
-    escape, svg_open, Scene, SceneCluster, SceneEdge, SceneNode, EDGE_COLOR, TEXT_COLOR,
+    escape, svg_open, Scene, SceneCluster, SceneEdge, SceneNode, SvgOptions, EDGE_COLOR, TEXT_COLOR,
 };
 use crate::style::accent;
 
@@ -398,6 +398,11 @@ fn orthogonal_route(a: (f64, f64), b: (f64, f64)) -> Vec<(f64, f64)> {
 
 /// Serialise an architecture scene to SVG.
 pub fn to_svg(as_: &ArchScene) -> String {
+    to_svg_with(as_, &SvgOptions::default())
+}
+
+/// [`to_svg`] with explicit viewport options (see [`SvgOptions`]).
+pub fn to_svg_with(as_: &ArchScene, opts: &SvgOptions) -> String {
     let mut s = String::new();
     svg_open(
         &mut s,
@@ -405,6 +410,7 @@ pub fn to_svg(as_: &ArchScene) -> String {
         as_.scene.height,
         FONT,
         "Architecture diagram",
+        opts,
     );
 
     s.push_str(&format!(

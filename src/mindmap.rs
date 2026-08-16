@@ -15,7 +15,7 @@
 
 use crate::layout::{line_count, text_width};
 use crate::model::{MindShape, Mindmap};
-use crate::scene::{escape, svg_open, TEXT_COLOR};
+use crate::scene::{escape, svg_open, SvgOptions, TEXT_COLOR};
 use std::f64::consts::{FRAC_PI_2, TAU};
 
 /// Horizontal padding inside a node box.
@@ -326,8 +326,13 @@ fn cloud_pts(n: &MindNodeBox) -> Vec<(f64, f64)> {
 
 /// Serialise a [`MindScene`] to a standalone SVG document.
 pub fn to_svg(ms: &MindScene) -> String {
+    to_svg_with(ms, &SvgOptions::default())
+}
+
+/// [`to_svg`] with explicit viewport options (see [`SvgOptions`]).
+pub fn to_svg_with(ms: &MindScene, opts: &SvgOptions) -> String {
     let mut s = String::new();
-    svg_open(&mut s, ms.width, ms.height, FONT, "Mind map");
+    svg_open(&mut s, ms.width, ms.height, FONT, "Mind map", opts);
 
     // Connectors behind the nodes.
     for e in &ms.edges {
