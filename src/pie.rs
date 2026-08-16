@@ -11,7 +11,7 @@
 
 use crate::layout::text_width;
 use crate::model::PieChart;
-use crate::scene::{escape, svg_open, EDGE_COLOR, TEXT_COLOR};
+use crate::scene::{escape, svg_open, SvgOptions, EDGE_COLOR, TEXT_COLOR};
 use std::f64::consts::TAU;
 
 /// Pie radius in pixels.
@@ -177,8 +177,13 @@ fn polar(cx: f64, cy: f64, rad: f64, a: f64) -> (f64, f64) {
 
 /// Serialise a pie scene to SVG.
 pub fn to_svg(ps: &PieScene) -> String {
+    to_svg_with(ps, &SvgOptions::default())
+}
+
+/// [`to_svg`] with explicit viewport options (see [`SvgOptions`]).
+pub fn to_svg_with(ps: &PieScene, opts: &SvgOptions) -> String {
     let mut s = String::new();
-    svg_open(&mut s, ps.width, ps.height, 13, "Pie chart");
+    svg_open(&mut s, ps.width, ps.height, 13, "Pie chart", opts);
 
     if let Some(t) = &ps.title {
         s.push_str(&format!(

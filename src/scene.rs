@@ -1187,11 +1187,21 @@ pub fn to_svg(sc: &Scene) -> String {
     to_svg_titled(sc, "Flowchart diagram")
 }
 
+/// [`to_svg`] with explicit viewport options (see [`SvgOptions`]).
+pub fn to_svg_with(sc: &Scene, opts: &SvgOptions) -> String {
+    to_svg_titled_with(sc, "Flowchart diagram", opts)
+}
+
 /// [`to_svg`] with a caller-supplied accessible name — the root
 /// `<title>` / `aria-label`. Callers that know the document type (a
 /// `stateDiagram-v2` rides the flowchart `Scene`) pass the right one
 /// so screen readers and hover tooltips announce it correctly (#16).
 pub fn to_svg_titled(sc: &Scene, title: &str) -> String {
+    to_svg_titled_with(sc, title, &SvgOptions::default())
+}
+
+/// [`to_svg_titled`] with explicit viewport options.
+pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String {
     let mut bb = Bbox::new();
     grow_scene(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
     let (minx, maxx, miny, maxy) = bb.finish();
@@ -1216,7 +1226,7 @@ pub fn to_svg_titled(sc: &Scene, title: &str) -> String {
     };
 
     let mut s = String::new();
-    svg_open(&mut s, width, height, 14, title);
+    svg_open(&mut s, width, height, 14, title, opts);
     s.push_str(&format!(
         "<defs><marker id=\"arrow\" viewBox=\"0 0 10 10\" refX=\"8.5\" refY=\"5\" \
          markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\">\
@@ -1843,13 +1853,52 @@ fn spline_d(pts: &[(f64, f64)]) -> String {
 /// writer. `title` makes the diagram screen-reader friendly (issue
 /// #16): it becomes the root `<title>`, the `aria-label`, and the
 /// element gets `role="img"`.
-pub(crate) fn svg_open(s: &mut String, width: f64, height: f64, font_size: u32, title: &str) {
+/// Viewport / responsive rendering options for [`crate::render_svg_advanced`].
+///
+/// Defaults reproduce the historical fixed-pixel output byte-for-byte, so
+/// existing callers (and `render_svg`) are unaffected. More options
+/// (theme, scale, max width, …) can be added here without new entry
+/// points.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct SvgOptions {
+    /// When true, the root `<svg>` fills its container (`width="100%"`)
+    /// instead of a fixed pixel size; the `viewBox` stays so the content
+    /// scales with it.
+    pub responsive: bool,
+    /// Overrides the SVG `preserveAspectRatio` attribute. `None` keeps the
+    /// SVG default `xMidYMid meet` (uniform scale, letterboxed).
+    pub preserve_aspect_ratio: Option<&'static str>,
+}
+
+pub(crate) fn svg_open(
+    s: &mut String,
+    width: f64,
+    height: f64,
+    font_size: u32,
+    title: &str,
+    opts: &SvgOptions,
+) {
+    // `width`/`height` become percentages only in responsive mode; the
+    // `viewBox` stays intrinsic so the content scales with the container.
+    let (w_attr, h_attr) = if opts.responsive {
+        ("100%".to_string(), "100%".to_string())
+    } else {
+        (format!("{width:.0}"), format!("{height:.0}"))
+    };
+    // `preserveAspectRatio` is written whenever set; when absent the SVG
+    // default (`xMidYMid meet`) applies.
+    let par = opts
+        .preserve_aspect_ratio
+        .map(|p| format!(" preserveAspectRatio=\"{p}\""))
+        .unwrap_or_default();
     s.push_str(&format!(
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{w:.0}\" height=\"{h:.0}\" \
-         viewBox=\"0 0 {w:.0} {h:.0}\" font-family=\"Helvetica, Arial, sans-serif\" \
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{w}\" height=\"{h}\" \
+         viewBox=\"0 0 {vw:.0} {vh:.0}\"{par} font-family=\"Helvetica, Arial, sans-serif\" \
          font-size=\"{fs}\" role=\"img\" aria-label=\"{t}\">\n",
-        w = width,
-        h = height,
+        w = w_attr,
+        h = h_attr,
+        vw = width,
+        vh = height,
         fs = font_size,
         t = escape(title)
     ));
@@ -1971,6 +2020,36 @@ pub(crate) fn escape(s: &str) -> String {
 mod tests {
     use super::*;
     use crate::parser::parse;
+
+    #[test]
+    fn svg_options_default_matches_fixed_pixel_and_responsive_overrides() {
+        let g = parse("flowchart TD\nA --> B").unwrap();
+        let sc = scene(&g);
+
+        // Default reproduces the historical fixed-pixel root.
+        let base = to_svg(&sc);
+        assert!(base.starts_with("<svg"), "default still emits svg");
+        assert!(
+            !base.contains("width=\"100%\""),
+            "default must NOT be responsive"
+        );
+
+        // Responsive switches width/height to percentages but keeps viewBox.
+        let resp = to_svg_with(&sc, &SvgOptions { responsive: true, ..Default::default() });
+        assert!(resp.contains("width=\"100%\"") && resp.contains("height=\"100%\""), "{resp}");
+        assert!(resp.contains("viewBox=\"0 0"), "viewBox preserved");
+
+        // preserveAspectRatio is written only when set.
+        let par = to_svg_with(
+            &sc,
+            &SvgOptions { responsive: true, preserve_aspect_ratio: Some("none") },
+        );
+        assert!(par.contains("preserveAspectRatio=\"none\""), "{par}");
+        assert!(
+            !resp.contains("preserveAspectRatio"),
+            "unset -> default meet, no attribute"
+        );
+    }
 
     #[test]
     fn hit_test_picks_nodes_edges_clusters_with_z_order() {

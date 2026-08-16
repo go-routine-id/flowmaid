@@ -7,9 +7,15 @@ use crate::model::{
     Architecture, ClassDiagram, ErDiagram, GitGraph, Graph, Journey, Mindmap, PieChart,
     SequenceDiagram,
 };
+use crate::scene::SvgOptions;
 
 pub fn render(g: &Graph) -> String {
     render_titled(g, "Flowchart diagram")
+}
+
+/// [`render`] with explicit viewport options (see [`SvgOptions`]).
+pub fn render_with(g: &Graph, opts: &SvgOptions) -> String {
+    crate::scene::to_svg_with(&crate::scene::scene(g), opts)
 }
 
 /// [`render`] with a caller-chosen accessible name (a `stateDiagram-v2`
@@ -18,10 +24,20 @@ pub fn render_titled(g: &Graph, title: &str) -> String {
     crate::scene::to_svg_titled(&crate::scene::scene(g), title)
 }
 
+/// [`render_titled`] with explicit viewport options.
+pub fn render_titled_with(g: &Graph, title: &str, opts: &SvgOptions) -> String {
+    crate::scene::to_svg_titled_with(&crate::scene::scene(g), title, opts)
+}
+
 /// Render an Entity-Relationship diagram (tables + crow's foot).
 /// Geometry & serialisation live in the `er` module.
 pub fn render_er(d: &ErDiagram) -> String {
     crate::er::to_svg(&crate::er::scene(d))
+}
+
+/// [`render_er`] with explicit viewport options.
+pub fn render_er_with(d: &ErDiagram, opts: &SvgOptions) -> String {
+    crate::er::to_svg_with(&crate::er::scene(d), opts)
 }
 
 /// Render a UML class diagram (three-compartment boxes + UML end
@@ -30,10 +46,20 @@ pub fn render_class(d: &ClassDiagram) -> String {
     crate::class::to_svg(&crate::class::scene(d))
 }
 
+/// [`render_class`] with explicit viewport options.
+pub fn render_class_with(d: &ClassDiagram, opts: &SvgOptions) -> String {
+    crate::class::to_svg_with(&crate::class::scene(d), opts)
+}
+
 /// Render a pie chart (proportional slices + legend). Geometry &
 /// serialisation live in the `pie` module.
 pub fn render_pie(d: &PieChart) -> String {
     crate::pie::to_svg(&crate::pie::scene(d))
+}
+
+/// [`render_pie`] with explicit viewport options.
+pub fn render_pie_with(d: &PieChart, opts: &SvgOptions) -> String {
+    crate::pie::to_svg_with(&crate::pie::scene(d), opts)
 }
 
 /// Render a sequence diagram (lifelines + linear message rows).
@@ -42,10 +68,20 @@ pub fn render_seq(d: &SequenceDiagram) -> String {
     crate::seq::to_svg(&crate::seq::scene(d))
 }
 
+/// [`render_seq`] with explicit viewport options.
+pub fn render_seq_with(d: &SequenceDiagram, opts: &SvgOptions) -> String {
+    crate::seq::to_svg_with(&crate::seq::scene(d), opts)
+}
+
 /// Render a mindmap (left-to-right tidy tree with colored branches).
 /// Geometry & serialisation live in the `mindmap` module.
 pub fn render_mindmap(d: &Mindmap) -> String {
     crate::mindmap::to_svg(&crate::mindmap::scene(d))
+}
+
+/// [`render_mindmap`] with explicit viewport options.
+pub fn render_mindmap_with(d: &Mindmap, opts: &SvgOptions) -> String {
+    crate::mindmap::to_svg_with(&crate::mindmap::scene(d), opts)
 }
 
 /// Render a user-journey (horizontal band of score-colored faces).
@@ -54,16 +90,31 @@ pub fn render_journey(d: &Journey) -> String {
     crate::journey::to_svg(&crate::journey::scene(d))
 }
 
+/// [`render_journey`] with explicit viewport options.
+pub fn render_journey_with(d: &Journey, opts: &SvgOptions) -> String {
+    crate::journey::to_svg_with(&crate::journey::scene(d), opts)
+}
+
 /// Render a git graph (branch lanes + commit circles + merge curves).
 /// Geometry & serialisation live in the `gitgraph` module.
 pub fn render_gitgraph(d: &GitGraph) -> String {
     crate::gitgraph::to_svg(&crate::gitgraph::scene(d))
 }
 
+/// [`render_gitgraph`] with explicit viewport options.
+pub fn render_gitgraph_with(d: &GitGraph, opts: &SvgOptions) -> String {
+    crate::gitgraph::to_svg_with(&crate::gitgraph::scene(d), opts)
+}
+
 /// Render an architecture-beta diagram (nested groups + services + edges).
 /// Geometry & serialisation live in the `architecture` module.
 pub fn render_architecture(d: &Architecture) -> String {
     crate::architecture::to_svg(&crate::architecture::scene(d))
+}
+
+/// [`render_architecture`] with explicit viewport options.
+pub fn render_architecture_with(d: &Architecture, opts: &SvgOptions) -> String {
+    crate::architecture::to_svg_with(&crate::architecture::scene(d), opts)
 }
 
 #[cfg(test)]

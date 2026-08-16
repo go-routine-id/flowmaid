@@ -48,23 +48,31 @@ pub mod style;
 pub use emit::to_mermaid;
 pub use model::Document;
 pub use parser::ParseError;
+pub use scene::SvgOptions;
 
 /// Shortcut: Mermaid-syntax text -> SVG string. Dispatches on the
 /// diagram type header (flowchart/graph, erDiagram, classDiagram,
 /// sequenceDiagram, pie, stateDiagram-v2, mindmap, journey, gitGraph,
 /// architecture-beta).
 pub fn render_svg(source: &str) -> Result<String, ParseError> {
+    render_svg_advanced(source, &SvgOptions::default())
+}
+
+/// [`render_svg`] with explicit viewport options — opt in to a responsive
+/// root `<svg>` (`width="100%"`) and/or a custom `preserveAspectRatio`.
+/// Dispatches on the same diagram-type headers as [`render_svg`].
+pub fn render_svg_advanced(source: &str, opts: &SvgOptions) -> Result<String, ParseError> {
     match parser::parse_document(source)? {
         // State diagrams live on the same Graph as flowcharts.
-        Document::Flowchart(g) => Ok(render::render(&g)),
-        Document::State(g) => Ok(render::render_titled(&g, "State diagram")),
-        Document::Er(d) => Ok(render::render_er(&d)),
-        Document::Class(d) => Ok(render::render_class(&d)),
-        Document::Sequence(d) => Ok(render::render_seq(&d)),
-        Document::Pie(d) => Ok(render::render_pie(&d)),
-        Document::Mindmap(d) => Ok(render::render_mindmap(&d)),
-        Document::Journey(d) => Ok(render::render_journey(&d)),
-        Document::GitGraph(d) => Ok(render::render_gitgraph(&d)),
-        Document::Architecture(d) => Ok(render::render_architecture(&d)),
+        Document::Flowchart(g) => Ok(render::render_with(&g, opts)),
+        Document::State(g) => Ok(render::render_titled_with(&g, "State diagram", opts)),
+        Document::Er(d) => Ok(render::render_er_with(&d, opts)),
+        Document::Class(d) => Ok(render::render_class_with(&d, opts)),
+        Document::Sequence(d) => Ok(render::render_seq_with(&d, opts)),
+        Document::Pie(d) => Ok(render::render_pie_with(&d, opts)),
+        Document::Mindmap(d) => Ok(render::render_mindmap_with(&d, opts)),
+        Document::Journey(d) => Ok(render::render_journey_with(&d, opts)),
+        Document::GitGraph(d) => Ok(render::render_gitgraph_with(&d, opts)),
+        Document::Architecture(d) => Ok(render::render_architecture_with(&d, opts)),
     }
 }

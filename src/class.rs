@@ -16,7 +16,7 @@
 use crate::layout::text_width;
 use crate::model::{Class, ClassDiagram, Direction, EdgeKind, Graph, RelKind, Shape};
 use crate::scene::{
-    escape, route_sized, scene_sized, svg_label_box, svg_open, Scene, EDGE_COLOR, LABEL_BORDER,
+    escape, route_sized, scene_sized, svg_label_box, svg_open, Scene, SvgOptions, EDGE_COLOR, LABEL_BORDER,
     TEXT_COLOR,
 };
 
@@ -187,9 +187,14 @@ fn compartment_h(rows: usize) -> f64 {
 
 /// Serialise any class arrangement (automatic or dragged) to SVG.
 pub fn to_svg(cs: &ClassScene) -> String {
+    to_svg_with(cs, &SvgOptions::default())
+}
+
+/// [`to_svg`] with explicit viewport options (see [`SvgOptions`]).
+pub fn to_svg_with(cs: &ClassScene, opts: &SvgOptions) -> String {
     let sc = &cs.scene;
     let mut s = String::new();
-    svg_open(&mut s, sc.width, sc.height, 13, "Class diagram");
+    svg_open(&mut s, sc.width, sc.height, 13, "Class diagram", opts);
 
     // Relationship lines + UML end glyphs (under the boxes).
     for (e, rel) in sc.edges.iter().zip(&cs.rels) {
