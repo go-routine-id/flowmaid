@@ -70,6 +70,10 @@ pub struct ArchScene {
     pub scene: Scene,
     /// Optional icon glyph for each service node, index-parallel with `scene.nodes`.
     pub icons: Vec<Option<String>>,
+    /// Whether each edge (index-parallel with `scene.edges`) has an
+    /// arrowhead pointing at its `from` / `to` endpoint.
+    pub arrow_starts: Vec<bool>,
+    pub arrow_ends: Vec<bool>,
 }
 
 /// A child of a group while it is being laid out.
@@ -193,6 +197,8 @@ pub fn scene(d: &Architecture) -> ArchScene {
     }
 
     let mut edges: Vec<SceneEdge> = Vec::with_capacity(d.edges.len());
+    let mut arrow_starts: Vec<bool> = Vec::with_capacity(d.edges.len());
+    let mut arrow_ends: Vec<bool> = Vec::with_capacity(d.edges.len());
     for e in &d.edges {
         let p0 = port(&abs_service, e.from, e.from_side);
         let p1 = port(&abs_service, e.to, e.to_side);
@@ -210,6 +216,8 @@ pub fn scene(d: &Architecture) -> ArchScene {
             },
             label: None,
         });
+        arrow_starts.push(e.arrow_start);
+        arrow_ends.push(e.arrow_end);
     }
 
     ArchScene {
@@ -221,6 +229,8 @@ pub fn scene(d: &Architecture) -> ArchScene {
             height,
         },
         icons,
+        arrow_starts,
+        arrow_ends,
     }
 }
 
@@ -399,9 +409,13 @@ pub fn to_svg(as_: &ArchScene) -> String {
 
     s.push_str(&format!(
         "<defs>\
-         <marker id='flowmaid-arch-arrow' markerWidth='10' markerHeight='10' \
-         refX='9' refY='5' orient='auto-start-reverse'>\
+         <marker id='flowmaid-arch-arrow-end' markerWidth='10' markerHeight='10' \
+         refX='9' refY='5' orient='auto' markerUnits='userSpaceOnUse'>\
          <path d='M 0,0 L 10,5 L 0,10 L 1,5 z' fill='{0}'/>\
+         </marker>\
+         <marker id='flowmaid-arch-arrow-start' markerWidth='10' markerHeight='10' \
+         refX='1' refY='5' orient='auto' markerUnits='userSpaceOnUse'>\
+         <path d='M 10,0 L 0,5 L 10,10 L 9,5 z' fill='{0}'/>\
          </marker>\
          </defs>\n",
         EDGE_COLOR
@@ -426,7 +440,7 @@ pub fn to_svg(as_: &ArchScene) -> String {
     }
 
     // Edges.
-    for e in &as_.scene.edges {
+    for (i, e) in as_.scene.edges.iter().enumerate() {
         let points = e
             .waypoints
             .iter()
@@ -434,9 +448,13 @@ pub fn to_svg(as_: &ArchScene) -> String {
             .collect::<Vec<_>>()
             .join(" ");
         let mut markers = String::new();
-        if e.kind == crate::model::EdgeKind::Arrow {
-            markers.push_str(" marker-end='url(#flowmaid-arch-arrow)'");
-            markers.push_str(" marker-start='url(#flowmaid-arch-arrow)'");
+        // A single auto-oriented marker can only point one way, so the two
+        // arrowheads need distinct marker instances with explicit orientation.
+        if as_.arrow_ends[i] {
+            markers.push_str(" marker-end='url(#flowmaid-arch-arrow-end)'");
+        }
+        if as_.arrow_starts[i] {
+            markers.push_str(" marker-start='url(#flowmaid-arch-arrow-start)'");
         }
         s.push_str(&format!(
             "<polyline points='{}' fill='none' stroke='{}' stroke-width='2'{} />\n",
@@ -569,6 +587,48 @@ mod tests {
         let e = &a.edges[0];
         assert!(e.arrow_start);
         assert!(!e.arrow_end);
+    }
+
+    #[test]
+    fn svg_markers_respect_per_end_arrows() {
+        let a = arch(
+            "architecture-beta\n\
+             group g[Group]\n\
+             service a(A)[A] in g\n\
+             service b(B)[B] in g\n\
+             service c(C)[C] in g\n\
+             service d(D)[D] in g\n\
+             a:R --> L:b\n\
+             c:R <-- L:d\n\
+             b:R -- L:c",
+        );
+        let svg = to_svg(&scene(&a));
+
+        // Only the directed `-->` polyline gets a marker-end; only the
+        // `<--` polyline gets a marker-start; the bare `--` gets neither.
+        // Each edge renders exactly one polyline, in declaration order.
+        let ends = svg
+            .matches("marker-end='url(#flowmaid-arch-arrow-end)'")
+            .count();
+        let starts = svg
+            .matches("marker-start='url(#flowmaid-arch-arrow-start)'")
+            .count();
+        assert_eq!(ends, 1, "only the --> edge has an end arrowhead");
+        assert_eq!(starts, 1, "only the <-- edge has a start arrowhead");
+    }
+
+    #[test]
+    fn bidirectional_svg_has_both_markers() {
+        let a = arch(
+            "architecture-beta\n\
+             group g[Group]\n\
+             service a(A)[A] in g\n\
+             service b(B)[B] in g\n\
+             a:R <--> L:b",
+        );
+        let svg = to_svg(&scene(&a));
+        assert!(svg.contains("marker-end='url(#flowmaid-arch-arrow-end)'"));
+        assert!(svg.contains("marker-start='url(#flowmaid-arch-arrow-start)'"));
     }
 
     #[test]
