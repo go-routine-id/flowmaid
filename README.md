@@ -5,7 +5,7 @@
 [![docs.rs](https://docs.rs/flowmaid/badge.svg)](https://docs.rs/flowmaid)
 [![license](https://img.shields.io/crates/l/flowmaid.svg)](LICENSE)
 
-A small Mermaid-like diagram engine written in pure std Rust with zero external dependencies. Takes Mermaid-syntax text and produces SVG — or live, draggable geometry for interactive apps. Nine diagram types today: flowcharts, ER, UML class, sequence, pie, state, mindmap, user-journey, git graphs, and architecture-beta diagrams.
+A small Mermaid-like diagram engine written in pure std Rust with zero external dependencies. Takes Mermaid-syntax text and produces SVG — or live, draggable geometry for interactive apps. Ten diagram types today: flowcharts, ER, UML class, sequence, pie, state, mindmap, user-journey, git graphs, and architecture-beta diagrams.
 
 **Website:** https://go-routine-id.github.io/flowmaid/ · **Playground:** https://go-routine-id.github.io/flowmaid-web/ · **Desktop editor:** [flowmaid-desktop](https://github.com/go-routine-id/flowmaid-desktop) · **Terminal:** [flowcli](https://github.com/go-routine-id/flowcli)
 
@@ -58,7 +58,7 @@ Or in `Cargo.toml`:
 
 ```toml
 [dependencies]
-flowmaid = "0.24"
+flowmaid = "0.25"
 ```
 
 ## Usage
