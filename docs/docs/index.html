@@ -156,7 +156,7 @@
   </div>
   <h3>Highlights</h3>
   <ul>
-    <li><strong>8 diagram types</strong> — flowchart, ER, class, sequence, state, pie, mindmap, user journey.</li>
+    <li><strong>10 diagram types</strong> — flowchart, ER, class, sequence, state, pie, mindmap, user journey, git graph, architecture.</li>
     <li><strong>Mermaid-grade layout</strong> — a faithful dagre-style pipeline: crossing
       minimization, Brandes-Köpf coordinates, subgraph clusters with border walls,
       edge labels that reserve their own space, smooth <code>curveBasis</code> splines.</li>
@@ -296,6 +296,11 @@ python3 -m http.server                   # open http://localhost:8000</code></pr
       <td>Indentation tree, radial layout, colored branches, six node shapes</td></tr>
     <tr><td>User journey</td><td><code>journey</code></td>
       <td>Sections, scored tasks (1–5 smiley faces), actor legend &amp; dots</td></tr>
+    <tr><td>Git graph</td><td><code>gitGraph</code></td>
+      <td>Branch lanes (LR/TB/BT), commits, checkouts/switches, merges with ids and tags</td></tr>
+    <tr><td>Architecture</td><td><code>architecture-beta</code></td>
+      <td>Nested groups, services with icons, port-based edges (<code>L -- R</code>,
+      <code>--&gt;</code>, <code>&lt;-&gt;</code>), group qualifiers</td></tr>
   </table>
   <div class="tip">Every type above is runnable in the <a href="/flowmaid-web/">playground</a> — pick one
   from the examples dropdown and edit live.</div>
