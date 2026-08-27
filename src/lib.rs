@@ -28,6 +28,7 @@
 //! assert!(git.contains("main"));
 //! ```
 
+pub mod advance;
 pub mod architecture;
 pub mod class;
 pub mod emit;
@@ -49,6 +50,11 @@ pub use emit::to_mermaid;
 pub use model::Document;
 pub use parser::ParseError;
 pub use scene::SvgOptions;
+
+pub use advance::{
+    layout_advance, render_advance_routed, render_advance_routed_with_lanes, render_advance_svg,
+    AdvanceError, AdvanceScene,
+};
 
 /// Shortcut: Mermaid-syntax text -> SVG string. Dispatches on the
 /// diagram type header (flowchart/graph, erDiagram, classDiagram,
