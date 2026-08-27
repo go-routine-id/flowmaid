@@ -12,6 +12,10 @@
 //! (`mindmap`), user-journey diagrams (`journey`), git graphs
 //! (`gitGraph`), and architecture diagrams (`architecture-beta`).
 //!
+//! There is also an engine-native swimlane renderer driven by JSON in
+//! the [`advance`] module (`render_advance_svg`, `layout_advance`, and
+//! drag-friendly routing helpers) — it has no mermaid header.
+//!
 //! Library usage:
 //!
 //! ```

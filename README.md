@@ -190,7 +190,23 @@ stateDiagram-v2
 
 Supported subset: `[*]` start/end pseudostates (scoped — a composite gets its own), transitions `A --> B : label`, bare-id state declarations, `state "Long title" as id`, description lines `id : text` (the first replaces the id as the label, later ones stack), composite `state X { ... }` blocks with nesting, per-composite `direction`, transitions to/from a composite box itself (forward references included), and `<<choice>>` (diamond) / `<<fork>>` / `<<join>>` (bars). `note ...` lines and `note ... end note` blocks are accepted and skipped. Not yet: concurrency regions (`--`), rendered notes, entry/exit actions. See `examples/state.mmd`.
 
-Other Mermaid diagram types (`gantt`, `timeline`, `gitGraph`, ...) are detected and produce an explicit "not supported yet" error instead of a confusing parse failure.
+Other Mermaid diagram types (`gantt`, `timeline`, ...) are detected and produce an explicit "not supported yet" error instead of a confusing parse failure.
+
+## Advance swimlane diagrams (JSON input)
+
+Beyond mermaid-syntax text there is an engine-native swimlane renderer in the `advance` module — vertical lane columns, top-down nodes, orthogonal edge routing, all sharing the flowchart shapes and edge kinds. The input is plain JSON (no mermaid header):
+
+```json
+{
+    "lanes": [{ "id": "dev", "title": "Development" },
+              { "id": "qa",  "title": "QA" }],
+    "nodes": [{ "id": "a", "label": "Design", "lane": "dev" },
+              { "id": "b", "label": "Test", "lane": "qa", "shape": "diamond" }],
+    "edges": [{ "from": "a", "to": "b", "label": "hand off" }]
+}
+```
+
+`advance::render_advance_svg(&str)` goes straight from JSON to SVG, and `advance::layout_advance` returns the positioned geometry (`AdvanceScene`) for GUI painters. Drag-mode re-renders come from `advance::render_advance_routed` (node centre positions) and `advance::render_advance_routed_with_lanes` (plus caller-controlled lane widths, margin, and inter-lane gap); content dragged outside the canvas is translated back into view. Because this diagram kind has no mermaid header, it is outside the parity roadmap above — the counts elsewhere in this document refer to mermaid-syntax types only.
 
 ## Architecture
 
