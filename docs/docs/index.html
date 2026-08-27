@@ -134,6 +134,7 @@
   <a href="#interactive">Interactive apps</a>
   <a href="#wasm">WebAssembly</a>
   <a href="#types">Diagram types</a>
+  <a href="#advance">Swimlanes (JSON)</a>
   <a href="#layout">How layout works</a>
   <div class="group">More</div>
   <a href="#ecosystem">Ecosystem</a>
@@ -302,8 +303,28 @@ python3 -m http.server                   # open http://localhost:8000</code></pr
       <td>Nested groups, services with icons, port-based edges (<code>L -- R</code>,
       <code>--&gt;</code>, <code>&lt;-&gt;</code>), group qualifiers</td></tr>
   </table>
-  <div class="tip">Every type above is runnable in the <a href="/flowmaid-web/">playground</a> — pick one
-  from the examples dropdown and edit live.</div>
+  <div class="tip">Every type above renders in the playground — type or paste its source
+  into the editor and edit live. The examples dropdown carries presets for
+  flowchart (plain &amp; styled), ER, class, sequence, pie, state, and the
+  swimlane example; the other headers work just as well when typed.</div>
+</section>
+
+<section id="advance">
+  <h2>Advance swimlanes (JSON input)</h2>
+  <p>Besides the mermaid-syntax diagram types, the engine ships an engine-native
+  swimlane renderer driven by JSON: vertical lane columns, top-down nodes,
+  orthogonal edge routing, and drag-friendly re-renders with caller-controlled
+  lane widths. Shapes reuse the flowchart vocabulary
+  (<code>rect</code>, <code>rounded</code>, <code>stadium</code>, <code>diamond</code>,
+  <code>circle</code>, <code>cylinder</code>, …). Entry points:</p>
+  <pre><code>let svg   = advance::render_advance_svg(json)?;                // JSON -&gt; SVG
+let scene = advance::layout_advance(json)?;                    // JSON -&gt; geometry
+let svg   = advance::render_advance_routed(json, &amp;positions)?; // after drag</code></pre>
+  <p><code>render_advance_routed_with_lanes</code> additionally takes caller-controlled
+  lane widths, margin, and gap — the engine side of resizable swimlane columns.
+  Content dragged outside the canvas is translated back into view.</p>
+  <div class="tip">This diagram kind has no mermaid header, so it stays outside the type
+  counts above — they refer to mermaid-syntax types only.</div>
 </section>
 
 <section id="layout">
