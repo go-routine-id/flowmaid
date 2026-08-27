@@ -1051,12 +1051,9 @@ fn build_lanes_around_nodes(
     (lanes, max_right + MARGIN, max_bottom + MARGIN)
 }
 
-/// Parse advance JSON, place nodes at caller-provided centre positions
-/// (flat `[x0, y0, x1, y1, ...]` in the same order as the `nodes`
-/// array emitted by [`layout_advance`]), recompute lane boxes and edge
-/// routing, and render to SVG.
-pub fn render_advance_routed(source: &str, positions: &[f64]) -> Result<String, AdvanceError> {
-    let d = AdvanceDiagram::parse(source)?;
+/// Validate the flat `[x0, y0, x1, y1, ...]` position array against the
+/// diagram's node count and finiteness.
+fn validate_positions(d: &AdvanceDiagram, positions: &[f64]) -> Result<(), AdvanceError> {
     if positions.len() != d.nodes.len() * 2 {
         return Err(adv_err(format!(
             "expected {} coordinates for {} nodes, got {}",
@@ -1068,10 +1065,18 @@ pub fn render_advance_routed(source: &str, positions: &[f64]) -> Result<String, 
     if let Some(i) = positions.iter().position(|v| !v.is_finite()) {
         return Err(adv_err(format!("position[{}] is not a finite number", i)));
     }
+    Ok(())
+}
 
+/// Build node scenes at caller-provided centre positions (flat
+/// `[x0, y0, x1, y1, ...]` in the same order as the `nodes` array),
+/// with sizes derived from each node's label/shape.
+fn place_nodes_at_positions(
+    d: &AdvanceDiagram,
+    positions: &[f64],
+) -> Vec<AdvanceSceneNode> {
     let sizes: Vec<(f64, f64)> = d.nodes.iter().map(node_size).collect();
-    let node_scenes: Vec<AdvanceSceneNode> = d
-        .nodes
+    d.nodes
         .iter()
         .enumerate()
         .map(|(i, n)| AdvanceSceneNode {
@@ -1084,18 +1089,73 @@ pub fn render_advance_routed(source: &str, positions: &[f64]) -> Result<String, 
             h: sizes[i].1,
             shape: n.shape,
         })
-        .collect();
+        .collect()
+}
 
-    let (lane_scenes, width, height) = build_lanes_around_nodes(&d, &node_scenes);
-    let edge_scenes = route_edges(&d, &node_scenes);
+/// Grow the canvas so everything sits inside it: content that lies left
+/// of or above `pad` is translated down/right by the minimum amount
+/// needed. Relative layout, identities, and lane geometry are all
+/// preserved; this is a zero-op when content already fits. Callers set
+/// `pad` to their own frame convention (module [`MARGIN`] for the
+/// auto-lane API, the caller-supplied margin for the resizable-lane API).
+fn fit_canvas(mut sc: AdvanceScene, pad: f64) -> AdvanceScene {
+    let mut min_x = f64::INFINITY;
+    let mut min_y = f64::INFINITY;
+    for l in &sc.lanes {
+        min_x = min_x.min(l.x);
+        min_y = min_y.min(l.y);
+    }
+    for n in &sc.nodes {
+        min_x = min_x.min(n.x - n.w / 2.0);
+        min_y = min_y.min(n.y - n.h / 2.0);
+    }
+    let dx = (pad - min_x).max(0.0);
+    let dy = (pad - min_y).max(0.0);
+    if dx > 0.0 || dy > 0.0 {
+        for l in &mut sc.lanes {
+            l.x += dx;
+            l.y += dy;
+        }
+        for n in &mut sc.nodes {
+            n.x += dx;
+            n.y += dy;
+        }
+        for e in &mut sc.edges {
+            for p in &mut e.points {
+                p.0 += dx;
+                p.1 += dy;
+            }
+        }
+        sc.width += dx;
+        sc.height += dy;
+    }
+    sc
+}
 
-    Ok(to_svg(&AdvanceScene {
-        width,
-        height,
-        lanes: lane_scenes,
-        nodes: node_scenes,
-        edges: edge_scenes,
-    }))
+/// Parse advance JSON, place nodes at caller-provided centre positions
+/// (flat `[x0, y0, x1, y1, ...]` in the same order as the `nodes`
+/// array emitted by [`layout_advance`]), recompute lane boxes and edge
+/// routing, and render to SVG.
+///
+/// Content dragged outside the canvas (negative coordinates) is
+/// translated back into view; otherwise geometry is used as given.
+pub fn render_advance_routed(source: &str, positions: &[f64]) -> Result<String, AdvanceError> {
+    let d = AdvanceDiagram::parse(source)?;
+    validate_positions(&d, positions)?;
+    let nodes = place_nodes_at_positions(&d, positions);
+    let (lanes, width, height) = build_lanes_around_nodes(&d, &nodes);
+    let edges = route_edges(&d, &nodes);
+    let scene = fit_canvas(
+        AdvanceScene {
+            width,
+            height,
+            lanes,
+            nodes,
+            edges,
+        },
+        MARGIN,
+    );
+    Ok(to_svg(&scene))
 }
 
 /// Build lane boxes from caller-provided widths, margin, and gap.
@@ -1164,6 +1224,9 @@ fn build_lanes_with_widths(
 /// This is the engine side of resizable swimlane columns: the web host
 /// drags the border between two lanes and tells the engine the new
 /// widths, while node positions remain under host control.
+///
+/// Content dragged outside the canvas (negative coordinates) is
+/// translated back into view; otherwise geometry is used as given.
 pub fn render_advance_routed_with_lanes(
     source: &str,
     positions: &[f64],
@@ -1172,18 +1235,7 @@ pub fn render_advance_routed_with_lanes(
     gap: f64,
 ) -> Result<String, AdvanceError> {
     let d = AdvanceDiagram::parse(source)?;
-
-    if positions.len() != d.nodes.len() * 2 {
-        return Err(adv_err(format!(
-            "expected {} coordinates for {} nodes, got {}",
-            d.nodes.len() * 2,
-            d.nodes.len(),
-            positions.len()
-        )));
-    }
-    if let Some(i) = positions.iter().position(|v| !v.is_finite()) {
-        return Err(adv_err(format!("position[{}] is not a finite number", i)));
-    }
+    validate_positions(&d, positions)?;
 
     if lane_widths.len() != d.lanes.len() {
         return Err(adv_err(format!(
@@ -1205,34 +1257,21 @@ pub fn render_advance_routed_with_lanes(
         return Err(adv_err("gap must be a non-negative finite number"));
     }
 
-    let sizes: Vec<(f64, f64)> = d.nodes.iter().map(node_size).collect();
-    let node_scenes: Vec<AdvanceSceneNode> = d
-        .nodes
-        .iter()
-        .enumerate()
-        .map(|(i, n)| AdvanceSceneNode {
-            id: n.id.clone(),
-            label: n.label.clone(),
-            lane: n.lane.clone(),
-            x: positions[i * 2],
-            y: positions[i * 2 + 1],
-            w: sizes[i].0,
-            h: sizes[i].1,
-            shape: n.shape,
-        })
-        .collect();
-
-    let (lane_scenes, width, height) =
-        build_lanes_with_widths(&d, &node_scenes, lane_widths, margin, gap);
-    let edge_scenes = route_edges(&d, &node_scenes);
-
-    Ok(to_svg(&AdvanceScene {
-        width,
-        height,
-        lanes: lane_scenes,
-        nodes: node_scenes,
-        edges: edge_scenes,
-    }))
+    let nodes = place_nodes_at_positions(&d, positions);
+    let (lanes, width, height) =
+        build_lanes_with_widths(&d, &nodes, lane_widths, margin, gap);
+    let edges = route_edges(&d, &nodes);
+    let scene = fit_canvas(
+        AdvanceScene {
+            width,
+            height,
+            lanes,
+            nodes,
+            edges,
+        },
+        margin,
+    );
+    Ok(to_svg(&scene))
 }
 
 // ------------------------------------------------------------------
@@ -1378,5 +1417,76 @@ mod tests {
         let pos: Vec<f64> = d.nodes.iter().flat_map(|_| [0.0, 0.0]).collect();
         assert!(render_advance_routed_with_lanes(sample_json(), &pos, &[200.0, 200.0], -1.0, 40.0).is_err());
         assert!(render_advance_routed_with_lanes(sample_json(), &pos, &[200.0, 200.0], 24.0, -1.0).is_err());
+    }
+
+    fn base_positions(d: &AdvanceDiagram) -> Vec<f64> {
+        let sc = layout(d);
+        let mut pos = Vec::with_capacity(d.nodes.len() * 2);
+        for n in &sc.nodes {
+            pos.push(n.x);
+            pos.push(n.y);
+        }
+        pos
+    }
+
+    #[test]
+    fn routed_shifts_content_dragged_above_or_left_of_canvas_into_view() {
+        let d = AdvanceDiagram::parse(sample_json()).unwrap();
+        let mut positions = base_positions(&d);
+        // Drag the first node far above and left of the canvas.
+        positions[0] = -500.0;
+        positions[1] = -800.0;
+        let nodes = place_nodes_at_positions(&d, &positions);
+        let (lanes, width, height) = build_lanes_around_nodes(&d, &nodes);
+        let edges = route_edges(&d, &nodes);
+        let sc = fit_canvas(AdvanceScene { width, height, lanes, nodes, edges }, MARGIN);
+        assert!(sc.nodes.iter().all(|n| n.y - n.h / 2.0 >= MARGIN - 1e-9));
+        assert!(sc.nodes.iter().all(|n| n.x - n.w / 2.0 >= MARGIN - 1e-9));
+        assert!(sc.lanes.iter().all(|l| l.y >= MARGIN - 1e-9 && l.x >= MARGIN - 1e-9));
+        assert!(sc.edges.iter().all(|e| e.points.iter().all(|p| p.1 >= MARGIN - 1e-9)));
+        let max_bottom = sc.nodes.iter().map(|n| n.y + n.h / 2.0).fold(0.0_f64, f64::max);
+        assert!(sc.height >= max_bottom + MARGIN - 1e-9);
+    }
+
+    #[test]
+    fn routed_with_lanes_shifts_content_dragged_above_canvas_into_view() {
+        let d = AdvanceDiagram::parse(sample_json()).unwrap();
+        let mut positions = base_positions(&d);
+        // Pull every node in the second lane far above the canvas top.
+        for (i, n) in d.nodes.iter().enumerate() {
+            if n.lane == "qa" {
+                positions[i * 2 + 1] = -600.0;
+            }
+        }
+        let nodes = place_nodes_at_positions(&d, &positions);
+        let (lanes, width, height) =
+            build_lanes_with_widths(&d, &nodes, &[220.0, 220.0], 24.0, 40.0);
+        let edges = route_edges(&d, &nodes);
+        let sc = fit_canvas(AdvanceScene { width, height, lanes, nodes, edges }, 24.0);
+        // Previously these nodes were silently clipped by the SVG canvas.
+        assert!(sc.nodes.iter().all(|n| n.y - n.h / 2.0 >= MARGIN - 1e-9));
+        assert!(sc.lanes.iter().all(|l| l.y >= MARGIN - 1e-9 && l.h >= LANE_TITLE_H));
+    }
+
+    #[test]
+    fn routed_keeps_geometry_identical_when_content_already_fits() {
+        let d = AdvanceDiagram::parse(sample_json()).unwrap();
+        let positions = base_positions(&d);
+        let before = place_nodes_at_positions(&d, &positions);
+        let (lanes, width, height) = build_lanes_around_nodes(&d, &before);
+        let edges = route_edges(&d, &before);
+        let after = fit_canvas(
+            AdvanceScene {
+                width,
+                height,
+                lanes,
+                nodes: before.clone(),
+                edges,
+            },
+            MARGIN,
+        );
+        for (b, a) in before.iter().zip(after.nodes.iter()) {
+            assert_eq!((b.x, b.y), (a.x, a.y));
+        }
     }
 }
