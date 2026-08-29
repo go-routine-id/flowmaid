@@ -58,9 +58,9 @@ pub use scene::SvgOptions;
 
 pub use advance::{
     edge_kind_name, layout_advance, render_advance_routed, render_advance_routed_with_lanes,
-    render_advance_svg, scene_to_json, shape_name, to_json, AdvanceConfig, AdvanceDiagram,
-    AdvanceDirection, AdvanceEdge, AdvanceError, AdvanceLane, AdvanceNode, AdvanceOrder,
-    AdvanceScene, AdvanceSceneEdge, AdvanceSceneLane, AdvanceSceneNode, AdvanceStyle,
+    render_advance_svg, render_advance_text_svg, scene_to_json, shape_name, to_json, AdvanceConfig,
+    AdvanceDiagram, AdvanceDirection, AdvanceEdge, AdvanceError, AdvanceLane, AdvanceNode,
+    AdvanceOrder, AdvanceScene, AdvanceSceneEdge, AdvanceSceneLane, AdvanceSceneNode, AdvanceStyle,
 };
 
 /// Shortcut: Mermaid-syntax text -> SVG string. Dispatches on the

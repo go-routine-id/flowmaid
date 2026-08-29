@@ -460,13 +460,6 @@ impl AdvanceDiagram {
             lanes.push(parse_lane_recursive(lane_json, 1, &mut lane_ids)?);
         }
 
-        // Non-goal enforcement: horizontal mode + nested lanes is rejected
-        if direction == AdvanceDirection::Horizontal && lanes.iter().any(|l| !l.children.is_empty()) {
-            return Err(adv_err(
-                "nested lanes (children) are not supported in horizontal direction",
-            ));
-        }
-
         let mut nodes = Vec::new();
         let mut node_ids = std::collections::HashSet::new();
         let mut explicit_coords_count = 0;
@@ -601,6 +594,262 @@ impl AdvanceDiagram {
             edges,
         })
     }
+
+    /// Parse a concise text-based swimlane notation into an [`AdvanceDiagram`].
+    ///
+    /// Syntax:
+    /// ```text
+    /// swimlane [horizontal]
+    /// title "My Title"
+    /// lane l1 "Sales"
+    ///   a([Start])
+    ///   b[Prepare Order]
+    /// lane l2 "Fulfillment"
+    ///   c[Ship Package]
+    ///
+    /// a --> b
+    /// b -->|done| c
+    /// ```
+    pub fn parse_text(source: &str) -> Result<AdvanceDiagram, AdvanceError> {
+        let mut title = None;
+        let mut description = None;
+        let mut direction = AdvanceDirection::Vertical;
+        let mut lanes: Vec<AdvanceLane> = Vec::new();
+        let mut nodes: Vec<AdvanceNode> = Vec::new();
+        let mut edges: Vec<AdvanceEdge> = Vec::new();
+
+        let mut current_lane: Option<String> = None;
+        let mut lane_ids = std::collections::HashSet::new();
+        let mut node_ids = std::collections::HashSet::new();
+
+        for (line_no, raw_line) in source.lines().enumerate() {
+            let line = raw_line.trim();
+            if line.is_empty() || line.starts_with("%%") || line.starts_with("//") || line.starts_with('#') {
+                continue;
+            }
+
+            // Header
+            if line.starts_with("swimlane") {
+                let rest = line.trim_start_matches("swimlane").trim();
+                if rest.eq_ignore_ascii_case("horizontal") || rest.eq_ignore_ascii_case("lr") {
+                    direction = AdvanceDirection::Horizontal;
+                }
+                continue;
+            }
+
+            // Title / Desc
+            if line.starts_with("title ") {
+                title = Some(line.trim_start_matches("title ").trim().trim_matches('"').to_string());
+                continue;
+            }
+            if line.starts_with("desc ") || line.starts_with("description ") {
+                let d_str = if line.starts_with("desc ") {
+                    line.trim_start_matches("desc ")
+                } else {
+                    line.trim_start_matches("description ")
+                };
+                description = Some(d_str.trim().trim_matches('"').to_string());
+                continue;
+            }
+
+            // Lane declaration: lane <id> ["title"]
+            if line.starts_with("lane ") {
+                let rest = line.trim_start_matches("lane ").trim();
+                let mut parts = rest.splitn(2, |c: char| c.is_whitespace());
+                let id = parts.next().unwrap_or("").trim().to_string();
+                if id.is_empty() {
+                    return Err(adv_err(format!("line {}: lane ID cannot be empty", line_no + 1)));
+                }
+                let lane_title = parts.next().map(|t| t.trim().trim_matches('"').to_string()).unwrap_or_else(|| id.clone());
+                if lane_ids.contains(&id) {
+                    return Err(adv_err(format!("line {}: duplicate lane ID '{}'", line_no + 1, id)));
+                }
+                lane_ids.insert(id.clone());
+                lanes.push(AdvanceLane {
+                    id: id.clone(),
+                    title: lane_title,
+                    children: Vec::new(),
+                });
+                current_lane = Some(id);
+                continue;
+            }
+
+            // Edges: A --> B, A -->|label| B, A -.-> B, etc.
+            if line.contains("-->") || line.contains("-.->") || line.contains("==>") || line.contains("---") {
+                let (from_str, sep, rest) = if let Some(idx) = line.find("-->") {
+                    (&line[..idx], "-->", &line[idx + 3..])
+                } else if let Some(idx) = line.find("-.->") {
+                    (&line[..idx], "-.->", &line[idx + 4..])
+                } else if let Some(idx) = line.find("==>") {
+                    (&line[..idx], "==>", &line[idx + 3..])
+                } else if let Some(idx) = line.find("---") {
+                    (&line[..idx], "---", &line[idx + 3..])
+                } else {
+                    continue;
+                };
+
+                let from = from_str.trim().to_string();
+                let kind = match sep {
+                    "-->" => EdgeKind::Arrow,
+                    "-.->" => EdgeKind::Dotted,
+                    "==>" => EdgeKind::Thick,
+                    "---" => EdgeKind::Open,
+                    _ => EdgeKind::Arrow,
+                };
+
+                let (label, to) = if rest.trim_start().starts_with('|') {
+                    let trim_rest = rest.trim_start()[1..].trim_start();
+                    if let Some(pipe_end) = trim_rest.find('|') {
+                        let lbl = &trim_rest[..pipe_end];
+                        let to_id = trim_rest[pipe_end + 1..].trim();
+                        (Some(lbl.trim().to_string()), to_id.to_string())
+                    } else {
+                        (None, rest.trim().to_string())
+                    }
+                } else {
+                    (None, rest.trim().to_string())
+                };
+
+                if !node_ids.contains(&from) {
+                    return Err(adv_err(format!("line {}: edge references unknown node '{}'", line_no + 1, from)));
+                }
+                if !node_ids.contains(&to) {
+                    return Err(adv_err(format!("line {}: edge references unknown node '{}'", line_no + 1, to)));
+                }
+
+                edges.push(AdvanceEdge { from, to, label, kind });
+                continue;
+            }
+
+            // Node declaration inside current lane: id[Label], id(Label), id((Label)), etc.
+            let lane = current_lane.as_ref().ok_or_else(|| {
+                adv_err(format!("line {}: node '{}' declared outside of any lane", line_no + 1, line))
+            })?;
+
+            let (id, label, shape) = parse_text_node_shorthand(line).ok_or_else(|| {
+                adv_err(format!("line {}: invalid node declaration '{}'", line_no + 1, line))
+            })?;
+
+            if node_ids.contains(&id) {
+                return Err(adv_err(format!("line {}: duplicate node ID '{}'", line_no + 1, id)));
+            }
+            node_ids.insert(id.clone());
+
+            nodes.push(AdvanceNode {
+                id,
+                label,
+                lane: lane.clone(),
+                shape,
+                x: None,
+                y: None,
+                w: None,
+                h: None,
+            });
+        }
+
+        if lanes.is_empty() {
+            return Err(adv_err("diagram must define at least one lane"));
+        }
+
+        Ok(AdvanceDiagram {
+            title,
+            description,
+            direction,
+            style: AdvanceStyle::default(),
+            config: AdvanceConfig::default(),
+            lanes,
+            nodes,
+            edges,
+        })
+    }
+}
+
+fn parse_text_node_shorthand(s: &str) -> Option<(String, String, Shape)> {
+    let s = s.trim();
+    if s.is_empty() {
+        return None;
+    }
+
+    if let Some(idx) = s.find("([") {
+        if s.ends_with("])") {
+            let id = s[..idx].trim().to_string();
+            let label = s[idx + 2..s.len() - 2].trim().to_string();
+            return Some((id, label, Shape::Stadium));
+        }
+    }
+    if let Some(idx) = s.find("(((") {
+        if s.ends_with(")))") {
+            let id = s[..idx].trim().to_string();
+            let label = s[idx + 3..s.len() - 3].trim().to_string();
+            return Some((id, label, Shape::DoubleCircle));
+        }
+    }
+    if let Some(idx) = s.find("((") {
+        if s.ends_with("))") {
+            let id = s[..idx].trim().to_string();
+            let label = s[idx + 2..s.len() - 2].trim().to_string();
+            return Some((id, label, Shape::Circle));
+        }
+    }
+    if let Some(idx) = s.find("{{") {
+        if s.ends_with("}}") {
+            let id = s[..idx].trim().to_string();
+            let label = s[idx + 2..s.len() - 2].trim().to_string();
+            return Some((id, label, Shape::Hexagon));
+        }
+    }
+    if let Some(idx) = s.find("{") {
+        if s.ends_with("}") {
+            let id = s[..idx].trim().to_string();
+            let label = s[idx + 1..s.len() - 1].trim().to_string();
+            return Some((id, label, Shape::Diamond));
+        }
+    }
+    if let Some(idx) = s.find("[(") {
+        if s.ends_with(")]") {
+            let id = s[..idx].trim().to_string();
+            let label = s[idx + 2..s.len() - 2].trim().to_string();
+            return Some((id, label, Shape::Cylinder));
+        }
+    }
+    if let Some(idx) = s.find("[[") {
+        if s.ends_with("]]") {
+            let id = s[..idx].trim().to_string();
+            let label = s[idx + 2..s.len() - 2].trim().to_string();
+            return Some((id, label, Shape::Subroutine));
+        }
+    }
+    if let Some(idx) = s.find("[/") {
+        if s.ends_with("/]") {
+            let id = s[..idx].trim().to_string();
+            let label = s[idx + 2..s.len() - 2].trim().to_string();
+            return Some((id, label, Shape::Parallelogram));
+        }
+    }
+    if let Some(idx) = s.find("[\\") {
+        if s.ends_with("\\]") {
+            let id = s[..idx].trim().to_string();
+            let label = s[idx + 2..s.len() - 2].trim().to_string();
+            return Some((id, label, Shape::ParallelogramAlt));
+        }
+    }
+    if let Some(idx) = s.find("[") {
+        if s.ends_with("]") {
+            let id = s[..idx].trim().to_string();
+            let label = s[idx + 1..s.len() - 1].trim().to_string();
+            return Some((id, label, Shape::Rect));
+        }
+    }
+    if let Some(idx) = s.find("(") {
+        if s.ends_with(")") {
+            let id = s[..idx].trim().to_string();
+            let label = s[idx + 1..s.len() - 1].trim().to_string();
+            return Some((id, label, Shape::Rounded));
+        }
+    }
+
+    // Bare ID (defaults to Rect with ID as label)
+    Some((s.to_string(), s.to_string(), Shape::Rect))
 }
 
 // ------------------------------------------------------------------
@@ -1076,11 +1325,28 @@ fn route_same_lane(
     match dir {
         AdvanceDirection::Vertical => {
             if same_lane_blocked(a, b, nodes, dir) {
-                let max_right = nodes
+                // Multi-obstacle corridor clearance: calculate bounding box of all intersecting obstacles
+                let (lo_y, hi_y) = if a.y < b.y {
+                    (a.y + a.h / 2.0, b.y - b.h / 2.0)
+                } else {
+                    (b.y + b.h / 2.0, a.y - a.h / 2.0)
+                };
+                let obstacles: Vec<&AdvanceSceneNode> = nodes
                     .iter()
-                    .filter(|n| n.lane == a.lane)
+                    .filter(|n| {
+                        n.id != a.id
+                            && n.id != b.id
+                            && n.lane == a.lane
+                            && n.y + n.h / 2.0 > lo_y
+                            && n.y - n.h / 2.0 < hi_y
+                    })
+                    .collect();
+
+                let max_right = obstacles
+                    .iter()
                     .map(|n| n.x + n.w / 2.0)
-                    .fold(f64::NEG_INFINITY, f64::max);
+                    .fold(a.x + a.w / 2.0, f64::max);
+
                 let detour_x = max_right + SIDE_CHANNEL_INSET + fan;
                 let p0 = (a.x + a.w / 2.0, a.y);
                 let p3 = (b.x + b.w / 2.0, b.y);
@@ -1108,11 +1374,27 @@ fn route_same_lane(
         }
         AdvanceDirection::Horizontal => {
             if same_lane_blocked(a, b, nodes, dir) {
-                let max_bottom = nodes
+                let (lo_x, hi_x) = if a.x < b.x {
+                    (a.x + a.w / 2.0, b.x - b.w / 2.0)
+                } else {
+                    (b.x + b.w / 2.0, a.x - a.w / 2.0)
+                };
+                let obstacles: Vec<&AdvanceSceneNode> = nodes
                     .iter()
-                    .filter(|n| n.lane == a.lane)
+                    .filter(|n| {
+                        n.id != a.id
+                            && n.id != b.id
+                            && n.lane == a.lane
+                            && n.x + n.w / 2.0 > lo_x
+                            && n.x - n.w / 2.0 < hi_x
+                    })
+                    .collect();
+
+                let max_bottom = obstacles
+                    .iter()
                     .map(|n| n.y + n.h / 2.0)
-                    .fold(f64::NEG_INFINITY, f64::max);
+                    .fold(a.y + a.h / 2.0, f64::max);
+
                 let detour_y = max_bottom + SIDE_CHANNEL_INSET + fan;
                 let p0 = (a.x, a.y + a.h / 2.0);
                 let p3 = (b.x, b.y + b.h / 2.0);
@@ -1139,6 +1421,65 @@ fn route_same_lane(
             }
         }
     }
+}
+
+fn nudge_mid_y(
+    mid_y: f64,
+    p0: (f64, f64),
+    p3: (f64, f64),
+    a: &AdvanceSceneNode,
+    b: &AdvanceSceneNode,
+    nodes: &[AdvanceSceneNode],
+) -> f64 {
+    let (lo_x, hi_x) = if p0.0 < p3.0 { (p0.0, p3.0) } else { (p3.0, p0.0) };
+    if (hi_x - lo_x).abs() < f64::EPSILON {
+        return mid_y;
+    }
+    let blocked = nodes.iter().any(|n| {
+        n.id != a.id
+            && n.id != b.id
+            && seg_crosses_rect((lo_x, mid_y), (hi_x, mid_y), node_rect(n))
+    });
+    if !blocked {
+        return mid_y;
+    }
+
+    let (lo_y, hi_y) = if p0.1 < p3.1 { (p0.1, p3.1) } else { (p3.1, p0.1) };
+    let mut covered: Vec<(f64, f64)> = nodes
+        .iter()
+        .filter_map(|n| {
+            if n.id == a.id || n.id == b.id {
+                None
+            } else {
+                let (l, t, r, b) = node_rect(n);
+                if l < hi_x && r > lo_x {
+                    Some((t.max(lo_y), b.min(hi_y)))
+                } else {
+                    None
+                }
+            }
+        })
+        .filter(|(t, b)| t < b)
+        .collect();
+    covered.sort_unstable_by(|x, y| x.0.partial_cmp(&y.0).unwrap_or(std::cmp::Ordering::Equal));
+
+    let mut best: Option<(f64, f64)> = None;
+    let mut cursor = lo_y;
+    let mut consider = |from: f64, to: f64| {
+        let h = to - from;
+        if h >= MIN_CHANNEL_GAP && best.map(|(_, bh)| h > bh).unwrap_or(true) {
+            best = Some(((from + to) / 2.0, h));
+        }
+    };
+    for (t, b) in covered {
+        if t > cursor {
+            consider(cursor, t);
+        }
+        cursor = cursor.max(b);
+    }
+    consider(cursor, hi_y);
+
+    best.map(|(c, _)| c).unwrap_or(mid_y)
 }
 
 fn crossing_x_interval(
@@ -1231,7 +1572,7 @@ fn route_cross_lane(
             } else {
                 ((a.x, a.y - a.h / 2.0), (b.x, b.y + b.h / 2.0))
             };
-            let mid_y = (p0.1 + p3.1) / 2.0 + fan;
+            let mid_y = nudge_mid_y((p0.1 + p3.1) / 2.0 + fan, p0, p3, a, b, nodes);
             vec![p0, (p0.0, mid_y), (p3.0, mid_y), p3]
         }
     }
@@ -1292,9 +1633,10 @@ fn route_edges(
 }
 
 // ------------------------------------------------------------------
-// Recursive Lane Layout Calculations
+// Recursive Dimension & Layout Helpers (Vertical & Horizontal)
 // ------------------------------------------------------------------
 
+#[derive(Debug, Clone)]
 struct LaneDim {
     w: f64,
     h: f64,
@@ -1307,37 +1649,72 @@ fn compute_lane_dim_rec(
     lane_node_lists: &[Vec<usize>],
     sizes: &[(f64, f64)],
     cfg: &AdvanceConfig,
+    dir: AdvanceDirection,
 ) -> LaneDim {
     let li = lane_idx[&lane.id];
     let local_nodes = &lane_node_lists[li];
 
-    let mut direct_node_w: f64 = 0.0;
-    let mut direct_node_h: f64 = 0.0;
-    for &ni in local_nodes {
-        direct_node_w = direct_node_w.max(sizes[ni].0);
-        direct_node_h += sizes[ni].1 + cfg.node_gap_y;
-    }
-    if !local_nodes.is_empty() {
-        direct_node_h -= cfg.node_gap_y;
-    }
+    match dir {
+        AdvanceDirection::Vertical => {
+            let mut direct_node_w: f64 = 0.0;
+            let mut direct_node_h: f64 = 0.0;
+            for &ni in local_nodes {
+                direct_node_w = direct_node_w.max(sizes[ni].0);
+                direct_node_h += sizes[ni].1 + cfg.node_gap_y;
+            }
+            if !local_nodes.is_empty() {
+                direct_node_h -= cfg.node_gap_y;
+            }
 
-    if lane.children.is_empty() {
-        let w = (direct_node_w + 2.0 * cfg.lane_pad_x).max(120.0);
-        let h = (cfg.lane_title_h + cfg.lane_pad_y + direct_node_h + cfg.lane_pad_y).max(120.0);
-        LaneDim { w, h, children: Vec::new() }
-    } else {
-        let child_dims: Vec<LaneDim> = lane
-            .children
-            .iter()
-            .map(|c| compute_lane_dim_rec(c, lane_idx, lane_node_lists, sizes, cfg))
-            .collect();
-        let sum_children_w: f64 = child_dims.iter().map(|c| c.w).sum::<f64>()
-            + (child_dims.len().saturating_sub(1) as f64 * cfg.lane_gap);
-        let max_children_h = child_dims.iter().map(|c| c.h).fold(0.0_f64, f64::max);
+            if lane.children.is_empty() {
+                let w = (direct_node_w + 2.0 * cfg.lane_pad_x).max(120.0);
+                let h = (cfg.lane_title_h + cfg.lane_pad_y + direct_node_h + cfg.lane_pad_y).max(120.0);
+                LaneDim { w, h, children: Vec::new() }
+            } else {
+                let child_dims: Vec<LaneDim> = lane
+                    .children
+                    .iter()
+                    .map(|c| compute_lane_dim_rec(c, lane_idx, lane_node_lists, sizes, cfg, dir))
+                    .collect();
+                let sum_children_w: f64 = child_dims.iter().map(|c| c.w).sum::<f64>()
+                    + (child_dims.len().saturating_sub(1) as f64 * cfg.lane_gap);
+                let max_children_h = child_dims.iter().map(|c| c.h).fold(0.0_f64, f64::max);
 
-        let w = (sum_children_w + 2.0 * cfg.lane_pad_x).max(direct_node_w + 2.0 * cfg.lane_pad_x).max(120.0);
-        let h = (cfg.lane_title_h + cfg.lane_pad_y + max_children_h + cfg.lane_pad_y + direct_node_h).max(120.0);
-        LaneDim { w, h, children: child_dims }
+                let w = (sum_children_w + 2.0 * cfg.lane_pad_x).max(direct_node_w + 2.0 * cfg.lane_pad_x).max(120.0);
+                let h = (cfg.lane_title_h + cfg.lane_pad_y + max_children_h + cfg.lane_pad_y + direct_node_h).max(120.0);
+                LaneDim { w, h, children: child_dims }
+            }
+        }
+        AdvanceDirection::Horizontal => {
+            let mut direct_node_w: f64 = 0.0;
+            let mut direct_node_h: f64 = 0.0;
+            for &ni in local_nodes {
+                direct_node_h = direct_node_h.max(sizes[ni].1);
+                direct_node_w += sizes[ni].0 + cfg.lane_gap;
+            }
+            if !local_nodes.is_empty() {
+                direct_node_w -= cfg.lane_gap;
+            }
+
+            if lane.children.is_empty() {
+                let w = (cfg.lane_title_h + cfg.lane_pad_x + direct_node_w + cfg.lane_pad_x).max(160.0);
+                let h = (direct_node_h + 2.0 * cfg.lane_pad_y).max(cfg.lane_title_h + 2.0 * cfg.lane_pad_y).max(80.0);
+                LaneDim { w, h, children: Vec::new() }
+            } else {
+                let child_dims: Vec<LaneDim> = lane
+                    .children
+                    .iter()
+                    .map(|c| compute_lane_dim_rec(c, lane_idx, lane_node_lists, sizes, cfg, dir))
+                    .collect();
+                let sum_children_h: f64 = child_dims.iter().map(|c| c.h).sum::<f64>()
+                    + (child_dims.len().saturating_sub(1) as f64 * cfg.lane_gap);
+                let max_children_w = child_dims.iter().map(|c| c.w).fold(0.0_f64, f64::max);
+
+                let w = (cfg.lane_title_h + cfg.lane_pad_x + max_children_w + cfg.lane_pad_x + direct_node_w).max(160.0);
+                let h = (sum_children_h + 2.0 * cfg.lane_pad_y).max(direct_node_h + 2.0 * cfg.lane_pad_y).max(80.0);
+                LaneDim { w, h, children: child_dims }
+            }
+        }
     }
 }
 
@@ -1347,6 +1724,16 @@ fn equalize_sibling_heights(dim: &mut LaneDim) {
         for c in &mut dim.children {
             c.h = max_h;
             equalize_sibling_heights(c);
+        }
+    }
+}
+
+fn equalize_sibling_widths(dim: &mut LaneDim) {
+    if !dim.children.is_empty() {
+        let max_w = dim.children.iter().map(|c| c.w).fold(0.0_f64, f64::max);
+        for c in &mut dim.children {
+            c.w = max_w;
+            equalize_sibling_widths(c);
         }
     }
 }
@@ -1362,6 +1749,7 @@ fn emit_lanes_and_nodes_rec(
     ordered_node_indices: &[Vec<usize>],
     sizes: &[(f64, f64)],
     cfg: &AdvanceConfig,
+    dir: AdvanceDirection,
     lane_scenes: &mut Vec<AdvanceSceneLane>,
     node_scenes: &mut Vec<AdvanceSceneNode>,
 ) {
@@ -1375,54 +1763,111 @@ fn emit_lanes_and_nodes_rec(
         h: dim.h,
     });
 
-    let mut children_h: f64 = 0.0;
-    if !lane.children.is_empty() {
-        let mut cur_x = x + cfg.lane_pad_x;
-        let cur_y = y + cfg.lane_title_h + cfg.lane_pad_y;
-        for (c, c_dim) in lane.children.iter().zip(&dim.children) {
-            emit_lanes_and_nodes_rec(
-                c,
-                c_dim,
-                cur_x,
-                cur_y,
-                d,
-                lane_idx,
-                ordered_node_indices,
-                sizes,
-                cfg,
-                lane_scenes,
-                node_scenes,
-            );
-            cur_x += c_dim.w + cfg.lane_gap;
-            children_h = children_h.max(c_dim.h);
+    match dir {
+        AdvanceDirection::Vertical => {
+            let mut children_h: f64 = 0.0;
+            if !lane.children.is_empty() {
+                let mut cur_x = x + cfg.lane_pad_x;
+                let cur_y = y + cfg.lane_title_h + cfg.lane_pad_y;
+                for (c, c_dim) in lane.children.iter().zip(&dim.children) {
+                    emit_lanes_and_nodes_rec(
+                        c,
+                        c_dim,
+                        cur_x,
+                        cur_y,
+                        d,
+                        lane_idx,
+                        ordered_node_indices,
+                        sizes,
+                        cfg,
+                        dir,
+                        lane_scenes,
+                        node_scenes,
+                    );
+                    cur_x += c_dim.w + cfg.lane_gap;
+                    children_h = children_h.max(c_dim.h);
+                }
+            }
+
+            // Direct nodes inside this lane
+            let li = lane_idx[&lane.id];
+            let local_nodes = &ordered_node_indices[li];
+            let mut cursor_y = if lane.children.is_empty() {
+                y + cfg.lane_title_h + cfg.lane_pad_y
+            } else {
+                y + cfg.lane_title_h + cfg.lane_pad_y + children_h + cfg.lane_pad_y
+            };
+
+            for &ni in local_nodes {
+                let n = &d.nodes[ni];
+                let (nw, nh) = sizes[ni];
+                let cx = x + dim.w / 2.0;
+                let cy = cursor_y + nh / 2.0;
+                cursor_y += nh + cfg.node_gap_y;
+                node_scenes.push(AdvanceSceneNode {
+                    id: n.id.clone(),
+                    label: n.label.clone(),
+                    lane: n.lane.clone(),
+                    x: cx,
+                    y: cy,
+                    w: nw,
+                    h: nh,
+                    shape: n.shape,
+                });
+            }
         }
-    }
+        AdvanceDirection::Horizontal => {
+            let mut children_w: f64 = 0.0;
+            if !lane.children.is_empty() {
+                let cur_x = x + cfg.lane_title_h + cfg.lane_pad_x;
+                let mut cur_y = y + cfg.lane_pad_y;
+                for (c, c_dim) in lane.children.iter().zip(&dim.children) {
+                    emit_lanes_and_nodes_rec(
+                        c,
+                        c_dim,
+                        cur_x,
+                        cur_y,
+                        d,
+                        lane_idx,
+                        ordered_node_indices,
+                        sizes,
+                        cfg,
+                        dir,
+                        lane_scenes,
+                        node_scenes,
+                    );
+                    cur_y += c_dim.h + cfg.lane_gap;
+                    children_w = children_w.max(c_dim.w);
+                }
+            }
 
-    // Direct nodes inside this lane
-    let li = lane_idx[&lane.id];
-    let local_nodes = &ordered_node_indices[li];
-    let mut cursor_y = if lane.children.is_empty() {
-        y + cfg.lane_title_h + cfg.lane_pad_y
-    } else {
-        y + cfg.lane_title_h + cfg.lane_pad_y + children_h + cfg.lane_pad_y
-    };
+            // Direct nodes inside this lane
+            let li = lane_idx[&lane.id];
+            let local_nodes = &ordered_node_indices[li];
+            let mut cursor_x = if lane.children.is_empty() {
+                x + cfg.lane_title_h + cfg.lane_pad_x
+            } else {
+                x + cfg.lane_title_h + cfg.lane_pad_x + children_w + cfg.lane_pad_x
+            };
 
-    for &ni in local_nodes {
-        let n = &d.nodes[ni];
-        let (nw, nh) = sizes[ni];
-        let cx = x + dim.w / 2.0;
-        let cy = cursor_y + nh / 2.0;
-        cursor_y += nh + cfg.node_gap_y;
-        node_scenes.push(AdvanceSceneNode {
-            id: n.id.clone(),
-            label: n.label.clone(),
-            lane: n.lane.clone(),
-            x: cx,
-            y: cy,
-            w: nw,
-            h: nh,
-            shape: n.shape,
-        });
+            for &ni in local_nodes {
+                let n = &d.nodes[ni];
+                let (nw, nh) = sizes[ni];
+                let cx = cursor_x + nw / 2.0;
+                let cy = y + dim.h / 2.0;
+                cursor_x += nw + cfg.node_gap_y;
+                node_scenes.push(AdvanceSceneNode {
+                    id: n.id.clone(),
+                    label: n.label.clone(),
+                    lane: n.lane.clone(),
+                    x: cx,
+                    y: cy,
+                    w: nw,
+                    h: nh,
+                    shape: n.shape,
+                });
+            }
+        }
     }
 }
 
@@ -1472,75 +1917,63 @@ pub fn layout(d: &AdvanceDiagram) -> AdvanceScene {
     }
 
     if d.direction == AdvanceDirection::Horizontal {
-        // Horizontal Layout: Rows stacked top-to-bottom
-        let mut row_node_lists: Vec<Vec<usize>> = vec![Vec::new(); total_lanes_count];
+        // Horizontal Layout: Rows stacked top-to-bottom (with recursive nested lane support)
+        let mut lane_node_lists: Vec<Vec<usize>> = vec![Vec::new(); total_lanes_count];
         for (i, n) in d.nodes.iter().enumerate() {
             let li = lane_idx[&n.lane];
-            row_node_lists[li].push(i);
+            lane_node_lists[li].push(i);
         }
-        let ordered_row_nodes: Vec<Vec<usize>> = row_node_lists
+        let ordered_node_indices: Vec<Vec<usize>> = lane_node_lists
             .iter()
             .map(|list| order_lane_nodes(list, d, cfg))
             .collect();
 
-        let mut row_heights: Vec<f64> = vec![0.0; d.lanes.len()];
-        let mut row_widths: Vec<f64> = vec![0.0; d.lanes.len()];
+        let mut root_lane_dims: Vec<LaneDim> = d
+            .lanes
+            .iter()
+            .map(|l| compute_lane_dim_rec(l, &lane_idx, &lane_node_lists, &sizes, cfg, d.direction))
+            .collect();
 
-        for (i, list) in ordered_row_nodes.iter().enumerate() {
-            let mut max_nh: f64 = 0.0;
-            let mut sum_nw = 0.0;
-            for &ni in list {
-                max_nh = max_nh.max(sizes[ni].1);
-                sum_nw += sizes[ni].0 + cfg.lane_gap;
-            }
-            if !list.is_empty() {
-                sum_nw -= cfg.lane_gap;
-            }
-            row_heights[i] = (max_nh + 2.0 * cfg.lane_pad_y).max(cfg.lane_title_h + 2.0 * cfg.lane_pad_y).max(80.0);
-            row_widths[i] = (cfg.lane_title_h + cfg.lane_pad_x + sum_nw + cfg.lane_pad_x).max(160.0);
+        // Equalize sibling lane widths within recursive sub-trees
+        for dim in &mut root_lane_dims {
+            equalize_sibling_widths(dim);
         }
 
-        let uniform_h = row_heights.iter().fold(0.0_f64, |m, h| m.max(*h));
-        let uniform_w = row_widths.iter().fold(0.0_f64, |m, w| m.max(*w));
-
-        let mut lane_scenes = Vec::with_capacity(d.lanes.len());
-        let mut cur_y = cfg.margin;
-        for lane in &d.lanes {
-            lane_scenes.push(AdvanceSceneLane {
-                id: lane.id.clone(),
-                title: lane.title.clone(),
-                x: cfg.margin,
-                y: cur_y,
-                w: uniform_w,
-                h: uniform_h,
-            });
-            cur_y += uniform_h + cfg.lane_gap;
+        // Uniform width for root rows
+        let max_root_w = root_lane_dims.iter().map(|d| d.w).fold(0.0_f64, f64::max);
+        for dim in &mut root_lane_dims {
+            dim.w = max_root_w;
         }
-        let total_w = cfg.margin + uniform_w + cfg.margin;
-        let total_h = if d.lanes.is_empty() { cfg.margin * 2.0 } else { cur_y - cfg.lane_gap + cfg.margin };
 
+        let mut lane_scenes = Vec::new();
         let mut node_scenes = Vec::with_capacity(d.nodes.len());
-        for (li, list) in ordered_row_nodes.iter().enumerate() {
-            let lane = &lane_scenes[li];
-            let cy = lane.y + lane.h / 2.0;
-            let mut cursor_x = lane.x + cfg.lane_title_h + cfg.lane_pad_x;
-            for &ni in list {
-                let n = &d.nodes[ni];
-                let (nw, nh) = sizes[ni];
-                let cx = cursor_x + nw / 2.0;
-                cursor_x += nw + cfg.node_gap_y;
-                node_scenes.push(AdvanceSceneNode {
-                    id: n.id.clone(),
-                    label: n.label.clone(),
-                    lane: n.lane.clone(),
-                    x: cx,
-                    y: cy,
-                    w: nw,
-                    h: nh,
-                    shape: n.shape,
-                });
-            }
+        let mut cur_y = cfg.margin;
+        let start_x = cfg.margin;
+
+        for (lane, dim) in d.lanes.iter().zip(&root_lane_dims) {
+            emit_lanes_and_nodes_rec(
+                lane,
+                dim,
+                start_x,
+                cur_y,
+                d,
+                &lane_idx,
+                &ordered_node_indices,
+                &sizes,
+                cfg,
+                d.direction,
+                &mut lane_scenes,
+                &mut node_scenes,
+            );
+            cur_y += dim.h + cfg.lane_gap;
         }
+
+        let total_w = cfg.margin + max_root_w + cfg.margin;
+        let total_h = if d.lanes.is_empty() {
+            cfg.margin * 2.0
+        } else {
+            cur_y - cfg.lane_gap + cfg.margin
+        };
 
         let edge_scenes = route_edges(d, &node_scenes, d.direction);
         return AdvanceScene {
@@ -1570,7 +2003,7 @@ pub fn layout(d: &AdvanceDiagram) -> AdvanceScene {
     let mut top_dims: Vec<LaneDim> = d
         .lanes
         .iter()
-        .map(|l| compute_lane_dim_rec(l, &lane_idx, &lane_node_lists, &sizes, cfg))
+        .map(|l| compute_lane_dim_rec(l, &lane_idx, &lane_node_lists, &sizes, cfg, d.direction))
         .collect();
 
     // Equalize top-level lane heights and recursively for children
@@ -1594,6 +2027,7 @@ pub fn layout(d: &AdvanceDiagram) -> AdvanceScene {
             &ordered_node_indices,
             &sizes,
             cfg,
+            d.direction,
             &mut lane_scenes,
             &mut node_scenes,
         );
@@ -2169,6 +2603,13 @@ pub fn render_advance_routed_with_lanes(
     Ok(to_svg(&scene))
 }
 
+/// Render a text-based swimlane diagram directly to an SVG string.
+pub fn render_advance_text_svg(source: &str) -> Result<String, AdvanceError> {
+    let d = AdvanceDiagram::parse_text(source)?;
+    let scene = layout(&d);
+    Ok(to_svg(&scene))
+}
+
 // ------------------------------------------------------------------
 // Tests
 // ------------------------------------------------------------------
@@ -2402,13 +2843,37 @@ mod tests {
     }
 
     #[test]
-    fn horizontal_and_nested_errors() {
+    fn horizontal_nested_lanes_layout_and_containment() {
         let src = r#"{
-            "direction":"horizontal",
-            "lanes":[{"id":"p","children":[{"id":"c"}]}],
-            "nodes":[]
+            "direction": "horizontal",
+            "lanes": [
+                {
+                    "id": "dept",
+                    "title": "Engineering",
+                    "children": [
+                        {"id": "fe", "title": "Frontend"},
+                        {"id": "be", "title": "Backend"}
+                    ]
+                }
+            ],
+            "nodes": [
+                {"id": "ui", "label": "Web App", "lane": "fe"},
+                {"id": "api", "label": "REST API", "lane": "be"}
+            ],
+            "edges": [
+                {"from": "ui", "to": "api", "label": "calls"}
+            ]
         }"#;
-        assert!(AdvanceDiagram::parse(src).is_err());
+        let d = AdvanceDiagram::parse(src).unwrap();
+        let sc = layout(&d);
+        assert_eq!(sc.lanes.len(), 3);
+        let parent = sc.lanes.iter().find(|l| l.id == "dept").unwrap();
+        let fe = sc.lanes.iter().find(|l| l.id == "fe").unwrap();
+        let be = sc.lanes.iter().find(|l| l.id == "be").unwrap();
+
+        assert!(fe.y >= parent.y);
+        assert!(be.y >= fe.y + fe.h);
+        assert!(parent.h >= fe.h + be.h);
     }
 
     #[test]
