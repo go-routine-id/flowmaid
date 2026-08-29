@@ -13,11 +13,13 @@ fn print_help() {
         "flowmaid — a small flowchart diagram engine (Mermaid-like syntax)\n\n\
          Usage:\n\
          \x20 flowmaid <input.mmd> [-o output.svg]\n\
+         \x20 flowmaid --advance <input.json> [-o output.svg]\n\
          \x20 cat diagram.mmd | flowmaid > out.svg\n\n\
          Options:\n\
          \x20 -o, --output <file>   write SVG to a file (default: stdout)\n\
          \x20 --compact <px>        fold a long linear chain to fit <px> along\n\
          \x20                       the flow axis (serpentine layout)\n\
+         \x20 --advance             render advance / swimlane JSON input\n\
          \x20 -h, --help            show this help\n\n\
          Syntax example:\n\
          \x20 flowchart TD\n\
@@ -34,6 +36,7 @@ fn main() {
     let mut input: Option<String> = None;
     let mut output: Option<String> = None;
     let mut compact: Option<f64> = None;
+    let mut advance: bool = false;
 
     let mut i = 0;
     while i < args.len() {
@@ -57,6 +60,9 @@ fn main() {
                         process::exit(2);
                     }
                 }
+            }
+            "--advance" => {
+                advance = true;
             }
             "-h" | "--help" => {
                 print_help();
@@ -97,6 +103,27 @@ fn main() {
             buf
         }
     };
+
+    if advance {
+        let svg = match flowmaid::render_advance_svg(&source) {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("advance error — {}", e);
+                process::exit(1);
+            }
+        };
+        match &output {
+            Some(path) => {
+                if let Err(e) = fs::write(path, svg) {
+                    eprintln!("failed to write '{}': {}", path, e);
+                    process::exit(1);
+                }
+                eprintln!("saved: {}", path);
+            }
+            None => print!("{}", svg),
+        }
+        return;
+    }
 
     let doc = match parser::parse_document(&source) {
         Ok(d) => d,
