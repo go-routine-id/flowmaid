@@ -559,10 +559,280 @@ fn node_index_map(d: &AdvanceDiagram) -> std::collections::HashMap<String, usize
         .collect()
 }
 
+// Routing tuning constants.
+/// Horizontal distance a self-loop travels out from the node's right side.
+const SELF_LOOP_DX: f64 = 28.0;
+/// How far below the node bottom a self-loop travels before re-entering.
+const SELF_LOOP_DROP: f64 = 12.0;
+/// Per-duplicate offset used to fan out parallel edges.
+const PARALLEL_FAN: f64 = 16.0;
+/// Gap between the widest node in a lane and a same-lane detour channel.
+const SIDE_CHANNEL_INSET: f64 = 12.0;
+/// Minimum free width a cross-lane channel gap must have to be used.
+const MIN_CHANNEL_GAP: f64 = 8.0;
+
+fn node_rect(n: &AdvanceSceneNode) -> (f64, f64, f64, f64) {
+    (n.x - n.w / 2.0, n.y - n.h / 2.0, n.x + n.w / 2.0, n.y + n.h / 2.0)
+}
+
+/// Does the segment p0->p1 pass through the *interior* of the rect
+/// `(l, t, r, b)`? Touching an edge (an attachment point) does not count.
+fn seg_crosses_rect(p0: (f64, f64), p1: (f64, f64), rect: (f64, f64, f64, f64)) -> bool {
+    const EPS: f64 = 1e-9;
+    let (l, t, r, b) = rect;
+    let (x1, y1) = p0;
+    let (x2, y2) = p1;
+    if (x1 - x2).abs() < EPS && (y1 - y2).abs() < EPS {
+        return false; // degenerate point
+    }
+    if (x1 - x2).abs() < EPS {
+        // Vertical segment.
+        if x1 <= l + EPS || x1 >= r - EPS {
+            return false;
+        }
+        let (lo, hi) = if y1 < y2 { (y1, y2) } else { (y2, y1) };
+        hi > t + EPS && lo < b - EPS
+    } else if (y1 - y2).abs() < EPS {
+        // Horizontal segment.
+        if y1 <= t + EPS || y1 >= b - EPS {
+            return false;
+        }
+        let (lo, hi) = if x1 < x2 { (x1, x2) } else { (x2, x1) };
+        hi > l + EPS && lo < r - EPS
+    } else {
+        // General segment: Liang-Barsky clip against the rect. The router
+        // only emits axis-aligned segments; this is a defensive fallback.
+        let dx = x2 - x1;
+        let dy = y2 - y1;
+        let mut u0 = 0.0_f64;
+        let mut u1 = 1.0_f64;
+        for (p, q) in [(-dx, x1 - l), (dx, r - x1), (-dy, y1 - t), (dy, b - y1)] {
+            if p.abs() < EPS {
+                if q <= 0.0 {
+                    return false;
+                }
+            } else {
+                let u = q / p;
+                if p < 0.0 {
+                    u0 = u0.max(u);
+                } else {
+                    u1 = u1.min(u);
+                }
+            }
+        }
+        u0 + EPS < u1 - EPS
+    }
+}
+
+/// Route a self-loop: leave the right side of the node, travel right,
+/// drop below the box, and re-enter through the bottom edge. The loop
+/// never crosses the node's own rect except at the two attachment points.
+fn route_self_loop(a: &AdvanceSceneNode, fan: f64) -> Vec<(f64, f64)> {
+    let rx = a.x + a.w / 2.0;
+    let top_y = a.y - a.h / 4.0;
+    let bottom = a.y + a.h / 2.0;
+    let cx = rx + SELF_LOOP_DX + fan;
+    let drop_y = bottom + SELF_LOOP_DROP;
+    vec![
+        (rx, top_y),
+        (cx, top_y),
+        (cx, drop_y),
+        (a.x, drop_y),
+        (a.x, bottom),
+    ]
+}
+
+/// Is the straight same-lane path between `a` and `b` blocked by another
+/// node in the same lane?
+fn same_lane_blocked(a: &AdvanceSceneNode, b: &AdvanceSceneNode, nodes: &[AdvanceSceneNode]) -> bool {
+    let (lo_y, hi_y) = if a.y < b.y { (a.y, b.y) } else { (b.y, a.y) };
+    let (lo_x, hi_x) = if a.x < b.x { (a.x, b.x) } else { (b.x, a.x) };
+    nodes.iter().any(|n| {
+        n.lane == a.lane
+            && n.id != a.id
+            && n.id != b.id
+            && {
+                let (l, t, r, bb) = node_rect(n);
+                t < hi_y && bb > lo_y && r > lo_x && l < hi_x
+            }
+    })
+}
+
+/// Route an edge whose endpoints share a lane.
+fn route_same_lane(
+    a: &AdvanceSceneNode,
+    b: &AdvanceSceneNode,
+    nodes: &[AdvanceSceneNode],
+    fan: f64,
+) -> Vec<(f64, f64)> {
+    let a_above = a.y < b.y;
+    let (p0, p3) = if a_above {
+        ((a.x, a.y + a.h / 2.0), (b.x, b.y - b.h / 2.0))
+    } else {
+        ((a.x, a.y - a.h / 2.0), (b.x, b.y + b.h / 2.0))
+    };
+
+    if same_lane_blocked(a, b, nodes) {
+        // Best-effort obstacle detour: out the right side of the source,
+        // along a vertical channel just right of the lane's widest node,
+        // and back in through the right side of the target. This avoids
+        // stacked intermediate nodes, but it is NOT a global router — a
+        // node the host dragged into the channel can still be crossed.
+        let mut channel_x = f64::NEG_INFINITY;
+        for n in nodes {
+            if n.lane == a.lane {
+                channel_x = channel_x.max(n.x + n.w / 2.0);
+            }
+        }
+        channel_x += SIDE_CHANNEL_INSET + fan;
+        return vec![
+            (a.x + a.w / 2.0, a.y),
+            (channel_x, a.y),
+            (channel_x, b.y),
+            (b.x + b.w / 2.0, b.y),
+        ];
+    }
+
+    if (a.x - b.x).abs() < f64::EPSILON {
+        if fan.abs() < f64::EPSILON {
+            // Simple case: straight vertical connection.
+            vec![p0, p3]
+        } else {
+            // Fan parallel edges out by spreading their attachment points
+            // along the bottom/top edges (clamped inside the narrower node).
+            let max_off = (a.w.min(b.w) / 2.0 - 10.0).max(0.0);
+            let off = fan.clamp(-max_off, max_off);
+            if a_above {
+                vec![
+                    (a.x + off, a.y + a.h / 2.0),
+                    (b.x + off, b.y - b.h / 2.0),
+                ]
+            } else {
+                vec![
+                    (a.x + off, a.y - a.h / 2.0),
+                    (b.x + off, b.y + b.h / 2.0),
+                ]
+            }
+        }
+    } else {
+        // Host dragged the nodes horizontally apart: one bend in the
+        // middle so the edge never crosses a node.
+        let mid_y = (p0.1 + p3.1) / 2.0 + fan;
+        vec![p0, (a.x, mid_y), (b.x, mid_y), p3]
+    }
+}
+
+/// If a node's y-range overlaps `(lo_y, hi_y)`, return its x-interval.
+/// The edge's own endpoints are excluded.
+fn crossing_x_interval(
+    n: &AdvanceSceneNode,
+    a_id: &str,
+    b_id: &str,
+    lo_y: f64,
+    hi_y: f64,
+) -> Option<(f64, f64)> {
+    if n.id == a_id || n.id == b_id {
+        return None;
+    }
+    let (l, t, r, b) = node_rect(n);
+    if t < hi_y && b > lo_y {
+        Some((l, r))
+    } else {
+        None
+    }
+}
+
+/// Best-effort obstacle avoidance for the vertical mid-channel of a
+/// cross-lane edge: if the channel at `mid_x` would cross a node box in
+/// an intermediate lane, move it to the centre of the widest free gap
+/// within the span between the attachment points. If no gap is wide
+/// enough the channel is left where it is — this is intentionally not a
+/// global router; it stays simple and deterministic.
+fn nudge_mid_x(
+    mid_x: f64,
+    p0: (f64, f64),
+    p3: (f64, f64),
+    a: &AdvanceSceneNode,
+    b: &AdvanceSceneNode,
+    nodes: &[AdvanceSceneNode],
+) -> f64 {
+    let (lo_y, hi_y) = if p0.1 < p3.1 { (p0.1, p3.1) } else { (p3.1, p0.1) };
+    if (hi_y - lo_y).abs() < f64::EPSILON {
+        return mid_x;
+    }
+    let blocked = nodes.iter().any(|n| {
+        n.id != a.id
+            && n.id != b.id
+            && seg_crosses_rect((mid_x, lo_y), (mid_x, hi_y), node_rect(n))
+    });
+    if !blocked {
+        return mid_x;
+    }
+
+    let (lo_x, hi_x) = if p0.0 < p3.0 { (p0.0, p3.0) } else { (p3.0, p0.0) };
+    let mut covered: Vec<(f64, f64)> = nodes
+        .iter()
+        .filter_map(|n| crossing_x_interval(n, &a.id, &b.id, lo_y, hi_y))
+        .map(|(l, r)| (l.max(lo_x), r.min(hi_x)))
+        .filter(|(l, r)| l < r)
+        .collect();
+    covered.sort_unstable_by(|x, y| x.0.partial_cmp(&y.0).unwrap_or(std::cmp::Ordering::Equal));
+
+    // Walk the covered intervals and pick the centre of the widest gap.
+    let mut best: Option<(f64, f64)> = None; // (centre, width)
+    let mut cursor = lo_x;
+    let consider = |from: f64, to: f64, best: &mut Option<(f64, f64)>| {
+        let w = to - from;
+        if w >= MIN_CHANNEL_GAP && best.map(|(_, bw)| w > bw).unwrap_or(true) {
+            *best = Some(((from + to) / 2.0, w));
+        }
+    };
+    for (l, r) in covered {
+        if l > cursor {
+            consider(cursor, l, &mut best);
+        }
+        cursor = cursor.max(r);
+    }
+    consider(cursor, hi_x, &mut best);
+
+    best.map(|(c, _)| c).unwrap_or(mid_x)
+}
+
+/// Route an edge whose endpoints sit in different lanes.
+fn route_cross_lane(
+    a: &AdvanceSceneNode,
+    b: &AdvanceSceneNode,
+    nodes: &[AdvanceSceneNode],
+    fan: f64,
+) -> Vec<(f64, f64)> {
+    // Direction-aware: exit the side of the source that faces the target
+    // (right side when the target is to the right, left side otherwise),
+    // producing a Z-bend or its mirror for cross-lane back-edges.
+    let (p0, p3) = if b.x >= a.x {
+        ((a.x + a.w / 2.0, a.y), (b.x - b.w / 2.0, b.y))
+    } else {
+        ((a.x - a.w / 2.0, a.y), (b.x + b.w / 2.0, b.y))
+    };
+    let mid_x = nudge_mid_x((p0.0 + p3.0) / 2.0 + fan, p0, p3, a, b, nodes);
+    vec![p0, (mid_x, p0.1), (mid_x, p3.1), p3]
+}
+
 /// Route orthogonal edges between already-positioned nodes.
 fn route_edges(d: &AdvanceDiagram, nodes: &[AdvanceSceneNode]) -> Vec<AdvanceSceneEdge> {
     let node_idx = node_index_map(d);
     let mut edge_scenes = Vec::with_capacity(d.edges.len());
+
+    // Count edges per (from, to) pair so parallel edges can be fanned out
+    // instead of stacking identical paths on top of each other.
+    let mut pair_totals: std::collections::HashMap<(String, String), usize> =
+        std::collections::HashMap::new();
+    for e in &d.edges {
+        *pair_totals
+            .entry((e.from.clone(), e.to.clone()))
+            .or_insert(0) += 1;
+    }
+    let mut pair_seen: std::collections::HashMap<(String, String), usize> =
+        std::collections::HashMap::new();
 
     for e in &d.edges {
         let from_i = node_idx[&e.from];
@@ -570,35 +840,23 @@ fn route_edges(d: &AdvanceDiagram, nodes: &[AdvanceSceneNode]) -> Vec<AdvanceSce
         let a = &nodes[from_i];
         let b = &nodes[to_i];
 
-        let points = if a.lane == b.lane {
-            // Same lane: straight vertical connection (top/bottom centre).
-            // If the host dragged nodes horizontally apart, add one bend
-            // in the middle so the edge never crosses a node.
-            if a.y < b.y {
-                let p0 = (a.x, a.y + a.h / 2.0);
-                let p3 = (b.x, b.y - b.h / 2.0);
-                if (a.x - b.x).abs() < f64::EPSILON {
-                    vec![p0, p3]
-                } else {
-                    let mid_y = (p0.1 + p3.1) / 2.0;
-                    vec![p0, (a.x, mid_y), (b.x, mid_y), p3]
-                }
-            } else {
-                let p0 = (a.x, a.y - a.h / 2.0);
-                let p3 = (b.x, b.y + b.h / 2.0);
-                if (a.x - b.x).abs() < f64::EPSILON {
-                    vec![p0, p3]
-                } else {
-                    let mid_y = (p0.1 + p3.1) / 2.0;
-                    vec![p0, (a.x, mid_y), (b.x, mid_y), p3]
-                }
-            }
+        let key = (e.from.clone(), e.to.clone());
+        let dup_i = {
+            let v = pair_seen.entry(key.clone()).or_insert(0);
+            let i = *v;
+            *v += 1;
+            i
+        };
+        let dup_n = pair_totals[&key];
+        // Per-duplicate offset centred on zero: 0, ±16, ±32, ...
+        let fan = (dup_i as f64 - (dup_n as f64 - 1.0) / 2.0) * PARALLEL_FAN;
+
+        let points = if from_i == to_i {
+            route_self_loop(a, fan)
+        } else if a.lane == b.lane {
+            route_same_lane(a, b, nodes, fan)
         } else {
-            // Cross-lane: exit right side of source, enter left side of target.
-            let p0 = (a.x + a.w / 2.0, a.y);
-            let p3 = (b.x - b.w / 2.0, b.y);
-            let mid_x = (p0.0 + p3.0) / 2.0;
-            vec![p0, (mid_x, p0.1), (mid_x, p3.1), p3]
+            route_cross_lane(a, b, nodes, fan)
         };
 
         edge_scenes.push(AdvanceSceneEdge {
@@ -640,6 +898,10 @@ pub fn layout(d: &AdvanceDiagram) -> AdvanceScene {
     for h in &mut lane_heights {
         *h = (*h - NODE_GAP_Y + LANE_PAD_Y).max(120.0);
     }
+    // Equal lane heights: every lane takes the height of the tallest lane
+    // so swimlane bottoms line up instead of ending ragged.
+    let max_lane_h = lane_heights.iter().fold(0.0_f64, |m, h| m.max(*h));
+    lane_heights.fill(max_lane_h);
 
     // Position lanes horizontally.
     let mut lane_scenes: Vec<AdvanceSceneLane> = Vec::with_capacity(d.lanes.len());
@@ -1174,36 +1436,38 @@ fn build_lanes_with_widths(
     let lane_idx = lane_index_map(d);
     let mut lane_scenes = Vec::with_capacity(d.lanes.len());
     let mut x = margin;
-    let mut total_height: f64 = 0.0;
+
+    // First pass: content height per lane.
+    let mut lane_heights: Vec<f64> = Vec::with_capacity(d.lanes.len());
+    for i in 0..d.lanes.len() {
+        let max_bottom = nodes
+            .iter()
+            .filter(|n| lane_idx[&n.lane] == i)
+            .map(|n| n.y + n.h / 2.0)
+            .fold(f64::NEG_INFINITY, f64::max);
+        let h = if max_bottom.is_finite() {
+            (max_bottom - margin + LANE_PAD_Y).max(LANE_TITLE_H + 2.0 * LANE_PAD_Y)
+        } else {
+            LANE_TITLE_H + 2.0 * LANE_PAD_Y
+        };
+        lane_heights.push(h);
+    }
+    // Equal lane heights (matches auto-layout): all lanes take the
+    // tallest lane's height so swimlane bottoms line up.
+    let lane_h = lane_heights.iter().fold(0.0_f64, |m, h| m.max(*h));
 
     for (i, lane) in d.lanes.iter().enumerate() {
         let w = lane_widths[i];
-        let lane_nodes: Vec<&AdvanceSceneNode> = nodes
-            .iter()
-            .filter(|n| lane_idx[&n.lane] == i)
-            .collect();
-
-        let h = if lane_nodes.is_empty() {
-            LANE_TITLE_H + 2.0 * LANE_PAD_Y
-        } else {
-            let max_bottom = lane_nodes
-                .iter()
-                .map(|n| n.y + n.h / 2.0)
-                .fold(f64::NEG_INFINITY, f64::max);
-            (max_bottom - margin + LANE_PAD_Y).max(LANE_TITLE_H + 2.0 * LANE_PAD_Y)
-        };
-
         lane_scenes.push(AdvanceSceneLane {
             id: lane.id.clone(),
             title: lane.title.clone(),
             x,
             y: margin,
             w,
-            h,
+            h: lane_h,
         });
 
         x += w + gap;
-        total_height = total_height.max(h);
     }
 
     let total_width = if d.lanes.is_empty() {
@@ -1211,7 +1475,7 @@ fn build_lanes_with_widths(
     } else {
         x - gap + margin
     };
-    let total_height = total_height + 2.0 * margin;
+    let total_height = lane_h + 2.0 * margin;
 
     (lane_scenes, total_width, total_height)
 }
@@ -1488,5 +1752,196 @@ mod tests {
         for (b, a) in before.iter().zip(after.nodes.iter()) {
             assert_eq!((b.x, b.y), (a.x, a.y));
         }
+    }
+
+    #[test]
+    fn self_loop_routes_around_node() {
+        let src = r#"{
+            "lanes": [{"id": "l"}],
+            "nodes": [{"id": "n", "label": "Node", "lane": "l"}],
+            "edges": [{"from": "n", "to": "n"}]
+        }"#;
+        let sc = layout_advance(src).unwrap();
+        assert_eq!(sc.edges.len(), 1);
+        let e = &sc.edges[0];
+        assert!(
+            e.points.len() >= 4 && e.points.len() <= 6,
+            "self-loop should have 4-6 points, got {}",
+            e.points.len()
+        );
+        let n = &sc.nodes[0];
+        // Exits the right side of the node.
+        assert!(e.points[0].0 > n.x, "loop should exit the right side");
+        // No segment crosses the node's own rect (attachments excepted).
+        let rect = node_rect(n);
+        for w in e.points.windows(2) {
+            assert!(
+                !seg_crosses_rect(w[0], w[1], rect),
+                "self-loop segment {:?}->{:?} crosses the node rect",
+                w[0],
+                w[1]
+            );
+        }
+    }
+
+    #[test]
+    fn cross_lane_back_edge_exits_left_side() {
+        // Lane "two" sits right of lane "one"; the edge y -> x is a
+        // back-edge and must leave the source's left side.
+        let src = r#"{
+            "lanes": [{"id": "one"}, {"id": "two"}],
+            "nodes": [
+                {"id": "x", "lane": "one"},
+                {"id": "y", "lane": "two"}
+            ],
+            "edges": [{"from": "y", "to": "x"}]
+        }"#;
+        let sc = layout_advance(src).unwrap();
+        let e = &sc.edges[0];
+        let y = sc.nodes.iter().find(|n| n.id == "y").unwrap();
+        let x = sc.nodes.iter().find(|n| n.id == "x").unwrap();
+        assert!(
+            e.points[0].0 < y.x,
+            "back-edge should exit the left side of the source, got {:?}",
+            e.points[0]
+        );
+        assert!(
+            e.points.last().unwrap().0 > x.x,
+            "back-edge should enter the right side of the target"
+        );
+    }
+
+    #[test]
+    fn parallel_edges_fan_out_same_lane() {
+        let src = r#"{
+            "lanes": [{"id": "l"}],
+            "nodes": [{"id": "a", "lane": "l"}, {"id": "b", "lane": "l"}],
+            "edges": [{"from": "a", "to": "b"}, {"from": "a", "to": "b"}]
+        }"#;
+        let sc = layout_advance(src).unwrap();
+        assert_eq!(sc.edges.len(), 2);
+        assert_ne!(
+            sc.edges[0].points, sc.edges[1].points,
+            "parallel edges must not overlap"
+        );
+    }
+
+    #[test]
+    fn parallel_edges_fan_out_cross_lane() {
+        let src = r#"{
+            "lanes": [{"id": "l1"}, {"id": "l2"}],
+            "nodes": [{"id": "a", "lane": "l1"}, {"id": "b", "lane": "l2"}],
+            "edges": [{"from": "a", "to": "b"}, {"from": "a", "to": "b"}]
+        }"#;
+        let sc = layout_advance(src).unwrap();
+        assert_eq!(sc.edges.len(), 2);
+        assert_ne!(
+            sc.edges[0].points, sc.edges[1].points,
+            "parallel cross-lane edges must not overlap"
+        );
+    }
+
+    #[test]
+    fn same_lane_edge_detours_around_intermediate_node() {
+        let src = r#"{
+            "lanes": [{"id": "l"}],
+            "nodes": [
+                {"id": "a", "lane": "l"},
+                {"id": "b", "label": "Blocker", "lane": "l"},
+                {"id": "c", "lane": "l"}
+            ],
+            "edges": [{"from": "a", "to": "c"}]
+        }"#;
+        let sc = layout_advance(src).unwrap();
+        let b = sc.nodes.iter().find(|n| n.id == "b").unwrap();
+        let rect = node_rect(b);
+        let e = &sc.edges[0];
+        for w in e.points.windows(2) {
+            assert!(
+                !seg_crosses_rect(w[0], w[1], rect),
+                "segment {:?}->{:?} crosses the intermediate node",
+                w[0],
+                w[1]
+            );
+        }
+    }
+
+    #[test]
+    fn same_lane_adjacent_edge_stays_straight() {
+        // No obstacle between a and b: keep the simple 2-point path.
+        let src = r#"{
+            "lanes": [{"id": "l"}],
+            "nodes": [{"id": "a", "lane": "l"}, {"id": "b", "lane": "l"}],
+            "edges": [{"from": "a", "to": "b"}]
+        }"#;
+        let sc = layout_advance(src).unwrap();
+        assert_eq!(sc.edges[0].points.len(), 2);
+    }
+
+    #[test]
+    fn cross_lane_channel_nudges_around_intermediate_node() {
+        // a (lane 1, top) -> b (lane 3, bottom) with m (lane 2, middle)
+        // sitting exactly where the default vertical mid-channel would
+        // run, strictly between a's and b's heights.
+        let src = r#"{
+            "lanes": [{"id": "l1"}, {"id": "l2"}, {"id": "l3"}],
+            "nodes": [
+                {"id": "a", "label": "AAAA", "lane": "l1"},
+                {"id": "x", "label": "XXXX", "lane": "l2"},
+                {"id": "m", "label": "MMMM", "lane": "l2"},
+                {"id": "t", "label": "TTTT", "lane": "l3"},
+                {"id": "u", "label": "UUUU", "lane": "l3"},
+                {"id": "b", "label": "BBBB", "lane": "l3"}
+            ],
+            "edges": [{"from": "a", "to": "b"}]
+        }"#;
+        let sc = layout_advance(src).unwrap();
+        let m = sc.nodes.iter().find(|n| n.id == "m").unwrap();
+        let rect = node_rect(m);
+        let e = &sc.edges[0];
+        for w in e.points.windows(2) {
+            assert!(
+                !seg_crosses_rect(w[0], w[1], rect),
+                "segment {:?}->{:?} crosses the intermediate lane node",
+                w[0],
+                w[1]
+            );
+        }
+    }
+
+    #[test]
+    fn auto_layout_gives_all_lanes_equal_height() {
+        let src = r#"{
+            "lanes": [{"id": "l1"}, {"id": "l2"}],
+            "nodes": [
+                {"id": "a", "lane": "l1"},
+                {"id": "b", "lane": "l1"},
+                {"id": "c", "lane": "l1"},
+                {"id": "d", "lane": "l2"}
+            ]
+        }"#;
+        let sc = layout_advance(src).unwrap();
+        assert_eq!(sc.lanes.len(), 2);
+        assert!(
+            (sc.lanes[0].h - sc.lanes[1].h).abs() < 1e-9,
+            "lanes should have equal heights, got {} vs {}",
+            sc.lanes[0].h,
+            sc.lanes[1].h
+        );
+    }
+
+    #[test]
+    fn routed_with_lanes_gives_all_lanes_equal_height() {
+        let d = AdvanceDiagram::parse(sample_json()).unwrap();
+        let positions = base_positions(&d);
+        let nodes = place_nodes_at_positions(&d, &positions);
+        let (lanes, _, _) = build_lanes_with_widths(&d, &nodes, &[220.0, 220.0], 24.0, 40.0);
+        assert_eq!(lanes.len(), 2);
+        assert!(
+            (lanes[0].h - lanes[1].h).abs() < 1e-9,
+            "lanes should have equal heights, got {} vs {}",
+            lanes[0].h,
+            lanes[1].h
+        );
     }
 }
