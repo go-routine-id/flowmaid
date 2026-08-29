@@ -39,6 +39,7 @@ pub mod emit;
 pub mod er;
 pub mod fold;
 pub mod gitgraph;
+pub(crate) mod json;
 pub mod journey;
 pub mod layout;
 pub mod mindmap;
@@ -56,8 +57,10 @@ pub use parser::ParseError;
 pub use scene::SvgOptions;
 
 pub use advance::{
-    layout_advance, render_advance_routed, render_advance_routed_with_lanes, render_advance_svg,
-    AdvanceError, AdvanceScene,
+    edge_kind_name, layout_advance, render_advance_routed, render_advance_routed_with_lanes,
+    render_advance_svg, scene_to_json, shape_name, to_json, AdvanceConfig, AdvanceDiagram,
+    AdvanceDirection, AdvanceEdge, AdvanceError, AdvanceLane, AdvanceNode, AdvanceOrder,
+    AdvanceScene, AdvanceSceneEdge, AdvanceSceneLane, AdvanceSceneNode, AdvanceStyle,
 };
 
 /// Shortcut: Mermaid-syntax text -> SVG string. Dispatches on the
