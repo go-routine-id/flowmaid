@@ -208,6 +208,39 @@ Beyond mermaid-syntax text there is an engine-native swimlane renderer in the `a
 
 `advance::render_advance_svg(&str)` goes straight from JSON to SVG, and `advance::layout_advance` returns the positioned geometry (`AdvanceScene`) for GUI painters. Drag-mode re-renders come from `advance::render_advance_routed` (node centre positions) and `advance::render_advance_routed_with_lanes` (plus caller-controlled lane widths, margin, and inter-lane gap); content dragged outside the canvas is translated back into view. Because this diagram kind has no mermaid header, it is outside the parity roadmap above — the counts elsewhere in this document refer to mermaid-syntax types only.
 
+### Advance text DSL
+
+The same swimlane engine also takes a concise text notation (`advance::render_advance_text_svg`), with nested lanes, per-node/per-edge styling, ported edges, and `<br/>` line breaks:
+
+```mmd
+classDef primary fill:#e8f0fe,stroke:#4285f4,stroke-width:3
+config margin 24
+
+lane backend "Backend" {
+  a[Auth]::primary
+  b[API Gateway]
+  a --> b
+}
+lane web "Web" {
+  c{Check}
+  c --> b:top        # ported edge — enter b through its top
+}
+style a-->b color:#188038,dash:4 2
+style c fill:#fff8e1
+```
+
+- **Nested lanes** — a `lane id "Title" { ... }` block opens a child scope; a standalone `}` closes it. Nodes attach to the innermost open lane.
+- **`config`** — `config margin 24`, `config lane_gap 36`, `config node_gap_y`, `config lane_pad_x/y`, `config lane_title_h`, `config order declaration|topology`. Unknown keys are ignored.
+- **Styling** — Mermaid-style directives, resolved after the whole file parses:
+  - `classDef <name> k:v,k:v` defines a reusable class; `class a,b <name>` (or the `a::name` shorthand) applies it.
+  - `style <id> k:v,k:v` styles a node by id, or an edge by literal `from-->to` (ports allowed: `style a:right-->b:top ...`).
+  - Node keys: `fill`, `stroke`, `stroke-width`, `color` (label text). Edge keys: `color`, `stroke-width`, `dash` (space-separated values, e.g. `dash:4 2`), `label-fill`.
+- **Ports** — an endpoint can pin its anchor side: `a:right --> b:top` (`left`/`right`/`top`/`bottom`/`auto`; `auto`/missing = automatic routing). A ported edge's first/last segments leave the sides perpendicularly.
+- **`<br/>`** — normalised to a line break in node labels, edge labels (`-->|a<br/>b|`), and lane titles.
+- The CLI exposes the same entry point as `--advance-text <file.mmd>`.
+
+The JSON form supports the same features additively — nodes/edges carry `style` (`fill`/`stroke`/`stroke-width`/`color`; edges add `dash`/`label-fill`), and edges accept `from_side`/`to_side` (`"left"|"right"|"top"|"bottom"|"auto"`). `AdvanceScene` also offers drag-and-drop picking: `hit_test`, `node_at`, `edge_at`, `lane_at`, and `nearest_node` (see `examples/advance_swimlane.mmd` and `examples/advance_text.rs`).
+
 ## Architecture
 
 A three-stage pipeline, one module per stage:
