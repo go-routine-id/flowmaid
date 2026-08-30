@@ -10,7 +10,8 @@
 //! (`classDiagram`), sequence diagrams (`sequenceDiagram`), pie
 //! charts (`pie`), state diagrams (`stateDiagram-v2`), mindmaps
 //! (`mindmap`), user-journey diagrams (`journey`), git graphs
-//! (`gitGraph`), and architecture diagrams (`architecture-beta`).
+//! (`gitGraph`), timeline diagrams (`timeline`), and architecture
+//! diagrams (`architecture-beta`).
 //!
 //! There is also an engine-native swimlane renderer driven by JSON in
 //! the [`advance`] module (`render_advance_svg`, `layout_advance`, and
@@ -50,6 +51,7 @@ pub mod render;
 pub mod scene;
 pub mod seq;
 pub mod style;
+pub mod timeline;
 
 pub use emit::to_mermaid;
 pub use model::Document;
@@ -88,5 +90,6 @@ pub fn render_svg_advanced(source: &str, opts: &SvgOptions) -> Result<String, Pa
         Document::Journey(d) => Ok(render::render_journey_with(&d, opts)),
         Document::GitGraph(d) => Ok(render::render_gitgraph_with(&d, opts)),
         Document::Architecture(d) => Ok(render::render_architecture_with(&d, opts)),
+        Document::Timeline(d) => Ok(render::render_timeline_with(&d, opts)),
     }
 }

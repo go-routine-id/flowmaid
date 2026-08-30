@@ -157,7 +157,7 @@
   </div>
   <h3>Highlights</h3>
   <ul>
-    <li><strong>10 diagram types</strong> — flowchart, ER, class, sequence, state, pie, mindmap, user journey, git graph, architecture.</li>
+    <li><strong>11 diagram types</strong> — flowchart, ER, class, sequence, state, pie, mindmap, user journey, git graph, architecture, timeline.</li>
     <li><strong>Mermaid-grade layout</strong> — a faithful dagre-style pipeline: crossing
       minimization, Brandes-Köpf coordinates, subgraph clusters with border walls,
       edge labels that reserve their own space, smooth <code>curveBasis</code> splines.</li>
@@ -302,6 +302,9 @@ python3 -m http.server                   # open http://localhost:8000</code></pr
     <tr><td>Architecture</td><td><code>architecture-beta</code></td>
       <td>Nested groups, services with icons, port-based edges (<code>L -- R</code>,
       <code>--&gt;</code>, <code>&lt;-&gt;</code>), group qualifiers</td></tr>
+    <tr><td>Timeline</td><td><code>timeline</code></td>
+      <td><code>title</code>/<code>section</code>, <code>period : event</code> rows,
+      <code>: </code>continuations, <code>LR</code>/<code>TD</code>, <code>%%</code>/<code>#</code> comments</td></tr>
   </table>
   <div class="tip">Every type above renders in the playground — type or paste its source
   into the editor and edit live. The examples dropdown carries presets for

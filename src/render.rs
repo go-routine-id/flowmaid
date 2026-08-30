@@ -5,7 +5,7 @@
 
 use crate::model::{
     Architecture, ClassDiagram, ErDiagram, GitGraph, Graph, Journey, Mindmap, PieChart,
-    SequenceDiagram,
+    SequenceDiagram, Timeline,
 };
 use crate::scene::SvgOptions;
 
@@ -115,6 +115,18 @@ pub fn render_architecture(d: &Architecture) -> String {
 /// [`render_architecture`] with explicit viewport options.
 pub fn render_architecture_with(d: &Architecture, opts: &SvgOptions) -> String {
     crate::architecture::to_svg_with(&crate::architecture::scene(d), opts)
+}
+
+/// Render a timeline (period columns on an axis, events stacked beneath,
+/// colored section bands). Geometry & serialisation live in the
+/// `timeline` module.
+pub fn render_timeline(d: &Timeline) -> String {
+    crate::timeline::to_svg(&crate::timeline::scene(d))
+}
+
+/// [`render_timeline`] with explicit viewport options.
+pub fn render_timeline_with(d: &Timeline, opts: &SvgOptions) -> String {
+    crate::timeline::to_svg_with(&crate::timeline::scene(d), opts)
 }
 
 #[cfg(test)]

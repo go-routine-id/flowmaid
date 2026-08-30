@@ -189,6 +189,10 @@ fn main() {
             eprintln!("empty diagram: no services defined");
             process::exit(1);
         }
+        Document::Timeline(d) if d.sections.iter().all(|s| s.periods.is_empty()) => {
+            eprintln!("empty diagram: no timeline periods");
+            process::exit(1);
+        }
         Document::Flowchart(g) | Document::State(g) => {
             let title = if matches!(doc, Document::State(_)) {
                 "State diagram"
@@ -210,6 +214,7 @@ fn main() {
         Document::Journey(d) => render::render_journey(d),
         Document::GitGraph(d) => render::render_gitgraph(d),
         Document::Architecture(d) => render::render_architecture(d),
+        Document::Timeline(d) => render::render_timeline(d),
     };
 
     match &output {

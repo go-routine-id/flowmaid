@@ -232,6 +232,7 @@ pub enum Document {
     Journey(Journey),
     GitGraph(GitGraph),
     Architecture(Architecture),
+    Timeline(Timeline),
 }
 
 /// UML class diagram (`classDiagram` header).
@@ -615,6 +616,39 @@ pub struct JourneyTask {
     pub name: String,
     pub score: u8,
     pub actors: Vec<usize>,
+}
+
+/// Timeline diagram (`timeline` header).
+#[derive(Debug, Default)]
+pub struct Timeline {
+    pub title: Option<String>,
+    pub direction: TimelineDirection,
+    pub sections: Vec<TimelineSection>,
+}
+
+/// Timeline layout orientation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum TimelineDirection {
+    /// `timeline` / `timeline LR` — periods as left-to-right columns.
+    #[default]
+    LeftRight,
+    /// `timeline TD` — periods stacked top-to-bottom.
+    TopDown,
+}
+
+/// A named group of consecutive periods (`section X`). Periods before
+/// the first `section` land in one leading section with an empty name.
+#[derive(Debug)]
+pub struct TimelineSection {
+    pub name: String,
+    pub periods: Vec<TimelinePeriod>,
+}
+
+/// One period: the time label plus its events.
+#[derive(Debug)]
+pub struct TimelinePeriod {
+    pub period: String,
+    pub events: Vec<String>,
 }
 
 /// Node outline in a mindmap, from the wrapper around its text.
