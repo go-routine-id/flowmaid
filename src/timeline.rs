@@ -403,11 +403,17 @@ mod tests {
     }
 
     #[test]
-    fn breaks_and_entities_are_folded() {
+    fn indented_header_keeps_direction() {
+        let t = timeline("   timeline TD\n  section A\n    2002 : X\n");
+        assert_eq!(t.direction, TimelineDirection::TopDown);
+    }
+
+    #[test]
+    fn breaks_are_folded_and_entities_stay_literal() {
         let t = timeline("timeline\n  2002 : First<br>Second : #35;tag\n");
         let events = &t.sections[0].periods[0].events;
         assert_eq!(events[0], "First\nSecond");
-        assert_eq!(events[1], "#tag");
+        assert_eq!(events[1], "#35;tag");
     }
 
     #[test]

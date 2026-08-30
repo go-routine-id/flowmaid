@@ -2416,6 +2416,7 @@ fn parse_journey(source: &str, header_line: usize) -> Result<Journey, ParseError
 /// Direction token on the `timeline` header. Mirrors mermaid's optional
 /// `LR`/`TD` suffix; anything else (including bare `timeline`) is `LR`.
 fn parse_timeline_direction(line: &str) -> TimelineDirection {
+    let line = line.trim();
     let rest = strip_keyword(line, "timeline").unwrap_or(line).trim();
     match rest.to_uppercase().as_str() {
         "TD" => TimelineDirection::TopDown,
@@ -2423,11 +2424,11 @@ fn parse_timeline_direction(line: &str) -> TimelineDirection {
     }
 }
 
-/// Normalise timeline period/event text the way mermaid does: fold
-/// `<br>` variants into line breaks and decode `#quot;`/`#NN;` entities
-/// (mermaid reserves `:` in events, so `#58;` writes a literal colon).
+/// Normalise timeline period/event text: fold `<br>` variants into line
+/// breaks. Entities are left as-is — mermaid's timeline stores text raw
+/// (no entity decoding), so `#35;` stays `#35;`.
 fn timeline_text(s: &str) -> String {
-    decode_entities(&normalize_breaks(s)).trim().to_string()
+    normalize_breaks(s).trim().to_string()
 }
 
 /// Split the event portion of a timeline row (which begins with `:`) into
