@@ -20,7 +20,8 @@ use crate::model::{
     ClassRel, CommitKind, Direction, Document, EdgeKind, End, ErDiagram, FrameKind, GitBranch,
     GitCommit, GitGraph, GitOrientation, Graph, Journey, JourneySection, JourneyTask, Key, Member,
     MindNode, MindShape, Mindmap, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation,
-    SeqHead, SeqItem, SequenceDiagram, Shape, SubEdge, Subgraph, Visibility,
+    SeqHead, SeqItem, SequenceDiagram, Shape, SubEdge, Subgraph, Timeline, TimelineDirection,
+    TimelinePeriod, TimelineSection, Visibility,
 };
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
@@ -375,12 +376,14 @@ pub fn parse_document(source: &str) -> Result<Document, ParseError> {
             Some("architecture-beta") | Some("architecture") => {
                 parse_architecture(source, i + 1).map(Document::Architecture)
             }
+            Some("timeline") => parse_timeline(source, i + 1).map(Document::Timeline),
             Some(t) => Err(err(
                 i + 1,
                 format!(
                     "diagram type '{}' is not supported yet (supported: flowchart, \
                      graph, erDiagram, classDiagram, sequenceDiagram, pie, \
-                     stateDiagram-v2, mindmap, journey, gitGraph, architecture-beta)",
+                     stateDiagram-v2, mindmap, journey, gitGraph, architecture-beta, \
+                     timeline)",
                     t
                 ),
             )),
@@ -2407,6 +2410,149 @@ fn parse_journey(source: &str, header_line: usize) -> Result<Journey, ParseError
 }
 
 // ---------------------------------------------------------------
+// Timeline (`timeline`)
+// ---------------------------------------------------------------
+
+/// Direction token on the `timeline` header. Mirrors mermaid's optional
+/// `LR`/`TD` suffix; anything else (including bare `timeline`) is `LR`.
+fn parse_timeline_direction(line: &str) -> TimelineDirection {
+    let rest = strip_keyword(line, "timeline").unwrap_or(line).trim();
+    match rest.to_uppercase().as_str() {
+        "TD" => TimelineDirection::TopDown,
+        _ => TimelineDirection::LeftRight,
+    }
+}
+
+/// Normalise timeline period/event text the way mermaid does: fold
+/// `<br>` variants into line breaks and decode `#quot;`/`#NN;` entities
+/// (mermaid reserves `:` in events, so `#58;` writes a literal colon).
+fn timeline_text(s: &str) -> String {
+    decode_entities(&normalize_breaks(s)).trim().to_string()
+}
+
+/// Split the event portion of a timeline row (which begins with `:`) into
+/// individual event texts, mirroring mermaid's lexer: a `:` that is
+/// followed by whitespace starts the next event; any other `:` (`::`,
+/// `http://`) is literal text. Event text is trimmed of edge whitespace.
+fn split_timeline_events(rest: &str) -> Vec<String> {
+    let mut events = Vec::new();
+    let chars: Vec<char> = rest.chars().collect();
+    let n = chars.len();
+    let mut i = 0;
+    while i < n {
+        if chars[i] != ':' {
+            break; // malformed — not an event boundary
+        }
+        i += 1; // consume ':'
+        while i < n && chars[i].is_whitespace() {
+            i += 1;
+        }
+        let start = i;
+        // Consume text until a ':' that is followed by whitespace (or end).
+        while i < n {
+            if chars[i] == ':' {
+                let sep = i + 1 >= n || chars[i + 1].is_whitespace();
+                if sep {
+                    break;
+                }
+            }
+            i += 1;
+        }
+        let text: String = chars[start..i].iter().collect();
+        let text = timeline_text(&text);
+        if !text.is_empty() {
+            events.push(text);
+        }
+    }
+    events
+}
+
+/// Parse a timeline (`timeline` / `timeline LR` / `timeline TD`).
+///
+/// Mirrors mermaid's timeline grammar: an optional `title`, optional
+/// `section` groups, and rows of `period : event[: event...]`. A row that
+/// starts with `:` (no period) continues the previous period's events; a
+/// `:` in event text is literal unless followed by whitespace; `#` and
+/// `%%` are comments; `<br>` variants become line breaks later at render.
+fn parse_timeline(source: &str, header_line: usize) -> Result<Timeline, ParseError> {
+    let mut d = Timeline::default();
+    if let Some(header) = source.lines().nth(header_line.saturating_sub(1)) {
+        d.direction = parse_timeline_direction(header);
+    }
+    // Ensure there is always a current section to push periods into.
+    let ensure_section = |d: &mut Timeline| {
+        if d.sections.is_empty() {
+            d.sections.push(TimelineSection {
+                name: String::new(),
+                periods: Vec::new(),
+            });
+        }
+    };
+
+    for (i, raw) in source.lines().enumerate() {
+        let lineno = i + 1;
+        if lineno <= header_line {
+            continue;
+        }
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with("%%") || line.starts_with('#') {
+            continue;
+        }
+        if let Some(rest) = strip_keyword(line, "title") {
+            let t = rest.trim();
+            if !t.is_empty() {
+                d.title = Some(t.to_string());
+            }
+            continue;
+        }
+        if let Some(rest) = strip_keyword(line, "section") {
+            let name = rest.trim();
+            if name.is_empty() {
+                return Err(err(lineno, "section needs a name".to_string()));
+            }
+            d.sections.push(TimelineSection {
+                name: name.to_string(),
+                periods: Vec::new(),
+            });
+            continue;
+        }
+
+        ensure_section(&mut d);
+        let periods = &mut d.sections.last_mut().unwrap().periods;
+
+        // Continuation: a leading `:` with no period of its own.
+        if line.starts_with(':') {
+            if periods.is_empty() {
+                return Err(err(lineno, "timeline event has no preceding period".to_string()));
+            }
+            let events = split_timeline_events(line);
+            periods.last_mut().unwrap().events.extend(events);
+            continue;
+        }
+
+        // A data row: the period runs to the first `:` or `#`; a `#`
+        // starts a comment (so it ends the period with no events).
+        let cut = line.find(['#', ':']);
+        let period = match cut {
+            Some(idx) => timeline_text(&line[..idx]),
+            None => timeline_text(line),
+        };
+        if period.is_empty() {
+            return Err(err(lineno, "timeline row needs a period".to_string()));
+        }
+        let events = match cut {
+            Some(idx) if line.as_bytes()[idx] == b':' => split_timeline_events(&line[idx..]),
+            _ => Vec::new(),
+        };
+        periods.push(TimelinePeriod {
+            period,
+            events,
+        });
+    }
+    Ok(d)
+}
+
+// ---------------------------------------------------------------
 // Git graph (`gitGraph`)
 // ---------------------------------------------------------------
 
@@ -3327,17 +3473,27 @@ mod tests {
 
     #[test]
     fn unsupported_diagram_types_get_explicit_errors() {
-        for src in ["gantt\ntitle x", "timeline\nx"] {
-            for res in [parse(src).map(|_| ()), parse_document(src).map(|_| ())] {
-                let e = res.unwrap_err();
-                assert_eq!(e.line, 1);
-                assert!(
-                    e.message.contains("not supported yet"),
-                    "message should say the type is unsupported: {}",
-                    e.message
-                );
-            }
+        // `gantt` is unsupported in both entry points.
+        for res in [
+            parse("gantt\ntitle x").map(|_| ()),
+            parse_document("gantt\ntitle x").map(|_| ()),
+        ] {
+            let e = res.unwrap_err();
+            assert_eq!(e.line, 1);
+            assert!(
+                e.message.contains("not supported yet"),
+                "message should say the type is unsupported: {}",
+                e.message
+            );
         }
+        // `timeline` is supported by parse_document, but `parse` is
+        // flowchart-only and still points it away.
+        let e = parse("timeline\nx").unwrap_err();
+        assert!(e.message.contains("not supported yet"), "{}", e.message);
+        assert!(matches!(
+            parse_document("timeline\n2002 : A").unwrap(),
+            Document::Timeline(_)
+        ));
         // The flowchart-only `parse` refuses erDiagram with a pointer
         // to the right entry point.
         let e = parse("erDiagram\nA ||--o{ B : has").unwrap_err();
