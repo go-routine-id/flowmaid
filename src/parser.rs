@@ -193,7 +193,7 @@ fn clean_label_1line(s: &str) -> String {
 
 /// Replace `<br>` variants (case-insensitive, optional `/` and
 /// spaces) with `\n`. Everything else passes through unchanged.
-fn normalize_breaks(s: &str) -> String {
+pub(crate) fn normalize_breaks(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut rest = s;
     while !rest.is_empty() {

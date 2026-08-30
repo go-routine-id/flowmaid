@@ -8,7 +8,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::json::{as_array, as_number, as_object, as_str, escape_json_str, obj_get, parse_json, JsonValue};
 use crate::layout::{text_width, BASE_H, LINE_H, MIN_W, PAD_X};
-use crate::model::{EdgeKind, Shape};
+use crate::model::{EdgeKind, NodeStyle, Shape};
+use crate::parser::normalize_breaks;
 use crate::scene::{escape, svg_open, SvgOptions};
 
 static MARKER_COUNTER: AtomicUsize = AtomicUsize::new(1);
@@ -37,6 +38,28 @@ fn adv_err(message: impl Into<String>) -> AdvanceError {
     }
 }
 
+/// Build a parse error with line/column context baked into the message.
+/// `line_no` is zero-based; `col` (when known) is a char offset into the
+/// raw line and drives the `^` caret under the snippet.
+fn text_err(source: &str, line_no: usize, col: Option<usize>, message: impl Into<String>) -> AdvanceError {
+    let line_text = source.lines().nth(line_no).unwrap_or("");
+    let snippet = line_text.trim_end();
+    let mut out = format!("line {}: {}", line_no + 1, message.into());
+    if !snippet.is_empty() {
+        out.push_str("\n  ");
+        out.push_str(snippet);
+    }
+    if let Some(c) = col {
+        let c = c.min(snippet.chars().count());
+        out.push_str("\n  ");
+        for _ in 0..c {
+            out.push(' ');
+        }
+        out.push('^');
+    }
+    adv_err(out)
+}
+
 // ------------------------------------------------------------------
 // Public model & config
 // ------------------------------------------------------------------
@@ -59,6 +82,38 @@ pub enum AdvanceOrder {
     Declaration,
     /// Topological sort on intra-lane edges with barycenter cross-lane refinement.
     Topology,
+}
+
+/// An anchor side on a node where an edge attaches (`a:right --> b:top`).
+/// Edges without a side keep the automatic routing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AdvanceSide {
+    Left,
+    Right,
+    Top,
+    Bottom,
+}
+
+impl AdvanceSide {
+    /// The canonical keyword for this side.
+    pub fn name(&self) -> &'static str {
+        match self {
+            AdvanceSide::Left => "left",
+            AdvanceSide::Right => "right",
+            AdvanceSide::Top => "top",
+            AdvanceSide::Bottom => "bottom",
+        }
+    }
+}
+
+fn parse_side(s: &str) -> Option<AdvanceSide> {
+    match s {
+        "left" => Some(AdvanceSide::Left),
+        "right" => Some(AdvanceSide::Right),
+        "top" => Some(AdvanceSide::Top),
+        "bottom" => Some(AdvanceSide::Bottom),
+        _ => None,
+    }
 }
 
 /// Visual styling overrides for advance diagrams.
@@ -85,6 +140,40 @@ impl Default for AdvanceStyle {
             edge_color: DEFAULT_EDGE_COLOR.to_string(),
             text_color: DEFAULT_TEXT_COLOR.to_string(),
             label_fill: DEFAULT_LABEL_FILL.to_string(),
+        }
+    }
+}
+
+/// Per-edge visual overrides. `None` fields fall back to the global
+/// [`AdvanceStyle`] at render time.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct AdvanceEdgeStyle {
+    /// `color:#rrggbb` — stroke color.
+    pub color: Option<String>,
+    /// `stroke-width:2px` — pixels.
+    pub stroke_width: Option<f64>,
+    /// `dash:4 2` — dash pattern (pixels) passed straight to
+    /// `stroke-dasharray`; text DSL uses space-separated values, JSON
+    /// takes any string (commas or spaces).
+    pub dash: Option<String>,
+    /// `label-fill:#ffffff` — edge label box background.
+    pub label_fill: Option<String>,
+}
+
+impl AdvanceEdgeStyle {
+    /// Overlay `over`'s set fields onto `self`.
+    pub fn apply_over(&mut self, over: &AdvanceEdgeStyle) {
+        if let Some(v) = &over.color {
+            self.color = Some(v.clone());
+        }
+        if let Some(v) = over.stroke_width {
+            self.stroke_width = Some(v);
+        }
+        if let Some(v) = &over.dash {
+            self.dash = Some(v.clone());
+        }
+        if let Some(v) = &over.label_fill {
+            self.label_fill = Some(v.clone());
         }
     }
 }
@@ -141,6 +230,8 @@ pub struct AdvanceNode {
     pub y: Option<f64>,
     pub w: Option<f64>,
     pub h: Option<f64>,
+    /// Per-node style overrides; empty = follow the shape theme.
+    pub style: NodeStyle,
 }
 
 /// One edge between two nodes.
@@ -150,6 +241,12 @@ pub struct AdvanceEdge {
     pub to: String,
     pub label: Option<String>,
     pub kind: EdgeKind,
+    /// Per-edge style overrides; empty = follow the global [`AdvanceStyle`].
+    pub style: AdvanceEdgeStyle,
+    /// Anchor side on the source node; `None` = automatic routing.
+    pub from_side: Option<AdvanceSide>,
+    /// Anchor side on the target node; `None` = automatic routing.
+    pub to_side: Option<AdvanceSide>,
 }
 
 /// Parsed advance diagram, ready for layout.
@@ -199,6 +296,8 @@ pub struct AdvanceSceneNode {
     pub w: f64,
     pub h: f64,
     pub shape: Shape,
+    /// Per-node style overrides carried from the diagram model.
+    pub style: NodeStyle,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -208,6 +307,15 @@ pub struct AdvanceSceneEdge {
     pub label: Option<String>,
     pub kind: EdgeKind,
     pub points: Vec<(f64, f64)>,
+    /// Per-edge style overrides carried from the diagram model.
+    pub style: AdvanceEdgeStyle,
+    /// Anchor side on the source node, as requested by the input.
+    pub from_side: Option<AdvanceSide>,
+    /// Anchor side on the target node, as requested by the input.
+    pub to_side: Option<AdvanceSide>,
+    /// Resolved label anchor (center point), set during routing when the
+    /// automatic placement dodges nodes/other labels.
+    pub label_pos: Option<(f64, f64)>,
 }
 
 // ------------------------------------------------------------------
@@ -281,6 +389,80 @@ pub fn edge_kind_name(k: EdgeKind) -> &'static str {
         EdgeKind::Thick => "thick",
         EdgeKind::ThickOpen => "thickopen",
         EdgeKind::Invisible => "invisible",
+    }
+}
+
+// ------------------------------------------------------------------
+// Style / side parsing (JSON and text share these small helpers)
+// ------------------------------------------------------------------
+
+/// Parse a pixel quantity that may be a bare number or a `"Npx"` string.
+fn px_number(v: &JsonValue) -> Result<f64, AdvanceError> {
+    if let Some(n) = as_number(v) {
+        if n.is_finite() && n > 0.0 {
+            return Ok(n);
+        }
+        return Err(adv_err("stroke-width must be a positive finite number"));
+    }
+    if let Some(s) = as_str(v) {
+        let cleaned = s.trim().trim_end_matches("px").trim();
+        return cleaned
+            .parse::<f64>()
+            .map_err(|_| adv_err(format!("invalid stroke-width: '{}'", s)));
+    }
+    Err(adv_err("stroke-width must be a number or a 'Npx' string"))
+}
+
+/// Parse a node `style` object from JSON. Unknown keys are ignored.
+fn parse_node_style_json(v: &JsonValue) -> Result<NodeStyle, AdvanceError> {
+    let obj = as_object(v).ok_or_else(|| adv_err("node 'style' must be an object"))?;
+    let mut st = NodeStyle::default();
+    if let Some(s) = obj_get(obj, "fill").and_then(as_str) {
+        st.fill = Some(s.to_string());
+    }
+    if let Some(s) = obj_get(obj, "stroke").and_then(as_str) {
+        st.stroke = Some(s.to_string());
+    }
+    if let Some(s) = obj_get(obj, "color").and_then(as_str) {
+        st.color = Some(s.to_string());
+    }
+    if let Some(v) = obj_get(obj, "stroke-width") {
+        st.stroke_width = Some(px_number(v)?);
+    }
+    Ok(st)
+}
+
+/// Parse an edge `style` object from JSON. Unknown keys are ignored.
+fn parse_edge_style_json(v: &JsonValue) -> Result<AdvanceEdgeStyle, AdvanceError> {
+    let obj = as_object(v).ok_or_else(|| adv_err("edge 'style' must be an object"))?;
+    let mut st = AdvanceEdgeStyle::default();
+    if let Some(s) = obj_get(obj, "color").and_then(as_str) {
+        st.color = Some(s.to_string());
+    }
+    if let Some(v) = obj_get(obj, "stroke-width") {
+        st.stroke_width = Some(px_number(v)?);
+    }
+    if let Some(s) = obj_get(obj, "dash").and_then(as_str) {
+        st.dash = Some(s.to_string());
+    }
+    if let Some(s) = obj_get(obj, "label-fill").and_then(as_str) {
+        st.label_fill = Some(s.to_string());
+    }
+    Ok(st)
+}
+
+/// Parse a JSON `from_side`/`to_side` value. `"auto"` (or a missing key)
+/// means automatic routing; anything else must be a known side keyword.
+fn parse_side_json(v: &JsonValue) -> Result<Option<AdvanceSide>, AdvanceError> {
+    let s = as_str(v).ok_or_else(|| adv_err("side must be a string"))?;
+    match s {
+        "auto" => Ok(None),
+        _ => parse_side(s).map(Some).ok_or_else(|| {
+            adv_err(format!(
+                "unknown side '{}', expected one of left, right, top, bottom, auto",
+                s
+            ))
+        }),
     }
 }
 
@@ -494,6 +676,10 @@ impl AdvanceDiagram {
                 .map(parse_shape)
                 .transpose()?
                 .unwrap_or(Shape::Rect);
+            let style = match obj_get(node_obj, "style") {
+                Some(v) => parse_node_style_json(v)?,
+                None => NodeStyle::default(),
+            };
 
             let x = obj_get(node_obj, "x").and_then(as_number);
             let y = obj_get(node_obj, "y").and_then(as_number);
@@ -540,6 +726,7 @@ impl AdvanceDiagram {
                 y,
                 w,
                 h,
+                style,
             });
         }
 
@@ -580,7 +767,27 @@ impl AdvanceDiagram {
                 .map(parse_edge_kind)
                 .transpose()?
                 .unwrap_or(EdgeKind::Arrow);
-            edges.push(AdvanceEdge { from, to, label, kind });
+            let style = match obj_get(edge_obj, "style") {
+                Some(v) => parse_edge_style_json(v)?,
+                None => AdvanceEdgeStyle::default(),
+            };
+            let from_side = match obj_get(edge_obj, "from_side") {
+                Some(v) => parse_side_json(v)?,
+                None => None,
+            };
+            let to_side = match obj_get(edge_obj, "to_side") {
+                Some(v) => parse_side_json(v)?,
+                None => None,
+            };
+            edges.push(AdvanceEdge {
+                from,
+                to,
+                label,
+                kind,
+                style,
+                from_side,
+                to_side,
+            });
         }
 
         Ok(AdvanceDiagram {
@@ -601,30 +808,68 @@ impl AdvanceDiagram {
     /// ```text
     /// swimlane [horizontal]
     /// title "My Title"
-    /// lane l1 "Sales"
+    /// config margin 30
+    /// lane l1 "Sales" {
     ///   a([Start])
     ///   b[Prepare Order]
+    ///   lane sub "Sub-lane" {
+    ///     c[Ship Package]
+    ///   }
+    /// }
     /// lane l2 "Fulfillment"
-    ///   c[Ship Package]
+    ///   d[Receive]
     ///
     /// a --> b
     /// b -->|done| c
+    /// c:right --> d:top
+    /// style a fill:#fee,stroke:#900
+    /// classDef warn fill:#fff3cd,stroke:#f0ad4e
+    /// class b warn
+    /// style c-->d color:#b00
     /// ```
+    ///
+    /// Nodes support `<br/>` line breaks and a trailing `id::class` shorthand.
     pub fn parse_text(source: &str) -> Result<AdvanceDiagram, AdvanceError> {
         let mut title = None;
         let mut description = None;
         let mut direction = AdvanceDirection::Vertical;
-        let mut lanes: Vec<AdvanceLane> = Vec::new();
+        let mut config = AdvanceConfig::default();
         let mut nodes: Vec<AdvanceNode> = Vec::new();
         let mut edges: Vec<AdvanceEdge> = Vec::new();
 
-        let mut current_lane: Option<String> = None;
+        // Lane declarations are collected as flat records during the scan and
+        // assembled into a nested tree at the end (`depth` = brace level).
+        let mut lane_recs: Vec<(String, String, usize)> = Vec::new();
         let mut lane_ids = std::collections::HashSet::new();
+        let mut lane_stack: Vec<usize> = Vec::new();
+        let mut lane_open_lines: Vec<usize> = Vec::new();
+        let mut current_lane: Option<String> = None;
+
         let mut node_ids = std::collections::HashSet::new();
+
+        // Deferred styling (classDef -> class assign -> explicit style line).
+        let mut class_defs: std::collections::HashMap<String, NodeStyle> =
+            std::collections::HashMap::new();
+        let mut assigns: Vec<(String, String)> = Vec::new();
+        let mut node_styles: Vec<(String, NodeStyle)> = Vec::new();
+        let mut edge_styles: Vec<(String, String, AdvanceEdgeStyle)> = Vec::new();
 
         for (line_no, raw_line) in source.lines().enumerate() {
             let line = raw_line.trim();
             if line.is_empty() || line.starts_with("%%") || line.starts_with("//") || line.starts_with('#') {
+                continue;
+            }
+
+            // Closing brace of a nested lane block.
+            if line == "}" {
+                if lane_stack.pop().is_some() {
+                    lane_open_lines.pop();
+                    // After a top-level close the stack is empty and there is
+                    // no lane scope anymore — later nodes must open a new lane.
+                    current_lane = lane_stack.last().map(|&parent| lane_recs[parent].0.clone());
+                } else {
+                    return Err(text_err(source, line_no, Some(0), "unbalanced '}'"));
+                }
                 continue;
             }
 
@@ -652,24 +897,65 @@ impl AdvanceDiagram {
                 continue;
             }
 
-            // Lane declaration: lane <id> ["title"]
+            // config directive: config <key> <value>
+            if line.starts_with("config ") {
+                parse_text_config(line, &mut config)
+                    .map_err(|m| text_err(source, line_no, None, m))?;
+                continue;
+            }
+
+            // Styling directives — must run before the edge branch because an
+            // edge-style target (`style a-->b ...`) contains an edge operator.
+            if line.starts_with("classDef ") {
+                parse_class_def(line, &mut class_defs)
+                    .map_err(|m| text_err(source, line_no, None, m))?;
+                continue;
+            }
+            if line.starts_with("class ") {
+                parse_class_assign(line, &mut assigns)
+                    .map_err(|m| text_err(source, line_no, None, m))?;
+                continue;
+            }
+            if line.starts_with("style ") {
+                parse_style_line(line, &mut node_styles, &mut edge_styles)
+                    .map_err(|m| text_err(source, line_no, None, m))?;
+                continue;
+            }
+
+            // Lane declaration: lane <id> ["title"] [{  ...  }]
             if line.starts_with("lane ") {
                 let rest = line.trim_start_matches("lane ").trim();
-                let mut parts = rest.splitn(2, |c: char| c.is_whitespace());
+                let mut parts = rest.splitn(2, char::is_whitespace);
                 let id = parts.next().unwrap_or("").trim().to_string();
                 if id.is_empty() {
-                    return Err(adv_err(format!("line {}: lane ID cannot be empty", line_no + 1)));
+                    return Err(text_err(source, line_no, Some(5), "lane ID cannot be empty"));
                 }
-                let lane_title = parts.next().map(|t| t.trim().trim_matches('"').to_string()).unwrap_or_else(|| id.clone());
+                let mut title_rest = parts.next().unwrap_or("").trim().to_string();
+                let has_brace = title_rest.ends_with('{');
+                if has_brace {
+                    title_rest.pop();
+                    title_rest = title_rest.trim().to_string();
+                }
+                let lane_title = if title_rest.is_empty() {
+                    id.clone()
+                } else {
+                    normalize_breaks(title_rest.trim().trim_matches('"'))
+                };
                 if lane_ids.contains(&id) {
-                    return Err(adv_err(format!("line {}: duplicate lane ID '{}'", line_no + 1, id)));
+                    return Err(text_err(
+                        source,
+                        line_no,
+                        Some(5),
+                        format!("duplicate lane ID '{}'", id),
+                    ));
                 }
                 lane_ids.insert(id.clone());
-                lanes.push(AdvanceLane {
-                    id: id.clone(),
-                    title: lane_title,
-                    children: Vec::new(),
-                });
+                let depth = lane_stack.len();
+                lane_recs.push((id.clone(), lane_title, depth));
+                if has_brace {
+                    lane_stack.push(lane_recs.len() - 1);
+                    lane_open_lines.push(line_no);
+                }
                 current_lane = Some(id);
                 continue;
             }
@@ -688,7 +974,7 @@ impl AdvanceDiagram {
                     continue;
                 };
 
-                let from = from_str.trim().to_string();
+                let (from, from_side) = split_endpoint(from_str);
                 let kind = match sep {
                     "-->" => EdgeKind::Arrow,
                     "-.->" => EdgeKind::Dotted,
@@ -697,41 +983,70 @@ impl AdvanceDiagram {
                     _ => EdgeKind::Arrow,
                 };
 
-                let (label, to) = if rest.trim_start().starts_with('|') {
+                let (label, to_str) = if rest.trim_start().starts_with('|') {
                     let trim_rest = rest.trim_start()[1..].trim_start();
                     if let Some(pipe_end) = trim_rest.find('|') {
                         let lbl = &trim_rest[..pipe_end];
                         let to_id = trim_rest[pipe_end + 1..].trim();
-                        (Some(lbl.trim().to_string()), to_id.to_string())
+                        (Some(normalize_breaks(lbl.trim())), to_id.to_string())
                     } else {
                         (None, rest.trim().to_string())
                     }
                 } else {
                     (None, rest.trim().to_string())
                 };
+                let (to, to_side) = split_endpoint(&to_str);
 
                 if !node_ids.contains(&from) {
-                    return Err(adv_err(format!("line {}: edge references unknown node '{}'", line_no + 1, from)));
+                    return Err(text_err(
+                        source,
+                        line_no,
+                        None,
+                        format!("edge references unknown node '{}'", from),
+                    ));
                 }
                 if !node_ids.contains(&to) {
-                    return Err(adv_err(format!("line {}: edge references unknown node '{}'", line_no + 1, to)));
+                    return Err(text_err(
+                        source,
+                        line_no,
+                        None,
+                        format!("edge references unknown node '{}'", to),
+                    ));
                 }
 
-                edges.push(AdvanceEdge { from, to, label, kind });
+                edges.push(AdvanceEdge {
+                    from,
+                    to,
+                    label,
+                    kind,
+                    style: AdvanceEdgeStyle::default(),
+                    from_side,
+                    to_side,
+                });
                 continue;
             }
 
-            // Node declaration inside current lane: id[Label], id(Label), id((Label)), etc.
+            // Node declaration inside the innermost lane.
             let lane = current_lane.as_ref().ok_or_else(|| {
-                adv_err(format!("line {}: node '{}' declared outside of any lane", line_no + 1, line))
+                text_err(
+                    source,
+                    line_no,
+                    None,
+                    format!("node '{}' declared outside of any lane", line),
+                )
             })?;
 
-            let (id, label, shape) = parse_text_node_shorthand(line).ok_or_else(|| {
-                adv_err(format!("line {}: invalid node declaration '{}'", line_no + 1, line))
+            let (decl, class) = split_node_class_shorthand(line);
+            let (id, label, shape) = parse_text_node_shorthand(decl).ok_or_else(|| {
+                text_err(source, line_no, None, format!("invalid node declaration '{}'", line))
             })?;
+            if let Some(class_name) = class {
+                assigns.push((id.clone(), class_name.to_string()));
+            }
+            let label = normalize_breaks(&label);
 
             if node_ids.contains(&id) {
-                return Err(adv_err(format!("line {}: duplicate node ID '{}'", line_no + 1, id)));
+                return Err(text_err(source, line_no, None, format!("duplicate node ID '{}'", id)));
             }
             node_ids.insert(id.clone());
 
@@ -744,11 +1059,51 @@ impl AdvanceDiagram {
                 y: None,
                 w: None,
                 h: None,
+                style: NodeStyle::default(),
             });
         }
 
-        if lanes.is_empty() {
-            return Err(adv_err("diagram must define at least one lane"));
+        if !lane_stack.is_empty() {
+            let idx = lane_stack[0];
+            let open_line = lane_open_lines[0];
+            return Err(text_err(
+                source,
+                open_line,
+                None,
+                format!("lane '{}' block is never closed", lane_recs[idx].0),
+            ));
+        }
+        if lane_recs.is_empty() {
+            return Err(text_err(source, 0, None, "diagram must define at least one lane"));
+        }
+
+        let lanes = assemble_lane_tree(&lane_recs);
+
+        // Deferred styling resolution: classDef -> class assign -> style line.
+        let mut resolved_class: std::collections::HashMap<String, NodeStyle> =
+            std::collections::HashMap::new();
+        for (name, st) in &class_defs {
+            resolved_class.insert(name.clone(), st.clone());
+        }
+        let mut by_node: std::collections::HashMap<String, NodeStyle> =
+            std::collections::HashMap::new();
+        for (id, class_name) in &assigns {
+            if let Some(st) = resolved_class.get(class_name) {
+                by_node.entry(id.clone()).or_default().apply_over(st);
+            }
+        }
+        for (id, st) in &node_styles {
+            by_node.entry(id.clone()).or_default().apply_over(st);
+        }
+        for n in &mut nodes {
+            if let Some(st) = by_node.get(&n.id) {
+                n.style.apply_over(st);
+            }
+        }
+        for (from, to, st) in &edge_styles {
+            for e in edges.iter_mut().filter(|e| e.from == *from && e.to == *to) {
+                e.style.apply_over(st);
+            }
         }
 
         Ok(AdvanceDiagram {
@@ -756,12 +1111,296 @@ impl AdvanceDiagram {
             description,
             direction,
             style: AdvanceStyle::default(),
-            config: AdvanceConfig::default(),
+            config,
             lanes,
             nodes,
             edges,
         })
     }
+}
+
+// ------------------------------------------------------------------
+// Text DSL helpers
+// ------------------------------------------------------------------
+
+/// Strip a trailing `id::class` shorthand from a node declaration line.
+/// Only applied when the suffix contains no shape brackets, so `a[Foo::Bar]`
+/// (a `::` inside a label) is left untouched.
+fn split_node_class_shorthand(line: &str) -> (&str, Option<&str>) {
+    if let Some(sep) = line.rfind("::") {
+        let after = &line[sep + 2..];
+        if !after.is_empty()
+            && !after.contains('[')
+            && !after.contains(']')
+            && !after.contains('(')
+            && !after.contains(')')
+            && !after.contains('{')
+            && !after.contains('}')
+        {
+            return (line[..sep].trim_end(), Some(after.trim()));
+        }
+    }
+    (line, None)
+}
+
+/// Split an edge endpoint into `(id, side)`. A side suffix is recognized
+/// only when it is one of the known keywords (`:left`, `:right`, `:top`,
+/// `:bottom`); anything else (including colons inside ids) is kept whole.
+fn split_endpoint(s: &str) -> (String, Option<AdvanceSide>) {
+    let s = s.trim();
+    for (side, kw) in [
+        (AdvanceSide::Left, "left"),
+        (AdvanceSide::Right, "right"),
+        (AdvanceSide::Top, "top"),
+        (AdvanceSide::Bottom, "bottom"),
+    ] {
+        if let Some(id) = s.strip_suffix(&format!(":{}", kw)) {
+            if !id.is_empty() && !id.ends_with(':') {
+                return (id.trim().to_string(), Some(side));
+            }
+        }
+    }
+    (s.to_string(), None)
+}
+
+/// Split style properties on commas at paren depth 0 (so CSS function
+/// values like `fill:rgb(255,0,0)` survive as one property).
+fn split_props(s: &str) -> Result<Vec<&str>, String> {
+    let mut items: Vec<&str> = Vec::new();
+    let (mut depth, mut start) = (0usize, 0usize);
+    for (i, c) in s.char_indices() {
+        match c {
+            '(' => depth += 1,
+            ')' => depth = depth.saturating_sub(1),
+            ',' if depth == 0 => {
+                items.push(&s[start..i]);
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    if depth != 0 {
+        return Err(format!("unbalanced '(' in style properties: '{}'", s));
+    }
+    items.push(&s[start..]);
+    Ok(items)
+}
+
+/// Parse a stroke-width value from text-DSL properties (`2`, `2px`), with
+/// the same finiteness/positivity guard as the JSON path (`px_number`).
+fn parse_stroke_width_prop(v: &str) -> Result<f64, String> {
+    let n: f64 = v
+        .trim_end_matches("px")
+        .trim()
+        .parse()
+        .map_err(|_| format!("invalid stroke-width: '{}'", v))?;
+    if n.is_finite() && n > 0.0 {
+        Ok(n)
+    } else {
+        Err(format!("stroke-width must be a positive finite number, got '{}'", v))
+    }
+}
+
+/// Parse node style properties (`k:v,k:v`) mirroring [`crate::parser::parse_props`].
+fn parse_node_style_props(s: &str) -> Result<NodeStyle, String> {
+    let mut st = NodeStyle::default();
+    for item in split_props(s)? {
+        let item = item.trim();
+        if item.is_empty() {
+            continue;
+        }
+        let Some((k, v)) = item.split_once(':') else {
+            return Err(format!("expected 'property:value', got '{}'", item));
+        };
+        let v = v.trim();
+        match k.trim() {
+            "fill" => st.fill = Some(v.to_string()),
+            "stroke" => st.stroke = Some(v.to_string()),
+            "color" => st.color = Some(v.to_string()),
+            "stroke-width" => {
+                st.stroke_width = Some(parse_stroke_width_prop(v)?);
+            }
+            _ => {}
+        }
+    }
+    Ok(st)
+}
+
+/// Parse edge style properties (`k:v,k:v`).
+fn parse_edge_style_props(s: &str) -> Result<AdvanceEdgeStyle, String> {
+    let mut st = AdvanceEdgeStyle::default();
+    for item in split_props(s)? {
+        let item = item.trim();
+        if item.is_empty() {
+            continue;
+        }
+        let Some((k, v)) = item.split_once(':') else {
+            return Err(format!("expected 'property:value', got '{}'", item));
+        };
+        let v = v.trim();
+        match k.trim() {
+            "color" => st.color = Some(v.to_string()),
+            "stroke-width" => {
+                st.stroke_width = Some(parse_stroke_width_prop(v)?);
+            }
+            "dash" => st.dash = Some(v.to_string()),
+            "label-fill" => st.label_fill = Some(v.to_string()),
+            _ => {}
+        }
+    }
+    Ok(st)
+}
+
+fn parse_class_def(line: &str, class_defs: &mut std::collections::HashMap<String, NodeStyle>) -> Result<(), String> {
+    let rest = line.trim_start_matches("classDef").trim();
+    let mut parts = rest.splitn(2, char::is_whitespace);
+    let name = parts.next().unwrap_or("").trim().to_string();
+    let props = parts.next().unwrap_or("").trim();
+    if name.is_empty() {
+        return Err("expected a class name after 'classDef'".to_string());
+    }
+    let st = parse_node_style_props(props)?;
+    class_defs.insert(name, st);
+    Ok(())
+}
+
+fn parse_class_assign(line: &str, assigns: &mut Vec<(String, String)>) -> Result<(), String> {
+    let rest = line.trim_start_matches("class").trim();
+    let mut parts = rest.rsplitn(2, char::is_whitespace);
+    let name = parts.next().unwrap_or("").trim().to_string();
+    let ids = parts.next().unwrap_or("").trim();
+    if name.is_empty() || ids.is_empty() {
+        return Err("expected 'class id1,id2 className'".to_string());
+    }
+    for id in ids.split(',') {
+        let id = id.trim();
+        if !id.is_empty() {
+            assigns.push((id.to_string(), name.clone()));
+        }
+    }
+    Ok(())
+}
+
+/// Parse `style <target> <props>` where target is a node id or an edge
+/// literal `from-->to` (ports allowed: `a:right-->b:top`).
+fn parse_style_line(
+    line: &str,
+    node_styles: &mut Vec<(String, NodeStyle)>,
+    edge_styles: &mut Vec<(String, String, AdvanceEdgeStyle)>,
+) -> Result<(), String> {
+    let rest = line.trim_start_matches("style").trim();
+    let mut parts = rest.splitn(2, char::is_whitespace);
+    let target = parts.next().unwrap_or("").trim();
+    let props = parts.next().unwrap_or("").trim();
+    if target.is_empty() {
+        return Err("expected a node id or 'from-->to' after 'style'".to_string());
+    }
+    if let Some(idx) = target.find("-->") {
+        let (from, _) = split_endpoint(&target[..idx]);
+        let (to, _) = split_endpoint(&target[idx + 3..]);
+        if from.is_empty() || to.is_empty() {
+            return Err(format!("invalid edge target '{}'", target));
+        }
+        let st = parse_edge_style_props(props)?;
+        edge_styles.push((from, to, st));
+    } else {
+        let st = parse_node_style_props(props)?;
+        node_styles.push((target.to_string(), st));
+    }
+    Ok(())
+}
+
+fn parse_text_config(line: &str, config: &mut AdvanceConfig) -> Result<(), String> {
+    let rest = line.trim_start_matches("config").trim();
+    let mut parts = rest.splitn(2, char::is_whitespace);
+    let key = parts.next().unwrap_or("").trim();
+    let val = parts.next().unwrap_or("").trim();
+    if key.is_empty() {
+        return Err("expected a config key after 'config'".to_string());
+    }
+    let num: Option<f64> = val.parse().ok();
+    let set_num = |target: &mut f64| -> Result<(), String> {
+        match num {
+            Some(n) if n.is_finite() && n >= 0.0 => {
+                *target = n;
+                Ok(())
+            }
+            _ => Err(format!("config.{} must be a non-negative finite number", key)),
+        }
+    };
+    match key {
+        "margin" => set_num(&mut config.margin),
+        "lane_gap" => set_num(&mut config.lane_gap),
+        "node_gap_y" => set_num(&mut config.node_gap_y),
+        "lane_pad_x" => set_num(&mut config.lane_pad_x),
+        "lane_pad_y" => set_num(&mut config.lane_pad_y),
+        "lane_title_h" => set_num(&mut config.lane_title_h),
+        "order" => {
+            config.order = match val {
+                "declaration" => AdvanceOrder::Declaration,
+                "topology" => AdvanceOrder::Topology,
+                _ => {
+                    return Err(format!(
+                        "unknown config.order '{}', expected 'declaration' or 'topology'",
+                        val
+                    ))
+                }
+            };
+            Ok(())
+        }
+        _ => Ok(()),
+    }
+}
+
+/// Assemble the flat lane records into a nested [`AdvanceLane`] tree.
+/// A record's parent is the nearest preceding record with a strictly
+/// smaller depth; the tree is built by reverse-moving each lane into its
+/// parent, so no clones are needed.
+fn assemble_lane_tree(recs: &[(String, String, usize)]) -> Vec<AdvanceLane> {
+    let mut parent_of: Vec<Option<usize>> = vec![None; recs.len()];
+    let mut stack: Vec<usize> = Vec::new();
+    for (i, rec) in recs.iter().enumerate() {
+        while let Some(&top) = stack.last() {
+            if recs[top].2 >= rec.2 {
+                stack.pop();
+            } else {
+                break;
+            }
+        }
+        parent_of[i] = stack.last().copied();
+        stack.push(i);
+    }
+
+    let mut lanes: Vec<AdvanceLane> = recs
+        .iter()
+        .map(|(id, title, _)| AdvanceLane {
+            id: id.clone(),
+            title: title.clone(),
+            children: Vec::new(),
+        })
+        .collect();
+    let mut roots: Vec<AdvanceLane> = Vec::new();
+    for i in (0..recs.len()).rev() {
+        let empty = AdvanceLane {
+            id: String::new(),
+            title: String::new(),
+            children: Vec::new(),
+        };
+        match parent_of[i] {
+            Some(p) => {
+                let lane = std::mem::replace(&mut lanes[i], empty);
+                // Reverse iteration visits later-declared siblings first, so
+                // inserting at the front keeps declaration order in children.
+                lanes[p].children.insert(0, lane);
+            }
+            None => {
+                let lane = std::mem::replace(&mut lanes[i], empty);
+                roots.push(lane);
+            }
+        }
+    }
+    roots.reverse();
+    roots
 }
 
 fn parse_text_node_shorthand(s: &str) -> Option<(String, String, Shape)> {
@@ -874,6 +1513,62 @@ fn lane_to_json_rec(l: &AdvanceLane, s: &mut String) {
     s.push('}');
 }
 
+fn node_style_to_json(ns: &NodeStyle, s: &mut String) {
+    let mut first = true;
+    if let Some(fill) = &ns.fill {
+        s.push_str(&format!("\"fill\":{}", escape_json_str(fill)));
+        first = false;
+    }
+    if let Some(stroke) = &ns.stroke {
+        if !first {
+            s.push(',');
+        }
+        s.push_str(&format!("\"stroke\":{}", escape_json_str(stroke)));
+        first = false;
+    }
+    if let Some(color) = &ns.color {
+        if !first {
+            s.push(',');
+        }
+        s.push_str(&format!("\"color\":{}", escape_json_str(color)));
+        first = false;
+    }
+    if let Some(w) = ns.stroke_width {
+        if !first {
+            s.push(',');
+        }
+        s.push_str(&format!("\"stroke-width\":{:.1}", w));
+    }
+}
+
+fn edge_style_to_json(es: &AdvanceEdgeStyle, s: &mut String) {
+    let mut first = true;
+    if let Some(color) = &es.color {
+        s.push_str(&format!("\"color\":{}", escape_json_str(color)));
+        first = false;
+    }
+    if let Some(w) = es.stroke_width {
+        if !first {
+            s.push(',');
+        }
+        s.push_str(&format!("\"stroke-width\":{:.1}", w));
+        first = false;
+    }
+    if let Some(dash) = &es.dash {
+        if !first {
+            s.push(',');
+        }
+        s.push_str(&format!("\"dash\":{}", escape_json_str(dash)));
+        first = false;
+    }
+    if let Some(label_fill) = &es.label_fill {
+        if !first {
+            s.push(',');
+        }
+        s.push_str(&format!("\"label-fill\":{}", escape_json_str(label_fill)));
+    }
+}
+
 /// Serialize an [`AdvanceDiagram`] back to a valid JSON string.
 pub fn to_json(d: &AdvanceDiagram) -> String {
     let mut s = String::new();
@@ -954,6 +1649,11 @@ pub fn to_json(d: &AdvanceDiagram) -> String {
         if let Some(h) = n.h {
             s.push_str(&format!(",\"h\":{:.1}", h));
         }
+        if n.style != NodeStyle::default() {
+            s.push_str(",\"style\":{");
+            node_style_to_json(&n.style, &mut s);
+            s.push('}');
+        }
         s.push('}');
     }
     s.push_str("],");
@@ -973,6 +1673,17 @@ pub fn to_json(d: &AdvanceDiagram) -> String {
         if let Some(lbl) = &e.label {
             s.push_str(",\"label\":");
             s.push_str(&escape_json_str(lbl));
+        }
+        if e.style != AdvanceEdgeStyle::default() {
+            s.push_str(",\"style\":{");
+            edge_style_to_json(&e.style, &mut s);
+            s.push('}');
+        }
+        if let Some(side) = e.from_side {
+            s.push_str(&format!(",\"from_side\":\"{}\"", side.name()));
+        }
+        if let Some(side) = e.to_side {
+            s.push_str(&format!(",\"to_side\":\"{}\"", side.name()));
         }
         s.push('}');
     }
@@ -1025,7 +1736,7 @@ pub fn scene_to_json(sc: &AdvanceScene) -> String {
             s.push(',');
         }
         s.push_str(&format!(
-            "{{\"id\":{},\"label\":{},\"lane\":{},\"x\":{:.1},\"y\":{:.1},\"w\":{:.1},\"h\":{:.1},\"shape\":\"{}\"}}",
+            "{{\"id\":{},\"label\":{},\"lane\":{},\"x\":{:.1},\"y\":{:.1},\"w\":{:.1},\"h\":{:.1},\"shape\":\"{}\"",
             escape_json_str(&node.id),
             escape_json_str(&node.label),
             escape_json_str(&node.lane),
@@ -1035,6 +1746,12 @@ pub fn scene_to_json(sc: &AdvanceScene) -> String {
             node.h,
             shape_name(node.shape)
         ));
+        if node.style != NodeStyle::default() {
+            s.push_str(",\"style\":{");
+            node_style_to_json(&node.style, &mut s);
+            s.push('}');
+        }
+        s.push('}');
     }
     s.push(']');
 
@@ -1044,21 +1761,38 @@ pub fn scene_to_json(sc: &AdvanceScene) -> String {
             s.push(',');
         }
         s.push_str(&format!(
-            "{{\"from\":{},\"to\":{},\"kind\":\"{}\",\"points\":[",
+            "{{\"from\":{},\"to\":{},\"kind\":\"{}\"",
             escape_json_str(&edge.from),
             escape_json_str(&edge.to),
             edge_kind_name(edge.kind)
         ));
         if let Some(lbl) = &edge.label {
-            s.push_str(&format!("\"label\":{},", escape_json_str(lbl)));
+            s.push_str(",\"label\":");
+            s.push_str(&escape_json_str(lbl));
         }
+        s.push_str(",\"points\":[");
         for (j, p) in edge.points.iter().enumerate() {
             if j > 0 {
                 s.push(',');
             }
             s.push_str(&format!("[{:.1},{:.1}]", p.0, p.1));
         }
-        s.push_str("]}");
+        s.push(']');
+        if edge.style != AdvanceEdgeStyle::default() {
+            s.push_str(",\"style\":{");
+            edge_style_to_json(&edge.style, &mut s);
+            s.push('}');
+        }
+        if let Some(side) = edge.from_side {
+            s.push_str(&format!(",\"from_side\":\"{}\"", side.name()));
+        }
+        if let Some(side) = edge.to_side {
+            s.push_str(&format!(",\"to_side\":\"{}\"", side.name()));
+        }
+        if let Some((lx, ly)) = edge.label_pos {
+            s.push_str(&format!(",\"label_pos\":[{:.1},{:.1}]", lx, ly));
+        }
+        s.push('}');
     }
     s.push(']');
 
@@ -1578,6 +2312,261 @@ fn route_cross_lane(
     }
 }
 
+/// Midpoint of a node's side — the anchor a ported edge exits/enters.
+fn side_point(n: &AdvanceSceneNode, side: AdvanceSide) -> (f64, f64) {
+    match side {
+        AdvanceSide::Left => (n.x - n.w / 2.0, n.y),
+        AdvanceSide::Right => (n.x + n.w / 2.0, n.y),
+        AdvanceSide::Top => (n.x, n.y - n.h / 2.0),
+        AdvanceSide::Bottom => (n.x, n.y + n.h / 2.0),
+    }
+}
+
+/// Point `lead` px outside `p` along the normal of `side` — the leader
+/// segment that leaves a node perpendicular to its anchor side.
+fn port_leader(p: (f64, f64), side: AdvanceSide, lead: f64) -> (f64, f64) {
+    match side {
+        AdvanceSide::Left => (p.0 - lead, p.1),
+        AdvanceSide::Right => (p.0 + lead, p.1),
+        AdvanceSide::Top => (p.0, p.1 - lead),
+        AdvanceSide::Bottom => (p.0, p.1 + lead),
+    }
+}
+
+/// The side the automatic routers would pick for `n`, so a ported edge
+/// with only one side specified still connects at the natural anchor.
+fn natural_side(
+    n: &AdvanceSceneNode,
+    other: &AdvanceSceneNode,
+    dir: AdvanceDirection,
+    is_from: bool,
+    same_lane: bool,
+) -> AdvanceSide {
+    match dir {
+        AdvanceDirection::Vertical => {
+            if same_lane {
+                // Same lane: leave through the bottom/top toward the other node.
+                if is_from {
+                    if n.y < other.y {
+                        AdvanceSide::Bottom
+                    } else {
+                        AdvanceSide::Top
+                    }
+                } else if n.y < other.y {
+                    AdvanceSide::Top
+                } else {
+                    AdvanceSide::Bottom
+                }
+            } else if is_from {
+                // Cross lane: exit sideways toward the other lane.
+                if other.x >= n.x {
+                    AdvanceSide::Right
+                } else {
+                    AdvanceSide::Left
+                }
+            } else if other.x >= n.x {
+                AdvanceSide::Left
+            } else {
+                AdvanceSide::Right
+            }
+        }
+        AdvanceDirection::Horizontal => {
+            if same_lane {
+                if is_from {
+                    if n.x < other.x {
+                        AdvanceSide::Right
+                    } else {
+                        AdvanceSide::Left
+                    }
+                } else if n.x < other.x {
+                    AdvanceSide::Left
+                } else {
+                    AdvanceSide::Right
+                }
+            } else if is_from {
+                if other.y >= n.y {
+                    AdvanceSide::Bottom
+                } else {
+                    AdvanceSide::Top
+                }
+            } else if other.y >= n.y {
+                AdvanceSide::Top
+            } else {
+                AdvanceSide::Bottom
+            }
+        }
+    }
+}
+
+/// Orthogonal route between two side anchors: leader out of `a`'s side,
+/// a shared channel (offset by `fan` for parallel edges), leader into
+/// `b`'s side. Collapsing equal neighbours keeps the path minimal.
+fn route_ported(
+    a: &AdvanceSceneNode,
+    from_side: AdvanceSide,
+    b: &AdvanceSceneNode,
+    to_side: AdvanceSide,
+    fan: f64,
+) -> Vec<(f64, f64)> {
+    const PORT_LEAD: f64 = 18.0;
+    let p0 = side_point(a, from_side);
+    let p3 = side_point(b, to_side);
+    let l0 = port_leader(p0, from_side, PORT_LEAD);
+    let l3 = port_leader(p3, to_side, PORT_LEAD);
+
+    // The exit axis decides how the channel runs; `fan` offsets it
+    // perpendicularly so parallel ported edges fan apart.
+    let mut pts = Vec::with_capacity(6);
+    pts.push(p0);
+    pts.push(l0);
+    if matches!(from_side, AdvanceSide::Left | AdvanceSide::Right) {
+        let mid_y = l0.1 + fan;
+        if fan.abs() > 1e-9 {
+            pts.push((l0.0, mid_y));
+        }
+        if (l3.0 - l0.0).abs() > 1e-9 || (mid_y - l0.1).abs() > 1e-9 {
+            pts.push((l3.0, mid_y));
+        }
+        if (l3.1 - mid_y).abs() > 1e-9 {
+            pts.push(l3);
+        }
+    } else {
+        let mid_x = l0.0 + fan;
+        if fan.abs() > 1e-9 {
+            pts.push((mid_x, l0.1));
+        }
+        if (l3.1 - l0.1).abs() > 1e-9 || (mid_x - l0.0).abs() > 1e-9 {
+            pts.push((mid_x, l3.1));
+        }
+        if (l3.0 - mid_x).abs() > 1e-9 {
+            pts.push(l3);
+        }
+    }
+    pts.push(p3);
+    dedup_pts(pts)
+}
+
+/// Drop consecutive duplicate points (rounded path collapse leaves none).
+fn dedup_pts(pts: Vec<(f64, f64)>) -> Vec<(f64, f64)> {
+    let mut out: Vec<(f64, f64)> = Vec::with_capacity(pts.len());
+    for p in pts {
+        if let Some(last) = out.last() {
+            if (last.0 - p.0).abs() < 1e-9 && (last.1 - p.1).abs() < 1e-9 {
+                continue;
+            }
+        }
+        out.push(p);
+    }
+    out
+}
+
+fn push_unique(out: &mut Vec<(f64, f64)>, c: (f64, f64)) {
+    if !out.iter().any(|p| (p.0 - c.0).abs() < 1e-6 && (p.1 - c.1).abs() < 1e-6) {
+        out.push(c);
+    }
+}
+
+/// Bounding box of an edge-label pill centred at `c`, matching the
+/// renderer's `text_width + 14` wide, 18 tall box.
+fn label_box(c: (f64, f64), label: &str) -> (f64, f64, f64, f64) {
+    let lw = text_width(label) + 14.0;
+    (c.0 - lw / 2.0, c.1 - 9.0, c.0 + lw / 2.0, c.1 + 9.0)
+}
+
+fn rects_overlap(a: (f64, f64, f64, f64), b: (f64, f64, f64, f64)) -> bool {
+    a.0 < b.2 && a.2 > b.0 && a.1 < b.3 && a.3 > b.1
+}
+
+/// Candidate label anchors in priority order: the renderer's default
+/// spot first (so untouched labels stay byte-identical), then the
+/// longest horizontal segment, the polyline midpoint, then each
+/// segment midpoint — deduplicated.
+fn label_candidates(points: &[(f64, f64)]) -> Vec<(f64, f64)> {
+    let n = points.len();
+    let mut out: Vec<(f64, f64)> = Vec::new();
+    if n == 0 {
+        return out;
+    }
+
+    let mut best_vert: Option<(usize, f64)> = None;
+    for i in 0..n.saturating_sub(1) {
+        let (x1, y1) = points[i];
+        let (x2, y2) = points[i + 1];
+        if (x1 - x2).abs() < f64::EPSILON {
+            let len = (y2 - y1).abs();
+            if best_vert.map(|(_, l)| len > l).unwrap_or(true) {
+                best_vert = Some((i, len));
+            }
+        }
+    }
+    match best_vert {
+        Some((i, len)) if len >= 22.0 => {
+            let (x1, y1) = points[i];
+            let (_, y2) = points[i + 1];
+            push_unique(&mut out, (x1 + 8.0, (y1 + y2) / 2.0));
+        }
+        _ => {
+            let mid = points[n / 2];
+            push_unique(&mut out, (mid.0, mid.1));
+        }
+    }
+
+    let mut best_h: Option<(usize, f64)> = None;
+    for i in 0..n.saturating_sub(1) {
+        let (x1, y1) = points[i];
+        let (x2, y2) = points[i + 1];
+        if (y1 - y2).abs() < f64::EPSILON {
+            let len = (x2 - x1).abs();
+            if best_h.map(|(_, l)| len > l).unwrap_or(true) {
+                best_h = Some((i, len));
+            }
+        }
+    }
+    if let Some((i, _)) = best_h {
+        let (x1, y1) = points[i];
+        let (x2, y2) = points[i + 1];
+        push_unique(&mut out, ((x1 + x2) / 2.0, (y1 + y2) / 2.0));
+    }
+
+    let mid = points[n / 2];
+    push_unique(&mut out, (mid.0, mid.1));
+    for i in 0..n.saturating_sub(1) {
+        let (x1, y1) = points[i];
+        let (x2, y2) = points[i + 1];
+        push_unique(&mut out, ((x1 + x2) / 2.0, (y1 + y2) / 2.0));
+    }
+    out
+}
+
+/// Pick the first candidate whose label pill avoids every other node
+/// (endpoints excluded — a self-loop still dodges its own node) and
+/// every already-placed label. Falls back to the first candidate.
+fn choose_label_pos(
+    candidates: &[(f64, f64)],
+    label: &str,
+    from: &str,
+    to: &str,
+    nodes: &[AdvanceSceneNode],
+    placed: &[(f64, f64, f64, f64)],
+) -> Option<(f64, f64)> {
+    for &c in candidates {
+        let lb = label_box(c, label);
+        let is_self = from == to;
+        let hits_node = nodes.iter().any(|n| {
+            let endpoint = (n.id == from || n.id == to) && !is_self;
+            !endpoint && rects_overlap(lb, node_rect(n))
+        });
+        if hits_node {
+            continue;
+        }
+        if placed.iter().any(|pb| rects_overlap(lb, *pb)) {
+            continue;
+        }
+        return Some(c);
+    }
+    candidates.first().copied()
+}
+
 fn route_edges(
     d: &AdvanceDiagram,
     nodes: &[AdvanceSceneNode],
@@ -1596,6 +2585,9 @@ fn route_edges(
     let mut pair_seen: std::collections::HashMap<(String, String), usize> =
         std::collections::HashMap::new();
 
+    // Boxes of labels already placed, so later labels dodge them too.
+    let mut placed_labels: Vec<(f64, f64, f64, f64)> = Vec::new();
+
     for e in &d.edges {
         let from_i = node_idx[&e.from];
         let to_i = node_idx[&e.to];
@@ -1613,11 +2605,51 @@ fn route_edges(
         let fan = (dup_i as f64 - (dup_n as f64 - 1.0) / 2.0) * PARALLEL_FAN;
 
         let points = if from_i == to_i {
-            route_self_loop(a, fan, dir)
+            if e.from_side.is_none() && e.to_side.is_none() {
+                route_self_loop(a, fan, dir)
+            } else {
+                route_ported(
+                    a,
+                    e.from_side.unwrap_or_else(|| natural_side(a, b, dir, true, true)),
+                    b,
+                    e.to_side.unwrap_or_else(|| natural_side(a, b, dir, false, true)),
+                    fan,
+                )
+            }
         } else if a.lane == b.lane {
-            route_same_lane(a, b, nodes, fan, dir)
-        } else {
+            if e.from_side.is_none() && e.to_side.is_none() {
+                route_same_lane(a, b, nodes, fan, dir)
+            } else {
+                route_ported(
+                    a,
+                    e.from_side.unwrap_or_else(|| natural_side(a, b, dir, true, true)),
+                    b,
+                    e.to_side.unwrap_or_else(|| natural_side(a, b, dir, false, true)),
+                    fan,
+                )
+            }
+        } else if e.from_side.is_none() && e.to_side.is_none() {
             route_cross_lane(a, b, nodes, fan, dir)
+        } else {
+            route_ported(
+                a,
+                e.from_side.unwrap_or_else(|| natural_side(a, b, dir, true, false)),
+                b,
+                e.to_side.unwrap_or_else(|| natural_side(a, b, dir, false, false)),
+                fan,
+            )
+        };
+
+        let label_pos = match e.label.as_deref() {
+            Some(label) => {
+                let chosen =
+                    choose_label_pos(&label_candidates(&points), label, &e.from, &e.to, nodes, &placed_labels);
+                if let Some(c) = chosen {
+                    placed_labels.push(label_box(c, label));
+                }
+                chosen
+            }
+            None => None,
         };
 
         edge_scenes.push(AdvanceSceneEdge {
@@ -1626,10 +2658,143 @@ fn route_edges(
             label: e.label.clone(),
             kind: e.kind,
             points,
+            style: e.style.clone(),
+            from_side: e.from_side,
+            to_side: e.to_side,
+            label_pos,
         });
     }
 
     edge_scenes
+}
+
+// ------------------------------------------------------------------
+// Scene hit-testing (drag-and-drop / picking)
+// ------------------------------------------------------------------
+
+/// An element picked out of an [`AdvanceScene`] by [`AdvanceScene::hit_test`]
+/// and friends — carries the index into `scene.{nodes,edges,lanes}`, and
+/// `scene.nodes[i].id` recovers the stable id. Coordinates are SCENE-space:
+/// a host converts screen→scene once (`(screen - pan) / zoom`) and passes a
+/// tolerance in scene units, so zoom/pan never enter the engine.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AdvanceHit {
+    Node(usize),
+    Edge(usize),
+    Lane(usize),
+}
+
+impl AdvanceScene {
+    /// The topmost element at scene point `(x, y)`, or `None`. Z-order
+    /// mirrors paint order: a node beats an overlapping edge, which
+    /// beats a lane box behind them. `tol` (scene units) widens edge
+    /// picking so thin routes are still selectable.
+    pub fn hit_test(&self, x: f64, y: f64, tol: f64) -> Option<AdvanceHit> {
+        if let Some(i) = self.node_at(x, y) {
+            return Some(AdvanceHit::Node(i));
+        }
+        if let Some(i) = self.edge_at(x, y, tol) {
+            return Some(AdvanceHit::Edge(i));
+        }
+        self.lane_at(x, y).map(AdvanceHit::Lane)
+    }
+
+    /// Index of the topmost node whose shape contains `(x, y)`, tested
+    /// back-to-front (later-drawn wins, as painted). Shape-precise for
+    /// diamonds and (double) circles — their bounding box would
+    /// over-select the empty corners — and the bounding rectangle for
+    /// every other shape.
+    pub fn node_at(&self, x: f64, y: f64) -> Option<usize> {
+        self.nodes.iter().rposition(|n| node_contains_adv(n, x, y))
+    }
+
+    /// Index of the edge nearest `(x, y)` within `tol` scene units, or
+    /// `None`. Distance is measured to the drawn route polyline, and the
+    /// NEAREST edge wins so overlapping routes resolve cleanly.
+    pub fn edge_at(&self, x: f64, y: f64, tol: f64) -> Option<usize> {
+        let mut best: Option<(usize, f64)> = None;
+        for (i, e) in self.edges.iter().enumerate() {
+            if matches!(e.kind, EdgeKind::Invisible) {
+                continue; // never drawn — never picked
+            }
+            let d = e
+                .points
+                .windows(2)
+                .map(|w| point_seg_dist_adv(x, y, w[0], w[1]))
+                .fold(f64::INFINITY, f64::min);
+            // `<=` so a later-drawn edge wins a distance tie, matching
+            // node_at's topmost-wins z-order.
+            if d <= tol && best.map_or(true, |(_, bd)| d <= bd) {
+                best = Some((i, d));
+            }
+        }
+        best.map(|(i, _)| i)
+    }
+
+    /// Index of the lane whose box contains `(x, y)`, or `None`. Nested
+    /// lanes resolve to the SMALLEST containing box (the most specific
+    /// one). Lanes paint behind nodes and edges, so prefer [`hit_test`]
+    /// when you want proper z-order.
+    pub fn lane_at(&self, x: f64, y: f64) -> Option<usize> {
+        let mut best: Option<(usize, f64)> = None;
+        for (i, l) in self.lanes.iter().enumerate() {
+            let inside = x >= l.x && x <= l.x + l.w && y >= l.y && y <= l.y + l.h;
+            let area = l.w * l.h;
+            let better = best.map_or(true, |(bi, ba)| area < ba || (area == ba && i < bi));
+            if inside && better {
+                best = Some((i, area));
+            }
+        }
+        best.map(|(i, _)| i)
+    }
+
+    /// The node nearest `(x, y)` and its distance in scene units (0 when
+    /// the point is inside the node's box) — edge-drawing snap:
+    /// "drop near B → connect to B".
+    pub fn nearest_node(&self, x: f64, y: f64) -> Option<(usize, f64)> {
+        self.nodes
+            .iter()
+            .enumerate()
+            .map(|(i, n)| {
+                let dx = (x - n.x).abs() - n.w / 2.0;
+                let dy = (y - n.y).abs() - n.h / 2.0;
+                (i, dx.max(0.0).hypot(dy.max(0.0)))
+            })
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+    }
+}
+
+/// Whether a node's SHAPE (not just its bounding box) contains a point —
+/// mirrors what the advance renderer actually draws: diamonds and
+/// (double) circles are over-selected by their boxes, everything else
+/// (including the rect-drawn state pseudostates) is a bounding rect.
+fn node_contains_adv(n: &AdvanceSceneNode, x: f64, y: f64) -> bool {
+    let (hw, hh) = (n.w / 2.0, n.h / 2.0);
+    if hw <= 0.0 || hh <= 0.0 {
+        return false;
+    }
+    let (dx, dy) = ((x - n.x).abs(), (y - n.y).abs());
+    match n.shape {
+        // Rhombus: |dx|/hw + |dy|/hh <= 1.
+        Shape::Diamond => dx / hw + dy / hh <= 1.0,
+        // Circle: the renderer draws `<circle r=w/2>` — a disc, not an
+        // ellipse — so match that exactly for any w/h.
+        Shape::Circle | Shape::DoubleCircle => dx * dx + dy * dy <= hw * hw,
+        // Everything else: bounding rectangle.
+        _ => dx <= hw && dy <= hh,
+    }
+}
+
+/// Distance from `(x, y)` to a segment `a`–`b`.
+fn point_seg_dist_adv(px: f64, py: f64, a: (f64, f64), b: (f64, f64)) -> f64 {
+    let (abx, aby) = (b.0 - a.0, b.1 - a.1);
+    let len2 = abx * abx + aby * aby;
+    let t = if len2 <= f64::EPSILON {
+        0.0
+    } else {
+        (((px - a.0) * abx + (py - a.1) * aby) / len2).clamp(0.0, 1.0)
+    };
+    ((a.0 + t * abx) - px).hypot((a.1 + t * aby) - py)
 }
 
 // ------------------------------------------------------------------
@@ -1813,6 +2978,7 @@ fn emit_lanes_and_nodes_rec(
                     w: nw,
                     h: nh,
                     shape: n.shape,
+                    style: n.style.clone(),
                 });
             }
         }
@@ -1865,6 +3031,7 @@ fn emit_lanes_and_nodes_rec(
                     w: nw,
                     h: nh,
                     shape: n.shape,
+                    style: n.style.clone(),
                 });
             }
         }
@@ -1896,6 +3063,7 @@ pub fn layout(d: &AdvanceDiagram) -> AdvanceScene {
                 w: sizes[i].0,
                 h: sizes[i].1,
                 shape: n.shape,
+                style: n.style.clone(),
             }
         }).collect();
         let (lane_scenes, width, height) = build_lanes_around_nodes(d, &node_scenes);
@@ -2072,8 +3240,16 @@ fn render_node(s: &mut String, n: &AdvanceSceneNode, text_color: &str) {
     let cy = n.y;
     let w = n.w;
     let h = n.h;
-    let (fill, stroke) = shape_style(n.shape);
-    let style = format!("fill=\"{}\" stroke=\"{}\" stroke-width=\"1.6\"", fill, stroke);
+    let (mut fill, mut stroke) = shape_style(n.shape);
+    if let Some(v) = &n.style.fill {
+        fill = v.clone();
+    }
+    if let Some(v) = &n.style.stroke {
+        stroke = v.clone();
+    }
+    let sw = n.style.stroke_width.unwrap_or(1.6);
+    let style = format!("fill=\"{}\" stroke=\"{}\" stroke-width=\"{:.1}\"", fill, stroke, sw);
+    let label_color = n.style.color.as_deref().unwrap_or(text_color);
 
     match n.shape {
         Shape::Rect | Shape::Rounded | Shape::Stadium => {
@@ -2130,19 +3306,19 @@ fn render_node(s: &mut String, n: &AdvanceSceneNode, text_color: &str) {
                 "<path d=\"M {l:.1} {ty:.1} A {rx:.1} {ry:.1} 0 0 0 {r:.1} {ty:.1} \
                  L {r:.1} {by:.1} A {rx:.1} {ry:.1} 0 0 1 {l:.1} {by:.1} Z\" {style}/>\n\
                  <path d=\"M {l:.1} {ty:.1} A {rx:.1} {ry:.1} 0 0 1 {r:.1} {ty:.1}\" \
-                 fill=\"none\" stroke=\"{stroke}\" stroke-width=\"1.6\"/>\n",
+                 fill=\"none\" stroke=\"{stroke}\" stroke-width=\"{sw:.1}\"/>\n",
                 l = l, r = r, ty = t + ry, by = b - ry, rx = w / 2.0, ry = ry,
-                stroke = stroke, style = style,
+                stroke = stroke, sw = sw, style = style,
             ));
         }
         Shape::Subroutine => {
             let (l, t) = (cx - w / 2.0, cy - h / 2.0);
             s.push_str(&format!(
                 "<rect x=\"{l:.1}\" y=\"{t:.1}\" width=\"{w:.1}\" height=\"{h:.1}\" rx=\"3\" {style}/>\n\
-                 <line x1=\"{l1:.1}\" y1=\"{t:.1}\" x2=\"{l1:.1}\" y2=\"{b:.1}\" stroke=\"{stroke}\" stroke-width=\"1.6\"/>\n\
-                 <line x1=\"{r1:.1}\" y1=\"{t:.1}\" x2=\"{r1:.1}\" y2=\"{b:.1}\" stroke=\"{stroke}\" stroke-width=\"1.6\"/>\n",
+                 <line x1=\"{l1:.1}\" y1=\"{t:.1}\" x2=\"{l1:.1}\" y2=\"{b:.1}\" stroke=\"{stroke}\" stroke-width=\"{sw:.1}\"/>\n\
+                 <line x1=\"{r1:.1}\" y1=\"{t:.1}\" x2=\"{r1:.1}\" y2=\"{b:.1}\" stroke=\"{stroke}\" stroke-width=\"{sw:.1}\"/>\n",
                 l = l, t = t, w = w, h = h, b = t + h, l1 = l + 8.0, r1 = l + w - 8.0,
-                stroke = stroke, style = style,
+                stroke = stroke, sw = sw, style = style,
             ));
         }
         Shape::Hexagon => {
@@ -2197,7 +3373,7 @@ fn render_node(s: &mut String, n: &AdvanceSceneNode, text_color: &str) {
             cx,
             y,
             FONT_SIZE,
-            text_color,
+            label_color,
             escape(line)
         ));
     }
@@ -2218,13 +3394,31 @@ pub fn to_svg_with(sc: &AdvanceScene, opts: &SvgOptions) -> String {
         s.push_str(&format!("<desc>{}</desc>\n", escape(desc)));
     }
 
-    let marker_id = format!("advance-arrow-{}", MARKER_COUNTER.fetch_add(1, Ordering::Relaxed));
-    s.push_str(&format!(
-        "<defs><marker id=\"{}\" viewBox=\"0 0 10 10\" refX=\"8.5\" refY=\"5\" \
-         markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\">\
-         <path d=\"M 0 1 L 9 5 L 0 9 z\" fill=\"{}\"/></marker></defs>\n",
-        marker_id, sc.style.edge_color
-    ));
+    // One arrowhead marker per resolved edge color (first-seen order), so
+    // a styled edge's arrowhead matches its stroke instead of the global.
+    let mut markers: Vec<(String, String)> = Vec::new();
+    for e in &sc.edges {
+        if matches!(e.kind, EdgeKind::Invisible) || !e.kind.has_arrow() {
+            continue;
+        }
+        let color = e.style.color.as_deref().unwrap_or(&sc.style.edge_color).to_string();
+        if !markers.iter().any(|(c, _)| *c == color) {
+            let id = format!("advance-arrow-{}", MARKER_COUNTER.fetch_add(1, Ordering::Relaxed));
+            markers.push((color, id));
+        }
+    }
+    let mut defs = String::new();
+    for (color, id) in &markers {
+        defs.push_str(&format!(
+            "<marker id=\"{}\" viewBox=\"0 0 10 10\" refX=\"8.5\" refY=\"5\" \
+             markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\">\
+             <path d=\"M 0 1 L 9 5 L 0 9 z\" fill=\"{}\"/></marker>",
+            id, color
+        ));
+    }
+    if !defs.is_empty() {
+        s.push_str(&format!("<defs>{}</defs>\n", defs));
+    }
 
     // Lane backgrounds
     for lane in &sc.lanes {
@@ -2254,13 +3448,27 @@ pub fn to_svg_with(sc: &AdvanceScene, opts: &SvgOptions) -> String {
         if matches!(e.kind, EdgeKind::Invisible) {
             continue;
         }
-        let (dash, sw) = match e.kind {
-            EdgeKind::Dotted | EdgeKind::DottedOpen => (" stroke-dasharray=\"5 4\"", 1.7),
-            EdgeKind::Thick | EdgeKind::ThickOpen => ("", 3.4),
-            _ => ("", 1.7),
+        let color = e.style.color.as_deref().unwrap_or(&sc.style.edge_color);
+        // An explicit style dash wins over the kind-based dashed style;
+        // otherwise Thick stays solid, Dotted stays dashed.
+        let dash = e.style.dash.as_deref().or(match e.kind {
+            EdgeKind::Dotted | EdgeKind::DottedOpen => Some("5 4"),
+            _ => None,
+        });
+        let dash_attr = match dash {
+            Some(d) => format!(" stroke-dasharray=\"{}\"", d),
+            None => String::new(),
         };
+        let sw = e.style.stroke_width.unwrap_or(match e.kind {
+            EdgeKind::Thick | EdgeKind::ThickOpen => 3.4,
+            _ => 1.7,
+        });
         let marker = if e.kind.has_arrow() {
-            format!(" marker-end=\"url(#{})\"", marker_id)
+            markers
+                .iter()
+                .find(|(c, _)| c == color)
+                .map(|(_, id)| format!(" marker-end=\"url(#{})\"", id))
+                .unwrap_or_default()
         } else {
             String::new()
         };
@@ -2274,40 +3482,47 @@ pub fn to_svg_with(sc: &AdvanceScene, opts: &SvgOptions) -> String {
             String::new()
         };
         s.push_str(&format!(
-            "<path d=\"{}\" fill=\"none\" stroke=\"{}\" stroke-width=\"{}\"{}{}/>\n",
-            d, sc.style.edge_color, sw, dash, marker
+            "<path d=\"{}\" fill=\"none\" stroke=\"{}\" stroke-width=\"{:.1}\"{}{}/>\n",
+            d, color, sw, dash_attr, marker
         ));
         if let Some(label) = &e.label {
-            let mut best_vert: Option<(f64, f64, f64)> = None;
-            for i in 0..e.points.len().saturating_sub(1) {
-                let (x1, y1) = e.points[i];
-                let (x2, y2) = e.points[i + 1];
-                if (x1 - x2).abs() < f64::EPSILON {
-                    let len = (y2 - y1).abs();
-                    if best_vert.map(|(_, _, l)| len > l).unwrap_or(true) {
-                        best_vert = Some((x1, (y1 + y2) / 2.0, len));
+            // Route-time label_pos (collision-dodged) wins; otherwise fall
+            // back to the historical inline placement.
+            let (lx, ly) = if let Some(pos) = e.label_pos {
+                pos
+            } else {
+                let mut best_vert: Option<(f64, f64, f64)> = None;
+                for i in 0..e.points.len().saturating_sub(1) {
+                    let (x1, y1) = e.points[i];
+                    let (x2, y2) = e.points[i + 1];
+                    if (x1 - x2).abs() < f64::EPSILON {
+                        let len = (y2 - y1).abs();
+                        if best_vert.map(|(_, _, l)| len > l).unwrap_or(true) {
+                            best_vert = Some((x1, (y1 + y2) / 2.0, len));
+                        }
                     }
                 }
-            }
-            let (lx, ly) = if let Some((x, y, len)) = best_vert {
-                if len >= 22.0 {
-                    (x + 8.0, y)
+                if let Some((x, y, len)) = best_vert {
+                    if len >= 22.0 {
+                        (x + 8.0, y)
+                    } else {
+                        let mid = e.points[e.points.len() / 2];
+                        (mid.0, mid.1)
+                    }
                 } else {
                     let mid = e.points[e.points.len() / 2];
                     (mid.0, mid.1)
                 }
-            } else {
-                let mid = e.points[e.points.len() / 2];
-                (mid.0, mid.1)
             };
             let lw = text_width(label) + 14.0;
+            let label_fill = e.style.label_fill.as_deref().unwrap_or(&sc.style.label_fill);
             s.push_str(&format!(
                 "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"18\" \
                  fill=\"{}\" stroke=\"{}\" stroke-width=\"1\" rx=\"3\"/>\n",
                 lx - lw / 2.0,
                 ly - 9.0,
                 lw,
-                sc.style.label_fill,
+                label_fill,
                 sc.style.lane_stroke
             ));
             s.push_str(&format!(
@@ -2429,6 +3644,7 @@ fn place_nodes_at_positions(
             w: sizes[i].0,
             h: sizes[i].1,
             shape: n.shape,
+            style: n.style.clone(),
         })
         .collect()
 }
@@ -2978,5 +4194,485 @@ mod tests {
         assert!(sc.edges.iter().all(|e| e.points.iter().all(|p| p.1 >= d.config.margin - 1e-9)));
         let max_bottom = sc.nodes.iter().map(|n| n.y + n.h / 2.0).fold(0.0_f64, f64::max);
         assert!(sc.height >= max_bottom + d.config.margin - 1e-9);
+    }
+
+    // ---- Text DSL ----
+
+    fn text_diagram(src: &str) -> AdvanceDiagram {
+        AdvanceDiagram::parse_text(src).unwrap()
+    }
+
+    fn node_lane<'a>(d: &'a AdvanceDiagram, id: &str) -> &'a str {
+        d.nodes.iter().find(|n| n.id == id).unwrap().lane.as_str()
+    }
+
+    #[test]
+    fn text_parses_flat_lanes_and_edges() {
+        let d = text_diagram(
+            "swimlane horizontal\n\
+             lane l1 \"Sales\"\n\
+             \x20 a([Start])\n\
+             \x20 b[Prepare]\n\
+             lane l2 \"QA\"\n\
+             \x20 c{Check}\n\
+             \n\
+             a --> b\n\
+             b -->|done| c\n",
+        );
+        assert_eq!(d.direction, AdvanceDirection::Horizontal);
+        assert_eq!(d.lanes.len(), 2);
+        assert_eq!(d.lanes[0].title, "Sales");
+        assert_eq!(d.nodes.len(), 3);
+        assert_eq!(d.edges.len(), 2);
+        assert_eq!(d.edges[1].label.as_deref(), Some("done"));
+    }
+
+    #[test]
+    fn text_nested_lane_blocks() {
+        let d = text_diagram(
+            "lane top \"Top\" {\n\
+             \x20 a\n\
+             \x20 lane sub \"Sub\" {\n\
+             \x20   b\n\
+             \x20 }\n\
+             \x20 c\n\
+             }\n\
+             lane other \"Other\"\n\
+             \x20 d\n",
+        );
+        assert_eq!(d.lanes.len(), 2);
+        assert_eq!(d.lanes[0].id, "top");
+        assert_eq!(d.lanes[0].children.len(), 1);
+        assert_eq!(d.lanes[0].children[0].id, "sub");
+        assert_eq!(d.lanes[0].children[0].children.len(), 0);
+        assert_eq!(d.lanes[1].id, "other");
+        assert_eq!(node_lane(&d, "a"), "top");
+        assert_eq!(node_lane(&d, "b"), "sub");
+        assert_eq!(node_lane(&d, "c"), "top");
+        assert_eq!(node_lane(&d, "d"), "other");
+    }
+
+    #[test]
+    fn text_unbalanced_braces() {
+        assert!(AdvanceDiagram::parse_text("lane a {\n  x\n}\n}").is_err());
+        assert!(AdvanceDiagram::parse_text("lane a {\n  x\n").is_err());
+        let err = AdvanceDiagram::parse_text("lane a {\n  x\n").unwrap_err();
+        assert!(err.message.contains("never closed"));
+    }
+
+    #[test]
+    fn text_nested_sibling_order_preserved() {
+        // Siblings under one parent keep declaration order in the tree
+        // (the flat->tree assembly must not reverse them).
+        let d = text_diagram(
+            "lane top \"Top\" {\n\
+             \x20 lane a1 \"A1\" {\n\
+             \x20   x\n\
+             \x20 }\n\
+             \x20 lane a2 \"A2\" {\n\
+             \x20   y\n\
+             \x20 }\n\
+             }\n",
+        );
+        assert_eq!(d.lanes.len(), 1);
+        let children: Vec<&str> = d.lanes[0].children.iter().map(|l| l.id.as_str()).collect();
+        assert_eq!(children, vec!["a1", "a2"]);
+        // And the layout places A1 before A2 left-to-right.
+        let sc = layout(&d);
+        let x = |id: &str| {
+            sc.lanes
+                .iter()
+                .find(|l| l.id == id)
+                .map(|l| l.x)
+                .unwrap_or(f64::NAN)
+        };
+        assert!(x("a1") < x("a2"), "a1 must render left of a2");
+    }
+
+    #[test]
+    fn text_node_after_closed_lane_errors() {
+        // A node declared after a top-level lane's closing brace is outside
+        // any lane — it must not silently attach to the closed lane.
+        let err = AdvanceDiagram::parse_text("lane top {\n  a\n}\nb\n").unwrap_err();
+        assert!(err.message.contains("outside of any lane"));
+    }
+
+    #[test]
+    fn text_style_node() {
+        let d = text_diagram(
+            "lane l\n\
+             \x20 a\n\
+             style a fill:#fee,stroke:#900,stroke-width:3px\n",
+        );
+        let st = &d.nodes[0].style;
+        assert_eq!(st.fill.as_deref(), Some("#fee"));
+        assert_eq!(st.stroke.as_deref(), Some("#900"));
+        assert_eq!(st.stroke_width, Some(3.0));
+    }
+
+    #[test]
+    fn text_stroke_width_rejects_bad_values() {
+        // Same guard as the JSON path: non-finite / non-positive widths error.
+        assert!(AdvanceDiagram::parse_text("lane l\n  a\nstyle a stroke-width:nan\n").is_err());
+        assert!(AdvanceDiagram::parse_text("lane l\n  a\nstyle a stroke-width:inf\n").is_err());
+        assert!(AdvanceDiagram::parse_text("lane l\n  a\nstyle a stroke-width:0\n").is_err());
+        assert!(AdvanceDiagram::parse_text("lane l\n  a\nstyle a stroke-width:-2\n").is_err());
+        // Positive finite values (with or without px) still parse.
+        let d = text_diagram("lane l\n  a\nstyle a stroke-width:3px\n");
+        assert_eq!(d.nodes[0].style.stroke_width, Some(3.0));
+    }
+
+    #[test]
+    fn text_style_edge() {
+        let d = text_diagram(
+            "lane l\n\
+             \x20 a\n\
+             \x20 b\n\
+             a --> b\n\
+             style a-->b color:#b00,dash:3 2\n",
+        );
+        let es = &d.edges[0].style;
+        assert_eq!(es.color.as_deref(), Some("#b00"));
+        assert_eq!(es.dash.as_deref(), Some("3 2"));
+    }
+
+    #[test]
+    fn text_class_def_resolved_after_usage() {
+        let d = text_diagram(
+            "lane l\n\
+             \x20 a\n\
+             class a warn\n\
+             classDef warn fill:#fff3cd,stroke:#f0ad4e\n",
+        );
+        assert_eq!(d.nodes[0].style.fill.as_deref(), Some("#fff3cd"));
+        assert_eq!(d.nodes[0].style.stroke.as_deref(), Some("#f0ad4e"));
+    }
+
+    #[test]
+    fn text_class_shorthand() {
+        let d = text_diagram(
+            "lane l\n\
+             \x20 a::warn\n\
+             classDef warn fill:#fff3cd\n",
+        );
+        assert_eq!(d.nodes[0].id, "a");
+        assert_eq!(d.nodes[0].style.fill.as_deref(), Some("#fff3cd"));
+    }
+
+    #[test]
+    fn text_ports() {
+        let d = text_diagram(
+            "lane l\n\
+             \x20 a\n\
+             \x20 b\n\
+             a:right --> b:top\n",
+        );
+        let e = &d.edges[0];
+        assert_eq!(e.from_side, Some(AdvanceSide::Right));
+        assert_eq!(e.to_side, Some(AdvanceSide::Top));
+    }
+
+    // ---- Phase 4: port-aware routing & label collision ----
+
+    fn test_node(id: &str, x: f64, y: f64) -> AdvanceSceneNode {
+        AdvanceSceneNode {
+            id: id.to_string(),
+            label: id.to_string(),
+            lane: "l".to_string(),
+            x,
+            y,
+            w: 60.0,
+            h: 40.0,
+            shape: Shape::Rect,
+            style: NodeStyle::default(),
+        }
+    }
+
+    #[test]
+    fn ports_affect_anchor() {
+        let d = text_diagram(
+            "lane l\n\
+             \x20 a\n\
+             \x20 b\n\
+             \x20 c\n\
+             a:right --> b:left\n\
+             a:bottom --> b:top\n\
+             b --> c:left\n",
+        );
+        let sc = layout(&d);
+        let node = |id: &str| sc.nodes.iter().find(|n| n.id == id).unwrap();
+        let (a, b, c) = (node("a"), node("b"), node("c"));
+
+        // Both sides pinned: first/last points sit exactly on the sides,
+        // and the leader leaves the source along its side's normal.
+        let e0 = &sc.edges[0];
+        let p0 = e0.points[0];
+        let p1 = e0.points[1];
+        let last = *e0.points.last().unwrap();
+        assert!((p0.0 - (a.x + a.w / 2.0)).abs() < 1e-6 && (p0.1 - a.y).abs() < 1e-6);
+        assert!((p1.0 - (a.x + a.w / 2.0 + 18.0)).abs() < 1e-6 && (p1.1 - a.y).abs() < 1e-6);
+        assert!((last.0 - (b.x - b.w / 2.0)).abs() < 1e-6 && (last.1 - b.y).abs() < 1e-6);
+
+        let e1 = &sc.edges[1];
+        let p0 = e1.points[0];
+        let last = *e1.points.last().unwrap();
+        assert!((p0.0 - a.x).abs() < 1e-6 && (p0.1 - (a.y + a.h / 2.0)).abs() < 1e-6);
+        assert!((last.0 - b.x).abs() < 1e-6 && (last.1 - (b.y - b.h / 2.0)).abs() < 1e-6);
+
+        // Only the target side pinned: the source falls back to the
+        // natural anchor (b leaves through its bottom toward c).
+        let e2 = &sc.edges[2];
+        let p0 = e2.points[0];
+        let last = *e2.points.last().unwrap();
+        assert!((p0.0 - b.x).abs() < 1e-6 && (p0.1 - (b.y + b.h / 2.0)).abs() < 1e-6);
+        assert!((last.0 - (c.x - c.w / 2.0)).abs() < 1e-6 && (last.1 - c.y).abs() < 1e-6);
+    }
+
+    #[test]
+    fn label_avoids_node() {
+        let nodes = vec![
+            test_node("a", 100.0, 100.0),
+            test_node("blocker", 108.0, 220.0),
+            test_node("c", 100.0, 360.0),
+        ];
+        // Straight a→c run whose default label spot (x+8, mid) = (108,220)
+        // sits right on top of the blocker node.
+        let points = vec![(100.0, 140.0), (100.0, 300.0), (300.0, 300.0), (300.0, 340.0)];
+        let chosen = choose_label_pos(&label_candidates(&points), "XX", "a", "c", &nodes, &[]).unwrap();
+        assert_eq!(chosen, (200.0, 300.0));
+        let lb = label_box(chosen, "XX");
+        assert!(!rects_overlap(lb, node_rect(&nodes[1])), "label overlaps blocker node");
+    }
+
+    #[test]
+    fn label_avoids_other_labels() {
+        let nodes = vec![
+            test_node("a", 100.0, 100.0),
+            test_node("blocker", 108.0, 220.0),
+            test_node("c", 100.0, 360.0),
+        ];
+        // First edge's label is pushed off its blocked default to (200,300).
+        let first = vec![(100.0, 140.0), (100.0, 300.0), (300.0, 300.0), (300.0, 340.0)];
+        let first_pos = choose_label_pos(&label_candidates(&first), "XX", "a", "c", &nodes, &[]).unwrap();
+        assert_eq!(first_pos, (200.0, 300.0));
+        let placed = vec![label_box(first_pos, "XX")];
+
+        // Second edge's default (200,285) would overlap the first label,
+        // so it must move to the next free candidate.
+        let second = vec![(192.0, 240.0), (192.0, 330.0), (320.0, 330.0), (320.0, 360.0)];
+        let unconstrained = choose_label_pos(&label_candidates(&second), "YY", "d", "f", &nodes, &[]).unwrap();
+        assert_eq!(unconstrained, (200.0, 285.0));
+        let second_pos = choose_label_pos(&label_candidates(&second), "YY", "d", "f", &nodes, &placed).unwrap();
+        assert_eq!(second_pos, (256.0, 330.0));
+        assert!(!rects_overlap(label_box(second_pos, "YY"), placed[0]));
+    }
+
+    // ---- Phase 5: per-node / per-edge rendering ----
+
+    #[test]
+    fn per_node_style_renders() {
+        let d = text_diagram(
+            "lane l\n\
+             \x20 a\n\
+             \x20 b\n\
+             a --> b\n\
+             style a fill:#fee,stroke:#900,stroke-width:4,color:#fff\n",
+        );
+        let scene = layout(&d);
+        let svg = to_svg(&scene);
+        assert!(svg.contains(r##"fill="#fee" stroke="#900" stroke-width="4.0""##), "node body style");
+        assert!(svg.contains(r##"fill="#fff">a</text>"##), "node label color");
+        // The unstyled node keeps the shape theme.
+        assert!(svg.contains(r##"fill="#fafafa""##) || svg.contains(r##"fill="#ffffff""##));
+    }
+
+    #[test]
+    fn per_edge_color_renders_with_matching_marker() {
+        let d = text_diagram(
+            "lane l\n\
+             \x20 a\n\
+             \x20 b\n\
+             \x20 c\n\
+             a --> b\n\
+             b -->|via| c\n\
+             style b-->c color:#f00,dash:3 2,stroke-width:2,label-fill:#eee\n",
+        );
+        let scene = layout(&d);
+        let svg = to_svg(&scene);
+
+        // A marker filled with the styled edge's stroke colour exists.
+        let f00_idx = svg.find(r##"fill="#f00"/></marker>"##).expect("no #f00 marker");
+        let id_start = svg[..f00_idx].rfind(r#"id=""#).expect("no marker id") + 4;
+        let id_end = svg[id_start..f00_idx].find('"').expect("unterminated marker id") + id_start;
+        let f00_id = &svg[id_start..id_end];
+
+        // The red edge path carries the style and references that marker.
+        let red_start = svg.find(r##"stroke="#f00""##).expect("no red edge path");
+        let path_start = svg[..red_start].rfind("<path").expect("no path element");
+        let path_end = svg[path_start..].find("/>").expect("unterminated path") + path_start;
+        let red_path = &svg[path_start..path_end];
+        assert!(red_path.contains("stroke-width=\"2.0\""));
+        assert!(red_path.contains("stroke-dasharray=\"3 2\""));
+        assert!(red_path.contains(&format!("marker-end=\"url(#{})\"", f00_id)));
+
+        // The styled edge's label pill uses its own label-fill.
+        assert!(svg.contains(r##"fill="#eee""##));
+    }
+
+    // ---- Phase 6: scene hit-testing ----
+
+    #[test]
+    fn hit_test_node_edge_lane() {
+        let d = text_diagram(
+            "lane l\n\
+             \x20 a\n\
+             \x20 b\n\
+             a --> b\n",
+        );
+        let sc = layout(&d);
+        let a = sc.nodes.iter().position(|n| n.id == "a").unwrap();
+
+        // A node's centre resolves to that node (topmost paint order).
+        assert_eq!(
+            sc.hit_test(sc.nodes[a].x, sc.nodes[a].y, 5.0),
+            Some(AdvanceHit::Node(a))
+        );
+
+        // Midway between the two nodes the pick lands on the edge.
+        let e = &sc.edges[0];
+        let mid = {
+            let mut best = None;
+            for w in e.points.windows(2) {
+                if (w[0].0 - w[1].0).abs() < f64::EPSILON {
+                    let len = (w[1].1 - w[0].1).abs();
+                    if best.map(|(_, _, l)| len > l).unwrap_or(true) {
+                        best = Some((w[0].0, (w[0].1 + w[1].1) / 2.0, len));
+                    }
+                }
+            }
+            best.unwrap()
+        };
+        assert_eq!(sc.edge_at(mid.0, mid.1, 5.0), Some(0));
+        assert_eq!(sc.hit_test(mid.0, mid.1, 5.0), Some(AdvanceHit::Edge(0)));
+
+        // In the lane's top-left corner, away from nodes and edges, the
+        // pick resolves to the lane.
+        let (lx, ly) = (sc.lanes[0].x + 2.0, sc.lanes[0].y + 2.0);
+        assert_eq!(sc.lane_at(lx, ly), Some(0));
+        assert_eq!(sc.hit_test(lx, ly, 5.0), Some(AdvanceHit::Lane(0)));
+
+        // Shape-precise: a diamond's box corner is empty even though the
+        // bounding rect contains it.
+        let d2 = text_diagram("lane l\n  d{Check}\n");
+        let sc2 = layout(&d2);
+        let nd = &sc2.nodes[0];
+        let corner = (nd.x + nd.w / 2.0 - 1.0, nd.y + nd.h / 2.0 - 1.0);
+        assert_eq!(sc2.node_at(corner.0, corner.1), None);
+        assert_eq!(sc2.node_at(nd.x, nd.y), Some(0));
+    }
+
+    #[test]
+    fn nearest_node_distance() {
+        let d = text_diagram("lane l\n  a\n  b\n");
+        let sc = layout(&d);
+        let a = sc.nodes.iter().position(|n| n.id == "a").unwrap();
+        let b = sc.nodes.iter().position(|n| n.id == "b").unwrap();
+
+        // Inside a node the snap distance is 0.
+        let (i, dist) = sc.nearest_node(sc.nodes[a].x, sc.nodes[a].y).unwrap();
+        assert_eq!(i, a);
+        assert!(dist < 1e-9);
+
+        // Far right of the top node, the top node is still the nearest.
+        let far_x = sc.nodes[a].x + sc.nodes[a].w / 2.0 + 50.0;
+        let (i, dist) = sc.nearest_node(far_x, sc.nodes[a].y).unwrap();
+        assert_eq!(i, a);
+        assert!(dist > 40.0);
+
+        // Both nodes are pickable via hit_test too.
+        assert_eq!(sc.node_at(sc.nodes[b].x, sc.nodes[b].y), Some(b));
+    }
+
+    #[test]
+    fn text_config() {
+        let d = text_diagram(
+            "lane l\n\
+             \x20 a\n\
+             config margin 42\n\
+             config lane_gap 60\n\
+             config order topology\n",
+        );
+        assert_eq!(d.config.margin, 42.0);
+        assert_eq!(d.config.lane_gap, 60.0);
+        assert_eq!(d.config.order, AdvanceOrder::Topology);
+    }
+
+    #[test]
+    fn text_breaks() {
+        let d = text_diagram(
+            "lane l \"My<br/>Lane\"\n\
+             \x20 a[Line1<br/>Line2]\n\
+             \x20 b\n\
+             a -->|go<br/>now| b\n",
+        );
+        assert_eq!(d.lanes[0].title, "My\nLane");
+        assert_eq!(d.nodes[0].label, "Line1\nLine2");
+        assert_eq!(d.edges[0].label.as_deref(), Some("go\nnow"));
+    }
+
+    #[test]
+    fn text_error_has_snippet() {
+        let err = AdvanceDiagram::parse_text("lane l\n  a --> b\n").unwrap_err();
+        assert!(err.message.contains("line 2"));
+        assert!(err.message.contains("a --> b"));
+    }
+
+    #[test]
+    fn node_and_edge_style_json_roundtrip() {
+        let src = r##"{
+            "lanes":[{"id":"l"}],
+            "nodes":[
+                {"id":"a","label":"A","lane":"l","style":{"fill":"#fee","stroke":"#900","color":"#fff","stroke-width":2.0}},
+                {"id":"b","label":"B","lane":"l"}
+            ],
+            "edges":[
+                {"from":"a","to":"b","style":{"color":"#b00","dash":"3,2","stroke-width":2.5,"label-fill":"#eee"},"from_side":"right","to_side":"top"}
+            ]
+        }"##;
+        let d = AdvanceDiagram::parse(src).unwrap();
+        assert_eq!(d.nodes[0].style.fill.as_deref(), Some("#fee"));
+        assert_eq!(d.nodes[0].style.stroke_width, Some(2.0));
+        assert!(d.nodes[1].style == NodeStyle::default());
+        let e = &d.edges[0];
+        assert_eq!(e.style.color.as_deref(), Some("#b00"));
+        assert_eq!(e.style.dash.as_deref(), Some("3,2"));
+        assert_eq!(e.style.stroke_width, Some(2.5));
+        assert_eq!(e.style.label_fill.as_deref(), Some("#eee"));
+        assert_eq!(e.from_side, Some(AdvanceSide::Right));
+        assert_eq!(e.to_side, Some(AdvanceSide::Top));
+        // Round-trip through to_json preserves styles and sides.
+        let d2 = AdvanceDiagram::parse(&to_json(&d)).unwrap();
+        assert_eq!(d2.nodes, d.nodes);
+        assert_eq!(d2.edges, d.edges);
+    }
+
+    #[test]
+    fn side_parse_validates() {
+        let json_str = |s: &str| parse_json(s).unwrap();
+        assert_eq!(parse_side_json(&json_str("\"auto\"")).unwrap(), None);
+        assert_eq!(
+            parse_side_json(&json_str("\"top\"")).unwrap(),
+            Some(AdvanceSide::Top)
+        );
+        assert!(parse_side_json(&json_str("\"north\"")).is_err());
+        assert!(parse_side_json(&json_str("42")).is_err());
+    }
+
+    #[test]
+    fn px_number_accepts_strings() {
+        let json_str = |s: &str| parse_json(s).unwrap();
+        assert_eq!(px_number(&json_str("4")).unwrap(), 4.0);
+        assert_eq!(px_number(&json_str("\"4px\"")).unwrap(), 4.0);
+        assert!(px_number(&json_str("\"wide\"")).is_err());
     }
 }

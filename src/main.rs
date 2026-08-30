@@ -14,12 +14,14 @@ fn print_help() {
          Usage:\n\
          \x20 flowmaid <input.mmd> [-o output.svg]\n\
          \x20 flowmaid --advance <input.json> [-o output.svg]\n\
+         \x20 flowmaid --advance-text <input.mmd> [-o output.svg]\n\
          \x20 cat diagram.mmd | flowmaid > out.svg\n\n\
          Options:\n\
          \x20 -o, --output <file>   write SVG to a file (default: stdout)\n\
          \x20 --compact <px>        fold a long linear chain to fit <px> along\n\
          \x20                       the flow axis (serpentine layout)\n\
          \x20 --advance             render advance / swimlane JSON input\n\
+         \x20 --advance-text        render advance / swimlane text DSL input\n\
          \x20 -h, --help            show this help\n\n\
          Syntax example:\n\
          \x20 flowchart TD\n\
@@ -37,6 +39,7 @@ fn main() {
     let mut output: Option<String> = None;
     let mut compact: Option<f64> = None;
     let mut advance: bool = false;
+    let mut advance_text: bool = false;
 
     let mut i = 0;
     while i < args.len() {
@@ -60,6 +63,9 @@ fn main() {
                         process::exit(2);
                     }
                 }
+            }
+            "--advance-text" => {
+                advance_text = true;
             }
             "--advance" => {
                 advance = true;
@@ -104,12 +110,22 @@ fn main() {
         }
     };
 
-    if advance {
-        let svg = match flowmaid::render_advance_svg(&source) {
-            Ok(s) => s,
-            Err(e) => {
-                eprintln!("advance error — {}", e);
-                process::exit(1);
+    if advance_text || advance {
+        let svg = if advance_text {
+            match flowmaid::render_advance_text_svg(&source) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("advance text error — {}", e);
+                    process::exit(1);
+                }
+            }
+        } else {
+            match flowmaid::render_advance_svg(&source) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("advance error — {}", e);
+                    process::exit(1);
+                }
             }
         };
         match &output {

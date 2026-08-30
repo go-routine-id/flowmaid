@@ -134,7 +134,7 @@
   <a href="#interactive">Interactive apps</a>
   <a href="#wasm">WebAssembly</a>
   <a href="#types">Diagram types</a>
-  <a href="#advance">Swimlanes (JSON)</a>
+  <a href="#advance">Swimlanes (JSON &amp; text DSL)</a>
   <a href="#layout">How layout works</a>
   <div class="group">More</div>
   <a href="#ecosystem">Ecosystem</a>
@@ -323,6 +323,38 @@ let svg   = advance::render_advance_routed(json, &amp;positions)?; // after drag
   <p><code>render_advance_routed_with_lanes</code> additionally takes caller-controlled
   lane widths, margin, and gap — the engine side of resizable swimlane columns.
   Content dragged outside the canvas is translated back into view.</p>
+  <p>The same engine also reads a concise <em>text DSL</em> — nested lanes, styling,
+  and ports:</p>
+  <pre><code>let svg = advance::render_advance_text_svg(src)?;   // text DSL -&gt; SVG</code></pre>
+  <pre><code>classDef primary fill:#e8f0fe,stroke:#4285f4
+config margin 24
+lane backend "Backend" {
+  a[Auth]::primary
+  b[API Gateway]
+  a --&gt; b
+}
+lane web "Web" {
+  c{Check}
+  c --&gt; b:top        # ported edge — enter b through its top
+}
+style a--&gt;b color:#188038,dash:4 2
+style c fill:#fff8e1</code></pre>
+  <ul>
+    <li><strong>Nested lanes</strong> — <code>lane id "Title" { ... }</code> opens a
+    child scope; a standalone <code>}</code> closes it.</li>
+    <li><strong>Styling</strong> — Mermaid-style <code>classDef</code>/<code>class</code>/
+    <code>a::name</code>/<code>style</code> directives; <code>style a--&gt;b …</code>
+    targets an edge. Node keys <code>fill</code>/<code>stroke</code>/
+    <code>stroke-width</code>/<code>color</code>; edge keys add <code>dash</code> and
+    <code>label-fill</code>.</li>
+    <li><strong>Ports</strong> — <code>a:right --&gt; b:top</code> pins the anchor sides
+    (<code>left</code>/<code>right</code>/<code>top</code>/<code>bottom</code>/<code>auto</code>).</li>
+    <li><strong><code>&lt;br/&gt;</code></strong> — line breaks in node labels, edge
+    labels, and lane titles.</li>
+  </ul>
+  <p><code>AdvanceScene</code> also exposes drag-and-drop picking —
+  <code>hit_test</code>, <code>node_at</code>, <code>edge_at</code>, <code>lane_at</code>,
+  <code>nearest_node</code>.</p>
   <div class="tip">This diagram kind has no mermaid header, so it stays outside the type
   counts above — they refer to mermaid-syntax types only.</div>
 </section>

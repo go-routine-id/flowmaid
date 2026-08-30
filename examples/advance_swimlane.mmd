@@ -1,0 +1,29 @@
+# Advance swimlane text DSL showcase: nested lanes, per-node/per-edge
+# styling, ports, classDef, <br/>, and the config directive.
+
+classDef primary fill:#e8f0fe,stroke:#4285f4,stroke-width:3,color:#1a1a1a
+
+config margin 24
+config lane_gap 36
+
+lane backend "Backend" {
+  a[Auth<br/>Service]::primary
+  b[API Gateway]
+  a --> b
+  worker((Worker))
+  b -->|publish| worker
+}
+
+lane frontend "Frontend" {
+  c{Validate}
+  d[Dashboard]
+  c --> d
+}
+
+# Ported edge: leave the dashboard through its right side,
+# enter the API gateway through its top.
+d:right --> b:top
+
+# Edge style; dash values are space-separated (SVG stroke-dasharray).
+style a-->b color:#188038,dash:4 2,stroke-width:2,label-fill:#f1f8e9
+style worker fill:#fff8e1,stroke:#f9a825
