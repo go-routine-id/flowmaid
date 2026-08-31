@@ -413,18 +413,34 @@ fn px_number(v: &JsonValue) -> Result<f64, AdvanceError> {
     Err(adv_err("stroke-width must be a number or a 'Npx' string"))
 }
 
+/// Reject a style value that could break out of the SVG attribute it is
+/// written into. Shares its rule with the flowchart parser so the whole
+/// crate holds one invariant: a style string in a parsed diagram never
+/// contains a quote or an angle bracket. See `parser::css_value`.
+fn adv_css_value(v: &str, key: &str) -> Result<String, AdvanceError> {
+    if let Some(c) = v
+        .chars()
+        .find(|c| crate::parser::CSS_FORBIDDEN.contains(c) || *c == '\n')
+    {
+        return Err(adv_err(format!(
+            "invalid character {c:?} in {key} value: '{v}'"
+        )));
+    }
+    Ok(v.to_string())
+}
+
 /// Parse a node `style` object from JSON. Unknown keys are ignored.
 fn parse_node_style_json(v: &JsonValue) -> Result<NodeStyle, AdvanceError> {
     let obj = as_object(v).ok_or_else(|| adv_err("node 'style' must be an object"))?;
     let mut st = NodeStyle::default();
     if let Some(s) = obj_get(obj, "fill").and_then(as_str) {
-        st.fill = Some(s.to_string());
+        st.fill = Some(adv_css_value(s, "fill")?);
     }
     if let Some(s) = obj_get(obj, "stroke").and_then(as_str) {
-        st.stroke = Some(s.to_string());
+        st.stroke = Some(adv_css_value(s, "stroke")?);
     }
     if let Some(s) = obj_get(obj, "color").and_then(as_str) {
-        st.color = Some(s.to_string());
+        st.color = Some(adv_css_value(s, "color")?);
     }
     if let Some(v) = obj_get(obj, "stroke-width") {
         st.stroke_width = Some(px_number(v)?);
@@ -437,16 +453,16 @@ fn parse_edge_style_json(v: &JsonValue) -> Result<AdvanceEdgeStyle, AdvanceError
     let obj = as_object(v).ok_or_else(|| adv_err("edge 'style' must be an object"))?;
     let mut st = AdvanceEdgeStyle::default();
     if let Some(s) = obj_get(obj, "color").and_then(as_str) {
-        st.color = Some(s.to_string());
+        st.color = Some(adv_css_value(s, "color")?);
     }
     if let Some(v) = obj_get(obj, "stroke-width") {
         st.stroke_width = Some(px_number(v)?);
     }
     if let Some(s) = obj_get(obj, "dash").and_then(as_str) {
-        st.dash = Some(s.to_string());
+        st.dash = Some(adv_css_value(s, "dash")?);
     }
     if let Some(s) = obj_get(obj, "label-fill").and_then(as_str) {
-        st.label_fill = Some(s.to_string());
+        st.label_fill = Some(adv_css_value(s, "label-fill")?);
     }
     Ok(st)
 }
@@ -1214,9 +1230,9 @@ fn parse_node_style_props(s: &str) -> Result<NodeStyle, String> {
         };
         let v = v.trim();
         match k.trim() {
-            "fill" => st.fill = Some(v.to_string()),
-            "stroke" => st.stroke = Some(v.to_string()),
-            "color" => st.color = Some(v.to_string()),
+            "fill" => st.fill = Some(adv_css_value(v, "fill").map_err(|e| e.message)?),
+            "stroke" => st.stroke = Some(adv_css_value(v, "stroke").map_err(|e| e.message)?),
+            "color" => st.color = Some(adv_css_value(v, "color").map_err(|e| e.message)?),
             "stroke-width" => {
                 st.stroke_width = Some(parse_stroke_width_prop(v)?);
             }
@@ -1239,12 +1255,14 @@ fn parse_edge_style_props(s: &str) -> Result<AdvanceEdgeStyle, String> {
         };
         let v = v.trim();
         match k.trim() {
-            "color" => st.color = Some(v.to_string()),
+            "color" => st.color = Some(adv_css_value(v, "color").map_err(|e| e.message)?),
             "stroke-width" => {
                 st.stroke_width = Some(parse_stroke_width_prop(v)?);
             }
-            "dash" => st.dash = Some(v.to_string()),
-            "label-fill" => st.label_fill = Some(v.to_string()),
+            "dash" => st.dash = Some(adv_css_value(v, "dash").map_err(|e| e.message)?),
+            "label-fill" => {
+                st.label_fill = Some(adv_css_value(v, "label-fill").map_err(|e| e.message)?)
+            }
             _ => {}
         }
     }
@@ -4675,4 +4693,31 @@ mod tests {
         assert_eq!(px_number(&json_str("\"4px\"")).unwrap(), 4.0);
         assert!(px_number(&json_str("\"wide\"")).is_err());
     }
+
+    #[test]
+    fn style_values_cannot_break_out_of_an_svg_attribute() {
+        // Same invariant as the flowchart parser, on all three advance
+        // entry points.
+        let text_node = "lane l \"L\"\na[A]\nstyle a fill:x\" onload=1\n";
+        let e = render_advance_text_svg(text_node).unwrap_err();
+        assert!(e.message.contains("invalid character"), "{}", e.message);
+
+        let text_edge = "lane l \"L\"\na[A]\nb[B]\na --> b\nstyle a-->b color:x' onload=1\n";
+        let e = render_advance_text_svg(text_edge).unwrap_err();
+        assert!(e.message.contains("invalid character"), "{}", e.message);
+
+        let json = r#"{"lanes":[{"id":"l","title":"L"}],
+            "nodes":[{"id":"a","lane":"l","label":"A","style":{"fill":"x\" onload=1"}}],
+            "edges":[]}"#;
+        let e = render_advance_svg(json).unwrap_err();
+        assert!(e.message.contains("invalid character"), "{}", e.message);
+    }
+
+    #[test]
+    fn ordinary_advance_css_values_still_parse() {
+        let svg =
+            render_advance_text_svg("lane l \"L\"\na[A]\nstyle a fill:rgb(1, 2, 3)\n").unwrap();
+        assert!(svg.contains("fill=\"rgb(1, 2, 3)\""), "{svg}");
+    }
+
 }

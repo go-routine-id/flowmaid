@@ -7,6 +7,23 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.29.1] - 2026-08-31
+
+### Fixed
+
+- **Style values can no longer break out of an SVG attribute.** A `fill`, `stroke`,
+  `color`, `dash`, or `label-fill` value carrying a quote could close the attribute
+  it was written into and add markup of its own, so rendering an untrusted diagram
+  could inject content into the SVG. Affected `style` / `classDef` in flowcharts and
+  both advance entry points (text DSL and JSON).
+
+  The two quote characters are now rejected where a style value enters the model,
+  with a line-numbered error, rather than escaped at each of the dozen render sites
+  that read one — escaping there is a discipline that only has to be forgotten once,
+  and the values also travel back out through `to_mermaid`. Angle brackets are
+  deliberately still allowed: they cannot end a quoted attribute, and
+  `fill:url(#a-->b)` is a legitimate value the crate already round-trips.
+
 ## [0.29.0] - 2026-08-31
 
 ### Added
