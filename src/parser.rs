@@ -3464,6 +3464,11 @@ fn sankey_config(source: &str) -> SankeyConfig {
     // Indent of `config:` / `sankey:` once seen. A line at or left of a
     // recorded indent has closed that block.
     let mut config_at: Option<usize> = None;
+    // Indent shared by `config:`'s DIRECT children, learnt from the
+    // first one seen. Without it a `sankey:` nested under some other
+    // namespace (`config.themeVariables.sankey`) would reconfigure the
+    // diagram.
+    let mut child_at: Option<usize> = None;
     let mut sankey_at: Option<usize> = None;
     for line in body {
         let t = line.trim();
@@ -3482,12 +3487,14 @@ fn sankey_config(source: &str) -> SankeyConfig {
         }
         if let Some(outer) = config_at {
             if ind > outer {
-                if t == "sankey:" {
+                let direct = *child_at.get_or_insert(ind);
+                if ind == direct && t == "sankey:" {
                     sankey_at = Some(ind);
                 }
                 continue;
             }
             config_at = None;
+            child_at = None;
         }
         if t == "config:" {
             config_at = Some(ind);
@@ -3499,43 +3506,58 @@ fn sankey_config(source: &str) -> SankeyConfig {
 /// Apply one `config.sankey.<key>: <value>` pair. A value that does not
 /// parse leaves the mermaid default in place rather than failing the
 /// whole diagram — config is decoration, not structure.
+/// A config number, accepted only when it is finite and non-negative.
+///
+/// `f64::from_str` happily parses `NaN`, `inf` and `-inf`, and any of
+/// those reaches the SVG as `x="NaN"` or `viewBox="0 0 600 inf"`, which
+/// no renderer can read. `parse_sankey` already refuses a non-finite
+/// LINK value; config numbers get the same guard.
+fn sankey_number(v: &str) -> Option<f64> {
+    v.parse::<f64>().ok().filter(|n| n.is_finite() && *n >= 0.0)
+}
+
 fn apply_sankey_key(cfg: &mut SankeyConfig, key: &str, raw: &str) {
     let v = unquote_yaml(raw);
     match key {
         "width" => {
-            if let Ok(n) = v.parse() {
+            if let Some(n) = sankey_number(&v) {
                 cfg.width = n;
             }
         }
         "height" => {
-            if let Ok(n) = v.parse() {
+            if let Some(n) = sankey_number(&v) {
                 cfg.height = n;
             }
         }
         "nodeWidth" => {
-            if let Ok(n) = v.parse() {
+            if let Some(n) = sankey_number(&v) {
                 cfg.node_width = n;
             }
         }
         "nodePadding" => {
-            if let Ok(n) = v.parse() {
+            if let Some(n) = sankey_number(&v) {
                 cfg.node_padding = n;
             }
         }
         "showValues" => cfg.show_values = yaml_bool(&v, cfg.show_values),
         "prefix" => cfg.prefix = v,
         "suffix" => cfg.suffix = v,
+        // Keywords are matched without regard to case, like the YAML
+        // booleans above — `Gradient` used to fall through to a CSS
+        // colour named "Gradient" and paint the ribbons black. A value
+        // that is NOT a keyword keeps its original spelling, because it
+        // is a colour and CSS `var(--Name)` is case-sensitive.
         "linkColor" => {
-            cfg.link_color = match v.as_str() {
+            cfg.link_color = match v.to_ascii_lowercase().as_str() {
                 "" => return,
                 "source" => SankeyLinkColor::Source,
                 "target" => SankeyLinkColor::Target,
                 "gradient" => SankeyLinkColor::Gradient,
-                other => SankeyLinkColor::Fixed(other.to_string()),
+                _ => SankeyLinkColor::Fixed(v),
             }
         }
         "nodeAlignment" => {
-            cfg.node_alignment = match v.as_str() {
+            cfg.node_alignment = match v.to_ascii_lowercase().as_str() {
                 "left" => SankeyAlignment::Left,
                 "right" => SankeyAlignment::Right,
                 "center" => SankeyAlignment::Center,
@@ -4093,6 +4115,62 @@ mod tests {
             let g = parse(&src).unwrap_or_else(|e| panic!("'{v}' rejected: {}", e.message));
             assert_eq!(g.nodes[0].style.fill.as_deref(), Some(v));
         }
+    }
+
+    #[test]
+    fn sankey_config_keywords_ignore_case() {
+        // `showValues` was already case-insensitive; the two enum keys
+        // beside it were not, so `Gradient` became a CSS colour named
+        // "Gradient" and painted the ribbons black.
+        for word in ["gradient", "Gradient", "GRADIENT"] {
+            let d = sankey(&format!(
+                "---\nconfig:\n  sankey:\n    linkColor: {word}\n---\nsankey-beta\nA,B,1\n"
+            ));
+            assert_eq!(d.config.link_color, SankeyLinkColor::Gradient, "{word}");
+        }
+        for word in ["left", "Left", "LEFT"] {
+            let d = sankey(&format!(
+                "---\nconfig:\n  sankey:\n    nodeAlignment: {word}\n---\nsankey-beta\nA,B,1\n"
+            ));
+            assert_eq!(d.config.node_alignment, SankeyAlignment::Left, "{word}");
+        }
+        // A real colour keeps its spelling — CSS `var(--Name)` is
+        // case-sensitive.
+        let d = sankey(
+            "---\nconfig:\n  sankey:\n    linkColor: var(--Brand)\n---\nsankey-beta\nA,B,1\n",
+        );
+        assert_eq!(
+            d.config.link_color,
+            SankeyLinkColor::Fixed("var(--Brand)".to_string())
+        );
+    }
+
+    #[test]
+    fn sankey_config_rejects_non_finite_numbers() {
+        // f64::from_str accepts these, and they reach the SVG as
+        // `x="NaN"` / `viewBox="0 0 600 inf"`, which no renderer reads.
+        for word in ["NaN", "inf", "-inf", "infinity", "-5"] {
+            let d = sankey(&format!(
+                "---\nconfig:\n  sankey:\n    nodeWidth: {word}\n    height: {word}\n---\nsankey-beta\nA,B,1\n"
+            ));
+            assert_eq!(d.config.node_width, 10.0, "nodeWidth kept '{word}'");
+            assert_eq!(d.config.height, 400.0, "height kept '{word}'");
+        }
+    }
+
+    #[test]
+    fn sankey_config_only_reads_a_direct_child_of_config() {
+        // A `sankey` key nested under another namespace must not
+        // reconfigure the diagram.
+        let d = sankey(
+            "---\nconfig:\n  themeVariables:\n    sankey:\n      nodeWidth: 40\n---\nsankey-beta\nA,B,1\n",
+        );
+        assert_eq!(d.config.node_width, 10.0, "nested sankey block leaked");
+        // The direct child still works.
+        let d = sankey(
+            "---\nconfig:\n  themeVariables:\n    x: 1\n  sankey:\n    nodeWidth: 40\n---\nsankey-beta\nA,B,1\n",
+        );
+        assert_eq!(d.config.node_width, 40.0);
     }
 
     // ----------------------------- ER -----------------------------
