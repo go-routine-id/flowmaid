@@ -10,8 +10,8 @@
 //! (`classDiagram`), sequence diagrams (`sequenceDiagram`), pie
 //! charts (`pie`), state diagrams (`stateDiagram-v2`), mindmaps
 //! (`mindmap`), user-journey diagrams (`journey`), git graphs
-//! (`gitGraph`), timeline diagrams (`timeline`), and architecture
-//! diagrams (`architecture-beta`).
+//! (`gitGraph`), timeline diagrams (`timeline`), sankey diagrams
+//! (`sankey-beta`), and architecture diagrams (`architecture-beta`).
 //!
 //! There is also an engine-native swimlane renderer driven by JSON in
 //! the [`advance`] module (`render_advance_svg`, `layout_advance`, and

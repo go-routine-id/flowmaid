@@ -28,6 +28,34 @@ project adheres to [Semantic Versioning](https://semver.org/).
   keeps its default, so config for other diagram types never breaks a render.
   Frontmatter was previously accepted and thrown away.
 - `examples/sankey.mmd`, a README section, and a docs-site row.
+- All four `nodeAlignment` modes behave as d3-sankey defines them: `left` keeps a
+  node's own depth, `justify` (default) flushes sinks right, `right` pushes each
+  node as far right as its distance to a sink allows, and `center` pulls a
+  source-less node up against its earliest target.
+
+### Fixed
+
+- **Colour values are escaped before they reach an SVG attribute.** An unescaped
+  `linkColor` could close the `fill="..."` attribute and add markup of its own,
+  so a diagram rendered from untrusted `.mmd` could inject content into the SVG.
+- A column whose nodes all have value 0 no longer pins the scale for the whole
+  diagram — it now constrains nothing, instead of capping every other column at
+  1 px per unit.
+- A cycle no longer inflates the column count. Depth is computed over a
+  topological order with the loop-closing edges left out, which bounds it at
+  `n - 1`; blind relaxation used to add a column per pass and shove every node
+  against the right edge with ribbons pointing backwards.
+- A column taller than the configured canvas grows the canvas instead of drawing
+  nodes past the bottom edge.
+- A node is now at least as tall as the ribbons it carries. Node heights and
+  ribbon thicknesses were clamped to a minimum independently, so a node with many
+  tiny flows had ribbons hanging outside the rectangle they left.
+- `showValues` understands the YAML 1.1 booleans (`False`, `no`, `off`, `0`, ...);
+  only the exact lowercase `false` used to switch it off.
+- A quoted config value followed by a `#` comment no longer keeps its quotes, and
+  a `#` inside the quotes stays part of the value.
+- Characters between a closing `"` and the next comma in a sankey row are an error
+  rather than silently discarded, so a typo cannot quietly re-target a flow.
 
 ## [0.28.1] - 2026-08-31
 

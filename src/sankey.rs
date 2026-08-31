@@ -84,45 +84,127 @@ fn format_value(v: f64, prefix: &str, suffix: &str) -> String {
     format!("{prefix}{body}{suffix}")
 }
 
-/// Assign every node a column. Depth is the longest path from a source,
-/// which keeps a link always pointing rightwards. A cycle cannot extend
-/// a path forever because each node is relaxed at most `n` times.
-fn columns(d: &SankeyDiagram) -> Vec<usize> {
+/// A total order over the nodes with cycle edges left out. A sankey is
+/// meant to be acyclic — d3-sankey rejects a cycle outright — so rather
+/// than fail, flowmaid drops only the edges that close a loop and lays
+/// out what remains.
+fn topo_order(d: &SankeyDiagram) -> Vec<usize> {
     let n = d.nodes.len();
-    let mut depth = vec![0usize; n];
-    for _ in 0..n {
-        let mut changed = false;
+    let mut indeg = vec![0usize; n];
+    for l in &d.links {
+        if l.source != l.target {
+            indeg[l.target] += 1;
+        }
+    }
+    let mut queue: Vec<usize> = (0..n).filter(|&i| indeg[i] == 0).collect();
+    let mut order: Vec<usize> = Vec::with_capacity(n);
+    let mut head = 0;
+    while head < queue.len() {
+        let u = queue[head];
+        head += 1;
+        order.push(u);
         for l in &d.links {
-            // A self-link cannot push a node past itself.
-            if l.source != l.target && depth[l.target] < depth[l.source] + 1 {
-                depth[l.target] = depth[l.source] + 1;
-                changed = true;
+            if l.source == u && l.source != l.target {
+                indeg[l.target] -= 1;
+                if indeg[l.target] == 0 {
+                    queue.push(l.target);
+                }
             }
         }
-        if !changed {
-            break;
+    }
+    // Whatever is left sits on a cycle. Appending it in declaration
+    // order keeps the result a total order, and deterministic.
+    let mut seen = vec![false; n];
+    for &i in &order {
+        seen[i] = true;
+    }
+    order.extend((0..n).filter(|&i| !seen[i]));
+    order
+}
+
+/// Assign every node a column: the longest path from a source, measured
+/// over forward edges only. Walking in topological order settles this in
+/// one pass and bounds a depth at `n - 1`, so a cycle can no longer
+/// inflate the column count.
+fn columns(d: &SankeyDiagram) -> Vec<usize> {
+    let n = d.nodes.len();
+    let order = topo_order(d);
+    let mut pos = vec![0usize; n];
+    for (rank, &i) in order.iter().enumerate() {
+        pos[i] = rank;
+    }
+    let mut depth = vec![0usize; n];
+    for &u in &order {
+        for l in &d.links {
+            if l.source == u
+                && l.source != l.target
+                && pos[l.target] > pos[u]
+                && depth[l.target] < depth[u] + 1
+            {
+                depth[l.target] = depth[u] + 1;
+            }
         }
     }
     depth
 }
 
-/// Push nodes around inside the column grid per `nodeAlignment`.
-/// `justify` (mermaid's default) pulls every sink out to the last
-/// column so the diagram's right edge is flush.
+/// Reposition nodes per `nodeAlignment`, following d3-sankey: `left`
+/// keeps the computed depth, `justify` (the default) flushes every sink
+/// against the last column, `right` pushes each node as far right as its
+/// distance to a sink allows, and `center` pulls a source-less node up
+/// against its earliest target.
 fn align(d: &SankeyDiagram, depth: &mut [usize], last: usize) {
+    let n = depth.len();
+    let forward = |l: &crate::model::SankeyLink| l.source != l.target;
     match d.config.node_alignment {
         SankeyAlignment::Left => {}
-        SankeyAlignment::Justify | SankeyAlignment::Right => {
-            let has_out: Vec<bool> = (0..d.nodes.len())
-                .map(|i| d.links.iter().any(|l| l.source == i && l.source != l.target))
-                .collect();
-            for (i, dep) in depth.iter_mut().enumerate() {
-                if !has_out[i] {
-                    *dep = last;
+        SankeyAlignment::Justify => {
+            for i in 0..n {
+                if !d.links.iter().any(|l| l.source == i && forward(l)) {
+                    depth[i] = last;
                 }
             }
         }
-        SankeyAlignment::Center => {}
+        SankeyAlignment::Right => {
+            // Longest path onward to a sink, on the edges that already
+            // point rightwards; mirrored to give the column.
+            let mut to_sink = vec![0usize; n];
+            for _ in 0..n {
+                let mut changed = false;
+                for l in &d.links {
+                    if forward(l)
+                        && depth[l.target] > depth[l.source]
+                        && to_sink[l.source] < to_sink[l.target] + 1
+                    {
+                        to_sink[l.source] = to_sink[l.target] + 1;
+                        changed = true;
+                    }
+                }
+                if !changed {
+                    break;
+                }
+            }
+            for i in 0..n {
+                depth[i] = last.saturating_sub(to_sink[i]);
+            }
+        }
+        SankeyAlignment::Center => {
+            let settled = depth.to_vec();
+            for i in 0..n {
+                if d.links.iter().any(|l| l.target == i && forward(l)) {
+                    continue;
+                }
+                if let Some(first_target) = d
+                    .links
+                    .iter()
+                    .filter(|l| l.source == i && forward(l))
+                    .map(|l| settled[l.target])
+                    .min()
+                {
+                    depth[i] = first_target.saturating_sub(1);
+                }
+            }
+        }
     }
 }
 
@@ -173,15 +255,57 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
             let total: f64 = c.iter().map(|&i| value[i]).sum();
             let padding = cfg.node_padding * (c.len() as f64 - 1.0);
             if total > 0.0 {
-                ((plot_h - padding).max(1.0)) / total
+                (plot_h - padding).max(1.0) / total
             } else {
-                1.0
+                // A column of zero-valued nodes constrains nothing. A
+                // finite number here would PIN the scale for the whole
+                // diagram, shrinking every other column to match.
+                f64::INFINITY
             }
         })
         .fold(f64::INFINITY, f64::min);
-    let scale = if scale.is_finite() { scale } else { 1.0 };
+    let scale = if scale.is_finite() && scale > 0.0 {
+        scale
+    } else {
+        1.0
+    };
 
-    let height_of = |i: usize| (value[i] * scale).max(MIN_RIBBON);
+    // Ribbon thickness is clamped so a tiny flow stays visible. A node
+    // must then be at least as tall as the ribbons it carries, or they
+    // would hang outside the rectangle they claim to leave.
+    let link_t: Vec<f64> = d
+        .links
+        .iter()
+        .map(|l| (l.value * scale).max(MIN_RIBBON))
+        .collect();
+    let heights: Vec<f64> = (0..n)
+        .map(|i| {
+            let side = |pick: fn(&crate::model::SankeyLink) -> usize| -> f64 {
+                d.links
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, l)| pick(l) == i)
+                    .map(|(k, _)| link_t[k])
+                    .sum()
+            };
+            (value[i] * scale)
+                .max(side(|l| l.target))
+                .max(side(|l| l.source))
+                .max(MIN_RIBBON)
+        })
+        .collect();
+    let height_of = |i: usize| heights[i];
+
+    // Clamping can push a column past the configured canvas. Grow the
+    // canvas to fit rather than draw nodes outside the viewport.
+    let tallest = cols
+        .iter()
+        .map(|c| {
+            c.iter().map(|&i| heights[i]).sum::<f64>()
+                + cfg.node_padding * (c.len() as f64 - 1.0).max(0.0)
+        })
+        .fold(0.0, f64::max);
+    let plot_h = plot_h.max(tallest);
 
     // Order within each column by the barycentre of a node's neighbours
     // in the previous column, which is the standard crossing-reduction
@@ -283,7 +407,7 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
     let mut placed: Vec<(usize, SankeyLinkGlyph)> = Vec::with_capacity(d.links.len());
     for &k in &idx {
         let l = &d.links[k];
-        let t = (l.value * scale).max(MIN_RIBBON);
+        let t = link_t[k];
         let s_node = &nodes[l.source];
         let t_node = &nodes[l.target];
         let y0 = s_node.y + out_cursor[l.source] + t / 2.0;
@@ -371,7 +495,10 @@ pub fn to_svg_with(ss: &SankeyScene, opts: &SvgOptions) -> String {
             SankeyLinkColor::Gradient => format!("url(#fmsk{i})"),
             SankeyLinkColor::Source => ss.nodes[l.source].color.to_string(),
             SankeyLinkColor::Target => ss.nodes[l.target].color.to_string(),
-            SankeyLinkColor::Fixed(c) => c.clone(),
+            // Escaped like every other user string here: an
+            // unescaped colour can close the attribute and inject
+            // markup into the SVG.
+            SankeyLinkColor::Fixed(c) => escape(c),
         };
         s.push_str(&format!(
             "<path d=\"{}\" fill=\"{}\" fill-opacity=\"0.45\"><title>{} → {}: {}</title></path>\n",
@@ -589,6 +716,111 @@ mod tests {
         let svg = to_svg(&scene(&diagram("sankey-beta\n\"A & <B>\",C,1\n")));
         assert!(svg.contains("A &amp; &lt;B&gt;"), "{svg}");
         assert!(!svg.contains("A & <B>"), "{svg}");
+    }
+
+    #[test]
+    fn a_zero_valued_column_does_not_pin_the_scale() {
+        // The all-zero column constrains nothing. Treating it as
+        // 1 px/unit used to shrink the whole diagram to ~28%.
+        let ss = scene(&diagram("sankey-beta\nA,B,0\nB,C,100\n"));
+        let tall = node(&ss, "C").h;
+        assert!(
+            tall > 300.0,
+            "a zero column must not cap the scale — got height {tall}"
+        );
+    }
+
+    #[test]
+    fn a_fixed_link_colour_cannot_inject_markup() {
+        // A colour is a user string like any other: unescaped, it can
+        // close the fill attribute and add one of its own.
+        let d = diagram(
+            "---\nconfig:\n  sankey:\n    linkColor: red\" onload=x\n---\nsankey-beta\nA,B,1\n",
+        );
+        let svg = to_svg(&scene(&d));
+        assert!(
+            !svg.contains("\" onload=x"),
+            "the colour escaped its attribute: {svg}"
+        );
+        assert!(svg.contains("fill=\"red&quot; onload=x\""), "{svg}");
+    }
+
+    #[test]
+    fn a_cycle_keeps_the_column_count_bounded() {
+        // Blind relaxation used to add a column per pass, so a 3-cycle
+        // produced ten columns and shoved every node to the right edge.
+        let ss = scene(&diagram("sankey-beta\nA,B,1\nB,C,1\nC,A,1\n"));
+        let cols = ss.nodes.iter().map(|n| n.column).max().unwrap() + 1;
+        assert!(cols <= ss.nodes.len(), "{cols} columns for 3 nodes");
+        // Only the edge that closes the loop may point backwards.
+        let backwards = ss.links.iter().filter(|l| l.x1 < l.x0).count();
+        assert!(backwards <= 1, "{backwards} ribbons run backwards");
+    }
+
+    #[test]
+    fn a_tall_column_grows_the_canvas_instead_of_clipping() {
+        // Thirty sources into one sink: once ribbons are clamped up to
+        // MIN_RIBBON the column outgrows the configured height.
+        let mut src = String::from("sankey-beta\n");
+        for i in 0..30 {
+            src.push_str(&format!("S{i},Sink,1\n"));
+        }
+        let ss = scene(&diagram(&src));
+        for n in &ss.nodes {
+            assert!(
+                n.y + n.h <= ss.height + 0.01,
+                "{} ends at {} but the canvas is {}",
+                n.label,
+                n.y + n.h,
+                ss.height
+            );
+        }
+    }
+
+    #[test]
+    fn a_node_is_tall_enough_for_its_clamped_ribbons() {
+        // One huge flow sets the scale; ten tiny ones then clamp up to
+        // MIN_RIBBON and used to stack outside the node they leave.
+        let mut src = String::from("sankey-beta\nX,Y,1000\n");
+        for i in 0..10 {
+            src.push_str(&format!("A,B{i},0.01\n"));
+        }
+        let ss = scene(&diagram(&src));
+        for l in &ss.links {
+            let s = &ss.nodes[l.source];
+            let half = l.thickness / 2.0;
+            assert!(
+                l.y0 - half >= s.y - 0.01 && l.y0 + half <= s.y + s.h + 0.01,
+                "a ribbon leaves outside {} (node {}..{}, ribbon {}..{})",
+                s.label,
+                s.y,
+                s.y + s.h,
+                l.y0 - half,
+                l.y0 + half
+            );
+        }
+    }
+
+    #[test]
+    fn every_alignment_places_nodes_differently() {
+        // `right` and `center` were accepted, documented, then ignored.
+        // X is a source whose only target sits three columns in, which
+        // is where the four alignments disagree.
+        let body = "sankey-beta\nA,B,1\nB,C,1\nC,D,1\nX,D,1\n";
+        let col_of_x = |alignment: &str| -> usize {
+            let src = format!(
+                "---\nconfig:\n  sankey:\n    nodeAlignment: {alignment}\n---\n{body}"
+            );
+            node(&scene(&diagram(&src)), "X").column
+        };
+        // `left` leaves X at its own depth; `center` pulls it up against
+        // its earliest target; `right` pushes it as far right as its
+        // distance to a sink allows; `justify` only moves sinks, and X
+        // has an outgoing link.
+        assert_eq!(col_of_x("left"), 0);
+        assert_eq!(col_of_x("justify"), 0);
+        assert_eq!(col_of_x("center"), 2, "center must not fall back to left");
+        assert_eq!(col_of_x("right"), 2, "right must not fall back to justify");
     }
 
     #[test]

@@ -3522,7 +3522,7 @@ fn apply_sankey_key(cfg: &mut SankeyConfig, key: &str, raw: &str) {
                 cfg.node_padding = n;
             }
         }
-        "showValues" => cfg.show_values = v != "false",
+        "showValues" => cfg.show_values = yaml_bool(&v, cfg.show_values),
         "prefix" => cfg.prefix = v,
         "suffix" => cfg.suffix = v,
         "linkColor" => {
@@ -3548,13 +3548,32 @@ fn apply_sankey_key(cfg: &mut SankeyConfig, key: &str, raw: &str) {
     }
 }
 
-/// Strip one layer of YAML quoting; an unquoted scalar ends at a ` #`
-/// comment.
+/// YAML 1.1 booleans. `showValues: False` and `showValues: no` mean the
+/// same thing as `false`, so matching only the lowercase spelling would
+/// silently ignore the setting.
+fn yaml_bool(v: &str, default: bool) -> bool {
+    match v.trim().to_ascii_lowercase().as_str() {
+        "false" | "no" | "off" | "n" | "0" => false,
+        "true" | "yes" | "on" | "y" | "1" => true,
+        _ => default,
+    }
+}
+
+/// Strip one layer of YAML quoting. A quoted scalar ends at its closing
+/// quote, so a trailing comment is dropped WITHOUT eating a `#` that is
+/// part of the value; an unquoted scalar ends at a ` #` comment.
 fn unquote_yaml(raw: &str) -> String {
     let raw = raw.trim();
-    let quoted = |q: char| raw.len() >= 2 && raw.starts_with(q) && raw.ends_with(q);
-    if quoted('"') || quoted('\'') {
-        return raw[1..raw.len() - 1].to_string();
+    if let Some(q) = raw.chars().next().filter(|c| *c == '"' || *c == '\'') {
+        if let Some(end) = raw
+            .char_indices()
+            .skip(1)
+            .find(|(_, c)| *c == q)
+            .map(|(i, _)| i)
+        {
+            return raw[1..end].to_string();
+        }
+        // Unterminated — fall through and treat it as a plain scalar.
     }
     match raw.split_once(" #") {
         Some((head, _)) => head.trim().to_string(),
@@ -3586,8 +3605,18 @@ fn split_csv_row(line: &str) -> Result<Vec<String>, String> {
                     None => return Err("unclosed '\"' in sankey row".to_string()),
                 }
             }
-            // Padding between the closing quote and the separator.
-            while matches!(chars.peek(), Some(c) if *c != ',') {
+            // Only padding may sit between the closing quote and the
+            // separator. Silently eating anything else would let a typo
+            // change which node a flow attaches to.
+            while let Some(&c) = chars.peek() {
+                if c == ',' {
+                    break;
+                }
+                if !c.is_whitespace() {
+                    return Err(format!(
+                        "unexpected '{c}' after a closing '\"' in a sankey row"
+                    ));
+                }
                 chars.next();
             }
         } else {
@@ -4004,6 +4033,54 @@ mod tests {
     fn sankey_linkcolor_accepts_a_css_colour() {
         let d = sankey("---\nconfig:\n  sankey:\n    linkColor: \"#ff0000\"\n---\nsankey-beta\nA,B,1\n");
         assert_eq!(d.config.link_color, SankeyLinkColor::Fixed("#ff0000".to_string()));
+    }
+
+    #[test]
+    fn sankey_showvalues_accepts_yaml_booleans() {
+        // YAML 1.1 spells false several ways; matching only the
+        // lowercase word left the setting silently switched on.
+        for word in ["false", "False", "FALSE", "no", "off", "n", "0"] {
+            let d = sankey(&format!(
+                "---\nconfig:\n  sankey:\n    showValues: {word}\n---\nsankey-beta\nA,B,1\n"
+            ));
+            assert!(!d.config.show_values, "'{word}' should read as false");
+        }
+        for word in ["true", "True", "yes", "on", "1"] {
+            let d = sankey(&format!(
+                "---\nconfig:\n  sankey:\n    showValues: {word}\n---\nsankey-beta\nA,B,1\n"
+            ));
+            assert!(d.config.show_values, "'{word}' should read as true");
+        }
+        // An unrecognised word keeps the default rather than flipping it.
+        let d = sankey("---\nconfig:\n  sankey:\n    showValues: maybe\n---\nsankey-beta\nA,B,1\n");
+        assert!(d.config.show_values);
+    }
+
+    #[test]
+    fn sankey_quoted_config_value_drops_a_trailing_comment() {
+        let d = sankey(
+            "---\nconfig:\n  sankey:\n    suffix: \" TWh\" # units\n---\nsankey-beta\nA,B,1\n",
+        );
+        assert_eq!(d.config.suffix, " TWh");
+        // A `#` INSIDE the quotes belongs to the value, not to a comment.
+        let d = sankey(
+            "---\nconfig:\n  sankey:\n    prefix: \"# \"\n---\nsankey-beta\nA,B,1\n",
+        );
+        assert_eq!(d.config.prefix, "# ");
+    }
+
+    #[test]
+    fn sankey_rejects_junk_after_a_closing_quote() {
+        // Silently eating it would let a typo change which node a flow
+        // attaches to.
+        let e = parse_document("sankey-beta\n\"A\"junk,B,1\n")
+            .map(|_| ())
+            .unwrap_err();
+        assert_eq!(e.line, 2);
+        assert!(e.message.contains("after a closing"), "{}", e.message);
+        // Padding is still fine.
+        let d = sankey("sankey-beta\n\"A\"  ,B,1\n");
+        assert_eq!(d.nodes[0], "A");
     }
 
     // ----------------------------- ER -----------------------------
