@@ -20,8 +20,9 @@ use crate::model::{
     ClassRel, CommitKind, Direction, Document, EdgeKind, End, ErDiagram, FrameKind, GitBranch,
     GitCommit, GitGraph, GitOrientation, Graph, Journey, JourneySection, JourneyTask, Key, Member,
     MindNode, MindShape, Mindmap, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation,
-    SeqHead, SeqItem, SequenceDiagram, Shape, SubEdge, Subgraph, Timeline, TimelineDirection,
-    TimelinePeriod, TimelineSection, Visibility,
+    SankeyAlignment, SankeyConfig, SankeyDiagram, SankeyLink, SankeyLinkColor, SeqHead, SeqItem,
+    SequenceDiagram, Shape, SubEdge, Subgraph, Timeline, TimelineDirection, TimelinePeriod,
+    TimelineSection, Visibility,
 };
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
@@ -354,8 +355,8 @@ pub fn parse_document(source: &str) -> Result<Document, ParseError> {
     // Editor Windows (Notepad, PowerShell `>`) menyisipkan BOM UTF-8.
     // U+FEFF bukan whitespace Unicode, jadi lolos trim() dan membuat
     // header tak terdeteksi dengan error yang menyesatkan.
-    let source = source.strip_prefix('\u{feff}').unwrap_or(source);
-    let stripped = strip_frontmatter(source)?;
+    let raw_source = source.strip_prefix('\u{feff}').unwrap_or(source);
+    let stripped = strip_frontmatter(raw_source)?;
     let source: &str = &stripped;
     for (i, raw) in source.lines().enumerate() {
         let line = raw.trim();
@@ -377,6 +378,11 @@ pub fn parse_document(source: &str) -> Result<Document, ParseError> {
                 parse_architecture(source, i + 1).map(Document::Architecture)
             }
             Some("timeline") => parse_timeline(source, i + 1).map(Document::Timeline),
+            // Config is read from the ORIGINAL source: the frontmatter
+            // has already been blanked out of `source` by this point.
+            Some("sankey-beta") | Some("sankey") => {
+                parse_sankey(source, i + 1, sankey_config(raw_source)).map(Document::Sankey)
+            }
             Some(t) => Err(err(
                 i + 1,
                 format!(
@@ -779,15 +785,15 @@ const DIAGRAM_HEADERS: &[(&str, HeaderSupport)] = &[
     ("gitGraph", HeaderSupport::Parsed),
     ("architecture-beta", HeaderSupport::Parsed),
     ("timeline", HeaderSupport::Parsed),
+    ("sankey-beta", HeaderSupport::Parsed),
     // Parsed, but a spelling variant of an entry already listed.
     ("stateDiagram", HeaderSupport::Alias),
     ("architecture", HeaderSupport::Alias),
+    ("sankey", HeaderSupport::Alias),
     // Recognised only so they fail with a clear message rather than
     // being parsed as flowchart nodes.
     ("requirementDiagram", HeaderSupport::Unsupported),
     ("quadrantChart", HeaderSupport::Unsupported),
-    ("sankey-beta", HeaderSupport::Unsupported),
-    ("sankey", HeaderSupport::Unsupported),
     ("xychart-beta", HeaderSupport::Unsupported),
     ("block-beta", HeaderSupport::Unsupported),
     ("packet-beta", HeaderSupport::Unsupported),
@@ -3426,6 +3432,240 @@ fn state_endpoint(
     Ok(End::Node(state_node(g, stack, token, None, None)))
 }
 
+// ------------------------------------------------------------------
+// Sankey
+// ------------------------------------------------------------------
+
+/// The raw frontmatter body — the lines BETWEEN the `---` fences, or
+/// `None` when there is no frontmatter. Fence detection is delegated to
+/// the same [`fence_indent`] rule [`strip_frontmatter`] uses, so the two
+/// can never disagree about where the block ends.
+fn frontmatter_body(source: &str) -> Option<Vec<&str>> {
+    let mut lines = source.lines().enumerate();
+    let (_, first) = lines.next()?;
+    let open_indent = fence_indent(first)?;
+    let close = lines.find_map(|(i, l)| (fence_indent(l) == Some(open_indent)).then_some(i))?;
+    Some(source.lines().take(close).skip(1).collect())
+}
+
+/// Read `config.sankey.*` out of YAML frontmatter.
+///
+/// Deliberately NOT a YAML parser: it walks indentation for the
+/// `config:` -> `sankey:` path and reads scalar `key: value` pairs under
+/// it. Richer YAML (anchors, flow maps, block scalars) is ignored rather
+/// than guessed at, and unknown keys are skipped mermaid-style so a file
+/// carrying config for other diagrams still renders.
+fn sankey_config(source: &str) -> SankeyConfig {
+    let mut cfg = SankeyConfig::default();
+    let Some(body) = frontmatter_body(source) else {
+        return cfg;
+    };
+    let indent_of = |l: &str| l.len() - l.trim_start().len();
+    // Indent of `config:` / `sankey:` once seen. A line at or left of a
+    // recorded indent has closed that block.
+    let mut config_at: Option<usize> = None;
+    let mut sankey_at: Option<usize> = None;
+    for line in body {
+        let t = line.trim();
+        if t.is_empty() || t.starts_with('#') {
+            continue;
+        }
+        let ind = indent_of(line);
+        if let Some(inner) = sankey_at {
+            if ind > inner {
+                if let Some((k, v)) = t.split_once(':') {
+                    apply_sankey_key(&mut cfg, k.trim(), v);
+                }
+                continue;
+            }
+            sankey_at = None;
+        }
+        if let Some(outer) = config_at {
+            if ind > outer {
+                if t == "sankey:" {
+                    sankey_at = Some(ind);
+                }
+                continue;
+            }
+            config_at = None;
+        }
+        if t == "config:" {
+            config_at = Some(ind);
+        }
+    }
+    cfg
+}
+
+/// Apply one `config.sankey.<key>: <value>` pair. A value that does not
+/// parse leaves the mermaid default in place rather than failing the
+/// whole diagram — config is decoration, not structure.
+fn apply_sankey_key(cfg: &mut SankeyConfig, key: &str, raw: &str) {
+    let v = unquote_yaml(raw);
+    match key {
+        "width" => {
+            if let Ok(n) = v.parse() {
+                cfg.width = n;
+            }
+        }
+        "height" => {
+            if let Ok(n) = v.parse() {
+                cfg.height = n;
+            }
+        }
+        "nodeWidth" => {
+            if let Ok(n) = v.parse() {
+                cfg.node_width = n;
+            }
+        }
+        "nodePadding" => {
+            if let Ok(n) = v.parse() {
+                cfg.node_padding = n;
+            }
+        }
+        "showValues" => cfg.show_values = v != "false",
+        "prefix" => cfg.prefix = v,
+        "suffix" => cfg.suffix = v,
+        "linkColor" => {
+            cfg.link_color = match v.as_str() {
+                "" => return,
+                "source" => SankeyLinkColor::Source,
+                "target" => SankeyLinkColor::Target,
+                "gradient" => SankeyLinkColor::Gradient,
+                other => SankeyLinkColor::Fixed(other.to_string()),
+            }
+        }
+        "nodeAlignment" => {
+            cfg.node_alignment = match v.as_str() {
+                "left" => SankeyAlignment::Left,
+                "right" => SankeyAlignment::Right,
+                "center" => SankeyAlignment::Center,
+                _ => SankeyAlignment::Justify,
+            }
+        }
+        // Unknown keys are skipped, so extra mermaid config never breaks
+        // a render.
+        _ => {}
+    }
+}
+
+/// Strip one layer of YAML quoting; an unquoted scalar ends at a ` #`
+/// comment.
+fn unquote_yaml(raw: &str) -> String {
+    let raw = raw.trim();
+    let quoted = |q: char| raw.len() >= 2 && raw.starts_with(q) && raw.ends_with(q);
+    if quoted('"') || quoted('\'') {
+        return raw[1..raw.len() - 1].to_string();
+    }
+    match raw.split_once(" #") {
+        Some((head, _)) => head.trim().to_string(),
+        None => raw.to_string(),
+    }
+}
+
+/// Split one CSV row into fields, mermaid-style: a field may be double
+/// quoted, and inside quotes `""` is one literal `"`. Unquoted fields
+/// are trimmed; quoted ones keep their spacing.
+fn split_csv_row(line: &str) -> Result<Vec<String>, String> {
+    let mut out = Vec::new();
+    let mut chars = line.chars().peekable();
+    loop {
+        while matches!(chars.peek(), Some(' ') | Some('\t')) {
+            chars.next();
+        }
+        let mut field = String::new();
+        if chars.peek() == Some(&'"') {
+            chars.next();
+            loop {
+                match chars.next() {
+                    Some('"') if chars.peek() == Some(&'"') => {
+                        chars.next();
+                        field.push('"');
+                    }
+                    Some('"') => break,
+                    Some(c) => field.push(c),
+                    None => return Err("unclosed '\"' in sankey row".to_string()),
+                }
+            }
+            // Padding between the closing quote and the separator.
+            while matches!(chars.peek(), Some(c) if *c != ',') {
+                chars.next();
+            }
+        } else {
+            while let Some(&c) = chars.peek() {
+                if c == ',' {
+                    break;
+                }
+                field.push(c);
+                chars.next();
+            }
+            field = field.trim_end().to_string();
+        }
+        out.push(field);
+        if chars.next().is_none() {
+            break;
+        }
+    }
+    Ok(out)
+}
+
+/// Parse a sankey diagram: a CSV body of `source,target,value` rows.
+/// Nodes are created on first mention and keyed by their label, exactly
+/// as mermaid does, so repeating a label reuses the node.
+fn parse_sankey(
+    source: &str,
+    header_line: usize,
+    config: SankeyConfig,
+) -> Result<SankeyDiagram, ParseError> {
+    let mut d = SankeyDiagram {
+        config,
+        ..Default::default()
+    };
+    for (i, raw) in source.lines().enumerate() {
+        let lineno = i + 1;
+        if lineno <= header_line {
+            continue;
+        }
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with("%%") {
+            continue;
+        }
+        let fields = split_csv_row(line).map_err(|m| err(lineno, m))?;
+        if fields.len() != 3 {
+            return Err(err(
+                lineno,
+                format!(
+                    "a sankey row is 'source,target,value' — found {} field{}",
+                    fields.len(),
+                    if fields.len() == 1 { "" } else { "s" }
+                ),
+            ));
+        }
+        if fields[0].is_empty() || fields[1].is_empty() {
+            return Err(err(
+                lineno,
+                "a sankey row needs both a source and a target".to_string(),
+            ));
+        }
+        let value: f64 = fields[2]
+            .parse()
+            .map_err(|_| err(lineno, format!("invalid sankey value: '{}'", fields[2])))?;
+        if !value.is_finite() || value < 0.0 {
+            return Err(err(
+                lineno,
+                format!("a sankey value must be finite and >= 0: '{}'", fields[2]),
+            ));
+        }
+        let source_idx = d.ensure_node(&fields[0]);
+        let target_idx = d.ensure_node(&fields[1]);
+        d.links.push(SankeyLink {
+            source: source_idx,
+            target: target_idx,
+            value,
+        });
+    }
+    Ok(d)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3643,6 +3883,127 @@ mod tests {
                 HeaderSupport::Alias => {}
             }
         }
+    }
+
+    // --------------------------- Sankey ---------------------------
+
+    fn sankey(src: &str) -> SankeyDiagram {
+        match parse_document(src).unwrap() {
+            Document::Sankey(d) => d,
+            _ => panic!("not a sankey"),
+        }
+    }
+
+    #[test]
+    fn sankey_rows_build_nodes_in_first_mention_order() {
+        let d = sankey("sankey-beta\nA,B,5\nB,C,3\nA,C,2\n");
+        assert_eq!(d.nodes, vec!["A", "B", "C"]);
+        assert_eq!(d.links.len(), 3);
+        assert_eq!(d.links[0].source, 0);
+        assert_eq!(d.links[0].target, 1);
+        assert_eq!(d.links[0].value, 5.0);
+    }
+
+    #[test]
+    fn sankey_accepts_both_header_spellings() {
+        assert_eq!(sankey("sankey-beta\nA,B,1\n").links.len(), 1);
+        assert_eq!(sankey("sankey\nA,B,1\n").links.len(), 1);
+    }
+
+    #[test]
+    fn sankey_quoted_fields_keep_commas_and_escaped_quotes() {
+        let d = sankey("sankey-beta\n\"Oil, crude\",\"He said \"\"hi\"\"\",7\n");
+        assert_eq!(d.nodes[0], "Oil, crude");
+        assert_eq!(d.nodes[1], "He said \"hi\"");
+        assert_eq!(d.links[0].value, 7.0);
+    }
+
+    #[test]
+    fn sankey_comments_and_blank_lines_are_skipped() {
+        let d = sankey("sankey-beta\n\n%% a comment\nA,B,1\n\n");
+        assert_eq!(d.links.len(), 1);
+    }
+
+    #[test]
+    fn sankey_repeated_label_reuses_one_node() {
+        let d = sankey("sankey-beta\nA,B,1\nA,B,2\n");
+        assert_eq!(d.nodes.len(), 2);
+        assert_eq!(d.links.len(), 2);
+    }
+
+    #[test]
+    fn sankey_row_shape_errors_carry_line_numbers() {
+        let e = parse_document("sankey-beta\nA,B\n").map(|_| ()).unwrap_err();
+        assert_eq!(e.line, 2);
+        assert!(e.message.contains("source,target,value"), "{}", e.message);
+
+        let e = parse_document("sankey-beta\nA,B,C,1\n").map(|_| ()).unwrap_err();
+        assert!(e.message.contains("4 fields"), "{}", e.message);
+
+        let e = parse_document("sankey-beta\nA,B,xyz\n").map(|_| ()).unwrap_err();
+        assert!(e.message.contains("invalid sankey value"), "{}", e.message);
+
+        let e = parse_document("sankey-beta\nA,B,-3\n").map(|_| ()).unwrap_err();
+        assert!(e.message.contains(">= 0"), "{}", e.message);
+
+        let e = parse_document("sankey-beta\n,B,1\n").map(|_| ()).unwrap_err();
+        assert!(e.message.contains("source and a target"), "{}", e.message);
+
+        let e = parse_document("sankey-beta\n\"A,B,1\n").map(|_| ()).unwrap_err();
+        assert!(e.message.contains("unclosed"), "{}", e.message);
+    }
+
+    #[test]
+    fn sankey_defaults_match_mermaid_when_there_is_no_config() {
+        let d = sankey("sankey-beta\nA,B,1\n");
+        assert_eq!(d.config, SankeyConfig::default());
+        assert_eq!(d.config.width, 600.0);
+        assert_eq!(d.config.height, 400.0);
+        assert_eq!(d.config.node_width, 10.0);
+        assert_eq!(d.config.node_padding, 12.0);
+        assert!(d.config.show_values);
+        assert_eq!(d.config.link_color, SankeyLinkColor::Gradient);
+        assert_eq!(d.config.node_alignment, SankeyAlignment::Justify);
+    }
+
+    #[test]
+    fn sankey_reads_config_from_frontmatter() {
+        let d = sankey(
+            "---\nconfig:\n  sankey:\n    showValues: false\n    linkColor: source\n    \
+             nodeAlignment: left\n    nodeWidth: 20\n    suffix: \" TWh\"\n---\nsankey-beta\nA,B,1\n",
+        );
+        assert!(!d.config.show_values);
+        assert_eq!(d.config.link_color, SankeyLinkColor::Source);
+        assert_eq!(d.config.node_alignment, SankeyAlignment::Left);
+        assert_eq!(d.config.node_width, 20.0);
+        assert_eq!(d.config.suffix, " TWh");
+        // Untouched keys keep mermaid's defaults.
+        assert_eq!(d.config.height, 400.0);
+    }
+
+    #[test]
+    fn sankey_config_ignores_other_blocks_and_unknown_keys() {
+        let d = sankey(
+            "---\ntitle: Energy\nconfig:\n  theme: dark\n  pie:\n    useWidth: 9\n  \
+             sankey:\n    nodeWidth: 4\n    somethingNew: 1\n---\nsankey-beta\nA,B,1\n",
+        );
+        assert_eq!(d.config.node_width, 4.0);
+        // `pie`'s useWidth must not leak into sankey's width.
+        assert_eq!(d.config.width, 600.0);
+    }
+
+    #[test]
+    fn sankey_config_survives_a_bad_value() {
+        // Config is decoration: a junk number keeps the default rather
+        // than failing the whole diagram.
+        let d = sankey("---\nconfig:\n  sankey:\n    nodeWidth: wide\n---\nsankey-beta\nA,B,1\n");
+        assert_eq!(d.config.node_width, 10.0);
+    }
+
+    #[test]
+    fn sankey_linkcolor_accepts_a_css_colour() {
+        let d = sankey("---\nconfig:\n  sankey:\n    linkColor: \"#ff0000\"\n---\nsankey-beta\nA,B,1\n");
+        assert_eq!(d.config.link_color, SankeyLinkColor::Fixed("#ff0000".to_string()));
     }
 
     // ----------------------------- ER -----------------------------

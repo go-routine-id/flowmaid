@@ -7,6 +7,28 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-08-31
+
+### Added
+
+- **`sankey-beta` diagram** — mermaid's CSV grammar (`source,target,value`, exactly
+  three fields), double-quoted fields with `""` as one literal quote, `%%` comments,
+  and `sankey` accepted as a spelling variant. Nodes are created on first mention and
+  keyed by label, as in mermaid.
+  - Layout follows d3-sankey: a node sits at its **longest** path from a source so
+    every ribbon points rightwards, its thickness is the larger of inflow and outflow,
+    and nodes are ordered within a column by neighbour barycentre to reduce crossings
+    (ties keep declaration order, so the SVG stays a stable function of the input).
+  - Ribbons are cubic-bezier bands; gradient ids come from the link index, never a
+    counter, so output stays byte-identical across runs.
+- **`config.sankey.*` read from YAML frontmatter** — `width`, `height`, `linkColor`
+  (`gradient` default, plus `source` / `target` / any CSS colour), `nodeAlignment`,
+  `showValues`, `prefix`, `suffix`, `nodeWidth`, `nodePadding`. Every default matches
+  mermaid's `config.schema.yaml`. Unknown keys are skipped and an unparsable value
+  keeps its default, so config for other diagram types never breaks a render.
+  Frontmatter was previously accepted and thrown away.
+- `examples/sankey.mmd`, a README section, and a docs-site row.
+
 ## [0.28.1] - 2026-08-31
 
 ### Added

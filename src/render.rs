@@ -5,7 +5,7 @@
 
 use crate::model::{
     Architecture, ClassDiagram, ErDiagram, GitGraph, Graph, Journey, Mindmap, PieChart,
-    SequenceDiagram, Timeline,
+    SankeyDiagram, SequenceDiagram, Timeline,
 };
 use crate::scene::SvgOptions;
 
@@ -127,6 +127,18 @@ pub fn render_timeline(d: &Timeline) -> String {
 /// [`render_timeline`] with explicit viewport options.
 pub fn render_timeline_with(d: &Timeline, opts: &SvgOptions) -> String {
     crate::timeline::to_svg_with(&crate::timeline::scene(d), opts)
+}
+
+/// Render a sankey diagram (nodes in columns, flows as ribbons whose
+/// thickness tracks their value). Geometry & serialisation live in the
+/// `sankey` module.
+pub fn render_sankey(d: &SankeyDiagram) -> String {
+    crate::sankey::to_svg(&crate::sankey::scene(d))
+}
+
+/// [`render_sankey`] with explicit viewport options.
+pub fn render_sankey_with(d: &SankeyDiagram, opts: &SvgOptions) -> String {
+    crate::sankey::to_svg_with(&crate::sankey::scene(d), opts)
 }
 
 #[cfg(test)]
