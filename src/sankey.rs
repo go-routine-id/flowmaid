@@ -73,15 +73,66 @@ pub struct SankeyScene {
     pub suffix: String,
 }
 
-/// Format a value the way mermaid does: trim a trailing `.0` so whole
-/// numbers read as integers, then wrap in the configured affixes.
+/// Format a value the way mermaid does: whole numbers read as integers,
+/// fractions keep only as many places as they need.
+///
+/// Node totals are SUMS, so `0.1 + 0.2` arrives as `0.30000000000000004`
+/// and Rust's shortest-roundtrip `Display` would print every digit of it.
+/// Rounding to four places first, then trimming the zeros it leaves,
+/// keeps ordinary input readable without inventing precision.
 fn format_value(v: f64, prefix: &str, suffix: &str) -> String {
     let body = if v.fract() == 0.0 {
         format!("{v:.0}")
     } else {
-        format!("{v}")
+        let rounded = format!("{v:.4}");
+        let trimmed = rounded.trim_end_matches('0').trim_end_matches('.');
+        trimmed.to_string()
     };
     format!("{prefix}{body}{suffix}")
+}
+
+/// Saturate a sum that overflowed. Individual link values are finite —
+/// the parser insists — but adding them can still reach +inf, and an
+/// infinite length becomes `height="inf"`, which no renderer can read.
+/// Every place that sums values funnels through here.
+fn saturate(v: f64) -> f64 {
+    if v.is_finite() {
+        v
+    } else {
+        f64::MAX
+    }
+}
+
+/// A short, content-derived suffix for the gradient ids in one diagram.
+///
+/// Ids must be unique per diagram — two sankey SVGs inlined on one page
+/// (the docs site does exactly that) would otherwise share `fmsk0`, and
+/// every ribbon in the second would pick up the first's gradient. A
+/// running counter would fix that but break the crate's byte-identical
+/// output promise; a hash of the content keeps both, since the same
+/// diagram always hashes the same and a different one almost never
+/// collides.
+fn scene_key(ss: &SankeyScene) -> String {
+    // FNV-1a, 64-bit — a few lines, no dependency, and stable across
+    // runs and platforms (unlike `DefaultHasher`, which is not).
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut eat = |bytes: &[u8]| {
+        for b in bytes {
+            h ^= *b as u64;
+            h = h.wrapping_mul(0x0000_0100_0000_01b3);
+        }
+    };
+    for n in &ss.nodes {
+        eat(n.label.as_bytes());
+        eat(&n.x.to_bits().to_le_bytes());
+        eat(&n.y.to_bits().to_le_bytes());
+    }
+    for l in &ss.links {
+        eat(&l.value.to_bits().to_le_bytes());
+        eat(&l.y0.to_bits().to_le_bytes());
+        eat(&l.y1.to_bits().to_le_bytes());
+    }
+    format!("{h:x}")
 }
 
 /// A total order over the nodes with cycle edges left out. A sankey is
@@ -236,7 +287,7 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
         .map(|i| {
             let inflow: f64 = d.links.iter().filter(|l| l.target == i).map(|l| l.value).sum();
             let outflow: f64 = d.links.iter().filter(|l| l.source == i).map(|l| l.value).sum();
-            inflow.max(outflow)
+            saturate(inflow.max(outflow))
         })
         .collect();
 
@@ -252,7 +303,7 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
         .iter()
         .filter(|c| !c.is_empty())
         .map(|c| {
-            let total: f64 = c.iter().map(|&i| value[i]).sum();
+            let total = saturate(c.iter().map(|&i| value[i]).sum());
             let padding = cfg.node_padding * (c.len() as f64 - 1.0);
             if total > 0.0 {
                 (plot_h - padding).max(1.0) / total
@@ -281,17 +332,21 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
     let heights: Vec<f64> = (0..n)
         .map(|i| {
             let side = |pick: fn(&crate::model::SankeyLink) -> usize| -> f64 {
-                d.links
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, l)| pick(l) == i)
-                    .map(|(k, _)| link_t[k])
-                    .sum()
+                saturate(
+                    d.links
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, l)| pick(l) == i)
+                        .map(|(k, _)| link_t[k])
+                        .sum(),
+                )
             };
-            (value[i] * scale)
-                .max(side(|l| l.target))
-                .max(side(|l| l.source))
-                .max(MIN_RIBBON)
+            saturate(
+                (value[i] * scale)
+                    .max(side(|l| l.target))
+                    .max(side(|l| l.source))
+                    .max(MIN_RIBBON),
+            )
         })
         .collect();
     let height_of = |i: usize| heights[i];
@@ -301,8 +356,10 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
     let tallest = cols
         .iter()
         .map(|c| {
-            c.iter().map(|&i| heights[i]).sum::<f64>()
-                + cfg.node_padding * (c.len() as f64 - 1.0).max(0.0)
+            saturate(
+                c.iter().map(|&i| heights[i]).sum::<f64>()
+                    + cfg.node_padding * (c.len() as f64 - 1.0).max(0.0),
+            )
         })
         .fold(0.0, f64::max);
     let plot_h = plot_h.max(tallest);
@@ -433,8 +490,12 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
     placed.sort_by_key(|(k, _)| *k);
     let links: Vec<SankeyLinkGlyph> = placed.into_iter().map(|(_, g)| g).collect();
 
-    let width = cfg.width.max(PAD * 2.0 + plot_w);
-    let height = cfg.height.max(PAD * 2.0 + plot_h);
+    // Individual link values are checked by the parser, but their SUM
+    // can still overflow to +inf, and an infinite canvas is unparseable
+    // SVG. Fall back to the configured size when that happens.
+    let finite = |v: f64, fallback: f64| if v.is_finite() { v } else { fallback };
+    let width = finite(cfg.width.max(PAD * 2.0 + plot_w), 600.0);
+    let height = finite(cfg.height.max(PAD * 2.0 + plot_h), 400.0);
     SankeyScene {
         width,
         height,
@@ -471,14 +532,16 @@ pub fn to_svg_with(ss: &SankeyScene, opts: &SvgOptions) -> String {
 
     // Gradient ids are derived from the link INDEX, never a counter, so
     // the same input always emits byte-identical SVG.
+    let key = scene_key(ss);
     if ss.link_color == SankeyLinkColor::Gradient && !ss.links.is_empty() {
         s.push_str("<defs>\n");
         for (i, l) in ss.links.iter().enumerate() {
             s.push_str(&format!(
-                "<linearGradient id=\"fmsk{}\" gradientUnits=\"userSpaceOnUse\" \
+                "<linearGradient id=\"fmsk-{}-{}\" gradientUnits=\"userSpaceOnUse\" \
                  x1=\"{:.1}\" x2=\"{:.1}\">\
                  <stop offset=\"0\" stop-color=\"{}\"/>\
                  <stop offset=\"1\" stop-color=\"{}\"/></linearGradient>\n",
+                key,
                 i,
                 l.x0,
                 l.x1,
@@ -492,7 +555,7 @@ pub fn to_svg_with(ss: &SankeyScene, opts: &SvgOptions) -> String {
     // Ribbons first, so nodes and labels sit on top of them.
     for (i, l) in ss.links.iter().enumerate() {
         let fill = match &ss.link_color {
-            SankeyLinkColor::Gradient => format!("url(#fmsk{i})"),
+            SankeyLinkColor::Gradient => format!("url(#fmsk-{key}-{i})"),
             SankeyLinkColor::Source => ss.nodes[l.source].color.to_string(),
             SankeyLinkColor::Target => ss.nodes[l.target].color.to_string(),
             // Escaped like every other user string here: an
@@ -659,14 +722,17 @@ mod tests {
     }
 
     #[test]
-    fn svg_is_deterministic_and_gradient_ids_come_from_link_index() {
+    fn svg_is_deterministic_and_gradient_ids_track_the_link_index() {
         let d = diagram("sankey-beta\nA,B,3\nA,C,2\n");
         let a = to_svg(&scene(&d));
         let b = to_svg(&scene(&d));
         assert_eq!(a, b, "same input must give byte-identical SVG");
-        assert!(a.contains("id=\"fmsk0\""), "{a}");
-        assert!(a.contains("id=\"fmsk1\""), "{a}");
-        assert!(a.contains("url(#fmsk0)"), "{a}");
+        // Ids carry a content-derived namespace so two diagrams on one
+        // page cannot collide, then the link index within the diagram.
+        let key = scene_key(&scene(&d));
+        assert!(a.contains(&format!("id=\"fmsk-{key}-0\"")), "{a}");
+        assert!(a.contains(&format!("id=\"fmsk-{key}-1\"")), "{a}");
+        assert!(a.contains(&format!("url(#fmsk-{key}-0)")), "{a}");
     }
 
     #[test]
@@ -821,6 +887,48 @@ mod tests {
         assert_eq!(col_of_x("justify"), 0);
         assert_eq!(col_of_x("center"), 2, "center must not fall back to left");
         assert_eq!(col_of_x("right"), 2, "right must not fall back to justify");
+    }
+
+    #[test]
+    fn gradient_ids_are_namespaced_per_diagram() {
+        // Two sankey SVGs inlined on one page (the docs site does this)
+        // used to share `fmsk0`, so every ribbon in the second picked up
+        // the first's gradient — wrong colours AND wrong geometry.
+        let a = to_svg(&scene(&diagram("sankey-beta\nA,B,1\n")));
+        let b = to_svg(&scene(&diagram("sankey-beta\nX,Y,5\n")));
+        let id_of = |svg: &str| {
+            let i = svg.find("id=\"fmsk-").expect("gradient id");
+            svg[i..].split('"').nth(1).unwrap().to_string()
+        };
+        assert_ne!(id_of(&a), id_of(&b), "two diagrams share a gradient id");
+        // Still a pure function of the content, so output stays
+        // byte-identical across runs.
+        assert_eq!(a, to_svg(&scene(&diagram("sankey-beta\nA,B,1\n"))));
+    }
+
+    #[test]
+    fn an_overflowing_sum_still_renders_finite_geometry() {
+        // Each link value passes the parser's finite check, but their
+        // sum reaches +inf — which used to become `height="inf"`.
+        let ss = scene(&diagram("sankey-beta\nA,B,1e308\nA,C,1e308\n"));
+        for n in &ss.nodes {
+            assert!(n.h.is_finite() && n.y.is_finite(), "{} is not finite", n.label);
+            assert!(n.y + n.h <= ss.height + 0.01, "{} overflows the canvas", n.label);
+        }
+        assert!(ss.width.is_finite() && ss.height.is_finite());
+        let svg = to_svg(&ss);
+        assert!(!svg.contains("inf") && !svg.contains("NaN"), "{svg}");
+    }
+
+    #[test]
+    fn computed_totals_do_not_leak_float_noise() {
+        // Node totals are sums, so 0.1 + 0.2 arrives as
+        // 0.30000000000000004 and used to be printed in full.
+        let svg = to_svg(&scene(&diagram("sankey-beta\nA,B,0.1\nA,C,0.2\n")));
+        assert!(svg.contains("A (0.3)"), "{svg}");
+        assert!(!svg.contains("0.30000000000000004"), "{svg}");
+        // A whole number still reads as an integer.
+        assert!(to_svg(&scene(&diagram("sankey-beta\nA,B,42\n"))).contains("A (42)"));
     }
 
     #[test]
