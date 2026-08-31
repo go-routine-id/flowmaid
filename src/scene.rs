@@ -2023,8 +2023,18 @@ pub(crate) fn style_attr(v: Option<&str>, fallback: &str) -> String {
     escape(v.unwrap_or(fallback))
 }
 
+/// Escape one string for XML, in an attribute or in text.
+///
+/// Control characters are DROPPED rather than escaped: XML 1.0 forbids
+/// them outright, even written as a numeric reference, so a single NUL
+/// arriving from an untrusted diagram would make the whole document
+/// unparseable — a browser shows an XML error instead of the drawing.
+/// Tab, newline and carriage return are the three that are legal.
 pub(crate) fn escape(s: &str) -> String {
-    s.replace('&', "&amp;")
+    s.chars()
+        .filter(|c| !c.is_control() || matches!(c, '\t' | '\n' | '\r'))
+        .collect::<String>()
+        .replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
@@ -2494,6 +2504,20 @@ mod tests {
             "a colour escaped its attribute:\n{svg}"
         );
         assert!(svg.contains("&quot;"), "{svg}");
+    }
+
+
+    #[test]
+    fn control_characters_are_dropped_not_escaped() {
+        // XML 1.0 forbids C0 controls outright — even `&#0;` is illegal —
+        // so one NUL from an untrusted diagram would make the document
+        // unparseable and a browser would show an error instead of the
+        // drawing. Tab, newline and return are the legal three.
+        let out = escape("a\u{0}b\u{1}c\u{b}d");
+        assert_eq!(out, "abcd", "control characters survived: {out:?}");
+        assert_eq!(escape("a\tb\nc\rd"), "a\tb\nc\rd");
+        // Ordinary escaping is unchanged.
+        assert_eq!(escape("<a & \"b\" 'c'>"), "&lt;a &amp; &quot;b&quot; &#39;c&#39;&gt;");
     }
 
 }

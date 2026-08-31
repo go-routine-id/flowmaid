@@ -17,10 +17,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
   could inject content into the SVG. Both quote forms mattered: `scene.rs` emits
   attributes with double quotes and `architecture.rs` with single ones.
 
-  Affected every path that carries a colour: flowchart `style` / `classDef`, the
-  advance text DSL, the advance JSON node/edge `style` objects, the advance
+  Reachable from a diagram's own text through flowchart `style` / `classDef`, the
+  advance text DSL, the advance JSON node/edge `style` objects, and the advance
   diagram-level `style` block (`lane_fill`, `lane_stroke`, `text_color`,
-  `edge_color`, `label_fill`), and `gitGraph` / `architecture-beta` node styles.
+  `edge_color`, `label_fill`). `gitGraph` and `architecture-beta` fill their node
+  styles from the palette, so only an embedder driving the scene API can put text
+  in those — they are covered for the same reason.
+
+  Control characters are now dropped rather than escaped. XML 1.0 forbids them
+  even as a numeric reference, so a single NUL in a colour or a label used to make
+  the whole document unparseable.
 
   Colours are escaped at the render site rather than rejected at the parser.
   `Graph` and `NodeStyle` are public with public fields and the crate advertises

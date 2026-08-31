@@ -4713,6 +4713,13 @@ mod tests {
             );
             let svg = render_advance_svg(&json).unwrap();
             assert!(!breakout(&svg), "style.{key} escaped its attribute:\n{svg}");
+            // Positive too: unknown JSON style keys are ignored for
+            // forward-compat, so if one of these is ever renamed the
+            // render path would go untested while this test stayed green.
+            assert!(
+                svg.contains("#fff&quot; onload=1"),
+                "style.{key} never reached the SVG — is the key still read?\n{svg}"
+            );
         }
 
         let node_json = r#"{"lanes":[{"id":"l","title":"L"}],
