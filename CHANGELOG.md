@@ -7,6 +7,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.28.1] - 2026-08-31
+
 ### Added
 
 - **`timeline` diagram** — `title` / `section`, `period : event[: event...]` rows,

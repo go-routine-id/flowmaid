@@ -25,7 +25,7 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 - [x] `mindmap` — indentation-built tree, radial layout with colored branches, six node shapes (square/rounded/circle/hexagon/bang/cloud) *(v0.13.0)*
 - [x] `gitGraph` — LR/TB/BT orientations, commits, branches, checkouts/switches, merges with ids and tags *(v0.22.0)*
 - [x] `architecture-beta` — nested groups, services, icons, and port-based edges (`id:L -- R:other`, `-->`, `<-->`, `{group}` qualifiers) *(v0.24.0)*
-- [x] `timeline` — `title`/`section`, `period : event[: event…]` rows, `:`-continuation lines, `LR`/`TD` direction, `%%`/`#` comments, `<br>` and entity folding *(v0.29.0)*
+- [x] `timeline` — `title`/`section`, `period : event[: event…]` rows, `:`-continuation lines, `LR`/`TD` direction, `%%`/`#` comments, `<br>` and entity folding *(v0.28.1)*
 - [ ] The complete mermaid catalog, tracked on the board: `swimlanes` · `gantt` · `quadrantChart` · `requirementDiagram` · `C4` · `zenuml` · `sankey` · `xychart` · `block` · `packet` · `kanban` · `radar` · `eventmodeling` · `treemap` · `venn` · `ishikawa` · `wardley` · `cynefin` · `treeview`
 
 **Flowchart features**
