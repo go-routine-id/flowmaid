@@ -12,7 +12,17 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - **`timeline` diagram** — `title` / `section`, `period : event[: event...]` rows,
   `:`-continuation lines, `LR` / `TD` direction, `%%` and `#` comments, and `<br>`
   folding. `LR` draws sections side by side on one shared axis, `TD` stacks them.
-- Example fixture `examples/mindmap.mmd` — the last diagram type that had none.
+- The rest of the Mermaid catalogue is now *recognised* — `requirementDiagram`,
+  `quadrantChart`, `sankey` / `sankey-beta`, `xychart-beta`, `block-beta`,
+  `packet-beta`, `radar-beta`, `treemap` / `treemap-beta`, `kanban`, `zenuml`, and
+  the `C4*` family — so they fail with an explicit "not supported yet" instead of
+  being parsed as a flowchart. Previously `quadrantChart`, `C4Context`, `kanban`
+  and `radar` rendered a nonsense SVG and exited 0, while `sankey-beta` failed with
+  the misleading `unknown edge operator near: '-beta'`.
+- `architecture` is accepted as a spelling variant of `architecture-beta`. The
+  dispatch already declared the alias, but the header was never recognised, so a
+  bare `architecture` diagram fell through to the flowchart parser.
+- Example fixture `examples/mindmap.mmd` — the last diagram type without one.
 
 ### Fixed
 
@@ -20,12 +30,17 @@ project adheres to [Semantic Versioning](https://semver.org/).
   actually parse. `mindmap`, `journey`, `gitGraph`, `architecture-beta`, and
   `timeline` now point at `parse_document()` like the other types, instead of
   answering with a self-contradictory `not supported yet (supported: ... mindmap ...)`.
+- `flowmaid --help` advertised the supported headers without `timeline`.
+- The crate description and `render_svg`'s doc comment likewise omitted `timeline`.
 
 ### Changed
 
 - Recognised diagram headers live in one table (`DIAGRAM_HEADERS`) that drives
-  header matching AND the "supported: ..." list quoted by both entry points.
-  Previously three hand-maintained lists had to agree, and two had drifted.
+  header matching, the "supported: ..." list quoted by both parser entry points,
+  and the CLI `--help`. Five hand-maintained lists had to agree before; three of
+  them had already drifted.
+- `parser::supported_types()` is public, so embedders and the CLI quote the list
+  the dispatch actually implements.
 
 ## [0.28.0] - 2026-08-30
 

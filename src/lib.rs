@@ -69,7 +69,8 @@ pub use advance::{
 /// Shortcut: Mermaid-syntax text -> SVG string. Dispatches on the
 /// diagram type header (flowchart/graph, erDiagram, classDiagram,
 /// sequenceDiagram, pie, stateDiagram-v2, mindmap, journey, gitGraph,
-/// architecture-beta).
+/// architecture-beta, timeline). [`parser::supported_types`] returns
+/// the same list at runtime, straight from the dispatch table.
 pub fn render_svg(source: &str) -> Result<String, ParseError> {
     render_svg_advanced(source, &SvgOptions::default())
 }
