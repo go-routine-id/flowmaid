@@ -380,11 +380,9 @@ pub fn parse_document(source: &str) -> Result<Document, ParseError> {
             Some(t) => Err(err(
                 i + 1,
                 format!(
-                    "diagram type '{}' is not supported yet (supported: flowchart, \
-                     graph, erDiagram, classDiagram, sequenceDiagram, pie, \
-                     stateDiagram-v2, mindmap, journey, gitGraph, architecture-beta, \
-                     timeline)",
-                    t
+                    "diagram type '{}' is not supported yet (supported: {})",
+                    t,
+                    supported_types()
                 ),
             )),
             // `source` here is already BOM+frontmatter-stripped —
@@ -475,19 +473,14 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
         if !header_seen {
             header_seen = true;
             if let Some(t) = diagram_type(line) {
-                let hint = if matches!(
-                    t,
-                    "erDiagram"
-                        | "classDiagram"
-                        | "sequenceDiagram"
-                        | "pie"
-                        | "stateDiagram-v2"
-                        | "stateDiagram"
-                ) {
+                // Every type `parse_document` can handle points at the
+                // right entry point; only a genuinely unparsed header
+                // (`gantt`) is reported as "not supported yet".
+                let hint = if header_is_parsed(t) {
                     "this parser is flowchart-only — use parse_document() or render_svg()"
+                        .to_string()
                 } else {
-                    "not supported yet (supported: flowchart, graph, erDiagram, \
-                     classDiagram, sequenceDiagram, pie, stateDiagram-v2, mindmap, journey, gitGraph)"
+                    format!("not supported yet (supported: {})", supported_types())
                 };
                 return Err(err(lineno, format!("diagram type '{}': {}", t, hint)));
             }
@@ -747,32 +740,105 @@ fn parse_props(s: &str, lineno: usize) -> Result<NodeStyle, ParseError> {
     Ok(st)
 }
 
+/// How flowmaid treats a Mermaid diagram header it recognises.
+#[derive(Clone, Copy, PartialEq)]
+enum HeaderSupport {
+    /// A parser exists, and the token is named in the "supported" list.
+    Parsed,
+    /// A parser exists, but the token is a spelling variant of one
+    /// already listed (`stateDiagram` for `stateDiagram-v2`), so it is
+    /// matched without being advertised twice.
+    Alias,
+    /// Recognised ONLY so the header fails with a clear message instead
+    /// of being parsed as a flowchart node.
+    Unsupported,
+}
+
+/// Every Mermaid diagram header flowmaid recognises, and how each one
+/// is treated.
+///
+/// This table is the single source of truth: [`diagram_type`] matches
+/// against it, BOTH parser entry points build their "supported: ..."
+/// list from it, and the CLI `--help` quotes the same list — so a
+/// diagram type is declared in exactly one place.
+///
+/// Order does not affect matching: [`diagram_type`] requires a
+/// whitespace-or-end-of-line boundary after the token, so `stateDiagram`
+/// can never shadow `stateDiagram-v2` however the two are ordered. Order
+/// DOES fix the reading order of the user-facing list, which is why the
+/// `Parsed` entries come first, in the order the README introduces them.
+const DIAGRAM_HEADERS: &[(&str, HeaderSupport)] = &[
+    // Parsed — listed, in README order.
+    ("erDiagram", HeaderSupport::Parsed),
+    ("classDiagram", HeaderSupport::Parsed),
+    ("sequenceDiagram", HeaderSupport::Parsed),
+    ("pie", HeaderSupport::Parsed),
+    ("stateDiagram-v2", HeaderSupport::Parsed),
+    ("mindmap", HeaderSupport::Parsed),
+    ("journey", HeaderSupport::Parsed),
+    ("gitGraph", HeaderSupport::Parsed),
+    ("architecture-beta", HeaderSupport::Parsed),
+    ("timeline", HeaderSupport::Parsed),
+    // Parsed, but a spelling variant of an entry already listed.
+    ("stateDiagram", HeaderSupport::Alias),
+    ("architecture", HeaderSupport::Alias),
+    // Recognised only so they fail with a clear message rather than
+    // being parsed as flowchart nodes.
+    ("requirementDiagram", HeaderSupport::Unsupported),
+    ("quadrantChart", HeaderSupport::Unsupported),
+    ("sankey-beta", HeaderSupport::Unsupported),
+    ("sankey", HeaderSupport::Unsupported),
+    ("xychart-beta", HeaderSupport::Unsupported),
+    ("block-beta", HeaderSupport::Unsupported),
+    ("packet-beta", HeaderSupport::Unsupported),
+    ("packet", HeaderSupport::Unsupported),
+    ("radar-beta", HeaderSupport::Unsupported),
+    ("treemap-beta", HeaderSupport::Unsupported),
+    ("treemap", HeaderSupport::Unsupported),
+    ("kanban", HeaderSupport::Unsupported),
+    ("zenuml", HeaderSupport::Unsupported),
+    ("C4Context", HeaderSupport::Unsupported),
+    ("C4Container", HeaderSupport::Unsupported),
+    ("C4Component", HeaderSupport::Unsupported),
+    ("C4Dynamic", HeaderSupport::Unsupported),
+    ("C4Deployment", HeaderSupport::Unsupported),
+    ("gantt", HeaderSupport::Unsupported),
+];
+
 /// Recognise a known Mermaid diagram-type header other than
 /// flowchart/graph, so we can fail with a clear message instead of
-/// parsing the header as a node. Longer tokens first
-/// (`stateDiagram-v2` before `stateDiagram`).
+/// parsing the header as a node.
 fn diagram_type(line: &str) -> Option<&'static str> {
-    const TYPES: &[&str] = &[
-        "architecture-beta",
-        "erDiagram",
-        "sequenceDiagram",
-        "classDiagram",
-        "stateDiagram-v2",
-        "stateDiagram",
-        "gantt",
-        "pie",
-        "journey",
-        "mindmap",
-        "timeline",
-        "gitGraph",
-    ];
-    TYPES.iter().copied().find(|t| {
+    DIAGRAM_HEADERS.iter().map(|&(t, _)| t).find(|t| {
         line.get(..t.len()) == Some(*t)
             && line[t.len()..]
                 .chars()
                 .next()
                 .map_or(true, char::is_whitespace)
     })
+}
+
+/// Does flowmaid have a parser for this recognised header? Drives the
+/// hint in [`parse`]: a parsed type means "wrong entry point", while an
+/// unparsed one really is "not supported yet".
+fn header_is_parsed(t: &str) -> bool {
+    DIAGRAM_HEADERS
+        .iter()
+        .any(|&(name, sup)| name == t && sup != HeaderSupport::Unsupported)
+}
+
+/// The "supported: ..." list both parser entry points quote, built
+/// from [`DIAGRAM_HEADERS`] so it stays in step with the dispatch.
+/// Public so the CLI `--help` can quote the very same list.
+pub fn supported_types() -> String {
+    let mut out = String::from("flowchart, graph");
+    for &(name, sup) in DIAGRAM_HEADERS {
+        if sup == HeaderSupport::Parsed {
+            out.push_str(", ");
+            out.push_str(name);
+        }
+    }
+    out
 }
 
 /// Match a header keyword only when followed by whitespace or end of
@@ -3487,10 +3553,12 @@ mod tests {
                 e.message
             );
         }
-        // `timeline` is supported by parse_document, but `parse` is
-        // flowchart-only and still points it away.
+        // `timeline` IS parsed by parse_document, so the flowchart-only
+        // `parse` must send the caller to the right entry point rather
+        // than deny the type exists.
         let e = parse("timeline\nx").unwrap_err();
-        assert!(e.message.contains("not supported yet"), "{}", e.message);
+        assert!(e.message.contains("parse_document"), "{}", e.message);
+        assert!(!e.message.contains("not supported yet"), "{}", e.message);
         assert!(matches!(
             parse_document("timeline\n2002 : A").unwrap(),
             Document::Timeline(_)
@@ -3502,6 +3570,79 @@ mod tests {
         // A node that merely starts with a type name is still a node.
         let g = parse("pies[Pie Chart] --> B").unwrap();
         assert_eq!(g.nodes[0].id, "pies");
+    }
+
+    /// Locks the invariant that went stale once before: a header the
+    /// crate CAN parse must never be reported as unsupported. Iterates
+    /// [`DIAGRAM_HEADERS`] itself, so a new entry is covered without
+    /// anyone remembering to extend this test.
+    #[test]
+    fn parse_sends_every_parsed_type_to_the_right_entry_point() {
+        for &(header, sup) in DIAGRAM_HEADERS {
+            if sup == HeaderSupport::Unsupported {
+                continue;
+            }
+            let e = parse(&format!("{header}\n")).unwrap_err();
+            assert!(
+                e.message.contains("flowchart-only"),
+                "'{header}' should point at parse_document, got: {}",
+                e.message
+            );
+            assert!(
+                !e.message.contains("not supported yet"),
+                "'{header}' is parsed by the crate — the message must not deny it: {}",
+                e.message
+            );
+        }
+    }
+
+    /// The other half of the lock. A `Parsed`/`Alias` entry with no arm
+    /// in `parse_document` falls into the catch-all and reproduces the
+    /// exact self-contradictory message this table exists to prevent —
+    /// and the test above would still pass, because `parse` never
+    /// reaches the dispatch. So assert the dispatch itself.
+    #[test]
+    fn parse_document_dispatches_every_parsed_header() {
+        for &(header, sup) in DIAGRAM_HEADERS {
+            let res = parse_document(&format!("{header}\n")).map(|_| ());
+            if sup == HeaderSupport::Unsupported {
+                let e = res.unwrap_err();
+                assert!(
+                    e.message.contains("not supported yet"),
+                    "'{header}' has no parser and should say so: {}",
+                    e.message
+                );
+                continue;
+            }
+            // An empty body may legitimately still be an error, but it
+            // must never be "this diagram type does not exist".
+            if let Err(e) = res {
+                assert!(
+                    !e.message.contains("not supported yet"),
+                    "'{header}' is missing a dispatch arm: {}",
+                    e.message
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn supported_list_matches_the_dispatch_table() {
+        let list = supported_types();
+        assert!(list.contains("flowchart"), "{list}");
+        assert!(list.contains("graph"), "{list}");
+        for &(header, sup) in DIAGRAM_HEADERS {
+            match sup {
+                HeaderSupport::Parsed => {
+                    assert!(list.contains(header), "'{header}' missing from: {list}");
+                }
+                HeaderSupport::Unsupported => {
+                    assert!(!list.contains(header), "unparsed '{header}' leaked into: {list}");
+                }
+                // Matched, but deliberately not advertised a second time.
+                HeaderSupport::Alias => {}
+            }
+        }
     }
 
     // ----------------------------- ER -----------------------------

@@ -28,8 +28,8 @@ fn print_help() {
          \x20 A([Start]) --> B{{Valid?}}\n\
          \x20 B -->|yes| C[Process]\n\
          \x20 B -.->|no| D((Done))\n\n\
-         Other supported headers: erDiagram, classDiagram, sequenceDiagram, \
-         pie, stateDiagram-v2, mindmap, journey, gitGraph, architecture-beta"
+         Supported headers: {}",
+        flowmaid::parser::supported_types()
     );
 }
 
