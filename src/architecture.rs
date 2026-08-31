@@ -470,8 +470,8 @@ pub fn to_svg_with(as_: &ArchScene, opts: &SvgOptions) -> String {
 
     // Service boxes.
     for (i, n) in as_.scene.nodes.iter().enumerate() {
-        let fill = n.style.fill.as_deref().unwrap_or("#ffffff");
-        let stroke = n.style.stroke.as_deref().unwrap_or(EDGE_COLOR);
+        let fill = crate::scene::style_attr(n.style.fill.as_deref(), "#ffffff");
+        let stroke = crate::scene::style_attr(n.style.stroke.as_deref(), EDGE_COLOR);
         s.push_str(&format!(
             "<rect x='{:.1}' y='{:.1}' width='{:.1}' height='{:.1}' \
              rx='8' fill='{}' stroke='{}' stroke-width='{:.1}'/>\n",

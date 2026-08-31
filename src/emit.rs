@@ -1190,4 +1190,19 @@ mod tests {
         assert_eq!(g.nodes[0].label, "a#13;b");
         assert_roundtrip(&g);
     }
+
+    #[test]
+    fn a_quoted_style_value_survives_the_round_trip() {
+        // Escaping happens at the SVG boundary, so the MODEL keeps the
+        // value verbatim and `to_mermaid` -> `parse` still agrees. An
+        // earlier attempt rejected quotes in the parser, which silently
+        // broke this contract.
+        let mut g = crate::parser::parse("flowchart TD\n  A[Hi] --> B\n").unwrap();
+        g.nodes[0].style.fill = Some("url('#g')".to_string());
+        let text = to_mermaid(&g);
+        let back = crate::parser::parse(&text)
+            .unwrap_or_else(|e| panic!("re-parse failed: {}\n{text}", e.message));
+        assert_eq!(back.nodes[0].style.fill.as_deref(), Some("url('#g')"));
+    }
+
 }

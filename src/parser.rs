@@ -690,35 +690,6 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
 
 /// Parse `fill:#f9f,stroke:#333,stroke-width:4px,color:#fff`.
 /// Unknown properties are ignored (mermaid tolerates them too).
-/// The characters that can close an SVG attribute. Both quote forms are
-/// listed because the crate emits attributes with each (`scene.rs` uses
-/// double quotes, `architecture.rs` single ones), so neither is safe to
-/// let through.
-///
-/// Angle brackets are deliberately NOT here: they cannot end a quoted
-/// attribute value, and `fill:url(#a--&gt;b)` is a legitimate reference
-/// that the crate already round-trips.
-pub(crate) const CSS_FORBIDDEN: [char; 2] = ['"', '\''];
-
-/// Validate one CSS-ish style value (a colour, a length) at the point it
-/// enters the model.
-///
-/// A colour reaches an SVG attribute from a dozen render sites and goes
-/// back out through the mermaid serialiser, so escaping at each of those
-/// is a discipline that only has to be forgotten once. Rejecting the
-/// characters that no valid CSS value contains makes it an invariant of
-/// the model instead: a style string in a parsed diagram can never close
-/// the attribute it is written into.
-fn css_value(v: &str, key: &str, lineno: usize) -> Result<String, ParseError> {
-    if let Some(c) = v.chars().find(|c| CSS_FORBIDDEN.contains(c) || *c == '\n') {
-        return Err(err(
-            lineno,
-            format!("invalid character {c:?} in {key} value: '{v}'"),
-        ));
-    }
-    Ok(v.to_string())
-}
-
 fn parse_props(s: &str, lineno: usize) -> Result<NodeStyle, ParseError> {
     let mut st = NodeStyle::default();
     // Split on commas at paren depth 0 only, so CSS function values
@@ -758,9 +729,9 @@ fn parse_props(s: &str, lineno: usize) -> Result<NodeStyle, ParseError> {
         };
         let v = v.trim();
         match k.trim() {
-            "fill" => st.fill = Some(css_value(v, k.trim(), lineno)?),
-            "stroke" => st.stroke = Some(css_value(v, k.trim(), lineno)?),
-            "color" => st.color = Some(css_value(v, k.trim(), lineno)?),
+            "fill" => st.fill = Some(v.to_string()),
+            "stroke" => st.stroke = Some(v.to_string()),
+            "color" => st.color = Some(v.to_string()),
             "stroke-width" => {
                 let n: f64 = v
                     .trim_end_matches("px")
@@ -4113,38 +4084,15 @@ mod tests {
     }
 
     #[test]
-    fn style_values_cannot_break_out_of_an_svg_attribute() {
-        // A colour reaches an SVG attribute from a dozen render sites
-        // and goes back out through to_mermaid, so it is rejected where
-        // it enters the model rather than escaped at each of those.
-        for line in [
-            "style A fill:x\" onload=alert(1)",
-            "style A stroke:x' onload=alert(1)",
-            "classDef z color:a\"b",
-        ] {
-            let src = format!("flowchart TD\n  A[Hi] --> B\n  {line}\n");
-            let e = parse(&src).unwrap_err();
-            assert_eq!(e.line, 3, "{}", e.message);
-            assert!(e.message.contains("invalid character"), "{}", e.message);
+    fn quoted_css_url_values_are_accepted() {
+        // Rejecting quotes at the parser was a first attempt at the
+        // injection fix; it cost these, which are valid CSS. Escaping at
+        // the render site protects without turning input away.
+        for v in ["url('#g')", "url(\"#g\")", "url(#a-->b)", "rgb(1, 2, 3)"] {
+            let src = format!("flowchart TD\n  A[Hi] --> B\n  style A fill:{v}\n");
+            let g = parse(&src).unwrap_or_else(|e| panic!("'{v}' rejected: {}", e.message));
+            assert_eq!(g.nodes[0].style.fill.as_deref(), Some(v));
         }
-    }
-
-    #[test]
-    fn ordinary_css_values_still_parse() {
-        // The rule must not cost the values people actually write —
-        // commas and parens inside a CSS function included.
-        let g = parse(
-            "flowchart TD\n  A[Hi] --> B\n  style A fill:#fee,stroke:rgb(255, 0, 0),stroke-width:2px\n",
-        )
-        .unwrap();
-        assert_eq!(g.nodes[0].style.fill.as_deref(), Some("#fee"));
-        assert_eq!(g.nodes[0].style.stroke.as_deref(), Some("rgb(255, 0, 0)"));
-        assert_eq!(g.nodes[0].style.stroke_width, Some(2.0));
-        // Angle brackets cannot end a quoted attribute, and a fragment
-        // reference legitimately carries them — the rule must not reach
-        // further than the two quote characters.
-        let g = parse("flowchart TD\nclassDef --x fill:url(#a-->b)\nB\n").unwrap();
-        assert!(g.nodes.iter().any(|n| n.id == "B"));
     }
 
     // ----------------------------- ER -----------------------------

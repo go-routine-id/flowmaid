@@ -331,8 +331,8 @@ pub fn to_svg_with(gs: &GitScene, opts: &SvgOptions) -> String {
 
     // Commit circles.
     for n in &gs.scene.nodes {
-        let fill = n.style.fill.as_deref().unwrap_or_else(|| accent(0));
-        let stroke = n.style.stroke.as_deref().unwrap_or(EDGE_COLOR);
+        let fill = crate::scene::style_attr(n.style.fill.as_deref(), accent(0));
+        let stroke = crate::scene::style_attr(n.style.stroke.as_deref(), EDGE_COLOR);
         let sw = n.style.stroke_width.unwrap_or(2.0);
         s.push_str(&format!(
             "<circle cx=\"{:.1}\" cy=\"{:.1}\" r=\"{:.1}\" \

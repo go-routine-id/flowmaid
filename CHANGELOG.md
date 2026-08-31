@@ -11,18 +11,23 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- **Style values can no longer break out of an SVG attribute.** A `fill`, `stroke`,
-  `color`, `dash`, or `label-fill` value carrying a quote could close the attribute
-  it was written into and add markup of its own, so rendering an untrusted diagram
-  could inject content into the SVG. Affected `style` / `classDef` in flowcharts and
-  both advance entry points (text DSL and JSON).
+- **Style values can no longer close the SVG attribute they are written into.**
+  A `fill`, `stroke`, `color`, `dash`, or `label-fill` value carrying a quote could
+  end its attribute and add markup of its own, so rendering an untrusted diagram
+  could inject content into the SVG. Both quote forms mattered: `scene.rs` emits
+  attributes with double quotes and `architecture.rs` with single ones.
 
-  The two quote characters are now rejected where a style value enters the model,
-  with a line-numbered error, rather than escaped at each of the dozen render sites
-  that read one — escaping there is a discipline that only has to be forgotten once,
-  and the values also travel back out through `to_mermaid`. Angle brackets are
-  deliberately still allowed: they cannot end a quoted attribute, and
-  `fill:url(#a-->b)` is a legitimate value the crate already round-trips.
+  Affected every path that carries a colour: flowchart `style` / `classDef`, the
+  advance text DSL, the advance JSON node/edge `style` objects, the advance
+  diagram-level `style` block (`lane_fill`, `lane_stroke`, `text_color`,
+  `edge_color`, `label_fill`), and `gitGraph` / `architecture-beta` node styles.
+
+  Colours are escaped at the render site rather than rejected at the parser.
+  `Graph` and `NodeStyle` are public with public fields and the crate advertises
+  the scene API for embedders, so a check in the parser would leave the
+  programmatic path unprotected — and rejecting quotes would also turn away valid
+  CSS such as `fill:url('#grad')` and break the `to_mermaid` round trip. The
+  render site is the only boundary every colour actually crosses.
 
 ## [0.29.0] - 2026-08-31
 
