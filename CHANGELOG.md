@@ -7,6 +7,26 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **`timeline` diagram** — `title` / `section`, `period : event[: event...]` rows,
+  `:`-continuation lines, `LR` / `TD` direction, `%%` and `#` comments, and `<br>`
+  folding. `LR` draws sections side by side on one shared axis, `TD` stacks them.
+- Example fixture `examples/mindmap.mmd` — the last diagram type that had none.
+
+### Fixed
+
+- The flowchart-only `parse()` no longer denies a diagram type the crate can
+  actually parse. `mindmap`, `journey`, `gitGraph`, `architecture-beta`, and
+  `timeline` now point at `parse_document()` like the other types, instead of
+  answering with a self-contradictory `not supported yet (supported: ... mindmap ...)`.
+
+### Changed
+
+- Recognised diagram headers live in one table (`DIAGRAM_HEADERS`) that drives
+  header matching AND the "supported: ..." list quoted by both entry points.
+  Previously three hand-maintained lists had to agree, and two had drifted.
+
 ## [0.28.0] - 2026-08-30
 
 ### Added
