@@ -10,8 +10,8 @@
 //! (`classDiagram`), sequence diagrams (`sequenceDiagram`), pie
 //! charts (`pie`), state diagrams (`stateDiagram-v2`), mindmaps
 //! (`mindmap`), user-journey diagrams (`journey`), git graphs
-//! (`gitGraph`), timeline diagrams (`timeline`), and architecture
-//! diagrams (`architecture-beta`).
+//! (`gitGraph`), timeline diagrams (`timeline`), sankey diagrams
+//! (`sankey-beta`), and architecture diagrams (`architecture-beta`).
 //!
 //! There is also an engine-native swimlane renderer driven by JSON in
 //! the [`advance`] module (`render_advance_svg`, `layout_advance`, and
@@ -48,6 +48,7 @@ pub mod model;
 pub mod parser;
 pub mod pie;
 pub mod render;
+pub mod sankey;
 pub mod scene;
 pub mod seq;
 pub mod style;
@@ -69,7 +70,8 @@ pub use advance::{
 /// Shortcut: Mermaid-syntax text -> SVG string. Dispatches on the
 /// diagram type header (flowchart/graph, erDiagram, classDiagram,
 /// sequenceDiagram, pie, stateDiagram-v2, mindmap, journey, gitGraph,
-/// architecture-beta, timeline). [`parser::supported_types`] returns
+/// architecture-beta, timeline, sankey-beta). [`parser::supported_types`]
+/// returns
 /// the same list at runtime, straight from the dispatch table.
 pub fn render_svg(source: &str) -> Result<String, ParseError> {
     render_svg_advanced(source, &SvgOptions::default())
@@ -92,5 +94,6 @@ pub fn render_svg_advanced(source: &str, opts: &SvgOptions) -> Result<String, Pa
         Document::GitGraph(d) => Ok(render::render_gitgraph_with(&d, opts)),
         Document::Architecture(d) => Ok(render::render_architecture_with(&d, opts)),
         Document::Timeline(d) => Ok(render::render_timeline_with(&d, opts)),
+        Document::Sankey(d) => Ok(render::render_sankey_with(&d, opts)),
     }
 }

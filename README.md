@@ -5,7 +5,7 @@
 [![docs.rs](https://docs.rs/flowmaid/badge.svg)](https://docs.rs/flowmaid)
 [![license](https://img.shields.io/crates/l/flowmaid.svg)](LICENSE)
 
-A small Mermaid-like diagram engine written in pure std Rust with zero external dependencies. Takes Mermaid-syntax text and produces SVG — or live, draggable geometry for interactive apps. Eleven diagram types today: flowcharts, ER, UML class, sequence, pie, state, mindmap, user-journey, git graphs, timeline, and architecture-beta diagrams.
+A small Mermaid-like diagram engine written in pure std Rust with zero external dependencies. Takes Mermaid-syntax text and produces SVG — or live, draggable geometry for interactive apps. Twelve diagram types today: flowcharts, ER, UML class, sequence, pie, state, mindmap, user-journey, git graphs, timeline, sankey, and architecture-beta diagrams.
 
 **Website:** https://go-routine-id.github.io/flowmaid/ · **Playground:** https://go-routine-id.github.io/flowmaid-web/ · **Desktop editor:** [flowmaid-desktop](https://github.com/go-routine-id/flowmaid-desktop) · **Terminal:** [flowcli](https://github.com/go-routine-id/flowcli)
 
@@ -25,8 +25,9 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 - [x] `mindmap` — indentation-built tree, radial layout with colored branches, six node shapes (square/rounded/circle/hexagon/bang/cloud) *(v0.13.0)*
 - [x] `gitGraph` — LR/TB/BT orientations, commits, branches, checkouts/switches, merges with ids and tags *(v0.22.0)*
 - [x] `architecture-beta` — nested groups, services, icons, and port-based edges (`id:L -- R:other`, `-->`, `<-->`, `{group}` qualifiers) *(v0.24.0)*
+- [x] `sankey-beta` — CSV `source,target,value` rows, quoted fields, node columns by depth, ribbons sized by value, `config.sankey.*` from frontmatter *(v0.29.0)*
 - [x] `timeline` — `title`/`section`, `period : event[: event…]` rows, `:`-continuation lines, `LR`/`TD` direction, `%%`/`#` comments, `<br>` and entity folding *(v0.28.1)*
-- [ ] The complete mermaid catalog, tracked on the board: `swimlanes` · `gantt` · `quadrantChart` · `requirementDiagram` · `C4` · `zenuml` · `sankey` · `xychart` · `block` · `packet` · `kanban` · `radar` · `eventmodeling` · `treemap` · `venn` · `ishikawa` · `wardley` · `cynefin` · `treeview`
+- [ ] The complete mermaid catalog, tracked on the board: `swimlanes` · `gantt` · `quadrantChart` · `requirementDiagram` · `C4` · `zenuml` · `xychart` · `block` · `packet` · `kanban` · `radar` · `eventmodeling` · `treemap` · `venn` · `ishikawa` · `wardley` · `cynefin` · `treeview`
 
 **Flowchart features**
 
@@ -205,6 +206,44 @@ timeline
 ```
 
 Supported subset, mirroring mermaid's timeline contract: optional `title`; `section <name>` groups (periods before the first `section` form a leading unnamed band drawn without a header); `period : event[: event…]` rows with several events inline; a bare `: event` line that continues the previous period's events; `LR` (default) and `TD` direction; `%%` and `#` comments; and `<br>` folding plus `#quot;`/`#NN;` entity decoding. A `:` in event text is literal unless followed by whitespace — so `https://example.com` and `::` survive intact, and a `:` in the *period* position (`2004 : e1 : e2`) separates events. Colors cycle through the stable accent palette per section.
+
+## Sankey diagrams
+
+A `sankey-beta` diagram draws weighted flows as ribbons whose thickness is proportional to their value. The body is CSV — one `source,target,value` row per flow — and nodes are created on first mention, keyed by their label:
+
+```mermaid
+---
+config:
+  sankey:
+    showValues: true
+    suffix: " TWh"
+---
+sankey-beta
+Coal,Electricity,42
+Gas,Electricity,31
+Nuclear,Electricity,25
+Electricity,Industry,48
+Electricity,Homes,40
+Electricity,Losses,10
+```
+
+Supported subset: rows of exactly three fields; double-quoted fields, where `""` is one literal quote, so a label may contain commas; `%%` comments and blank lines; repeated labels reusing one node; and `sankey` accepted as a spelling variant of `sankey-beta`.
+
+Layout follows d3-sankey, which is what mermaid wraps. A node sits in the column of its **longest** path from a source, so every ribbon points rightwards, and its thickness is the larger of its inflow and outflow — a node that merely splits its input never shrinks. Within a column, nodes are ordered by the barycentre of their neighbours to reduce crossings (minimising crossings exactly is NP-hard, so this is the standard heuristic) with ties broken by declaration order, which keeps the SVG a stable function of the input.
+
+Configuration is read from mermaid's YAML frontmatter under `config.sankey`, and every default matches mermaid's `config.schema.yaml`:
+
+| Key | Default | Notes |
+|---|---|---|
+| `width` / `height` | `600` / `400` | Canvas size |
+| `linkColor` | `gradient` | Also `source`, `target`, or any CSS colour |
+| `nodeAlignment` | `justify` | Also `left`, `right`, `center` |
+| `showValues` | `true` | Draws the node total beside its label |
+| `prefix` / `suffix` | `''` | Wrapped around a shown value |
+| `nodeWidth` | `10` | Node rectangle width |
+| `nodePadding` | `12` | Vertical gap between nodes in a column |
+
+An unknown key is skipped and a value that does not parse keeps its default, so config for other diagram types in a shared file never breaks the render. See `examples/sankey.mmd`.
 
 Other Mermaid diagram types (`gantt`, `quadrantChart`, ...) are detected and produce an explicit "not supported yet" error instead of a confusing parse failure.
 

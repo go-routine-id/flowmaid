@@ -233,6 +233,7 @@ pub enum Document {
     GitGraph(GitGraph),
     Architecture(Architecture),
     Timeline(Timeline),
+    Sankey(SankeyDiagram),
 }
 
 /// UML class diagram (`classDiagram` header).
@@ -807,4 +808,102 @@ pub enum ArchSide {
     L,
     /// Right.
     R,
+}
+
+// ------------------------------------------------------------------
+// Sankey
+// ------------------------------------------------------------------
+
+/// Sankey diagram (`sankey-beta` header). The body is CSV — one
+/// `source,target,value` row per link — and nodes are created on first
+/// mention, so the model keeps them in first-appearance order for a
+/// stable layout.
+#[derive(Debug, Default)]
+pub struct SankeyDiagram {
+    /// Node labels, in first-appearance order. A link's endpoints are
+    /// indices into this vector; mermaid uses the label as the id, so
+    /// two rows naming the same label share one node.
+    pub nodes: Vec<String>,
+    pub links: Vec<SankeyLink>,
+    pub config: SankeyConfig,
+}
+
+impl SankeyDiagram {
+    /// Index of `label`, appending it if this is its first mention.
+    pub fn ensure_node(&mut self, label: &str) -> usize {
+        if let Some(i) = self.nodes.iter().position(|n| n == label) {
+            i
+        } else {
+            self.nodes.push(label.to_string());
+            self.nodes.len() - 1
+        }
+    }
+}
+
+/// One CSV row: a weighted flow from one node to another.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SankeyLink {
+    pub source: usize,
+    pub target: usize,
+    pub value: f64,
+}
+
+/// How a link's ribbon is painted.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub enum SankeyLinkColor {
+    /// Fade from the source node's colour to the target's — mermaid's
+    /// default.
+    #[default]
+    Gradient,
+    /// Flat, taken from the source node.
+    Source,
+    /// Flat, taken from the target node.
+    Target,
+    /// Flat, taken verbatim from the config (any CSS colour).
+    Fixed(String),
+}
+
+/// Where nodes with slack are pushed inside their column.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum SankeyAlignment {
+    /// Stretch so both edges are flush — mermaid's default.
+    #[default]
+    Justify,
+    Left,
+    Right,
+    Center,
+}
+
+/// The `config.sankey.*` block from YAML frontmatter. Defaults mirror
+/// mermaid's `config.schema.yaml` exactly, so a diagram with no config
+/// renders the way mermaid renders it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SankeyConfig {
+    pub width: f64,
+    pub height: f64,
+    pub link_color: SankeyLinkColor,
+    pub node_alignment: SankeyAlignment,
+    /// Draw each node's total next to its label.
+    pub show_values: bool,
+    /// Wrapped around a shown value (`prefix` + value + `suffix`).
+    pub prefix: String,
+    pub suffix: String,
+    pub node_width: f64,
+    pub node_padding: f64,
+}
+
+impl Default for SankeyConfig {
+    fn default() -> Self {
+        Self {
+            width: 600.0,
+            height: 400.0,
+            link_color: SankeyLinkColor::Gradient,
+            node_alignment: SankeyAlignment::Justify,
+            show_values: true,
+            prefix: String::new(),
+            suffix: String::new(),
+            node_width: 10.0,
+            node_padding: 12.0,
+        }
+    }
 }

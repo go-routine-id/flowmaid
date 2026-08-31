@@ -193,6 +193,10 @@ fn main() {
             eprintln!("empty diagram: no timeline periods");
             process::exit(1);
         }
+        Document::Sankey(d) if d.links.is_empty() => {
+            eprintln!("empty diagram: no sankey rows");
+            process::exit(1);
+        }
         Document::Flowchart(g) | Document::State(g) => {
             let title = if matches!(doc, Document::State(_)) {
                 "State diagram"
@@ -215,6 +219,7 @@ fn main() {
         Document::GitGraph(d) => render::render_gitgraph(d),
         Document::Architecture(d) => render::render_architecture(d),
         Document::Timeline(d) => render::render_timeline(d),
+        Document::Sankey(d) => render::render_sankey(d),
     };
 
     match &output {
