@@ -7,6 +7,33 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Sankey gradient ids are namespaced per diagram.** Ids were `fmsk0..N`, derived
+  from the link index alone, so two sankey SVGs inlined on one page — which the docs
+  site does — made every ribbon in the second resolve to the first's gradient, taking
+  its stop colours *and* its `userSpaceOnUse` geometry. The id now carries a hash of
+  the scene, which keeps output byte-identical across runs while making a collision
+  between different diagrams effectively impossible.
+- **Sankey config numbers must be finite and non-negative.** `f64::from_str` accepts
+  `NaN` and `inf`, and they reached the SVG as `x="NaN"` or `viewBox="0 0 600 inf"`.
+  `parse_sankey` already refused a non-finite *link* value; config numbers now get the
+  same guard and fall back to their default.
+- **An overflowing sum no longer produces infinite geometry.** Every link value can be
+  finite while their sum reaches `+inf`, which became `height="inf"`. Sums are
+  saturated, so the diagram draws — squashed — instead of emitting unparseable SVG.
+- **Computed totals no longer leak float noise into labels.** A node total is a sum, so
+  `0.1 + 0.2` rendered as `A (0.30000000000000004)`; it now reads `A (0.3)`.
+- **`linkColor` and `nodeAlignment` ignore case**, like the YAML booleans beside them.
+  `linkColor: Gradient` used to fall through to a CSS colour named "Gradient" and paint
+  the ribbons black; `nodeAlignment: Left` silently laid out as `justify`. A value that
+  is a real colour keeps its spelling, since CSS `var(--Name)` is case-sensitive.
+- **`config.sankey` is read only as a direct child of `config`.** A `sankey` key nested
+  under another namespace (`config.themeVariables.sankey`) silently reconfigured the
+  diagram.
+- The diagram-type count in `README.md` and `docs/index.html` was stale (eleven and ten
+  against twelve shipped).
+
 ## [0.29.0] - 2026-08-31
 
 ### Added
