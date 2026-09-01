@@ -470,8 +470,8 @@ pub fn to_svg_with(as_: &ArchScene, opts: &SvgOptions) -> String {
 
     // Service boxes.
     for (i, n) in as_.scene.nodes.iter().enumerate() {
-        let fill = n.style.fill.as_deref().unwrap_or("#ffffff");
-        let stroke = n.style.stroke.as_deref().unwrap_or(EDGE_COLOR);
+        let fill = crate::scene::style_attr(n.style.fill.as_deref(), "#ffffff");
+        let stroke = crate::scene::style_attr(n.style.stroke.as_deref(), EDGE_COLOR);
         s.push_str(&format!(
             "<rect x='{:.1}' y='{:.1}' width='{:.1}' height='{:.1}' \
              rx='8' fill='{}' stroke='{}' stroke-width='{:.1}'/>\n",
@@ -711,4 +711,29 @@ mod tests {
         .unwrap_err();
         assert!(err.message.contains("duplicate service id"));
     }
+
+    #[test]
+    fn a_service_colour_is_escaped_on_its_way_into_the_attribute() {
+        // architecture-beta writes its rects with SINGLE-quoted
+        // attributes, so this call site is the reason `escape` has to
+        // neutralise both quote forms, not just the double one.
+        let d = match crate::parser::parse_document(
+            "architecture-beta\n  group g[G]\n  service a(cloud)[A] in g\n",
+        )
+        .unwrap()
+        {
+            crate::model::Document::Architecture(a) => a,
+            _ => panic!("not an architecture diagram"),
+        };
+        let mut as_ = scene(&d);
+        as_.scene.nodes[0].style.fill = Some("x' onload=1".to_string());
+        as_.scene.nodes[0].style.stroke = Some("y\" onload=1".to_string());
+        let svg = to_svg(&as_);
+        assert!(
+            !svg.contains("' onload") && !svg.contains("\" onload"),
+            "a service colour escaped its attribute:\n{svg}"
+        );
+        assert!(svg.contains("&#39;"), "{svg}");
+    }
+
 }

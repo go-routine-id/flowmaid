@@ -1337,8 +1337,8 @@ pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String 
         let ss = crate::style::shape_style(n.shape);
         let style = format!(
             "fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\"",
-            n.style.fill.as_deref().unwrap_or(ss.fill),
-            n.style.stroke.as_deref().unwrap_or(ss.stroke),
+            style_attr(n.style.fill.as_deref(), ss.fill),
+            style_attr(n.style.stroke.as_deref(), ss.stroke),
             n.style.stroke_width.unwrap_or(1.6)
         );
         match n.shape {
@@ -1399,7 +1399,7 @@ pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String 
                      <path d=\"M {l:.1} {ty:.1} A {rx:.1} {ry:.1} 0 0 1 {r:.1} {ty:.1}\" \
                      fill=\"none\" stroke=\"{stroke}\" stroke-width=\"1.6\"/>\n",
                     l = l, r = r, ty = t + ry, by = b - ry, rx = w / 2.0, ry = ry,
-                    stroke = n.style.stroke.as_deref().unwrap_or(ss.stroke),
+                    stroke = style_attr(n.style.stroke.as_deref(), ss.stroke),
                     style = style,
                 ));
             }
@@ -1410,7 +1410,7 @@ pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String 
                      <line x1=\"{l1:.1}\" y1=\"{t:.1}\" x2=\"{l1:.1}\" y2=\"{b:.1}\" stroke=\"{stroke}\" stroke-width=\"1.6\"/>\n\
                      <line x1=\"{r1:.1}\" y1=\"{t:.1}\" x2=\"{r1:.1}\" y2=\"{b:.1}\" stroke=\"{stroke}\" stroke-width=\"1.6\"/>\n",
                     l = l, t = t, w = w, h = h, b = t + h, l1 = l + 8.0, r1 = l + w - 8.0,
-                    stroke = n.style.stroke.as_deref().unwrap_or(ss.stroke), style = style,
+                    stroke = style_attr(n.style.stroke.as_deref(), ss.stroke), style = style,
                 ));
             }
             Shape::Hexagon => {
@@ -1450,7 +1450,7 @@ pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String 
                      <circle cx=\"{cx:.1}\" cy=\"{cy:.1}\" r=\"{ri:.1}\" {style}/>\n",
                     r = w / 2.0,
                     ri = w / 2.0 - 4.0,
-                    stroke = n.style.stroke.as_deref().unwrap_or(ss.stroke),
+                    stroke = style_attr(n.style.stroke.as_deref(), ss.stroke),
                 ));
             }
             Shape::ForkBar => {
@@ -1468,7 +1468,7 @@ pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String 
             &mut s,
             cx,
             cy,
-            n.style.color.as_deref().unwrap_or(TEXT_COLOR),
+            &style_attr(n.style.color.as_deref(), TEXT_COLOR),
             &n.label,
         );
         s.push_str("</g>\n");
@@ -2008,8 +2008,33 @@ fn rich(line: &str) -> String {
     s
 }
 
+/// A user-supplied style value on its way into an SVG attribute.
+///
+/// Colours arrive here from `style` / `classDef` directives AND from
+/// callers who build a [`crate::model::Graph`] by hand through the public
+/// scene API, so neither the parser nor the constructor can be trusted to
+/// have vetted them. [`escape`] neutralises both quote forms, so a value
+/// cannot close the attribute whichever delimiter the render site used.
+pub(crate) fn style_attr(v: Option<&str>, fallback: &str) -> String {
+    // The fallback is escaped too. It is a palette constant in most
+    // callers, where escaping is a no-op — but in `advance` it is the
+    // diagram-level style, which is every bit as user-supplied as the
+    // override. Escaping both makes the helper safe whoever calls it.
+    escape(v.unwrap_or(fallback))
+}
+
+/// Escape one string for XML, in an attribute or in text.
+///
+/// Control characters are DROPPED rather than escaped: XML 1.0 forbids
+/// them outright, even written as a numeric reference, so a single NUL
+/// arriving from an untrusted diagram would make the whole document
+/// unparseable — a browser shows an XML error instead of the drawing.
+/// Tab, newline and carriage return are the three that are legal.
 pub(crate) fn escape(s: &str) -> String {
-    s.replace('&', "&amp;")
+    s.chars()
+        .filter(|c| !c.is_control() || matches!(c, '\t' | '\n' | '\r'))
+        .collect::<String>()
+        .replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
@@ -2462,4 +2487,37 @@ mod tests {
             "edge must enter at B's left side"
         );
     }
+
+    #[test]
+    fn a_colour_set_through_the_public_api_cannot_close_its_attribute() {
+        // `Graph` and `NodeStyle` are public with public fields, and the
+        // README points embedders at exactly this: build a scene, feed it
+        // colours, render. Validating in the PARSER would leave this path
+        // wide open, which is why the escaping sits at the render site.
+        let mut g = parse("flowchart TD\n  A[Hi] --> B\n").unwrap();
+        g.nodes[0].style.fill = Some("x\" onload=alert(1)".to_string());
+        g.nodes[0].style.stroke = Some("y' onload=alert(1)".to_string());
+        g.nodes[0].style.color = Some("z\" onload=alert(1)".to_string());
+        let svg = crate::render::render(&g);
+        assert!(
+            !svg.contains("\" onload") && !svg.contains("' onload"),
+            "a colour escaped its attribute:\n{svg}"
+        );
+        assert!(svg.contains("&quot;"), "{svg}");
+    }
+
+
+    #[test]
+    fn control_characters_are_dropped_not_escaped() {
+        // XML 1.0 forbids C0 controls outright — even `&#0;` is illegal —
+        // so one NUL from an untrusted diagram would make the document
+        // unparseable and a browser would show an error instead of the
+        // drawing. Tab, newline and return are the legal three.
+        let out = escape("a\u{0}b\u{1}c\u{b}d");
+        assert_eq!(out, "abcd", "control characters survived: {out:?}");
+        assert_eq!(escape("a\tb\nc\rd"), "a\tb\nc\rd");
+        // Ordinary escaping is unchanged.
+        assert_eq!(escape("<a & \"b\" 'c'>"), "&lt;a &amp; &quot;b&quot; &#39;c&#39;&gt;");
+    }
+
 }

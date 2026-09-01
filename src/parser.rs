@@ -4106,6 +4106,18 @@ mod tests {
     }
 
     #[test]
+    fn quoted_css_url_values_are_accepted() {
+        // Rejecting quotes at the parser was a first attempt at the
+        // injection fix; it cost these, which are valid CSS. Escaping at
+        // the render site protects without turning input away.
+        for v in ["url('#g')", "url(\"#g\")", "url(#a-->b)", "rgb(1, 2, 3)"] {
+            let src = format!("flowchart TD\n  A[Hi] --> B\n  style A fill:{v}\n");
+            let g = parse(&src).unwrap_or_else(|e| panic!("'{v}' rejected: {}", e.message));
+            assert_eq!(g.nodes[0].style.fill.as_deref(), Some(v));
+        }
+    }
+
+    #[test]
     fn sankey_config_keywords_ignore_case() {
         // `showValues` was already case-insensitive; the two enum keys
         // beside it were not, so `Gradient` became a CSS colour named

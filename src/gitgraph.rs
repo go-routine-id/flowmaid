@@ -331,8 +331,8 @@ pub fn to_svg_with(gs: &GitScene, opts: &SvgOptions) -> String {
 
     // Commit circles.
     for n in &gs.scene.nodes {
-        let fill = n.style.fill.as_deref().unwrap_or_else(|| accent(0));
-        let stroke = n.style.stroke.as_deref().unwrap_or(EDGE_COLOR);
+        let fill = crate::scene::style_attr(n.style.fill.as_deref(), accent(0));
+        let stroke = crate::scene::style_attr(n.style.stroke.as_deref(), EDGE_COLOR);
         let sw = n.style.stroke_width.unwrap_or(2.0);
         s.push_str(&format!(
             "<circle cx=\"{:.1}\" cy=\"{:.1}\" r=\"{:.1}\" \
@@ -489,4 +489,26 @@ mod tests {
             e.message
         );
     }
+
+    #[test]
+    fn a_commit_colour_is_escaped_on_its_way_into_the_attribute() {
+        // gitGraph fills NodeStyle from the palette, so only an embedder
+        // driving the public scene API can put text here — which is the
+        // path the render-site escaping exists to cover, and the reason
+        // this call site needs a test of its own.
+        let d = match crate::parser::parse_document("gitGraph\ncommit\n").unwrap() {
+            crate::model::Document::GitGraph(g) => g,
+            _ => panic!("not a gitGraph"),
+        };
+        let mut gs = scene(&d);
+        gs.scene.nodes[0].style.fill = Some("x\" onload=1".to_string());
+        gs.scene.nodes[0].style.stroke = Some("y' onload=1".to_string());
+        let svg = to_svg(&gs);
+        assert!(
+            !svg.contains("\" onload") && !svg.contains("' onload"),
+            "a commit colour escaped its attribute:\n{svg}"
+        );
+        assert!(svg.contains("&quot;"), "{svg}");
+    }
+
 }

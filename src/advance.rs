@@ -3240,16 +3240,19 @@ fn render_node(s: &mut String, n: &AdvanceSceneNode, text_color: &str) {
     let cy = n.y;
     let w = n.w;
     let h = n.h;
+    // Every colour below is escaped on its way into an attribute: it may
+    // come from a `style` line, from JSON, or from a caller assembling an
+    // AdvanceScene by hand, and none of those are vetted.
     let (mut fill, mut stroke) = shape_style(n.shape);
     if let Some(v) = &n.style.fill {
-        fill = v.clone();
+        fill = escape(v);
     }
     if let Some(v) = &n.style.stroke {
-        stroke = v.clone();
+        stroke = escape(v);
     }
     let sw = n.style.stroke_width.unwrap_or(1.6);
     let style = format!("fill=\"{}\" stroke=\"{}\" stroke-width=\"{:.1}\"", fill, stroke, sw);
-    let label_color = n.style.color.as_deref().unwrap_or(text_color);
+    let label_color = crate::scene::style_attr(n.style.color.as_deref(), text_color);
 
     match n.shape {
         Shape::Rect | Shape::Rounded | Shape::Stadium => {
@@ -3401,7 +3404,7 @@ pub fn to_svg_with(sc: &AdvanceScene, opts: &SvgOptions) -> String {
         if matches!(e.kind, EdgeKind::Invisible) || !e.kind.has_arrow() {
             continue;
         }
-        let color = e.style.color.as_deref().unwrap_or(&sc.style.edge_color).to_string();
+        let color = crate::scene::style_attr(e.style.color.as_deref(), &sc.style.edge_color);
         if !markers.iter().any(|(c, _)| *c == color) {
             let id = format!("advance-arrow-{}", MARKER_COUNTER.fetch_add(1, Ordering::Relaxed));
             markers.push((color, id));
@@ -3425,7 +3428,12 @@ pub fn to_svg_with(sc: &AdvanceScene, opts: &SvgOptions) -> String {
         s.push_str(&format!(
             "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" \
              fill=\"{}\" stroke=\"{}\" stroke-width=\"2\" rx=\"8\"/>\n",
-            lane.x, lane.y, lane.w, lane.h, sc.style.lane_fill, sc.style.lane_stroke
+            lane.x,
+            lane.y,
+            lane.w,
+            lane.h,
+            escape(&sc.style.lane_fill),
+            escape(&sc.style.lane_stroke)
         ));
         let (tx, ty) = if sc.direction == AdvanceDirection::Horizontal {
             (lane.x + 12.0, lane.y + lane.h / 2.0)
@@ -3438,7 +3446,7 @@ pub fn to_svg_with(sc: &AdvanceScene, opts: &SvgOptions) -> String {
             tx,
             ty,
             FONT_SIZE,
-            sc.style.text_color,
+            escape(&sc.style.text_color),
             escape(&lane.title)
         ));
     }
@@ -3448,10 +3456,11 @@ pub fn to_svg_with(sc: &AdvanceScene, opts: &SvgOptions) -> String {
         if matches!(e.kind, EdgeKind::Invisible) {
             continue;
         }
-        let color = e.style.color.as_deref().unwrap_or(&sc.style.edge_color);
+        let color = crate::scene::style_attr(e.style.color.as_deref(), &sc.style.edge_color);
         // An explicit style dash wins over the kind-based dashed style;
         // otherwise Thick stays solid, Dotted stays dashed.
-        let dash = e.style.dash.as_deref().or(match e.kind {
+        let styled_dash = e.style.dash.as_deref().map(escape);
+        let dash = styled_dash.as_deref().or(match e.kind {
             EdgeKind::Dotted | EdgeKind::DottedOpen => Some("5 4"),
             _ => None,
         });
@@ -3466,7 +3475,7 @@ pub fn to_svg_with(sc: &AdvanceScene, opts: &SvgOptions) -> String {
         let marker = if e.kind.has_arrow() {
             markers
                 .iter()
-                .find(|(c, _)| c == color)
+                .find(|(c, _)| *c == color)
                 .map(|(_, id)| format!(" marker-end=\"url(#{})\"", id))
                 .unwrap_or_default()
         } else {
@@ -3515,7 +3524,8 @@ pub fn to_svg_with(sc: &AdvanceScene, opts: &SvgOptions) -> String {
                 }
             };
             let lw = text_width(label) + 14.0;
-            let label_fill = e.style.label_fill.as_deref().unwrap_or(&sc.style.label_fill);
+            let label_fill =
+                crate::scene::style_attr(e.style.label_fill.as_deref(), &sc.style.label_fill);
             s.push_str(&format!(
                 "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"18\" \
                  fill=\"{}\" stroke=\"{}\" stroke-width=\"1\" rx=\"3\"/>\n",
@@ -3523,7 +3533,7 @@ pub fn to_svg_with(sc: &AdvanceScene, opts: &SvgOptions) -> String {
                 ly - 9.0,
                 lw,
                 label_fill,
-                sc.style.lane_stroke
+                escape(&sc.style.lane_stroke)
             ));
             s.push_str(&format!(
                 "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"middle\" \
@@ -3531,7 +3541,7 @@ pub fn to_svg_with(sc: &AdvanceScene, opts: &SvgOptions) -> String {
                 lx,
                 ly,
                 FONT_SIZE,
-                sc.style.text_color,
+                escape(&sc.style.text_color),
                 escape(label)
             ));
         }
@@ -4675,4 +4685,54 @@ mod tests {
         assert_eq!(px_number(&json_str("\"4px\"")).unwrap(), 4.0);
         assert!(px_number(&json_str("\"wide\"")).is_err());
     }
+
+    #[test]
+    fn style_values_cannot_close_an_svg_attribute() {
+        // Every colour an advance diagram can carry, from all three
+        // entry points, including the diagram-level `style` object that
+        // the first pass at this fix missed entirely.
+        let breakout = |svg: &str| svg.contains("\" onload") || svg.contains("' onload");
+
+        let text_node = "lane l \"L\"\na[A]\nstyle a fill:x\" onload=1\n";
+        assert!(!breakout(&render_advance_text_svg(text_node).unwrap()));
+        let text_edge = "lane l \"L\"\na[A]\nb[B]\na --> b\nstyle a-->b color:x' onload=1,dash:y\" onload=1\n";
+        assert!(!breakout(&render_advance_text_svg(text_edge).unwrap()));
+
+        for key in [
+            "lane_fill",
+            "lane_stroke",
+            "text_color",
+            "edge_color",
+            "label_fill",
+        ] {
+            let json = format!(
+                r##"{{"lanes":[{{"id":"l","title":"L"}}],
+                   "nodes":[{{"id":"a","lane":"l","label":"A"}},{{"id":"b","lane":"l","label":"B"}}],
+                   "edges":[{{"from":"a","to":"b","label":"e"}}],
+                   "style":{{"{key}":"#fff\" onload=1"}}}}"##
+            );
+            let svg = render_advance_svg(&json).unwrap();
+            assert!(!breakout(&svg), "style.{key} escaped its attribute:\n{svg}");
+            // Positive too: unknown JSON style keys are ignored for
+            // forward-compat, so if one of these is ever renamed the
+            // render path would go untested while this test stayed green.
+            assert!(
+                svg.contains("#fff&quot; onload=1"),
+                "style.{key} never reached the SVG — is the key still read?\n{svg}"
+            );
+        }
+
+        let node_json = r#"{"lanes":[{"id":"l","title":"L"}],
+            "nodes":[{"id":"a","lane":"l","label":"A","style":{"fill":"x\" onload=1"}}],
+            "edges":[]}"#;
+        assert!(!breakout(&render_advance_svg(node_json).unwrap()));
+    }
+
+    #[test]
+    fn ordinary_advance_css_values_still_parse() {
+        let svg =
+            render_advance_text_svg("lane l \"L\"\na[A]\nstyle a fill:rgb(1, 2, 3)\n").unwrap();
+        assert!(svg.contains("fill=\"rgb(1, 2, 3)\""), "{svg}");
+    }
+
 }
