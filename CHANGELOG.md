@@ -7,6 +7,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.29.2] - 2026-09-01
+
 ### Fixed
 
 - `swimlane-beta` is recognised and refused explicitly. Mermaid added the type in
