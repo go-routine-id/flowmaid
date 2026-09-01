@@ -792,6 +792,7 @@ const DIAGRAM_HEADERS: &[(&str, HeaderSupport)] = &[
     ("sankey", HeaderSupport::Alias),
     // Recognised only so they fail with a clear message rather than
     // being parsed as flowchart nodes.
+    ("swimlane-beta", HeaderSupport::Unsupported),
     ("requirementDiagram", HeaderSupport::Unsupported),
     ("quadrantChart", HeaderSupport::Unsupported),
     ("xychart-beta", HeaderSupport::Unsupported),
@@ -4171,6 +4172,20 @@ mod tests {
             "---\nconfig:\n  themeVariables:\n    x: 1\n  sankey:\n    nodeWidth: 40\n---\nsankey-beta\nA,B,1\n",
         );
         assert_eq!(d.config.node_width, 40.0);
+    }
+
+    #[test]
+    fn mermaid_swimlane_header_fails_explicitly() {
+        // Mermaid added `swimlane-beta` in v11.16. The catalogue had it
+        // written as `swimlanes`, so the real token was never registered
+        // and fell through to the flowchart parser, which complained
+        // about the `-beta` suffix as if it were an edge operator.
+        let e = parse_document("swimlane-beta\n  subgraph Alice\n  end\n")
+            .map(|_| ())
+            .unwrap_err();
+        assert_eq!(e.line, 1);
+        assert!(e.message.contains("not supported yet"), "{}", e.message);
+        assert!(!e.message.contains("edge operator"), "{}", e.message);
     }
 
     // ----------------------------- ER -----------------------------

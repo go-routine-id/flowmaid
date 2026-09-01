@@ -7,6 +7,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `swimlane-beta` is recognised and refused explicitly. Mermaid added the type in
+  v11.16, but flowmaid's catalogue recorded the token as `swimlanes`, so the real
+  header was never registered and fell through to the flowchart parser — which
+  reported `unknown edge operator near: '-beta'`. The README's standing claim of an
+  explicit error for every known mermaid header holds again.
+
 ## [0.29.1] - 2026-08-31
 
 ### Fixed
