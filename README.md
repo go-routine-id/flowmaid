@@ -292,9 +292,26 @@ style c fill:#fff8e1
   - Node keys: `fill`, `stroke`, `stroke-width`, `color` (label text). Edge keys: `color`, `stroke-width`, `dash` (space-separated values, e.g. `dash:4 2`), `label-fill`.
 - **Ports** — an endpoint can pin its anchor side: `a:right --> b:top` (`left`/`right`/`top`/`bottom`/`auto`; `auto`/missing = automatic routing). A ported edge's first/last segments leave the sides perpendicularly.
 - **`<br/>`** — normalised to a line break in node labels, edge labels (`-->|a<br/>b|`), and lane titles.
+- **Terminals — sub-elements and named anchors.** A node can open a block holding *sub-elements* (compartments) and *anchors* (named points on a boundary); an edge end then references any of them by id:
+
+  ```mmd
+  cpu[CPU] {
+    anchor out bottom 0.5
+    core0[Core 0]
+    core1[Core 1] { anchor irq right }
+    layout column
+  }
+  cpu.core1@irq --> mem.bank0
+  cpu@out       --> bus:top
+  cpu.core0     --> mem.bank1
+  ```
+
+  `anchor <id> <side> [offset 0..=1]` declares a point (offset `0.5` when omitted); `layout column` is the default, `row` lays sub-elements side by side. The three edges read: anchor on a sub-element → sub-element; named anchor on the node → a side; sub-element → sub-element with the sides chosen for you.
+
+  `.` descends into sub-elements, `@` names an anchor, `:` picks a side — composably, to any depth. Ids may therefore not contain `.` or `@`. Sub-elements are laid out without coordinates (stacked, or `layout row`) and the node grows to fit; a sub-element side can be used only if it reaches the node boundary (in a column, `left`/`right` always, `top` only for the first child, `bottom` only for the last) — an interior side is a parse error. A block may also be written on one line: `core1[Core 1] { anchor irq right }`. See `examples/advance_terminals.mmd`.
 - The CLI exposes the same entry point as `--advance-text <file.mmd>`.
 
-The JSON form supports the same features additively — nodes/edges carry `style` (`fill`/`stroke`/`stroke-width`/`color`; edges add `dash`/`label-fill`), and edges accept `from_side`/`to_side` (`"left"|"right"|"top"|"bottom"|"auto"`). `AdvanceScene` also offers drag-and-drop picking: `hit_test`, `node_at`, `edge_at`, `lane_at`, and `nearest_node` (see `examples/advance_swimlane.mmd` and `examples/advance_text.rs`).
+The JSON form supports the same features additively — nodes/edges carry `style` (`fill`/`stroke`/`stroke-width`/`color`; edges add `dash`/`label-fill`), edges accept `from_side`/`to_side` (`"left"|"right"|"top"|"bottom"|"auto"`), nodes take `anchors` (`{id, side, offset}`), `elements` (nested, each with its own `anchors`/`elements`/`layout`) and `layout`, and `from`/`to` accept the full reference grammar (`"cpu.core1@irq"`). The scene exposes each node's placed `elements` and resolved `anchors`, and each edge's `from_point`/`to_point`. `AdvanceScene` also offers drag-and-drop picking: `hit_test`, `anchor_at`, `element_at`, `node_at`, `edge_at`, `lane_at`, and `nearest_node` (see `examples/advance_swimlane.mmd`, `examples/advance_terminals.mmd` and `examples/advance_text.rs`).
 
 ## Architecture
 

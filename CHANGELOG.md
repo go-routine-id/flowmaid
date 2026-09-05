@@ -7,6 +7,40 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Advance terminals** — an edge end can now reference a *sub-element* or a *named
+  anchor*, not only a node side: `node.element@anchor`, `node@anchor`, `node.element`,
+  composably to any depth (`.` descends, `@` names an anchor, `:` picks a side).
+  Text DSL: a node opens a `{ ... }` block holding `anchor <id> <side> [offset]`,
+  `layout column|row`, and sub-element declarations (nestable, and writable on one
+  line: `core1[Core 1] { anchor irq right }`). JSON: nodes take `anchors`, `elements`
+  and `layout`; `from`/`to` accept the reference grammar.
+  - Sub-elements are laid out without coordinates — stacked compartments or a row —
+    and the node grows to fit. A sub-element side may be used only if it reaches the
+    node boundary; an interior side is a parse error, not a lead that pierces a sibling.
+  - The scene carries each node's placed `elements` (flat, `parent`-linked) and
+    resolved `anchors`, and each edge's `from_point` / `to_point` and `from_end` /
+    `to_end`; `scene_to_json` emits them. `AdvanceScene` gains `anchor_at` and
+    `element_at`, and `AdvanceHit` gains `Element` and `Anchor` variants.
+  - Ids may no longer contain `.` or `@` — a line-numbered error names the offender.
+- `examples/advance_terminals.mmd`, README section, and the approved design in
+  `docs/design/advance-terminals-and-router.md`.
+
+### Fixed
+
+- A ported edge no longer runs back through its own source or target. With
+  `d:right --> b:top` and `b` to the left, the channel used to sit at centre height
+  and cut across both nodes; it now moves just outside them — the shortest route that
+  still honours both sides. Ported edges that were already clear are byte-identical.
+
+### Changed
+
+- `AdvanceHit` has two new variants (`Element`, `Anchor`); an exhaustive `match` on it
+  needs two more arms. `AdvanceNode`, `AdvanceEdge`, `AdvanceSceneNode` and
+  `AdvanceSceneEdge` gain fields; struct-literal construction outside the crate needs
+  them (parsing is unaffected).
+
 ## [0.29.2] - 2026-09-01
 
 ### Fixed
