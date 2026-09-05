@@ -1,0 +1,28 @@
+# Terminals: edges attach to sub-elements and named anchors, not only
+# to a node's four sides. `node.element` descends, `@anchor` names a
+# declared point, `:side` picks a side. Comments are whole lines only.
+
+lane hw "Hardware" {
+  # anchor <id> <side> [offset 0..=1]; sub-elements stack as compartments
+  cpu[CPU] {
+    anchor out bottom 0.5
+    core0[Core 0]
+    core1[Core 1] { anchor irq right }
+  }
+  # `layout row` puts them side by side instead
+  mem[Memory] {
+    bank0[Bank 0]
+    bank1[Bank 1]
+    layout row
+  }
+}
+lane sw "Software" {
+  bus[Bus]
+}
+
+# anchor on a sub-element  -->  sub-element
+cpu.core1@irq --> mem.bank0
+# named anchor on the node -->  a side
+cpu@out --> bus:top
+# sub-element to sub-element; exposed sides are chosen for you
+cpu.core0 -->|dma| mem.bank1
