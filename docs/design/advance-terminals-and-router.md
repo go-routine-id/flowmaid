@@ -53,17 +53,19 @@ The four sides are built-in anchors at offset 0.5, so `a:right` and a declared `
 
 ```
 cpu[CPU] {
-  anchor out bottom 0.5          # id side [offset 0..=1]
+  anchor out bottom 0.5
   core0[Core 0]
   core1[Core 1] {
     anchor irq right
   }
-  layout column                  # default; or row
+  layout column
 }
 
 cpu.core1@irq --> mem.bank0
 cpu@out       --> bus:top
 ```
+
+`anchor <id> <side> [offset 0..=1]` (offset `0.5` when omitted); `layout column` is the default, `row` lays children side by side. Comments are whole lines only, as elsewhere in the DSL. A block may also be written on one line — `core1[Core 1] { anchor irq right }` — and such blocks nest.
 
 Parser: a line that is a node declaration and ends with `{` opens a **node block**; `lane … {` still opens a lane block. One block stack, each frame tagged lane-or-node, so `}` closes the right one. Inside a node block only `anchor`, `layout`, `style`, and element declarations are legal.
 
