@@ -81,7 +81,7 @@ Deterministic, coordinate-free: children stack as **compartments** (`column`, de
 - anchor: its point on its host rect.
 - sub-element: a point on the **sub-element's** rect, which lies inside the parent. The edge first travels in `dir` straight to the parent's outer boundary — a *lead* inside the endpoint's own node, which is permitted — and normal routing starts there.
 
-**Exposed-side rule.** A sub-element side may be used only if it touches the parent's boundary; in a column, `left`/`right` always are, `top` only for the first child, `bottom` only for the last. An interior side is a parse-time error (`"a.core0:bottom is not an exposed side"`) rather than a lead that pierces a sibling.
+**Exposed-side rule.** A sub-element side may be used only if it reaches the parent's boundary. In a column `left`/`right` always do and `bottom` does for the last child; in a row `bottom` always does and `left`/`right` do for the first/last child. `top` never does: the host's label band is the first occupant of every node, so a lead out of a child's top would run through the label text — review of P1 caught exactly that. An interior side is a parse-time error (`"a.core0:bottom is not an exposed side"`) rather than a lead that pierces a sibling or the label.
 
 ## 2. The router
 
@@ -180,7 +180,7 @@ One PR and one independent review per phase.
 | D1 | Reference syntax | `.` descend, `@` anchor, `:` side |
 | D2 | New router default or opt-in | Default; minor bump; CHANGELOG notes the visual change |
 | D3 | Sub-element layout | Column (compartments) default, `row` optional; no free coordinates |
-| D4 | Interior-side anchors on sub-elements | Parse error, not a piercing lead |
+| D4 | Interior-side anchors on sub-elements | Parse error, not a piercing lead; `top` counts as interior (label band) |
 | D5 | Guarantee wording | As in §2 — precise about the grid and the iteration bound |
 | D6 | Nets | Out of scope now; model already accommodates |
 | D7 | A port that makes the path much longer | Hard constraint — honoured at any cost; without a port the router picks the shortest sides |

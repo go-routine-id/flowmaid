@@ -84,6 +84,36 @@ pub enum AdvanceOrder {
     Topology,
 }
 
+/// Deepest nesting accepted for lanes and sub-elements, in BOTH
+/// front-ends — the text parser used to have no cap at all.
+const MAX_NEST_DEPTH: usize = 16;
+/// Where an anchor sits along its side when no offset is given.
+const DEFAULT_ANCHOR_OFFSET: f64 = 0.5;
+
+/// Height of a label band: one line, plus `LINE_H` per extra line.
+fn label_band_h(label: &str) -> f64 {
+    BASE_H + (crate::layout::line_count(label) - 1) as f64 * LINE_H
+}
+
+/// The edge separators the text DSL understands, shared by the edge
+/// parser and by every place that must refuse an edge.
+const EDGE_SEPARATORS: [&str; 4] = ["-->", "-.->", "==>", "---"];
+
+fn is_edge_line(line: &str) -> bool {
+    EDGE_SEPARATORS.iter().any(|sep| line.contains(sep))
+}
+
+/// Top-level directives — never legal inside a node block, and never
+/// the start of an inline block.
+fn is_directive_line(line: &str) -> bool {
+    [
+        "style ", "class ", "classDef ", "config ", "title ", "desc ", "description ", "lane ",
+        "swimlane",
+    ]
+    .iter()
+    .any(|k| line.starts_with(k))
+}
+
 /// A named connection point on the boundary of a node or sub-element.
 ///
 /// `offset` runs along the side: `0.0` is the left/top end, `1.0` the
@@ -227,6 +257,9 @@ fn parse_end(s: &str) -> Result<AdvanceEnd, String> {
 /// Ids take part in the reference grammar, so the two characters it
 /// reserves may not appear in them.
 fn check_id(kind: &str, id: &str) -> Result<(), String> {
+    if id.is_empty() {
+        return Err(format!("{} id cannot be empty", kind));
+    }
     if let Some(c) = id.chars().find(|c| *c == '.' || *c == '@') {
         return Err(format!(
             "{} id '{}' may not contain '{}' — it is reserved for edge references (node.element@anchor)",
@@ -236,49 +269,18 @@ fn check_id(kind: &str, id: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// `decl { stmt; stmt }` written on one line. The `{` must follow a
-/// closed shape bracket or whitespace, so a diamond `c{Text}` is never
-/// mistaken for a block; edges and directives are never blocks.
-fn split_inline_block(line: &str) -> Option<(&str, &str)> {
-    if !line.ends_with('}') {
-        return None;
-    }
-    if line.contains("-->")
-        || line.contains("-.->")
-        || line.contains("==>")
-        || line.contains("---")
-        || line.starts_with("style ")
-        || line.starts_with("classDef ")
-        || line.starts_with("config ")
-    {
-        return None;
-    }
-    let pos = line.find('{')?;
-    if pos == 0 {
-        return None;
-    }
-    let prev = line.as_bytes()[pos - 1];
-    if !(prev == b' ' || prev == b'\t' || prev == b']' || prev == b')') {
-        return None;
-    }
-    let decl = line[..pos].trim_end();
-    let body = line[pos + 1..line.len() - 1].trim();
-    if decl.is_empty() {
-        return None;
-    }
-    Some((decl, body))
-}
-
-/// Split on `;` at brace depth 0, so a nested `{ a; b }` stays whole.
+/// Split on `;` outside every bracket and quote, so a nested `{ a; b }`
+/// and a `;` inside a label both stay whole.
 fn split_top_level(body: &str) -> Vec<&str> {
     let mut out = Vec::new();
-    let mut depth = 0i32;
+    let (mut depth, mut quote) = (0i32, false);
     let mut start = 0;
     for (i, c) in body.char_indices() {
         match c {
-            '{' => depth += 1,
-            '}' => depth -= 1,
-            ';' if depth == 0 => {
+            '"' => quote = !quote,
+            '{' | '[' | '(' if !quote => depth += 1,
+            '}' | ']' | ')' if !quote => depth -= 1,
+            ';' if !quote && depth == 0 => {
                 out.push(&body[start..i]);
                 start = i + 1;
             }
@@ -289,33 +291,101 @@ fn split_top_level(body: &str) -> Vec<&str> {
     out
 }
 
+/// Whether a one-line body is unmistakably block content — several
+/// statements, an `anchor`/`layout` directive, or a sub-element
+/// declaration (`id[…]` / `id(…)`). A bare label such as `Text` is not,
+/// which keeps `c {Text}` a diamond.
+fn body_looks_like_block(body: &str) -> bool {
+    let stmts = split_top_level(body);
+    if stmts.len() > 1 {
+        return true;
+    }
+    let st = stmts[0].trim();
+    if st.starts_with("anchor ") || st.starts_with("layout ") {
+        return true;
+    }
+    match st.find(['[', '(']) {
+        Some(i) if i > 0 => st[..i].chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-'),
+        _ => false,
+    }
+}
+
+/// `decl { stmt; stmt }` on one line. The split is the first `{` outside
+/// any bracket or quote that leaves a valid node declaration in front
+/// of it. A brace glued to the id (`c{Text}`, `h{{Hex}}`) is a shape,
+/// and `c {Text}` with a bare id stays a diamond unless the body is
+/// unmistakably block content. Edges and directives are never blocks.
+fn split_inline_block(line: &str) -> Option<(&str, &str)> {
+    if !line.ends_with('}') || is_edge_line(line) || is_directive_line(line) {
+        return None;
+    }
+    let bytes = line.as_bytes();
+    let (mut sq, mut par, mut quote) = (0i32, 0i32, false);
+    for (pos, c) in line.char_indices() {
+        match c {
+            '"' => quote = !quote,
+            '[' if !quote => sq += 1,
+            ']' if !quote => sq -= 1,
+            '(' if !quote => par += 1,
+            ')' if !quote => par -= 1,
+            '{' if !quote && sq == 0 && par == 0 && pos > 0 => {
+                let prev = bytes[pos - 1];
+                if !(prev == b' ' || prev == b'\t' || prev == b']' || prev == b')' || prev == b'}') {
+                    continue; // glued to the id: a shape brace
+                }
+                let prefix = line[..pos].trim_end();
+                let body = line[pos + 1..line.len() - 1].trim();
+                let closed_shape = prefix.ends_with(']') || prefix.ends_with(')') || prefix.ends_with('}');
+                if !closed_shape && !body_looks_like_block(body) {
+                    continue;
+                }
+                match parse_text_node_shorthand(prefix) {
+                    Some((id, _, _)) if !id.is_empty() => return Some((prefix, body)),
+                    _ => continue,
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
 /// Turn one source line into statements, expanding `decl { a; b }`
 /// (recursively, so blocks may nest on one line) while every statement
-/// keeps the line number it came from.
-fn expand_inline(line_no: usize, line: &str, out: &mut Vec<(usize, String)>) {
+/// keeps the line number it came from. Depth is capped like the JSON
+/// front-end, so a hostile line errors instead of overflowing the stack.
+fn expand_inline(line_no: usize, line: &str, depth: usize, out: &mut Vec<(usize, String)>) -> Result<(), String> {
     match split_inline_block(line) {
         Some((decl, body)) => {
+            if depth >= MAX_NEST_DEPTH {
+                return Err(format!("block nesting exceeds limit of {}", MAX_NEST_DEPTH));
+            }
             out.push((line_no, format!("{} {{", decl)));
             for st in split_top_level(body) {
                 let st = st.trim();
                 if !st.is_empty() {
-                    expand_inline(line_no, st, out);
+                    expand_inline(line_no, st, depth + 1, out)?;
                 }
             }
             out.push((line_no, "}".to_string()));
         }
         None => out.push((line_no, line.to_string())),
     }
+    Ok(())
 }
 
-/// Which sides of the `idx`-th of `len` children touch their parent's
+/// Which sides of the `idx`-th of `len` children reach their parent's
 /// boundary under `layout`. Order: `[left, right, top, bottom]`.
+///
+/// `top` is never exposed: the host's label band is always the first
+/// occupant, so a lead out of a child's top would run through the
+/// label text.
 fn exposed_in(layout: ElementLayout, len: usize, idx: usize) -> [bool; 4] {
     let first = idx == 0;
     let last = idx + 1 == len;
     match layout {
-        ElementLayout::Column => [true, true, first, last],
-        ElementLayout::Row => [first, last, true, true],
+        ElementLayout::Column => [true, true, false, last],
+        ElementLayout::Row => [first, last, false, true],
     }
 }
 
@@ -390,7 +460,7 @@ fn resolve_end_side(nodes: &[AdvanceNode], end: &AdvanceEnd) -> Result<Option<Ad
     };
     if !exposed[side_index(side)] {
         return Err(format!(
-            "{} is not an exposed side — it faces a sibling inside the node",
+            "{} is not an exposed side — it faces a sibling or the label band inside the node",
             end.to_ref()
         ));
     }
@@ -414,7 +484,7 @@ fn parse_anchor_line(rest: &str) -> Result<AdvanceAnchor, String> {
     let side = parse_side(side_w)
         .ok_or_else(|| format!("unknown side '{}' for anchor '{}'", side_w, id))?;
     let offset = match it.next() {
-        None => 0.5,
+        None => DEFAULT_ANCHOR_OFFSET,
         Some(o) => o
             .parse::<f64>()
             .ok()
@@ -863,7 +933,7 @@ fn parse_anchor_json(v: &JsonValue, ctx: &str) -> Result<AdvanceAnchor, AdvanceE
         adv_err(format!("{} anchor '{}': unknown side '{}'", ctx, id, side_s))
     })?;
     let offset = match obj_get(obj, "offset") {
-        None => 0.5,
+        None => DEFAULT_ANCHOR_OFFSET,
         Some(o) => as_number(o)
             .filter(|v| v.is_finite() && (0.0..=1.0).contains(v))
             .ok_or_else(|| adv_err(format!("{} anchor '{}': offset must be a number in 0..=1", ctx, id)))?,
@@ -878,8 +948,8 @@ fn parse_layout_json(v: &JsonValue, ctx: &str) -> Result<ElementLayout, AdvanceE
 
 /// A sub-element object; nests through `"elements"`, capped like lanes.
 fn parse_element_json(v: &JsonValue, ctx: &str, depth: usize) -> Result<AdvanceElement, AdvanceError> {
-    if depth > 16 {
-        return Err(adv_err(format!("{}: sub-element nesting exceeds limit of 16", ctx)));
+    if depth > MAX_NEST_DEPTH {
+        return Err(adv_err(format!("{}: sub-element nesting exceeds limit of {}", ctx, MAX_NEST_DEPTH)));
     }
     let obj = as_object(v).ok_or_else(|| adv_err(format!("{} sub-element must be an object", ctx)))?;
     let id = obj_get(obj, "id")
@@ -944,8 +1014,8 @@ fn parse_lane_recursive(
     depth: usize,
     lane_ids: &mut std::collections::HashSet<String>,
 ) -> Result<AdvanceLane, AdvanceError> {
-    if depth > 16 {
-        return Err(adv_err("lane nesting depth exceeds limit of 16"));
+    if depth > MAX_NEST_DEPTH {
+        return Err(adv_err(format!("lane nesting depth exceeds limit of {}", MAX_NEST_DEPTH)));
     }
     let obj = as_object(v).ok_or_else(|| adv_err("lane must be an object"))?;
     let id = obj_get(obj, "id")
@@ -1349,15 +1419,9 @@ impl AdvanceDiagram {
 
         let mut node_ids = std::collections::HashSet::new();
 
-        // One stack for every `{ ... }` so a `}` closes the right thing.
-        #[derive(Clone, Copy, PartialEq)]
-        enum Frame {
-            Lane,
-            Node,
-        }
-        let mut frames: Vec<Frame> = Vec::new();
         // A node whose `{` block is open, and the sub-elements opened
-        // inside it (innermost last).
+        // inside it (innermost last). A node block cannot contain a lane
+        // block, so `}` closes an element, then the node, then a lane.
         let mut cur_node: Option<AdvanceNode> = None;
         let mut open_elems: Vec<AdvanceElement> = Vec::new();
         let mut node_open_line = 0usize;
@@ -1367,14 +1431,25 @@ impl AdvanceDiagram {
             std::collections::HashMap::new();
         let mut assigns: Vec<(String, String)> = Vec::new();
         let mut node_styles: Vec<(String, NodeStyle)> = Vec::new();
-        let mut edge_styles: Vec<(String, String, AdvanceEdgeStyle)> = Vec::new();
+        let mut edge_styles: Vec<(usize, AdvanceEnd, AdvanceEnd, AdvanceEdgeStyle)> = Vec::new();
 
         // `decl { a; b }` on one line means the same as the block form.
         // It is expanded here so the loop sees one statement per entry,
         // each still carrying its original line number for errors.
         let mut stmts: Vec<(usize, String)> = Vec::new();
         for (line_no, raw_line) in source.lines().enumerate() {
-            expand_inline(line_no, raw_line.trim(), &mut stmts);
+            let line = raw_line.trim();
+            // Comments and free-text directives are never blocks, whatever
+            // they end with; expanding them used to break the parse.
+            if line.starts_with('#')
+                || line.starts_with("%%")
+                || line.starts_with("//")
+                || is_directive_line(line)
+            {
+                stmts.push((line_no, line.to_string()));
+                continue;
+            }
+            expand_inline(line_no, line, 0, &mut stmts).map_err(|m| text_err(source, line_no, None, m))?;
         }
 
         for (line_no, line) in &stmts {
@@ -1384,29 +1459,25 @@ impl AdvanceDiagram {
                 continue;
             }
 
-            // Closing brace: whatever block is innermost.
+            // Closing brace: the innermost open block.
             if line == "}" {
-                match frames.pop() {
-                    Some(Frame::Node) => {
-                        if let Some(elem) = open_elems.pop() {
-                            // A sub-element block closed: attach to its parent.
-                            match open_elems.last_mut() {
-                                Some(parent) => parent.elements.push(elem),
-                                None => cur_node.as_mut().expect("node block open").elements.push(elem),
-                            }
-                        } else {
-                            let node = cur_node.take().expect("node block open");
-                            nodes.push(node);
+                if let Some(node) = cur_node.as_mut() {
+                    if let Some(elem) = open_elems.pop() {
+                        // A sub-element block closed: attach to its parent.
+                        match open_elems.last_mut() {
+                            Some(parent) => parent.elements.push(elem),
+                            None => node.elements.push(elem),
                         }
+                    } else if let Some(node) = cur_node.take() {
+                        nodes.push(node);
                     }
-                    Some(Frame::Lane) => {
-                        lane_stack.pop();
-                        lane_open_lines.pop();
-                        // After a top-level close the stack is empty and there is
-                        // no lane scope anymore — later nodes must open a new lane.
-                        current_lane = lane_stack.last().map(|&parent| lane_recs[parent].0.clone());
-                    }
-                    None => return Err(text_err(source, line_no, Some(0), "unbalanced '}'")),
+                } else if lane_stack.pop().is_some() {
+                    lane_open_lines.pop();
+                    // After a top-level close the stack is empty and there is
+                    // no lane scope anymore — later nodes must open a new lane.
+                    current_lane = lane_stack.last().map(|&parent| lane_recs[parent].0.clone());
+                } else {
+                    return Err(text_err(source, line_no, Some(0), "unbalanced '}'"));
                 }
                 continue;
             }
@@ -1437,7 +1508,7 @@ impl AdvanceDiagram {
                     }
                     continue;
                 }
-                if line.contains("-->") || line.contains("-.->") || line.contains("==>") || line.starts_with("lane ") {
+                if is_edge_line(line) || is_directive_line(line) {
                     return Err(text_err(
                         source,
                         line_no,
@@ -1469,8 +1540,15 @@ impl AdvanceDiagram {
                     style: NodeStyle::default(),
                 };
                 if opens {
+                    if open_elems.len() + 1 >= MAX_NEST_DEPTH {
+                        return Err(text_err(
+                            source,
+                            line_no,
+                            None,
+                            format!("sub-element nesting exceeds limit of {}", MAX_NEST_DEPTH),
+                        ));
+                    }
                     open_elems.push(elem);
-                    frames.push(Frame::Node);
                 } else {
                     match open_elems.last_mut() {
                         Some(e) => e.elements.push(elem),
@@ -1524,7 +1602,7 @@ impl AdvanceDiagram {
                 continue;
             }
             if line.starts_with("style ") {
-                parse_style_line(line, &mut node_styles, &mut edge_styles)
+                parse_style_line(line, line_no, &mut node_styles, &mut edge_styles)
                     .map_err(|m| text_err(source, line_no, None, m))?;
                 continue;
             }
@@ -1562,7 +1640,6 @@ impl AdvanceDiagram {
                 if has_brace {
                     lane_stack.push(lane_recs.len() - 1);
                     lane_open_lines.push(line_no);
-                    frames.push(Frame::Lane);
                 }
                 current_lane = Some(id);
                 continue;
@@ -1673,7 +1750,6 @@ impl AdvanceDiagram {
             if opens_block {
                 cur_node = Some(node);
                 node_open_line = line_no;
-                frames.push(Frame::Node);
             } else {
                 nodes.push(node);
             }
@@ -1725,9 +1801,30 @@ impl AdvanceDiagram {
                 n.style.apply_over(st);
             }
         }
-        for (from, to, st) in &edge_styles {
-            for e in edges.iter_mut().filter(|e| e.from == *from && e.to == *to) {
-                e.style.apply_over(st);
+        for (line_no, from, to, st) in &edge_styles {
+            // A target naming a sub-element or anchor picks exactly that
+            // edge; a plain `a-->b` (with or without sides) still styles
+            // every edge between the two nodes, as it always has.
+            let exact = from.is_terminal() || to.is_terminal();
+            let mut hits = 0usize;
+            for e in edges.iter_mut() {
+                let matched = if exact {
+                    e.from_end == *from && e.to_end == *to
+                } else {
+                    e.from == from.node && e.to == to.node
+                };
+                if matched {
+                    e.style.apply_over(st);
+                    hits += 1;
+                }
+            }
+            if exact && hits == 0 {
+                return Err(text_err(
+                    source,
+                    *line_no,
+                    None,
+                    format!("style target '{}-->{}' matches no edge", from.to_ref(), to.to_ref()),
+                ));
             }
         }
 
@@ -1771,23 +1868,6 @@ fn split_node_class_shorthand(line: &str) -> (&str, Option<&str>) {
 /// Split an edge endpoint into `(id, side)`. A side suffix is recognized
 /// only when it is one of the known keywords (`:left`, `:right`, `:top`,
 /// `:bottom`); anything else (including colons inside ids) is kept whole.
-fn split_endpoint(s: &str) -> (String, Option<AdvanceSide>) {
-    let s = s.trim();
-    for (side, kw) in [
-        (AdvanceSide::Left, "left"),
-        (AdvanceSide::Right, "right"),
-        (AdvanceSide::Top, "top"),
-        (AdvanceSide::Bottom, "bottom"),
-    ] {
-        if let Some(id) = s.strip_suffix(&format!(":{}", kw)) {
-            if !id.is_empty() && !id.ends_with(':') {
-                return (id.trim().to_string(), Some(side));
-            }
-        }
-    }
-    (s.to_string(), None)
-}
-
 /// Split style properties on commas at paren depth 0 (so CSS function
 /// values like `fill:rgb(255,0,0)` survive as one property).
 fn split_props(s: &str) -> Result<Vec<&str>, String> {
@@ -1910,8 +1990,9 @@ fn parse_class_assign(line: &str, assigns: &mut Vec<(String, String)>) -> Result
 /// literal `from-->to` (ports allowed: `a:right-->b:top`).
 fn parse_style_line(
     line: &str,
+    line_no: usize,
     node_styles: &mut Vec<(String, NodeStyle)>,
-    edge_styles: &mut Vec<(String, String, AdvanceEdgeStyle)>,
+    edge_styles: &mut Vec<(usize, AdvanceEnd, AdvanceEnd, AdvanceEdgeStyle)>,
 ) -> Result<(), String> {
     let rest = line.trim_start_matches("style").trim();
     let mut parts = rest.splitn(2, char::is_whitespace);
@@ -1921,13 +2002,10 @@ fn parse_style_line(
         return Err("expected a node id or 'from-->to' after 'style'".to_string());
     }
     if let Some(idx) = target.find("-->") {
-        let (from, _) = split_endpoint(&target[..idx]);
-        let (to, _) = split_endpoint(&target[idx + 3..]);
-        if from.is_empty() || to.is_empty() {
-            return Err(format!("invalid edge target '{}'", target));
-        }
+        let from = parse_end(&target[..idx]).map_err(|m| format!("invalid edge target '{}': {}", target, m))?;
+        let to = parse_end(&target[idx + 3..]).map_err(|m| format!("invalid edge target '{}': {}", target, m))?;
         let st = parse_edge_style_props(props)?;
-        edge_styles.push((from, to, st));
+        edge_styles.push((line_no, from, to, st));
     } else {
         let st = parse_node_style_props(props)?;
         node_styles.push((target.to_string(), st));
@@ -2572,8 +2650,7 @@ const ELEM_GAP: f64 = 6.0;
 /// children below the label band.
 fn measure_element(e: &AdvanceElement) -> (f64, f64) {
     let tw = e.label.split('\n').map(text_width).fold(0.0, f64::max);
-    let lines = e.label.split('\n').count().max(1) as f64;
-    let band_h = BASE_H + (lines - 1.0) * LINE_H;
+    let band_h = label_band_h(&e.label);
     let base_w = (tw + 2.0 * PAD_X).max(MIN_W);
     if e.elements.is_empty() {
         return (base_w, band_h);
@@ -2667,8 +2744,7 @@ fn place_elements(
             });
         }
         if !e.elements.is_empty() {
-            let lines = e.label.split('\n').count().max(1) as f64;
-            let band_h = BASE_H + (lines - 1.0) * LINE_H;
+            let band_h = label_band_h(&e.label);
             place_elements(
                 &e.elements,
                 e.layout,
@@ -2706,8 +2782,7 @@ fn scene_node(n: &AdvanceNode, x: f64, y: f64, w: f64, h: f64) -> AdvanceSceneNo
         })
         .collect();
     if !n.elements.is_empty() {
-        let lines = n.label.split('\n').count().max(1) as f64;
-        let band_h = BASE_H + (lines - 1.0) * LINE_H;
+        let band_h = label_band_h(&n.label);
         place_elements(
             &n.elements,
             n.layout,
@@ -2737,9 +2812,6 @@ fn scene_node(n: &AdvanceNode, x: f64, y: f64, w: f64, h: f64) -> AdvanceSceneNo
 }
 
 fn node_size(node: &AdvanceNode) -> (f64, f64) {
-    if let (Some(w), Some(h)) = (node.w, node.h) {
-        return (w, h);
-    }
     let tw = node.label.split('\n').map(text_width).fold(0.0, f64::max);
     let extra = (node.label.split('\n').count().saturating_sub(1)) as f64 * LINE_H;
     let base_h = BASE_H + extra;
@@ -2762,15 +2834,20 @@ fn node_size(node: &AdvanceNode) -> (f64, f64) {
         }
         Shape::StateStart | Shape::StateEnd | Shape::ForkBar => (base_h, base_h),
     };
-    // Sub-elements sit below the label band; the node grows to fit
-    // them, whatever the shape (compartments are drawn as rectangles).
-    let (calc_w, calc_h) = if node.elements.is_empty() {
-        (calc_w, calc_h)
+    // Sub-elements sit below the label band and the node grows to fit
+    // them, on top of whatever the shape itself needs. An explicit
+    // `w`/`h` is clamped to that minimum — a smaller box would place
+    // compartments outside the node with negative heights.
+    let (grown_w, grown_h) = if node.elements.is_empty() {
+        (0.0, 0.0)
     } else {
         let (cw, ch) = measure_children(&node.elements, node.layout);
-        (calc_w.max(cw + 2.0 * ELEM_PAD), base_h + ch + ELEM_PAD)
+        (cw + 2.0 * ELEM_PAD, base_h + ch + ELEM_PAD)
     };
-    (node.w.unwrap_or(calc_w), node.h.unwrap_or(calc_h))
+    (
+        node.w.map_or(calc_w.max(grown_w), |w| w.max(grown_w)),
+        node.h.map_or(calc_h.max(grown_h), |h| h.max(grown_h)),
+    )
 }
 
 fn collect_all_lanes<'a>(lanes: &'a [AdvanceLane], out: &mut Vec<&'a AdvanceLane>) {
@@ -3342,102 +3419,83 @@ fn natural_side(
 /// a shared channel (offset by `fan` for parallel edges), leader into
 /// `b`'s side. Collapsing equal neighbours keeps the path minimal.
 /// Route between two explicit boundary points with fixed exit/entry
-/// sides. The leader leaves each point perpendicular to its side; a
-/// single channel joins the two leaders.
+/// sides. Each end gets a leader perpendicular to its side; one channel
+/// joins the leaders. The channel runs across the exit axis by default
+/// (a horizontal exit gets a horizontal channel) — the shape every
+/// clear route had before, which keeps them byte-identical.
 ///
-/// The channel is not allowed to run through either endpoint node.
-/// Before this check, `d:right --> b:top` with `b` to the LEFT of `d`
-/// left through the right side, then ran back across `d`'s own body at
-/// centre height and on through `b`. The channel now moves just outside
-/// both nodes when it would cross one — the shortest route that still
-/// honours both sides.
+/// Every node is an obstacle to the channel and its two connectors,
+/// the endpoints included (their leaders already stand clear). When the
+/// default channel is blocked the nearest clear one just outside some
+/// node wins; when NO channel of that orientation is clear — two ports
+/// on the same side, say — the other orientation is tried. `fan`
+/// offsets the channel so parallel ported edges stay apart.
 fn route_ported(
-    a: &AdvanceSceneNode,
     from_side: AdvanceSide,
     p0: (f64, f64),
     b: &AdvanceSceneNode,
     to_side: AdvanceSide,
     p3: (f64, f64),
     fan: f64,
+    nodes: &[AdvanceSceneNode],
 ) -> Vec<(f64, f64)> {
     const PORT_LEAD: f64 = 18.0;
     let l0 = port_leader(p0, from_side, PORT_LEAD);
     let l3 = port_leader(p3, to_side, PORT_LEAD);
-    let ra = node_rect(a);
-    let rb = node_rect(b);
+    let rects: Vec<(f64, f64, f64, f64)> = nodes.iter().map(node_rect).collect();
+    let blocked = |p: (f64, f64), q: (f64, f64)| rects.iter().any(|r| seg_crosses_rect(p, q, *r));
 
-    // The exit axis decides how the channel runs; `fan` offsets it
-    // perpendicularly so parallel ported edges fan apart.
-    let mut pts = Vec::with_capacity(6);
-    pts.push(p0);
-    pts.push(l0);
-    if matches!(from_side, AdvanceSide::Left | AdvanceSide::Right) {
-        let orig = l0.1 + fan;
-        // A channel at `y` is clear when neither the channel itself nor
-        // the two connectors that reach it cut through an endpoint node.
-        let clear = |y: f64| {
-            [(l0, (l0.0, y)), ((l0.0, y), (l3.0, y)), ((l3.0, y), l3)]
-                .iter()
-                .all(|(p, q)| !seg_crosses_rect(*p, *q, ra) && !seg_crosses_rect(*p, *q, rb))
-        };
-        let mid_y = if clear(orig) {
-            orig
+    // The two connector corners for a channel at `mid`.
+    let corners = |horizontal: bool, mid: f64| {
+        if horizontal {
+            ((l0.0, mid), (l3.0, mid))
         } else {
-            // Just outside either node, above or below. For two nodes
-            // stacked in one lane the gap between them is one of these,
-            // and usually the winner.
-            pick_channel(
-                orig,
-                b.y,
-                [ra.1 - PORT_LEAD, ra.3 + PORT_LEAD, rb.1 - PORT_LEAD, rb.3 + PORT_LEAD],
-                clear,
-            )
-        };
-        if (mid_y - l0.1).abs() > 1e-9 {
-            pts.push((l0.0, mid_y));
+            ((mid, l0.1), (mid, l3.1))
         }
-        if (l3.0 - l0.0).abs() > 1e-9 || (mid_y - l0.1).abs() > 1e-9 {
-            pts.push((l3.0, mid_y));
+    };
+    let route = |horizontal: bool, mid: f64| {
+        let (c0, c3) = corners(horizontal, mid);
+        dedup_pts(vec![p0, l0, c0, c3, l3, p3])
+    };
+    let clear = |horizontal: bool, mid: f64| {
+        let (c0, c3) = corners(horizontal, mid);
+        !blocked(l0, c0) && !blocked(c0, c3) && !blocked(c3, l3)
+    };
+    // Just outside every node's extent on the channel axis, then one
+    // step further out.
+    let candidates = |horizontal: bool| -> Vec<f64> {
+        rects
+            .iter()
+            .flat_map(|r| {
+                let (lo, hi) = if horizontal { (r.1, r.3) } else { (r.0, r.2) };
+                (1..=2).flat_map(move |k| {
+                    let d = PORT_LEAD * k as f64;
+                    [lo - d, hi + d]
+                })
+            })
+            .map(|c| c + fan)
+            .collect()
+    };
+
+    let exit_h = matches!(from_side, AdvanceSide::Left | AdvanceSide::Right);
+    for horizontal in [exit_h, !exit_h] {
+        let orig = if horizontal { l0.1 + fan } else { l0.0 + fan };
+        let toward = if horizontal { b.y } else { b.x };
+        if clear(horizontal, orig) {
+            return route(horizontal, orig);
         }
-        if (l3.1 - mid_y).abs() > 1e-9 {
-            pts.push(l3);
-        }
-    } else {
-        let orig = l0.0 + fan;
-        let clear = |x: f64| {
-            [(l0, (x, l0.1)), ((x, l0.1), (x, l3.1)), ((x, l3.1), l3)]
-                .iter()
-                .all(|(p, q)| !seg_crosses_rect(*p, *q, ra) && !seg_crosses_rect(*p, *q, rb))
-        };
-        let mid_x = if clear(orig) {
-            orig
-        } else {
-            pick_channel(
-                orig,
-                b.x,
-                [ra.0 - PORT_LEAD, ra.2 + PORT_LEAD, rb.0 - PORT_LEAD, rb.2 + PORT_LEAD],
-                clear,
-            )
-        };
-        if (mid_x - l0.0).abs() > 1e-9 {
-            pts.push((mid_x, l0.1));
-        }
-        if (l3.1 - l0.1).abs() > 1e-9 || (mid_x - l0.0).abs() > 1e-9 {
-            pts.push((mid_x, l3.1));
-        }
-        if (l3.0 - mid_x).abs() > 1e-9 {
-            pts.push(l3);
+        if let Some(mid) = pick_channel(orig, toward, candidates(horizontal), |m| clear(horizontal, m)) {
+            return route(horizontal, mid);
         }
     }
-    pts.push(p3);
-    dedup_pts(pts)
+    // Nothing is clear either way: the plain shape, which at least
+    // honours both sides.
+    route(exit_h, if exit_h { l0.1 + fan } else { l0.0 + fan })
 }
 
-/// The nearest clear channel coordinate to `orig`; a tie goes to the
-/// one on the target's side. Falls back to `orig` when none is clear,
-/// so the route still exists — just not a clean one.
-fn pick_channel(orig: f64, toward: f64, cands: [f64; 4], clear: impl Fn(f64) -> bool) -> f64 {
-    let mut cs: Vec<f64> = cands.to_vec();
+/// The nearest clear channel coordinate to `orig`, a tie going to the
+/// one on the target's side; `None` when no candidate is clear.
+fn pick_channel(orig: f64, toward: f64, mut cs: Vec<f64>, clear: impl Fn(f64) -> bool) -> Option<f64> {
     cs.sort_by(|p, q| {
         let dp = (p - orig).abs();
         let dq = (q - orig).abs();
@@ -3445,7 +3503,7 @@ fn pick_channel(orig: f64, toward: f64, cands: [f64; 4], clear: impl Fn(f64) -> 
             .unwrap_or(std::cmp::Ordering::Equal)
             .then_with(|| (p - toward).abs().partial_cmp(&(q - toward).abs()).unwrap_or(std::cmp::Ordering::Equal))
     });
-    cs.into_iter().find(|c| clear(*c)).unwrap_or(orig)
+    cs.into_iter().find(|c| clear(*c))
 }
 
 /// Prefer `wanted` if it is exposed; otherwise the first exposed side
@@ -3478,31 +3536,37 @@ fn pick_exposed_side(wanted: AdvanceSide, exposed: [bool; 4], dx: f64, dy: f64) 
 /// boundary point is straight out along `side` on the node's rect —
 /// the *lead* that crosses the endpoint's own node. For a node-level
 /// anchor or a plain side the two points coincide.
+///
+/// Returns `None` only if the scene lacks an element or anchor the
+/// parser already validated — an internal invariant, not user error.
 fn resolve_terminal(
     sn: &AdvanceSceneNode,
     end: &AdvanceEnd,
     side: AdvanceSide,
-) -> ((f64, f64), (f64, f64)) {
+) -> Option<((f64, f64), (f64, f64))> {
     let named = match &end.at {
         Some(AnchorRef::Named(id)) => Some(id.as_str()),
         _ => None,
     };
     if end.path.is_empty() {
-        if let Some(id) = named {
-            if let Some(a) = sn.anchors.iter().find(|a| a.element.is_none() && a.id == id) {
-                return ((a.x, a.y), (a.x, a.y));
+        return Some(match named {
+            Some(id) => {
+                let a = sn.anchors.iter().find(|a| a.element.is_none() && a.id == id)?;
+                ((a.x, a.y), (a.x, a.y))
             }
-        }
-        let p = side_point(sn, side);
-        return (p, p);
+            None => {
+                let p = side_point(sn, side);
+                (p, p)
+            }
+        });
     }
-    let Some((ei, el)) = sn.elements.iter().enumerate().find(|(_, el)| el.path == end.path) else {
-        let p = side_point(sn, side);
-        return (p, p);
-    };
-    let tp = match named.and_then(|id| sn.anchors.iter().find(|a| a.element == Some(ei) && a.id == id)) {
-        Some(a) => (a.x, a.y),
-        None => rect_side_point(el.x, el.y, el.w, el.h, side, 0.5),
+    let (ei, el) = sn.elements.iter().enumerate().find(|(_, el)| el.path == end.path)?;
+    let tp = match named {
+        Some(id) => {
+            let a = sn.anchors.iter().find(|a| a.element == Some(ei) && a.id == id)?;
+            (a.x, a.y)
+        }
+        None => rect_side_point(el.x, el.y, el.w, el.h, side, DEFAULT_ANCHOR_OFFSET),
     };
     let (l, t, r, b) = node_rect(sn);
     let bp = match side {
@@ -3511,7 +3575,7 @@ fn resolve_terminal(
         AdvanceSide::Top => (tp.0, t),
         AdvanceSide::Bottom => (tp.0, b),
     };
-    (tp, bp)
+    Some((tp, bp))
 }
 
 /// Drop consecutive duplicate points (rounded path collapse leaves none).
@@ -3640,7 +3704,12 @@ fn route_edges(
     nodes: &[AdvanceSceneNode],
     dir: AdvanceDirection,
 ) -> Vec<AdvanceSceneEdge> {
-    let node_idx = node_index_map(d);
+    // Scene nodes come out of layout in lane/topology order, NOT in
+    // declaration order — so they are looked up by id. Indexing them
+    // with the model's order attached edges to the wrong node.
+    let model_idx = node_index_map(d);
+    let scene_idx: std::collections::HashMap<&str, usize> =
+        nodes.iter().enumerate().map(|(i, n)| (n.id.as_str(), i)).collect();
     let mut edge_scenes = Vec::with_capacity(d.edges.len());
 
     let mut pair_totals: std::collections::HashMap<(String, String), usize> =
@@ -3657,8 +3726,8 @@ fn route_edges(
     let mut placed_labels: Vec<(f64, f64, f64, f64)> = Vec::new();
 
     for e in &d.edges {
-        let from_i = node_idx[&e.from];
-        let to_i = node_idx[&e.to];
+        let from_i = scene_idx[e.from.as_str()];
+        let to_i = scene_idx[e.to.as_str()];
         let a = &nodes[from_i];
         let b = &nodes[to_i];
 
@@ -3693,13 +3762,15 @@ fn route_edges(
                     Err(_) => natural,
                 }
             };
-            let fs = side_for(&e.from_end, e.from_side, from_i, true);
-            let ts = side_for(&e.to_end, e.to_side, to_i, false);
-            let (tp0, bp0) = resolve_terminal(a, &e.from_end, fs);
-            let (tp3, bp3) = resolve_terminal(b, &e.to_end, ts);
+            let fs = side_for(&e.from_end, e.from_side, model_idx[&e.from], true);
+            let ts = side_for(&e.to_end, e.to_side, model_idx[&e.to], false);
+            let (tp0, bp0) = resolve_terminal(a, &e.from_end, fs)
+                .expect("terminal validated at parse time is missing from the scene");
+            let (tp3, bp3) = resolve_terminal(b, &e.to_end, ts)
+                .expect("terminal validated at parse time is missing from the scene");
             let mut pts = Vec::with_capacity(8);
             pts.push(tp0);
-            pts.extend(route_ported(a, fs, bp0, b, ts, bp3, fan));
+            pts.extend(route_ported(fs, bp0, b, ts, bp3, fan, nodes));
             pts.push(tp3);
             dedup_pts(pts)
         } else if from_i == to_i {
@@ -3708,7 +3779,7 @@ fn route_edges(
             } else {
                 let fs = e.from_side.unwrap_or_else(|| natural_side(a, b, dir, true, true));
                 let ts = e.to_side.unwrap_or_else(|| natural_side(a, b, dir, false, true));
-                route_ported(a, fs, side_point(a, fs), b, ts, side_point(b, ts), fan)
+                route_ported(fs, side_point(a, fs), b, ts, side_point(b, ts), fan, nodes)
             }
         } else if a.lane == b.lane {
             if e.from_side.is_none() && e.to_side.is_none() {
@@ -3716,14 +3787,14 @@ fn route_edges(
             } else {
                 let fs = e.from_side.unwrap_or_else(|| natural_side(a, b, dir, true, true));
                 let ts = e.to_side.unwrap_or_else(|| natural_side(a, b, dir, false, true));
-                route_ported(a, fs, side_point(a, fs), b, ts, side_point(b, ts), fan)
+                route_ported(fs, side_point(a, fs), b, ts, side_point(b, ts), fan, nodes)
             }
         } else if e.from_side.is_none() && e.to_side.is_none() {
             route_cross_lane(a, b, nodes, fan, dir)
         } else {
             let fs = e.from_side.unwrap_or_else(|| natural_side(a, b, dir, true, false));
             let ts = e.to_side.unwrap_or_else(|| natural_side(a, b, dir, false, false));
-            route_ported(a, fs, side_point(a, fs), b, ts, side_point(b, ts), fan)
+            route_ported(fs, side_point(a, fs), b, ts, side_point(b, ts), fan, nodes)
         };
 
         let label_pos = match e.label.as_deref() {
@@ -3788,7 +3859,11 @@ impl AdvanceScene {
     /// beats a lane box behind them. `tol` (scene units) widens edge
     /// picking so thin routes are still selectable.
     pub fn hit_test(&self, x: f64, y: f64, tol: f64) -> Option<AdvanceHit> {
-        if let Some((n, a)) = self.anchor_at(x, y, tol) {
+        // An anchor wins only on the node that is actually under the
+        // point (or anywhere when the point is on no node), so an
+        // occluded node's anchor cannot beat the visible one.
+        let top = self.node_at(x, y);
+        if let Some((n, a)) = self.anchor_at(x, y, tol).filter(|(n, _)| top.map_or(true, |t| *n == t)) {
             return Some(AdvanceHit::Anchor(n, a));
         }
         if let Some((n, e)) = self.element_at(x, y) {
@@ -4470,7 +4545,7 @@ fn render_node(s: &mut String, n: &AdvanceSceneNode, text_color: &str) {
     // Label — centred, or in the top band when sub-elements sit below.
     let lines: Vec<&str> = n.label.split('\n').collect();
     let line_count = lines.len();
-    let band_h = BASE_H + (line_count.saturating_sub(1)) as f64 * LINE_H;
+    let band_h = label_band_h(&n.label);
     let label_cy = if n.elements.is_empty() {
         cy
     } else {
@@ -4515,7 +4590,7 @@ fn render_node(s: &mut String, n: &AdvanceSceneNode, text_color: &str) {
                 stroke
             ));
             let el_lines: Vec<&str> = el.label.split('\n').collect();
-            let el_band = BASE_H + (el_lines.len().saturating_sub(1)) as f64 * LINE_H;
+            let el_band = label_band_h(&el.label);
             let el_cy = if has_children {
                 el.y - el.h / 2.0 + el_band / 2.0
             } else {
@@ -4843,6 +4918,10 @@ fn fit_canvas(mut sc: AdvanceScene, pad: f64) -> AdvanceScene {
             e.from_point.1 += dy;
             e.to_point.0 += dx;
             e.to_point.1 += dy;
+            if let Some(lp) = e.label_pos.as_mut() {
+                lp.0 += dx;
+                lp.1 += dy;
+            }
         }
         sc.width += dx;
         sc.height += dy;
@@ -5999,19 +6078,23 @@ mod tests {
         let ok = |src: &str| AdvanceDiagram::parse_text(src).is_ok();
         let base = "lane l \"L\"\na[A] { p[P]; q[Q]; r[R] }\nb[B]\n";
         assert!(ok(&format!("{base}a.q:left --> b\n")));
-        assert!(ok(&format!("{base}a.p:top --> b\n")));
         assert!(ok(&format!("{base}a.r:bottom --> b\n")));
         assert!(!ok(&format!("{base}a.p:bottom --> b\n")));
+        // `top` is never exposed: the label band sits above the first
+        // child, and a lead through the label text is not a lead.
+        assert!(!ok(&format!("{base}a.p:top --> b\n")));
         assert!(!ok(&format!("{base}a.r:top --> b\n")));
-        // Row: top/bottom always, left only first, right only last.
+        // Row: bottom always, left only first, right only last.
         let row = "lane l \"L\"\na[A] { p[P]; q[Q]; r[R]; layout row }\nb[B]\n";
-        assert!(ok(&format!("{row}a.q:top --> b\n")));
+        assert!(ok(&format!("{row}a.q:bottom --> b\n")));
+        assert!(!ok(&format!("{row}a.q:top --> b\n")));
         assert!(!ok(&format!("{row}a.q:left --> b\n")));
         assert!(ok(&format!("{row}a.r:right --> b\n")));
         // Nesting: exposure must hold at every level.
         let nest = "lane l \"L\"\na[A] { p[P] { x[X]; y[Y] }; q[Q] }\nb[B]\n";
-        assert!(ok(&format!("{nest}a.p.x:top --> b\n")));
+        assert!(ok(&format!("{nest}a.p.x:left --> b\n")));
         assert!(!ok(&format!("{nest}a.p.y:bottom --> b\n")), "p is not last, so y's bottom is interior");
+        assert!(ok(&format!("{nest}a.q:bottom --> b\n")));
     }
 
     #[test]
@@ -6188,6 +6271,159 @@ mod tests {
         let d = text_diagram("lane l \"L\"\nc{Check}\n");
         assert_eq!(d.nodes[0].shape, Shape::Diamond);
         assert!(d.nodes[0].elements.is_empty());
+    }
+
+
+    // ------------------------------------------------------------
+    // Review findings on P1 — each of these was a reproduced defect
+    // ------------------------------------------------------------
+
+    #[test]
+    fn comment_and_directive_lines_ending_in_a_brace_are_not_blocks() {
+        let d = text_diagram("lane l \"L\"\na[A]\n# see a[A] { anchor x left }\nb[B]\n");
+        assert_eq!(d.nodes.len(), 2);
+        let d = text_diagram("lane l \"L\"\na[A]\n%% note {x}\nb[B]\n");
+        assert_eq!(d.nodes.len(), 2);
+        let d = text_diagram("title Release {v2}\nlane l \"L\"\na[A]\n");
+        assert_eq!(d.title.as_deref(), Some("Release {v2}"));
+        assert_eq!(d.nodes.len(), 1);
+    }
+
+    #[test]
+    fn inline_block_nesting_is_capped_like_json() {
+        let mut src = String::from("lane l \"L\"\na[A]");
+        for i in 0..40 {
+            src.push_str(&format!(" {{ e{i}[E]"));
+        }
+        src.push_str(&" }".repeat(40));
+        src.push('\n');
+        let e = AdvanceDiagram::parse_text(&src).unwrap_err();
+        assert!(e.message.contains("nesting exceeds limit"), "{}", e.message);
+        let mut src = String::from("lane l \"L\"\na[A] {\n");
+        for i in 0..40 {
+            src.push_str(&format!("e{i}[E] {{\n"));
+        }
+        let e = AdvanceDiagram::parse_text(&src).unwrap_err();
+        assert!(e.message.contains("nesting exceeds limit"), "{}", e.message);
+    }
+
+    #[test]
+    fn shape_braces_and_label_punctuation_are_not_block_syntax() {
+        let d = text_diagram("lane l \"L\"\nc {Text}\nh {{Hex}}\n");
+        assert_eq!((d.nodes[0].shape, d.nodes[0].label.as_str()), (Shape::Diamond, "Text"));
+        assert_eq!((d.nodes[1].shape, d.nodes[1].label.as_str()), (Shape::Hexagon, "Hex"));
+        assert!(d.nodes.iter().all(|n| n.elements.is_empty()));
+        let d = text_diagram("lane l \"L\"\na[Set {x}] { p[Hello; world]; q[Q] }\n");
+        assert_eq!((d.nodes[0].id.as_str(), d.nodes[0].label.as_str()), ("a", "Set {x}"));
+        assert_eq!(d.nodes[0].elements.iter().map(|e| e.label.as_str()).collect::<Vec<_>>(), ["Hello; world", "Q"]);
+        let d = text_diagram("lane l \"L\"\nc{Check} { anchor y right }\n");
+        assert_eq!(d.nodes[0].shape, Shape::Diamond);
+        assert_eq!(d.nodes[0].anchors[0].id, "y");
+    }
+
+    #[test]
+    fn directives_and_edges_inside_a_block_are_refused() {
+        let err = |src: &str| AdvanceDiagram::parse_text(src).unwrap_err().message;
+        for body in ["x --- y", "style a fill:#f00", "class a hot", "config margin 4", "lane z \"Z\""] {
+            let e = err(&format!("lane l \"L\"\na[A] {{\n  {body}\n}}\n"));
+            assert!(e.contains("not allowed inside"), "'{body}' slipped through: {e}");
+        }
+        let e = err("lane l \"L\"\na[A] {\n  [P]\n}\n");
+        assert!(e.contains("cannot be empty") || e.contains("invalid"), "{e}");
+    }
+
+    #[test]
+    fn style_targets_a_terminal_edge_by_its_reference() {
+        let d = text_diagram(&format!("{TERMINALS}style cpu.core1@irq-->mem.bank0 color:#ff0000\n"));
+        assert_eq!(d.edges[0].style.color.as_deref(), Some("#ff0000"));
+        assert_eq!(d.edges[2].style.color, None, "the other cpu->mem edge is untouched");
+        let d = text_diagram(&format!("{TERMINALS}style cpu-->mem color:#00ff00\n"));
+        assert_eq!(d.edges[0].style.color.as_deref(), Some("#00ff00"));
+        assert_eq!(d.edges[2].style.color.as_deref(), Some("#00ff00"));
+        let e = AdvanceDiagram::parse_text(&format!("{TERMINALS}style cpu.core1@irq-->mem.bank1 color:#f00\n")).unwrap_err();
+        assert!(e.message.contains("matches no edge") && e.message.contains("line 19"), "{}", e.message);
+    }
+
+    #[test]
+    fn edges_attach_to_the_node_they_name_whatever_the_scene_order() {
+        let src = r#"{"lanes":[{"id":"A","title":"A"},{"id":"B","title":"B"}],
+            "nodes":[{"id":"n1","lane":"A"},{"id":"n2","lane":"B","elements":[{"id":"p"}]},{"id":"n3","lane":"A"}],
+            "edges":[{"from":"n1","to":"n2.p"}]}"#;
+        let sc = layout(&AdvanceDiagram::parse(src).unwrap());
+        let n2 = scene_node_by(&sc, "n2");
+        let e = &sc.edges[0];
+        let p = &n2.elements[0];
+        assert!(
+            (e.to_point.0 - p.x).abs() <= p.w / 2.0 + 1e-9 && (e.to_point.1 - p.y).abs() <= p.h / 2.0 + 1e-9,
+            "edge ends at {:?}, not on n2.p at ({}, {})", e.to_point, p.x, p.y
+        );
+        assert_eq!(e.to_end.to_ref(), "n2.p");
+    }
+
+    #[test]
+    fn parallel_ported_edges_keep_their_fan_after_the_detour() {
+        let sc = layout(&text_diagram(
+            "lane backend \"B\" {\n  b[API]\n}\nlane frontend \"F\" {\n  d[Dash]\n}\nd:right --> b:top\nd:right --> b:top\n",
+        ));
+        assert_ne!(sc.edges[0].points, sc.edges[1].points, "the two routes collapsed onto one channel");
+    }
+
+    #[test]
+    fn a_ported_channel_avoids_a_third_node() {
+        let sc = layout(&text_diagram(
+            "lane l \"L\" {\n  a[A]\n  m[A much wider middle node]\n  b[B]\n}\na:right --> b:right\n",
+        ));
+        let m = scene_node_by(&sc, "m");
+        for w in sc.edges[0].points.windows(2) {
+            for t in [0.25, 0.5, 0.75] {
+                let p = (w[0].0 + (w[1].0 - w[0].0) * t, w[0].1 + (w[1].1 - w[0].1) * t);
+                assert!(!inside_strict(p, m), "segment {:?}-{:?} runs through m", w[0], w[1]);
+            }
+        }
+    }
+
+    #[test]
+    fn explicit_size_is_clamped_so_sub_elements_fit() {
+        let src = r#"{"lanes":[{"id":"l","title":"L"}],
+            "nodes":[{"id":"a","lane":"l","w":60,"h":30,"layout":"row",
+                      "elements":[{"id":"p","label":"Long label here"},{"id":"q"}]}],"edges":[]}"#;
+        let sc = layout(&AdvanceDiagram::parse(src).unwrap());
+        let a = scene_node_by(&sc, "a");
+        assert!(a.w > 60.0 && a.h > 30.0, "node kept the too-small box: {}x{}", a.w, a.h);
+        for el in &a.elements {
+            assert!(el.w > 0.0 && el.h > 0.0, "{} has a non-positive size", el.id);
+            assert!(inside_strict((el.x, el.y), a), "{} sits outside its node", el.id);
+        }
+        assert!(!to_svg(&sc).contains("height=\"-"));
+    }
+
+    #[test]
+    fn fit_canvas_moves_edge_labels_with_their_routes() {
+        let src = r#"{"lanes":[{"id":"l","title":"L"}],
+            "nodes":[{"id":"a","lane":"l","x":0,"y":0},{"id":"b","lane":"l","x":200,"y":0}],
+            "edges":[{"from":"a","to":"b","label":"hello"}]}"#;
+        let sc = layout(&AdvanceDiagram::parse(src).unwrap());
+        let e = &sc.edges[0];
+        let (lx, ly) = e.label_pos.expect("label placed");
+        let near = e.points.windows(2).any(|w| {
+            let (x0, y0, x1, y1) = (w[0].0.min(w[1].0), w[0].1.min(w[1].1), w[0].0.max(w[1].0), w[0].1.max(w[1].1));
+            lx >= x0 - 30.0 && lx <= x1 + 30.0 && ly >= y0 - 30.0 && ly <= y1 + 30.0
+        });
+        assert!(near, "label at ({lx}, {ly}) is nowhere near its route {:?}", e.points);
+    }
+
+    #[test]
+    fn hit_test_does_not_let_an_occluded_anchor_beat_the_visible_node() {
+        let src = r#"{"lanes":[{"id":"l","title":"L"}],
+            "nodes":[{"id":"under","lane":"l","x":100,"y":100,"anchors":[{"id":"u","side":"right"}]},
+                     {"id":"over","lane":"l","x":110,"y":100}],
+            "edges":[]}"#;
+        let sc = layout(&AdvanceDiagram::parse(src).unwrap());
+        let ui = sc.nodes.iter().position(|n| n.id == "under").unwrap();
+        let oi = sc.nodes.iter().position(|n| n.id == "over").unwrap();
+        let a = &sc.nodes[ui].anchors[0];
+        assert_eq!(sc.node_at(a.x, a.y), Some(oi), "test setup: the anchor point is covered by `over`");
+        assert_eq!(sc.hit_test(a.x, a.y, 4.0), Some(AdvanceHit::Node(oi)));
     }
 
 }

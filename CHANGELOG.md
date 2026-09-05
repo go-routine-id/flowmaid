@@ -17,29 +17,44 @@ project adheres to [Semantic Versioning](https://semver.org/).
   line: `core1[Core 1] { anchor irq right }`). JSON: nodes take `anchors`, `elements`
   and `layout`; `from`/`to` accept the reference grammar.
   - Sub-elements are laid out without coordinates — stacked compartments or a row —
-    and the node grows to fit. A sub-element side may be used only if it reaches the
-    node boundary; an interior side is a parse error, not a lead that pierces a sibling.
+    and the node grows to fit (an explicit `w`/`h` is clamped to that minimum). A
+    sub-element side may be used only if it reaches the node boundary — never `top`,
+    where the label band sits; an interior side is a parse error, not a lead that
+    pierces a sibling or the label.
   - The scene carries each node's placed `elements` (flat, `parent`-linked) and
     resolved `anchors`, and each edge's `from_point` / `to_point` and `from_end` /
     `to_end`; `scene_to_json` emits them. `AdvanceScene` gains `anchor_at` and
     `element_at`, and `AdvanceHit` gains `Element` and `Anchor` variants.
-  - Ids may no longer contain `.` or `@` — a line-numbered error names the offender.
-- `examples/advance_terminals.mmd`, README section, and the approved design in
+  - `style a.x@p-->b.y` styles exactly that terminal edge (and errors when it matches
+    none); a plain `style a-->b` still styles every edge between the two nodes.
+- `examples/advance_terminals.mmd` and a README section; the approved design is in
   `docs/design/advance-terminals-and-router.md`.
 
 ### Fixed
 
-- A ported edge no longer runs back through its own source or target. With
-  `d:right --> b:top` and `b` to the left, the channel used to sit at centre height
-  and cut across both nodes; it now moves just outside them — the shortest route that
-  still honours both sides. Ported edges that were already clear are byte-identical.
+- A ported edge no longer runs back through its own source or target, nor through a
+  third node. With `d:right --> b:top` and `b` to the left, the channel used to sit at
+  centre height and cut across both nodes; it now moves to the nearest clear gap —
+  above, below, or between the two nodes — and every node counts as an obstacle.
+  Parallel ported edges keep their fan. Ported edges that were already clear are
+  byte-identical.
+- **Edges attach to the node they name.** `route_edges` indexed scene nodes in
+  declaration order while layout emits them in lane order, so with lanes `A, B` and
+  nodes `n1@A, n2@B, n3@A` the edge `n1 --> n2` was drawn to **n3**. Scene nodes are
+  now looked up by id.
+- Edge labels move with their routes when the canvas is shifted to fit — `label_pos`
+  was the one coordinate `fit_canvas` left behind, so a label could sit 100 px off its
+  edge for explicit-coordinate and dragged diagrams.
 
 ### Changed
 
+- **Ids may no longer contain `.` or `@`** — they are reserved by the reference
+  grammar. A diagram that used them (`a.b[X]`) parsed before and now gets a
+  line-numbered error naming the offender.
 - `AdvanceHit` has two new variants (`Element`, `Anchor`); an exhaustive `match` on it
   needs two more arms. `AdvanceNode`, `AdvanceEdge`, `AdvanceSceneNode` and
   `AdvanceSceneEdge` gain fields; struct-literal construction outside the crate needs
-  them (parsing is unaffected).
+  them. Every existing text or JSON input still parses identically.
 
 ## [0.29.2] - 2026-09-01
 
