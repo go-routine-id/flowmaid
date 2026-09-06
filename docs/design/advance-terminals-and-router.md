@@ -161,7 +161,7 @@ Decision needed: the new router becomes the default (recommended — it is the p
 | Phase | Delivers | Router |
 |---|---|---|
 | **P1 Terminals** ✅ | `Anchor`, `SubElement`, `EdgeEnd`; DSL + JSON parsing; resolution with the exposed-side rule; compartment rendering; scene + hit-testing | Today's, fed resolved points and excluding the endpoint's own node — which alone fixes the ported-through-own-node defect |
-| **P2 Grid router** ✅ | Channel grid, A\* with bends + obstacles; replaces the same-lane / cross-lane / ported routers | Zero through-box for every edge kind |
+| **P2 Grid router** ✅ | Channel grid, A\* with bends + obstacles; replaces the same-lane / cross-lane / ported routers | Zero through-box for every edge between two nodes; a loop onto one node is drawn on a ring instead |
 | **P3 Negotiation** | Crossing cost, rip-up-and-reroute, `crossings` in scene; a planar test suite asserting 0 | Zero crossings where possible |
 | **P4 Ship** | README, docs site, `examples/advance_terminals.mmd`, CHANGELOG, minor bump | — |
 
@@ -171,7 +171,7 @@ One PR and one independent review per phase.
 
 **Closed in P2**
 
-- **Same-side ported self-loop.** `a:right --> a:right` collapsed to a spike — out 18 px and straight back — because both leaders coincided and every channel was zero-length. `route_self_loop_sides` now draws a real loop around the node.
+- **Ported self-loops.** `a:right --> a:right` collapsed to a spike, and opposite sides such as `a:left --> a:right` collapsed to a line straight across the node. Both are now drawn by walking a ring around the node the short way, which is general over all sixteen pairs of sides. Terminals are resolved *before* the loop is chosen, so a loop between two sub-elements or two named anchors lands on them.
 
 **What P2 delivered beyond the table**
 
@@ -181,6 +181,8 @@ One PR and one independent review per phase.
 
 **Carried into P3**
 
+- A loop onto a single node is drawn on a ring around that node and does not consult the lattice, so it can still cross a *different* node placed close enough. Pre-dates P2 and is unchanged by it; the ring would have to become a lattice search of its own.
+- Routing is now `O(edges x lattice)` rather than `O(edges)`. A 60-edge diagram routes in about 12 ms and a 600-edge one in about 1.6 s (release). The lattice is built once per diagram and the choice of sides is searched only below `SEARCH_BUDGET`, but the search itself is the cost of the guarantee.
 - What P2 does not have is the rip-up: each edge is routed once, against the edges already drawn, and never moved again to let a later one through. The one remaining crossing in the dense 3×3 case is exactly that — a first-come-first-served artefact, not a geometric necessity.
 
 ## 6. Out of scope (design accommodates, not built)
