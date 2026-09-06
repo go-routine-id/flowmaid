@@ -167,6 +167,10 @@ Decision needed: the new router becomes the default (recommended — it is the p
 
 One PR and one independent review per phase.
 
+## 5b. Carried into P2
+
+- **Same-side ported self-loop.** `a:right --> a:right` collapses to a spike — out 18 px and straight back — because both leaders coincide and every channel is zero-length. Pre-dates P1 (byte-identical on `main`); the unported self-loop draws a real loop. The grid router should route it as a loop around the node.
+
 ## 6. Out of scope (design accommodates, not built)
 
 - **Nets** — a net is a set of terminals sharing a trunk. `EdgeEnd` already gives each terminal a resolved point; a net router would be a Steiner-tree variant on the same grid. Later, if wanted.

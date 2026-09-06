@@ -27,6 +27,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
     `element_at`, and `AdvanceHit` gains `Element` and `Anchor` variants.
   - `style a.x@p-->b.y` styles exactly that terminal edge (and errors when it matches
     none); a plain `style a-->b` still styles every edge between the two nodes.
+  - Sub-elements need a `rect` or `rounded` node; any other shape is refused at parse
+    time — inside a diamond, six of eight compartment corners fell outside the outline
+    and could not be picked.
+  - A lane block may be written on one line, like a node block. `lane l "L" { a[A] }`
+    used to swallow the title and the node without a word.
+  - An id ending in a side keyword (`a:right`) is refused: every edge would read it as
+    node `a` on its right side, so it could never be referenced. `a:b` is still fine.
+  - Text and JSON accept the same sub-element nesting depth (16); the multi-line block
+    form was one short.
 - `examples/advance_terminals.mmd` and a README section; the approved design is in
   `docs/design/advance-terminals-and-router.md`.
 

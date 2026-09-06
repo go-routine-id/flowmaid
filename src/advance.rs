@@ -266,6 +266,16 @@ fn check_id(kind: &str, id: &str) -> Result<(), String> {
             kind, id, c
         ));
     }
+    // `a:right` would parse as node `a` on side `right` in every edge,
+    // so such an id could never be referenced.
+    if let Some((_, suffix)) = id.rsplit_once(':') {
+        if parse_side(suffix).is_some() {
+            return Err(format!(
+                "{} id '{}' ends in the side keyword '{}' and could never be referenced by an edge",
+                kind, id, suffix
+            ));
+        }
+    }
     Ok(())
 }
 
@@ -316,7 +326,9 @@ fn body_looks_like_block(body: &str) -> bool {
 /// and `c {Text}` with a bare id stays a diamond unless the body is
 /// unmistakably block content. Edges and directives are never blocks.
 fn split_inline_block(line: &str) -> Option<(&str, &str)> {
-    if !line.ends_with('}') || is_edge_line(line) || is_directive_line(line) {
+    // `lane … { … }` is the one directive that may open a block.
+    let is_lane = line.starts_with("lane ");
+    if !line.ends_with('}') || is_edge_line(line) || (is_directive_line(line) && !is_lane) {
         return None;
     }
     let bytes = line.as_bytes();
@@ -338,6 +350,9 @@ fn split_inline_block(line: &str) -> Option<(&str, &str)> {
                 let closed_shape = prefix.ends_with(']') || prefix.ends_with(')') || prefix.ends_with('}');
                 if !closed_shape && !body_looks_like_block(body) {
                     continue;
+                }
+                if is_lane {
+                    return Some((prefix, body));
                 }
                 match parse_text_node_shorthand(prefix) {
                     Some((id, _, _)) if !id.is_empty() => return Some((prefix, body)),
@@ -1282,6 +1297,13 @@ impl AdvanceDiagram {
                 Some(v) => parse_layout_json(v, &ctx)?,
                 None => ElementLayout::Column,
             };
+            if !elements.is_empty() && !matches!(shape, Shape::Rect | Shape::Rounded) {
+                return Err(adv_err(format!(
+                    "{} is a {} — sub-elements need a rect or rounded node",
+                    ctx,
+                    shape_name(shape)
+                )));
+            }
 
             nodes.push(AdvanceNode {
                 id,
@@ -1444,7 +1466,7 @@ impl AdvanceDiagram {
             if line.starts_with('#')
                 || line.starts_with("%%")
                 || line.starts_with("//")
-                || is_directive_line(line)
+                || (is_directive_line(line) && !line.starts_with("lane "))
             {
                 stmts.push((line_no, line.to_string()));
                 continue;
@@ -1469,6 +1491,21 @@ impl AdvanceDiagram {
                             None => node.elements.push(elem),
                         }
                     } else if let Some(node) = cur_node.take() {
+                        // Compartments are rectangles; inside any other
+                        // outline they poke through it and their corners
+                        // fall outside the shape's hit area.
+                        if !node.elements.is_empty() && !matches!(node.shape, Shape::Rect | Shape::Rounded) {
+                            return Err(text_err(
+                                source,
+                                node_open_line,
+                                None,
+                                format!(
+                                    "node '{}' is a {} — sub-elements need a rect or rounded node",
+                                    node.id,
+                                    shape_name(node.shape)
+                                ),
+                            ));
+                        }
                         nodes.push(node);
                     }
                 } else if lane_stack.pop().is_some() {
@@ -1540,7 +1577,7 @@ impl AdvanceDiagram {
                     style: NodeStyle::default(),
                 };
                 if opens {
-                    if open_elems.len() + 1 >= MAX_NEST_DEPTH {
+                    if open_elems.len() >= MAX_NEST_DEPTH {
                         return Err(text_err(
                             source,
                             line_no,
@@ -6424,6 +6461,70 @@ mod tests {
         let a = &sc.nodes[ui].anchors[0];
         assert_eq!(sc.node_at(a.x, a.y), Some(oi), "test setup: the anchor point is covered by `over`");
         assert_eq!(sc.hit_test(a.x, a.y, 4.0), Some(AdvanceHit::Node(oi)));
+    }
+
+
+    #[test]
+    fn sub_elements_need_a_rect_or_rounded_node() {
+        // Compartments are rectangles; inside a diamond 6 of 8 corners
+        // fell outside the outline and could not be picked.
+        for decl in ["d{Dec}", "h{{Hex}}", "c((C))", "p[/P/]"] {
+            let e = AdvanceDiagram::parse_text(&format!("lane l \"L\"\n{decl} {{ p[P] }}\n")).unwrap_err();
+            assert!(e.message.contains("sub-elements need a rect or rounded node"), "{decl}: {}", e.message);
+            assert!(e.message.contains("line 2"), "{}", e.message);
+        }
+        for decl in ["r[R]", "o(O)"] {
+            assert!(AdvanceDiagram::parse_text(&format!("lane l \"L\"\n{decl} {{ p[P] }}\n")).is_ok(), "{decl}");
+        }
+        let json = r#"{"lanes":[{"id":"l","title":"L"}],"nodes":[{"id":"d","lane":"l","shape":"diamond","elements":[{"id":"p"}]}],"edges":[]}"#;
+        assert!(AdvanceDiagram::parse(json).unwrap_err().message.contains("need a rect or rounded node"));
+        // A shape without sub-elements is still free to be anything.
+        assert!(AdvanceDiagram::parse_text("lane l \"L\"\nd{Dec}\n").is_ok());
+    }
+
+    #[test]
+    fn a_lane_block_on_one_line_works_like_a_node_block() {
+        // Used to swallow the title and the node without a word.
+        let d = text_diagram("lane l \"L\" { a[A]; lane s \"S\" { b[B] } }\n");
+        assert_eq!(d.lanes[0].title, "L");
+        assert_eq!(d.lanes[0].children[0].title, "S");
+        assert_eq!(node_lane(&d, "a"), "l");
+        assert_eq!(node_lane(&d, "b"), "s");
+        // `c` follows a closed top-level lane block: no lane scope.
+        assert!(AdvanceDiagram::parse_text("lane l \"L\" { a[A] }\nc[C]\n").is_err());
+    }
+
+    #[test]
+    fn an_id_ending_in_a_side_keyword_is_refused() {
+        let e = AdvanceDiagram::parse_text("lane l \"L\"\na:right[X]\n").unwrap_err();
+        assert!(e.message.contains("side keyword 'right'"), "{}", e.message);
+        // A colon that is not a side is still fine, as it always was.
+        let d = text_diagram("lane l \"L\"\na:b[X]\nc[C]\na:b --> c\n");
+        assert_eq!(d.edges[0].from, "a:b");
+    }
+
+    #[test]
+    fn every_front_end_accepts_the_same_nesting_depth() {
+        let ok_text = |src: &str| AdvanceDiagram::parse_text(src).is_ok();
+        let inline = |n: usize| {
+            let mut s = String::from("lane l \"L\"\na[A]");
+            for i in 0..n { s.push_str(&format!(" {{ e{i}[E]")); }
+            s.push_str(&" }".repeat(n)); s.push('\n'); s
+        };
+        let multi = |n: usize| {
+            let mut s = String::from("lane l \"L\"\na[A] {\n");
+            for i in 0..n { s.push_str(&format!("e{i}[E] {{\n")); }
+            s.push_str(&"}\n".repeat(n + 1)); s
+        };
+        let json = |n: usize| {
+            let mut e = format!("{{\"id\":\"e{}\"}}", n - 1);
+            for i in (0..n - 1).rev() { e = format!("{{\"id\":\"e{i}\",\"elements\":[{e}]}}"); }
+            format!("{{\"lanes\":[{{\"id\":\"l\",\"title\":\"L\"}}],\"nodes\":[{{\"id\":\"a\",\"lane\":\"l\",\"elements\":[{e}]}}],\"edges\":[]}}")
+        };
+        assert!(ok_text(&inline(MAX_NEST_DEPTH)) && !ok_text(&inline(MAX_NEST_DEPTH + 1)));
+        assert!(ok_text(&multi(MAX_NEST_DEPTH)) && !ok_text(&multi(MAX_NEST_DEPTH + 1)));
+        assert!(AdvanceDiagram::parse(&json(MAX_NEST_DEPTH)).is_ok());
+        assert!(AdvanceDiagram::parse(&json(MAX_NEST_DEPTH + 1)).is_err());
     }
 
 }
