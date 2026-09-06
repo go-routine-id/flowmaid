@@ -7,6 +7,64 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Advance terminals** — an edge end can now reference a *sub-element* or a *named
+  anchor*, not only a node side: `node.element@anchor`, `node@anchor`, `node.element`,
+  composably to any depth (`.` descends, `@` names an anchor, `:` picks a side).
+  Text DSL: a node opens a `{ ... }` block holding `anchor <id> <side> [offset]`,
+  `layout column|row`, and sub-element declarations (nestable, and writable on one
+  line: `core1[Core 1] { anchor irq right }`). JSON: nodes take `anchors`, `elements`
+  and `layout`; `from`/`to` accept the reference grammar.
+  - Sub-elements are laid out without coordinates — stacked compartments or a row —
+    and the node grows to fit (an explicit `w`/`h` is clamped to that minimum). A
+    sub-element side may be used only if it reaches the node boundary — never `top`,
+    where the label band sits; an interior side is a parse error, not a lead that
+    pierces a sibling or the label.
+  - The scene carries each node's placed `elements` (flat, `parent`-linked) and
+    resolved `anchors`, and each edge's `from_point` / `to_point` and `from_end` /
+    `to_end`; `scene_to_json` emits them. `AdvanceScene` gains `anchor_at` and
+    `element_at`, and `AdvanceHit` gains `Element` and `Anchor` variants.
+  - `style a.x@p-->b.y` styles exactly that terminal edge (and errors when it matches
+    none); a plain `style a-->b` still styles every edge between the two nodes.
+  - Sub-elements need a `rect` or `rounded` node; any other shape is refused at parse
+    time — inside a diamond, six of eight compartment corners fell outside the outline
+    and could not be picked.
+  - A lane block may be written on one line, like a node block. `lane l "L" { a[A] }`
+    used to swallow the title and the node without a word.
+  - An id ending in a side keyword (`a:right`) is refused: every edge would read it as
+    node `a` on its right side, so it could never be referenced. `a:b` is still fine.
+  - Text and JSON accept the same sub-element nesting depth (16); the multi-line block
+    form was one short.
+- `examples/advance_terminals.mmd` and a README section; the approved design is in
+  `docs/design/advance-terminals-and-router.md`.
+
+### Fixed
+
+- A ported edge no longer runs back through its own source or target, nor through a
+  third node. With `d:right --> b:top` and `b` to the left, the channel used to sit at
+  centre height and cut across both nodes; it now moves to the nearest clear gap —
+  above, below, or between the two nodes — and every node counts as an obstacle.
+  Parallel ported edges keep their fan. Ported edges that were already clear are
+  byte-identical.
+- **Edges attach to the node they name.** `route_edges` indexed scene nodes in
+  declaration order while layout emits them in lane order, so with lanes `A, B` and
+  nodes `n1@A, n2@B, n3@A` the edge `n1 --> n2` was drawn to **n3**. Scene nodes are
+  now looked up by id.
+- Edge labels move with their routes when the canvas is shifted to fit — `label_pos`
+  was the one coordinate `fit_canvas` left behind, so a label could sit 100 px off its
+  edge for explicit-coordinate and dragged diagrams.
+
+### Changed
+
+- **Ids may no longer contain `.` or `@`** — they are reserved by the reference
+  grammar. A diagram that used them (`a.b[X]`) parsed before and now gets a
+  line-numbered error naming the offender.
+- `AdvanceHit` has two new variants (`Element`, `Anchor`); an exhaustive `match` on it
+  needs two more arms. `AdvanceNode`, `AdvanceEdge`, `AdvanceSceneNode` and
+  `AdvanceSceneEdge` gain fields; struct-literal construction outside the crate needs
+  them. Every existing text or JSON input still parses identically.
+
 ## [0.29.2] - 2026-09-01
 
 ### Fixed
