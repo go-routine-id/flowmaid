@@ -807,6 +807,11 @@ pub struct AdvanceScene {
     pub lanes: Vec<AdvanceSceneLane>,
     pub nodes: Vec<AdvanceSceneNode>,
     pub edges: Vec<AdvanceSceneEdge>,
+    /// How many pairs of edges cross. Zero whenever a crossing-free
+    /// orthogonal routing exists on the lattice and the router found it
+    /// within its iteration budget; where none exists, the crossings
+    /// that remain are the ones the escalated cost made cheapest.
+    pub crossings: usize,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -2765,6 +2770,8 @@ pub fn scene_to_json(sc: &AdvanceScene) -> String {
     if sc.direction == AdvanceDirection::Horizontal {
         s.push_str(",\"direction\":\"horizontal\"");
     }
+    s.push_str(",\"crossings\":");
+    s.push_str(&sc.crossings.to_string());
 
     s.push_str(",\"lanes\":[");
     for (i, lane) in sc.lanes.iter().enumerate() {
@@ -3331,6 +3338,17 @@ const GRID_BUDGET: usize = 250_000;
 /// refinement; on a diagram big enough for the lattice to pass this it
 /// costs far more than the crossing it saves.
 const SEARCH_BUDGET: usize = 2_000;
+
+/// The negotiation re-routes every edge once per pass, so it is priced
+/// like the first pass again and is skipped above this lattice size.
+const NEGOTIATION_BUDGET: usize = 2_000;
+
+/// How many rip-up passes to try before accepting what is left.
+const NEGOTIATION_PASSES: usize = 4;
+
+/// What each pass multiplies the price of a crossing by. Once it
+/// dominates length and bends, a route that can avoid a crossing will.
+const CROSS_ESCALATION: f64 = 4.0;
 /// What crossing an already-routed edge costs. Well above a bend, so a
 /// route takes a longer way round rather than cut across a neighbour —
 /// but finite, so it still crosses when there is no alternative.
@@ -3356,14 +3374,38 @@ const SHARE_RATE: f64 = 3.0;
 /// counts only when it clears every node — which makes "no line through
 /// a box" a property of the router instead of a check repeated per edge
 /// kind.
-/// What one already-drawn segment costs the segment `a`.
+/// How two axis-aligned segments interfere.
 ///
 /// A true crossing is the expensive case, but two lines that meet in a
 /// T, or run along each other, read as a crossing to whoever looks at
-/// the diagram, so they are priced too — less, because they are less
+/// the diagram, so they count too — for less, because they are less
 /// wrong. Corner touching corner is how neighbouring routes legitimately
 /// share a lattice vertex and is free.
-fn seg_conflict(a: ((f64, f64), (f64, f64)), b: ((f64, f64), (f64, f64))) -> f64 {
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Conflict {
+    None,
+    /// One line ends on the other.
+    Touch,
+    /// They run along each other, over this many pixels.
+    Share(f64),
+    /// One passes over the other.
+    Cross,
+}
+
+impl Conflict {
+    /// `cross` is what a crossing costs, which the negotiation raises
+    /// between passes until the crossings that can move, move.
+    fn cost(self, cross: f64) -> f64 {
+        match self {
+            Conflict::None => 0.0,
+            Conflict::Touch => TOUCH_COST,
+            Conflict::Share(len) => SHARE_RATE * len,
+            Conflict::Cross => cross,
+        }
+    }
+}
+
+fn seg_conflict(a: ((f64, f64), (f64, f64)), b: ((f64, f64), (f64, f64))) -> Conflict {
     const EPS: f64 = 1e-6;
     let vert = |s: ((f64, f64), (f64, f64))| (s.0 .0 - s.1 .0).abs() < EPS;
     let (av, bv) = (vert(a), vert(b));
@@ -3374,7 +3416,7 @@ fn seg_conflict(a: ((f64, f64), (f64, f64)), b: ((f64, f64), (f64, f64))) -> f64
             (a.0 .1, b.0 .1)
         };
         if (ac - bc).abs() > EPS {
-            return 0.0; // parallel but on different lines
+            return Conflict::None; // parallel but on different lines
         }
         let span = |s: ((f64, f64), (f64, f64))| {
             if av {
@@ -3386,9 +3428,9 @@ fn seg_conflict(a: ((f64, f64), (f64, f64)), b: ((f64, f64), (f64, f64))) -> f64
         let ((a0, a1), (b0, b1)) = (span(a), span(b));
         let overlap = a1.min(b1) - a0.max(b0);
         return if overlap > EPS {
-            SHARE_RATE * overlap
+            Conflict::Share(overlap)
         } else {
-            0.0
+            Conflict::None
         };
     }
     let (v, h) = if av { (a, b) } else { (b, a) };
@@ -3397,39 +3439,116 @@ fn seg_conflict(a: ((f64, f64), (f64, f64)), b: ((f64, f64), (f64, f64))) -> f64
     let y = h.0 .1;
     let (hx0, hx1) = (h.0 .0.min(h.1 .0), h.0 .0.max(h.1 .0));
     if x < hx0 - EPS || x > hx1 + EPS || y < vy0 - EPS || y > vy1 + EPS {
-        return 0.0;
+        return Conflict::None;
     }
     match (
         x > hx0 + EPS && x < hx1 - EPS,
         y > vy0 + EPS && y < vy1 - EPS,
     ) {
-        (true, true) => CROSS_COST,
-        (false, false) => 0.0,
-        _ => TOUCH_COST,
+        (true, true) => Conflict::Cross,
+        (false, false) => Conflict::None,
+        _ => Conflict::Touch,
     }
+}
+
+/// How many pairs of segments from different edges cross, and which
+/// edges take part in at least one of them. The second half is the
+/// negotiation's work list: those are the edges with something to gain
+/// from being routed again.
+fn crossings_of(routes: &[Vec<(f64, f64)>], live: &[bool]) -> (usize, Vec<usize>) {
+    let mut count = 0;
+    let mut involved = vec![false; routes.len()];
+    for (i, a) in routes.iter().enumerate() {
+        if !live[i] {
+            continue;
+        }
+        for (j, b) in routes.iter().enumerate().skip(i + 1) {
+            if !live[j] {
+                continue;
+            }
+            for p in a.windows(2) {
+                for q in b.windows(2) {
+                    if seg_conflict((p[0], p[1]), (q[0], q[1])) == Conflict::Cross {
+                        count += 1;
+                        involved[i] = true;
+                        involved[j] = true;
+                    }
+                }
+            }
+        }
+    }
+    let edges = involved
+        .iter()
+        .enumerate()
+        .filter(|(_, on)| **on)
+        .map(|(i, _)| i)
+        .collect();
+    (count, edges)
+}
+
+/// How many pairs of edges cross, counted once per pair of segments.
+/// Only true crossings: edges that share an endpoint, meet in a T, or
+/// run along each other are not counted, because none of them is an
+/// edge passing over another.
+fn count_crossings(edges: &[AdvanceSceneEdge]) -> usize {
+    let mut n = 0;
+    for (i, a) in edges.iter().enumerate() {
+        if a.kind == EdgeKind::Invisible {
+            continue;
+        }
+        for b in edges.iter().skip(i + 1) {
+            if b.kind == EdgeKind::Invisible {
+                continue;
+            }
+            for p in a.points.windows(2) {
+                for q in b.points.windows(2) {
+                    if seg_conflict((p[0], p[1]), (q[0], q[1])) == Conflict::Cross {
+                        n += 1;
+                    }
+                }
+            }
+        }
+    }
+    n
 }
 
 /// What a finished route costs: its length, its corners, and every
 /// conflict with the routes drawn before it. This is the yardstick an
 /// auto-sided edge uses to choose which sides to leave and arrive on.
-fn route_cost(points: &[(f64, f64)], drawn: &[Vec<(f64, f64)>]) -> f64 {
+fn route_cost(
+    points: &[(f64, f64)],
+    routes: &[Vec<(f64, f64)>],
+    live: &[bool],
+    skip: usize,
+    cross: f64,
+) -> f64 {
     let length: f64 = points
         .windows(2)
         .map(|w| (w[0].0 - w[1].0).abs() + (w[0].1 - w[1].1).abs())
         .sum();
-    length + BEND_COST * points.len().saturating_sub(2) as f64 + route_conflicts(points, drawn)
+    length
+        + BEND_COST * points.len().saturating_sub(2) as f64
+        + route_conflicts(points, routes, live, skip, cross)
 }
 
 /// The conflict half of [`route_cost`] on its own, so a route that
 /// already touches nothing can skip the search over the other sides.
-fn route_conflicts(points: &[(f64, f64)], drawn: &[Vec<(f64, f64)>]) -> f64 {
+fn route_conflicts(
+    points: &[(f64, f64)],
+    routes: &[Vec<(f64, f64)>],
+    live: &[bool],
+    skip: usize,
+    cross: f64,
+) -> f64 {
     points
         .windows(2)
         .map(|w| {
-            drawn
+            routes
                 .iter()
-                .flat_map(|o| o.windows(2))
-                .map(|o| seg_conflict((w[0], w[1]), (o[0], o[1])))
+                .enumerate()
+                .filter(|(i, _)| *i != skip && live[*i])
+                .flat_map(|(_, o)| o.windows(2))
+                .map(|o| seg_conflict((w[0], w[1]), (o[0], o[1])).cost(cross))
                 .sum::<f64>()
         })
         .sum()
@@ -3510,7 +3629,7 @@ impl RouteGrid {
             g.block(node_rect(n));
         }
         for seg in drawn.iter().flat_map(|pts| pts.windows(2)) {
-            g.price((seg[0], seg[1]));
+            g.price((seg[0], seg[1]), CROSS_COST, 1.0);
         }
         g
     }
@@ -3546,20 +3665,37 @@ impl RouteGrid {
         }
     }
 
-    fn price(&mut self, seg: ((f64, f64), (f64, f64))) {
+    /// Add (`sign` 1.0) or take back (`sign` -1.0) one segment's
+    /// contribution to what the lattice steps around it cost. Taking a
+    /// route back out is what lets the negotiation re-route it against
+    /// everyone else instead of only against the edges before it.
+    fn price(&mut self, seg: ((f64, f64), (f64, f64)), cross: f64, sign: f64) {
         let (x0, x1) = (seg.0 .0.min(seg.1 .0), seg.0 .0.max(seg.1 .0));
         let (y0, y1) = (seg.0 .1.min(seg.1 .1), seg.0 .1.max(seg.1 .1));
         let nx = self.xs.len();
         for j in Self::inside(&self.ys, y0 - 1e-6, y1 + 1e-6) {
             for i in Self::spanning(&self.xs, x0, x1) {
                 let step = ((self.xs[i], self.ys[j]), (self.xs[i + 1], self.ys[j]));
-                self.cost_h[j * (nx - 1) + i] += seg_conflict(step, seg);
+                self.cost_h[j * (nx - 1) + i] += sign * seg_conflict(step, seg).cost(cross);
             }
         }
         for i in Self::inside(&self.xs, x0 - 1e-6, x1 + 1e-6) {
             for j in Self::spanning(&self.ys, y0, y1) {
                 let step = ((self.xs[i], self.ys[j]), (self.xs[i], self.ys[j + 1]));
-                self.cost_v[j * nx + i] += seg_conflict(step, seg);
+                self.cost_v[j * nx + i] += sign * seg_conflict(step, seg).cost(cross);
+            }
+        }
+    }
+
+    /// Wipe every step's conflict cost and lay all the routes back down
+    /// at `cross`. Raising the price of a crossing between passes means
+    /// the lattice has to be told again what everything costs.
+    fn reprice(&mut self, routes: &[Vec<(f64, f64)>], live: &[bool], cross: f64) {
+        self.cost_h.iter_mut().for_each(|c| *c = 0.0);
+        self.cost_v.iter_mut().for_each(|c| *c = 0.0);
+        for (r, _) in routes.iter().zip(live).filter(|(_, on)| **on) {
+            for w in r.windows(2) {
+                self.price((w[0], w[1]), cross, 1.0);
             }
         }
     }
@@ -4420,79 +4556,151 @@ fn route_edges(
         }
     }
     let mut grid = RouteGrid::build(nodes, lanes, &leads, &[]);
-    // On a big lattice trying all sixteen pairs of sides costs more
-    // than the crossing it saves, so there only the preferred pair is.
-    let searchable = grid.size() <= SEARCH_BUDGET;
+
+    // An invisible edge is never drawn, so it must not push a visible
+    // one out of the way either.
+    let live: Vec<bool> = d
+        .edges
+        .iter()
+        .map(|e| e.kind != EdgeKind::Invisible)
+        .collect();
+
+    // One route per edge, by edge index. The negotiation below takes
+    // routes back out and lays them down again, so they cannot simply
+    // accumulate in the order they were drawn.
+    let mut routes: Vec<Vec<(f64, f64)>> = Vec::with_capacity(d.edges.len());
+
+    // Routing one edge against the routes in `routes`, ignoring the one
+    // at `skip` — its own, when it is being re-routed.
+    let route_one = |i: usize,
+                     g: &RouteGrid,
+                     routes: &[Vec<(f64, f64)>],
+                     live: &[bool],
+                     skip: usize,
+                     cross: f64|
+     -> Vec<(f64, f64)> {
+        let (e, pl) = (&d.edges[i], &plans[i]);
+        let (from_i, to_i) = (pl.from_i, pl.to_i);
+        let a = &nodes[from_i];
+        let (fss, tss) = (&pl.fss, &pl.tss);
+        if pl.plain_loop {
+            return route_self_loop(a, pl.spread, dir);
+        }
+        let route = |fs: AdvanceSide, ts: AdvanceSide| {
+            let ((tp0, bp0), (tp3, bp3)) = ends(e, pl, fs, ts);
+            if from_i == to_i {
+                route_loop(a, fs, tp0, bp0, ts, tp3, bp3)
+            } else {
+                route_on_grid(g, fs, tp0, bp0, ts, tp3, bp3)
+            }
+        };
+        let first = route(fss[0], tss[0]);
+        // The preferred sides usually win outright; only an edge that
+        // would run into an existing one pays for the search.
+        if route_conflicts(&first, routes, live, skip, cross) <= 0.0
+            || (fss.len() == 1 && tss.len() == 1)
+            || g.size() > SEARCH_BUDGET
+        {
+            return first;
+        }
+        // One end at a time first: changing a single side is what
+        // usually resolves a conflict, and it turns the sixteen pairs
+        // into seven before the full cross.
+        let mut pairs: Vec<(AdvanceSide, AdvanceSide)> = Vec::with_capacity(16);
+        pairs.extend(fss[1..].iter().map(|fs| (*fs, tss[0])));
+        pairs.extend(tss[1..].iter().map(|ts| (fss[0], *ts)));
+        for fs in &fss[1..] {
+            pairs.extend(tss[1..].iter().map(|ts| (*fs, *ts)));
+        }
+        let mut best = (route_cost(&first, routes, live, skip, cross), first);
+        for (fs, ts) in &pairs {
+            let pts = route(*fs, *ts);
+            let conflicts = route_conflicts(&pts, routes, live, skip, cross);
+            let cost = route_cost(&pts, routes, live, skip, cross);
+            if cost < best.0 - 1e-9 {
+                best = (cost, pts);
+            }
+            // Nothing beats touching nothing, and the order of the
+            // candidates is fixed, so the first such route is the same
+            // one on every run.
+            if conflicts <= 0.0 {
+                break;
+            }
+        }
+        best.1
+    };
+
+    // First pass: each edge sees only the ones before it.
+    for i in 0..d.edges.len() {
+        let pts = route_one(i, &grid, &routes, &live, usize::MAX, CROSS_COST);
+        if live[i] {
+            for w in pts.windows(2) {
+                grid.price((w[0], w[1]), CROSS_COST, 1.0);
+            }
+        }
+        routes.push(pts);
+    }
+
+    // Then negotiate: take each edge back out and route it against
+    // every other one, raising the price of a crossing each pass until
+    // the crossings that can move have moved. This is what turns "the
+    // edges before me" into "all the others", which is the difference
+    // between a first-come-first-served artefact and a crossing that
+    // the geometry actually forces.
+    let (mut count, mut involved) = crossings_of(&routes, &live);
+    if count > 0 && grid.size() <= NEGOTIATION_BUDGET {
+        let mut cross = CROSS_COST;
+        let mut best = (count, routes.clone());
+        for _ in 0..NEGOTIATION_PASSES {
+            cross *= CROSS_ESCALATION;
+            grid.reprice(&routes, &live, cross);
+            // The edges in a crossing go first: they are the ones with
+            // something to gain, and moving them first gives the rest
+            // room to follow.
+            let mut order = involved.clone();
+            order.extend((0..d.edges.len()).filter(|i| !involved.contains(i)));
+            for i in order {
+                if live[i] {
+                    for w in routes[i].windows(2) {
+                        grid.price((w[0], w[1]), cross, -1.0);
+                    }
+                }
+                let pts = route_one(i, &grid, &routes, &live, i, cross);
+                if live[i] {
+                    for w in pts.windows(2) {
+                        grid.price((w[0], w[1]), cross, 1.0);
+                    }
+                }
+                routes[i] = pts;
+            }
+            (count, involved) = crossings_of(&routes, &live);
+            if count == 0 {
+                best = (0, Vec::new());
+                break;
+            }
+            // A pass that gains nothing means the escalation has run
+            // out of room to move anything: the crossings that are left
+            // are the ones the geometry forces, and another pass would
+            // only cost time.
+            if count < best.0 {
+                best = (count, routes.clone());
+            } else {
+                break;
+            }
+        }
+        // A pass can make things worse; keep the best one seen.
+        if best.0 < count {
+            routes = best.1;
+        }
+    }
 
     // Boxes of labels already placed, so later labels dodge them too.
     let mut placed_labels: Vec<(f64, f64, f64, f64)> = Vec::new();
-    // Routes already drawn, so later ones can price crossing them.
-    let mut drawn: Vec<Vec<(f64, f64)>> = Vec::with_capacity(d.edges.len());
 
-    for (e, pl) in d.edges.iter().zip(&plans) {
-        let (from_i, to_i) = (pl.from_i, pl.to_i);
-        let a = &nodes[from_i];
-        let b = &nodes[to_i];
-        let (fss, tss) = (&pl.fss, &pl.tss);
-
-        let points = if pl.plain_loop {
-            route_self_loop(a, pl.spread, dir)
-        } else {
-            let route = |fs: AdvanceSide, ts: AdvanceSide| {
-                let ((tp0, bp0), (tp3, bp3)) = ends(e, pl, fs, ts);
-                if from_i == to_i {
-                    route_loop(a, fs, tp0, bp0, ts, tp3, bp3)
-                } else {
-                    route_on_grid(&grid, fs, tp0, bp0, ts, tp3, bp3)
-                }
-            };
-            let first = route(fss[0], tss[0]);
-            // The preferred sides usually win outright; only an edge
-            // that would run into an existing one pays for the search.
-            if route_conflicts(&first, &drawn) <= 0.0
-                || (fss.len() == 1 && tss.len() == 1)
-                || !searchable
-            {
-                first
-            } else {
-                // One end at a time first: changing a single side is
-                // what usually resolves a conflict, and it turns the
-                // sixteen pairs into seven before the full cross.
-                let mut pairs: Vec<(AdvanceSide, AdvanceSide)> = Vec::with_capacity(16);
-                pairs.extend(fss[1..].iter().map(|fs| (*fs, tss[0])));
-                pairs.extend(tss[1..].iter().map(|ts| (fss[0], *ts)));
-                for fs in &fss[1..] {
-                    pairs.extend(tss[1..].iter().map(|ts| (*fs, *ts)));
-                }
-                let mut best = (route_cost(&first, &drawn), first);
-                'search: for (fs, ts) in &pairs {
-                    {
-                        let pts = route(*fs, *ts);
-                        let conflicts = route_conflicts(&pts, &drawn);
-                        let cost = route_cost(&pts, &drawn);
-                        if cost < best.0 - 1e-9 {
-                            best = (cost, pts);
-                        }
-                        // Nothing beats touching nothing, and the order
-                        // of the candidates is fixed, so the first such
-                        // route is the same one on every run.
-                        if conflicts <= 0.0 {
-                            break 'search;
-                        }
-                    }
-                }
-                best.1
-            }
-        };
-        // An invisible edge is never drawn, so it must not push a
-        // visible one out of the way either.
-        if e.kind != EdgeKind::Invisible {
-            for w in points.windows(2) {
-                grid.price((w[0], w[1]));
-            }
-            drawn.push(points.clone());
-        }
-
+    for (i, (e, pl)) in d.edges.iter().zip(&plans).enumerate() {
+        let a = &nodes[pl.from_i];
+        let b = &nodes[pl.to_i];
+        let points = std::mem::take(&mut routes[i]);
         let label_pos = match e.label.as_deref() {
             Some(label) => {
                 let chosen = choose_label_pos(
@@ -5030,6 +5238,7 @@ fn layout_inner(d: &AdvanceDiagram, route: bool) -> AdvanceScene {
                 style: d.style.clone(),
                 lanes: lane_scenes,
                 nodes: node_scenes,
+                crossings: count_crossings(&edge_scenes),
                 edges: edge_scenes,
             },
             cfg.margin,
@@ -5109,6 +5318,7 @@ fn layout_inner(d: &AdvanceDiagram, route: bool) -> AdvanceScene {
             style: d.style.clone(),
             lanes: lane_scenes,
             nodes: node_scenes,
+            crossings: count_crossings(&edge_scenes),
             edges: edge_scenes,
         };
     }
@@ -5180,6 +5390,7 @@ fn layout_inner(d: &AdvanceDiagram, route: bool) -> AdvanceScene {
         style: d.style.clone(),
         lanes: lane_scenes,
         nodes: node_scenes,
+        crossings: count_crossings(&edge_scenes),
         edges: edge_scenes,
     }
 }
@@ -5783,6 +5994,7 @@ pub fn render_advance_routed(source: &str, positions: &[f64]) -> Result<String, 
             style: d.style.clone(),
             lanes,
             nodes,
+            crossings: count_crossings(&edges),
             edges,
         },
         d.config.margin,
@@ -5894,6 +6106,7 @@ pub fn render_advance_routed_with_lanes(
             style: d.style.clone(),
             lanes,
             nodes,
+            crossings: count_crossings(&edges),
             edges,
         },
         margin,
@@ -6328,6 +6541,7 @@ mod tests {
                 style: d.style.clone(),
                 lanes,
                 nodes,
+                crossings: count_crossings(&edges),
                 edges,
             },
             d.config.margin,
@@ -7922,7 +8136,7 @@ mod tests {
                 for o in other.points.windows(2) {
                     assert_eq!(
                         seg_conflict((w[0], w[1]), (o[0], o[1])),
-                        0.0,
+                        Conflict::None,
                         "the skipping edge touches a --> b or b --> c"
                     );
                 }
@@ -8109,6 +8323,99 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+    // ---- negotiated routing --------------------------------------------
+
+    /// Diagrams that admit a crossing-free orthogonal routing must get
+    /// one. This is the promise P3 exists to keep, and the number is on
+    /// the scene so a host can check it too.
+    #[test]
+    fn a_planar_diagram_is_routed_without_a_single_crossing() {
+        let cases: [(&str, &str); 7] = [
+            ("showcase", include_str!("../examples/advance_swimlane.mmd")),
+            ("terminals", TERMINALS),
+            (
+                "a chain down one lane",
+                "lane l \"L\"\na[A]\nb[B]\nc[C]\nd[D]\na --> b\nb --> c\nc --> d\n",
+            ),
+            (
+                "a chain that skips two of its own nodes",
+                "lane l \"L\"\na[A]\nb[B]\nc[C]\nd[D]\na --> b\nb --> c\nc --> d\na --> d\n",
+            ),
+            (
+                "a fan out and back in",
+                "lane l \"L\"\nr[Root]\nlane m \"M\"\nx[X]\ny[Y]\nz[Z]\nlane e \"E\"\n\
+                 j[Join]\nr --> x\nr --> y\nr --> z\nx --> j\ny --> j\nz --> j\n",
+            ),
+            (
+                "three lanes of three, crossing every way",
+                "lane a \"A\"\na1[a1]\na2[a2]\na3[a3]\nlane b \"B\"\nb1[b1]\nb2[b2]\nb3[b3]\n\
+                 lane c \"C\"\nc1[c1]\nc2[c2]\nc3[c3]\na1 --> c3\na3 --> c1\nb1 --> c2\n\
+                 a2 --> b3\nb2 --> a1\n",
+            ),
+            (
+                "a blocker in the middle lane",
+                "lane l \"L\"\na[A]\nlane m \"M\"\nm[Middle blocker]\nlane r \"R\"\nc[C]\na --> c\n",
+            ),
+        ];
+        for (name, src) in cases {
+            let sc = layout(&text_diagram(src));
+            assert_eq!(sc.crossings, 0, "{name} was routed with crossings");
+        }
+    }
+
+    /// `crossings` counts what is actually drawn, so a host can display
+    /// it — and so this suite cannot pass by counting nothing.
+    #[test]
+    fn the_crossing_count_matches_the_geometry() {
+        let sc = layout(&text_diagram(
+            "lane l \"L\"\na[A]\nb[B]\nc[C]\na --> b\nb --> c\na --> c\n",
+        ));
+        let routes: Vec<Vec<(f64, f64)>> = sc.edges.iter().map(|e| e.points.clone()).collect();
+        let live = vec![true; routes.len()];
+        assert_eq!(sc.crossings, crossings_of(&routes, &live).0);
+        assert!(
+            sc.crossings <= 1,
+            "{} crossings on three edges",
+            sc.crossings
+        );
+    }
+
+    /// A diagram with no crossing-free routing still gets drawn, and
+    /// the count says so rather than the router giving up or looping.
+    #[test]
+    fn a_non_planar_diagram_still_renders_and_reports_its_crossings() {
+        let mut src = String::from("lane l \"L\"\n");
+        for i in 0..12 {
+            src.push_str(&format!("x{i}[n{i}]\n"));
+        }
+        for i in 0..24 {
+            src.push_str(&format!("x{} --> x{}\n", i % 12, (5 * i + 3) % 12));
+        }
+        let sc = layout(&text_diagram(&src));
+        assert_eq!(sc.edges.len(), 24);
+        assert!(
+            sc.crossings > 0,
+            "expected this one to be unroutable planar"
+        );
+        for e in &sc.edges {
+            assert!(e.points.len() >= 2, "an edge was dropped");
+        }
+    }
+
+    /// Negotiating must not make the answer depend on anything but the
+    /// input: the rip-up order comes from the crossings, which come
+    /// from the routes, which come from the diagram.
+    #[test]
+    fn negotiated_routing_is_deterministic() {
+        let src = "lane a \"A\"\na1[a1]\na2[a2]\na3[a3]\nlane b \"B\"\nb1[b1]\nb2[b2]\nb3[b3]\n\
+                   lane c \"C\"\nc1[c1]\nc2[c2]\nc3[c3]\na1 --> c3\na3 --> c1\nb1 --> c2\n\
+                   a2 --> b3\nb2 --> a1\n";
+        let d = text_diagram(src);
+        let first = to_svg(&layout(&d));
+        for _ in 0..4 {
+            assert_eq!(to_svg(&layout(&d)), first);
         }
     }
 }
