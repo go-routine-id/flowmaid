@@ -807,6 +807,12 @@ pub struct AdvanceScene {
     pub lanes: Vec<AdvanceSceneLane>,
     pub nodes: Vec<AdvanceSceneNode>,
     pub edges: Vec<AdvanceSceneEdge>,
+    /// How many pairs of edges cross — pairs, not points, so two edges
+    /// that cross twice count once. Zero whenever a crossing-free
+    /// orthogonal routing exists on the lattice and the router was
+    /// allowed to look for it; where none exists, the crossings that
+    /// remain are the ones the escalated cost made cheapest.
+    pub crossings: usize,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -2765,6 +2771,8 @@ pub fn scene_to_json(sc: &AdvanceScene) -> String {
     if sc.direction == AdvanceDirection::Horizontal {
         s.push_str(",\"direction\":\"horizontal\"");
     }
+    s.push_str(",\"crossings\":");
+    s.push_str(&sc.crossings.to_string());
 
     s.push_str(",\"lanes\":[");
     for (i, lane) in sc.lanes.iter().enumerate() {
@@ -3326,11 +3334,35 @@ const BEND_COST: f64 = 40.0;
 /// router is its problem.
 const GRID_BUDGET: usize = 250_000;
 
+/// How far past the two ends of an edge the search may look, in
+/// lattice lines. Wide enough to go round anything between them and
+/// round their immediate neighbours, narrow enough that a node at the
+/// far side of the drawing costs nothing.
+const GRID_WINDOW: usize = 32;
+
 /// Above this many lattice vertices an edge settles for its preferred
 /// sides instead of searching the others. Choosing sides is a
 /// refinement; on a diagram big enough for the lattice to pass this it
 /// costs far more than the crossing it saves.
 const SEARCH_BUDGET: usize = 2_000;
+
+/// Roughly how many lattice vertices one pass may visit in total —
+/// edges lifted times the lattice each searches. Above it the diagram
+/// keeps the routing the first pass gave it.
+const NEGOTIATION_BUDGET: usize = 3_000_000;
+
+/// How many rip-up passes to try before accepting what is left.
+const NEGOTIATION_PASSES: usize = 4;
+
+/// What each pass multiplies the price of a crossing by. Once it
+/// dominates length and bends, a route that can avoid a crossing will.
+const CROSS_ESCALATION: f64 = 4.0;
+
+/// And what it may never exceed. Unbounded escalation buys the last
+/// crossing at any price, which is how an edge between two neighbouring
+/// nodes ends up going round the outside of the drawing: past this the
+/// cure is worse to look at than the crossing.
+const CROSS_CEILING: f64 = 2_000.0;
 /// What crossing an already-routed edge costs. Well above a bend, so a
 /// route takes a longer way round rather than cut across a neighbour —
 /// but finite, so it still crosses when there is no alternative.
@@ -3356,14 +3388,38 @@ const SHARE_RATE: f64 = 3.0;
 /// counts only when it clears every node — which makes "no line through
 /// a box" a property of the router instead of a check repeated per edge
 /// kind.
-/// What one already-drawn segment costs the segment `a`.
+/// How two axis-aligned segments interfere.
 ///
 /// A true crossing is the expensive case, but two lines that meet in a
 /// T, or run along each other, read as a crossing to whoever looks at
-/// the diagram, so they are priced too — less, because they are less
+/// the diagram, so they count too — for less, because they are less
 /// wrong. Corner touching corner is how neighbouring routes legitimately
 /// share a lattice vertex and is free.
-fn seg_conflict(a: ((f64, f64), (f64, f64)), b: ((f64, f64), (f64, f64))) -> f64 {
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Conflict {
+    None,
+    /// One line ends on the other.
+    Touch,
+    /// They run along each other, over this many pixels.
+    Share(f64),
+    /// One passes over the other.
+    Cross,
+}
+
+impl Conflict {
+    /// `cross` is what a crossing costs, which the negotiation raises
+    /// between passes until the crossings that can move, move.
+    fn cost(self, cross: f64) -> f64 {
+        match self {
+            Conflict::None => 0.0,
+            Conflict::Touch => TOUCH_COST,
+            Conflict::Share(len) => SHARE_RATE * len,
+            Conflict::Cross => cross,
+        }
+    }
+}
+
+fn seg_conflict(a: ((f64, f64), (f64, f64)), b: ((f64, f64), (f64, f64))) -> Conflict {
     const EPS: f64 = 1e-6;
     let vert = |s: ((f64, f64), (f64, f64))| (s.0 .0 - s.1 .0).abs() < EPS;
     let (av, bv) = (vert(a), vert(b));
@@ -3374,7 +3430,7 @@ fn seg_conflict(a: ((f64, f64), (f64, f64)), b: ((f64, f64), (f64, f64))) -> f64
             (a.0 .1, b.0 .1)
         };
         if (ac - bc).abs() > EPS {
-            return 0.0; // parallel but on different lines
+            return Conflict::None; // parallel but on different lines
         }
         let span = |s: ((f64, f64), (f64, f64))| {
             if av {
@@ -3386,9 +3442,9 @@ fn seg_conflict(a: ((f64, f64), (f64, f64)), b: ((f64, f64), (f64, f64))) -> f64
         let ((a0, a1), (b0, b1)) = (span(a), span(b));
         let overlap = a1.min(b1) - a0.max(b0);
         return if overlap > EPS {
-            SHARE_RATE * overlap
+            Conflict::Share(overlap)
         } else {
-            0.0
+            Conflict::None
         };
     }
     let (v, h) = if av { (a, b) } else { (b, a) };
@@ -3397,39 +3453,147 @@ fn seg_conflict(a: ((f64, f64), (f64, f64)), b: ((f64, f64), (f64, f64))) -> f64
     let y = h.0 .1;
     let (hx0, hx1) = (h.0 .0.min(h.1 .0), h.0 .0.max(h.1 .0));
     if x < hx0 - EPS || x > hx1 + EPS || y < vy0 - EPS || y > vy1 + EPS {
-        return 0.0;
+        return Conflict::None;
     }
     match (
         x > hx0 + EPS && x < hx1 - EPS,
         y > vy0 + EPS && y < vy1 - EPS,
     ) {
-        (true, true) => CROSS_COST,
-        (false, false) => 0.0,
-        _ => TOUCH_COST,
+        (true, true) => Conflict::Cross,
+        (false, false) => Conflict::None,
+        _ => Conflict::Touch,
     }
+}
+
+/// How many pairs of edges cross, and which edges take part in at least
+/// one crossing. Pairs, not segments: two edges that cross twice are one
+/// crossing to look at and one problem to solve. The second half is the
+/// negotiation's work list — the edges with something to gain from being
+/// routed again.
+/// One segment of one route: which edge it belongs to, and its ends.
+type BucketSeg = (usize, (f64, f64), (f64, f64));
+
+/// The A\* working arrays plus the generation stamping them.
+type SearchScratch = (Vec<f64>, Vec<usize>, Vec<u32>, u32);
+
+fn crossings_of(routes: &[Vec<(f64, f64)>], live: &[bool]) -> (usize, Vec<usize>) {
+    use std::collections::{HashMap, HashSet};
+    // Segments are bucketed by where they lie, so only the ones that
+    // share a patch of the drawing are compared. Comparing every route
+    // against every other made counting cost more than routing on any
+    // diagram with a few hundred edges.
+    const CELL: f64 = 64.0;
+    let mut buckets: HashMap<(i64, i64), Vec<BucketSeg>> = HashMap::new();
+    for (i, r) in routes.iter().enumerate() {
+        if !live[i] {
+            continue;
+        }
+        for w in r.windows(2) {
+            let (p, q) = (w[0], w[1]);
+            let cell = |v: f64| (v / CELL).floor() as i64;
+            for cx in cell(p.0.min(q.0))..=cell(p.0.max(q.0)) {
+                for cy in cell(p.1.min(q.1))..=cell(p.1.max(q.1)) {
+                    buckets.entry((cx, cy)).or_default().push((i, p, q));
+                }
+            }
+        }
+    }
+    // A pair, not a point: two edges that cross twice are one crossing
+    // to look at and one problem to solve. The set makes the answer
+    // independent of the order the buckets come out in.
+    let mut pairs: HashSet<(usize, usize)> = HashSet::new();
+    let mut involved = vec![false; routes.len()];
+    for segs in buckets.values() {
+        for (k, (i, p, q)) in segs.iter().enumerate() {
+            for (j, u, v) in segs.iter().skip(k + 1) {
+                if i == j {
+                    continue;
+                }
+                if seg_conflict((*p, *q), (*u, *v)) == Conflict::Cross {
+                    pairs.insert((*i.min(j), *i.max(j)));
+                    involved[*i] = true;
+                    involved[*j] = true;
+                }
+            }
+        }
+    }
+    let edges = involved
+        .iter()
+        .enumerate()
+        .filter(|(_, on)| **on)
+        .map(|(i, _)| i)
+        .collect();
+    (pairs.len(), edges)
+}
+
+/// A whole routing, judged the way a reader would: first on crossings,
+/// then on how much line and how many corners it took. Comparing on
+/// crossings alone let a later pass — routed at a higher price and so
+/// longer — replace a better routing that had already been found.
+fn routing_quality(routes: &[Vec<(f64, f64)>], live: &[bool]) -> (usize, f64, usize) {
+    let (crossings, _) = crossings_of(routes, live);
+    let mut length = 0.0;
+    let mut bends = 0;
+    for (r, _) in routes.iter().zip(live).filter(|(_, on)| **on) {
+        length += r
+            .windows(2)
+            .map(|w| (w[0].0 - w[1].0).abs() + (w[0].1 - w[1].1).abs())
+            .sum::<f64>();
+        bends += r.len().saturating_sub(2);
+    }
+    (crossings, length, bends)
+}
+
+/// Strictly better, in that order. Length is compared with a slack of a
+/// pixel so a routing is not swapped for one that only differs in the
+/// last decimal.
+fn better_routing(a: (usize, f64, usize), b: (usize, f64, usize)) -> bool {
+    if a.0 != b.0 {
+        return a.0 < b.0;
+    }
+    if (a.1 - b.1).abs() > 1.0 {
+        return a.1 < b.1;
+    }
+    a.2 < b.2
 }
 
 /// What a finished route costs: its length, its corners, and every
 /// conflict with the routes drawn before it. This is the yardstick an
 /// auto-sided edge uses to choose which sides to leave and arrive on.
-fn route_cost(points: &[(f64, f64)], drawn: &[Vec<(f64, f64)>]) -> f64 {
+fn route_cost(
+    points: &[(f64, f64)],
+    routes: &[Vec<(f64, f64)>],
+    live: &[bool],
+    skip: usize,
+    cross: f64,
+) -> f64 {
     let length: f64 = points
         .windows(2)
         .map(|w| (w[0].0 - w[1].0).abs() + (w[0].1 - w[1].1).abs())
         .sum();
-    length + BEND_COST * points.len().saturating_sub(2) as f64 + route_conflicts(points, drawn)
+    length
+        + BEND_COST * points.len().saturating_sub(2) as f64
+        + route_conflicts(points, routes, live, skip, cross)
 }
 
 /// The conflict half of [`route_cost`] on its own, so a route that
 /// already touches nothing can skip the search over the other sides.
-fn route_conflicts(points: &[(f64, f64)], drawn: &[Vec<(f64, f64)>]) -> f64 {
+fn route_conflicts(
+    points: &[(f64, f64)],
+    routes: &[Vec<(f64, f64)>],
+    live: &[bool],
+    skip: usize,
+    cross: f64,
+) -> f64 {
     points
         .windows(2)
         .map(|w| {
-            drawn
+            routes
                 .iter()
-                .flat_map(|o| o.windows(2))
-                .map(|o| seg_conflict((w[0], w[1]), (o[0], o[1])))
+                .enumerate()
+                .filter(|(i, _)| *i != skip && live[*i])
+                .flat_map(|(_, o)| o.windows(2))
+                .map(|o| seg_conflict((w[0], w[1]), (o[0], o[1])).cost(cross))
                 .sum::<f64>()
         })
         .sum()
@@ -3455,7 +3619,10 @@ struct RouteGrid {
     /// The search's two working arrays, kept between calls: one edge
     /// runs the search up to sixteen times and every diagram runs it
     /// once per edge, so reallocating them each time was pure waste.
-    scratch: std::cell::RefCell<(Vec<f64>, Vec<usize>)>,
+    /// `(best, came, stamp, generation)`. The stamp says which search
+    /// last wrote a state, so a search costs what it visits rather than
+    /// the size of the lattice it visits it in.
+    scratch: std::cell::RefCell<SearchScratch>,
 }
 
 fn sorted_unique(mut v: Vec<f64>) -> Vec<f64> {
@@ -3496,7 +3663,7 @@ impl RouteGrid {
             cost_h: vec![0.0; nx.saturating_sub(1) * ny],
             cost_v: vec![0.0; nx * ny.saturating_sub(1)],
             rects: nodes.iter().map(node_rect).collect(),
-            scratch: std::cell::RefCell::new((Vec::new(), Vec::new())),
+            scratch: std::cell::RefCell::new((Vec::new(), Vec::new(), Vec::new(), 0)),
             xs,
             ys,
         };
@@ -3510,7 +3677,7 @@ impl RouteGrid {
             g.block(node_rect(n));
         }
         for seg in drawn.iter().flat_map(|pts| pts.windows(2)) {
-            g.price((seg[0], seg[1]));
+            g.price((seg[0], seg[1]), CROSS_COST, 1.0);
         }
         g
     }
@@ -3546,20 +3713,37 @@ impl RouteGrid {
         }
     }
 
-    fn price(&mut self, seg: ((f64, f64), (f64, f64))) {
+    /// Add (`sign` 1.0) or take back (`sign` -1.0) one segment's
+    /// contribution to what the lattice steps around it cost. Taking a
+    /// route back out is what lets the negotiation re-route it against
+    /// everyone else instead of only against the edges before it.
+    fn price(&mut self, seg: ((f64, f64), (f64, f64)), cross: f64, sign: f64) {
         let (x0, x1) = (seg.0 .0.min(seg.1 .0), seg.0 .0.max(seg.1 .0));
         let (y0, y1) = (seg.0 .1.min(seg.1 .1), seg.0 .1.max(seg.1 .1));
         let nx = self.xs.len();
         for j in Self::inside(&self.ys, y0 - 1e-6, y1 + 1e-6) {
             for i in Self::spanning(&self.xs, x0, x1) {
                 let step = ((self.xs[i], self.ys[j]), (self.xs[i + 1], self.ys[j]));
-                self.cost_h[j * (nx - 1) + i] += seg_conflict(step, seg);
+                self.cost_h[j * (nx - 1) + i] += sign * seg_conflict(step, seg).cost(cross);
             }
         }
         for i in Self::inside(&self.xs, x0 - 1e-6, x1 + 1e-6) {
             for j in Self::spanning(&self.ys, y0, y1) {
                 let step = ((self.xs[i], self.ys[j]), (self.xs[i], self.ys[j + 1]));
-                self.cost_v[j * nx + i] += seg_conflict(step, seg);
+                self.cost_v[j * nx + i] += sign * seg_conflict(step, seg).cost(cross);
+            }
+        }
+    }
+
+    /// Wipe every step's conflict cost and lay all the routes back down
+    /// at `cross`. Raising the price of a crossing between passes means
+    /// the lattice has to be told again what everything costs.
+    fn reprice(&mut self, routes: &[Vec<(f64, f64)>], live: &[bool], cross: f64) {
+        self.cost_h.iter_mut().for_each(|c| *c = 0.0);
+        self.cost_v.iter_mut().for_each(|c| *c = 0.0);
+        for (r, _) in routes.iter().zip(live).filter(|(_, on)| **on) {
+            for w in r.windows(2) {
+                self.price((w[0], w[1]), cross, 1.0);
             }
         }
     }
@@ -3631,6 +3815,7 @@ fn grid_route(
     goal: (usize, usize),
     ban_first: Option<(i64, i64)>,
     ban_last: Option<(i64, i64)>,
+    window: usize,
 ) -> Option<Vec<(f64, f64)>> {
     let (nx, ny) = (g.xs.len(), g.ys.len());
     if nx == 0 || ny == 0 {
@@ -3641,15 +3826,37 @@ fn grid_route(
     let heuristic =
         |i: usize, j: usize| (g.xs[i] - g.xs[goal.0]).abs() + (g.ys[j] - g.ys[goal.1]).abs();
 
+    // A detour has to be able to leave the corridor between the two
+    // ends, but not to wander the whole diagram: nodes far from either
+    // end cannot be what the route is going around, and searching past
+    // them is what made a big drawing slow. If nothing is found in the
+    // window the caller comes back without one.
+    let (i0, i1) = (
+        start.0.min(goal.0).saturating_sub(window),
+        start.0.max(goal.0).saturating_add(window).min(nx - 1),
+    );
+    let (j0, j1) = (
+        start.1.min(goal.1).saturating_sub(window),
+        start.1.max(goal.1).saturating_add(window).min(ny - 1),
+    );
+
     let mut scratch = g.scratch.borrow_mut();
-    let (best, came) = &mut *scratch;
-    best.clear();
+    let (best, came, stamp, generation) = &mut *scratch;
     best.resize(nx * ny * 3, f64::INFINITY);
-    came.clear();
     came.resize(nx * ny * 3, usize::MAX);
+    stamp.resize(nx * ny * 3, 0);
+    *generation = generation.wrapping_add(1);
+    if *generation == 0 {
+        // Wrapped: every stale stamp could now read as fresh.
+        stamp.iter_mut().for_each(|s| *s = 0);
+        *generation = 1;
+    }
+    let gen = *generation;
     let mut heap = std::collections::BinaryHeap::new();
     let s0 = state(start.0, start.1, 0);
     best[s0] = 0.0;
+    came[s0] = usize::MAX;
+    stamp[s0] = gen;
     heap.push(Queued(heuristic(start.0, start.1), s0));
 
     // The axis the stub came in on, so turning straight off it is
@@ -3670,7 +3877,7 @@ fn grid_route(
         if (i, j) == goal {
             let mut pts = vec![(g.xs[i], g.ys[j])];
             let mut at = cur;
-            while came[at] != usize::MAX {
+            while came[at] != usize::MAX && stamp[at] == gen {
                 at = came[at];
                 let (pi, pj, _) = unpack(at);
                 pts.push((g.xs[pi], g.ys[pj]));
@@ -3684,7 +3891,19 @@ fn grid_route(
                 continue;
             }
             let (ni, nj) = (ni as usize, nj as usize);
+            if ni < i0 || ni > i1 || nj < j0 || nj > j1 {
+                continue;
+            }
             if dir == 0 && ban_first == Some((di, dj)) {
+                continue;
+            }
+            // And never come back to where it started. `ban_first` only
+            // binds the move out of the start state, so a route could
+            // launder it by stepping aside and returning: the vertex is
+            // then reached with a different direction, the ban no longer
+            // applies, and the drawing gets a spur out and straight back
+            // along the same line.
+            if (ni, nj) == start {
                 continue;
             }
             if (ni, nj) == goal && ban_last == Some((di, dj)) {
@@ -3699,7 +3918,9 @@ fn grid_route(
             let len = (g.xs[i] - g.xs[ni]).abs() + (g.ys[j] - g.ys[nj]).abs();
             let g_next = g_cur + len + bend + cross;
             let next = state(ni, nj, step_dir);
-            if g_next < best[next] - 1e-9 {
+            let seen = stamp[next] == gen;
+            if !seen || g_next < best[next] - 1e-9 {
+                stamp[next] = gen;
                 best[next] = g_next;
                 came[next] = cur;
                 heap.push(Queued(g_next + heuristic(ni, nj), next));
@@ -3770,7 +3991,9 @@ fn route_on_grid(
             let (dx, dy) = side_delta(from_side);
             let ban_first = Some((-dx, -dy));
             let ban_last = Some(side_delta(to_side));
-            if let Some(path) = grid_route(g, (sx, sy), (gx, gy), ban_first, ban_last) {
+            let found = grid_route(g, (sx, sy), (gx, gy), ban_first, ban_last, GRID_WINDOW)
+                .or_else(|| grid_route(g, (sx, sy), (gx, gy), ban_first, ban_last, usize::MAX));
+            if let Some(path) = found {
                 return finish(path);
             }
         }
@@ -4248,7 +4471,7 @@ fn route_edges(
     nodes: &[AdvanceSceneNode],
     lanes: &[AdvanceSceneLane],
     dir: AdvanceDirection,
-) -> Vec<AdvanceSceneEdge> {
+) -> (Vec<AdvanceSceneEdge>, usize) {
     // Scene nodes come out of layout in lane/topology order, NOT in
     // declaration order — so they are looked up by id. Indexing them
     // with the model's order attached edges to the wrong node.
@@ -4420,79 +4643,160 @@ fn route_edges(
         }
     }
     let mut grid = RouteGrid::build(nodes, lanes, &leads, &[]);
-    // On a big lattice trying all sixteen pairs of sides costs more
-    // than the crossing it saves, so there only the preferred pair is.
-    let searchable = grid.size() <= SEARCH_BUDGET;
+
+    // An invisible edge is never drawn, so it must not push a visible
+    // one out of the way either.
+    let live: Vec<bool> = d
+        .edges
+        .iter()
+        .map(|e| e.kind != EdgeKind::Invisible)
+        .collect();
+
+    // One route per edge, by edge index. The negotiation below takes
+    // routes back out and lays them down again, so they cannot simply
+    // accumulate in the order they were drawn.
+    let mut routes: Vec<Vec<(f64, f64)>> = Vec::with_capacity(d.edges.len());
+
+    // Routing one edge against the routes in `routes`, ignoring the one
+    // at `skip` — its own, when it is being re-routed.
+    let route_one = |i: usize,
+                     g: &RouteGrid,
+                     routes: &[Vec<(f64, f64)>],
+                     live: &[bool],
+                     skip: usize,
+                     cross: f64|
+     -> Vec<(f64, f64)> {
+        let (e, pl) = (&d.edges[i], &plans[i]);
+        let (from_i, to_i) = (pl.from_i, pl.to_i);
+        let a = &nodes[from_i];
+        let (fss, tss) = (&pl.fss, &pl.tss);
+        if pl.plain_loop {
+            return route_self_loop(a, pl.spread, dir);
+        }
+        let route = |fs: AdvanceSide, ts: AdvanceSide| {
+            let ((tp0, bp0), (tp3, bp3)) = ends(e, pl, fs, ts);
+            if from_i == to_i {
+                route_loop(a, fs, tp0, bp0, ts, tp3, bp3)
+            } else {
+                route_on_grid(g, fs, tp0, bp0, ts, tp3, bp3)
+            }
+        };
+        let first = route(fss[0], tss[0]);
+        // The preferred sides usually win outright; only an edge that
+        // would run into an existing one pays for the search.
+        if route_conflicts(&first, routes, live, skip, cross) <= 0.0
+            || (fss.len() == 1 && tss.len() == 1)
+            || g.size() > SEARCH_BUDGET
+        {
+            return first;
+        }
+        // One end at a time first: changing a single side is what
+        // usually resolves a conflict, and it turns the sixteen pairs
+        // into seven before the full cross.
+        let mut pairs: Vec<(AdvanceSide, AdvanceSide)> = Vec::with_capacity(16);
+        pairs.extend(fss[1..].iter().map(|fs| (*fs, tss[0])));
+        pairs.extend(tss[1..].iter().map(|ts| (fss[0], *ts)));
+        for fs in &fss[1..] {
+            pairs.extend(tss[1..].iter().map(|ts| (*fs, *ts)));
+        }
+        let mut best = (route_cost(&first, routes, live, skip, cross), first);
+        for (fs, ts) in &pairs {
+            let pts = route(*fs, *ts);
+            let conflicts = route_conflicts(&pts, routes, live, skip, cross);
+            let cost = route_cost(&pts, routes, live, skip, cross);
+            if cost < best.0 - 1e-9 {
+                best = (cost, pts);
+            }
+            // Nothing beats touching nothing, and the order of the
+            // candidates is fixed, so the first such route is the same
+            // one on every run.
+            if conflicts <= 0.0 {
+                break;
+            }
+        }
+        best.1
+    };
+
+    // First pass: each edge sees only the ones before it.
+    for i in 0..d.edges.len() {
+        let pts = route_one(i, &grid, &routes, &live, usize::MAX, CROSS_COST);
+        if live[i] {
+            for w in pts.windows(2) {
+                grid.price((w[0], w[1]), CROSS_COST, 1.0);
+            }
+        }
+        routes.push(pts);
+    }
+
+    // Then negotiate: take each edge back out and route it against
+    // every other one, raising the price of a crossing each pass until
+    // the crossings that can move have moved. This is what turns "the
+    // edges before me" into "all the others", which is the difference
+    // between a first-come-first-served artefact and a crossing that
+    // the geometry actually forces.
+    let (count, mut involved) = crossings_of(&routes, &live);
+    // What a pass costs is the edges it lifts times the lattice each of
+    // them searches — not the size of the lattice alone, which grows
+    // with every node whether or not anything is connected to it. With
+    // the old gate, two decorative nodes could switch the negotiation
+    // off and put the crossings back.
+    let pass_work = involved.len().saturating_mul(grid.size());
+    if count > 0 && pass_work <= NEGOTIATION_BUDGET {
+        let mut cross = CROSS_COST;
+        let mut best = routing_quality(&routes, &live);
+        let mut best_routes = routes.clone();
+        for _ in 0..NEGOTIATION_PASSES {
+            cross = (cross * CROSS_ESCALATION).min(CROSS_CEILING);
+            grid.reprice(&routes, &live, cross);
+            // Only the edges in a crossing are lifted. An edge that
+            // crosses nothing has nothing to gain from being drawn
+            // again, and re-routing every edge every pass made the cost
+            // of the negotiation scale with the whole diagram rather
+            // than with the problem it is solving.
+            for i in involved.clone() {
+                if live[i] {
+                    for w in routes[i].windows(2) {
+                        grid.price((w[0], w[1]), cross, -1.0);
+                    }
+                }
+                let pts = route_one(i, &grid, &routes, &live, i, cross);
+                if live[i] {
+                    for w in pts.windows(2) {
+                        grid.price((w[0], w[1]), cross, 1.0);
+                    }
+                }
+                routes[i] = pts;
+            }
+            let q = routing_quality(&routes, &live);
+            // A pass that gains nothing means the escalation has run out
+            // of room to move anything, and its routes were drawn at a
+            // higher price, so they are the longer ones. Stop and keep
+            // what was already found.
+            if !better_routing(q, best) {
+                break;
+            }
+            best = q;
+            best_routes = routes.clone();
+            involved = crossings_of(&routes, &live).1;
+            if best.0 == 0 {
+                break;
+            }
+        }
+        routes = best_routes;
+    }
+
+    // Counted here, from the routes that are actually going out, so the
+    // scene does not pay for a second O(edges^2) pass over the same
+    // geometry to learn a number this function already knows.
+    let crossings = crossings_of(&routes, &live).0;
 
     // Boxes of labels already placed, so later labels dodge them too.
     let mut placed_labels: Vec<(f64, f64, f64, f64)> = Vec::new();
-    // Routes already drawn, so later ones can price crossing them.
-    let mut drawn: Vec<Vec<(f64, f64)>> = Vec::with_capacity(d.edges.len());
 
-    for (e, pl) in d.edges.iter().zip(&plans) {
-        let (from_i, to_i) = (pl.from_i, pl.to_i);
-        let a = &nodes[from_i];
-        let b = &nodes[to_i];
-        let (fss, tss) = (&pl.fss, &pl.tss);
-
-        let points = if pl.plain_loop {
-            route_self_loop(a, pl.spread, dir)
-        } else {
-            let route = |fs: AdvanceSide, ts: AdvanceSide| {
-                let ((tp0, bp0), (tp3, bp3)) = ends(e, pl, fs, ts);
-                if from_i == to_i {
-                    route_loop(a, fs, tp0, bp0, ts, tp3, bp3)
-                } else {
-                    route_on_grid(&grid, fs, tp0, bp0, ts, tp3, bp3)
-                }
-            };
-            let first = route(fss[0], tss[0]);
-            // The preferred sides usually win outright; only an edge
-            // that would run into an existing one pays for the search.
-            if route_conflicts(&first, &drawn) <= 0.0
-                || (fss.len() == 1 && tss.len() == 1)
-                || !searchable
-            {
-                first
-            } else {
-                // One end at a time first: changing a single side is
-                // what usually resolves a conflict, and it turns the
-                // sixteen pairs into seven before the full cross.
-                let mut pairs: Vec<(AdvanceSide, AdvanceSide)> = Vec::with_capacity(16);
-                pairs.extend(fss[1..].iter().map(|fs| (*fs, tss[0])));
-                pairs.extend(tss[1..].iter().map(|ts| (fss[0], *ts)));
-                for fs in &fss[1..] {
-                    pairs.extend(tss[1..].iter().map(|ts| (*fs, *ts)));
-                }
-                let mut best = (route_cost(&first, &drawn), first);
-                'search: for (fs, ts) in &pairs {
-                    {
-                        let pts = route(*fs, *ts);
-                        let conflicts = route_conflicts(&pts, &drawn);
-                        let cost = route_cost(&pts, &drawn);
-                        if cost < best.0 - 1e-9 {
-                            best = (cost, pts);
-                        }
-                        // Nothing beats touching nothing, and the order
-                        // of the candidates is fixed, so the first such
-                        // route is the same one on every run.
-                        if conflicts <= 0.0 {
-                            break 'search;
-                        }
-                    }
-                }
-                best.1
-            }
-        };
-        // An invisible edge is never drawn, so it must not push a
-        // visible one out of the way either.
-        if e.kind != EdgeKind::Invisible {
-            for w in points.windows(2) {
-                grid.price((w[0], w[1]));
-            }
-            drawn.push(points.clone());
-        }
-
+    for (i, (e, pl)) in d.edges.iter().zip(&plans).enumerate() {
+        let a = &nodes[pl.from_i];
+        let b = &nodes[pl.to_i];
+        let points = std::mem::take(&mut routes[i]);
         let label_pos = match e.label.as_deref() {
             Some(label) => {
                 let chosen = choose_label_pos(
@@ -4530,7 +4834,7 @@ fn route_edges(
         });
     }
 
-    edge_scenes
+    (edge_scenes, crossings)
 }
 
 // ------------------------------------------------------------------
@@ -5015,10 +5319,10 @@ fn layout_inner(d: &AdvanceDiagram, route: bool) -> AdvanceScene {
             .map(|(i, n)| scene_node(n, n.x.unwrap(), n.y.unwrap(), sizes[i].0, sizes[i].1))
             .collect();
         let (lane_scenes, width, height) = build_lanes_around_nodes(d, &node_scenes);
-        let edge_scenes = if route {
+        let (edge_scenes, crossings) = if route {
             route_edges(d, &node_scenes, &lane_scenes, d.direction)
         } else {
-            Vec::new()
+            (Vec::new(), 0)
         };
         return fit_canvas(
             AdvanceScene {
@@ -5030,6 +5334,7 @@ fn layout_inner(d: &AdvanceDiagram, route: bool) -> AdvanceScene {
                 style: d.style.clone(),
                 lanes: lane_scenes,
                 nodes: node_scenes,
+                crossings,
                 edges: edge_scenes,
             },
             cfg.margin,
@@ -5095,22 +5400,26 @@ fn layout_inner(d: &AdvanceDiagram, route: bool) -> AdvanceScene {
             cur_y - cfg.lane_gap + cfg.margin
         };
 
-        let edge_scenes = if route {
+        let (edge_scenes, crossings) = if route {
             route_edges(d, &node_scenes, &lane_scenes, d.direction)
         } else {
-            Vec::new()
+            (Vec::new(), 0)
         };
-        return AdvanceScene {
-            width: total_w,
-            height: total_h,
-            title: d.title.clone(),
-            description: d.description.clone(),
-            direction: d.direction,
-            style: d.style.clone(),
-            lanes: lane_scenes,
-            nodes: node_scenes,
-            edges: edge_scenes,
-        };
+        return fit_canvas(
+            AdvanceScene {
+                width: total_w,
+                height: total_h,
+                title: d.title.clone(),
+                description: d.description.clone(),
+                direction: d.direction,
+                style: d.style.clone(),
+                lanes: lane_scenes,
+                nodes: node_scenes,
+                crossings,
+                edges: edge_scenes,
+            },
+            cfg.margin,
+        );
     }
 
     // Vertical Mode (with arbitrary recursive nesting support)
@@ -5165,23 +5474,27 @@ fn layout_inner(d: &AdvanceDiagram, route: bool) -> AdvanceScene {
     };
     let total_height = max_top_h + 2.0 * cfg.margin;
 
-    let edge_scenes = if route {
+    let (edge_scenes, crossings) = if route {
         route_edges(d, &node_scenes, &lane_scenes, d.direction)
     } else {
-        Vec::new()
+        (Vec::new(), 0)
     };
 
-    AdvanceScene {
-        width: total_width,
-        height: total_height,
-        title: d.title.clone(),
-        description: d.description.clone(),
-        direction: d.direction,
-        style: d.style.clone(),
-        lanes: lane_scenes,
-        nodes: node_scenes,
-        edges: edge_scenes,
-    }
+    fit_canvas(
+        AdvanceScene {
+            width: total_width,
+            height: total_height,
+            title: d.title.clone(),
+            description: d.description.clone(),
+            direction: d.direction,
+            style: d.style.clone(),
+            lanes: lane_scenes,
+            nodes: node_scenes,
+            crossings,
+            edges: edge_scenes,
+        },
+        cfg.margin,
+    )
 }
 
 // ------------------------------------------------------------------
@@ -5724,6 +6037,15 @@ fn fit_canvas(mut sc: AdvanceScene, pad: f64) -> AdvanceScene {
         min_x = min_x.min(n.x - n.w / 2.0);
         min_y = min_y.min(n.y - n.h / 2.0);
     }
+    // Routes too: an edge that detours past the left or top of every
+    // node is still part of the drawing, and shifting only the boxes
+    // into view leaves it clipped away.
+    for e in &sc.edges {
+        for p in &e.points {
+            min_x = min_x.min(p.0);
+            min_y = min_y.min(p.1);
+        }
+    }
     let dx = (pad - min_x).max(0.0);
     let dy = (pad - min_y).max(0.0);
     if dx > 0.0 || dy > 0.0 {
@@ -5760,6 +6082,14 @@ fn fit_canvas(mut sc: AdvanceScene, pad: f64) -> AdvanceScene {
         sc.width += dx;
         sc.height += dy;
     }
+    // And grow to the right and bottom for the same reason: the canvas
+    // is sized from the lanes, which a detour is free to leave.
+    for e in &sc.edges {
+        for p in &e.points {
+            sc.width = sc.width.max(p.0 + pad);
+            sc.height = sc.height.max(p.1 + pad);
+        }
+    }
     sc
 }
 
@@ -5772,7 +6102,7 @@ pub fn render_advance_routed(source: &str, positions: &[f64]) -> Result<String, 
     validate_positions(&d, positions)?;
     let nodes = place_nodes_at_positions(&d, positions);
     let (lanes, width, height) = build_lanes_around_nodes(&d, &nodes);
-    let edges = route_edges(&d, &nodes, &lanes, d.direction);
+    let (edges, crossings) = route_edges(&d, &nodes, &lanes, d.direction);
     let scene = fit_canvas(
         AdvanceScene {
             width,
@@ -5783,6 +6113,7 @@ pub fn render_advance_routed(source: &str, positions: &[f64]) -> Result<String, 
             style: d.style.clone(),
             lanes,
             nodes,
+            crossings,
             edges,
         },
         d.config.margin,
@@ -5883,7 +6214,7 @@ pub fn render_advance_routed_with_lanes(
 
     let nodes = place_nodes_at_positions(&d, positions);
     let (lanes, width, height) = build_lanes_with_widths(&d, &nodes, lane_widths, margin, gap);
-    let edges = route_edges(&d, &nodes, &lanes, d.direction);
+    let (edges, crossings) = route_edges(&d, &nodes, &lanes, d.direction);
     let scene = fit_canvas(
         AdvanceScene {
             width,
@@ -5894,6 +6225,7 @@ pub fn render_advance_routed_with_lanes(
             style: d.style.clone(),
             lanes,
             nodes,
+            crossings,
             edges,
         },
         margin,
@@ -6317,7 +6649,7 @@ mod tests {
         positions[1] = -800.0;
         let nodes = place_nodes_at_positions(&d, &positions);
         let (lanes, width, height) = build_lanes_around_nodes(&d, &nodes);
-        let edges = route_edges(&d, &nodes, &lanes, d.direction);
+        let (edges, crossings) = route_edges(&d, &nodes, &lanes, d.direction);
         let sc = fit_canvas(
             AdvanceScene {
                 width,
@@ -6328,6 +6660,7 @@ mod tests {
                 style: d.style.clone(),
                 lanes,
                 nodes,
+                crossings,
                 edges,
             },
             d.config.margin,
@@ -7922,7 +8255,7 @@ mod tests {
                 for o in other.points.windows(2) {
                     assert_eq!(
                         seg_conflict((w[0], w[1]), (o[0], o[1])),
-                        0.0,
+                        Conflict::None,
                         "the skipping edge touches a --> b or b --> c"
                     );
                 }
@@ -8110,5 +8443,204 @@ mod tests {
                 }
             }
         }
+    }
+    // ---- negotiated routing --------------------------------------------
+
+    /// Diagrams that admit a crossing-free orthogonal routing must get
+    /// one. This is the promise P3 exists to keep, and the number is on
+    /// the scene so a host can check it too.
+    #[test]
+    fn a_planar_diagram_is_routed_without_a_single_crossing() {
+        let cases: [(&str, &str); 7] = [
+            ("showcase", include_str!("../examples/advance_swimlane.mmd")),
+            ("terminals", TERMINALS),
+            (
+                "a chain down one lane",
+                "lane l \"L\"\na[A]\nb[B]\nc[C]\nd[D]\na --> b\nb --> c\nc --> d\n",
+            ),
+            (
+                "a chain that skips two of its own nodes",
+                "lane l \"L\"\na[A]\nb[B]\nc[C]\nd[D]\na --> b\nb --> c\nc --> d\na --> d\n",
+            ),
+            (
+                "a fan out and back in",
+                "lane l \"L\"\nr[Root]\nlane m \"M\"\nx[X]\ny[Y]\nz[Z]\nlane e \"E\"\n\
+                 j[Join]\nr --> x\nr --> y\nr --> z\nx --> j\ny --> j\nz --> j\n",
+            ),
+            (
+                "three lanes of three, crossing every way",
+                "lane a \"A\"\na1[a1]\na2[a2]\na3[a3]\nlane b \"B\"\nb1[b1]\nb2[b2]\nb3[b3]\n\
+                 lane c \"C\"\nc1[c1]\nc2[c2]\nc3[c3]\na1 --> c3\na3 --> c1\nb1 --> c2\n\
+                 a2 --> b3\nb2 --> a1\n",
+            ),
+            (
+                "a blocker in the middle lane",
+                "lane l \"L\"\na[A]\nlane m \"M\"\nm[Middle blocker]\nlane r \"R\"\nc[C]\na --> c\n",
+            ),
+        ];
+        for (name, src) in cases {
+            let sc = layout(&text_diagram(src));
+            assert_eq!(sc.crossings, 0, "{name} was routed with crossings");
+        }
+    }
+
+    /// `crossings` counts what is actually drawn, so a host can display
+    /// it — and so this suite cannot pass by counting nothing.
+    #[test]
+    fn the_crossing_count_matches_the_geometry() {
+        let sc = layout(&text_diagram(
+            "lane l \"L\"\na[A]\nb[B]\nc[C]\na --> b\nb --> c\na --> c\n",
+        ));
+        let routes: Vec<Vec<(f64, f64)>> = sc.edges.iter().map(|e| e.points.clone()).collect();
+        let live = vec![true; routes.len()];
+        assert_eq!(sc.crossings, crossings_of(&routes, &live).0);
+        assert!(
+            sc.crossings <= 1,
+            "{} crossings on three edges",
+            sc.crossings
+        );
+    }
+
+    /// A diagram with no crossing-free routing still gets drawn, and
+    /// the count says so rather than the router giving up or looping.
+    #[test]
+    fn a_non_planar_diagram_still_renders_and_reports_its_crossings() {
+        let mut src = String::from("lane l \"L\"\n");
+        for i in 0..12 {
+            src.push_str(&format!("x{i}[n{i}]\n"));
+        }
+        for i in 0..24 {
+            src.push_str(&format!("x{} --> x{}\n", i % 12, (5 * i + 3) % 12));
+        }
+        let sc = layout(&text_diagram(&src));
+        assert_eq!(sc.edges.len(), 24);
+        assert!(
+            sc.crossings > 0,
+            "expected this one to be unroutable planar"
+        );
+        for e in &sc.edges {
+            assert!(e.points.len() >= 2, "an edge was dropped");
+        }
+    }
+
+    /// Negotiating must not make the answer depend on anything but the
+    /// input: the rip-up order comes from the crossings, which come
+    /// from the routes, which come from the diagram.
+    #[test]
+    fn negotiated_routing_is_deterministic() {
+        let src = "lane a \"A\"\na1[a1]\na2[a2]\na3[a3]\nlane b \"B\"\nb1[b1]\nb2[b2]\nb3[b3]\n\
+                   lane c \"C\"\nc1[c1]\nc2[c2]\nc3[c3]\na1 --> c3\na3 --> c1\nb1 --> c2\n\
+                   a2 --> b3\nb2 --> a1\n";
+        let d = text_diagram(src);
+        let first = to_svg(&layout(&d));
+        for _ in 0..4 {
+            assert_eq!(to_svg(&layout(&d)), first);
+        }
+    }
+    /// The guarantee must not depend on how much *unrelated* furniture
+    /// the diagram carries. Gating the negotiation on lattice size made
+    /// two decorative, edgeless nodes switch it off and put the
+    /// crossings back.
+    #[test]
+    fn unconnected_nodes_do_not_switch_the_guarantee_off() {
+        let base = "lane a \"A\"\na1[a1]\na2[a2]\na3[a3]\nlane b \"B\"\nb1[b1]\nb2[b2]\nb3[b3]\n\
+                    lane c \"C\"\nc1[c1]\nc2[c2]\nc3[c3]\na1 --> c3\na3 --> c1\nb1 --> c2\n\
+                    a2 --> b3\nb2 --> a1\n";
+        for extra in [0, 2, 20, 40, 120] {
+            let mut src = String::from(base);
+            if extra > 0 {
+                src.push_str("lane z \"Z\"\n");
+                for i in 0..extra {
+                    src.push_str(&format!("z{i}[z{i}]\n"));
+                }
+            }
+            let sc = layout(&text_diagram(&src));
+            assert_eq!(
+                sc.crossings, 0,
+                "{extra} unconnected nodes brought crossings back"
+            );
+        }
+    }
+
+    /// A route may leave the lanes; the canvas has to follow it, or the
+    /// part that left is simply not rendered.
+    #[test]
+    fn the_canvas_contains_every_point_of_every_route() {
+        for (name, src) in ROUTER_CASES {
+            let sc = layout(&text_diagram(src));
+            for e in &sc.edges {
+                for p in &e.points {
+                    assert!(
+                        p.0 >= -0.5
+                            && p.1 >= -0.5
+                            && p.0 <= sc.width + 0.5
+                            && p.1 <= sc.height + 0.5,
+                        "{name}: {:?} is outside the {}x{} canvas",
+                        p,
+                        sc.width,
+                        sc.height
+                    );
+                }
+            }
+        }
+    }
+
+    /// No route may step out and come straight back along the same
+    /// line. The search used to launder the ban on retreating down its
+    /// own leader by stepping aside and returning, which reaches the
+    /// same vertex in a different direction and so escapes the ban.
+    #[test]
+    fn no_route_doubles_back_on_itself() {
+        for (name, src) in ROUTER_CASES {
+            let sc = layout(&text_diagram(src));
+            for e in &sc.edges {
+                for w in e.points.windows(3) {
+                    assert!(
+                        (w[0].0 - w[2].0).abs() > 1e-9 || (w[0].1 - w[2].1).abs() > 1e-9,
+                        "{name}: {} --> {} doubles back at {:?}",
+                        e.from,
+                        e.to,
+                        w[1]
+                    );
+                }
+            }
+        }
+    }
+
+    /// `crossings` counts pairs of edges. Two edges that cross twice are
+    /// one crossing to look at, and reporting two would make the number
+    /// mean something different from what its name says.
+    #[test]
+    fn crossings_counts_pairs_of_edges_not_pairs_of_segments() {
+        let a = vec![(0.0, 0.0), (100.0, 0.0), (100.0, 100.0), (0.0, 100.0)];
+        let b = vec![(50.0, -50.0), (50.0, 150.0)];
+        let live = [true, true];
+        // `b` cuts `a` twice: the top run and the bottom run.
+        assert_eq!(crossings_of(&[a, b], &live).0, 1);
+    }
+
+    /// The negotiation keeps a routing only if it is genuinely better,
+    /// and "better" has to mean more than the crossing count: a later
+    /// pass routes at a higher price and so draws longer lines.
+    #[test]
+    fn a_routing_is_better_only_on_crossings_then_length_then_bends() {
+        assert!(
+            better_routing((0, 500.0, 9), (1, 100.0, 2)),
+            "fewer crossings wins"
+        );
+        assert!(!better_routing((1, 100.0, 2), (0, 500.0, 9)));
+        assert!(
+            better_routing((2, 100.0, 5), (2, 300.0, 5)),
+            "shorter wins on a tie"
+        );
+        assert!(!better_routing((2, 300.0, 5), (2, 100.0, 5)));
+        assert!(
+            better_routing((2, 100.0, 3), (2, 100.5, 5)),
+            "fewer bends wins on a wash"
+        );
+        assert!(
+            !better_routing((2, 100.0, 5), (2, 100.0, 5)),
+            "a tie is not better"
+        );
     }
 }

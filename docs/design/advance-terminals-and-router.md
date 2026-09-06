@@ -112,22 +112,31 @@ The first step out of a terminal is forced to its exit direction, so an anchor o
 ### Negotiated rip-up-and-reroute
 
 ```
-order  ← edges by Manhattan distance, shortest first
-X      ← X0
-for iter in 1..=MAX_ITERS:
-    route every edge in order with A*            (already-routed edges are obstacles-with-cost)
-    if crossings(all) == 0: break
-    X ← X · ESCALATION
-    move the edges involved in a crossing to the front of `order`
+route every edge once, in declaration order       (each sees the ones before it)
+X ← X0
+for pass in 1..=NEGOTIATION_PASSES:
+    X ← min(X · ESCALATION, CROSS_CEILING)
+    for each edge involved in a crossing:          (index order)
+        lift its route out of the lattice
+        route it against ALL the others with A*
+        lay the new route back down
+    keep this pass only if (crossings, length, bends) improved; otherwise stop
+    stop at zero crossings
 ```
 
-This is PathFinder-style negotiated congestion routing, the standard approach in EDA. Per edge, once `X` dominates, A\* returns a crossing-free path whenever one exists on the grid given the others; the rip-up lets earlier edges move out of the way of later ones.
+This is PathFinder-style negotiated congestion routing, the standard approach in EDA. Once `X` dominates, A\* returns a crossing-free path whenever one exists on the grid given the others; the rip-up lets an edge routed early move out of the way of one routed late.
+
+Only the edges in a crossing are lifted — an edge that crosses nothing has nothing to gain from being drawn again, and lifting everything made a pass cost the whole diagram rather than the problem it is solving. `CROSS_CEILING` bounds the escalation: without it the last crossing is bought at any price, which is how an edge between two neighbours ends up going round the outside of the drawing.
 
 ### What is actually guaranteed
 
-> Zero crossings whenever a crossing-free orthogonal routing exists **on the channel grid** and is found within `MAX_ITERS`. When none exists, the remaining crossings sit where the escalated cost made them cheapest.
+> Zero crossings whenever a crossing-free orthogonal routing exists **on the channel grid**, is reachable within `GRID_WINDOW` of each edge, and is found within `NEGOTIATION_PASSES` — provided one pass over the crossing edges stays under `NEGOTIATION_BUDGET`. When none of that holds, the remaining crossings sit where the escalated cost made them cheapest.
 
-Two honest limits: negotiated routing is a strong heuristic, not a proof of global optimality; and the grid decides which paths exist at all. A finer grid finds more paths at more cost — exposed as `config router_grid coarse|fine`.
+The budget is measured in work — edges lifted times the lattice each searches — not in lattice size. Sized in lattice vertices, it made a diagram's guarantee depend on how many *unconnected* nodes it happened to carry: two decorative boxes could switch the negotiation off and put the crossings back. `unconnected_nodes_do_not_switch_the_guarantee_off` holds the line.
+
+Held by `a_planar_diagram_is_routed_without_a_single_crossing`, which asserts `scene.crossings == 0` over seven diagrams that admit one — including the dense three-lane case that P2 could not.
+
+Two honest limits: negotiated routing is a strong heuristic, not a proof of global optimality; and the grid decides which paths exist at all. A finer grid would find more paths at more cost; no such control is exposed, and the grid is what the layout implies.
 
 The scene reports `crossings: usize`, so tests and the UI can assert or display it.
 
@@ -162,7 +171,7 @@ Decision needed: the new router becomes the default (recommended — it is the p
 |---|---|---|
 | **P1 Terminals** ✅ | `Anchor`, `SubElement`, `EdgeEnd`; DSL + JSON parsing; resolution with the exposed-side rule; compartment rendering; scene + hit-testing | Today's, fed resolved points and excluding the endpoint's own node — which alone fixes the ported-through-own-node defect |
 | **P2 Grid router** ✅ | Channel grid, A\* with bends + obstacles; replaces the same-lane / cross-lane / ported routers | Zero through-box for every edge between two nodes; a loop onto one node is drawn on a ring instead |
-| **P3 Negotiation** | Crossing cost, rip-up-and-reroute, `crossings` in scene; a planar test suite asserting 0 | Zero crossings where possible |
+| **P3 Negotiation** ✅ | Crossing cost, rip-up-and-reroute, `crossings` in scene; a planar test suite asserting 0 | Zero crossings where possible |
 | **P4 Ship** | README, docs site, `examples/advance_terminals.mmd`, CHANGELOG, minor bump | — |
 
 One PR and one independent review per phase.
@@ -179,11 +188,20 @@ One PR and one independent review per phase.
 - An end whose side is automatic now offers the router all four sides and keeps the cheapest; a declared port or a named anchor still yields exactly one (D7). The search runs only for an edge whose preferred sides would touch an edge already drawn, so the common case stays one A\* run.
 - Edges are fanned apart by pairs of *terminals*, not pairs of nodes: two edges between the same nodes through different ports already land apart and keep their full leaders.
 
-**Carried into P3**
+**Closed in P3**
 
-- A loop onto a single node is drawn on a ring around that node and does not consult the lattice, so it can still cross a *different* node placed close enough. Pre-dates P2 and is unchanged by it; the ring would have to become a lattice search of its own.
-- Routing is now `O(edges x lattice)` rather than `O(edges)`. A 60-edge diagram routes in about 12 ms and a 600-edge one in about 1.6 s (release). The lattice is built once per diagram and the choice of sides is searched only below `SEARCH_BUDGET`, but the search itself is the cost of the guarantee.
-- What P2 does not have is the rip-up: each edge is routed once, against the edges already drawn, and never moved again to let a later one through. The one remaining crossing in the dense 3×3 case is exactly that — a first-come-first-served artefact, not a geometric necessity.
+- **The rip-up.** P2 routed each edge once against the edges before it and never moved it again; the crossing left in the dense 3×3 case was that artefact. Each pass now takes every edge back out of the lattice and routes it against *all* the others, raising the price of a crossing fourfold as it goes, and stops as soon as a pass gains nothing. Over the six measured scenarios crossings went 1 → **0**.
+- **`crossings` on the scene**, counted from the geometry actually drawn and carried in `scene_to_json`, so a host can display it and the test suite cannot pass by counting nothing.
+
+**What P3 costs**
+
+- Negotiation is paid only by a diagram that has crossings after the first pass: a diagram already crossing-free is byte-identical to P2 and no slower. A dense non-planar one pays up to four extra passes — measured at 44 ms → 194 ms on a 20-node, 30-edge random graph, which the passes improve but cannot make planar.
+- It is skipped above `NEGOTIATION_BUDGET` lattice vertices, where a pass costs as much as the whole first routing.
+
+**Carried further**
+
+- A loop onto a single node is drawn on a ring around that node and does not consult the lattice, so it can still cross a *different* node placed close enough. Pre-dates P2 and is unchanged; the ring would have to become a lattice search of its own.
+- Routing is `O(passes x edges x lattice)` rather than `O(edges)`. A 60-edge diagram routes in about 13 ms and a 600-edge one in about 1.6 s (release). That is the cost of the guarantee, not an accident of the implementation.
 
 ## 6. Out of scope (design accommodates, not built)
 

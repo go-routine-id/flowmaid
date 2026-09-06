@@ -7,6 +7,42 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+Advance mode's edge router was rewritten over three phases. Together they
+make "no line through a box" a property of the search rather than a case
+to detect, and take crossings on the measured scenarios from seven to
+zero. Needs a **minor** bump: `AdvanceScene` gains a public field.
+
+### Added
+
+- **`AdvanceScene::crossings`** — how many pairs of edges cross in the
+  drawing, counted from the geometry actually emitted and carried in
+  `scene_to_json` as `"crossings"`. Pairs, not points: two edges that
+  cross twice count once.
+- **Terminals addressed by id.** An edge end may name a node, a named
+  anchor (`a@out`), a sub-element (`a.cpu`), or both (`a.cpu@pin1`), in
+  the text DSL and in JSON. Sub-elements are first-class: they have ids,
+  rects, anchors, and can be edge endpoints.
+
+### Changed
+
+- **Every edge is routed on a channel grid** built from the layout, with
+  A\* paying length, bends and conflicts, replacing eight hand-tuned
+  routers. Edge paths change; node and lane geometry does not.
+- **Crossings are negotiated away** rather than accepted: each pass lifts
+  the edges involved in a crossing back out of the lattice and routes
+  them against all the others while the price of a crossing escalates.
+- The canvas now grows to contain routes that leave the lanes.
+
+### Fixed
+
+- A loop from a node back to itself between opposite sides drew a line
+  straight across the node instead of a loop.
+- An edge from a node to itself discarded any anchor or sub-element it
+  named, because the loop was chosen before the terminals were resolved.
+- Parallel edges were drawn on top of each other, and five or more
+  parallel ported edges could be drawn through the node between them.
+- A route could step out and come straight back along the same line.
+
 ## [0.30.0] - 2026-09-07
 
 ### Fixed
