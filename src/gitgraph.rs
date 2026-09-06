@@ -9,7 +9,9 @@
 //! and branch labels on top of the geometry.
 
 use crate::model::{CommitKind, GitGraph, GitOrientation, Shape};
-use crate::scene::{escape, svg_open, Scene, SceneEdge, SceneNode, SvgOptions, EDGE_COLOR, TEXT_COLOR};
+use crate::scene::{
+    escape, svg_open, Scene, SceneEdge, SceneNode, SvgOptions, EDGE_COLOR, TEXT_COLOR,
+};
 use crate::style::accent;
 
 /// Canvas margin.
@@ -510,5 +512,4 @@ mod tests {
         );
         assert!(svg.contains("&quot;"), "{svg}");
     }
-
 }

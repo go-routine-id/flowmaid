@@ -11,7 +11,9 @@
 //!    classification follows actual relative positions, not layers).
 //! 4. `to_svg(&scene)` exports any arrangement to SVG.
 
-use crate::layout::{intrinsic_size, layout_clustered, layout_sized, text_width, LayoutResult, Placed};
+use crate::layout::{
+    intrinsic_size, layout_clustered, layout_sized, text_width, LayoutResult, Placed,
+};
 use crate::model::{Direction, EdgeKind, End, Graph, NodeStyle, Shape};
 use std::collections::HashMap;
 
@@ -159,9 +161,7 @@ impl Scene {
     /// bounding box would over-select the empty corners — and the
     /// bounding rectangle for every other shape.
     pub fn node_at(&self, x: f64, y: f64) -> Option<usize> {
-        self.nodes
-            .iter()
-            .rposition(|n| node_contains(n, x, y))
+        self.nodes.iter().rposition(|n| node_contains(n, x, y))
     }
 
     /// Index of the edge closest to `(x, y)` within `tol` scene units,
@@ -195,7 +195,8 @@ impl Scene {
             // Deepest wins; at equal depth prefer the SMALLER (more
             // specific) box so the pick is deterministic by geometry.
             let better = best.map_or(true, |(bi, d)| {
-                c.depth > d || (c.depth == d && c.w * c.h < self.clusters[bi].w * self.clusters[bi].h)
+                c.depth > d
+                    || (c.depth == d && c.w * c.h < self.clusters[bi].w * self.clusters[bi].h)
             });
             if inside && better {
                 best = Some((i, c.depth));
@@ -215,7 +216,12 @@ impl Scene {
         };
         let mut out = Vec::new();
         for (i, n) in self.nodes.iter().enumerate() {
-            if overlaps(n.x - n.w / 2.0, n.y - n.h / 2.0, n.x + n.w / 2.0, n.y + n.h / 2.0) {
+            if overlaps(
+                n.x - n.w / 2.0,
+                n.y - n.h / 2.0,
+                n.x + n.w / 2.0,
+                n.y + n.h / 2.0,
+            ) {
                 out.push(Hit::Node(i));
             }
         }
@@ -306,8 +312,14 @@ fn sample_cubic(b: &[(f64, f64); 4], steps: usize) -> Vec<(f64, f64)> {
 fn cubic_at(b: &[(f64, f64); 4], t: f64) -> (f64, f64) {
     let u = 1.0 - t;
     (
-        u * u * u * b[0].0 + 3.0 * u * u * t * b[1].0 + 3.0 * u * t * t * b[2].0 + t * t * t * b[3].0,
-        u * u * u * b[0].1 + 3.0 * u * u * t * b[1].1 + 3.0 * u * t * t * b[2].1 + t * t * t * b[3].1,
+        u * u * u * b[0].0
+            + 3.0 * u * u * t * b[1].0
+            + 3.0 * u * t * t * b[2].0
+            + t * t * t * b[3].0,
+        u * u * u * b[0].1
+            + 3.0 * u * u * t * b[1].1
+            + 3.0 * u * t * t * b[2].1
+            + t * t * t * b[3].1,
     )
 }
 
@@ -320,11 +332,18 @@ fn basis_sample(pts: &[(f64, f64)]) -> Vec<(f64, f64)> {
     }
     let mut out = vec![pts[0]];
     // Straight run into the first control point (mirrors spline_d's `L`).
-    let mut cur = ((5.0 * pts[0].0 + pts[1].0) / 6.0, (5.0 * pts[0].1 + pts[1].1) / 6.0);
+    let mut cur = (
+        (5.0 * pts[0].0 + pts[1].0) / 6.0,
+        (5.0 * pts[0].1 + pts[1].1) / 6.0,
+    );
     out.push(cur);
     // One cubic per interior triple, then the closing cubic — identical
     // control points to spline_d's `bez`.
-    let emit = |out: &mut Vec<(f64, f64)>, cur: &mut (f64, f64), a: (f64, f64), b: (f64, f64), p: (f64, f64)| {
+    let emit = |out: &mut Vec<(f64, f64)>,
+                cur: &mut (f64, f64),
+                a: (f64, f64),
+                b: (f64, f64),
+                p: (f64, f64)| {
         let seg = [
             *cur,
             ((2.0 * a.0 + b.0) / 3.0, (2.0 * a.1 + b.1) / 3.0),
@@ -466,7 +485,13 @@ fn scene_from_layout(g: &Graph, sizes: &[(f64, f64)], lo: LayoutResult) -> Scene
             let chain = &lo.edge_paths[ei];
             let a_bottom = b.layer > a.layer; // exit side of the source
             let p0 = anchor(a, g.nodes[e.from].shape, chain[0], off, a_bottom);
-            let p3 = anchor(b, g.nodes[e.to].shape, *chain.last().unwrap(), off, !a_bottom);
+            let p3 = anchor(
+                b,
+                g.nodes[e.to].shape,
+                *chain.last().unwrap(),
+                off,
+                !a_bottom,
+            );
             let mut v = Vec::with_capacity(chain.len() + 2);
             v.push(p0);
             v.extend(chain.iter().copied());
@@ -576,11 +601,7 @@ fn scene_from_layout(g: &Graph, sizes: &[(f64, f64)], lo: LayoutResult) -> Scene
             bezier: [tf(pts[0]), tf(pts[1]), tf(pts[2]), tf(pts[3])],
             waypoints: wps.iter().map(|&p| tf(p)).collect(),
             kind: e.kind,
-            label: e
-                .label
-                .clone()
-                .zip(label)
-                .map(|(t, (m, w))| (t, tf(m), w)),
+            label: e.label.clone().zip(label).map(|(t, (m, w))| (t, tf(m), w)),
         })
         .collect();
 
@@ -616,12 +637,13 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
     sc.clusters = {
         let (mut boxes, depth) = cluster_raw_boxes(g, &sc.nodes);
         for si in 0..g.subgraphs.len() {
-            let Some((x, y, w, h)) = boxes[si] else { continue };
+            let Some((x, y, w, h)) = boxes[si] else {
+                continue;
+            };
             let (mut x0, mut x1) = (x, x + w);
             for (ge, se) in g.edges.iter().zip(sc.edges.iter()) {
                 if se.waypoints.is_empty()
-                    || !(node_cluster[ge.from].contains(&si)
-                        || node_cluster[ge.to].contains(&si))
+                    || !(node_cluster[ge.from].contains(&si) || node_cluster[ge.to].contains(&si))
                 {
                     continue;
                 }
@@ -773,7 +795,11 @@ fn node_cluster_paths(g: &Graph) -> Vec<Vec<usize>> {
 /// waypoint and label the pipeline produced stays exactly as valid.
 pub(crate) fn flip_scene(sc: &mut Scene, extent: f64, horizontal: bool) {
     let f = |p: (f64, f64)| -> (f64, f64) {
-        if horizontal { (extent - p.0, p.1) } else { (p.0, extent - p.1) }
+        if horizontal {
+            (extent - p.0, p.1)
+        } else {
+            (p.0, extent - p.1)
+        }
     };
     for n in &mut sc.nodes {
         let (x, y) = f((n.x, n.y));
@@ -1076,10 +1102,7 @@ pub fn route_partial(
 /// positions, indexed by subgraph. Computed deepest-first so a
 /// parent encloses its children's boxes. `None` = empty subgraph.
 /// Also returns each subgraph's nesting depth.
-fn cluster_raw_boxes(
-    g: &Graph,
-    nodes: &[SceneNode],
-) -> (Vec<RawBox>, Vec<usize>) {
+fn cluster_raw_boxes(g: &Graph, nodes: &[SceneNode]) -> (Vec<RawBox>, Vec<usize>) {
     let nsub = g.subgraphs.len();
     let mut depth = vec![0usize; nsub];
     for i in 0..nsub {
@@ -1294,14 +1317,24 @@ pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String 
         // <title> child = screen-reader / hover description (issue #16).
         let edge_title = match &e.label {
             Some((text, ..)) => {
-                format!("{} \u{2192} {}: {}", display(&e.from), display(&e.to), plain_text(text))
+                format!(
+                    "{} \u{2192} {}: {}",
+                    display(&e.from),
+                    display(&e.to),
+                    plain_text(text)
+                )
             }
             None => format!("{} \u{2192} {}", display(&e.from), display(&e.to)),
         };
         s.push_str(&format!(
             "<path d=\"{}\" fill=\"none\" stroke=\"{}\" stroke-width=\"{}\"{}{}>\
              <title>{}</title></path>\n",
-            path_d, EDGE_COLOR, sw, dash, marker, escape(&edge_title)
+            path_d,
+            EDGE_COLOR,
+            sw,
+            dash,
+            marker,
+            escape(&edge_title)
         ));
         if let Some((text, m, w)) = &e.label {
             svg_label_box(&mut edge_labels, text, t(*m), *w);
@@ -1392,13 +1425,18 @@ pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String 
             Shape::Cylinder => {
                 let (l, r, t, b) = (cx - w / 2.0, cx + w / 2.0, cy - h / 2.0, cy + h / 2.0);
                 let ry = 8.0_f64.min(h / 4.0); // cap ellipse radius
-                // Body + bottom arc, then the top ellipse on top.
+                                               // Body + bottom arc, then the top ellipse on top.
                 s.push_str(&format!(
                     "<path d=\"M {l:.1} {ty:.1} A {rx:.1} {ry:.1} 0 0 0 {r:.1} {ty:.1} \
                      L {r:.1} {by:.1} A {rx:.1} {ry:.1} 0 0 1 {l:.1} {by:.1} Z\" {style}/>\n\
                      <path d=\"M {l:.1} {ty:.1} A {rx:.1} {ry:.1} 0 0 1 {r:.1} {ty:.1}\" \
                      fill=\"none\" stroke=\"{stroke}\" stroke-width=\"1.6\"/>\n",
-                    l = l, r = r, ty = t + ry, by = b - ry, rx = w / 2.0, ry = ry,
+                    l = l,
+                    r = r,
+                    ty = t + ry,
+                    by = b - ry,
+                    rx = w / 2.0,
+                    ry = ry,
                     stroke = style_attr(n.style.stroke.as_deref(), ss.stroke),
                     style = style,
                 ));
@@ -1426,10 +1464,30 @@ pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String 
                 let k = 14.0_f64.min(w / 4.0);
                 let pts = if matches!(n.shape, Shape::Parallelogram) {
                     // bottom-left slanted right: /  /
-                    format!("{:.1},{:.1} {:.1},{:.1} {:.1},{:.1} {:.1},{:.1}", l + k, t, r, t, r - k, b, l, b)
+                    format!(
+                        "{:.1},{:.1} {:.1},{:.1} {:.1},{:.1} {:.1},{:.1}",
+                        l + k,
+                        t,
+                        r,
+                        t,
+                        r - k,
+                        b,
+                        l,
+                        b
+                    )
                 } else {
                     // \  \
-                    format!("{:.1},{:.1} {:.1},{:.1} {:.1},{:.1} {:.1},{:.1}", l, t, r - k, t, r, b, l + k, b)
+                    format!(
+                        "{:.1},{:.1} {:.1},{:.1} {:.1},{:.1} {:.1},{:.1}",
+                        l,
+                        t,
+                        r - k,
+                        t,
+                        r,
+                        b,
+                        l + k,
+                        b
+                    )
                 };
                 s.push_str(&format!("<polygon points=\"{pts}\" {style}/>\n"));
             }
@@ -1510,7 +1568,12 @@ impl Bbox {
     }
 }
 
-pub(crate) fn grow_scene(bb: &mut Bbox, nodes: &[SceneNode], edges: &[SceneEdge], clusters: &[SceneCluster]) {
+pub(crate) fn grow_scene(
+    bb: &mut Bbox,
+    nodes: &[SceneNode],
+    edges: &[SceneEdge],
+    clusters: &[SceneCluster],
+) {
     for c in clusters {
         bb.add(c.x, c.y);
         bb.add(c.x + c.w, c.y + c.h);
@@ -1568,7 +1631,13 @@ pub(crate) fn parallel_offsets(g: &Graph) -> Vec<f64> {
 /// stadiums are constrained to their flat section so anchors don't
 /// float on the rounded caps. Circles/diamonds use exact border
 /// intersection.
-pub(crate) fn anchor(p: &Placed, shape: Shape, other: (f64, f64), off: f64, bottom: bool) -> (f64, f64) {
+pub(crate) fn anchor(
+    p: &Placed,
+    shape: Shape,
+    other: (f64, f64),
+    off: f64,
+    bottom: bool,
+) -> (f64, f64) {
     match shape {
         Shape::Diamond
         | Shape::Circle
@@ -1653,7 +1722,11 @@ fn edge_points(
         let mid = ends / 2.0;
         let bt_r = ((4.0 / 3.0) * (ext_r + clear) - ends / 6.0).max(ext_r + 40.0);
         let bt_l = ((4.0 / 3.0) * (ext_l - clear) - ends / 6.0).min(ext_l - 40.0);
-        let bt = (if (bt_r - mid) <= (mid - bt_l) { bt_r } else { bt_l }) + off;
+        let bt = (if (bt_r - mid) <= (mid - bt_l) {
+            bt_r
+        } else {
+            bt_l
+        }) + off;
         return [p0, (bt, p0.1 - 40.0), (bt, p3.1 + 40.0), p3];
     }
 
@@ -1701,11 +1774,32 @@ fn cross_cluster_route(
         if !ok {
             return Vec::new();
         }
-        let a_edge = if down { a_c.1 + a_sz.1 / 2.0 } else { a_c.1 - a_sz.1 / 2.0 };
-        let a_out = if down { a_box.1 + a_box.3 + GAP } else { a_box.1 - GAP };
-        let b_in = if down { b_box.1 - GAP } else { b_box.1 + b_box.3 + GAP };
-        let b_edge = if down { b_c.1 - b_sz.1 / 2.0 } else { b_c.1 + b_sz.1 / 2.0 };
-        vec![(a_c.0, a_edge), (a_c.0, a_out), (b_c.0, b_in), (b_c.0, b_edge)]
+        let a_edge = if down {
+            a_c.1 + a_sz.1 / 2.0
+        } else {
+            a_c.1 - a_sz.1 / 2.0
+        };
+        let a_out = if down {
+            a_box.1 + a_box.3 + GAP
+        } else {
+            a_box.1 - GAP
+        };
+        let b_in = if down {
+            b_box.1 - GAP
+        } else {
+            b_box.1 + b_box.3 + GAP
+        };
+        let b_edge = if down {
+            b_c.1 - b_sz.1 / 2.0
+        } else {
+            b_c.1 + b_sz.1 / 2.0
+        };
+        vec![
+            (a_c.0, a_edge),
+            (a_c.0, a_out),
+            (b_c.0, b_in),
+            (b_c.0, b_edge),
+        ]
     } else {
         let right = b_c.0 >= a_c.0;
         let ok = if right {
@@ -1716,11 +1810,32 @@ fn cross_cluster_route(
         if !ok {
             return Vec::new();
         }
-        let a_edge = if right { a_c.0 + a_sz.0 / 2.0 } else { a_c.0 - a_sz.0 / 2.0 };
-        let a_out = if right { a_box.0 + a_box.2 + GAP } else { a_box.0 - GAP };
-        let b_in = if right { b_box.0 - GAP } else { b_box.0 + b_box.2 + GAP };
-        let b_edge = if right { b_c.0 - b_sz.0 / 2.0 } else { b_c.0 + b_sz.0 / 2.0 };
-        vec![(a_edge, a_c.1), (a_out, a_c.1), (b_in, b_c.1), (b_edge, b_c.1)]
+        let a_edge = if right {
+            a_c.0 + a_sz.0 / 2.0
+        } else {
+            a_c.0 - a_sz.0 / 2.0
+        };
+        let a_out = if right {
+            a_box.0 + a_box.2 + GAP
+        } else {
+            a_box.0 - GAP
+        };
+        let b_in = if right {
+            b_box.0 - GAP
+        } else {
+            b_box.0 + b_box.2 + GAP
+        };
+        let b_edge = if right {
+            b_c.0 - b_sz.0 / 2.0
+        } else {
+            b_c.0 + b_sz.0 / 2.0
+        };
+        vec![
+            (a_edge, a_c.1),
+            (a_out, a_c.1),
+            (b_in, b_c.1),
+            (b_edge, b_c.1),
+        ]
     }
 }
 
@@ -1744,24 +1859,14 @@ fn free_edge(
         let p3 = anchor(b, sb, (a.b, a.l), off, !down);
         let s = if down { 1.0 } else { -1.0 };
         let dl = (dy.abs() * 0.45).max(24.0);
-        [
-            p0,
-            (p0.0, p0.1 + s * dl),
-            (p3.0, p3.1 - s * dl),
-            p3,
-        ]
+        [p0, (p0.0, p0.1 + s * dl), (p3.0, p3.1 - s * dl), p3]
     } else {
         // Horizontally dominant: border to border.
         let p0 = border(a, sa, (b.b, b.l + off * 4.0));
         let p3 = border(b, sb, (a.b, a.l + off * 4.0));
         let s = if dx >= 0.0 { 1.0 } else { -1.0 };
         let dl = (dx.abs() * 0.45).max(24.0);
-        [
-            p0,
-            (p0.0 + s * dl, p0.1),
-            (p3.0 - s * dl, p3.1),
-            p3,
-        ]
+        [p0, (p0.0 + s * dl, p0.1), (p3.0 - s * dl, p3.1), p3]
     }
 }
 
@@ -1797,8 +1902,16 @@ fn border(p: &Placed, shape: Shape, toward: (f64, f64)) -> (f64, f64) {
         Shape::Diamond => 1.0 / (dx.abs() / hw + dy.abs() / hh),
         // Other shapes are approximated as rectangles.
         _ => {
-            let tx = if dx.abs() > 1e-6 { hw / dx.abs() } else { f64::INFINITY };
-            let ty = if dy.abs() > 1e-6 { hh / dy.abs() } else { f64::INFINITY };
+            let tx = if dx.abs() > 1e-6 {
+                hw / dx.abs()
+            } else {
+                f64::INFINITY
+            };
+            let ty = if dy.abs() > 1e-6 {
+                hh / dy.abs()
+            } else {
+                f64::INFINITY
+            };
             tx.min(ty)
         }
     };
@@ -1957,7 +2070,11 @@ pub(crate) fn svg_text_multiline(s: &mut String, cx: f64, cy: f64, fill: &str, l
         s.push_str(&format!(
             "<tspan x=\"{:.1}\" dy=\"{}\">{}</tspan>",
             cx,
-            if i == 0 { "0.33em".to_string() } else { format!("{lh:.1}") },
+            if i == 0 {
+                "0.33em".to_string()
+            } else {
+                format!("{lh:.1}")
+            },
             rich(line)
         ));
     }
@@ -2098,14 +2215,26 @@ mod tests {
         );
 
         // Responsive switches width/height to percentages but keeps viewBox.
-        let resp = to_svg_with(&sc, &SvgOptions { responsive: true, ..Default::default() });
-        assert!(resp.contains("width=\"100%\"") && resp.contains("height=\"100%\""), "{resp}");
+        let resp = to_svg_with(
+            &sc,
+            &SvgOptions {
+                responsive: true,
+                ..Default::default()
+            },
+        );
+        assert!(
+            resp.contains("width=\"100%\"") && resp.contains("height=\"100%\""),
+            "{resp}"
+        );
         assert!(resp.contains("viewBox=\"0 0"), "viewBox preserved");
 
         // preserveAspectRatio is written only when set.
         let par = to_svg_with(
             &sc,
-            &SvgOptions { responsive: true, preserve_aspect_ratio: Some("none") },
+            &SvgOptions {
+                responsive: true,
+                preserve_aspect_ratio: Some("none"),
+            },
         );
         assert!(par.contains("preserveAspectRatio=\"none\""), "{par}");
         assert!(
@@ -2164,12 +2293,11 @@ mod tests {
             // Dead centre: inside.
             assert!(super::node_contains(n, n.x, n.y));
             // The bounding-box corner is OUTSIDE a diamond / circle.
-            let corner = super::node_contains(
-                n,
-                n.x + n.w / 2.0 - 0.5,
-                n.y + n.h / 2.0 - 0.5,
+            let corner = super::node_contains(n, n.x + n.w / 2.0 - 0.5, n.y + n.h / 2.0 - 0.5);
+            assert_eq!(
+                corner, inside_corner,
+                "{id} corner should be outside its shape"
             );
-            assert_eq!(corner, inside_corner, "{id} corner should be outside its shape");
         }
     }
 
@@ -2181,8 +2309,14 @@ mod tests {
         let sizes = vec![(60.0, 40.0), crate::layout::intrinsic_size(&g.nodes[1])];
         let s = scene_sized(&g, &sizes);
         let a = &s.nodes[0];
-        assert!(super::node_contains(a, a.x, a.y + 25.0), "disc cap pickable");
-        assert!(!super::node_contains(a, a.x + 29.0, a.y + 29.0), "corner still outside");
+        assert!(
+            super::node_contains(a, a.x, a.y + 25.0),
+            "disc cap pickable"
+        );
+        assert!(
+            !super::node_contains(a, a.x + 29.0, a.y + 29.0),
+            "corner still outside"
+        );
         // (review #17) StateStart/StateEnd draw as circles → corner miss.
         let crate::model::Document::State(st) =
             crate::parser::parse_document("stateDiagram-v2\n[*] --> Idle\nIdle --> [*]").unwrap()
@@ -2208,7 +2342,11 @@ mod tests {
         if let Some(ri) = routed {
             let poly = super::edge_polyline(&s2.edges[ri]);
             let mid = poly[poly.len() / 2];
-            assert_eq!(s2.edge_at(mid.0, mid.1, 1.0), Some(ri), "curve point picks its edge");
+            assert_eq!(
+                s2.edge_at(mid.0, mid.1, 1.0),
+                Some(ri),
+                "curve point picks its edge"
+            );
         }
     }
 
@@ -2247,7 +2385,10 @@ mod tests {
         let (idx, d) = s.nearest_node(-500.0, a.y).unwrap();
         assert!(d > 0.0 && idx < s.nodes.len());
         // Invisible links are never picked directly either.
-        let inv = s.edges.iter().position(|e| matches!(e.kind, EdgeKind::Invisible));
+        let inv = s
+            .edges
+            .iter()
+            .position(|e| matches!(e.kind, EdgeKind::Invisible));
         if let Some(iv) = inv {
             let m = s.edges[iv].bezier[1];
             assert_ne!(s.edge_at(m.0, m.1, 100.0), Some(iv));
@@ -2299,24 +2440,36 @@ mod tests {
     fn svg_is_accessible_and_deterministic() {
         // Issue #16: role/aria/title on the root, <title> per node and
         // per edge (plain text, styling tags stripped) …
-        let svg = crate::render_svg(
-            "flowchart TD\nA[\"<b>Start</b> here\"] -->|go| B",
-        )
-        .unwrap();
+        let svg = crate::render_svg("flowchart TD\nA[\"<b>Start</b> here\"] -->|go| B").unwrap();
         assert!(svg.contains("role=\"img\""));
         assert!(svg.contains("aria-label=\"Flowchart diagram\""));
         assert!(svg.contains("<title>Flowchart diagram</title>"));
-        assert!(svg.contains("<title>Start here</title>"), "node title, tags stripped");
-        assert!(svg.contains("<title>A \u{2192} B: go</title>"), "edge title with label");
+        assert!(
+            svg.contains("<title>Start here</title>"),
+            "node title, tags stripped"
+        );
+        assert!(
+            svg.contains("<title>A \u{2192} B: go</title>"),
+            "edge title with label"
+        );
         // State diagrams announce themselves correctly (issue #16 fix):
         // right accessible name, no synthesized `__start_*`/`__end_*`
         // ids in tooltips, no empty <title> for pseudostate nodes.
         let st = crate::render_svg("stateDiagram-v2\n[*] --> Idle\nIdle --> [*]").unwrap();
-        assert!(st.contains("aria-label=\"State diagram\""), "state aria-label");
-        assert!(st.contains("<title>State diagram</title>"), "state root title");
+        assert!(
+            st.contains("aria-label=\"State diagram\""),
+            "state aria-label"
+        );
+        assert!(
+            st.contains("<title>State diagram</title>"),
+            "state root title"
+        );
         assert!(!st.contains("__start_"), "no synthesized start id leaked");
         assert!(!st.contains("__end_"), "no synthesized end id leaked");
-        assert!(st.contains("start \u{2192} Idle"), "pseudostate named 'start'");
+        assert!(
+            st.contains("start \u{2192} Idle"),
+            "pseudostate named 'start'"
+        );
         assert!(!st.contains("<title></title>"), "no empty node titles");
         // … and byte-identical output for repeated renders of every
         // bundled example (same-process guard; cross-process identity
@@ -2331,7 +2484,10 @@ mod tests {
             include_str!("../examples/state.mmd"),
             include_str!("../examples/pie.mmd"),
         ] {
-            assert_eq!(crate::render_svg(src).unwrap(), crate::render_svg(src).unwrap());
+            assert_eq!(
+                crate::render_svg(src).unwrap(),
+                crate::render_svg(src).unwrap()
+            );
         }
     }
 
@@ -2340,10 +2496,7 @@ mod tests {
         // Issue #13 contract: nodes are index-parallel with the graph
         // AND carry ids; edges carry from/to ids; sub-edges use the
         // subgraph id; clusters carry their subgraph id.
-        let g = parse(
-            "flowchart TD\nsubgraph grp [Group]\n  B\nend\nA --> B\nA --> grp",
-        )
-        .unwrap();
+        let g = parse("flowchart TD\nsubgraph grp [Group]\n  B\nend\nA --> B\nA --> grp").unwrap();
         let s = scene(&g);
         for (sn, n) in s.nodes.iter().zip(&g.nodes) {
             assert_eq!(sn.id, n.id, "scene.nodes index-parallel with graph.nodes");
@@ -2371,7 +2524,8 @@ mod tests {
 
     #[test]
     fn route_partial_keeps_unmoved_edges_and_reroutes_moved() {
-        let src = "flowchart TD\nsubgraph S1\n  A\nend\nsubgraph S2\n  B\n  C\nend\nA-->B\nA-->C\nB-->C";
+        let src =
+            "flowchart TD\nsubgraph S1\n  A\nend\nsubgraph S2\n  B\n  C\nend\nA-->B\nA-->C\nB-->C";
         let g = parse(src).unwrap();
         let s0 = scene(&g);
         let auto: Vec<(f64, f64)> = s0.nodes.iter().map(|n| (n.x, n.y)).collect();
@@ -2410,7 +2564,10 @@ mod tests {
         assert_eq!(bez, s1.edges[0].bezier);
         // Self-loop variant returns a stub on the node's right side.
         let lp = box_edge_bezier((a.x, a.y), (a.w, a.h), (a.x, a.y), (a.w, a.h), 0.0, true);
-        assert!(lp[1].0 > a.x + a.w / 2.0, "loop must extend right of the box");
+        assert!(
+            lp[1].0 > a.x + a.w / 2.0,
+            "loop must extend right of the box"
+        );
     }
 
     fn cluster_contains(c: &SceneCluster, n: &SceneNode) -> bool {
@@ -2503,7 +2660,10 @@ mod tests {
         pos[w2].0 += 600.0;
         let s1 = route(&g, &pos);
         let inner = s1.clusters.iter().find(|c| c.title == "workers").unwrap();
-        assert!(cluster_contains(inner, &s1.nodes[w2]), "cluster must follow the drag");
+        assert!(
+            cluster_contains(inner, &s1.nodes[w2]),
+            "cluster must follow the drag"
+        );
     }
 
     #[test]
@@ -2544,7 +2704,6 @@ mod tests {
         assert!(svg.contains("&quot;"), "{svg}");
     }
 
-
     #[test]
     fn control_characters_are_dropped_not_escaped() {
         // XML 1.0 forbids C0 controls outright — even `&#0;` is illegal —
@@ -2555,7 +2714,9 @@ mod tests {
         assert_eq!(out, "abcd", "control characters survived: {out:?}");
         assert_eq!(escape("a\tb\nc\rd"), "a\tb\nc\rd");
         // Ordinary escaping is unchanged.
-        assert_eq!(escape("<a & \"b\" 'c'>"), "&lt;a &amp; &quot;b&quot; &#39;c&#39;&gt;");
+        assert_eq!(
+            escape("<a & \"b\" 'c'>"),
+            "&lt;a &amp; &quot;b&quot; &#39;c&#39;&gt;"
+        );
     }
-
 }

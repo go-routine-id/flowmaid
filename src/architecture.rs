@@ -735,5 +735,4 @@ mod tests {
         );
         assert!(svg.contains("&#39;"), "{svg}");
     }
-
 }

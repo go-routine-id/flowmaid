@@ -95,7 +95,11 @@ pub fn scene(d: &PieChart) -> PieScene {
     let mut slices = Vec::with_capacity(d.slices.len());
     let mut cum = 0.0f64;
     for s in &d.slices {
-        let frac = if total > 0.0 { (s.value / max) / total } else { 0.0 };
+        let frac = if total > 0.0 {
+            (s.value / max) / total
+        } else {
+            0.0
+        };
         let start_angle = cum * TAU;
         cum += frac;
         slices.push(Slice {
@@ -373,7 +377,10 @@ mod tests {
         let ps = scene(&pie("pie\n\"a\" : 30\n\"b\" : 50\n\"c\" : 20"));
         let sum: f64 = ps.slices.iter().map(|s| s.frac).sum();
         assert!((sum - 1.0).abs() < 1e-9, "fracs sum to 1, got {sum}");
-        assert_eq!(ps.slices[0].start_angle, 0.0, "first slice starts at 12 o'clock");
+        assert_eq!(
+            ps.slices[0].start_angle, 0.0,
+            "first slice starts at 12 o'clock"
+        );
         for w in ps.slices.windows(2) {
             assert_eq!(w[0].end_angle, w[1].start_angle, "slices are contiguous");
         }
@@ -402,16 +409,24 @@ mod tests {
 
     #[test]
     fn zero_value_slice_is_legend_only_and_colors_stay_aligned() {
-        let svg = to_svg(&scene(&pie("pie\n\"big\" : 9\n\"none\" : 0\n\"small\" : 1")));
+        let svg = to_svg(&scene(&pie(
+            "pie\n\"big\" : 9\n\"none\" : 0\n\"small\" : 1",
+        )));
         assert_eq!(
             svg.lines().filter(|l| l.starts_with("<path")).count(),
             2,
             "only the two non-zero slices are drawn"
         );
-        assert!(svg.contains(">none</text>"), "zero slice keeps its legend row");
+        assert!(
+            svg.contains(">none</text>"),
+            "zero slice keeps its legend row"
+        );
         // `small` is slice 2: its wedge must use accent(2), not shift
         // down because slice 1 was skipped.
-        assert!(svg.contains(&format!("fill=\"{}\" stroke=\"#ffffff\"", crate::style::accent(2))));
+        assert!(svg.contains(&format!(
+            "fill=\"{}\" stroke=\"#ffffff\"",
+            crate::style::accent(2)
+        )));
     }
 
     #[test]
@@ -430,7 +445,10 @@ mod tests {
     fn show_data_appends_values_to_the_legend() {
         let svg = to_svg(&scene(&pie("pie showData\n\"Cats\" : 4.25\n\"Dogs\" : 6")));
         assert!(svg.contains(">Cats [4.25]</text>"));
-        assert!(svg.contains(">Dogs [6]</text>"), "whole values print without .0");
+        assert!(
+            svg.contains(">Dogs [6]</text>"),
+            "whole values print without .0"
+        );
         let plain = to_svg(&scene(&pie("pie\n\"Cats\" : 4.25")));
         assert!(plain.contains(">Cats</text>") && !plain.contains('['));
     }
@@ -454,7 +472,10 @@ mod tests {
             } else {
                 (x, x + tw)
             };
-            assert!(lo >= -1.0 && hi <= w + 1.0, "text {inner:?} [{lo:.0}..{hi:.0}] outside width {w}");
+            assert!(
+                lo >= -1.0 && hi <= w + 1.0,
+                "text {inner:?} [{lo:.0}..{hi:.0}] outside width {w}"
+            );
             assert!((0.0..=h).contains(&y), "text y {y} outside height {h}");
         }
     }
@@ -482,7 +503,10 @@ mod tests {
         let svg = to_svg(&ps);
         assert!(!svg.contains("NaN") && !svg.contains("inf"));
         assert!(svg.contains("Key elements in Product X"));
-        assert!(svg.contains(">Calcium [42.96]</text>"), "showData legend value");
+        assert!(
+            svg.contains(">Calcium [42.96]</text>"),
+            "showData legend value"
+        );
         assert!(svg.contains(">Iron [6]</text>"));
         // All 6 slices are non-zero wedges; the tiny one still draws
         // but skips its percentage label.
@@ -501,11 +525,17 @@ mod tests {
             } else {
                 (x, x + tw)
             };
-            assert!(lo >= -1.0 && hi <= w + 1.0, "text {inner:?} outside width {w}");
+            assert!(
+                lo >= -1.0 && hi <= w + 1.0,
+                "text {inner:?} outside width {w}"
+            );
             assert!((0.0..=h).contains(&y), "text y {y} outside height {h}");
         }
         // render_svg dispatches to the same output.
-        assert_eq!(crate::render_svg(include_str!("../examples/pie.mmd")).unwrap(), svg);
+        assert_eq!(
+            crate::render_svg(include_str!("../examples/pie.mmd")).unwrap(),
+            svg
+        );
     }
 
     // ------------------------ regressions --------------------------
@@ -516,7 +546,11 @@ mod tests {
         // total to +inf, making every frac 0 and blanking the chart.
         let sc = scene(&pie("pie\n\"a\" : 1e308\n\"b\" : 1e308\n\"c\" : 1e308"));
         for sl in &sc.slices {
-            assert!((sl.frac - 1.0 / 3.0).abs() < 1e-6, "each slice ~1/3, got {}", sl.frac);
+            assert!(
+                (sl.frac - 1.0 / 3.0).abs() < 1e-6,
+                "each slice ~1/3, got {}",
+                sl.frac
+            );
         }
         let svg = to_svg(&sc);
         assert_eq!(svg.matches("<path").count(), 3, "three real slices drawn");
@@ -536,6 +570,9 @@ mod tests {
             "dominant slice must be a filled circle"
         );
         // Not the zero-total blank-outline circle (fill="none").
-        assert!(!svg.contains("fill=\"none\""), "must not be the empty outline");
+        assert!(
+            !svg.contains("fill=\"none\""),
+            "must not be the empty outline"
+        );
     }
 }

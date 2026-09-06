@@ -182,8 +182,16 @@ fn dir_token(d: Direction) -> &'static str {
 /// the check here is case-insensitive too — `Class --> b` would
 /// otherwise be eaten by the `class` statement branch.
 const RESERVED: &[&str] = &[
-    "end", "subgraph", "direction", "style", "classDef", "class", "flowchart", "graph",
-    "linkStyle", "click",
+    "end",
+    "subgraph",
+    "direction",
+    "style",
+    "classDef",
+    "class",
+    "flowchart",
+    "graph",
+    "linkStyle",
+    "click",
 ];
 
 fn is_reserved(id: &str) -> bool {
@@ -498,14 +506,25 @@ mod tests {
         // control chars sanitize to spaces, outer whitespace trims.
         let norm_label = |s: &str| {
             s.chars()
-                .map(|c| if c.is_control() && !matches!(c, '\n' | '\t') { ' ' } else { c })
+                .map(|c| {
+                    if c.is_control() && !matches!(c, '\n' | '\t') {
+                        ' '
+                    } else {
+                        c
+                    }
+                })
                 .collect::<String>()
                 .trim()
                 .to_string()
         };
         for (a, b) in g.nodes.iter().zip(&back.nodes) {
             assert_eq!(a.id, b.id, "node id\n--\n{text}");
-            assert_eq!(norm_label(&a.label), b.label, "label of {}\n--\n{text}", a.id);
+            assert_eq!(
+                norm_label(&a.label),
+                b.label,
+                "label of {}\n--\n{text}",
+                a.id
+            );
             assert_eq!(a.shape, b.shape, "shape of {}\n--\n{text}", a.id);
             // Style values round-trip modulo trim (both the emitter
             // and parse_props trim), and unwritable values (commas,
@@ -516,8 +535,18 @@ mod tests {
                     .map(|s| s.trim().to_string())
             };
             assert_eq!(
-                (sv(&a.style.fill), sv(&a.style.stroke), a.style.stroke_width, sv(&a.style.color)),
-                (sv(&b.style.fill), sv(&b.style.stroke), b.style.stroke_width, sv(&b.style.color)),
+                (
+                    sv(&a.style.fill),
+                    sv(&a.style.stroke),
+                    a.style.stroke_width,
+                    sv(&a.style.color)
+                ),
+                (
+                    sv(&b.style.fill),
+                    sv(&b.style.stroke),
+                    b.style.stroke_width,
+                    sv(&b.style.color)
+                ),
                 "style of {}\n--\n{text}",
                 a.id
             );
@@ -534,7 +563,11 @@ mod tests {
             let norm = norm_1line;
             assert_eq!(norm(&a.label), norm(&b.label), "edge label\n--\n{text}");
         }
-        assert_eq!(back.subgraphs.len(), g.subgraphs.len(), "subgraph count\n--\n{text}");
+        assert_eq!(
+            back.subgraphs.len(),
+            g.subgraphs.len(),
+            "subgraph count\n--\n{text}"
+        );
         for s in &g.subgraphs {
             let t = back
                 .subgraphs
@@ -547,23 +580,53 @@ mod tests {
                 v.sort();
                 v
             };
-            assert_eq!(ids(g, &s.nodes), ids(&back, &t.nodes), "members of {}\n--\n{text}", s.id);
+            assert_eq!(
+                ids(g, &s.nodes),
+                ids(&back, &t.nodes),
+                "members of {}\n--\n{text}",
+                s.id
+            );
             let pid = |g: &Graph, p: Option<usize>| p.map(|i| g.subgraphs[i].id.clone());
-            assert_eq!(pid(g, s.parent), pid(&back, t.parent), "parent of {}\n--\n{text}", s.id);
-            assert_eq!(s.direction, t.direction, "direction of {}\n--\n{text}", s.id);
+            assert_eq!(
+                pid(g, s.parent),
+                pid(&back, t.parent),
+                "parent of {}\n--\n{text}",
+                s.id
+            );
+            assert_eq!(
+                s.direction, t.direction,
+                "direction of {}\n--\n{text}",
+                s.id
+            );
         }
         // Sub-edges (whole-cluster endpoints) — endpoints resolved to
         // tagged ids so node-vs-sub misbinds can't hide.
-        assert_eq!(back.sub_edges.len(), g.sub_edges.len(), "sub-edge count\n--\n{text}");
+        assert_eq!(
+            back.sub_edges.len(),
+            g.sub_edges.len(),
+            "sub-edge count\n--\n{text}"
+        );
         let end_id = |g: &Graph, e: End| match e {
             End::Node(i) => format!("n:{}", g.nodes[i].id),
             End::Sub(i) => format!("s:{}", g.subgraphs[i].id),
         };
         for (a, b) in g.sub_edges.iter().zip(&back.sub_edges) {
-            assert_eq!(end_id(g, a.from), end_id(&back, b.from), "sub-edge from\n--\n{text}");
-            assert_eq!(end_id(g, a.to), end_id(&back, b.to), "sub-edge to\n--\n{text}");
+            assert_eq!(
+                end_id(g, a.from),
+                end_id(&back, b.from),
+                "sub-edge from\n--\n{text}"
+            );
+            assert_eq!(
+                end_id(g, a.to),
+                end_id(&back, b.to),
+                "sub-edge to\n--\n{text}"
+            );
             assert_eq!(a.kind, b.kind, "sub-edge kind\n--\n{text}");
-            assert_eq!(norm_1line(&a.label), norm_1line(&b.label), "sub-edge label\n--\n{text}");
+            assert_eq!(
+                norm_1line(&a.label),
+                norm_1line(&b.label),
+                "sub-edge label\n--\n{text}"
+            );
         }
     }
 
@@ -695,7 +758,10 @@ mod tests {
             direction: None,
         });
         let text = to_mermaid(&g);
-        assert!(text.contains("subgraph s0") && text.contains("subgraph s1"), "{text}");
+        assert!(
+            text.contains("subgraph s0") && text.contains("subgraph s1"),
+            "{text}"
+        );
         assert!(parse(&text).is_ok(), "{text}");
     }
 
@@ -740,7 +806,11 @@ mod tests {
         let mut g = Graph::default();
         g.direction = Direction::LR;
         let a = g.ensure_node("start", Some("Start".into()), Some(Shape::Stadium));
-        let b = g.ensure_node("check", Some("pay_mode == cod".into()), Some(Shape::Diamond));
+        let b = g.ensure_node(
+            "check",
+            Some("pay_mode == cod".into()),
+            Some(Shape::Diamond),
+        );
         let c = g.ensure_node("ship", Some("Ship it".into()), Some(Shape::Rect));
         g.add_edge(a, b, None, EdgeKind::Arrow);
         g.add_edge(b, c, Some("yes".into()), EdgeKind::Arrow);
@@ -787,17 +857,39 @@ mod tests {
             EdgeKind::Invisible,
         ];
         let labels = [
-            "plain", "with space", "a[b]c", "p|q", "()", "{}", "-->", "==>", "x\ny",
-            "he said \"hi\"", "\"wrapped\"", "says \"hi\" :)", "see \"n\" [1]", "#f00",
-            "#quot; raw", "#65;", "subgraph", "end", "100%", "a & b", "C#",
-            "Tom #amp; Jerry", "literal <br/> text", "a < b", "`md text`", "#0;",
-            "$$x^2$$", "fee $$ plus $$ tax",
+            "plain",
+            "with space",
+            "a[b]c",
+            "p|q",
+            "()",
+            "{}",
+            "-->",
+            "==>",
+            "x\ny",
+            "he said \"hi\"",
+            "\"wrapped\"",
+            "says \"hi\" :)",
+            "see \"n\" [1]",
+            "#f00",
+            "#quot; raw",
+            "#65;",
+            "subgraph",
+            "end",
+            "100%",
+            "a & b",
+            "C#",
+            "Tom #amp; Jerry",
+            "literal <br/> text",
+            "a < b",
+            "`md text`",
+            "#0;",
+            "$$x^2$$",
+            "fee $$ plus $$ tax",
         ];
         let mut rng = Lcg(7);
         for round in 0..60 {
             let mut g = Graph::default();
-            g.direction = [Direction::TD, Direction::LR, Direction::RL, Direction::BT]
-                [rng.next(4)];
+            g.direction = [Direction::TD, Direction::LR, Direction::RL, Direction::BT][rng.next(4)];
             let n = 2 + rng.next(9);
             for i in 0..n {
                 let id = format!("n{round}_{i}");
@@ -827,7 +919,11 @@ mod tests {
                         claimed.push(i);
                     }
                 }
-                let parent = if si == 1 && rng.next(2) == 0 { Some(0) } else { None };
+                let parent = if si == 1 && rng.next(2) == 0 {
+                    Some(0)
+                } else {
+                    None
+                };
                 g.subgraphs.push(crate::model::Subgraph {
                     id: format!("s{round}_{si}"),
                     title: format!("s{round}_{si}"),
@@ -869,9 +965,18 @@ mod tests {
         g.add_edge(c, d, None, EdgeKind::Arrow);
         assert_roundtrip(&g);
         let text = to_mermaid(&g);
-        assert!(text.contains("#35;amp;"), "named lookalike escaped:\n{text}");
-        assert!(text.contains("#60;br/>"), "literal break tag defused:\n{text}");
-        assert!(text.contains("#96;"), "leading markdown backtick defused:\n{text}");
+        assert!(
+            text.contains("#35;amp;"),
+            "named lookalike escaped:\n{text}"
+        );
+        assert!(
+            text.contains("#60;br/>"),
+            "literal break tag defused:\n{text}"
+        );
+        assert!(
+            text.contains("#96;"),
+            "leading markdown backtick defused:\n{text}"
+        );
     }
 
     #[test]
@@ -948,7 +1053,11 @@ mod tests {
         // phantom node) now gets the targeted id diagnostic.
         assert!(parse("flowchart TD\nclassDef --x fill:red\nA\n").is_ok());
         let e = parse("flowchart TD\nA\nstyle --x fill:red\n").unwrap_err();
-        assert!(e.message.contains("node id"), "targeted, not misleading: {}", e.message);
+        assert!(
+            e.message.contains("node id"),
+            "targeted, not misleading: {}",
+            e.message
+        );
         // And a stray `direction -->` with no such entity keeps its
         // targeted diagnostic instead of minting a node.
         assert!(parse("flowchart TD\ndirection --> B\n").is_err());
@@ -963,7 +1072,10 @@ mod tests {
         g.nodes[a].style.stroke = Some(" #900 ".into());
         let text = to_mermaid(&g);
         assert!(!text.contains("B --> C"), "no injected statement:\n{text}");
-        assert!(text.contains("stroke:#900"), "trimmed neighbour survives:\n{text}");
+        assert!(
+            text.contains("stroke:#900"),
+            "trimmed neighbour survives:\n{text}"
+        );
         let back = parse(&text).unwrap();
         assert_eq!(back.nodes.len(), 2, "no phantom nodes:\n{text}");
     }
@@ -974,14 +1086,16 @@ mod tests {
         // actually named "subgraph") must be classified identically
         // by the pre-scan and the main loop, or sub-edge indices
         // drift and edges bind the WRONG box.
-        let g = parse("flowchart TD\nsubgraph & X\nend\nsubgraph two\nC\nend\nD --> two\n").unwrap();
+        let g =
+            parse("flowchart TD\nsubgraph & X\nend\nsubgraph two\nC\nend\nD --> two\n").unwrap();
         assert_eq!(g.sub_edges.len(), 1);
         let crate::model::End::Sub(si) = g.sub_edges[0].to else {
             panic!("expected a sub end")
         };
         assert_eq!(g.subgraphs[si].id, "two", "edge must bind the box it names");
         // Same with an edge-op-looking header.
-        let g = parse("flowchart TD\nsubgraph --> B\nend\nsubgraph two\nC\nend\nD --> two\n").unwrap();
+        let g =
+            parse("flowchart TD\nsubgraph --> B\nend\nsubgraph two\nC\nend\nD --> two\n").unwrap();
         let crate::model::End::Sub(si) = g.sub_edges[0].to else {
             panic!("expected a sub end")
         };
@@ -1038,10 +1152,9 @@ mod tests {
         // A bare-title header starting with `--` was legal in 0.19 —
         // the subgraph branch diverts on COMPLETE operators only, so
         // these stay headers even beside a subgraph named "subgraph".
-        let g = parse(
-            "flowchart TD\nsubgraph subgraph\nA\nend\nsubgraph -- why --> done\nB\nend\n",
-        )
-        .unwrap();
+        let g =
+            parse("flowchart TD\nsubgraph subgraph\nA\nend\nsubgraph -- why --> done\nB\nend\n")
+                .unwrap();
         assert_eq!(g.subgraphs.len(), 2, "second block stays a header");
         assert!(g.nodes.iter().all(|n| n.id != "end"), "no phantom end node");
         let g = parse("flowchart TD\nsubgraph subgraph\nA\nend\nsubgraph -- Phase 1 ---\nB\nend\n")
@@ -1102,7 +1215,9 @@ mod tests {
     fn round6_subgraph_style_props_validated_and_dashed_ids_ok() {
         // Dashed subgraph ids style-drop cleanly (checked before the
         // word-like node-id rule)…
-        assert!(parse("flowchart TD\nsubgraph my-group\nA\nend\nstyle my-group fill:#f9f\n").is_ok());
+        assert!(
+            parse("flowchart TD\nsubgraph my-group\nA\nend\nstyle my-group fill:#f9f\n").is_ok()
+        );
         // …but garbage props are still a hard error.
         assert!(parse("flowchart TD\nsubgraph grp\nA\nend\nstyle grp NOTAPROP\n").is_err());
     }
@@ -1158,7 +1273,10 @@ mod tests {
         assert_roundtrip(&g);
         // `class A, B hot` (space after comma) styles BOTH nodes.
         let g = parse("flowchart TD\nA --> B\nclassDef hot fill:#f00\nclass A, B hot\n").unwrap();
-        assert!(g.nodes.iter().take(2).all(|n| n.style.fill.is_some()), "both styled");
+        assert!(
+            g.nodes.iter().take(2).all(|n| n.style.fill.is_some()),
+            "both styled"
+        );
     }
 
     #[test]
@@ -1204,5 +1322,4 @@ mod tests {
             .unwrap_or_else(|e| panic!("re-parse failed: {}\n{text}", e.message));
         assert_eq!(back.nodes[0].style.fill.as_deref(), Some("url('#g')"));
     }
-
 }

@@ -16,8 +16,8 @@
 use crate::layout::text_width;
 use crate::model::{Class, ClassDiagram, Direction, EdgeKind, Graph, RelKind, Shape};
 use crate::scene::{
-    escape, route_sized, scene_sized, svg_label_box, svg_open, Scene, SvgOptions, EDGE_COLOR, LABEL_BORDER,
-    TEXT_COLOR,
+    escape, route_sized, scene_sized, svg_label_box, svg_open, Scene, SvgOptions, EDGE_COLOR,
+    LABEL_BORDER, TEXT_COLOR,
 };
 
 /// Name-compartment height in pixels.
@@ -108,11 +108,7 @@ fn assemble(d: &ClassDiagram, boxes: Vec<ClassBox>, scene: Scene) -> ClassScene 
             to_card: r.to_card.clone(),
         })
         .collect();
-    ClassScene {
-        scene,
-        boxes,
-        rels,
-    }
+    ClassScene { scene, boxes, rels }
 }
 
 /// Synthetic flowchart graph + box drawing data + node sizes.
@@ -523,8 +519,13 @@ mod tests {
     fn comma_list_declares_multiple_classes() {
         let d = cd("classDiagram\nclass Duck, Fish, Whale");
         assert_eq!(d.classes.len(), 3);
-        assert_eq!(d.classes.iter().map(|c| c.name.as_str()).collect::<Vec<_>>(),
-                   ["Duck", "Fish", "Whale"]);
+        assert_eq!(
+            d.classes
+                .iter()
+                .map(|c| c.name.as_str())
+                .collect::<Vec<_>>(),
+            ["Duck", "Fish", "Whale"]
+        );
     }
 
     #[test]
@@ -579,7 +580,10 @@ mod tests {
             } else {
                 (x, x + tw)
             };
-            assert!(lo >= -1.0 && hi <= w + 1.0, "text {inner:?} [{lo:.0}..{hi:.0}] outside width {w}");
+            assert!(
+                lo >= -1.0 && hi <= w + 1.0,
+                "text {inner:?} [{lo:.0}..{hi:.0}] outside width {w}"
+            );
             assert!((0.0..=h).contains(&y), "text y {y} outside height {h}");
         }
     }
@@ -616,18 +620,23 @@ mod tests {
         }
         // Cardinalities and labels reached the model (the `1..*` sits
         // on LineItem, which the composition normalises to the `from`).
+        assert!(d.relations.iter().any(
+            |r| r.from_card.as_deref() == Some("1..*") || r.to_card.as_deref() == Some("1..*")
+        ));
         assert!(d
             .relations
             .iter()
-            .any(|r| r.from_card.as_deref() == Some("1..*") || r.to_card.as_deref() == Some("1..*")));
-        assert!(d.relations.iter().any(|r| r.label.as_deref() == Some("contains")));
+            .any(|r| r.label.as_deref() == Some("contains")));
 
         // Render: finite canvas, glyphs present, dashed lines for
         // realization/dependency, no NaN, everything inside the canvas.
         let svg = to_svg(&scene(&d));
         assert!(!svg.contains("NaN") && !svg.contains("inf"));
         assert!(svg.contains("<polygon"), "triangles/diamonds");
-        assert!(svg.contains("stroke-dasharray"), "dashed realization/dependency");
+        assert!(
+            svg.contains("stroke-dasharray"),
+            "dashed realization/dependency"
+        );
         let w = svg_attr(&svg, "width");
         let h = svg_attr(&svg, "height");
         assert!(w > 0.0 && h > 0.0);
@@ -641,7 +650,10 @@ mod tests {
             } else {
                 (x, x + tw)
             };
-            assert!(lo >= -1.0 && hi <= w + 1.0, "text {inner:?} outside width {w}");
+            assert!(
+                lo >= -1.0 && hi <= w + 1.0,
+                "text {inner:?} outside width {w}"
+            );
             assert!((0.0..=h).contains(&y), "text y {y} outside height {h}");
         }
     }

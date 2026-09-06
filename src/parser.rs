@@ -2597,7 +2597,10 @@ fn parse_timeline(source: &str, header_line: usize) -> Result<Timeline, ParseErr
         // Continuation: a leading `:` with no period of its own.
         if line.starts_with(':') {
             if periods.is_empty() {
-                return Err(err(lineno, "timeline event has no preceding period".to_string()));
+                return Err(err(
+                    lineno,
+                    "timeline event has no preceding period".to_string(),
+                ));
             }
             let events = split_timeline_events(line);
             periods.last_mut().unwrap().events.extend(events);
@@ -2618,10 +2621,7 @@ fn parse_timeline(source: &str, header_line: usize) -> Result<Timeline, ParseErr
             Some(idx) if line.as_bytes()[idx] == b':' => split_timeline_events(&line[idx..]),
             _ => Vec::new(),
         };
-        periods.push(TimelinePeriod {
-            period,
-            events,
-        });
+        periods.push(TimelinePeriod { period, events });
     }
     Ok(d)
 }
@@ -3929,7 +3929,10 @@ mod tests {
                     assert!(list.contains(header), "'{header}' missing from: {list}");
                 }
                 HeaderSupport::Unsupported => {
-                    assert!(!list.contains(header), "unparsed '{header}' leaked into: {list}");
+                    assert!(
+                        !list.contains(header),
+                        "unparsed '{header}' leaked into: {list}"
+                    );
                 }
                 // Matched, but deliberately not advertised a second time.
                 HeaderSupport::Alias => {}
@@ -3985,23 +3988,35 @@ mod tests {
 
     #[test]
     fn sankey_row_shape_errors_carry_line_numbers() {
-        let e = parse_document("sankey-beta\nA,B\n").map(|_| ()).unwrap_err();
+        let e = parse_document("sankey-beta\nA,B\n")
+            .map(|_| ())
+            .unwrap_err();
         assert_eq!(e.line, 2);
         assert!(e.message.contains("source,target,value"), "{}", e.message);
 
-        let e = parse_document("sankey-beta\nA,B,C,1\n").map(|_| ()).unwrap_err();
+        let e = parse_document("sankey-beta\nA,B,C,1\n")
+            .map(|_| ())
+            .unwrap_err();
         assert!(e.message.contains("4 fields"), "{}", e.message);
 
-        let e = parse_document("sankey-beta\nA,B,xyz\n").map(|_| ()).unwrap_err();
+        let e = parse_document("sankey-beta\nA,B,xyz\n")
+            .map(|_| ())
+            .unwrap_err();
         assert!(e.message.contains("invalid sankey value"), "{}", e.message);
 
-        let e = parse_document("sankey-beta\nA,B,-3\n").map(|_| ()).unwrap_err();
+        let e = parse_document("sankey-beta\nA,B,-3\n")
+            .map(|_| ())
+            .unwrap_err();
         assert!(e.message.contains(">= 0"), "{}", e.message);
 
-        let e = parse_document("sankey-beta\n,B,1\n").map(|_| ()).unwrap_err();
+        let e = parse_document("sankey-beta\n,B,1\n")
+            .map(|_| ())
+            .unwrap_err();
         assert!(e.message.contains("source and a target"), "{}", e.message);
 
-        let e = parse_document("sankey-beta\n\"A,B,1\n").map(|_| ()).unwrap_err();
+        let e = parse_document("sankey-beta\n\"A,B,1\n")
+            .map(|_| ())
+            .unwrap_err();
         assert!(e.message.contains("unclosed"), "{}", e.message);
     }
 
@@ -4054,8 +4069,13 @@ mod tests {
 
     #[test]
     fn sankey_linkcolor_accepts_a_css_colour() {
-        let d = sankey("---\nconfig:\n  sankey:\n    linkColor: \"#ff0000\"\n---\nsankey-beta\nA,B,1\n");
-        assert_eq!(d.config.link_color, SankeyLinkColor::Fixed("#ff0000".to_string()));
+        let d = sankey(
+            "---\nconfig:\n  sankey:\n    linkColor: \"#ff0000\"\n---\nsankey-beta\nA,B,1\n",
+        );
+        assert_eq!(
+            d.config.link_color,
+            SankeyLinkColor::Fixed("#ff0000".to_string())
+        );
     }
 
     #[test]
@@ -4086,9 +4106,7 @@ mod tests {
         );
         assert_eq!(d.config.suffix, " TWh");
         // A `#` INSIDE the quotes belongs to the value, not to a comment.
-        let d = sankey(
-            "---\nconfig:\n  sankey:\n    prefix: \"# \"\n---\nsankey-beta\nA,B,1\n",
-        );
+        let d = sankey("---\nconfig:\n  sankey:\n    prefix: \"# \"\n---\nsankey-beta\nA,B,1\n");
         assert_eq!(d.config.prefix, "# ");
     }
 

@@ -15,7 +15,8 @@
 use crate::layout::text_width;
 use crate::model::{Attr, Card, Direction, EdgeKind, Entity, ErDiagram, Graph, Shape};
 use crate::scene::{
-    escape, route_sized, scene_sized, svg_label_box, svg_open, Scene, SvgOptions, EDGE_COLOR, TEXT_COLOR,
+    escape, route_sized, scene_sized, svg_label_box, svg_open, Scene, SvgOptions, EDGE_COLOR,
+    TEXT_COLOR,
 };
 
 /// Table header height in pixels.
@@ -89,7 +90,11 @@ fn assemble(d: &ErDiagram, tables: Vec<ErTable>, scene: Scene) -> ErScene {
     // consumer of ErScene; fail loudly if a refactor breaks it.
     assert_eq!(scene.nodes.len(), d.entities.len());
     assert_eq!(scene.edges.len(), d.relations.len());
-    let cards = d.relations.iter().map(|r| (r.card_from, r.card_to)).collect();
+    let cards = d
+        .relations
+        .iter()
+        .map(|r| (r.card_from, r.card_to))
+        .collect();
     ErScene {
         scene,
         tables,
@@ -163,12 +168,7 @@ fn row_of(a: &Attr) -> ErRow {
     ErRow {
         ty: a.ty.clone(),
         name: a.name.clone(),
-        keys: a
-            .keys
-            .iter()
-            .map(|k| k.tag())
-            .collect::<Vec<_>>()
-            .join(","),
+        keys: a.keys.iter().map(|k| k.tag()).collect::<Vec<_>>().join(","),
     }
 }
 
@@ -181,7 +181,14 @@ pub fn to_svg(es: &ErScene) -> String {
 pub fn to_svg_with(es: &ErScene, opts: &SvgOptions) -> String {
     let sc = &es.scene;
     let mut s = String::new();
-    svg_open(&mut s, sc.width, sc.height, 13, "Entity-relationship diagram", opts);
+    svg_open(
+        &mut s,
+        sc.width,
+        sc.height,
+        13,
+        "Entity-relationship diagram",
+        opts,
+    );
 
     // Relationship lines + crow's foot glyphs (under the tables).
     for (e, &(card_from, card_to)) in sc.edges.iter().zip(&es.cards) {
@@ -306,7 +313,7 @@ pub fn glyph(e: (f64, f64), c: (f64, f64), card: Card) -> Glyph {
     let len = (dx * dx + dy * dy).sqrt().max(1e-6);
     let u = (dx / len, dy / len); // unit vector pointing away from the entity
     let nv = (-u.1, u.0); // unit normal
-    // Point k units inward along the line, t units sideways.
+                          // Point k units inward along the line, t units sideways.
     let p = |k: f64, t: f64| (e.0 + u.0 * k + nv.0 * t, e.1 + u.1 * k + nv.1 * t);
     let tick = |k: f64| [p(k, -5.5), p(k, 5.5)];
     let fork = || {
@@ -370,7 +377,10 @@ mod tests {
         }
         assert!(svg.contains(">PK</text>"), "PK tag must be visible");
         assert!(svg.contains(">FK</text>"), "FK tag must be visible");
-        assert!(svg.contains(">has</text>"), "relationship label must render");
+        assert!(
+            svg.contains(">has</text>"),
+            "relationship label must render"
+        );
         // The single fixture relationship is identifying: solid line.
         assert!(!svg.contains("stroke-dasharray"));
         assert!(svg.ends_with("</svg>\n"));
@@ -391,8 +401,18 @@ mod tests {
                 .map(|s| s.parse().unwrap())
                 .collect();
             for xy in nums.chunks(2) {
-                assert!(xy[0] >= -0.5 && xy[0] <= w + 0.5, "x={} outside w={}", xy[0], w);
-                assert!(xy[1] >= -0.5 && xy[1] <= h + 0.5, "y={} outside h={}", xy[1], h);
+                assert!(
+                    xy[0] >= -0.5 && xy[0] <= w + 0.5,
+                    "x={} outside w={}",
+                    xy[0],
+                    w
+                );
+                assert!(
+                    xy[1] >= -0.5 && xy[1] <= h + 0.5,
+                    "y={} outside h={}",
+                    xy[1],
+                    h
+                );
             }
         }
         for line in svg.lines().filter(|l| l.starts_with("<circle")) {
@@ -424,8 +444,7 @@ mod tests {
     fn route_follows_dragged_entity() {
         let d = er("erDiagram\nA ||--o{ B : owns");
         let s0 = scene(&d);
-        let mut pos: Vec<(f64, f64)> =
-            s0.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let mut pos: Vec<(f64, f64)> = s0.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
         pos[1].0 += 500.0; // drag B far right
         let s1 = route(&d, &pos);
         assert_eq!(s1.scene.nodes[1].x, pos[1].0);
