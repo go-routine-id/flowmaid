@@ -3082,8 +3082,8 @@ fn order_lane_nodes(
 const SELF_LOOP_DX: f64 = 28.0;
 const SELF_LOOP_DROP: f64 = 12.0;
 const PARALLEL_FAN: f64 = 16.0;
-const SIDE_CHANNEL_INSET: f64 = 12.0;
-const MIN_CHANNEL_GAP: f64 = 8.0;
+/// How far outside a node an edge travels before it may turn.
+const PORT_LEAD: f64 = 18.0;
 
 fn node_rect(n: &AdvanceSceneNode) -> (f64, f64, f64, f64) {
     (n.x - n.w / 2.0, n.y - n.h / 2.0, n.x + n.w / 2.0, n.y + n.h / 2.0)
@@ -3114,6 +3114,408 @@ fn seg_crosses_rect(p0: (f64, f64), p1: (f64, f64), rect: (f64, f64, f64, f64)) 
     }
 }
 
+// ------------------------------------------------------------------
+// Channel-grid router
+// ------------------------------------------------------------------
+
+/// How far outside a node the grid runs its channels.
+const GRID_CLEAR: f64 = 12.0;
+/// What a corner costs, in pixels of path length. High enough that the
+/// router prefers a longer straight run over a shorter staircase.
+const BEND_COST: f64 = 40.0;
+/// Above this many lattice vertices the search is abandoned for a
+/// direct route. A diagram that large is unreadable long before the
+/// router is its problem.
+const GRID_BUDGET: usize = 40_000;
+/// What crossing an already-routed edge costs. Well above a bend, so a
+/// route takes a longer way round rather than cut across a neighbour —
+/// but finite, so it still crosses when there is no alternative.
+const CROSS_COST: f64 = 260.0;
+
+/// Two lines meeting in a T, and two lines running along each other:
+/// not crossings, but they read like one, so they are worth avoiding.
+const TOUCH_COST: f64 = 90.0;
+const SHARE_COST: f64 = 140.0;
+
+/// Which way the path was travelling when it reached a vertex; a bend
+/// is counted when this changes.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum Dir {
+    Start,
+    Horizontal,
+    Vertical,
+}
+
+/// A lattice of candidate channels built from the diagram's own
+/// geometry: every node's sides with clearance and its centre lines,
+/// the lane boundaries, and the endpoints of the route being drawn.
+///
+/// Routing on the lattice is orthogonal by construction, and a segment
+/// counts only when it clears every node — which makes "no line through
+/// a box" a property of the router instead of a check repeated per edge
+/// kind.
+struct RouteGrid {
+    xs: Vec<f64>,
+    ys: Vec<f64>,
+    rects: Vec<(f64, f64, f64, f64)>,
+    /// Segments of the edges routed before this one. Crossing one is
+    /// priced, not forbidden — some diagrams have no planar routing, and
+    /// a missing edge is worse than a crossed one.
+    drawn: Vec<((f64, f64), (f64, f64))>,
+}
+
+fn sorted_unique(mut v: Vec<f64>) -> Vec<f64> {
+    v.retain(|x| x.is_finite());
+    v.sort_by(f64::total_cmp);
+    v.dedup_by(|a, b| (*a - *b).abs() < 1e-6);
+    v
+}
+
+/// What one already-drawn segment costs the segment `a`.
+///
+/// A true crossing is the expensive case, but two lines that meet in a
+/// T or run along each other read as a crossing to whoever looks at the
+/// diagram, so they are priced too — less, because they are less wrong.
+/// Corner touching corner is how neighbouring routes legitimately share
+/// a lattice vertex and is free.
+fn seg_conflict(a: ((f64, f64), (f64, f64)), b: ((f64, f64), (f64, f64))) -> f64 {
+    const EPS: f64 = 1e-6;
+    let vert = |s: ((f64, f64), (f64, f64))| (s.0 .0 - s.1 .0).abs() < EPS;
+    let (av, bv) = (vert(a), vert(b));
+    if av == bv {
+        let (ac, bc) = if av { (a.0 .0, b.0 .0) } else { (a.0 .1, b.0 .1) };
+        if (ac - bc).abs() > EPS {
+            return 0.0; // parallel but on different lines
+        }
+        let span = |s: ((f64, f64), (f64, f64))| {
+            if av {
+                (s.0 .1.min(s.1 .1), s.0 .1.max(s.1 .1))
+            } else {
+                (s.0 .0.min(s.1 .0), s.0 .0.max(s.1 .0))
+            }
+        };
+        let ((a0, a1), (b0, b1)) = (span(a), span(b));
+        return if a1.min(b1) - a0.max(b0) > EPS { SHARE_COST } else { 0.0 };
+    }
+    let (v, h) = if av { (a, b) } else { (b, a) };
+    let x = v.0 .0;
+    let (vy0, vy1) = (v.0 .1.min(v.1 .1), v.0 .1.max(v.1 .1));
+    let y = h.0 .1;
+    let (hx0, hx1) = (h.0 .0.min(h.1 .0), h.0 .0.max(h.1 .0));
+    if x < hx0 - EPS || x > hx1 + EPS || y < vy0 - EPS || y > vy1 + EPS {
+        return 0.0;
+    }
+    match (x > hx0 + EPS && x < hx1 - EPS, y > vy0 + EPS && y < vy1 - EPS) {
+        (true, true) => CROSS_COST,
+        (false, false) => 0.0,
+        _ => TOUCH_COST,
+    }
+}
+
+/// What a finished route costs: its length, its corners, and every
+/// conflict with the routes drawn before it. This is the yardstick an
+/// auto-sided edge uses to choose which sides to leave and arrive on.
+fn route_cost(points: &[(f64, f64)], drawn: &[Vec<(f64, f64)>]) -> f64 {
+    let length: f64 = points
+        .windows(2)
+        .map(|w| (w[0].0 - w[1].0).abs() + (w[0].1 - w[1].1).abs())
+        .sum();
+    length + BEND_COST * points.len().saturating_sub(2) as f64 + route_conflicts(points, drawn)
+}
+
+/// The conflict half of [`route_cost`] on its own, so a route that
+/// already touches nothing can skip the search over the other sides.
+fn route_conflicts(points: &[(f64, f64)], drawn: &[Vec<(f64, f64)>]) -> f64 {
+    points
+        .windows(2)
+        .map(|w| {
+            drawn
+                .iter()
+                .flat_map(|o| o.windows(2))
+                .map(|o| seg_conflict((w[0], w[1]), (o[0], o[1])))
+                .sum::<f64>()
+        })
+        .sum()
+}
+
+impl RouteGrid {
+    fn build(
+        nodes: &[AdvanceSceneNode],
+        lanes: &[AdvanceSceneLane],
+        extra: &[(f64, f64)],
+        drawn: &[Vec<(f64, f64)>],
+    ) -> Self {
+        let mut xs = Vec::with_capacity(nodes.len() * 3 + lanes.len() * 2 + extra.len());
+        let mut ys = Vec::with_capacity(xs.capacity());
+        for n in nodes {
+            let (l, t, r, b) = node_rect(n);
+            xs.extend([l - GRID_CLEAR, r + GRID_CLEAR, n.x]);
+            ys.extend([t - GRID_CLEAR, b + GRID_CLEAR, n.y]);
+        }
+        for l in lanes {
+            xs.extend([l.x + GRID_CLEAR, l.x + l.w - GRID_CLEAR]);
+            ys.extend([l.y + GRID_CLEAR, l.y + l.h - GRID_CLEAR]);
+        }
+        for (x, y) in extra {
+            xs.push(*x);
+            ys.push(*y);
+        }
+        RouteGrid {
+            xs: sorted_unique(xs),
+            ys: sorted_unique(ys),
+            rects: nodes.iter().map(node_rect).collect(),
+            drawn: drawn
+                .iter()
+                .flat_map(|pts| pts.windows(2).map(|w| (w[0], w[1])))
+                .collect(),
+        }
+    }
+
+    fn size(&self) -> usize {
+        self.xs.len().saturating_mul(self.ys.len())
+    }
+
+    fn at(v: f64, axis: &[f64]) -> Option<usize> {
+        axis.iter().position(|a| (a - v).abs() < 1e-6)
+    }
+
+    /// Whether `p`-`q` clears every node.
+    ///
+    /// Every node, the route's own endpoints included: the lattice
+    /// carries only the part between the two leaders, which are already
+    /// outside both. The lead from a sub-element to its node boundary is
+    /// prepended around the lattice path, so it never needs an exemption
+    /// here — granting one let a route wander through the node it was
+    /// leaving.
+    fn clear(&self, p: (f64, f64), q: (f64, f64)) -> bool {
+        self.rects.iter().all(|r| !seg_crosses_rect(p, q, *r))
+    }
+
+    /// What `p`-`q` would cost in conflicts with the edges already routed.
+    fn conflict(&self, p: (f64, f64), q: (f64, f64)) -> f64 {
+        self.drawn.iter().map(|seg| seg_conflict((p, q), *seg)).sum()
+    }
+}
+
+/// One state in the search: a lattice vertex plus the direction that
+/// reached it.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct Step(usize, usize, Dir);
+
+/// Ordered by cost, then by state, so ties break the same way on every
+/// run and the SVG stays a function of the input alone.
+struct Queued(f64, Step);
+impl PartialEq for Queued {
+    fn eq(&self, o: &Self) -> bool {
+        self.cmp(o) == std::cmp::Ordering::Equal
+    }
+}
+impl Eq for Queued {}
+impl Ord for Queued {
+    fn cmp(&self, o: &Self) -> std::cmp::Ordering {
+        // Reversed: BinaryHeap is a max-heap, the cheapest must pop.
+        o.0.total_cmp(&self.0).then_with(|| o.1.cmp(&self.1))
+    }
+}
+impl PartialOrd for Queued {
+    fn partial_cmp(&self, o: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(o))
+    }
+}
+
+/// Cheapest orthogonal path from `start` to `goal` on the lattice,
+/// paying [`BEND_COST`] per corner.
+///
+/// `start` and `goal` are the leaders — a stub already stepped out of
+/// each node along its side's normal. `ban_first` and `ban_last` are the
+/// two moves that would undo those stubs by walking back along them; a
+/// path that took one would be collapsed back into the node it was
+/// meant to leave, so an edge with a port on the right would visibly
+/// leave it by some other amount than the port says.
+fn grid_route(
+    g: &RouteGrid,
+    start: (usize, usize),
+    goal: (usize, usize),
+    ban_first: Option<(i64, i64)>,
+    ban_last: Option<(i64, i64)>,
+) -> Option<Vec<(f64, f64)>> {
+    use std::collections::{BinaryHeap, HashMap};
+    let point = |i: usize, j: usize| (g.xs[i], g.ys[j]);
+    let heuristic =
+        |i: usize, j: usize| (g.xs[i] - g.xs[goal.0]).abs() + (g.ys[j] - g.ys[goal.1]).abs();
+
+    let mut best: HashMap<Step, f64> = HashMap::new();
+    let mut came: HashMap<Step, Step> = HashMap::new();
+    let mut heap = BinaryHeap::new();
+    let s0 = Step(start.0, start.1, Dir::Start);
+    best.insert(s0, 0.0);
+    heap.push(Queued(heuristic(start.0, start.1), s0));
+
+    while let Some(Queued(_, cur)) = heap.pop() {
+        let Step(i, j, dir) = cur;
+        let g_cur = best[&cur];
+        if (i, j) == goal {
+            let mut pts = vec![point(i, j)];
+            let mut at = cur;
+            while let Some(prev) = came.get(&at) {
+                pts.push(point(prev.0, prev.1));
+                at = *prev;
+            }
+            pts.reverse();
+            return Some(collapse_collinear(dedup_pts(pts)));
+        }
+        for (di, dj) in [(1i64, 0i64), (-1, 0), (0, 1), (0, -1)] {
+            let (ni, nj) = (i as i64 + di, j as i64 + dj);
+            if ni < 0 || nj < 0 || ni as usize >= g.xs.len() || nj as usize >= g.ys.len() {
+                continue;
+            }
+            let (ni, nj) = (ni as usize, nj as usize);
+            let step_dir = if di != 0 { Dir::Horizontal } else { Dir::Vertical };
+            if dir == Dir::Start && ban_first == Some((di, dj)) {
+                continue;
+            }
+            if (ni, nj) == goal && ban_last == Some((di, dj)) {
+                continue;
+            }
+            let (p, q) = (point(i, j), point(ni, nj));
+            if !g.clear(p, q) {
+                continue;
+            }
+            // Turning straight off a stub is a corner too, so the
+            // stub's own axis stands in for the direction we came from.
+            let from_dir = if dir == Dir::Start {
+                match ban_first {
+                    Some((bi, _)) if bi != 0 => Dir::Horizontal,
+                    Some(_) => Dir::Vertical,
+                    None => step_dir,
+                }
+            } else {
+                dir
+            };
+            let bend = if from_dir != step_dir { BEND_COST } else { 0.0 };
+            let cross = g.conflict(p, q);
+            let g_next = g_cur + (p.0 - q.0).abs() + (p.1 - q.1).abs() + bend + cross;
+            let next = Step(ni, nj, step_dir);
+            if best.get(&next).map_or(true, |b| g_next < *b - 1e-9) {
+                best.insert(next, g_next);
+                came.insert(next, cur);
+                heap.push(Queued(g_next + heuristic(ni, nj), next));
+            }
+        }
+    }
+    None
+}
+
+/// Drop the middle of any three points on one straight line, so a path
+/// is a list of corners rather than of lattice vertices.
+fn collapse_collinear(pts: Vec<(f64, f64)>) -> Vec<(f64, f64)> {
+    let mut out: Vec<(f64, f64)> = Vec::with_capacity(pts.len());
+    for p in pts {
+        if out.len() >= 2 {
+            let (a, b) = (out[out.len() - 2], out[out.len() - 1]);
+            let same_x = (a.0 - b.0).abs() < 1e-9 && (b.0 - p.0).abs() < 1e-9;
+            let same_y = (a.1 - b.1).abs() < 1e-9 && (b.1 - p.1).abs() < 1e-9;
+            if same_x || same_y {
+                out.pop();
+            }
+        }
+        out.push(p);
+    }
+    out
+}
+
+/// Route one edge on the channel grid.
+///
+/// Both ends arrive resolved to a terminal point (on a node,
+/// sub-element or anchor) and a boundary point on the node's outline.
+/// The lattice carries the path between the two leaders; the leads in
+/// and out are appended around it.
+///
+/// `fan` lengthens the leader, so parallel edges leave at different
+/// depths and take different channels while still leaving along their
+/// anchor's normal.
+#[allow(clippy::too_many_arguments)]
+fn route_on_grid(
+    from_side: AdvanceSide,
+    tp0: (f64, f64),
+    bp0: (f64, f64),
+    to_side: AdvanceSide,
+    tp3: (f64, f64),
+    bp3: (f64, f64),
+    fan: f64,
+    nodes: &[AdvanceSceneNode],
+    lanes: &[AdvanceSceneLane],
+    drawn: &[Vec<(f64, f64)>],
+) -> Vec<(f64, f64)> {
+    let lead = (PORT_LEAD + fan).max(6.0);
+    let l0 = port_leader(bp0, from_side, lead);
+    let l3 = port_leader(bp3, to_side, lead);
+    let finish = |mid: Vec<(f64, f64)>| {
+        let mut pts = vec![tp0, bp0];
+        pts.extend(mid);
+        pts.push(bp3);
+        pts.push(tp3);
+        collapse_collinear(dedup_pts(pts))
+    };
+
+    let g = RouteGrid::build(nodes, lanes, &[l0, l3], drawn);
+    if g.size() <= GRID_BUDGET {
+        if let (Some(sx), Some(sy), Some(gx), Some(gy)) = (
+            RouteGrid::at(l0.0, &g.xs),
+            RouteGrid::at(l0.1, &g.ys),
+            RouteGrid::at(l3.0, &g.xs),
+            RouteGrid::at(l3.1, &g.ys),
+        ) {
+            // The step that would walk back down each stub.
+            let (dx, dy) = side_delta(from_side);
+            let ban_first = Some((-dx, -dy));
+            let ban_last = Some(side_delta(to_side));
+            if let Some(path) = grid_route(&g, (sx, sy), (gx, gy), ban_first, ban_last) {
+                return finish(path);
+            }
+        }
+    }
+    // No lattice path — an over-large diagram, or two anchors boxed in.
+    // The plain leader-to-leader shape still honours both sides.
+    finish(vec![l0, (l3.0, l0.1), l3])
+}
+
+/// A self-loop that honours explicit sides: out along `from_side`,
+/// around the node's expanded box, back in along `to_side`. With both
+/// sides the same the loop keeps its area instead of collapsing into
+/// the spike the old router drew.
+fn route_self_loop_sides(
+    a: &AdvanceSceneNode,
+    from_side: AdvanceSide,
+    to_side: AdvanceSide,
+    fan: f64,
+) -> Vec<(f64, f64)> {
+    const SPREAD: f64 = 11.0;
+    let lead = (PORT_LEAD + fan.abs()).max(PORT_LEAD);
+    // With the two sides equal the anchor points must not be, or the
+    // loop has no width.
+    let (off0, off3) = if from_side == to_side { (-SPREAD, SPREAD) } else { (0.0, 0.0) };
+    let slide = |p: (f64, f64), side: AdvanceSide, by: f64| match side {
+        AdvanceSide::Left | AdvanceSide::Right => (p.0, p.1 + by),
+        AdvanceSide::Top | AdvanceSide::Bottom => (p.0 + by, p.1),
+    };
+    let p0 = slide(side_point(a, from_side), from_side, off0);
+    let p3 = slide(side_point(a, to_side), to_side, off3);
+    let l0 = port_leader(p0, from_side, lead);
+    let l3 = port_leader(p3, to_side, lead);
+    let mut pts = vec![p0, l0];
+    if from_side != to_side {
+        // Turn the corner outside the node.
+        pts.push(match from_side {
+            AdvanceSide::Left | AdvanceSide::Right => (l0.0, l3.1),
+            _ => (l3.0, l0.1),
+        });
+    }
+    pts.push(l3);
+    pts.push(p3);
+    collapse_collinear(dedup_pts(pts))
+}
+
 fn route_self_loop(a: &AdvanceSceneNode, fan: f64, dir: AdvanceDirection) -> Vec<(f64, f64)> {
     match dir {
         AdvanceDirection::Vertical => {
@@ -3133,313 +3535,6 @@ fn route_self_loop(a: &AdvanceSceneNode, fan: f64, dir: AdvanceDirection) -> Vec
     }
 }
 
-fn same_lane_blocked(
-    a: &AdvanceSceneNode,
-    b: &AdvanceSceneNode,
-    nodes: &[AdvanceSceneNode],
-    dir: AdvanceDirection,
-) -> bool {
-    match dir {
-        AdvanceDirection::Vertical => {
-            let (lo_y, hi_y) = if a.y < b.y {
-                (a.y + a.h / 2.0, b.y - b.h / 2.0)
-            } else {
-                (b.y + b.h / 2.0, a.y - a.h / 2.0)
-            };
-            if hi_y <= lo_y {
-                return false;
-            }
-            let x = a.x;
-            nodes.iter().any(|n| {
-                n.id != a.id
-                    && n.id != b.id
-                    && n.lane == a.lane
-                    && seg_crosses_rect((x, lo_y), (x, hi_y), node_rect(n))
-            })
-        }
-        AdvanceDirection::Horizontal => {
-            let (lo_x, hi_x) = if a.x < b.x {
-                (a.x + a.w / 2.0, b.x - b.w / 2.0)
-            } else {
-                (b.x + b.w / 2.0, a.x - a.w / 2.0)
-            };
-            if hi_x <= lo_x {
-                return false;
-            }
-            let y = a.y;
-            nodes.iter().any(|n| {
-                n.id != a.id
-                    && n.id != b.id
-                    && n.lane == a.lane
-                    && seg_crosses_rect((lo_x, y), (hi_x, y), node_rect(n))
-            })
-        }
-    }
-}
-
-fn route_same_lane(
-    a: &AdvanceSceneNode,
-    b: &AdvanceSceneNode,
-    nodes: &[AdvanceSceneNode],
-    fan: f64,
-    dir: AdvanceDirection,
-) -> Vec<(f64, f64)> {
-    match dir {
-        AdvanceDirection::Vertical => {
-            if same_lane_blocked(a, b, nodes, dir) {
-                // Multi-obstacle corridor clearance: calculate bounding box of all intersecting obstacles
-                let (lo_y, hi_y) = if a.y < b.y {
-                    (a.y + a.h / 2.0, b.y - b.h / 2.0)
-                } else {
-                    (b.y + b.h / 2.0, a.y - a.h / 2.0)
-                };
-                let obstacles: Vec<&AdvanceSceneNode> = nodes
-                    .iter()
-                    .filter(|n| {
-                        n.id != a.id
-                            && n.id != b.id
-                            && n.lane == a.lane
-                            && n.y + n.h / 2.0 > lo_y
-                            && n.y - n.h / 2.0 < hi_y
-                    })
-                    .collect();
-
-                let max_right = obstacles
-                    .iter()
-                    .map(|n| n.x + n.w / 2.0)
-                    .fold(a.x + a.w / 2.0, f64::max);
-
-                let detour_x = max_right + SIDE_CHANNEL_INSET + fan;
-                let p0 = (a.x + a.w / 2.0, a.y);
-                let p3 = (b.x + b.w / 2.0, b.y);
-                return vec![p0, (detour_x, p0.1), (detour_x, p3.1), p3];
-            }
-            let (p0, p3) = if a.y < b.y {
-                ((a.x, a.y + a.h / 2.0), (b.x, b.y - b.h / 2.0))
-            } else {
-                ((a.x, a.y - a.h / 2.0), (b.x, b.y + b.h / 2.0))
-            };
-            if (a.x - b.x).abs() < f64::EPSILON {
-                if fan.abs() < f64::EPSILON {
-                    vec![p0, p3]
-                } else {
-                    let spread_x = fan * 0.5;
-                    let p0s = (p0.0 + spread_x, p0.1);
-                    let p3s = (p3.0 + spread_x, p3.1);
-                    let mid_y = (p0.1 + p3.1) / 2.0;
-                    vec![p0s, (p0s.0, mid_y), (p3s.0, mid_y), p3s]
-                }
-            } else {
-                let mid_y = (p0.1 + p3.1) / 2.0 + fan;
-                vec![p0, (a.x, mid_y), (b.x, mid_y), p3]
-            }
-        }
-        AdvanceDirection::Horizontal => {
-            if same_lane_blocked(a, b, nodes, dir) {
-                let (lo_x, hi_x) = if a.x < b.x {
-                    (a.x + a.w / 2.0, b.x - b.w / 2.0)
-                } else {
-                    (b.x + b.w / 2.0, a.x - a.w / 2.0)
-                };
-                let obstacles: Vec<&AdvanceSceneNode> = nodes
-                    .iter()
-                    .filter(|n| {
-                        n.id != a.id
-                            && n.id != b.id
-                            && n.lane == a.lane
-                            && n.x + n.w / 2.0 > lo_x
-                            && n.x - n.w / 2.0 < hi_x
-                    })
-                    .collect();
-
-                let max_bottom = obstacles
-                    .iter()
-                    .map(|n| n.y + n.h / 2.0)
-                    .fold(a.y + a.h / 2.0, f64::max);
-
-                let detour_y = max_bottom + SIDE_CHANNEL_INSET + fan;
-                let p0 = (a.x, a.y + a.h / 2.0);
-                let p3 = (b.x, b.y + b.h / 2.0);
-                return vec![p0, (p0.0, detour_y), (p3.0, detour_y), p3];
-            }
-            let (p0, p3) = if a.x < b.x {
-                ((a.x + a.w / 2.0, a.y), (b.x - b.w / 2.0, b.y))
-            } else {
-                ((a.x - a.w / 2.0, a.y), (b.x + b.w / 2.0, b.y))
-            };
-            if (a.y - b.y).abs() < f64::EPSILON {
-                if fan.abs() < f64::EPSILON {
-                    vec![p0, p3]
-                } else {
-                    let spread_y = fan * 0.5;
-                    let p0s = (p0.0, p0.1 + spread_y);
-                    let p3s = (p3.0, p3.1 + spread_y);
-                    let mid_x = (p0.0 + p3.0) / 2.0;
-                    vec![p0s, (mid_x, p0s.1), (mid_x, p3s.1), p3s]
-                }
-            } else {
-                let mid_x = (p0.0 + p3.0) / 2.0 + fan;
-                vec![p0, (mid_x, a.y), (mid_x, b.y), p3]
-            }
-        }
-    }
-}
-
-fn nudge_mid_y(
-    mid_y: f64,
-    p0: (f64, f64),
-    p3: (f64, f64),
-    a: &AdvanceSceneNode,
-    b: &AdvanceSceneNode,
-    nodes: &[AdvanceSceneNode],
-) -> f64 {
-    let (lo_x, hi_x) = if p0.0 < p3.0 { (p0.0, p3.0) } else { (p3.0, p0.0) };
-    if (hi_x - lo_x).abs() < f64::EPSILON {
-        return mid_y;
-    }
-    let blocked = nodes.iter().any(|n| {
-        n.id != a.id
-            && n.id != b.id
-            && seg_crosses_rect((lo_x, mid_y), (hi_x, mid_y), node_rect(n))
-    });
-    if !blocked {
-        return mid_y;
-    }
-
-    let (lo_y, hi_y) = if p0.1 < p3.1 { (p0.1, p3.1) } else { (p3.1, p0.1) };
-    let mut covered: Vec<(f64, f64)> = nodes
-        .iter()
-        .filter_map(|n| {
-            if n.id == a.id || n.id == b.id {
-                None
-            } else {
-                let (l, t, r, b) = node_rect(n);
-                if l < hi_x && r > lo_x {
-                    Some((t.max(lo_y), b.min(hi_y)))
-                } else {
-                    None
-                }
-            }
-        })
-        .filter(|(t, b)| t < b)
-        .collect();
-    covered.sort_unstable_by(|x, y| x.0.partial_cmp(&y.0).unwrap_or(std::cmp::Ordering::Equal));
-
-    let mut best: Option<(f64, f64)> = None;
-    let mut cursor = lo_y;
-    let mut consider = |from: f64, to: f64| {
-        let h = to - from;
-        if h >= MIN_CHANNEL_GAP && best.map(|(_, bh)| h > bh).unwrap_or(true) {
-            best = Some(((from + to) / 2.0, h));
-        }
-    };
-    for (t, b) in covered {
-        if t > cursor {
-            consider(cursor, t);
-        }
-        cursor = cursor.max(b);
-    }
-    consider(cursor, hi_y);
-
-    best.map(|(c, _)| c).unwrap_or(mid_y)
-}
-
-fn crossing_x_interval(
-    n: &AdvanceSceneNode,
-    a_id: &str,
-    b_id: &str,
-    lo_y: f64,
-    hi_y: f64,
-) -> Option<(f64, f64)> {
-    if n.id == a_id || n.id == b_id {
-        return None;
-    }
-    let (l, t, r, b) = node_rect(n);
-    if t < hi_y && b > lo_y {
-        Some((l, r))
-    } else {
-        None
-    }
-}
-
-fn nudge_mid_x(
-    mid_x: f64,
-    p0: (f64, f64),
-    p3: (f64, f64),
-    a: &AdvanceSceneNode,
-    b: &AdvanceSceneNode,
-    nodes: &[AdvanceSceneNode],
-) -> f64 {
-    let (lo_y, hi_y) = if p0.1 < p3.1 { (p0.1, p3.1) } else { (p3.1, p0.1) };
-    if (hi_y - lo_y).abs() < f64::EPSILON {
-        return mid_x;
-    }
-    let blocked = nodes.iter().any(|n| {
-        n.id != a.id
-            && n.id != b.id
-            && seg_crosses_rect((mid_x, lo_y), (mid_x, hi_y), node_rect(n))
-    });
-    if !blocked {
-        return mid_x;
-    }
-
-    let (lo_x, hi_x) = if p0.0 < p3.0 { (p0.0, p3.0) } else { (p3.0, p0.0) };
-    let mut covered: Vec<(f64, f64)> = nodes
-        .iter()
-        .filter_map(|n| crossing_x_interval(n, &a.id, &b.id, lo_y, hi_y))
-        .map(|(l, r)| (l.max(lo_x), r.min(hi_x)))
-        .filter(|(l, r)| l < r)
-        .collect();
-    covered.sort_unstable_by(|x, y| x.0.partial_cmp(&y.0).unwrap_or(std::cmp::Ordering::Equal));
-
-    let mut best: Option<(f64, f64)> = None;
-    let mut cursor = lo_x;
-    let mut consider = |from: f64, to: f64| {
-        let w = to - from;
-        if w >= MIN_CHANNEL_GAP && best.map(|(_, bw)| w > bw).unwrap_or(true) {
-            best = Some(((from + to) / 2.0, w));
-        }
-    };
-    for (l, r) in covered {
-        if l > cursor {
-            consider(cursor, l);
-        }
-        cursor = cursor.max(r);
-    }
-    consider(cursor, hi_x);
-
-    best.map(|(c, _)| c).unwrap_or(mid_x)
-}
-
-fn route_cross_lane(
-    a: &AdvanceSceneNode,
-    b: &AdvanceSceneNode,
-    nodes: &[AdvanceSceneNode],
-    fan: f64,
-    dir: AdvanceDirection,
-) -> Vec<(f64, f64)> {
-    match dir {
-        AdvanceDirection::Vertical => {
-            let (p0, p3) = if b.x >= a.x {
-                ((a.x + a.w / 2.0, a.y), (b.x - b.w / 2.0, b.y))
-            } else {
-                ((a.x - a.w / 2.0, a.y), (b.x + b.w / 2.0, b.y))
-            };
-            let mid_x = nudge_mid_x((p0.0 + p3.0) / 2.0 + fan, p0, p3, a, b, nodes);
-            vec![p0, (mid_x, p0.1), (mid_x, p3.1), p3]
-        }
-        AdvanceDirection::Horizontal => {
-            let (p0, p3) = if b.y >= a.y {
-                ((a.x, a.y + a.h / 2.0), (b.x, b.y - b.h / 2.0))
-            } else {
-                ((a.x, a.y - a.h / 2.0), (b.x, b.y + b.h / 2.0))
-            };
-            let mid_y = nudge_mid_y((p0.1 + p3.1) / 2.0 + fan, p0, p3, a, b, nodes);
-            vec![p0, (p0.0, mid_y), (p3.0, mid_y), p3]
-        }
-    }
-}
-
 /// Midpoint of a node's side — the anchor a ported edge exits/enters.
 fn side_point(n: &AdvanceSceneNode, side: AdvanceSide) -> (f64, f64) {
     match side {
@@ -3452,6 +3547,16 @@ fn side_point(n: &AdvanceSceneNode, side: AdvanceSide) -> (f64, f64) {
 
 /// Point `lead` px outside `p` along the normal of `side` — the leader
 /// segment that leaves a node perpendicular to its anchor side.
+/// Which way a lattice step moves when it leaves through `side`.
+fn side_delta(side: AdvanceSide) -> (i64, i64) {
+    match side {
+        AdvanceSide::Left => (-1, 0),
+        AdvanceSide::Right => (1, 0),
+        AdvanceSide::Top => (0, -1),
+        AdvanceSide::Bottom => (0, 1),
+    }
+}
+
 fn port_leader(p: (f64, f64), side: AdvanceSide, lead: f64) -> (f64, f64) {
     match side {
         AdvanceSide::Left => (p.0 - lead, p.1),
@@ -3524,97 +3629,6 @@ fn natural_side(
             }
         }
     }
-}
-
-/// Orthogonal route between two side anchors: leader out of `a`'s side,
-/// a shared channel (offset by `fan` for parallel edges), leader into
-/// `b`'s side. Collapsing equal neighbours keeps the path minimal.
-/// Route between two explicit boundary points with fixed exit/entry
-/// sides. Each end gets a leader perpendicular to its side; one channel
-/// joins the leaders. The channel runs across the exit axis by default
-/// (a horizontal exit gets a horizontal channel) — the shape every
-/// clear route had before, which keeps them byte-identical.
-///
-/// Every node is an obstacle to the channel and its two connectors,
-/// the endpoints included (their leaders already stand clear). When the
-/// default channel is blocked the nearest clear one just outside some
-/// node wins; when NO channel of that orientation is clear — two ports
-/// on the same side, say — the other orientation is tried. `fan`
-/// offsets the channel so parallel ported edges stay apart.
-fn route_ported(
-    from_side: AdvanceSide,
-    p0: (f64, f64),
-    b: &AdvanceSceneNode,
-    to_side: AdvanceSide,
-    p3: (f64, f64),
-    fan: f64,
-    nodes: &[AdvanceSceneNode],
-) -> Vec<(f64, f64)> {
-    const PORT_LEAD: f64 = 18.0;
-    let l0 = port_leader(p0, from_side, PORT_LEAD);
-    let l3 = port_leader(p3, to_side, PORT_LEAD);
-    let rects: Vec<(f64, f64, f64, f64)> = nodes.iter().map(node_rect).collect();
-    let blocked = |p: (f64, f64), q: (f64, f64)| rects.iter().any(|r| seg_crosses_rect(p, q, *r));
-
-    // The two connector corners for a channel at `mid`.
-    let corners = |horizontal: bool, mid: f64| {
-        if horizontal {
-            ((l0.0, mid), (l3.0, mid))
-        } else {
-            ((mid, l0.1), (mid, l3.1))
-        }
-    };
-    let route = |horizontal: bool, mid: f64| {
-        let (c0, c3) = corners(horizontal, mid);
-        dedup_pts(vec![p0, l0, c0, c3, l3, p3])
-    };
-    let clear = |horizontal: bool, mid: f64| {
-        let (c0, c3) = corners(horizontal, mid);
-        !blocked(l0, c0) && !blocked(c0, c3) && !blocked(c3, l3)
-    };
-    // Just outside every node's extent on the channel axis, then one
-    // step further out.
-    let candidates = |horizontal: bool| -> Vec<f64> {
-        rects
-            .iter()
-            .flat_map(|r| {
-                let (lo, hi) = if horizontal { (r.1, r.3) } else { (r.0, r.2) };
-                (1..=2).flat_map(move |k| {
-                    let d = PORT_LEAD * k as f64;
-                    [lo - d, hi + d]
-                })
-            })
-            .map(|c| c + fan)
-            .collect()
-    };
-
-    let exit_h = matches!(from_side, AdvanceSide::Left | AdvanceSide::Right);
-    for horizontal in [exit_h, !exit_h] {
-        let orig = if horizontal { l0.1 + fan } else { l0.0 + fan };
-        let toward = if horizontal { b.y } else { b.x };
-        if clear(horizontal, orig) {
-            return route(horizontal, orig);
-        }
-        if let Some(mid) = pick_channel(orig, toward, candidates(horizontal), |m| clear(horizontal, m)) {
-            return route(horizontal, mid);
-        }
-    }
-    // Nothing is clear either way: the plain shape, which at least
-    // honours both sides.
-    route(exit_h, if exit_h { l0.1 + fan } else { l0.0 + fan })
-}
-
-/// The nearest clear channel coordinate to `orig`, a tie going to the
-/// one on the target's side; `None` when no candidate is clear.
-fn pick_channel(orig: f64, toward: f64, mut cs: Vec<f64>, clear: impl Fn(f64) -> bool) -> Option<f64> {
-    cs.sort_by(|p, q| {
-        let dp = (p - orig).abs();
-        let dq = (q - orig).abs();
-        dp.partial_cmp(&dq)
-            .unwrap_or(std::cmp::Ordering::Equal)
-            .then_with(|| (p - toward).abs().partial_cmp(&(q - toward).abs()).unwrap_or(std::cmp::Ordering::Equal))
-    });
-    cs.into_iter().find(|c| clear(*c))
 }
 
 /// Prefer `wanted` if it is exposed; otherwise the first exposed side
@@ -3813,6 +3827,7 @@ fn choose_label_pos(
 fn route_edges(
     d: &AdvanceDiagram,
     nodes: &[AdvanceSceneNode],
+    lanes: &[AdvanceSceneLane],
     dir: AdvanceDirection,
 ) -> Vec<AdvanceSceneEdge> {
     // Scene nodes come out of layout in lane/topology order, NOT in
@@ -3823,18 +3838,29 @@ fn route_edges(
         nodes.iter().enumerate().map(|(i, n)| (n.id.as_str(), i)).collect();
     let mut edge_scenes = Vec::with_capacity(d.edges.len());
 
+    // Edges are fanned apart only when they would otherwise be drawn
+    // on top of each other, so the key is the pair of terminals — two
+    // edges between the same nodes but through different ports already
+    // land in different places and must keep their full leaders.
+    let fan_key = |e: &AdvanceEdge| {
+        let side = |s: Option<AdvanceSide>| s.map(|s| s.name()).unwrap_or("");
+        (
+            format!("{}:{}", e.from_end.to_ref(), side(e.from_side)),
+            format!("{}:{}", e.to_end.to_ref(), side(e.to_side)),
+        )
+    };
     let mut pair_totals: std::collections::HashMap<(String, String), usize> =
         std::collections::HashMap::new();
     for e in &d.edges {
-        *pair_totals
-            .entry((e.from.clone(), e.to.clone()))
-            .or_insert(0) += 1;
+        *pair_totals.entry(fan_key(e)).or_insert(0) += 1;
     }
     let mut pair_seen: std::collections::HashMap<(String, String), usize> =
         std::collections::HashMap::new();
 
     // Boxes of labels already placed, so later labels dodge them too.
     let mut placed_labels: Vec<(f64, f64, f64, f64)> = Vec::new();
+    // Routes already drawn, so later ones can price crossing them.
+    let mut drawn: Vec<Vec<(f64, f64)>> = Vec::with_capacity(d.edges.len());
 
     for e in &d.edges {
         let from_i = scene_idx[e.from.as_str()];
@@ -3842,7 +3868,7 @@ fn route_edges(
         let a = &nodes[from_i];
         let b = &nodes[to_i];
 
-        let key = (e.from.clone(), e.to.clone());
+        let key = fan_key(e);
         let dup_i = {
             let v = pair_seen.entry(key.clone()).or_insert(0);
             let i = *v;
@@ -3853,60 +3879,100 @@ fn route_edges(
         let fan = (dup_i as f64 - (dup_n as f64 - 1.0) / 2.0) * PARALLEL_FAN;
 
         let same_lane = a.lane == b.lane || from_i == to_i;
-        let terminal = e.from_end.is_terminal() || e.to_end.is_terminal();
 
-        let points = if terminal {
-            // Anything finer than a node side is resolved to explicit
-            // points and routed as a ported edge. A sub-element without
-            // a side gets the natural one, restricted to sides that
-            // reach the node boundary.
-            let side_for = |end: &AdvanceEnd, given: Option<AdvanceSide>, ni: usize, is_from: bool| {
-                // `natural_side` always takes (source, target); `is_from`
-                // picks which of the two sides it computes.
-                let natural = given.unwrap_or_else(|| natural_side(a, b, dir, is_from, same_lane));
-                if end.path.is_empty() {
-                    return natural;
-                }
-                let (other, me) = if is_from { (b, a) } else { (a, b) };
+        // Every edge resolves both ends to explicit points, then routes
+        // on the channel grid — plain edges, ported edges and terminals
+        // alike. "No line through a box" is a property of the lattice,
+        // not a check repeated per edge kind.
+        // The sides this end may leave from, best guess first. A
+        // declared port or a named anchor yields exactly one: honouring
+        // it however long the path gets is what makes it a port (D7).
+        // An automatic end offers the alternatives, which the router
+        // falls back on only when its first choice hits another edge.
+        let sides_for = |end: &AdvanceEnd,
+                         given: Option<AdvanceSide>,
+                         ni: usize,
+                         is_from: bool|
+         -> Vec<AdvanceSide> {
+            // `natural_side` always takes (source, target); `is_from`
+            // picks which of the two sides it computes.
+            let natural = given.unwrap_or_else(|| natural_side(a, b, dir, is_from, same_lane));
+            let exposed = if end.path.is_empty() {
+                [true; 4]
+            } else {
                 match resolve_element(&d.nodes[ni], &end.path) {
-                    Ok((_, exposed)) => pick_exposed_side(natural, exposed, other.x - me.x, other.y - me.y),
-                    Err(_) => natural,
+                    Ok((_, exposed)) => exposed,
+                    Err(_) => [true; 4],
                 }
             };
+            let first = if end.path.is_empty() {
+                natural
+            } else {
+                let (other, me) = if is_from { (b, a) } else { (a, b) };
+                pick_exposed_side(natural, exposed, other.x - me.x, other.y - me.y)
+            };
+            if given.is_some() || matches!(end.at, Some(AnchorRef::Named(_))) {
+                return vec![first];
+            }
+            let mut out = vec![first];
+            out.extend(
+                [
+                    AdvanceSide::Right,
+                    AdvanceSide::Left,
+                    AdvanceSide::Bottom,
+                    AdvanceSide::Top,
+                ]
+                .into_iter()
+                .filter(|s| *s != first && exposed[side_index(*s)]),
+            );
+            out
+        };
+        let side_for = |end: &AdvanceEnd, given, ni, is_from| {
+            sides_for(end, given, ni, is_from)[0]
+        };
+
+        let points = if from_i == to_i && e.from_side.is_none() && e.to_side.is_none() {
+            // A loop is not a path between two points; the lattice has
+            // nothing to search for.
+            route_self_loop(a, fan, dir)
+        } else if from_i == to_i {
             let fs = side_for(&e.from_end, e.from_side, model_idx[&e.from], true);
             let ts = side_for(&e.to_end, e.to_side, model_idx[&e.to], false);
-            let (tp0, bp0) = resolve_terminal(a, &e.from_end, fs)
-                .expect("terminal validated at parse time is missing from the scene");
-            let (tp3, bp3) = resolve_terminal(b, &e.to_end, ts)
-                .expect("terminal validated at parse time is missing from the scene");
-            let mut pts = Vec::with_capacity(8);
-            pts.push(tp0);
-            pts.extend(route_ported(fs, bp0, b, ts, bp3, fan, nodes));
-            pts.push(tp3);
-            dedup_pts(pts)
-        } else if from_i == to_i {
-            if e.from_side.is_none() && e.to_side.is_none() {
-                route_self_loop(a, fan, dir)
-            } else {
-                let fs = e.from_side.unwrap_or_else(|| natural_side(a, b, dir, true, true));
-                let ts = e.to_side.unwrap_or_else(|| natural_side(a, b, dir, false, true));
-                route_ported(fs, side_point(a, fs), b, ts, side_point(b, ts), fan, nodes)
-            }
-        } else if a.lane == b.lane {
-            if e.from_side.is_none() && e.to_side.is_none() {
-                route_same_lane(a, b, nodes, fan, dir)
-            } else {
-                let fs = e.from_side.unwrap_or_else(|| natural_side(a, b, dir, true, true));
-                let ts = e.to_side.unwrap_or_else(|| natural_side(a, b, dir, false, true));
-                route_ported(fs, side_point(a, fs), b, ts, side_point(b, ts), fan, nodes)
-            }
-        } else if e.from_side.is_none() && e.to_side.is_none() {
-            route_cross_lane(a, b, nodes, fan, dir)
+            route_self_loop_sides(a, fs, ts, fan)
         } else {
-            let fs = e.from_side.unwrap_or_else(|| natural_side(a, b, dir, true, false));
-            let ts = e.to_side.unwrap_or_else(|| natural_side(a, b, dir, false, false));
-            route_ported(fs, side_point(a, fs), b, ts, side_point(b, ts), fan, nodes)
+            let fss = sides_for(&e.from_end, e.from_side, model_idx[&e.from], true);
+            let tss = sides_for(&e.to_end, e.to_side, model_idx[&e.to], false);
+            let route = |fs: AdvanceSide, ts: AdvanceSide| {
+                let (tp0, bp0) = resolve_terminal(a, &e.from_end, fs)
+                    .expect("terminal validated at parse time is missing from the scene");
+                let (tp3, bp3) = resolve_terminal(b, &e.to_end, ts)
+                    .expect("terminal validated at parse time is missing from the scene");
+                route_on_grid(fs, tp0, bp0, ts, tp3, bp3, fan, nodes, lanes, &drawn)
+            };
+            let first = route(fss[0], tss[0]);
+            // The preferred sides usually win outright; only an edge
+            // that would run into an existing one pays for the search.
+            if route_conflicts(&first, &drawn) <= 0.0 {
+                first
+            } else {
+                let mut best = (route_cost(&first, &drawn), first);
+                for fs in &fss {
+                    for ts in &tss {
+                        if (*fs, *ts) == (fss[0], tss[0]) {
+                            continue;
+                        }
+                        let pts = route(*fs, *ts);
+                        let cost = route_cost(&pts, &drawn);
+                        if cost < best.0 - 1e-9 {
+                            best = (cost, pts);
+                        }
+                    }
+                }
+                best.1
+            }
         };
+
+        drawn.push(points.clone());
 
         let label_pos = match e.label.as_deref() {
             Some(label) => {
@@ -4381,7 +4447,7 @@ pub fn layout(d: &AdvanceDiagram) -> AdvanceScene {
             .map(|(i, n)| scene_node(n, n.x.unwrap(), n.y.unwrap(), sizes[i].0, sizes[i].1))
             .collect();
         let (lane_scenes, width, height) = build_lanes_around_nodes(d, &node_scenes);
-        let edge_scenes = route_edges(d, &node_scenes, d.direction);
+        let edge_scenes = route_edges(d, &node_scenes, &lane_scenes, d.direction);
         return fit_canvas(
             AdvanceScene {
                 width,
@@ -4457,7 +4523,7 @@ pub fn layout(d: &AdvanceDiagram) -> AdvanceScene {
             cur_y - cfg.lane_gap + cfg.margin
         };
 
-        let edge_scenes = route_edges(d, &node_scenes, d.direction);
+        let edge_scenes = route_edges(d, &node_scenes, &lane_scenes, d.direction);
         return AdvanceScene {
             width: total_w,
             height: total_h,
@@ -4523,7 +4589,7 @@ pub fn layout(d: &AdvanceDiagram) -> AdvanceScene {
     };
     let total_height = max_top_h + 2.0 * cfg.margin;
 
-    let edge_scenes = route_edges(d, &node_scenes, d.direction);
+    let edge_scenes = route_edges(d, &node_scenes, &lane_scenes, d.direction);
 
     AdvanceScene {
         width: total_width,
@@ -5089,7 +5155,7 @@ pub fn render_advance_routed(source: &str, positions: &[f64]) -> Result<String, 
     validate_positions(&d, positions)?;
     let nodes = place_nodes_at_positions(&d, positions);
     let (lanes, width, height) = build_lanes_around_nodes(&d, &nodes);
-    let edges = route_edges(&d, &nodes, d.direction);
+    let edges = route_edges(&d, &nodes, &lanes, d.direction);
     let scene = fit_canvas(
         AdvanceScene {
             width,
@@ -5198,7 +5264,7 @@ pub fn render_advance_routed_with_lanes(
     let nodes = place_nodes_at_positions(&d, positions);
     let (lanes, width, height) =
         build_lanes_with_widths(&d, &nodes, lane_widths, margin, gap);
-    let edges = route_edges(&d, &nodes, d.direction);
+    let edges = route_edges(&d, &nodes, &lanes, d.direction);
     let scene = fit_canvas(
         AdvanceScene {
             width,
@@ -5610,7 +5676,7 @@ mod tests {
         positions[1] = -800.0;
         let nodes = place_nodes_at_positions(&d, &positions);
         let (lanes, width, height) = build_lanes_around_nodes(&d, &nodes);
-        let edges = route_edges(&d, &nodes, d.direction);
+        let edges = route_edges(&d, &nodes, &lanes, d.direction);
         let sc = fit_canvas(AdvanceScene { width, height, title: None, description: None, direction: d.direction, style: d.style.clone(), lanes, nodes, edges }, d.config.margin);
         assert!(sc.nodes.iter().all(|n| n.y - n.h / 2.0 >= d.config.margin - 1e-9));
         assert!(sc.nodes.iter().all(|n| n.x - n.w / 2.0 >= d.config.margin - 1e-9));
@@ -6346,9 +6412,12 @@ mod tests {
         let irq = cpu.anchors.iter().find(|a| a.id == "irq").unwrap();
         assert!((e.from_point.0 - irq.x).abs() < 1e-9 && (e.from_point.1 - irq.y).abs() < 1e-9);
         assert_eq!(e.points[0], e.from_point);
-        // Second point: straight right of the anchor, on cpu's right edge — the lead.
+        // The lead runs straight right of the anchor and clears cpu's
+        // right edge before the route turns. The edge itself is not a
+        // vertex of the polyline — it is collinear with the lead, so it
+        // collapses away — but the segment must still cross it.
         assert!((e.points[1].1 - irq.y).abs() < 1e-9);
-        assert!((e.points[1].0 - (cpu.x + cpu.w / 2.0)).abs() < 1e-9);
+        assert!(e.points[1].0 > cpu.x + cpu.w / 2.0);
         // Target lands on bank0's boundary and the scene names both ends.
         let mem = scene_node_by(&sc, "mem");
         let bank0 = &mem.elements[0];
@@ -6795,6 +6864,136 @@ mod tests {
         // A real target still applies.
         let d = text_diagram(&format!("{base}style a-->b color:#f00\n"));
         assert_eq!(d.edges[0].style.color.as_deref(), Some("#f00"));
+    }
+    // ---- the channel-grid router -------------------------------------
+
+    /// Every scenario the router has to survive, in one place, so a new
+    /// property can be asserted across all of them by adding one loop.
+    const ROUTER_CASES: [(&str, &str); 5] = [
+        ("blocker between two lanes",
+         "lane l \"L\"\na[A]\nlane m \"M\"\nm[Middle blocker]\nlane r \"R\"\nc[C]\na --> c\n"),
+        ("blocker inside one lane",
+         "lane l \"L\"\na[A]\nb[B]\nc[C]\na --> b\nb --> c\na --> c\n"),
+        ("ports on the same side across a wider node",
+         "lane l \"L\" {\n a[A]\n m[A much wider middle node]\n b[B]\n}\na:right --> b:right\n"),
+        ("three lanes of three, crossing every way",
+         "lane a \"A\"\na1[a1]\na2[a2]\na3[a3]\nlane b \"B\"\nb1[b1]\nb2[b2]\nb3[b3]\n\
+          lane c \"C\"\nc1[c1]\nc2[c2]\nc3[c3]\na1 --> c3\na3 --> c1\nb1 --> c2\na2 --> b3\nb2 --> a1\n"),
+        ("terminals", TERMINALS),
+    ];
+
+    /// No line through a box. The one exception is deliberate: an edge
+    /// that starts on a sub-element leads out through its own node to
+    /// reach the boundary, and only on its first or last segment.
+    #[test]
+    fn no_route_passes_through_a_node() {
+        for (name, src) in ROUTER_CASES {
+            let sc = layout(&text_diagram(src));
+            for e in &sc.edges {
+                let last = e.points.len() - 2;
+                for (i, w) in e.points.windows(2).enumerate() {
+                    for n in &sc.nodes {
+                        let own = n.id == e.from || n.id == e.to;
+                        if own && (i == 0 || i == last) {
+                            continue;
+                        }
+                        assert!(
+                            !seg_crosses_rect(w[0], w[1], node_rect(n)),
+                            "{name}: {} --> {}, segment {i} {:?}-{:?} runs through {}",
+                            e.from,
+                            e.to,
+                            w[0],
+                            w[1],
+                            n.id
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn every_route_is_orthogonal() {
+        for (name, src) in ROUTER_CASES {
+            let sc = layout(&text_diagram(src));
+            for e in &sc.edges {
+                for w in e.points.windows(2) {
+                    assert!(
+                        (w[0].0 - w[1].0).abs() < 1e-9 || (w[0].1 - w[1].1).abs() < 1e-9,
+                        "{name}: diagonal segment {:?}-{:?}",
+                        w[0],
+                        w[1]
+                    );
+                }
+            }
+        }
+    }
+
+    /// Three nodes in a column with an edge skipping the middle one: the
+    /// long edge has to leave through a side, because going straight
+    /// down would run along the two short edges and through `b`.
+    #[test]
+    fn an_edge_detours_rather_than_run_over_the_edges_already_drawn() {
+        let sc = layout(&text_diagram(
+            "lane l \"L\"\na[A]\nb[B]\nc[C]\na --> b\nb --> c\na --> c\n",
+        ));
+        let skip = &sc.edges[2];
+        let a = scene_node_by(&sc, "a");
+        // It leaves through a side, not the bottom it shares with a --> b.
+        assert!((skip.points[0].1 - a.y).abs() < 1e-9, "a --> c left through the bottom");
+        for w in skip.points.windows(2) {
+            for other in [&sc.edges[0], &sc.edges[1]] {
+                for o in other.points.windows(2) {
+                    assert_eq!(
+                        seg_conflict((w[0], w[1]), (o[0], o[1])),
+                        0.0,
+                        "the skipping edge touches a --> b or b --> c"
+                    );
+                }
+            }
+        }
+    }
+
+    /// A port is a promise about where the line leaves the box, so the
+    /// leader may not be walked back over: the first segment has to
+    /// carry the route clear of the node, not stop short inside it.
+    #[test]
+    fn a_ported_edge_keeps_its_whole_leader() {
+        let sc = layout(&text_diagram(
+            "lane l \"L\"\na[A]\nb[B]\nc[C]\na:right --> b:left\na:bottom --> b:top\n",
+        ));
+        let a = scene_node_by(&sc, "a");
+        let e = &sc.edges[0];
+        assert!((e.points[1].1 - a.y).abs() < 1e-9);
+        assert!(
+            (e.points[1].0 - (a.x + a.w / 2.0 + PORT_LEAD)).abs() < 1e-9,
+            "leader is {:?}, expected {} px clear of the right edge",
+            e.points[1],
+            PORT_LEAD
+        );
+    }
+
+    /// Two edges between the same nodes fan apart; two edges through
+    /// different ports already land apart and keep their full leaders.
+    #[test]
+    fn only_edges_that_would_overlap_are_fanned() {
+        let sc = layout(&text_diagram("lane l \"L\"\na[A]\nb[B]\na --> b\na --> b\n"));
+        assert!(
+            (sc.edges[0].points[0].0 - sc.edges[1].points[0].0).abs() > 1.0,
+            "identical edges were drawn on top of each other"
+        );
+    }
+
+    /// Same input, same bytes — the search must not depend on hash order.
+    #[test]
+    fn routing_is_deterministic() {
+        for (name, src) in ROUTER_CASES {
+            let d = text_diagram(src);
+            let first = to_svg(&layout(&d));
+            for _ in 0..4 {
+                assert_eq!(to_svg(&layout(&d)), first, "{name} rendered differently");
+            }
+        }
     }
 
 }

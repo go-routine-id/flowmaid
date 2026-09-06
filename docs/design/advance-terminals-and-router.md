@@ -160,16 +160,28 @@ Decision needed: the new router becomes the default (recommended — it is the p
 
 | Phase | Delivers | Router |
 |---|---|---|
-| **P1 Terminals** | `Anchor`, `SubElement`, `EdgeEnd`; DSL + JSON parsing; resolution with the exposed-side rule; compartment rendering; scene + hit-testing | Today's, fed resolved points and excluding the endpoint's own node — which alone fixes the ported-through-own-node defect |
-| **P2 Grid router** | Channel grid, A\* with bends + obstacles; replaces the same-lane / cross-lane / ported routers | Zero through-box for every edge kind |
+| **P1 Terminals** ✅ | `Anchor`, `SubElement`, `EdgeEnd`; DSL + JSON parsing; resolution with the exposed-side rule; compartment rendering; scene + hit-testing | Today's, fed resolved points and excluding the endpoint's own node — which alone fixes the ported-through-own-node defect |
+| **P2 Grid router** ✅ | Channel grid, A\* with bends + obstacles; replaces the same-lane / cross-lane / ported routers | Zero through-box for every edge kind |
 | **P3 Negotiation** | Crossing cost, rip-up-and-reroute, `crossings` in scene; a planar test suite asserting 0 | Zero crossings where possible |
 | **P4 Ship** | README, docs site, `examples/advance_terminals.mmd`, CHANGELOG, minor bump | — |
 
 One PR and one independent review per phase.
 
-## 5b. Carried into P2
+## 5b. Notes carried between phases
 
-- **Same-side ported self-loop.** `a:right --> a:right` collapses to a spike — out 18 px and straight back — because both leaders coincide and every channel is zero-length. Pre-dates P1 (byte-identical on `main`); the unported self-loop draws a real loop. The grid router should route it as a loop around the node.
+**Closed in P2**
+
+- **Same-side ported self-loop.** `a:right --> a:right` collapsed to a spike — out 18 px and straight back — because both leaders coincided and every channel was zero-length. `route_self_loop_sides` now draws a real loop around the node.
+
+**What P2 delivered beyond the table**
+
+- The grid alone left the router worse than the hand-tuned ones it replaced on crossings, so the *pricing* half of P3 landed with it: `seg_conflict` charges a true crossing, a T-junction, and two lines running along each other at three different rates, and A\* pays it per step. Measured over six scenarios, crossings went 7 → 1 with zero through-box and zero diagonal segments.
+- An end whose side is automatic now offers the router all four sides and keeps the cheapest; a declared port or a named anchor still yields exactly one (D7). The search runs only for an edge whose preferred sides would touch an edge already drawn, so the common case stays one A\* run.
+- Edges are fanned apart by pairs of *terminals*, not pairs of nodes: two edges between the same nodes through different ports already land apart and keep their full leaders.
+
+**Carried into P3**
+
+- What P2 does not have is the rip-up: each edge is routed once, against the edges already drawn, and never moved again to let a later one through. The one remaining crossing in the dense 3×3 case is exactly that — a first-come-first-served artefact, not a geometric necessity.
 
 ## 6. Out of scope (design accommodates, not built)
 
