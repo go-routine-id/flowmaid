@@ -112,24 +112,31 @@ The first step out of a terminal is forced to its exit direction, so an anchor o
 ### Negotiated rip-up-and-reroute
 
 ```
-order  ← edges by Manhattan distance, shortest first
-X      ← X0
-for iter in 1..=MAX_ITERS:
-    route every edge in order with A*            (already-routed edges are obstacles-with-cost)
-    if crossings(all) == 0: break
-    X ← X · ESCALATION
-    move the edges involved in a crossing to the front of `order`
+route every edge once, in declaration order       (each sees the ones before it)
+X ← X0
+for pass in 1..=NEGOTIATION_PASSES:
+    X ← min(X · ESCALATION, CROSS_CEILING)
+    for each edge involved in a crossing:          (index order)
+        lift its route out of the lattice
+        route it against ALL the others with A*
+        lay the new route back down
+    keep this pass only if (crossings, length, bends) improved; otherwise stop
+    stop at zero crossings
 ```
 
-This is PathFinder-style negotiated congestion routing, the standard approach in EDA. Per edge, once `X` dominates, A\* returns a crossing-free path whenever one exists on the grid given the others; the rip-up lets earlier edges move out of the way of later ones.
+This is PathFinder-style negotiated congestion routing, the standard approach in EDA. Once `X` dominates, A\* returns a crossing-free path whenever one exists on the grid given the others; the rip-up lets an edge routed early move out of the way of one routed late.
+
+Only the edges in a crossing are lifted — an edge that crosses nothing has nothing to gain from being drawn again, and lifting everything made a pass cost the whole diagram rather than the problem it is solving. `CROSS_CEILING` bounds the escalation: without it the last crossing is bought at any price, which is how an edge between two neighbours ends up going round the outside of the drawing.
 
 ### What is actually guaranteed
 
-> Zero crossings whenever a crossing-free orthogonal routing exists **on the channel grid** and is found within `NEGOTIATION_PASSES`. When none exists, the remaining crossings sit where the escalated cost made them cheapest.
+> Zero crossings whenever a crossing-free orthogonal routing exists **on the channel grid**, is reachable within `GRID_WINDOW` of each edge, and is found within `NEGOTIATION_PASSES` — provided one pass over the crossing edges stays under `NEGOTIATION_BUDGET`. When none of that holds, the remaining crossings sit where the escalated cost made them cheapest.
+
+The budget is measured in work — edges lifted times the lattice each searches — not in lattice size. Sized in lattice vertices, it made a diagram's guarantee depend on how many *unconnected* nodes it happened to carry: two decorative boxes could switch the negotiation off and put the crossings back. `unconnected_nodes_do_not_switch_the_guarantee_off` holds the line.
 
 Held by `a_planar_diagram_is_routed_without_a_single_crossing`, which asserts `scene.crossings == 0` over seven diagrams that admit one — including the dense three-lane case that P2 could not.
 
-Two honest limits: negotiated routing is a strong heuristic, not a proof of global optimality; and the grid decides which paths exist at all. A finer grid finds more paths at more cost — exposed as `config router_grid coarse|fine`.
+Two honest limits: negotiated routing is a strong heuristic, not a proof of global optimality; and the grid decides which paths exist at all. A finer grid would find more paths at more cost; no such control is exposed, and the grid is what the layout implies.
 
 The scene reports `crossings: usize`, so tests and the UI can assert or display it.
 
