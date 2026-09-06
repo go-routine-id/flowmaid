@@ -2008,6 +2008,44 @@ fn rich(line: &str) -> String {
     s
 }
 
+/// A content hash for namespacing the ids a diagram puts in its
+/// `<defs>` — arrow markers, gradients.
+///
+/// Ids must be unique per diagram: two SVGs inlined on one page would
+/// otherwise share `#foo-1`, and every reference in the second would
+/// resolve to the first one's definition. A running counter gives
+/// uniqueness only WITHIN one process — two files rendered separately
+/// both start at 1 — and costs byte-identical output. Hashing the
+/// content keeps both: the same diagram always hashes the same, and a
+/// different one practically never collides.
+///
+/// FNV-1a, 64-bit: a few lines, no dependency, and stable across runs
+/// and platforms, unlike `DefaultHasher`.
+pub(crate) struct DefsKey(u64);
+
+impl DefsKey {
+    pub(crate) fn new() -> Self {
+        DefsKey(0xcbf2_9ce4_8422_2325)
+    }
+
+    pub(crate) fn eat(&mut self, bytes: &[u8]) {
+        for b in bytes {
+            self.0 ^= *b as u64;
+            self.0 = self.0.wrapping_mul(0x0000_0100_0000_01b3);
+        }
+    }
+
+    /// Feed a coordinate. Bit patterns, so `-0.0` and `0.0` stay
+    /// distinct and no rounding creeps in.
+    pub(crate) fn eat_f64(&mut self, v: f64) {
+        self.eat(&v.to_bits().to_le_bytes());
+    }
+
+    pub(crate) fn finish(&self) -> String {
+        format!("{:x}", self.0)
+    }
+}
+
 /// A user-supplied style value on its way into an SVG attribute.
 ///
 /// Colours arrive here from `style` / `classDef` directives AND from

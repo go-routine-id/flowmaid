@@ -7,6 +7,18 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Advance arrow-marker ids no longer collide between diagrams, and no longer change
+  between runs.** The id came from a process-global counter, so two advance SVGs
+  rendered separately and inlined on one page both emitted `advance-arrow-1` and every
+  arrow in the second took the first one's colour — the counter gives uniqueness only
+  *within* one process. It also meant the same diagram rendered differently each time,
+  against the crate's byte-identical output guarantee. Ids now carry a hash of the
+  scene, which gives both: stable per diagram, distinct between diagrams.
+- The hashing helper is shared with sankey's gradient ids (`scene::DefsKey`) instead of
+  being written twice.
+
 ### Added
 
 - **Advance terminals** — an edge end can now reference a *sub-element* or a *named

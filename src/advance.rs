@@ -4,7 +4,6 @@
 //! and edges between nodes. The engine lays out vertical or horizontal lanes,
 //! orders nodes top-down (or left-to-right), and routes orthogonal edges.
 
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::json::{as_array, as_number, as_object, as_str, escape_json_str, obj_get, parse_json, JsonValue};
 use crate::layout::{text_width, BASE_H, LINE_H, MIN_W, PAD_X};
@@ -12,7 +11,25 @@ use crate::model::{EdgeKind, NodeStyle, Shape};
 use crate::parser::normalize_breaks;
 use crate::scene::{escape, svg_open, SvgOptions};
 
-static MARKER_COUNTER: AtomicUsize = AtomicUsize::new(1);
+/// A content-derived suffix for this diagram's marker ids — see
+/// [`crate::scene::DefsKey`] for why it is a hash and not a counter.
+fn scene_key(sc: &AdvanceScene) -> String {
+    let mut k = crate::scene::DefsKey::new();
+    for n in &sc.nodes {
+        k.eat(n.id.as_bytes());
+        k.eat_f64(n.x);
+        k.eat_f64(n.y);
+    }
+    for e in &sc.edges {
+        k.eat(e.from.as_bytes());
+        k.eat(e.to.as_bytes());
+        for p in &e.points {
+            k.eat_f64(p.0);
+            k.eat_f64(p.1);
+        }
+    }
+    k.finish()
+}
 
 // ------------------------------------------------------------------
 // Public error type
@@ -4666,6 +4683,11 @@ pub fn to_svg_with(sc: &AdvanceScene, opts: &SvgOptions) -> String {
 
     // One arrowhead marker per resolved edge color (first-seen order), so
     // a styled edge's arrowhead matches its stroke instead of the global.
+    // Ids carry a hash of the scene: a counter is unique only within one
+    // process, so two diagrams rendered separately and inlined on one
+    // page both emitted `advance-arrow-1` and the second one's arrows
+    // took the first one's colours.
+    let key = scene_key(sc);
     let mut markers: Vec<(String, String)> = Vec::new();
     for e in &sc.edges {
         if matches!(e.kind, EdgeKind::Invisible) || !e.kind.has_arrow() {
@@ -4673,7 +4695,7 @@ pub fn to_svg_with(sc: &AdvanceScene, opts: &SvgOptions) -> String {
         }
         let color = crate::scene::style_attr(e.style.color.as_deref(), &sc.style.edge_color);
         if !markers.iter().any(|(c, _)| *c == color) {
-            let id = format!("advance-arrow-{}", MARKER_COUNTER.fetch_add(1, Ordering::Relaxed));
+            let id = format!("advance-arrow-{}-{}", key, markers.len() + 1);
             markers.push((color, id));
         }
     }
@@ -5211,14 +5233,41 @@ mod tests {
     }
 
     #[test]
-    fn marker_id_namespacing() {
-        let svg1 = render_advance_svg(sample_json()).unwrap();
-        let svg2 = render_advance_svg(sample_json()).unwrap();
-        let m1 = svg1.find("id=\"advance-arrow-").unwrap();
-        let m2 = svg2.find("id=\"advance-arrow-").unwrap();
-        let id1 = &svg1[m1..m1 + 25];
-        let id2 = &svg2[m2..m2 + 25];
-        assert_ne!(id1, id2);
+    fn marker_ids_are_stable_per_diagram_and_differ_between_diagrams() {
+        let first_id = |svg: &str| {
+            let i = svg.find("id=\"advance-arrow-").expect("a marker");
+            svg[i..].split('"').nth(1).unwrap().to_string()
+        };
+        // Same input, same ids: a counter made these differ, which broke
+        // byte-identical output.
+        let a = render_advance_svg(sample_json()).unwrap();
+        let b = render_advance_svg(sample_json()).unwrap();
+        assert_eq!(a, b, "the same diagram must render byte-identically");
+
+        // Different diagrams, different ids — the counter restarted at 1
+        // in every process, so two SVGs inlined on one page collided and
+        // the second one's arrows took the first one's colours.
+        let other = render_advance_svg(
+            r#"{"lanes":[{"id":"z","title":"Z"}],
+                "nodes":[{"id":"p","lane":"z"},{"id":"q","lane":"z"}],
+                "edges":[{"from":"p","to":"q"}]}"#,
+        )
+        .unwrap();
+        assert_ne!(first_id(&a), first_id(&other));
+
+        // Several colours in one diagram stay distinct and are numbered
+        // within their own namespace.
+        let multi = render_advance_svg(
+            r##"{"lanes":[{"id":"l","title":"L"}],
+                "nodes":[{"id":"a","lane":"l"},{"id":"b","lane":"l"},{"id":"c","lane":"l"}],
+                "edges":[{"from":"a","to":"b","style":{"color":"#188038"}},
+                         {"from":"b","to":"c","style":{"color":"#b00020"}}]}"##,
+        )
+        .unwrap();
+        let key = first_id(&multi).rsplit_once('-').unwrap().0.to_string();
+        assert!(multi.contains(&format!("id=\"{key}-1\"")), "{multi}");
+        assert!(multi.contains(&format!("id=\"{key}-2\"")), "{multi}");
+        assert_eq!(multi.matches("<marker").count(), 2);
     }
 
     #[test]
