@@ -7,6 +7,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.30.0] - 2026-09-07
+
 ### Fixed
 
 - **Dragged node positions no longer swap nodes between lanes.** `render_advance_routed`
