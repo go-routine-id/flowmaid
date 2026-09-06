@@ -9,6 +9,32 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Dragged node positions no longer swap nodes between lanes.** `render_advance_routed`
+  and `render_advance_routed_with_lanes` consumed `positions` in declaration order while
+  documenting — and while `layout_advance` emits — lane order. A host that read the scene,
+  moved one node and re-rendered teleported the others. Positions are now mapped through
+  the layout's own order, so they cannot drift from the array the caller was handed.
+- **Lane boxes are sized by their own nodes when lanes nest.** `build_lanes_with_widths`
+  matched a flat depth-first lane index against an enumeration of top-level lanes, so with
+  `[A[A1, A2], B]` the nodes in `A1` counted toward `B` and `B` was drawn as if empty.
+- **The visible node's anchor is reachable again.** `hit_test` took the globally nearest
+  anchor and discarded it when it belonged to another node, leaving the top node's own
+  anchor unpickable whenever an occluded one sat slightly nearer; the search is now scoped
+  to the node under the point.
+- **An edge separator inside a label is text.** `a[A] { p[x---y] }` failed with
+  `edge references unknown node 'a[A] { p[x'`; any label containing `---`, `-->`, `==>` or
+  `-.->` was unusable. The edge parser and every guard now share one bracket- and
+  quote-aware scanner, and separator precedence is unchanged.
+- **A one-line lane block accepts bare ids.** `lane l "L" { a }` was swallowed whole —
+  title `L" { a }`, no nodes, no error — because the node-shape disambiguation guard ran
+  before the lane branch.
+- An anchor id may not contain `:`; `parse_end` refuses it in an `@`-reference, so such an
+  anchor could be declared but never used.
+- A `style from-->to` target matching no edge is an error for plain node pairs too, not
+  only for terminal references.
+
+### Fixed
+
 - **Advance arrow-marker ids no longer collide between diagrams, and no longer change
   between runs.** The id came from a process-global counter, so two advance SVGs
   rendered separately and inlined on one page both emitted `advance-arrow-1` and every

@@ -116,8 +116,43 @@ fn label_band_h(label: &str) -> f64 {
 /// parser and by every place that must refuse an edge.
 const EDGE_SEPARATORS: [&str; 4] = ["-->", "-.->", "==>", "---"];
 
+/// The first edge separator that sits OUTSIDE every bracket and quote,
+/// as `(byte offset, separator)`. A `---` inside a label is text, not an
+/// operator, so `a[A] { p[x---y] }` is a block and not a broken edge.
+///
+/// Separators are tried in the order the edge parser has always tried
+/// them, so a line like `a ---> b` still splits exactly where it used to.
+fn find_edge_sep(line: &str) -> Option<(usize, &'static str)> {
+    let bytes = line.as_bytes();
+    let mut depth = vec![0i32; line.len() + 1];
+    let (mut d, mut quote) = (0i32, false);
+    for (i, c) in line.char_indices() {
+        depth[i] = if quote { 1 } else { d };
+        match c {
+            '"' => quote = !quote,
+            '[' | '(' | '{' if !quote => d += 1,
+            ']' | ')' | '}' if !quote => d -= 1,
+            _ => {}
+        }
+    }
+    let free = |at: usize| at < bytes.len() && depth[at] == 0;
+    EDGE_SEPARATORS
+        .iter()
+        .find_map(|sep| {
+            let mut from = 0;
+            while let Some(rel) = line[from..].find(sep) {
+                let at = from + rel;
+                if free(at) {
+                    return Some((at, *sep));
+                }
+                from = at + 1;
+            }
+            None
+        })
+}
+
 fn is_edge_line(line: &str) -> bool {
-    EDGE_SEPARATORS.iter().any(|sep| line.contains(sep))
+    find_edge_sep(line).is_some()
 }
 
 /// Top-level directives — never legal inside a node block, and never
@@ -283,6 +318,15 @@ fn check_id(kind: &str, id: &str) -> Result<(), String> {
             kind, id, c
         ));
     }
+    // An anchor is referenced as `node@id`, and `parse_end` refuses a
+    // `@`-suffix containing ':', so a colon anywhere makes the anchor
+    // undeclarable-in-practice.
+    if kind == "anchor" && id.contains(':') {
+        return Err(format!(
+            "{} id '{}' may not contain ':' — it is reserved for edge references (node:side)",
+            kind, id
+        ));
+    }
     // `a:right` would parse as node `a` on side `right` in every edge,
     // so such an id could never be referenced.
     if let Some((_, suffix)) = id.rsplit_once(':') {
@@ -364,12 +408,15 @@ fn split_inline_block(line: &str) -> Option<(&str, &str)> {
                 }
                 let prefix = line[..pos].trim_end();
                 let body = line[pos + 1..line.len() - 1].trim();
+                // A lane has no shape syntax to be confused with, so it
+                // never needs the `c {Text}`-is-a-diamond guard below —
+                // which used to swallow `lane l "L" { a }` whole.
+                if is_lane {
+                    return Some((prefix, body));
+                }
                 let closed_shape = prefix.ends_with(']') || prefix.ends_with(')') || prefix.ends_with('}');
                 if !closed_shape && !body_looks_like_block(body) {
                     continue;
-                }
-                if is_lane {
-                    return Some((prefix, body));
                 }
                 match parse_text_node_shorthand(prefix) {
                     Some((id, _, _)) if !id.is_empty() => return Some((prefix, body)),
@@ -1699,19 +1746,11 @@ impl AdvanceDiagram {
                 continue;
             }
 
-            // Edges: A --> B, A -->|label| B, A -.-> B, etc.
-            if line.contains("-->") || line.contains("-.->") || line.contains("==>") || line.contains("---") {
-                let (from_str, sep, rest) = if let Some(idx) = line.find("-->") {
-                    (&line[..idx], "-->", &line[idx + 3..])
-                } else if let Some(idx) = line.find("-.->") {
-                    (&line[..idx], "-.->", &line[idx + 4..])
-                } else if let Some(idx) = line.find("==>") {
-                    (&line[..idx], "==>", &line[idx + 3..])
-                } else if let Some(idx) = line.find("---") {
-                    (&line[..idx], "---", &line[idx + 3..])
-                } else {
-                    continue;
-                };
+            // Edges: A --> B, A -->|label| B, A -.-> B, etc. A separator
+            // inside a label is text, so a line without one at bracket
+            // depth 0 falls through to the node-declaration branch.
+            if let Some((idx, sep)) = find_edge_sep(line) {
+                let (from_str, rest) = (&line[..idx], &line[idx + sep.len()..]);
 
                 let from_end = parse_end(from_str).map_err(|m| text_err(source, line_no, None, m))?;
                 let kind = match sep {
@@ -1872,7 +1911,7 @@ impl AdvanceDiagram {
                     hits += 1;
                 }
             }
-            if exact && hits == 0 {
+            if hits == 0 {
                 return Err(text_err(
                     source,
                     *line_no,
@@ -2911,6 +2950,24 @@ fn collect_all_lanes<'a>(lanes: &'a [AdvanceLane], out: &mut Vec<&'a AdvanceLane
     }
 }
 
+/// Map every lane id — nested ones included — to the index of the
+/// TOP-LEVEL lane it lives under. [`lane_index_map`] is a flat
+/// depth-first index over ALL lanes, which does not line up with an
+/// enumeration of `d.lanes`: with `[A[A1, A2], B]` the flat indices are
+/// A=0, A1=1, A2=2, B=3, so nodes in `A1` were counted toward `B` and
+/// `B` itself was sized as if empty.
+fn top_level_lane_map(d: &AdvanceDiagram) -> std::collections::HashMap<String, usize> {
+    let mut out = std::collections::HashMap::new();
+    for (i, lane) in d.lanes.iter().enumerate() {
+        let mut stack = vec![lane];
+        while let Some(l) = stack.pop() {
+            out.insert(l.id.clone(), i);
+            stack.extend(l.children.iter());
+        }
+    }
+    out
+}
+
 fn lane_index_map(d: &AdvanceDiagram) -> std::collections::HashMap<String, usize> {
     let mut flat = Vec::new();
     collect_all_lanes(&d.lanes, &mut flat);
@@ -3917,7 +3974,15 @@ impl AdvanceScene {
         // point (or anywhere when the point is on no node), so an
         // occluded node's anchor cannot beat the visible one.
         let top = self.node_at(x, y);
-        if let Some((n, a)) = self.anchor_at(x, y, tol).filter(|(n, _)| top.map_or(true, |t| *n == t)) {
+        let anchor = match top {
+            // Scope the search to the node under the point: taking the
+            // globally nearest anchor and discarding it when it belongs
+            // to someone else made the top node's OWN anchor unreachable
+            // whenever an occluded node had one slightly nearer.
+            Some(t) => self.nearest_anchor_on(t, x, y, tol).map(|a| (t, a)),
+            None => self.anchor_at(x, y, tol),
+        };
+        if let Some((n, a)) = anchor {
             return Some(AdvanceHit::Anchor(n, a));
         }
         if let Some((n, e)) = self.element_at(x, y) {
@@ -3945,6 +4010,19 @@ impl AdvanceScene {
             }
         }
         best.map(|(n, a, _)| (n, a))
+    }
+
+    /// Index of the anchor on `node` nearest `(x, y)` within `tol`.
+    fn nearest_anchor_on(&self, node: usize, x: f64, y: f64, tol: f64) -> Option<usize> {
+        self.nodes
+            .get(node)?
+            .anchors
+            .iter()
+            .enumerate()
+            .map(|(i, a)| (i, (x - a.x).hypot(y - a.y)))
+            .filter(|(_, d)| *d <= tol)
+            .min_by(|p, q| p.1.total_cmp(&q.1))
+            .map(|(i, _)| i)
     }
 
     /// The innermost sub-element containing `(x, y)`, as
@@ -4926,15 +5004,29 @@ fn validate_positions(d: &AdvanceDiagram, positions: &[f64]) -> Result<(), Advan
     Ok(())
 }
 
+/// Place nodes at caller-supplied centres.
+///
+/// `positions` arrive in the order [`layout_advance`] emitted its nodes
+/// — lane order, not declaration order — because that is the array a
+/// host reads, drags one node in, and hands back. Taking the order from
+/// [`layout`] itself is the only way it cannot drift from what the
+/// caller was given; mapping `d.nodes` directly made two nodes in
+/// different lanes trade places.
 fn place_nodes_at_positions(
     d: &AdvanceDiagram,
     positions: &[f64],
 ) -> Vec<AdvanceSceneNode> {
-    let sizes: Vec<(f64, f64)> = d.nodes.iter().map(node_size).collect();
-    d.nodes
+    let by_id: std::collections::HashMap<&str, &AdvanceNode> =
+        d.nodes.iter().map(|n| (n.id.as_str(), n)).collect();
+    layout(d)
+        .nodes
         .iter()
         .enumerate()
-        .map(|(i, n)| scene_node(n, positions[i * 2], positions[i * 2 + 1], sizes[i].0, sizes[i].1))
+        .map(|(i, placed)| {
+            let n = by_id[placed.id.as_str()];
+            let (w, h) = node_size(n);
+            scene_node(n, positions[i * 2], positions[i * 2 + 1], w, h)
+        })
         .collect()
 }
 
@@ -5022,7 +5114,7 @@ fn build_lanes_with_widths(
     margin: f64,
     gap: f64,
 ) -> (Vec<AdvanceSceneLane>, f64, f64) {
-    let lane_idx = lane_index_map(d);
+    let lane_idx = top_level_lane_map(d);
     let mut lane_scenes = Vec::with_capacity(d.lanes.len());
     let mut x = margin;
 
@@ -5030,7 +5122,7 @@ fn build_lanes_with_widths(
     for i in 0..d.lanes.len() {
         let max_bottom = nodes
             .iter()
-            .filter(|n| lane_idx[&n.lane] == i)
+            .filter(|n| lane_idx.get(n.lane.as_str()).copied() == Some(i))
             .map(|n| n.y + n.h / 2.0)
             .fold(f64::NEG_INFINITY, f64::max);
         let h = if max_bottom.is_finite() {
@@ -6574,6 +6666,135 @@ mod tests {
         assert!(ok_text(&multi(MAX_NEST_DEPTH)) && !ok_text(&multi(MAX_NEST_DEPTH + 1)));
         assert!(AdvanceDiagram::parse(&json(MAX_NEST_DEPTH)).is_ok());
         assert!(AdvanceDiagram::parse(&json(MAX_NEST_DEPTH + 1)).is_err());
+    }
+
+
+    // ------------------------------------------------------------
+    // Whole-module review of advance mode
+    // ------------------------------------------------------------
+
+    const TWO_LANES: &str = r#"{"lanes":[{"id":"A","title":"A"},{"id":"B","title":"B"}],
+        "nodes":[{"id":"n1","lane":"A"},{"id":"n2","lane":"B"},{"id":"n3","lane":"A"}],"edges":[]}"#;
+
+    #[test]
+    fn dragged_positions_round_trip_through_the_scene_order() {
+        // The scene is what a host reads, drags a node in, and hands
+        // back. Consuming it in declaration order made nodes in
+        // different lanes trade places.
+        let sc = layout_advance(TWO_LANES).unwrap();
+        assert_eq!(
+            sc.nodes.iter().map(|n| n.id.as_str()).collect::<Vec<_>>(),
+            ["n1", "n3", "n2"],
+            "test rests on the scene NOT being in declaration order"
+        );
+        let positions: Vec<f64> = sc.nodes.iter().flat_map(|n| [n.x, n.y]).collect();
+        let again = layout(&AdvanceDiagram::parse(TWO_LANES).unwrap());
+        let placed = place_nodes_at_positions(&AdvanceDiagram::parse(TWO_LANES).unwrap(), &positions);
+        for (want, got) in again.nodes.iter().zip(&placed) {
+            assert_eq!(want.id, got.id);
+            assert!((want.x - got.x).abs() < 1e-9 && (want.y - got.y).abs() < 1e-9,
+                "{} moved from ({}, {}) to ({}, {})", got.id, want.x, want.y, got.x, got.y);
+        }
+        // And the same through the public entry point.
+        let svg = render_advance_routed(TWO_LANES, &positions).unwrap();
+        for n in &sc.nodes {
+            assert!(svg.contains(&format!("x=\"{:.1}\" y=\"{:.1}\"", n.x, n.y))
+                    || svg.contains(&format!("cx=\"{:.1}\" cy=\"{:.1}\"", n.x, n.y)),
+                    "{} is not at its scene position", n.id);
+        }
+    }
+
+    #[test]
+    fn lane_boxes_are_sized_by_their_own_nodes_when_lanes_nest() {
+        // `lane_index_map` is a flat depth-first index over ALL lanes,
+        // so enumerating top-level lanes against it counted A1's nodes
+        // toward B and left B sized as if empty.
+        let deep = r#"{"lanes":[{"id":"A","title":"A","children":[{"id":"A1","title":"A1"},{"id":"A2","title":"A2"}]},{"id":"B","title":"B"}],
+            "nodes":[{"id":"x","lane":"A1"},{"id":"y","lane":"A2"},
+                     {"id":"z1","lane":"B"},{"id":"z2","lane":"B"},{"id":"z3","lane":"B"}],"edges":[]}"#;
+        let base = layout_advance(deep).unwrap();
+        let positions: Vec<f64> = base.nodes.iter().flat_map(|n| [n.x, n.y]).collect();
+        let svg = render_advance_routed_with_lanes(deep, &positions, &[200.0, 200.0], 24.0, 24.0).unwrap();
+        // Both lane boxes reach the bottom-most node they actually hold.
+        let deepest = base.nodes.iter().map(|n| n.y + n.h / 2.0).fold(0.0, f64::max);
+        let mut lane_h = Vec::new();
+        for cap in svg.split("<rect ").skip(1) {
+            let g = |k: &str| cap.split(&format!("{k}=\"")).nth(1)
+                .and_then(|s| s.split('"').next()).and_then(|s| s.parse::<f64>().ok()).unwrap_or(0.0);
+            if (g("width") - 200.0).abs() < 1e-9 {
+                lane_h.push(g("height"));
+            }
+        }
+        assert_eq!(lane_h.len(), 2, "one box per top-level lane");
+        for h in lane_h {
+            assert!(h + 24.0 >= deepest, "lane box {h} does not reach the lowest node at {deepest}");
+        }
+    }
+
+    #[test]
+    fn the_top_nodes_own_anchor_wins_even_when_another_is_nearer() {
+        // Discarding the globally-nearest anchor when it belonged to an
+        // occluded node left the visible node's anchor unreachable.
+        let src = r#"{"lanes":[{"id":"l","title":"L"}],
+            "nodes":[{"id":"under","lane":"l","x":100,"y":100,"anchors":[{"id":"u","side":"right"}]},
+                     {"id":"over","lane":"l","x":110,"y":100,"anchors":[{"id":"o","side":"right"}]}],
+            "edges":[]}"#;
+        let sc = layout(&AdvanceDiagram::parse(src).unwrap());
+        let ui = sc.nodes.iter().position(|n| n.id == "under").unwrap();
+        let oi = sc.nodes.iter().position(|n| n.id == "over").unwrap();
+        let ua = &sc.nodes[ui].anchors[0];
+        let p = (ua.x - 2.0, ua.y);
+        assert_eq!(sc.node_at(p.0, p.1), Some(oi), "setup: the point must sit on `over`");
+        assert_eq!(sc.anchor_at(p.0, p.1, 30.0), Some((ui, 0)), "setup: `under`'s anchor is the nearest");
+        assert_eq!(sc.hit_test(p.0, p.1, 30.0), Some(AdvanceHit::Anchor(oi, 0)));
+    }
+
+    #[test]
+    fn edge_separators_inside_labels_are_text() {
+        let d = text_diagram("lane l \"L\"\na[A] { p[x---y]; q[a-->b] }\n");
+        assert_eq!(d.nodes[0].elements.iter().map(|e| e.label.as_str()).collect::<Vec<_>>(),
+                   ["x---y", "a-->b"]);
+        let d = text_diagram("lane l \"L\"\na[x==>y]\nb[B]\na --- b\n");
+        assert_eq!(d.nodes[0].label, "x==>y");
+        assert_eq!((d.edges.len(), d.edges[0].kind), (1, EdgeKind::Open));
+        // Separator precedence is unchanged: `a ---> b` still splits at
+        // the `-->`, leaving `a -` as the source, exactly as before.
+        let e = AdvanceDiagram::parse_text("lane l \"L\"\na[A]\nb[B]\na ---> b\n").unwrap_err();
+        assert!(e.message.contains("unknown node 'a -'"), "{}", e.message);
+    }
+
+    #[test]
+    fn a_one_line_lane_block_takes_bare_ids() {
+        let d = text_diagram("lane l \"L\" { a }\n");
+        assert_eq!(d.lanes[0].title, "L");
+        assert_eq!(d.nodes.iter().map(|n| n.id.as_str()).collect::<Vec<_>>(), ["a"]);
+        let d = text_diagram("lane l \"L\" { a[A]; b }\n");
+        assert_eq!(d.nodes.len(), 2);
+    }
+
+    #[test]
+    fn an_anchor_id_with_a_colon_is_refused() {
+        // `parse_end` rejects a ':' in an `@`-suffix, so such an anchor
+        // could be declared but never referenced.
+        let e = AdvanceDiagram::parse_text("lane l \"L\"\na[A] { anchor my:x right }\n").unwrap_err();
+        assert!(e.message.contains("may not contain ':'"), "{}", e.message);
+        let json = r#"{"lanes":[{"id":"l","title":"L"}],
+            "nodes":[{"id":"a","lane":"l","anchors":[{"id":"m:x","side":"right"}]}],"edges":[]}"#;
+        assert!(AdvanceDiagram::parse(json).unwrap_err().message.contains("may not contain ':'"));
+    }
+
+    #[test]
+    fn a_style_target_matching_no_edge_is_an_error_either_way() {
+        let base = "lane l \"L\"\na[A]\nb[B]\na --> b\n";
+        // Plain node-pair target: used to be dropped in silence.
+        let e = AdvanceDiagram::parse_text(&format!("{base}style zz-->yy color:#f00\n")).unwrap_err();
+        assert!(e.message.contains("matches no edge") && e.message.contains("line 5"), "{}", e.message);
+        // Nodes exist but carry no edge between them.
+        let e = AdvanceDiagram::parse_text(&format!("{base}style b-->a color:#f00\n")).unwrap_err();
+        assert!(e.message.contains("matches no edge"), "{}", e.message);
+        // A real target still applies.
+        let d = text_diagram(&format!("{base}style a-->b color:#f00\n"));
+        assert_eq!(d.edges[0].style.color.as_deref(), Some("#f00"));
     }
 
 }
