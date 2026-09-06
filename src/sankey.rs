@@ -103,36 +103,21 @@ fn saturate(v: f64) -> f64 {
     }
 }
 
-/// A short, content-derived suffix for the gradient ids in one diagram.
-///
-/// Ids must be unique per diagram — two sankey SVGs inlined on one page
-/// (the docs site does exactly that) would otherwise share `fmsk0`, and
-/// every ribbon in the second would pick up the first's gradient. A
-/// running counter would fix that but break the crate's byte-identical
-/// output promise; a hash of the content keeps both, since the same
-/// diagram always hashes the same and a different one almost never
-/// collides.
+/// A short, content-derived suffix for this diagram's gradient ids —
+/// see [`crate::scene::DefsKey`] for why it is a hash and not a counter.
 fn scene_key(ss: &SankeyScene) -> String {
-    // FNV-1a, 64-bit — a few lines, no dependency, and stable across
-    // runs and platforms (unlike `DefaultHasher`, which is not).
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    let mut eat = |bytes: &[u8]| {
-        for b in bytes {
-            h ^= *b as u64;
-            h = h.wrapping_mul(0x0000_0100_0000_01b3);
-        }
-    };
+    let mut k = crate::scene::DefsKey::new();
     for n in &ss.nodes {
-        eat(n.label.as_bytes());
-        eat(&n.x.to_bits().to_le_bytes());
-        eat(&n.y.to_bits().to_le_bytes());
+        k.eat(n.label.as_bytes());
+        k.eat_f64(n.x);
+        k.eat_f64(n.y);
     }
     for l in &ss.links {
-        eat(&l.value.to_bits().to_le_bytes());
-        eat(&l.y0.to_bits().to_le_bytes());
-        eat(&l.y1.to_bits().to_le_bytes());
+        k.eat_f64(l.value);
+        k.eat_f64(l.y0);
+        k.eat_f64(l.y1);
     }
-    format!("{h:x}")
+    k.finish()
 }
 
 /// A total order over the nodes with cycle edges left out. A sankey is
