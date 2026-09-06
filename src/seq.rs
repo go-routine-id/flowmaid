@@ -677,7 +677,10 @@ fn write_head(s: &mut String, h: &Head) {
             .map(|(x, y)| format!("{:.1},{:.1}", x, y))
             .collect::<Vec<_>>()
             .join(" ");
-        s.push_str(&format!("<polygon points=\"{}\" fill=\"{}\"/>\n", pts, EDGE_COLOR));
+        s.push_str(&format!(
+            "<polygon points=\"{}\" fill=\"{}\"/>\n",
+            pts, EDGE_COLOR
+        ));
     }
     for [a, b] in &h.segments {
         s.push_str(&format!(
@@ -705,7 +708,8 @@ mod tests {
 
     #[test]
     fn participants_aliases_and_actors() {
-        let d = sd("sequenceDiagram\nparticipant A as Alice\nactor B as Bob the User\nparticipant C");
+        let d =
+            sd("sequenceDiagram\nparticipant A as Alice\nactor B as Bob the User\nparticipant C");
         let got: Vec<(&str, &str, bool)> = d
             .participants
             .iter()
@@ -713,7 +717,11 @@ mod tests {
             .collect();
         assert_eq!(
             got,
-            [("A", "Alice", false), ("B", "Bob the User", true), ("C", "C", false)]
+            [
+                ("A", "Alice", false),
+                ("B", "Bob the User", true),
+                ("C", "C", false)
+            ]
         );
     }
 
@@ -742,7 +750,10 @@ mod tests {
         ];
         for (op, want_dashed, want_head) in cases {
             let d = sd(&format!("sequenceDiagram\nA{op}B: hi"));
-            let SeqItem::Message { text, dashed, head, .. } = &d.items[0] else {
+            let SeqItem::Message {
+                text, dashed, head, ..
+            } = &d.items[0]
+            else {
                 panic!("expected a message for op {op}");
             };
             assert_eq!(text, "hi", "op: {op}");
@@ -754,11 +765,21 @@ mod tests {
     #[test]
     fn activation_shorthand_and_keywords() {
         let d = sd("sequenceDiagram\nA->>+B: q\nB-->>-A: r\nactivate A\ndeactivate A");
-        let SeqItem::Message { activate, deactivate, .. } = &d.items[0] else {
+        let SeqItem::Message {
+            activate,
+            deactivate,
+            ..
+        } = &d.items[0]
+        else {
             panic!()
         };
         assert!(*activate && !*deactivate, "`+` activates the target");
-        let SeqItem::Message { activate, deactivate, .. } = &d.items[1] else {
+        let SeqItem::Message {
+            activate,
+            deactivate,
+            ..
+        } = &d.items[1]
+        else {
             panic!()
         };
         assert!(!*activate && *deactivate, "`-` deactivates the sender");
@@ -770,7 +791,11 @@ mod tests {
     fn unbalanced_deactivate_is_a_line_error() {
         let e = parse_document("sequenceDiagram\nA->>B: hi\ndeactivate B").unwrap_err();
         assert_eq!(e.line, 3);
-        assert!(e.message.contains("without a matching activate"), "{}", e.message);
+        assert!(
+            e.message.contains("without a matching activate"),
+            "{}",
+            e.message
+        );
         // `-` shorthand deactivates the sender — B was never activated.
         let e = parse_document("sequenceDiagram\nA->>B: hi\nB-->>-A: bye").unwrap_err();
         assert_eq!(e.line, 3);
@@ -808,7 +833,9 @@ mod tests {
     #[test]
     fn trailing_comment_is_stripped() {
         let d = sd("sequenceDiagram\nA->>B: hi %% trailing comment");
-        let SeqItem::Message { text, .. } = &d.items[0] else { panic!() };
+        let SeqItem::Message { text, .. } = &d.items[0] else {
+            panic!()
+        };
         assert_eq!(text, "hi");
     }
 
@@ -818,7 +845,13 @@ mod tests {
         // Over(0, Some(0)); it must normalise to a single-participant
         // note Over(0, None).
         let d = sd("sequenceDiagram\nparticipant A\nNote over A,A: same");
-        assert!(matches!(d.items[0], SeqItem::Note { side: NoteSide::Over(0, None), .. }));
+        assert!(matches!(
+            d.items[0],
+            SeqItem::Note {
+                side: NoteSide::Over(0, None),
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -836,9 +869,25 @@ mod tests {
                 _ => None,
             })
             .collect();
-        assert_eq!(kinds, [FrameKind::Alt, FrameKind::Par, FrameKind::Loop, FrameKind::Opt]);
-        let elses = d.items.iter().filter(|i| matches!(i, SeqItem::FrameElse { .. })).count();
-        let ends = d.items.iter().filter(|i| matches!(i, SeqItem::FrameEnd)).count();
+        assert_eq!(
+            kinds,
+            [
+                FrameKind::Alt,
+                FrameKind::Par,
+                FrameKind::Loop,
+                FrameKind::Opt
+            ]
+        );
+        let elses = d
+            .items
+            .iter()
+            .filter(|i| matches!(i, SeqItem::FrameElse { .. }))
+            .count();
+        let ends = d
+            .items
+            .iter()
+            .filter(|i| matches!(i, SeqItem::FrameEnd))
+            .count();
         assert_eq!((elses, ends), (2, 4));
 
         let e = parse_document("sequenceDiagram\nend").unwrap_err();
@@ -876,7 +925,11 @@ mod tests {
         assert!(e.message.contains("expected ':"), "{}", e.message);
         let e = parse_document("sequenceDiagram\nA==>B: hi").unwrap_err();
         assert_eq!(e.line, 2);
-        assert!(e.message.contains("unknown message operator"), "{}", e.message);
+        assert!(
+            e.message.contains("unknown message operator"),
+            "{}",
+            e.message
+        );
     }
 
     // ----------------------------- layout -----------------------------
@@ -888,11 +941,7 @@ mod tests {
         assert_eq!(sc.boxes.len(), 3);
         for i in 1..sc.boxes.len() {
             let (a, b) = (&sc.boxes[i - 1], &sc.boxes[i]);
-            assert!(
-                a.x + a.w < b.x,
-                "box {i} must sit right of box {}",
-                i - 1
-            );
+            assert!(a.x + a.w < b.x, "box {i} must sit right of box {}", i - 1);
         }
         let ys: Vec<f64> = sc.messages.iter().map(|m| m.points[0].1).collect();
         for i in 1..ys.len() {
@@ -946,8 +995,14 @@ mod tests {
         assert_eq!(sc.activations.len(), 1);
         let bar = &sc.activations[0];
         assert_eq!(bar.participant, 1);
-        assert!((bar.y0 - sc.messages[0].points[0].1).abs() < 1e-6, "starts at the + message");
-        assert!((bar.y1 - sc.messages[2].points[0].1).abs() < 1e-6, "ends at the - message");
+        assert!(
+            (bar.y0 - sc.messages[0].points[0].1).abs() < 1e-6,
+            "starts at the + message"
+        );
+        assert!(
+            (bar.y1 - sc.messages[2].points[0].1).abs() < 1e-6,
+            "ends at the - message"
+        );
         assert!((bar.x - sc.lifelines[1].x).abs() < 1e-6);
         // An unclosed activation extends to the lifeline bottom.
         let sc = scene(&sd("sequenceDiagram\nA->>+B: q"));
@@ -975,9 +1030,13 @@ mod tests {
 
     #[test]
     fn svg_has_dashes_heads_and_autonumber_prefix() {
-        let d = sd("sequenceDiagram\nautonumber\nA-->>B: dashed filled\nA-xB: crossed\nA->B: plain");
+        let d =
+            sd("sequenceDiagram\nautonumber\nA-->>B: dashed filled\nA-xB: crossed\nA->B: plain");
         let svg = to_svg(&scene(&d));
-        assert!(svg.contains("stroke-dasharray=\"6 4\""), "dashed message line");
+        assert!(
+            svg.contains("stroke-dasharray=\"6 4\""),
+            "dashed message line"
+        );
         assert!(svg.contains("<polygon"), "filled head triangle");
         assert!(svg.contains("<tspan font-weight=\"bold\">1. </tspan>dashed filled"));
         assert!(svg.contains("<tspan font-weight=\"bold\">2. </tspan>crossed"));
@@ -1073,15 +1132,17 @@ mod tests {
         combos.dedup();
         assert_eq!(combos.len(), 8, "all 8 arrow variants: {combos:?}");
         // A self-message is present.
-        assert!(d.items.iter().any(
-            |i| matches!(i, SeqItem::Message { from, to, .. } if from == to)
-        ));
+        assert!(d
+            .items
+            .iter()
+            .any(|i| matches!(i, SeqItem::Message { from, to, .. } if from == to)));
         // Explicit + shorthand activations.
         assert!(d.items.iter().any(|i| matches!(i, SeqItem::Activate(_))));
         assert!(d.items.iter().any(|i| matches!(i, SeqItem::Deactivate(_))));
-        assert!(d.items.iter().any(
-            |i| matches!(i, SeqItem::Message { activate: true, .. })
-        ));
+        assert!(d
+            .items
+            .iter()
+            .any(|i| matches!(i, SeqItem::Message { activate: true, .. })));
         // Every note form.
         let sides: Vec<NoteSide> = d
             .items
@@ -1091,7 +1152,9 @@ mod tests {
                 _ => None,
             })
             .collect();
-        assert!(sides.iter().any(|s| matches!(s, NoteSide::Over(_, Some(_)))));
+        assert!(sides
+            .iter()
+            .any(|s| matches!(s, NoteSide::Over(_, Some(_)))));
         assert!(sides.iter().any(|s| matches!(s, NoteSide::Over(_, None))));
         assert!(sides.iter().any(|s| matches!(s, NoteSide::LeftOf(_))));
         assert!(sides.iter().any(|s| matches!(s, NoteSide::RightOf(_))));
@@ -1104,11 +1167,19 @@ mod tests {
                 _ => None,
             })
             .collect();
-        for want in [FrameKind::Loop, FrameKind::Opt, FrameKind::Alt, FrameKind::Par] {
+        for want in [
+            FrameKind::Loop,
+            FrameKind::Opt,
+            FrameKind::Alt,
+            FrameKind::Par,
+        ] {
             assert!(kinds.contains(&want), "missing frame {want:?}");
         }
         assert_eq!(
-            d.items.iter().filter(|i| matches!(i, SeqItem::FrameElse { .. })).count(),
+            d.items
+                .iter()
+                .filter(|i| matches!(i, SeqItem::FrameElse { .. }))
+                .count(),
             2
         );
 

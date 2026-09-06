@@ -424,14 +424,8 @@ fn compose(
     // Lane index per gutter so parallel fold edges nest concentrically.
     let mut gutter_lane = vec![0usize; nb];
     let flow = |p: &crate::scene::SceneNode| if horizontal { p.x } else { p.y };
-    let global_top = nodes
-        .iter()
-        .map(&flow)
-        .fold(f64::INFINITY, f64::min);
-    let global_bot = nodes
-        .iter()
-        .map(&flow)
-        .fold(f64::NEG_INFINITY, f64::max);
+    let global_top = nodes.iter().map(&flow).fold(f64::INFINITY, f64::min);
+    let global_bot = nodes.iter().map(&flow).fold(f64::NEG_INFINITY, f64::max);
     let edges: Vec<SceneEdge> = g
         .edges
         .iter()
@@ -595,7 +589,12 @@ mod tests {
         );
         assert!(c.scene.width > plain.width, "bands spread along breadth");
         // Fold connectors thread waypoints; nothing is NaN.
-        let folded = c.scene.edges.iter().filter(|e| e.waypoints.len() >= 4).count();
+        let folded = c
+            .scene
+            .edges
+            .iter()
+            .filter(|e| e.waypoints.len() >= 4)
+            .count();
         assert!(folded >= c.bands - 1);
         let svg = crate::scene::to_svg(&c.scene);
         assert!(!svg.contains("NaN"));
@@ -603,9 +602,7 @@ mod tests {
 
     #[test]
     fn every_direction_folds_on_its_own_flow_axis() {
-        for (dir, taller_than_wide) in
-            [("TD", false), ("BT", false), ("LR", true), ("RL", true)]
-        {
+        for (dir, taller_than_wide) in [("TD", false), ("BT", false), ("LR", true), ("RL", true)] {
             let src = chain(12).replace("flowchart TD", &format!("flowchart {dir}"));
             let g = parse(&src).unwrap();
             let c = scene_compact(&g, &CompactOptions::for_extent(420.0));
@@ -643,7 +640,11 @@ mod tests {
         // Fits: huge budget.
         same(&chain(12), FoldSkip::AlreadyFits, 100_000.0);
         // Non-linear: diamond fan-out.
-        same("flowchart TD\nA-->B\nA-->C\nB-->D\nC-->D\nD-->E\nE-->F\nF-->G\nG-->H\nH-->I\nI-->J", FoldSkip::NotLinear, 100.0);
+        same(
+            "flowchart TD\nA-->B\nA-->C\nB-->D\nC-->D\nD-->E\nE-->F\nF-->G\nG-->H\nH-->I\nI-->J",
+            FoldSkip::NotLinear,
+            100.0,
+        );
         // Subgraphs.
         same(
             "flowchart TD\nsubgraph S\nA-->B\nend\nB-->C\nC-->D\nD-->E\nE-->F\nF-->G",
@@ -657,7 +658,11 @@ mod tests {
             100.0,
         );
         // Cycle.
-        same("flowchart TD\nA-->B\nB-->C\nC-->D\nD-->E\nE-->A", FoldSkip::NotLinear, 100.0);
+        same(
+            "flowchart TD\nA-->B\nB-->C\nC-->D\nD-->E\nE-->A",
+            FoldSkip::NotLinear,
+            100.0,
+        );
         // Too short.
         same("flowchart TD\nA-->B\nB-->C", FoldSkip::TooShort, 10.0);
     }
@@ -670,12 +675,7 @@ mod tests {
         let c = scene_compact(&g, &CompactOptions::for_extent(420.0));
         assert!(c.skipped.is_none());
         // Every edge label survives, folded or not.
-        let labelled = c
-            .scene
-            .edges
-            .iter()
-            .filter(|e| e.label.is_some())
-            .count();
+        let labelled = c.scene.edges.iter().filter(|e| e.label.is_some()).count();
         assert_eq!(labelled, 1);
         // route_partial keeps untouched fold geometry verbatim.
         let auto: Vec<(f64, f64)> = c.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
@@ -684,7 +684,10 @@ mod tests {
         let r = crate::scene::route_partial(&g, &dragged, &c.scene, &auto);
         assert_eq!(r.edges.len(), c.scene.edges.len());
         for (ri, ci) in r.edges.iter().zip(c.scene.edges.iter()).skip(2) {
-            assert_eq!(ri.waypoints, ci.waypoints, "untouched edges keep fold turns");
+            assert_eq!(
+                ri.waypoints, ci.waypoints,
+                "untouched edges keep fold turns"
+            );
         }
     }
 

@@ -120,7 +120,11 @@ pub fn scene(d: &Journey) -> JourneyScene {
         cols.push((x, w));
         x += w;
     }
-    let tasks_w = if flat.is_empty() { 2.0 * PAD + COL_MIN } else { x + PAD };
+    let tasks_w = if flat.is_empty() {
+        2.0 * PAD + COL_MIN
+    } else {
+        x + PAD
+    };
 
     // The canvas must also fit the title and the actor legend, or they
     // overflow to negative x when the tasks are narrow (few short tasks
@@ -128,7 +132,11 @@ pub fn scene(d: &Journey) -> JourneyScene {
     let item_w = |name: &str| 16.0 + text_width(name) + 18.0;
     let legend_total: f64 = d.actors.iter().map(|a| item_w(a)).sum();
     let title_w = d.title.as_ref().map_or(0.0, |t| text_width(t) + 2.0 * PAD);
-    let legend_w = if has_legend { legend_total + 2.0 * PAD } else { 0.0 };
+    let legend_w = if has_legend {
+        legend_total + 2.0 * PAD
+    } else {
+        0.0
+    };
     let width = tasks_w.max(title_w).max(legend_w);
 
     // Vertical bands, top to bottom.

@@ -206,9 +206,18 @@ pub fn spans(line: &str) -> Vec<(String, bool, bool)> {
 /// only when followed (after optional spaces) by `>` or `/`.
 fn has_style_tag(body: &str) -> bool {
     let low = body.to_ascii_lowercase();
-    if ["<b>", "</b>", "<i>", "</i>", "<em>", "</em>", "<strong>", "</strong>"]
-        .iter()
-        .any(|t| low.contains(t))
+    if [
+        "<b>",
+        "</b>",
+        "<i>",
+        "</i>",
+        "<em>",
+        "</em>",
+        "<strong>",
+        "</strong>",
+    ]
+    .iter()
+    .any(|t| low.contains(t))
     {
         return true;
     }
@@ -422,7 +431,11 @@ fn layout_core(
         }
         // Order the endpoints by layer (lo below hi) to build the chain.
         let ascending = alayer[e.from] <= alayer[e.to];
-        let (lo, hi) = if ascending { (e.from, e.to) } else { (e.to, e.from) };
+        let (lo, hi) = if ascending {
+            (e.from, e.to)
+        } else {
+            (e.to, e.from)
+        };
         let (llo, lhi) = (alayer[lo], alayer[hi]);
         if lhi <= llo + 1 {
             if llo < lhi {
@@ -538,7 +551,11 @@ fn layout_core(
                     alsize.push(0.0);
                     preds.push(Vec::new());
                     succs.push(Vec::new());
-                    let prev = if side == 1 { &mut prev_bl } else { &mut prev_br };
+                    let prev = if side == 1 {
+                        &mut prev_bl
+                    } else {
+                        &mut prev_br
+                    };
                     if let Some(p) = *prev {
                         succs[p].push(d);
                         preds[d].push(p);
@@ -828,10 +845,8 @@ fn transpose(
                 {
                     continue;
                 }
-                let before = local_crossings(v, w, preds, pos)
-                    + local_crossings(v, w, succs, pos);
-                let after = local_crossings(w, v, preds, pos)
-                    + local_crossings(w, v, succs, pos);
+                let before = local_crossings(v, w, preds, pos) + local_crossings(v, w, succs, pos);
+                let after = local_crossings(w, v, preds, pos) + local_crossings(w, v, succs, pos);
                 if after < before {
                     layers[li].swap(i, i + 1);
                     pos[v] = (i + 1) as f64;
@@ -969,8 +984,7 @@ fn coordinates_bk(
             // Align towards the already-processed layer: predecessors
             // for a downward sweep, successors for an upward one.
             let neighbor = if vert_up { &down } else { &up };
-            let (root, _align) =
-                vertical_alignment(na, &al, neighbor, &aorder, &conflicts);
+            let (root, _align) = vertical_alignment(na, &al, neighbor, &aorder, &conflicts);
             let mut xs = horizontal_compaction(n, na, &al, &root, absize, apath, border);
             if horiz_right {
                 for x in xs.iter_mut() {
@@ -1023,7 +1037,11 @@ fn type1_conflicts(
                     for &u in &up[scan_node] {
                         let upos = order[u];
                         if (upos < k0 || upos > k1) && !(is_dummy(u) && is_dummy(scan_node)) {
-                            let pair = if u < scan_node { (u, scan_node) } else { (scan_node, u) };
+                            let pair = if u < scan_node {
+                                (u, scan_node)
+                            } else {
+                                (scan_node, u)
+                            };
                             conflicts.insert(pair);
                         }
                     }
@@ -1061,10 +1079,7 @@ fn vertical_alignment(
             let hi = m / 2;
             for &w in &ws[lo..=hi] {
                 let pair = if v < w { (v, w) } else { (w, v) };
-                if align[v] == v
-                    && prev_idx < aorder[w] as i64
-                    && !conflicts.contains(&pair)
-                {
+                if align[v] == v && prev_idx < aorder[w] as i64 && !conflicts.contains(&pair) {
                     align[w] = v;
                     root[v] = root[w];
                     align[v] = root[w];
@@ -1110,7 +1125,11 @@ fn horizontal_compaction(
                 // A wall hugs its members (only pins the band); ordinary
                 // neighbours pay their separation-class halves.
                 let is_wall = border.is_some_and(|b| b[u] != 0 || b[v] != 0);
-                let base = if is_wall { BORDER_GAP } else { half(u) + half(v) };
+                let base = if is_wall {
+                    BORDER_GAP
+                } else {
+                    half(u) + half(v)
+                };
                 let sep = absize[u] / 2.0 + base + absize[v] / 2.0 + cgap;
                 // Merge parallel separations by their max.
                 if let Some(e) = bout[ur].iter_mut().find(|(t, _)| *t == vr) {
@@ -1334,7 +1353,10 @@ mod tests {
         assert_eq!(spans("plain"), vec![("plain".into(), false, false)]);
         assert_eq!(
             spans("<b>Go</b> · MongoDB"),
-            vec![("Go".into(), true, false), (" · MongoDB".into(), false, false)]
+            vec![
+                ("Go".into(), true, false),
+                (" · MongoDB".into(), false, false)
+            ]
         );
         assert_eq!(
             spans("a <i>b</i> <strong>c</strong>"),
@@ -1423,7 +1445,10 @@ mod tests {
         );
         // `<br` only counts as a tag when it actually closes as one —
         // a genuine TeX less-than stays math.
-        assert_eq!(spans("$$p<br_rate$$"), vec![("p<br_rate".into(), false, true)]);
+        assert_eq!(
+            spans("$$p<br_rate$$"),
+            vec![("p<br_rate".into(), false, true)]
+        );
         // The fences don't count toward measured width.
         assert!(text_width("$$xy$$") < text_width("$$xy$$ ") + 1.0);
         assert_eq!(text_width("$$xy$$"), text_width("<i>xy</i>"));
@@ -1443,7 +1468,10 @@ mod tests {
     #[test]
     fn bold_labels_render_as_svg_tspans_not_literal_tags() {
         let svg = crate::render_svg("flowchart TD\nA[\"<b>Go</b> service\"] --> B").unwrap();
-        assert!(svg.contains("font-weight=\"bold\">Go</tspan>"), "bold tspan");
+        assert!(
+            svg.contains("font-weight=\"bold\">Go</tspan>"),
+            "bold tspan"
+        );
         assert!(!svg.contains("&lt;b&gt;"), "no literal <b> in output");
     }
 }

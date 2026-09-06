@@ -4,8 +4,9 @@
 //! and edges between nodes. The engine lays out vertical or horizontal lanes,
 //! orders nodes top-down (or left-to-right), and routes orthogonal edges.
 
-
-use crate::json::{as_array, as_number, as_object, as_str, escape_json_str, obj_get, parse_json, JsonValue};
+use crate::json::{
+    as_array, as_number, as_object, as_str, escape_json_str, obj_get, parse_json, JsonValue,
+};
 use crate::layout::{text_width, BASE_H, LINE_H, MIN_W, PAD_X};
 use crate::model::{EdgeKind, NodeStyle, Shape};
 use crate::parser::normalize_breaks;
@@ -58,7 +59,12 @@ fn adv_err(message: impl Into<String>) -> AdvanceError {
 /// Build a parse error with line/column context baked into the message.
 /// `line_no` is zero-based; `col` (when known) is a char offset into the
 /// raw line and drives the `^` caret under the snippet.
-fn text_err(source: &str, line_no: usize, col: Option<usize>, message: impl Into<String>) -> AdvanceError {
+fn text_err(
+    source: &str,
+    line_no: usize,
+    col: Option<usize>,
+    message: impl Into<String>,
+) -> AdvanceError {
     let line_text = source.lines().nth(line_no).unwrap_or("");
     let snippet = line_text.trim_end();
     let mut out = format!("line {}: {}", line_no + 1, message.into());
@@ -136,19 +142,17 @@ fn find_edge_sep(line: &str) -> Option<(usize, &'static str)> {
         }
     }
     let free = |at: usize| at < bytes.len() && depth[at] == 0;
-    EDGE_SEPARATORS
-        .iter()
-        .find_map(|sep| {
-            let mut from = 0;
-            while let Some(rel) = line[from..].find(sep) {
-                let at = from + rel;
-                if free(at) {
-                    return Some((at, *sep));
-                }
-                from = at + 1;
+    EDGE_SEPARATORS.iter().find_map(|sep| {
+        let mut from = 0;
+        while let Some(rel) = line[from..].find(sep) {
+            let at = from + rel;
+            if free(at) {
+                return Some((at, *sep));
             }
-            None
-        })
+            from = at + 1;
+        }
+        None
+    })
 }
 
 fn is_edge_line(line: &str) -> bool {
@@ -159,7 +163,14 @@ fn is_edge_line(line: &str) -> bool {
 /// the start of an inline block.
 fn is_directive_line(line: &str) -> bool {
     [
-        "style ", "class ", "classDef ", "config ", "title ", "desc ", "description ", "lane ",
+        "style ",
+        "class ",
+        "classDef ",
+        "config ",
+        "title ",
+        "desc ",
+        "description ",
+        "lane ",
         "swimlane",
     ]
     .iter()
@@ -376,7 +387,9 @@ fn body_looks_like_block(body: &str) -> bool {
         return true;
     }
     match st.find(['[', '(']) {
-        Some(i) if i > 0 => st[..i].chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-'),
+        Some(i) if i > 0 => st[..i]
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '_' || c == '-'),
         _ => false,
     }
 }
@@ -403,7 +416,8 @@ fn split_inline_block(line: &str) -> Option<(&str, &str)> {
             ')' if !quote => par -= 1,
             '{' if !quote && sq == 0 && par == 0 && pos > 0 => {
                 let prev = bytes[pos - 1];
-                if !(prev == b' ' || prev == b'\t' || prev == b']' || prev == b')' || prev == b'}') {
+                if !(prev == b' ' || prev == b'\t' || prev == b']' || prev == b')' || prev == b'}')
+                {
                     continue; // glued to the id: a shape brace
                 }
                 let prefix = line[..pos].trim_end();
@@ -414,7 +428,8 @@ fn split_inline_block(line: &str) -> Option<(&str, &str)> {
                 if is_lane {
                     return Some((prefix, body));
                 }
-                let closed_shape = prefix.ends_with(']') || prefix.ends_with(')') || prefix.ends_with('}');
+                let closed_shape =
+                    prefix.ends_with(']') || prefix.ends_with(')') || prefix.ends_with('}');
                 if !closed_shape && !body_looks_like_block(body) {
                     continue;
                 }
@@ -433,7 +448,12 @@ fn split_inline_block(line: &str) -> Option<(&str, &str)> {
 /// (recursively, so blocks may nest on one line) while every statement
 /// keeps the line number it came from. Depth is capped like the JSON
 /// front-end, so a hostile line errors instead of overflowing the stack.
-fn expand_inline(line_no: usize, line: &str, depth: usize, out: &mut Vec<(usize, String)>) -> Result<(), String> {
+fn expand_inline(
+    line_no: usize,
+    line: &str,
+    depth: usize,
+    out: &mut Vec<(usize, String)>,
+) -> Result<(), String> {
     match split_inline_block(line) {
         Some((decl, body)) => {
             if depth >= MAX_NEST_DEPTH {
@@ -511,7 +531,10 @@ fn resolve_element<'a>(
 /// it attaches on. Errors name what is missing; an interior side on a
 /// sub-element is refused here rather than drawn as a lead that would
 /// pierce a sibling.
-fn resolve_end_side(nodes: &[AdvanceNode], end: &AdvanceEnd) -> Result<Option<AdvanceSide>, String> {
+fn resolve_end_side(
+    nodes: &[AdvanceNode],
+    end: &AdvanceEnd,
+) -> Result<Option<AdvanceSide>, String> {
     let node = nodes
         .iter()
         .find(|n| n.id == end.node)
@@ -559,7 +582,9 @@ fn parse_anchor_line(rest: &str) -> Result<AdvanceAnchor, String> {
     let mut it = rest.split_whitespace();
     let id = it.next().ok_or("anchor needs an id")?.to_string();
     check_id("anchor", &id)?;
-    let side_w = it.next().ok_or_else(|| format!("anchor '{}' needs a side (left, right, top, bottom)", id))?;
+    let side_w = it
+        .next()
+        .ok_or_else(|| format!("anchor '{}' needs a side (left, right, top, bottom)", id))?;
     let side = parse_side(side_w)
         .ok_or_else(|| format!("unknown side '{}' for anchor '{}'", side_w, id))?;
     let offset = match it.next() {
@@ -568,7 +593,12 @@ fn parse_anchor_line(rest: &str) -> Result<AdvanceAnchor, String> {
             .parse::<f64>()
             .ok()
             .filter(|v| v.is_finite() && (0.0..=1.0).contains(v))
-            .ok_or_else(|| format!("anchor '{}' offset must be a number in 0..=1, got '{}'", id, o))?,
+            .ok_or_else(|| {
+                format!(
+                    "anchor '{}' offset must be a number in 0..=1, got '{}'",
+                    id, o
+                )
+            })?,
     };
     if it.next().is_some() {
         return Err(format!("too many words after anchor '{}'", id));
@@ -1009,35 +1039,59 @@ fn parse_anchor_json(v: &JsonValue, ctx: &str) -> Result<AdvanceAnchor, AdvanceE
         .and_then(as_str)
         .ok_or_else(|| adv_err(format!("{} anchor '{}' missing 'side'", ctx, id)))?;
     let side = parse_side(side_s).ok_or_else(|| {
-        adv_err(format!("{} anchor '{}': unknown side '{}'", ctx, id, side_s))
+        adv_err(format!(
+            "{} anchor '{}': unknown side '{}'",
+            ctx, id, side_s
+        ))
     })?;
     let offset = match obj_get(obj, "offset") {
         None => DEFAULT_ANCHOR_OFFSET,
         Some(o) => as_number(o)
             .filter(|v| v.is_finite() && (0.0..=1.0).contains(v))
-            .ok_or_else(|| adv_err(format!("{} anchor '{}': offset must be a number in 0..=1", ctx, id)))?,
+            .ok_or_else(|| {
+                adv_err(format!(
+                    "{} anchor '{}': offset must be a number in 0..=1",
+                    ctx, id
+                ))
+            })?,
     };
     Ok(AdvanceAnchor { id, side, offset })
 }
 
 fn parse_layout_json(v: &JsonValue, ctx: &str) -> Result<ElementLayout, AdvanceError> {
     let w = as_str(v).ok_or_else(|| adv_err(format!("{} layout must be a string", ctx)))?;
-    parse_layout_word(w).ok_or_else(|| adv_err(format!("{} layout: unknown '{}', expected column or row", ctx, w)))
+    parse_layout_word(w).ok_or_else(|| {
+        adv_err(format!(
+            "{} layout: unknown '{}', expected column or row",
+            ctx, w
+        ))
+    })
 }
 
 /// A sub-element object; nests through `"elements"`, capped like lanes.
-fn parse_element_json(v: &JsonValue, ctx: &str, depth: usize) -> Result<AdvanceElement, AdvanceError> {
+fn parse_element_json(
+    v: &JsonValue,
+    ctx: &str,
+    depth: usize,
+) -> Result<AdvanceElement, AdvanceError> {
     if depth > MAX_NEST_DEPTH {
-        return Err(adv_err(format!("{}: sub-element nesting exceeds limit of {}", ctx, MAX_NEST_DEPTH)));
+        return Err(adv_err(format!(
+            "{}: sub-element nesting exceeds limit of {}",
+            ctx, MAX_NEST_DEPTH
+        )));
     }
-    let obj = as_object(v).ok_or_else(|| adv_err(format!("{} sub-element must be an object", ctx)))?;
+    let obj =
+        as_object(v).ok_or_else(|| adv_err(format!("{} sub-element must be an object", ctx)))?;
     let id = obj_get(obj, "id")
         .and_then(as_str)
         .ok_or_else(|| adv_err(format!("{} sub-element missing 'id'", ctx)))?
         .to_string();
     check_id("sub-element", &id).map_err(adv_err)?;
     let here = format!("{}.{}", ctx, id);
-    let label = obj_get(obj, "label").and_then(as_str).unwrap_or(&id).to_string();
+    let label = obj_get(obj, "label")
+        .and_then(as_str)
+        .unwrap_or(&id)
+        .to_string();
     let mut anchors = Vec::new();
     if let Some(arr) = obj_get(obj, "anchors").and_then(as_array) {
         for a in arr {
@@ -1053,7 +1107,10 @@ fn parse_element_json(v: &JsonValue, ctx: &str, depth: usize) -> Result<AdvanceE
         for e in arr {
             let e = parse_element_json(e, &here, depth + 1)?;
             if elements.iter().any(|x: &AdvanceElement| x.id == e.id) {
-                return Err(adv_err(format!("{}: duplicate sub-element '{}'", here, e.id)));
+                return Err(adv_err(format!(
+                    "{}: duplicate sub-element '{}'",
+                    here, e.id
+                )));
             }
             elements.push(e);
         }
@@ -1066,7 +1123,14 @@ fn parse_element_json(v: &JsonValue, ctx: &str, depth: usize) -> Result<AdvanceE
         Some(v) => parse_node_style_json(v)?,
         None => NodeStyle::default(),
     };
-    Ok(AdvanceElement { id, label, anchors, elements, layout, style })
+    Ok(AdvanceElement {
+        id,
+        label,
+        anchors,
+        elements,
+        layout,
+        style,
+    })
 }
 
 /// Parse a JSON `from_side`/`to_side` value. `"auto"` (or a missing key)
@@ -1094,7 +1158,10 @@ fn parse_lane_recursive(
     lane_ids: &mut std::collections::HashSet<String>,
 ) -> Result<AdvanceLane, AdvanceError> {
     if depth > MAX_NEST_DEPTH {
-        return Err(adv_err(format!("lane nesting depth exceeds limit of {}", MAX_NEST_DEPTH)));
+        return Err(adv_err(format!(
+            "lane nesting depth exceeds limit of {}",
+            MAX_NEST_DEPTH
+        )));
     }
     let obj = as_object(v).ok_or_else(|| adv_err("lane must be an object"))?;
     let id = obj_get(obj, "id")
@@ -1115,16 +1182,25 @@ fn parse_lane_recursive(
             children.push(parse_lane_recursive(child_json, depth + 1, lane_ids)?);
         }
     }
-    Ok(AdvanceLane { id, title, children })
+    Ok(AdvanceLane {
+        id,
+        title,
+        children,
+    })
 }
 
 impl AdvanceDiagram {
     pub fn parse(source: &str) -> Result<Self, AdvanceError> {
         let json = parse_json(source)?;
-        let obj = as_object(&json).ok_or_else(|| adv_err("advance source must be a JSON object"))?;
+        let obj =
+            as_object(&json).ok_or_else(|| adv_err("advance source must be a JSON object"))?;
 
-        let title = obj_get(obj, "title").and_then(as_str).map(|s| s.to_string());
-        let description = obj_get(obj, "description").and_then(as_str).map(|s| s.to_string());
+        let title = obj_get(obj, "title")
+            .and_then(as_str)
+            .map(|s| s.to_string());
+        let description = obj_get(obj, "description")
+            .and_then(as_str)
+            .map(|s| s.to_string());
 
         let direction = match obj_get(obj, "direction").and_then(as_str) {
             None | Some("vertical") => AdvanceDirection::Vertical,
@@ -1139,8 +1215,8 @@ impl AdvanceDiagram {
 
         let mut style = AdvanceStyle::default();
         if let Some(style_val) = obj_get(obj, "style") {
-            let style_obj = as_object(style_val)
-                .ok_or_else(|| adv_err("'style' must be an object"))?;
+            let style_obj =
+                as_object(style_val).ok_or_else(|| adv_err("'style' must be an object"))?;
             for (k, v) in style_obj {
                 match k.as_str() {
                     "lane_fill" => {
@@ -1175,15 +1251,17 @@ impl AdvanceDiagram {
 
         let mut config = AdvanceConfig::default();
         if let Some(cfg_val) = obj_get(obj, "config") {
-            let cfg_obj = as_object(cfg_val)
-                .ok_or_else(|| adv_err("'config' must be an object"))?;
+            let cfg_obj =
+                as_object(cfg_val).ok_or_else(|| adv_err("'config' must be an object"))?;
             for (k, v) in cfg_obj {
                 match k.as_str() {
                     "margin" => {
                         let num = as_number(v)
                             .ok_or_else(|| adv_err("config.margin must be a number"))?;
                         if !num.is_finite() || num < 0.0 {
-                            return Err(adv_err("config.margin must be a non-negative finite number"));
+                            return Err(adv_err(
+                                "config.margin must be a non-negative finite number",
+                            ));
                         }
                         config.margin = num;
                     }
@@ -1191,7 +1269,9 @@ impl AdvanceDiagram {
                         let num = as_number(v)
                             .ok_or_else(|| adv_err("config.lane_gap must be a number"))?;
                         if !num.is_finite() || num < 0.0 {
-                            return Err(adv_err("config.lane_gap must be a non-negative finite number"));
+                            return Err(adv_err(
+                                "config.lane_gap must be a non-negative finite number",
+                            ));
                         }
                         config.lane_gap = num;
                     }
@@ -1199,7 +1279,9 @@ impl AdvanceDiagram {
                         let num = as_number(v)
                             .ok_or_else(|| adv_err("config.node_gap_y must be a number"))?;
                         if !num.is_finite() || num < 0.0 {
-                            return Err(adv_err("config.node_gap_y must be a non-negative finite number"));
+                            return Err(adv_err(
+                                "config.node_gap_y must be a non-negative finite number",
+                            ));
                         }
                         config.node_gap_y = num;
                     }
@@ -1207,7 +1289,9 @@ impl AdvanceDiagram {
                         let num = as_number(v)
                             .ok_or_else(|| adv_err("config.lane_pad_x must be a number"))?;
                         if !num.is_finite() || num < 0.0 {
-                            return Err(adv_err("config.lane_pad_x must be a non-negative finite number"));
+                            return Err(adv_err(
+                                "config.lane_pad_x must be a non-negative finite number",
+                            ));
                         }
                         config.lane_pad_x = num;
                     }
@@ -1215,7 +1299,9 @@ impl AdvanceDiagram {
                         let num = as_number(v)
                             .ok_or_else(|| adv_err("config.lane_pad_y must be a number"))?;
                         if !num.is_finite() || num < 0.0 {
-                            return Err(adv_err("config.lane_pad_y must be a non-negative finite number"));
+                            return Err(adv_err(
+                                "config.lane_pad_y must be a non-negative finite number",
+                            ));
                         }
                         config.lane_pad_y = num;
                     }
@@ -1223,21 +1309,23 @@ impl AdvanceDiagram {
                         let num = as_number(v)
                             .ok_or_else(|| adv_err("config.lane_title_h must be a number"))?;
                         if !num.is_finite() || num < 0.0 {
-                            return Err(adv_err("config.lane_title_h must be a non-negative finite number"));
+                            return Err(adv_err(
+                                "config.lane_title_h must be a non-negative finite number",
+                            ));
                         }
                         config.lane_title_h = num;
                     }
                     "order" => {
-                        let ord_s = as_str(v)
-                            .ok_or_else(|| adv_err("config.order must be a string"))?;
+                        let ord_s =
+                            as_str(v).ok_or_else(|| adv_err("config.order must be a string"))?;
                         config.order = match ord_s {
                             "declaration" => AdvanceOrder::Declaration,
                             "topology" => AdvanceOrder::Topology,
                             other => {
                                 return Err(adv_err(format!(
-                                    "unknown config.order '{}', expected 'declaration' or 'topology'",
-                                    other
-                                )))
+                                "unknown config.order '{}', expected 'declaration' or 'topology'",
+                                other
+                            )))
                             }
                         };
                     }
@@ -1246,12 +1334,12 @@ impl AdvanceDiagram {
             }
         }
 
-        let lanes_arr = obj_get(obj, "lanes").and_then(as_array).ok_or_else(|| {
-            adv_err("advance source must have a 'lanes' array")
-        })?;
-        let nodes_arr = obj_get(obj, "nodes").and_then(as_array).ok_or_else(|| {
-            adv_err("advance source must have a 'nodes' array")
-        })?;
+        let lanes_arr = obj_get(obj, "lanes")
+            .and_then(as_array)
+            .ok_or_else(|| adv_err("advance source must have a 'lanes' array"))?;
+        let nodes_arr = obj_get(obj, "nodes")
+            .and_then(as_array)
+            .ok_or_else(|| adv_err("advance source must have a 'nodes' array"))?;
         let edges_arr = obj_get(obj, "edges").and_then(as_array).unwrap_or(&[]);
 
         let mut lanes = Vec::new();
@@ -1265,9 +1353,8 @@ impl AdvanceDiagram {
         let mut explicit_coords_count = 0;
 
         for (i, node_json) in nodes_arr.iter().enumerate() {
-            let node_obj = as_object(node_json).ok_or_else(|| {
-                adv_err(format!("nodes[{}] must be an object", i))
-            })?;
+            let node_obj = as_object(node_json)
+                .ok_or_else(|| adv_err(format!("nodes[{}] must be an object", i)))?;
             let id = obj_get(node_obj, "id")
                 .and_then(as_str)
                 .ok_or_else(|| adv_err(format!("nodes[{}] missing 'id'", i)))?
@@ -1316,12 +1403,18 @@ impl AdvanceDiagram {
             }
             if let Some(vw) = w {
                 if !vw.is_finite() || vw <= 0.0 {
-                    return Err(adv_err(format!("nodes[{}].w must be a positive finite number", i)));
+                    return Err(adv_err(format!(
+                        "nodes[{}].w must be a positive finite number",
+                        i
+                    )));
                 }
             }
             if let Some(vh) = h {
                 if !vh.is_finite() || vh <= 0.0 {
-                    return Err(adv_err(format!("nodes[{}].h must be a positive finite number", i)));
+                    return Err(adv_err(format!(
+                        "nodes[{}].h must be a positive finite number",
+                        i
+                    )));
                 }
             }
 
@@ -1352,7 +1445,10 @@ impl AdvanceDiagram {
                 for e in arr {
                     let e = parse_element_json(e, &ctx, 1)?;
                     if elements.iter().any(|x: &AdvanceElement| x.id == e.id) {
-                        return Err(adv_err(format!("{}: duplicate sub-element '{}'", ctx, e.id)));
+                        return Err(adv_err(format!(
+                            "{}: duplicate sub-element '{}'",
+                            ctx, e.id
+                        )));
                     }
                     elements.push(e);
                 }
@@ -1393,9 +1489,8 @@ impl AdvanceDiagram {
 
         let mut edges = Vec::new();
         for (i, edge_json) in edges_arr.iter().enumerate() {
-            let edge_obj = as_object(edge_json).ok_or_else(|| {
-                adv_err(format!("edges[{}] must be an object", i))
-            })?;
+            let edge_obj = as_object(edge_json)
+                .ok_or_else(|| adv_err(format!("edges[{}] must be an object", i)))?;
             let from_s = obj_get(edge_obj, "from")
                 .and_then(as_str)
                 .ok_or_else(|| adv_err(format!("edges[{}] missing 'from'", i)))?;
@@ -1405,9 +1500,13 @@ impl AdvanceDiagram {
             // `from`/`to` accept the full reference grammar
             // (`node.elem@anchor`); the older `from_side`/`to_side`
             // keys still work and fill in a side when the string has none.
-            let mut from_end = parse_end(from_s).map_err(|m| adv_err(format!("edges[{}]: {}", i, m)))?;
-            let mut to_end = parse_end(to_s).map_err(|m| adv_err(format!("edges[{}]: {}", i, m)))?;
-            let label = obj_get(edge_obj, "label").and_then(as_str).map(|s| s.to_string());
+            let mut from_end =
+                parse_end(from_s).map_err(|m| adv_err(format!("edges[{}]: {}", i, m)))?;
+            let mut to_end =
+                parse_end(to_s).map_err(|m| adv_err(format!("edges[{}]: {}", i, m)))?;
+            let label = obj_get(edge_obj, "label")
+                .and_then(as_str)
+                .map(|s| s.to_string());
             let kind = obj_get(edge_obj, "kind")
                 .and_then(as_str)
                 .map(parse_edge_kind)
@@ -1535,13 +1634,18 @@ impl AdvanceDiagram {
                 stmts.push((line_no, line.to_string()));
                 continue;
             }
-            expand_inline(line_no, line, 0, &mut stmts).map_err(|m| text_err(source, line_no, None, m))?;
+            expand_inline(line_no, line, 0, &mut stmts)
+                .map_err(|m| text_err(source, line_no, None, m))?;
         }
 
         for (line_no, line) in &stmts {
             let line_no = *line_no;
             let line = line.as_str();
-            if line.is_empty() || line.starts_with("%%") || line.starts_with("//") || line.starts_with('#') {
+            if line.is_empty()
+                || line.starts_with("%%")
+                || line.starts_with("//")
+                || line.starts_with('#')
+            {
                 continue;
             }
 
@@ -1558,7 +1662,9 @@ impl AdvanceDiagram {
                         // Compartments are rectangles; inside any other
                         // outline they poke through it and their corners
                         // fall outside the shape's hit area.
-                        if !node.elements.is_empty() && !matches!(node.shape, Shape::Rect | Shape::Rounded) {
+                        if !node.elements.is_empty()
+                            && !matches!(node.shape, Shape::Rect | Shape::Rounded)
+                        {
                             return Err(text_err(
                                 source,
                                 node_open_line,
@@ -1586,22 +1692,37 @@ impl AdvanceDiagram {
             // Inside a node block only anchors, layout and sub-elements
             // are legal; anything else is a mistake worth naming.
             if let Some(node) = cur_node.as_mut() {
-                let host_kind = if open_elems.is_empty() { "node" } else { "sub-element" };
+                let host_kind = if open_elems.is_empty() {
+                    "node"
+                } else {
+                    "sub-element"
+                };
                 if let Some(rest) = line.strip_prefix("anchor ") {
-                    let a = parse_anchor_line(rest).map_err(|m| text_err(source, line_no, None, m))?;
+                    let a =
+                        parse_anchor_line(rest).map_err(|m| text_err(source, line_no, None, m))?;
                     let anchors = match open_elems.last_mut() {
                         Some(e) => &mut e.anchors,
                         None => &mut node.anchors,
                     };
                     if anchors.iter().any(|x| x.id == a.id) {
-                        return Err(text_err(source, line_no, None, format!("duplicate anchor '{}'", a.id)));
+                        return Err(text_err(
+                            source,
+                            line_no,
+                            None,
+                            format!("duplicate anchor '{}'", a.id),
+                        ));
                     }
                     anchors.push(a);
                     continue;
                 }
                 if let Some(rest) = line.strip_prefix("layout ") {
                     let l = parse_layout_word(rest.trim()).ok_or_else(|| {
-                        text_err(source, line_no, None, format!("unknown layout '{}', expected column or row", rest.trim()))
+                        text_err(
+                            source,
+                            line_no,
+                            None,
+                            format!("unknown layout '{}', expected column or row", rest.trim()),
+                        )
                     })?;
                     match open_elems.last_mut() {
                         Some(e) => e.layout = l,
@@ -1622,7 +1743,12 @@ impl AdvanceDiagram {
                     None => (line, false),
                 };
                 let (id, label, _shape) = parse_text_node_shorthand(decl).ok_or_else(|| {
-                    text_err(source, line_no, None, format!("invalid sub-element declaration '{}'", line))
+                    text_err(
+                        source,
+                        line_no,
+                        None,
+                        format!("invalid sub-element declaration '{}'", line),
+                    )
                 })?;
                 check_id("sub-element", &id).map_err(|m| text_err(source, line_no, None, m))?;
                 let siblings = match open_elems.last() {
@@ -1630,7 +1756,12 @@ impl AdvanceDiagram {
                     None => &node.elements,
                 };
                 if siblings.iter().any(|e| e.id == id) {
-                    return Err(text_err(source, line_no, None, format!("duplicate sub-element '{}'", id)));
+                    return Err(text_err(
+                        source,
+                        line_no,
+                        None,
+                        format!("duplicate sub-element '{}'", id),
+                    ));
                 }
                 let elem = AdvanceElement {
                     id,
@@ -1670,7 +1801,12 @@ impl AdvanceDiagram {
 
             // Title / Desc
             if line.starts_with("title ") {
-                title = Some(line.trim_start_matches("title ").trim().trim_matches('"').to_string());
+                title = Some(
+                    line.trim_start_matches("title ")
+                        .trim()
+                        .trim_matches('"')
+                        .to_string(),
+                );
                 continue;
             }
             if line.starts_with("desc ") || line.starts_with("description ") {
@@ -1714,7 +1850,12 @@ impl AdvanceDiagram {
                 let mut parts = rest.splitn(2, char::is_whitespace);
                 let id = parts.next().unwrap_or("").trim().to_string();
                 if id.is_empty() {
-                    return Err(text_err(source, line_no, Some(5), "lane ID cannot be empty"));
+                    return Err(text_err(
+                        source,
+                        line_no,
+                        Some(5),
+                        "lane ID cannot be empty",
+                    ));
                 }
                 let mut title_rest = parts.next().unwrap_or("").trim().to_string();
                 let has_brace = title_rest.ends_with('{');
@@ -1752,7 +1893,8 @@ impl AdvanceDiagram {
             if let Some((idx, sep)) = find_edge_sep(line) {
                 let (from_str, rest) = (&line[..idx], &line[idx + sep.len()..]);
 
-                let from_end = parse_end(from_str).map_err(|m| text_err(source, line_no, None, m))?;
+                let from_end =
+                    parse_end(from_str).map_err(|m| text_err(source, line_no, None, m))?;
                 let kind = match sep {
                     "-->" => EdgeKind::Arrow,
                     "-.->" => EdgeKind::Dotted,
@@ -1813,7 +1955,12 @@ impl AdvanceDiagram {
             };
             let (decl, class) = split_node_class_shorthand(decl_line);
             let (id, label, shape) = parse_text_node_shorthand(decl).ok_or_else(|| {
-                text_err(source, line_no, None, format!("invalid node declaration '{}'", line))
+                text_err(
+                    source,
+                    line_no,
+                    None,
+                    format!("invalid node declaration '{}'", line),
+                )
             })?;
             check_id("node", &id).map_err(|m| text_err(source, line_no, None, m))?;
             if let Some(class_name) = class {
@@ -1822,7 +1969,12 @@ impl AdvanceDiagram {
             let label = normalize_breaks(&label);
 
             if node_ids.contains(&id) {
-                return Err(text_err(source, line_no, None, format!("duplicate node ID '{}'", id)));
+                return Err(text_err(
+                    source,
+                    line_no,
+                    None,
+                    format!("duplicate node ID '{}'", id),
+                ));
             }
             node_ids.insert(id.clone());
 
@@ -1868,7 +2020,12 @@ impl AdvanceDiagram {
             ));
         }
         if lane_recs.is_empty() {
-            return Err(text_err(source, 0, None, "diagram must define at least one lane"));
+            return Err(text_err(
+                source,
+                0,
+                None,
+                "diagram must define at least one lane",
+            ));
         }
 
         let lanes = assemble_lane_tree(&lane_recs);
@@ -1916,7 +2073,11 @@ impl AdvanceDiagram {
                     source,
                     *line_no,
                     None,
-                    format!("style target '{}-->{}' matches no edge", from.to_ref(), to.to_ref()),
+                    format!(
+                        "style target '{}-->{}' matches no edge",
+                        from.to_ref(),
+                        to.to_ref()
+                    ),
                 ));
             }
         }
@@ -1995,7 +2156,10 @@ fn parse_stroke_width_prop(v: &str) -> Result<f64, String> {
     if n.is_finite() && n > 0.0 {
         Ok(n)
     } else {
-        Err(format!("stroke-width must be a positive finite number, got '{}'", v))
+        Err(format!(
+            "stroke-width must be a positive finite number, got '{}'",
+            v
+        ))
     }
 }
 
@@ -2049,7 +2213,10 @@ fn parse_edge_style_props(s: &str) -> Result<AdvanceEdgeStyle, String> {
     Ok(st)
 }
 
-fn parse_class_def(line: &str, class_defs: &mut std::collections::HashMap<String, NodeStyle>) -> Result<(), String> {
+fn parse_class_def(
+    line: &str,
+    class_defs: &mut std::collections::HashMap<String, NodeStyle>,
+) -> Result<(), String> {
     let rest = line.trim_start_matches("classDef").trim();
     let mut parts = rest.splitn(2, char::is_whitespace);
     let name = parts.next().unwrap_or("").trim().to_string();
@@ -2095,8 +2262,10 @@ fn parse_style_line(
         return Err("expected a node id or 'from-->to' after 'style'".to_string());
     }
     if let Some(idx) = target.find("-->") {
-        let from = parse_end(&target[..idx]).map_err(|m| format!("invalid edge target '{}': {}", target, m))?;
-        let to = parse_end(&target[idx + 3..]).map_err(|m| format!("invalid edge target '{}': {}", target, m))?;
+        let from = parse_end(&target[..idx])
+            .map_err(|m| format!("invalid edge target '{}': {}", target, m))?;
+        let to = parse_end(&target[idx + 3..])
+            .map_err(|m| format!("invalid edge target '{}': {}", target, m))?;
         let st = parse_edge_style_props(props)?;
         edge_styles.push((line_no, from, to, st));
     } else {
@@ -2121,7 +2290,10 @@ fn parse_text_config(line: &str, config: &mut AdvanceConfig) -> Result<(), Strin
                 *target = n;
                 Ok(())
             }
-            _ => Err(format!("config.{} must be a non-negative finite number", key)),
+            _ => Err(format!(
+                "config.{} must be a non-negative finite number",
+                key
+            )),
         }
     };
     match key {
@@ -2522,7 +2694,11 @@ fn anchor_to_json(a: &AdvanceAnchor, s: &mut String) {
 }
 
 fn element_to_json(e: &AdvanceElement, s: &mut String) {
-    s.push_str(&format!("{{\"id\":{},\"label\":{}", escape_json_str(&e.id), escape_json_str(&e.label)));
+    s.push_str(&format!(
+        "{{\"id\":{},\"label\":{}",
+        escape_json_str(&e.id),
+        escape_json_str(&e.label)
+    ));
     if e.layout != ElementLayout::Column {
         s.push_str(&format!(",\"layout\":\"{}\"", e.layout.name()));
     }
@@ -2717,10 +2893,16 @@ pub fn scene_to_json(sc: &AdvanceScene) -> String {
             edge.from_point.0, edge.from_point.1, edge.to_point.0, edge.to_point.1
         ));
         if edge.from_end.is_terminal() {
-            s.push_str(&format!(",\"from_end\":{}", escape_json_str(&edge.from_end.to_ref())));
+            s.push_str(&format!(
+                ",\"from_end\":{}",
+                escape_json_str(&edge.from_end.to_ref())
+            ));
         }
         if edge.to_end.is_terminal() {
-            s.push_str(&format!(",\"to_end\":{}", escape_json_str(&edge.to_end.to_ref())));
+            s.push_str(&format!(
+                ",\"to_end\":{}",
+                escape_json_str(&edge.to_end.to_ref())
+            ));
         }
         s.push('}');
     }
@@ -3065,14 +3247,21 @@ fn order_lane_nodes(
                 count += 1;
             }
         }
-        let b_val = if count > 0 { sum / count as f64 } else { f64::INFINITY };
+        let b_val = if count > 0 {
+            sum / count as f64
+        } else {
+            f64::INFINITY
+        };
         barycenters.push((u, b_val));
     }
 
     // Stable sort by barycenter if valid
     barycenters.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
-    barycenters.into_iter().map(|(u, _)| lane_node_indices[u]).collect()
+    barycenters
+        .into_iter()
+        .map(|(u, _)| lane_node_indices[u])
+        .collect()
 }
 
 // ------------------------------------------------------------------
@@ -3082,11 +3271,20 @@ fn order_lane_nodes(
 const SELF_LOOP_DX: f64 = 28.0;
 const SELF_LOOP_DROP: f64 = 12.0;
 const PARALLEL_FAN: f64 = 16.0;
-const SIDE_CHANNEL_INSET: f64 = 12.0;
-const MIN_CHANNEL_GAP: f64 = 8.0;
+/// How far outside a node an edge travels before it may turn.
+const PORT_LEAD: f64 = 18.0;
+
+/// How far apart a loop's two ends are pushed when they share a side,
+/// so the loop encloses something rather than doubling back on itself.
+const SELF_LOOP_SPREAD: f64 = 11.0;
 
 fn node_rect(n: &AdvanceSceneNode) -> (f64, f64, f64, f64) {
-    (n.x - n.w / 2.0, n.y - n.h / 2.0, n.x + n.w / 2.0, n.y + n.h / 2.0)
+    (
+        n.x - n.w / 2.0,
+        n.y - n.h / 2.0,
+        n.x + n.w / 2.0,
+        n.y + n.h / 2.0,
+    )
 }
 
 fn seg_crosses_rect(p0: (f64, f64), p1: (f64, f64), rect: (f64, f64, f64, f64)) -> bool {
@@ -3114,328 +3312,584 @@ fn seg_crosses_rect(p0: (f64, f64), p1: (f64, f64), rect: (f64, f64, f64, f64)) 
     }
 }
 
-fn route_self_loop(a: &AdvanceSceneNode, fan: f64, dir: AdvanceDirection) -> Vec<(f64, f64)> {
+// ------------------------------------------------------------------
+// Channel-grid router
+// ------------------------------------------------------------------
+
+/// How far outside a node the grid runs its channels.
+const GRID_CLEAR: f64 = 12.0;
+/// What a corner costs, in pixels of path length. High enough that the
+/// router prefers a longer straight run over a shorter staircase.
+const BEND_COST: f64 = 40.0;
+/// Above this many lattice vertices the search is abandoned for a
+/// direct route. A diagram that large is unreadable long before the
+/// router is its problem.
+const GRID_BUDGET: usize = 250_000;
+
+/// Above this many lattice vertices an edge settles for its preferred
+/// sides instead of searching the others. Choosing sides is a
+/// refinement; on a diagram big enough for the lattice to pass this it
+/// costs far more than the crossing it saves.
+const SEARCH_BUDGET: usize = 2_000;
+/// What crossing an already-routed edge costs. Well above a bend, so a
+/// route takes a longer way round rather than cut across a neighbour —
+/// but finite, so it still crosses when there is no alternative.
+const CROSS_COST: f64 = 260.0;
+
+/// Two lines meeting in a T, and two lines running along each other:
+/// not crossings, but they read like one, so they are worth avoiding.
+const TOUCH_COST: f64 = 90.0;
+
+/// Overlap is charged by the pixel, because unlike a crossing it is not
+/// an event at a point. Per pixel is also the only unit on which the
+/// search and the ranking agree: the search sees a run of short lattice
+/// steps where the ranking sees one long segment.
+const SHARE_RATE: f64 = 3.0;
+
+/// Which way the path was travelling when it reached a vertex; a bend
+/// is counted when this changes.
+/// A lattice of candidate channels built from the diagram's own
+/// geometry: every node's sides with clearance and its centre lines,
+/// the lane boundaries, and the endpoints of the route being drawn.
+///
+/// Routing on the lattice is orthogonal by construction, and a segment
+/// counts only when it clears every node — which makes "no line through
+/// a box" a property of the router instead of a check repeated per edge
+/// kind.
+/// What one already-drawn segment costs the segment `a`.
+///
+/// A true crossing is the expensive case, but two lines that meet in a
+/// T, or run along each other, read as a crossing to whoever looks at
+/// the diagram, so they are priced too — less, because they are less
+/// wrong. Corner touching corner is how neighbouring routes legitimately
+/// share a lattice vertex and is free.
+fn seg_conflict(a: ((f64, f64), (f64, f64)), b: ((f64, f64), (f64, f64))) -> f64 {
+    const EPS: f64 = 1e-6;
+    let vert = |s: ((f64, f64), (f64, f64))| (s.0 .0 - s.1 .0).abs() < EPS;
+    let (av, bv) = (vert(a), vert(b));
+    if av == bv {
+        let (ac, bc) = if av {
+            (a.0 .0, b.0 .0)
+        } else {
+            (a.0 .1, b.0 .1)
+        };
+        if (ac - bc).abs() > EPS {
+            return 0.0; // parallel but on different lines
+        }
+        let span = |s: ((f64, f64), (f64, f64))| {
+            if av {
+                (s.0 .1.min(s.1 .1), s.0 .1.max(s.1 .1))
+            } else {
+                (s.0 .0.min(s.1 .0), s.0 .0.max(s.1 .0))
+            }
+        };
+        let ((a0, a1), (b0, b1)) = (span(a), span(b));
+        let overlap = a1.min(b1) - a0.max(b0);
+        return if overlap > EPS {
+            SHARE_RATE * overlap
+        } else {
+            0.0
+        };
+    }
+    let (v, h) = if av { (a, b) } else { (b, a) };
+    let x = v.0 .0;
+    let (vy0, vy1) = (v.0 .1.min(v.1 .1), v.0 .1.max(v.1 .1));
+    let y = h.0 .1;
+    let (hx0, hx1) = (h.0 .0.min(h.1 .0), h.0 .0.max(h.1 .0));
+    if x < hx0 - EPS || x > hx1 + EPS || y < vy0 - EPS || y > vy1 + EPS {
+        return 0.0;
+    }
+    match (
+        x > hx0 + EPS && x < hx1 - EPS,
+        y > vy0 + EPS && y < vy1 - EPS,
+    ) {
+        (true, true) => CROSS_COST,
+        (false, false) => 0.0,
+        _ => TOUCH_COST,
+    }
+}
+
+/// What a finished route costs: its length, its corners, and every
+/// conflict with the routes drawn before it. This is the yardstick an
+/// auto-sided edge uses to choose which sides to leave and arrive on.
+fn route_cost(points: &[(f64, f64)], drawn: &[Vec<(f64, f64)>]) -> f64 {
+    let length: f64 = points
+        .windows(2)
+        .map(|w| (w[0].0 - w[1].0).abs() + (w[0].1 - w[1].1).abs())
+        .sum();
+    length + BEND_COST * points.len().saturating_sub(2) as f64 + route_conflicts(points, drawn)
+}
+
+/// The conflict half of [`route_cost`] on its own, so a route that
+/// already touches nothing can skip the search over the other sides.
+fn route_conflicts(points: &[(f64, f64)], drawn: &[Vec<(f64, f64)>]) -> f64 {
+    points
+        .windows(2)
+        .map(|w| {
+            drawn
+                .iter()
+                .flat_map(|o| o.windows(2))
+                .map(|o| seg_conflict((w[0], w[1]), (o[0], o[1])))
+                .sum::<f64>()
+        })
+        .sum()
+}
+
+struct RouteGrid {
+    xs: Vec<f64>,
+    ys: Vec<f64>,
+    /// One entry per lattice step, so the search asks a question that
+    /// was already answered instead of testing every node and every
+    /// segment drawn so far on each of its millions of relaxations.
+    /// `h[j * (xs - 1) + i]` is the step from `(i, j)` to `(i + 1, j)`;
+    /// `v[j * xs + i]` the step from `(i, j)` to `(i, j + 1)`.
+    blocked_h: Vec<bool>,
+    blocked_v: Vec<bool>,
+    /// What crossing the edges already routed would cost on that step.
+    /// Priced, not forbidden — some diagrams have no planar routing, and
+    /// a missing edge is worse than a crossed one.
+    cost_h: Vec<f64>,
+    cost_v: Vec<f64>,
+    /// Kept for the fallback, which has no lattice to consult.
+    rects: Vec<(f64, f64, f64, f64)>,
+    /// The search's two working arrays, kept between calls: one edge
+    /// runs the search up to sixteen times and every diagram runs it
+    /// once per edge, so reallocating them each time was pure waste.
+    scratch: std::cell::RefCell<(Vec<f64>, Vec<usize>)>,
+}
+
+fn sorted_unique(mut v: Vec<f64>) -> Vec<f64> {
+    v.retain(|x| x.is_finite());
+    v.sort_by(f64::total_cmp);
+    v.dedup_by(|a, b| (*a - *b).abs() < 1e-6);
+    v
+}
+
+impl RouteGrid {
+    fn build(
+        nodes: &[AdvanceSceneNode],
+        lanes: &[AdvanceSceneLane],
+        extra: &[(f64, f64)],
+        drawn: &[Vec<(f64, f64)>],
+    ) -> Self {
+        let mut xs = Vec::with_capacity(nodes.len() * 3 + lanes.len() * 2 + extra.len());
+        let mut ys = Vec::with_capacity(xs.capacity());
+        for n in nodes {
+            let (l, t, r, b) = node_rect(n);
+            xs.extend([l - GRID_CLEAR, r + GRID_CLEAR, n.x]);
+            ys.extend([t - GRID_CLEAR, b + GRID_CLEAR, n.y]);
+        }
+        for l in lanes {
+            xs.extend([l.x + GRID_CLEAR, l.x + l.w - GRID_CLEAR]);
+            ys.extend([l.y + GRID_CLEAR, l.y + l.h - GRID_CLEAR]);
+        }
+        for (x, y) in extra {
+            xs.push(*x);
+            ys.push(*y);
+        }
+        let xs = sorted_unique(xs);
+        let ys = sorted_unique(ys);
+        let (nx, ny) = (xs.len(), ys.len());
+        let mut g = RouteGrid {
+            blocked_h: vec![false; nx.saturating_sub(1) * ny],
+            blocked_v: vec![false; nx * ny.saturating_sub(1)],
+            cost_h: vec![0.0; nx.saturating_sub(1) * ny],
+            cost_v: vec![0.0; nx * ny.saturating_sub(1)],
+            rects: nodes.iter().map(node_rect).collect(),
+            scratch: std::cell::RefCell::new((Vec::new(), Vec::new())),
+            xs,
+            ys,
+        };
+        // Every node blocks, the route's own endpoints included: the
+        // lattice carries only the part between the two leaders, which
+        // are already outside both. The lead from a sub-element to its
+        // node boundary is prepended around the lattice path, so it
+        // never needs an exemption — granting one let a route wander
+        // through the node it was leaving.
+        for n in nodes {
+            g.block(node_rect(n));
+        }
+        for seg in drawn.iter().flat_map(|pts| pts.windows(2)) {
+            g.price((seg[0], seg[1]));
+        }
+        g
+    }
+
+    /// Index range of axis values inside the open interval `(lo, hi)`.
+    fn inside(axis: &[f64], lo: f64, hi: f64) -> std::ops::Range<usize> {
+        axis.partition_point(|v| *v <= lo)..axis.partition_point(|v| *v < hi)
+    }
+
+    /// Index range of steps whose span meets `[lo, hi]`.
+    fn spanning(axis: &[f64], lo: f64, hi: f64) -> std::ops::Range<usize> {
+        let first = axis.partition_point(|v| *v < lo).saturating_sub(1);
+        let last = axis.partition_point(|v| *v <= hi);
+        first..last.min(axis.len().saturating_sub(1))
+    }
+
+    fn block(&mut self, rect: (f64, f64, f64, f64)) {
+        let (l, t, r, b) = rect;
+        let nx = self.xs.len();
+        for j in Self::inside(&self.ys, t, b) {
+            for i in Self::spanning(&self.xs, l, r) {
+                if seg_crosses_rect((self.xs[i], self.ys[j]), (self.xs[i + 1], self.ys[j]), rect) {
+                    self.blocked_h[j * (nx - 1) + i] = true;
+                }
+            }
+        }
+        for i in Self::inside(&self.xs, l, r) {
+            for j in Self::spanning(&self.ys, t, b) {
+                if seg_crosses_rect((self.xs[i], self.ys[j]), (self.xs[i], self.ys[j + 1]), rect) {
+                    self.blocked_v[j * nx + i] = true;
+                }
+            }
+        }
+    }
+
+    fn price(&mut self, seg: ((f64, f64), (f64, f64))) {
+        let (x0, x1) = (seg.0 .0.min(seg.1 .0), seg.0 .0.max(seg.1 .0));
+        let (y0, y1) = (seg.0 .1.min(seg.1 .1), seg.0 .1.max(seg.1 .1));
+        let nx = self.xs.len();
+        for j in Self::inside(&self.ys, y0 - 1e-6, y1 + 1e-6) {
+            for i in Self::spanning(&self.xs, x0, x1) {
+                let step = ((self.xs[i], self.ys[j]), (self.xs[i + 1], self.ys[j]));
+                self.cost_h[j * (nx - 1) + i] += seg_conflict(step, seg);
+            }
+        }
+        for i in Self::inside(&self.xs, x0 - 1e-6, x1 + 1e-6) {
+            for j in Self::spanning(&self.ys, y0, y1) {
+                let step = ((self.xs[i], self.ys[j]), (self.xs[i], self.ys[j + 1]));
+                self.cost_v[j * nx + i] += seg_conflict(step, seg);
+            }
+        }
+    }
+
+    fn size(&self) -> usize {
+        self.xs.len().saturating_mul(self.ys.len())
+    }
+
+    fn at(v: f64, axis: &[f64]) -> Option<usize> {
+        axis.iter().position(|a| (a - v).abs() < 1e-6)
+    }
+
+    /// What the step from `(i, j)` by `(di, dj)` costs beyond its
+    /// length, or `None` if a node is in the way.
+    fn step(&self, i: usize, j: usize, di: i64, dj: i64) -> Option<f64> {
+        let nx = self.xs.len();
+        let (k, blocked, cost) = if di != 0 {
+            let lo = if di > 0 { i } else { i - 1 };
+            (j * (nx - 1) + lo, &self.blocked_h, &self.cost_h)
+        } else {
+            let lo = if dj > 0 { j } else { j - 1 };
+            (lo * nx + i, &self.blocked_v, &self.cost_v)
+        };
+        if blocked[k] {
+            None
+        } else {
+            Some(cost[k])
+        }
+    }
+}
+
+/// Ordered by cost, then by state, so ties break the same way on every
+/// run and the SVG stays a function of the input alone.
+struct Queued(f64, usize);
+impl PartialEq for Queued {
+    fn eq(&self, o: &Self) -> bool {
+        self.cmp(o) == std::cmp::Ordering::Equal
+    }
+}
+impl Eq for Queued {}
+impl Ord for Queued {
+    fn cmp(&self, o: &Self) -> std::cmp::Ordering {
+        // Reversed: BinaryHeap is a max-heap, the cheapest must pop.
+        o.0.total_cmp(&self.0).then_with(|| o.1.cmp(&self.1))
+    }
+}
+impl PartialOrd for Queued {
+    fn partial_cmp(&self, o: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(o))
+    }
+}
+
+/// Cheapest orthogonal path from `start` to `goal` on the lattice,
+/// paying [`BEND_COST`] per corner.
+///
+/// A state is a lattice vertex plus the direction that reached it —
+/// `0` start, `1` horizontal, `2` vertical — packed into one index so
+/// the search reads and writes flat arrays instead of hashing.
+///
+/// `start` and `goal` are the leaders: a stub already stepped out of
+/// each node along its side's normal. `ban_first` and `ban_last` are the
+/// two moves that would undo those stubs by walking back along them; a
+/// path that took one would be collapsed back into the node it was
+/// meant to leave, so an edge with a port on the right would visibly
+/// leave it by some other amount than the port says.
+fn grid_route(
+    g: &RouteGrid,
+    start: (usize, usize),
+    goal: (usize, usize),
+    ban_first: Option<(i64, i64)>,
+    ban_last: Option<(i64, i64)>,
+) -> Option<Vec<(f64, f64)>> {
+    let (nx, ny) = (g.xs.len(), g.ys.len());
+    if nx == 0 || ny == 0 {
+        return None;
+    }
+    let state = |i: usize, j: usize, d: usize| (j * nx + i) * 3 + d;
+    let unpack = |k: usize| ((k / 3) % nx, (k / 3) / nx, k % 3);
+    let heuristic =
+        |i: usize, j: usize| (g.xs[i] - g.xs[goal.0]).abs() + (g.ys[j] - g.ys[goal.1]).abs();
+
+    let mut scratch = g.scratch.borrow_mut();
+    let (best, came) = &mut *scratch;
+    best.clear();
+    best.resize(nx * ny * 3, f64::INFINITY);
+    came.clear();
+    came.resize(nx * ny * 3, usize::MAX);
+    let mut heap = std::collections::BinaryHeap::new();
+    let s0 = state(start.0, start.1, 0);
+    best[s0] = 0.0;
+    heap.push(Queued(heuristic(start.0, start.1), s0));
+
+    // The axis the stub came in on, so turning straight off it is
+    // charged as the corner it is.
+    let stub = match ban_first {
+        Some((bi, _)) if bi != 0 => 1,
+        Some(_) => 2,
+        None => 0,
+    };
+
+    while let Some(Queued(f, cur)) = heap.pop() {
+        let (i, j, dir) = unpack(cur);
+        let g_cur = best[cur];
+        // A cheaper way here was found after this entry was queued.
+        if f > g_cur + heuristic(i, j) + 1e-9 {
+            continue;
+        }
+        if (i, j) == goal {
+            let mut pts = vec![(g.xs[i], g.ys[j])];
+            let mut at = cur;
+            while came[at] != usize::MAX {
+                at = came[at];
+                let (pi, pj, _) = unpack(at);
+                pts.push((g.xs[pi], g.ys[pj]));
+            }
+            pts.reverse();
+            return Some(collapse_collinear(dedup_pts(pts)));
+        }
+        for (di, dj) in [(1i64, 0i64), (-1, 0), (0, 1), (0, -1)] {
+            let (ni, nj) = (i as i64 + di, j as i64 + dj);
+            if ni < 0 || nj < 0 || ni as usize >= nx || nj as usize >= ny {
+                continue;
+            }
+            let (ni, nj) = (ni as usize, nj as usize);
+            if dir == 0 && ban_first == Some((di, dj)) {
+                continue;
+            }
+            if (ni, nj) == goal && ban_last == Some((di, dj)) {
+                continue;
+            }
+            let Some(cross) = g.step(i, j, di, dj) else {
+                continue;
+            };
+            let step_dir = if di != 0 { 1 } else { 2 };
+            let from_dir = if dir == 0 { stub } else { dir };
+            let bend = if from_dir != step_dir { BEND_COST } else { 0.0 };
+            let len = (g.xs[i] - g.xs[ni]).abs() + (g.ys[j] - g.ys[nj]).abs();
+            let g_next = g_cur + len + bend + cross;
+            let next = state(ni, nj, step_dir);
+            if g_next < best[next] - 1e-9 {
+                best[next] = g_next;
+                came[next] = cur;
+                heap.push(Queued(g_next + heuristic(ni, nj), next));
+            }
+        }
+    }
+    None
+}
+
+/// Drop the middle of any three points on one straight line, so a path
+/// is a list of corners rather than of lattice vertices.
+///
+/// Only when the middle point lies *between* the other two. Three points
+/// that go out and come back are collinear as well, and erasing the turn
+/// there does not shorten the path — it replaces a spike with a line
+/// straight through whatever the spike was going around.
+fn collapse_collinear(pts: Vec<(f64, f64)>) -> Vec<(f64, f64)> {
+    let between = |a: f64, b: f64, c: f64| (a - b) * (c - b) < 1e-9;
+    let mut out: Vec<(f64, f64)> = Vec::with_capacity(pts.len());
+    for p in pts {
+        if out.len() >= 2 {
+            let (a, b) = (out[out.len() - 2], out[out.len() - 1]);
+            let same_x =
+                (a.0 - b.0).abs() < 1e-9 && (b.0 - p.0).abs() < 1e-9 && between(a.1, b.1, p.1);
+            let same_y =
+                (a.1 - b.1).abs() < 1e-9 && (b.1 - p.1).abs() < 1e-9 && between(a.0, b.0, p.0);
+            if same_x || same_y {
+                out.pop();
+            }
+        }
+        out.push(p);
+    }
+    out
+}
+/// One edge's path across the lattice: out along each side's normal to
+/// a leader, the lattice between them, then in.
+///
+/// The grid is passed in rather than built here, because one edge tries
+/// the same lattice with up to sixteen pairs of sides and rebuilding it
+/// for each was the single most expensive thing the router did.
+fn route_on_grid(
+    g: &RouteGrid,
+    from_side: AdvanceSide,
+    tp0: (f64, f64),
+    bp0: (f64, f64),
+    to_side: AdvanceSide,
+    tp3: (f64, f64),
+    bp3: (f64, f64),
+) -> Vec<(f64, f64)> {
+    let l0 = port_leader(bp0, from_side, PORT_LEAD);
+    let l3 = port_leader(bp3, to_side, PORT_LEAD);
+    let finish = |mid: Vec<(f64, f64)>| {
+        let mut pts = vec![tp0, bp0];
+        pts.extend(mid);
+        pts.push(bp3);
+        pts.push(tp3);
+        collapse_collinear(dedup_pts(pts))
+    };
+
+    if g.size() <= GRID_BUDGET {
+        if let (Some(sx), Some(sy), Some(gx), Some(gy)) = (
+            RouteGrid::at(l0.0, &g.xs),
+            RouteGrid::at(l0.1, &g.ys),
+            RouteGrid::at(l3.0, &g.xs),
+            RouteGrid::at(l3.1, &g.ys),
+        ) {
+            // The step that would walk back down each stub.
+            let (dx, dy) = side_delta(from_side);
+            let ban_first = Some((-dx, -dy));
+            let ban_last = Some(side_delta(to_side));
+            if let Some(path) = grid_route(g, (sx, sy), (gx, gy), ban_first, ban_last) {
+                return finish(path);
+            }
+        }
+    }
+    // No lattice path — a diagram past the budget, or two anchors boxed
+    // in. Both L-shapes between the leaders honour both sides; prefer
+    // one that clears every node, and only if neither does accept a
+    // shape that does not, because an edge has to be drawn somewhere.
+    let elbows = [(l3.0, l0.1), (l0.0, l3.1)];
+    let clean = elbows.iter().find(|c| {
+        [(l0, **c), (**c, l3)]
+            .iter()
+            .all(|(p, q)| g.rects.iter().all(|r| !seg_crosses_rect(*p, *q, *r)))
+    });
+    finish(vec![l0, *clean.unwrap_or(&elbows[0]), l3])
+}
+/// Where a point on the ring sits, measured clockwise from its
+/// top-left corner. Turns "which way round is shorter" into subtraction.
+fn ring_param(p: (f64, f64), side: AdvanceSide, ring: (f64, f64, f64, f64)) -> f64 {
+    let (x0, y0, x1, y1) = ring;
+    let (w, h) = (x1 - x0, y1 - y0);
+    match side {
+        AdvanceSide::Top => p.0 - x0,
+        AdvanceSide::Right => w + (p.1 - y0),
+        AdvanceSide::Bottom => w + h + (x1 - p.0),
+        AdvanceSide::Left => 2.0 * w + h + (y1 - p.1),
+    }
+}
+
+/// The ring corners passed going from `s0` to `s3` the short way round.
+/// A tie goes clockwise, so the same input always turns the same way.
+fn ring_corners(ring: (f64, f64, f64, f64), s0: f64, s3: f64) -> Vec<(f64, f64)> {
+    let (x0, y0, x1, y1) = ring;
+    let (w, h) = (x1 - x0, y1 - y0);
+    let per = 2.0 * (w + h);
+    if per < 1e-9 {
+        return Vec::new();
+    }
+    let corners = [
+        (0.0, (x0, y0)),
+        (w, (x1, y0)),
+        (w + h, (x1, y1)),
+        (2.0 * w + h, (x0, y1)),
+    ];
+    let cw = (s3 - s0).rem_euclid(per);
+    let clockwise = cw <= per - cw + 1e-9;
+    let arc = if clockwise { cw } else { per - cw };
+    let mut passed: Vec<(f64, (f64, f64))> = corners
+        .iter()
+        .map(|(cs, p)| {
+            let d = if clockwise {
+                (cs - s0).rem_euclid(per)
+            } else {
+                (s0 - cs).rem_euclid(per)
+            };
+            (d, *p)
+        })
+        .filter(|(d, _)| *d > 1e-9 && *d < arc - 1e-9)
+        .collect();
+    passed.sort_by(|a, b| a.0.total_cmp(&b.0));
+    passed.into_iter().map(|(_, p)| p).collect()
+}
+
+/// A loop from one terminal of a node back to another: out along each
+/// side's normal onto a ring around the node, then round the ring the
+/// short way.
+///
+/// The ring is what makes this general. One corner can only join two
+/// adjacent sides; opposite sides need two corners, and the same side
+/// needs the two terminals to be apart in the first place — which is
+/// why the caller slides them.
+fn route_loop(
+    a: &AdvanceSceneNode,
+    from_side: AdvanceSide,
+    tp0: (f64, f64),
+    bp0: (f64, f64),
+    to_side: AdvanceSide,
+    tp3: (f64, f64),
+    bp3: (f64, f64),
+) -> Vec<(f64, f64)> {
+    let (l, t, r, b) = node_rect(a);
+    let ring = (l - PORT_LEAD, t - PORT_LEAD, r + PORT_LEAD, b + PORT_LEAD);
+    let onto = |p: (f64, f64), side| match side {
+        AdvanceSide::Left => (ring.0, p.1),
+        AdvanceSide::Right => (ring.2, p.1),
+        AdvanceSide::Top => (p.0, ring.1),
+        AdvanceSide::Bottom => (p.0, ring.3),
+    };
+    let p0 = onto(bp0, from_side);
+    let p3 = onto(bp3, to_side);
+    let mut pts = vec![tp0, bp0, p0];
+    pts.extend(ring_corners(
+        ring,
+        ring_param(p0, from_side, ring),
+        ring_param(p3, to_side, ring),
+    ));
+    pts.extend([p3, bp3, tp3]);
+    collapse_collinear(dedup_pts(pts))
+}
+
+/// `spread` is how far out this loop sits from the node, and it is
+/// never negative: parallel loops nest outwards. The signed fan that
+/// separates parallel *edges* pulled the innermost loop back over the
+/// node it was looping around.
+fn route_self_loop(a: &AdvanceSceneNode, spread: f64, dir: AdvanceDirection) -> Vec<(f64, f64)> {
     match dir {
         AdvanceDirection::Vertical => {
             let p0 = (a.x + a.w / 2.0, a.y);
-            let loop_x = a.x + a.w / 2.0 + SELF_LOOP_DX + fan;
-            let loop_y = a.y + a.h / 2.0 + SELF_LOOP_DROP + fan.abs();
+            let loop_x = a.x + a.w / 2.0 + SELF_LOOP_DX + spread;
+            let loop_y = a.y + a.h / 2.0 + SELF_LOOP_DROP + spread;
             let p3 = (a.x, a.y + a.h / 2.0);
             vec![p0, (loop_x, p0.1), (loop_x, loop_y), (p3.0, loop_y), p3]
         }
         AdvanceDirection::Horizontal => {
             let p0 = (a.x, a.y + a.h / 2.0);
-            let loop_y = a.y + a.h / 2.0 + SELF_LOOP_DX + fan;
-            let loop_x = a.x + a.w / 2.0 + SELF_LOOP_DROP + fan.abs();
+            let loop_y = a.y + a.h / 2.0 + SELF_LOOP_DX + spread;
+            let loop_x = a.x + a.w / 2.0 + SELF_LOOP_DROP + spread;
             let p3 = (a.x + a.w / 2.0, a.y);
             vec![p0, (p0.0, loop_y), (loop_x, loop_y), (loop_x, p3.1), p3]
-        }
-    }
-}
-
-fn same_lane_blocked(
-    a: &AdvanceSceneNode,
-    b: &AdvanceSceneNode,
-    nodes: &[AdvanceSceneNode],
-    dir: AdvanceDirection,
-) -> bool {
-    match dir {
-        AdvanceDirection::Vertical => {
-            let (lo_y, hi_y) = if a.y < b.y {
-                (a.y + a.h / 2.0, b.y - b.h / 2.0)
-            } else {
-                (b.y + b.h / 2.0, a.y - a.h / 2.0)
-            };
-            if hi_y <= lo_y {
-                return false;
-            }
-            let x = a.x;
-            nodes.iter().any(|n| {
-                n.id != a.id
-                    && n.id != b.id
-                    && n.lane == a.lane
-                    && seg_crosses_rect((x, lo_y), (x, hi_y), node_rect(n))
-            })
-        }
-        AdvanceDirection::Horizontal => {
-            let (lo_x, hi_x) = if a.x < b.x {
-                (a.x + a.w / 2.0, b.x - b.w / 2.0)
-            } else {
-                (b.x + b.w / 2.0, a.x - a.w / 2.0)
-            };
-            if hi_x <= lo_x {
-                return false;
-            }
-            let y = a.y;
-            nodes.iter().any(|n| {
-                n.id != a.id
-                    && n.id != b.id
-                    && n.lane == a.lane
-                    && seg_crosses_rect((lo_x, y), (hi_x, y), node_rect(n))
-            })
-        }
-    }
-}
-
-fn route_same_lane(
-    a: &AdvanceSceneNode,
-    b: &AdvanceSceneNode,
-    nodes: &[AdvanceSceneNode],
-    fan: f64,
-    dir: AdvanceDirection,
-) -> Vec<(f64, f64)> {
-    match dir {
-        AdvanceDirection::Vertical => {
-            if same_lane_blocked(a, b, nodes, dir) {
-                // Multi-obstacle corridor clearance: calculate bounding box of all intersecting obstacles
-                let (lo_y, hi_y) = if a.y < b.y {
-                    (a.y + a.h / 2.0, b.y - b.h / 2.0)
-                } else {
-                    (b.y + b.h / 2.0, a.y - a.h / 2.0)
-                };
-                let obstacles: Vec<&AdvanceSceneNode> = nodes
-                    .iter()
-                    .filter(|n| {
-                        n.id != a.id
-                            && n.id != b.id
-                            && n.lane == a.lane
-                            && n.y + n.h / 2.0 > lo_y
-                            && n.y - n.h / 2.0 < hi_y
-                    })
-                    .collect();
-
-                let max_right = obstacles
-                    .iter()
-                    .map(|n| n.x + n.w / 2.0)
-                    .fold(a.x + a.w / 2.0, f64::max);
-
-                let detour_x = max_right + SIDE_CHANNEL_INSET + fan;
-                let p0 = (a.x + a.w / 2.0, a.y);
-                let p3 = (b.x + b.w / 2.0, b.y);
-                return vec![p0, (detour_x, p0.1), (detour_x, p3.1), p3];
-            }
-            let (p0, p3) = if a.y < b.y {
-                ((a.x, a.y + a.h / 2.0), (b.x, b.y - b.h / 2.0))
-            } else {
-                ((a.x, a.y - a.h / 2.0), (b.x, b.y + b.h / 2.0))
-            };
-            if (a.x - b.x).abs() < f64::EPSILON {
-                if fan.abs() < f64::EPSILON {
-                    vec![p0, p3]
-                } else {
-                    let spread_x = fan * 0.5;
-                    let p0s = (p0.0 + spread_x, p0.1);
-                    let p3s = (p3.0 + spread_x, p3.1);
-                    let mid_y = (p0.1 + p3.1) / 2.0;
-                    vec![p0s, (p0s.0, mid_y), (p3s.0, mid_y), p3s]
-                }
-            } else {
-                let mid_y = (p0.1 + p3.1) / 2.0 + fan;
-                vec![p0, (a.x, mid_y), (b.x, mid_y), p3]
-            }
-        }
-        AdvanceDirection::Horizontal => {
-            if same_lane_blocked(a, b, nodes, dir) {
-                let (lo_x, hi_x) = if a.x < b.x {
-                    (a.x + a.w / 2.0, b.x - b.w / 2.0)
-                } else {
-                    (b.x + b.w / 2.0, a.x - a.w / 2.0)
-                };
-                let obstacles: Vec<&AdvanceSceneNode> = nodes
-                    .iter()
-                    .filter(|n| {
-                        n.id != a.id
-                            && n.id != b.id
-                            && n.lane == a.lane
-                            && n.x + n.w / 2.0 > lo_x
-                            && n.x - n.w / 2.0 < hi_x
-                    })
-                    .collect();
-
-                let max_bottom = obstacles
-                    .iter()
-                    .map(|n| n.y + n.h / 2.0)
-                    .fold(a.y + a.h / 2.0, f64::max);
-
-                let detour_y = max_bottom + SIDE_CHANNEL_INSET + fan;
-                let p0 = (a.x, a.y + a.h / 2.0);
-                let p3 = (b.x, b.y + b.h / 2.0);
-                return vec![p0, (p0.0, detour_y), (p3.0, detour_y), p3];
-            }
-            let (p0, p3) = if a.x < b.x {
-                ((a.x + a.w / 2.0, a.y), (b.x - b.w / 2.0, b.y))
-            } else {
-                ((a.x - a.w / 2.0, a.y), (b.x + b.w / 2.0, b.y))
-            };
-            if (a.y - b.y).abs() < f64::EPSILON {
-                if fan.abs() < f64::EPSILON {
-                    vec![p0, p3]
-                } else {
-                    let spread_y = fan * 0.5;
-                    let p0s = (p0.0, p0.1 + spread_y);
-                    let p3s = (p3.0, p3.1 + spread_y);
-                    let mid_x = (p0.0 + p3.0) / 2.0;
-                    vec![p0s, (mid_x, p0s.1), (mid_x, p3s.1), p3s]
-                }
-            } else {
-                let mid_x = (p0.0 + p3.0) / 2.0 + fan;
-                vec![p0, (mid_x, a.y), (mid_x, b.y), p3]
-            }
-        }
-    }
-}
-
-fn nudge_mid_y(
-    mid_y: f64,
-    p0: (f64, f64),
-    p3: (f64, f64),
-    a: &AdvanceSceneNode,
-    b: &AdvanceSceneNode,
-    nodes: &[AdvanceSceneNode],
-) -> f64 {
-    let (lo_x, hi_x) = if p0.0 < p3.0 { (p0.0, p3.0) } else { (p3.0, p0.0) };
-    if (hi_x - lo_x).abs() < f64::EPSILON {
-        return mid_y;
-    }
-    let blocked = nodes.iter().any(|n| {
-        n.id != a.id
-            && n.id != b.id
-            && seg_crosses_rect((lo_x, mid_y), (hi_x, mid_y), node_rect(n))
-    });
-    if !blocked {
-        return mid_y;
-    }
-
-    let (lo_y, hi_y) = if p0.1 < p3.1 { (p0.1, p3.1) } else { (p3.1, p0.1) };
-    let mut covered: Vec<(f64, f64)> = nodes
-        .iter()
-        .filter_map(|n| {
-            if n.id == a.id || n.id == b.id {
-                None
-            } else {
-                let (l, t, r, b) = node_rect(n);
-                if l < hi_x && r > lo_x {
-                    Some((t.max(lo_y), b.min(hi_y)))
-                } else {
-                    None
-                }
-            }
-        })
-        .filter(|(t, b)| t < b)
-        .collect();
-    covered.sort_unstable_by(|x, y| x.0.partial_cmp(&y.0).unwrap_or(std::cmp::Ordering::Equal));
-
-    let mut best: Option<(f64, f64)> = None;
-    let mut cursor = lo_y;
-    let mut consider = |from: f64, to: f64| {
-        let h = to - from;
-        if h >= MIN_CHANNEL_GAP && best.map(|(_, bh)| h > bh).unwrap_or(true) {
-            best = Some(((from + to) / 2.0, h));
-        }
-    };
-    for (t, b) in covered {
-        if t > cursor {
-            consider(cursor, t);
-        }
-        cursor = cursor.max(b);
-    }
-    consider(cursor, hi_y);
-
-    best.map(|(c, _)| c).unwrap_or(mid_y)
-}
-
-fn crossing_x_interval(
-    n: &AdvanceSceneNode,
-    a_id: &str,
-    b_id: &str,
-    lo_y: f64,
-    hi_y: f64,
-) -> Option<(f64, f64)> {
-    if n.id == a_id || n.id == b_id {
-        return None;
-    }
-    let (l, t, r, b) = node_rect(n);
-    if t < hi_y && b > lo_y {
-        Some((l, r))
-    } else {
-        None
-    }
-}
-
-fn nudge_mid_x(
-    mid_x: f64,
-    p0: (f64, f64),
-    p3: (f64, f64),
-    a: &AdvanceSceneNode,
-    b: &AdvanceSceneNode,
-    nodes: &[AdvanceSceneNode],
-) -> f64 {
-    let (lo_y, hi_y) = if p0.1 < p3.1 { (p0.1, p3.1) } else { (p3.1, p0.1) };
-    if (hi_y - lo_y).abs() < f64::EPSILON {
-        return mid_x;
-    }
-    let blocked = nodes.iter().any(|n| {
-        n.id != a.id
-            && n.id != b.id
-            && seg_crosses_rect((mid_x, lo_y), (mid_x, hi_y), node_rect(n))
-    });
-    if !blocked {
-        return mid_x;
-    }
-
-    let (lo_x, hi_x) = if p0.0 < p3.0 { (p0.0, p3.0) } else { (p3.0, p0.0) };
-    let mut covered: Vec<(f64, f64)> = nodes
-        .iter()
-        .filter_map(|n| crossing_x_interval(n, &a.id, &b.id, lo_y, hi_y))
-        .map(|(l, r)| (l.max(lo_x), r.min(hi_x)))
-        .filter(|(l, r)| l < r)
-        .collect();
-    covered.sort_unstable_by(|x, y| x.0.partial_cmp(&y.0).unwrap_or(std::cmp::Ordering::Equal));
-
-    let mut best: Option<(f64, f64)> = None;
-    let mut cursor = lo_x;
-    let mut consider = |from: f64, to: f64| {
-        let w = to - from;
-        if w >= MIN_CHANNEL_GAP && best.map(|(_, bw)| w > bw).unwrap_or(true) {
-            best = Some(((from + to) / 2.0, w));
-        }
-    };
-    for (l, r) in covered {
-        if l > cursor {
-            consider(cursor, l);
-        }
-        cursor = cursor.max(r);
-    }
-    consider(cursor, hi_x);
-
-    best.map(|(c, _)| c).unwrap_or(mid_x)
-}
-
-fn route_cross_lane(
-    a: &AdvanceSceneNode,
-    b: &AdvanceSceneNode,
-    nodes: &[AdvanceSceneNode],
-    fan: f64,
-    dir: AdvanceDirection,
-) -> Vec<(f64, f64)> {
-    match dir {
-        AdvanceDirection::Vertical => {
-            let (p0, p3) = if b.x >= a.x {
-                ((a.x + a.w / 2.0, a.y), (b.x - b.w / 2.0, b.y))
-            } else {
-                ((a.x - a.w / 2.0, a.y), (b.x + b.w / 2.0, b.y))
-            };
-            let mid_x = nudge_mid_x((p0.0 + p3.0) / 2.0 + fan, p0, p3, a, b, nodes);
-            vec![p0, (mid_x, p0.1), (mid_x, p3.1), p3]
-        }
-        AdvanceDirection::Horizontal => {
-            let (p0, p3) = if b.y >= a.y {
-                ((a.x, a.y + a.h / 2.0), (b.x, b.y - b.h / 2.0))
-            } else {
-                ((a.x, a.y - a.h / 2.0), (b.x, b.y + b.h / 2.0))
-            };
-            let mid_y = nudge_mid_y((p0.1 + p3.1) / 2.0 + fan, p0, p3, a, b, nodes);
-            vec![p0, (p0.0, mid_y), (p3.0, mid_y), p3]
         }
     }
 }
@@ -3452,6 +3906,16 @@ fn side_point(n: &AdvanceSceneNode, side: AdvanceSide) -> (f64, f64) {
 
 /// Point `lead` px outside `p` along the normal of `side` — the leader
 /// segment that leaves a node perpendicular to its anchor side.
+/// Which way a lattice step moves when it leaves through `side`.
+fn side_delta(side: AdvanceSide) -> (i64, i64) {
+    match side {
+        AdvanceSide::Left => (-1, 0),
+        AdvanceSide::Right => (1, 0),
+        AdvanceSide::Top => (0, -1),
+        AdvanceSide::Bottom => (0, 1),
+    }
+}
+
 fn port_leader(p: (f64, f64), side: AdvanceSide, lead: f64) -> (f64, f64) {
     match side {
         AdvanceSide::Left => (p.0 - lead, p.1),
@@ -3461,7 +3925,7 @@ fn port_leader(p: (f64, f64), side: AdvanceSide, lead: f64) -> (f64, f64) {
     }
 }
 
-/// The side the automatic routers would pick for `n`, so a ported edge
+/// The side the router would pick for `n` on its own, so a ported edge
 /// with only one side specified still connects at the natural anchor.
 fn natural_side(
     n: &AdvanceSceneNode,
@@ -3526,97 +3990,6 @@ fn natural_side(
     }
 }
 
-/// Orthogonal route between two side anchors: leader out of `a`'s side,
-/// a shared channel (offset by `fan` for parallel edges), leader into
-/// `b`'s side. Collapsing equal neighbours keeps the path minimal.
-/// Route between two explicit boundary points with fixed exit/entry
-/// sides. Each end gets a leader perpendicular to its side; one channel
-/// joins the leaders. The channel runs across the exit axis by default
-/// (a horizontal exit gets a horizontal channel) — the shape every
-/// clear route had before, which keeps them byte-identical.
-///
-/// Every node is an obstacle to the channel and its two connectors,
-/// the endpoints included (their leaders already stand clear). When the
-/// default channel is blocked the nearest clear one just outside some
-/// node wins; when NO channel of that orientation is clear — two ports
-/// on the same side, say — the other orientation is tried. `fan`
-/// offsets the channel so parallel ported edges stay apart.
-fn route_ported(
-    from_side: AdvanceSide,
-    p0: (f64, f64),
-    b: &AdvanceSceneNode,
-    to_side: AdvanceSide,
-    p3: (f64, f64),
-    fan: f64,
-    nodes: &[AdvanceSceneNode],
-) -> Vec<(f64, f64)> {
-    const PORT_LEAD: f64 = 18.0;
-    let l0 = port_leader(p0, from_side, PORT_LEAD);
-    let l3 = port_leader(p3, to_side, PORT_LEAD);
-    let rects: Vec<(f64, f64, f64, f64)> = nodes.iter().map(node_rect).collect();
-    let blocked = |p: (f64, f64), q: (f64, f64)| rects.iter().any(|r| seg_crosses_rect(p, q, *r));
-
-    // The two connector corners for a channel at `mid`.
-    let corners = |horizontal: bool, mid: f64| {
-        if horizontal {
-            ((l0.0, mid), (l3.0, mid))
-        } else {
-            ((mid, l0.1), (mid, l3.1))
-        }
-    };
-    let route = |horizontal: bool, mid: f64| {
-        let (c0, c3) = corners(horizontal, mid);
-        dedup_pts(vec![p0, l0, c0, c3, l3, p3])
-    };
-    let clear = |horizontal: bool, mid: f64| {
-        let (c0, c3) = corners(horizontal, mid);
-        !blocked(l0, c0) && !blocked(c0, c3) && !blocked(c3, l3)
-    };
-    // Just outside every node's extent on the channel axis, then one
-    // step further out.
-    let candidates = |horizontal: bool| -> Vec<f64> {
-        rects
-            .iter()
-            .flat_map(|r| {
-                let (lo, hi) = if horizontal { (r.1, r.3) } else { (r.0, r.2) };
-                (1..=2).flat_map(move |k| {
-                    let d = PORT_LEAD * k as f64;
-                    [lo - d, hi + d]
-                })
-            })
-            .map(|c| c + fan)
-            .collect()
-    };
-
-    let exit_h = matches!(from_side, AdvanceSide::Left | AdvanceSide::Right);
-    for horizontal in [exit_h, !exit_h] {
-        let orig = if horizontal { l0.1 + fan } else { l0.0 + fan };
-        let toward = if horizontal { b.y } else { b.x };
-        if clear(horizontal, orig) {
-            return route(horizontal, orig);
-        }
-        if let Some(mid) = pick_channel(orig, toward, candidates(horizontal), |m| clear(horizontal, m)) {
-            return route(horizontal, mid);
-        }
-    }
-    // Nothing is clear either way: the plain shape, which at least
-    // honours both sides.
-    route(exit_h, if exit_h { l0.1 + fan } else { l0.0 + fan })
-}
-
-/// The nearest clear channel coordinate to `orig`, a tie going to the
-/// one on the target's side; `None` when no candidate is clear.
-fn pick_channel(orig: f64, toward: f64, mut cs: Vec<f64>, clear: impl Fn(f64) -> bool) -> Option<f64> {
-    cs.sort_by(|p, q| {
-        let dp = (p - orig).abs();
-        let dq = (q - orig).abs();
-        dp.partial_cmp(&dq)
-            .unwrap_or(std::cmp::Ordering::Equal)
-            .then_with(|| (p - toward).abs().partial_cmp(&(q - toward).abs()).unwrap_or(std::cmp::Ordering::Equal))
-    });
-    cs.into_iter().find(|c| clear(*c))
-}
-
 /// Prefer `wanted` if it is exposed; otherwise the first exposed side
 /// in a fixed order, so the choice is deterministic.
 fn pick_exposed_side(wanted: AdvanceSide, exposed: [bool; 4], dx: f64, dy: f64) -> AdvanceSide {
@@ -3650,10 +4023,47 @@ fn pick_exposed_side(wanted: AdvanceSide, exposed: [bool; 4], dx: f64, dy: f64) 
 ///
 /// Returns `None` only if the scene lacks an element or anchor the
 /// parser already validated — an internal invariant, not user error.
+/// How close to a corner a slid terminal may get, so an edge nudged
+/// along a side still leaves from the side and not from its very edge.
+const SIDE_INSET: f64 = 6.0;
+
+/// Slide a point along the side it sits on, staying clear of the corners.
+fn slide_along(
+    p: (f64, f64),
+    side: AdvanceSide,
+    by: f64,
+    rect: (f64, f64, f64, f64),
+) -> (f64, f64) {
+    let (l, t, r, b) = rect;
+    let held = |v: f64, lo: f64, hi: f64| {
+        if hi - lo < 1e-9 {
+            (lo + hi) / 2.0
+        } else {
+            v.clamp(lo, hi)
+        }
+    };
+    match side {
+        AdvanceSide::Left | AdvanceSide::Right => {
+            (p.0, held(p.1 + by, t + SIDE_INSET, b - SIDE_INSET))
+        }
+        AdvanceSide::Top | AdvanceSide::Bottom => {
+            (held(p.0 + by, l + SIDE_INSET, r - SIDE_INSET), p.1)
+        }
+    }
+}
+
+/// Where an edge end attaches, as `(terminal, boundary)`: the point on
+/// whatever it names, and the point on the node's own outline that the
+/// lead reaches. They differ only for a sub-element.
+///
+/// `slide` nudges the terminal along its side so that edges which would
+/// otherwise land on the same point do not. A named anchor is an exact
+/// promise about where the line attaches and is never slid.
 fn resolve_terminal(
     sn: &AdvanceSceneNode,
     end: &AdvanceEnd,
     side: AdvanceSide,
+    slide: f64,
 ) -> Option<((f64, f64), (f64, f64))> {
     let named = match &end.at {
         Some(AnchorRef::Named(id)) => Some(id.as_str()),
@@ -3662,22 +4072,42 @@ fn resolve_terminal(
     if end.path.is_empty() {
         return Some(match named {
             Some(id) => {
-                let a = sn.anchors.iter().find(|a| a.element.is_none() && a.id == id)?;
+                let a = sn
+                    .anchors
+                    .iter()
+                    .find(|a| a.element.is_none() && a.id == id)?;
                 ((a.x, a.y), (a.x, a.y))
             }
             None => {
-                let p = side_point(sn, side);
+                let p = slide_along(side_point(sn, side), side, slide, node_rect(sn));
                 (p, p)
             }
         });
     }
-    let (ei, el) = sn.elements.iter().enumerate().find(|(_, el)| el.path == end.path)?;
+    let (ei, el) = sn
+        .elements
+        .iter()
+        .enumerate()
+        .find(|(_, el)| el.path == end.path)?;
     let tp = match named {
         Some(id) => {
-            let a = sn.anchors.iter().find(|a| a.element == Some(ei) && a.id == id)?;
+            let a = sn
+                .anchors
+                .iter()
+                .find(|a| a.element == Some(ei) && a.id == id)?;
             (a.x, a.y)
         }
-        None => rect_side_point(el.x, el.y, el.w, el.h, side, DEFAULT_ANCHOR_OFFSET),
+        None => slide_along(
+            rect_side_point(el.x, el.y, el.w, el.h, side, DEFAULT_ANCHOR_OFFSET),
+            side,
+            slide,
+            (
+                el.x - el.w / 2.0,
+                el.y - el.h / 2.0,
+                el.x + el.w / 2.0,
+                el.y + el.h / 2.0,
+            ),
+        ),
     };
     let (l, t, r, b) = node_rect(sn);
     let bp = match side {
@@ -3704,7 +4134,10 @@ fn dedup_pts(pts: Vec<(f64, f64)>) -> Vec<(f64, f64)> {
 }
 
 fn push_unique(out: &mut Vec<(f64, f64)>, c: (f64, f64)) {
-    if !out.iter().any(|p| (p.0 - c.0).abs() < 1e-6 && (p.1 - c.1).abs() < 1e-6) {
+    if !out
+        .iter()
+        .any(|p| (p.0 - c.0).abs() < 1e-6 && (p.1 - c.1).abs() < 1e-6)
+    {
         out.push(c);
     }
 }
@@ -3813,105 +4246,263 @@ fn choose_label_pos(
 fn route_edges(
     d: &AdvanceDiagram,
     nodes: &[AdvanceSceneNode],
+    lanes: &[AdvanceSceneLane],
     dir: AdvanceDirection,
 ) -> Vec<AdvanceSceneEdge> {
     // Scene nodes come out of layout in lane/topology order, NOT in
     // declaration order — so they are looked up by id. Indexing them
     // with the model's order attached edges to the wrong node.
     let model_idx = node_index_map(d);
-    let scene_idx: std::collections::HashMap<&str, usize> =
-        nodes.iter().enumerate().map(|(i, n)| (n.id.as_str(), i)).collect();
+    let scene_idx: std::collections::HashMap<&str, usize> = nodes
+        .iter()
+        .enumerate()
+        .map(|(i, n)| (n.id.as_str(), i))
+        .collect();
     let mut edge_scenes = Vec::with_capacity(d.edges.len());
 
+    // Edges are fanned apart only when they would otherwise be drawn
+    // on top of each other, so the key is the pair of terminals — two
+    // edges between the same nodes but through different ports already
+    // land in different places and must keep their full leaders.
+    let fan_key = |e: &AdvanceEdge| {
+        let side = |s: Option<AdvanceSide>| s.map(|s| s.name()).unwrap_or("");
+        (
+            format!("{}:{}", e.from_end.to_ref(), side(e.from_side)),
+            format!("{}:{}", e.to_end.to_ref(), side(e.to_side)),
+        )
+    };
     let mut pair_totals: std::collections::HashMap<(String, String), usize> =
         std::collections::HashMap::new();
     for e in &d.edges {
-        *pair_totals
-            .entry((e.from.clone(), e.to.clone()))
-            .or_insert(0) += 1;
+        *pair_totals.entry(fan_key(e)).or_insert(0) += 1;
     }
     let mut pair_seen: std::collections::HashMap<(String, String), usize> =
         std::collections::HashMap::new();
 
+    // Everything about an edge that the lattice has to know before it
+    // can be built: which nodes, how far the edge is fanned, and which
+    // sides it may leave and arrive on.
+    struct EdgePlan {
+        from_i: usize,
+        to_i: usize,
+        fan: f64,
+        /// How far a plain loop nests out from its node. Always >= 0.
+        spread: f64,
+        plain_loop: bool,
+        fss: Vec<AdvanceSide>,
+        tss: Vec<AdvanceSide>,
+    }
+
+    let plans: Vec<EdgePlan> = d
+        .edges
+        .iter()
+        .map(|e| {
+            let from_i = scene_idx[e.from.as_str()];
+            let to_i = scene_idx[e.to.as_str()];
+            let (a, b) = (&nodes[from_i], &nodes[to_i]);
+
+            let key = fan_key(e);
+            let dup_i = {
+                let v = pair_seen.entry(key.clone()).or_insert(0);
+                let i = *v;
+                *v += 1;
+                i
+            };
+            let dup_n = pair_totals[&key];
+            let fan = (dup_i as f64 - (dup_n as f64 - 1.0) / 2.0) * PARALLEL_FAN;
+            let same_lane = a.lane == b.lane || from_i == to_i;
+
+            // The sides this end may leave from, best guess first. A
+            // declared port or a named anchor yields exactly one:
+            // honouring it however long the path gets is what makes it
+            // a port (D7). An automatic end offers the alternatives,
+            // which the router falls back on only when its first choice
+            // runs into an edge already drawn.
+            let sides_for = |end: &AdvanceEnd,
+                             given: Option<AdvanceSide>,
+                             ni: usize,
+                             is_from: bool|
+             -> Vec<AdvanceSide> {
+                // `natural_side` always takes (source, target);
+                // `is_from` picks which of the two sides it computes.
+                let natural = given.unwrap_or_else(|| natural_side(a, b, dir, is_from, same_lane));
+                let exposed = if end.path.is_empty() {
+                    [true; 4]
+                } else {
+                    match resolve_element(&d.nodes[ni], &end.path) {
+                        Ok((_, exposed)) => exposed,
+                        Err(_) => [true; 4],
+                    }
+                };
+                let first = if end.path.is_empty() {
+                    natural
+                } else {
+                    let (other, me) = if is_from { (b, a) } else { (a, b) };
+                    pick_exposed_side(natural, exposed, other.x - me.x, other.y - me.y)
+                };
+                if given.is_some() || matches!(end.at, Some(AnchorRef::Named(_))) {
+                    return vec![first];
+                }
+                let mut out = vec![first];
+                out.extend(
+                    [
+                        AdvanceSide::Right,
+                        AdvanceSide::Left,
+                        AdvanceSide::Bottom,
+                        AdvanceSide::Top,
+                    ]
+                    .into_iter()
+                    .filter(|s| *s != first && exposed[side_index(*s)]),
+                );
+                out
+            };
+            // A node-to-itself edge that names nothing keeps the classic
+            // loop; anything with a port, an anchor or a sub-element on
+            // it must resolve its terminals first, or the loop would be
+            // drawn between points the edge never asked for.
+            let plain = |end: &AdvanceEnd, given: Option<AdvanceSide>| {
+                given.is_none() && end.path.is_empty() && end.at.is_none()
+            };
+            EdgePlan {
+                from_i,
+                to_i,
+                fan,
+                spread: dup_i as f64 * PARALLEL_FAN,
+                plain_loop: from_i == to_i
+                    && plain(&e.from_end, e.from_side)
+                    && plain(&e.to_end, e.to_side),
+                fss: sides_for(&e.from_end, e.from_side, model_idx[&e.from], true),
+                tss: sides_for(&e.to_end, e.to_side, model_idx[&e.to], false),
+            }
+        })
+        .collect();
+
+    // Both ends slide by the same amount, so parallel edges come out as
+    // parallel lines rather than one line drawn twice. A loop back onto
+    // the same side needs its two ends pushed apart on top of that, or
+    // it has no width.
+    let ends = |e: &AdvanceEdge, pl: &EdgePlan, fs: AdvanceSide, ts: AdvanceSide| {
+        let (sf, st) = if pl.from_i == pl.to_i && fs == ts {
+            (pl.fan - SELF_LOOP_SPREAD, pl.fan + SELF_LOOP_SPREAD)
+        } else {
+            (pl.fan, pl.fan)
+        };
+        let f = resolve_terminal(&nodes[pl.from_i], &e.from_end, fs, sf)
+            .expect("terminal validated at parse time is missing from the scene");
+        let t = resolve_terminal(&nodes[pl.to_i], &e.to_end, ts, st)
+            .expect("terminal validated at parse time is missing from the scene");
+        (f, t)
+    };
+
+    // One lattice for the whole diagram, carrying every leader any edge
+    // could use. Rebuilding it per edge — let alone per candidate pair
+    // of sides — made routing quadratic in the number of edges: each
+    // rebuild re-read every route drawn before it.
+    //
+    // Every edge between two different nodes is routed on it, so "no
+    // line through a box" is a property of the search rather than a
+    // check repeated per kind of edge. A loop back onto one node is the
+    // exception: it is not a path between two points, so it is drawn on
+    // a ring around its node instead. Its points are priced into the
+    // lattice afterwards, so later edges still avoid it.
+    let mut leads = Vec::new();
+    for (e, pl) in d.edges.iter().zip(&plans) {
+        if pl.from_i == pl.to_i {
+            continue;
+        }
+        for fs in &pl.fss {
+            let ((_, bp0), _) = ends(e, pl, *fs, pl.tss[0]);
+            leads.push(port_leader(bp0, *fs, PORT_LEAD));
+        }
+        for ts in &pl.tss {
+            let (_, (_, bp3)) = ends(e, pl, pl.fss[0], *ts);
+            leads.push(port_leader(bp3, *ts, PORT_LEAD));
+        }
+    }
+    let mut grid = RouteGrid::build(nodes, lanes, &leads, &[]);
+    // On a big lattice trying all sixteen pairs of sides costs more
+    // than the crossing it saves, so there only the preferred pair is.
+    let searchable = grid.size() <= SEARCH_BUDGET;
+
     // Boxes of labels already placed, so later labels dodge them too.
     let mut placed_labels: Vec<(f64, f64, f64, f64)> = Vec::new();
+    // Routes already drawn, so later ones can price crossing them.
+    let mut drawn: Vec<Vec<(f64, f64)>> = Vec::with_capacity(d.edges.len());
 
-    for e in &d.edges {
-        let from_i = scene_idx[e.from.as_str()];
-        let to_i = scene_idx[e.to.as_str()];
+    for (e, pl) in d.edges.iter().zip(&plans) {
+        let (from_i, to_i) = (pl.from_i, pl.to_i);
         let a = &nodes[from_i];
         let b = &nodes[to_i];
+        let (fss, tss) = (&pl.fss, &pl.tss);
 
-        let key = (e.from.clone(), e.to.clone());
-        let dup_i = {
-            let v = pair_seen.entry(key.clone()).or_insert(0);
-            let i = *v;
-            *v += 1;
-            i
-        };
-        let dup_n = pair_totals[&key];
-        let fan = (dup_i as f64 - (dup_n as f64 - 1.0) / 2.0) * PARALLEL_FAN;
-
-        let same_lane = a.lane == b.lane || from_i == to_i;
-        let terminal = e.from_end.is_terminal() || e.to_end.is_terminal();
-
-        let points = if terminal {
-            // Anything finer than a node side is resolved to explicit
-            // points and routed as a ported edge. A sub-element without
-            // a side gets the natural one, restricted to sides that
-            // reach the node boundary.
-            let side_for = |end: &AdvanceEnd, given: Option<AdvanceSide>, ni: usize, is_from: bool| {
-                // `natural_side` always takes (source, target); `is_from`
-                // picks which of the two sides it computes.
-                let natural = given.unwrap_or_else(|| natural_side(a, b, dir, is_from, same_lane));
-                if end.path.is_empty() {
-                    return natural;
-                }
-                let (other, me) = if is_from { (b, a) } else { (a, b) };
-                match resolve_element(&d.nodes[ni], &end.path) {
-                    Ok((_, exposed)) => pick_exposed_side(natural, exposed, other.x - me.x, other.y - me.y),
-                    Err(_) => natural,
+        let points = if pl.plain_loop {
+            route_self_loop(a, pl.spread, dir)
+        } else {
+            let route = |fs: AdvanceSide, ts: AdvanceSide| {
+                let ((tp0, bp0), (tp3, bp3)) = ends(e, pl, fs, ts);
+                if from_i == to_i {
+                    route_loop(a, fs, tp0, bp0, ts, tp3, bp3)
+                } else {
+                    route_on_grid(&grid, fs, tp0, bp0, ts, tp3, bp3)
                 }
             };
-            let fs = side_for(&e.from_end, e.from_side, model_idx[&e.from], true);
-            let ts = side_for(&e.to_end, e.to_side, model_idx[&e.to], false);
-            let (tp0, bp0) = resolve_terminal(a, &e.from_end, fs)
-                .expect("terminal validated at parse time is missing from the scene");
-            let (tp3, bp3) = resolve_terminal(b, &e.to_end, ts)
-                .expect("terminal validated at parse time is missing from the scene");
-            let mut pts = Vec::with_capacity(8);
-            pts.push(tp0);
-            pts.extend(route_ported(fs, bp0, b, ts, bp3, fan, nodes));
-            pts.push(tp3);
-            dedup_pts(pts)
-        } else if from_i == to_i {
-            if e.from_side.is_none() && e.to_side.is_none() {
-                route_self_loop(a, fan, dir)
+            let first = route(fss[0], tss[0]);
+            // The preferred sides usually win outright; only an edge
+            // that would run into an existing one pays for the search.
+            if route_conflicts(&first, &drawn) <= 0.0
+                || (fss.len() == 1 && tss.len() == 1)
+                || !searchable
+            {
+                first
             } else {
-                let fs = e.from_side.unwrap_or_else(|| natural_side(a, b, dir, true, true));
-                let ts = e.to_side.unwrap_or_else(|| natural_side(a, b, dir, false, true));
-                route_ported(fs, side_point(a, fs), b, ts, side_point(b, ts), fan, nodes)
+                // One end at a time first: changing a single side is
+                // what usually resolves a conflict, and it turns the
+                // sixteen pairs into seven before the full cross.
+                let mut pairs: Vec<(AdvanceSide, AdvanceSide)> = Vec::with_capacity(16);
+                pairs.extend(fss[1..].iter().map(|fs| (*fs, tss[0])));
+                pairs.extend(tss[1..].iter().map(|ts| (fss[0], *ts)));
+                for fs in &fss[1..] {
+                    pairs.extend(tss[1..].iter().map(|ts| (*fs, *ts)));
+                }
+                let mut best = (route_cost(&first, &drawn), first);
+                'search: for (fs, ts) in &pairs {
+                    {
+                        let pts = route(*fs, *ts);
+                        let conflicts = route_conflicts(&pts, &drawn);
+                        let cost = route_cost(&pts, &drawn);
+                        if cost < best.0 - 1e-9 {
+                            best = (cost, pts);
+                        }
+                        // Nothing beats touching nothing, and the order
+                        // of the candidates is fixed, so the first such
+                        // route is the same one on every run.
+                        if conflicts <= 0.0 {
+                            break 'search;
+                        }
+                    }
+                }
+                best.1
             }
-        } else if a.lane == b.lane {
-            if e.from_side.is_none() && e.to_side.is_none() {
-                route_same_lane(a, b, nodes, fan, dir)
-            } else {
-                let fs = e.from_side.unwrap_or_else(|| natural_side(a, b, dir, true, true));
-                let ts = e.to_side.unwrap_or_else(|| natural_side(a, b, dir, false, true));
-                route_ported(fs, side_point(a, fs), b, ts, side_point(b, ts), fan, nodes)
-            }
-        } else if e.from_side.is_none() && e.to_side.is_none() {
-            route_cross_lane(a, b, nodes, fan, dir)
-        } else {
-            let fs = e.from_side.unwrap_or_else(|| natural_side(a, b, dir, true, false));
-            let ts = e.to_side.unwrap_or_else(|| natural_side(a, b, dir, false, false));
-            route_ported(fs, side_point(a, fs), b, ts, side_point(b, ts), fan, nodes)
         };
+        // An invisible edge is never drawn, so it must not push a
+        // visible one out of the way either.
+        if e.kind != EdgeKind::Invisible {
+            for w in points.windows(2) {
+                grid.price((w[0], w[1]));
+            }
+            drawn.push(points.clone());
+        }
 
         let label_pos = match e.label.as_deref() {
             Some(label) => {
-                let chosen =
-                    choose_label_pos(&label_candidates(&points), label, &e.from, &e.to, nodes, &placed_labels);
+                let chosen = choose_label_pos(
+                    &label_candidates(&points),
+                    label,
+                    &e.from,
+                    &e.to,
+                    nodes,
+                    &placed_labels,
+                );
                 if let Some(c) = chosen {
                     placed_labels.push(label_box(c, label));
                 }
@@ -4174,8 +4765,13 @@ fn compute_lane_dim_rec(
 
             if lane.children.is_empty() {
                 let w = (direct_node_w + 2.0 * cfg.lane_pad_x).max(120.0);
-                let h = (cfg.lane_title_h + cfg.lane_pad_y + direct_node_h + cfg.lane_pad_y).max(120.0);
-                LaneDim { w, h, children: Vec::new() }
+                let h =
+                    (cfg.lane_title_h + cfg.lane_pad_y + direct_node_h + cfg.lane_pad_y).max(120.0);
+                LaneDim {
+                    w,
+                    h,
+                    children: Vec::new(),
+                }
             } else {
                 let child_dims: Vec<LaneDim> = lane
                     .children
@@ -4186,9 +4782,20 @@ fn compute_lane_dim_rec(
                     + (child_dims.len().saturating_sub(1) as f64 * cfg.lane_gap);
                 let max_children_h = child_dims.iter().map(|c| c.h).fold(0.0_f64, f64::max);
 
-                let w = (sum_children_w + 2.0 * cfg.lane_pad_x).max(direct_node_w + 2.0 * cfg.lane_pad_x).max(120.0);
-                let h = (cfg.lane_title_h + cfg.lane_pad_y + max_children_h + cfg.lane_pad_y + direct_node_h).max(120.0);
-                LaneDim { w, h, children: child_dims }
+                let w = (sum_children_w + 2.0 * cfg.lane_pad_x)
+                    .max(direct_node_w + 2.0 * cfg.lane_pad_x)
+                    .max(120.0);
+                let h = (cfg.lane_title_h
+                    + cfg.lane_pad_y
+                    + max_children_h
+                    + cfg.lane_pad_y
+                    + direct_node_h)
+                    .max(120.0);
+                LaneDim {
+                    w,
+                    h,
+                    children: child_dims,
+                }
             }
         }
         AdvanceDirection::Horizontal => {
@@ -4203,9 +4810,16 @@ fn compute_lane_dim_rec(
             }
 
             if lane.children.is_empty() {
-                let w = (cfg.lane_title_h + cfg.lane_pad_x + direct_node_w + cfg.lane_pad_x).max(160.0);
-                let h = (direct_node_h + 2.0 * cfg.lane_pad_y).max(cfg.lane_title_h + 2.0 * cfg.lane_pad_y).max(80.0);
-                LaneDim { w, h, children: Vec::new() }
+                let w =
+                    (cfg.lane_title_h + cfg.lane_pad_x + direct_node_w + cfg.lane_pad_x).max(160.0);
+                let h = (direct_node_h + 2.0 * cfg.lane_pad_y)
+                    .max(cfg.lane_title_h + 2.0 * cfg.lane_pad_y)
+                    .max(80.0);
+                LaneDim {
+                    w,
+                    h,
+                    children: Vec::new(),
+                }
             } else {
                 let child_dims: Vec<LaneDim> = lane
                     .children
@@ -4216,9 +4830,20 @@ fn compute_lane_dim_rec(
                     + (child_dims.len().saturating_sub(1) as f64 * cfg.lane_gap);
                 let max_children_w = child_dims.iter().map(|c| c.w).fold(0.0_f64, f64::max);
 
-                let w = (cfg.lane_title_h + cfg.lane_pad_x + max_children_w + cfg.lane_pad_x + direct_node_w).max(160.0);
-                let h = (sum_children_h + 2.0 * cfg.lane_pad_y).max(direct_node_h + 2.0 * cfg.lane_pad_y).max(80.0);
-                LaneDim { w, h, children: child_dims }
+                let w = (cfg.lane_title_h
+                    + cfg.lane_pad_x
+                    + max_children_w
+                    + cfg.lane_pad_x
+                    + direct_node_w)
+                    .max(160.0);
+                let h = (sum_children_h + 2.0 * cfg.lane_pad_y)
+                    .max(direct_node_h + 2.0 * cfg.lane_pad_y)
+                    .max(80.0);
+                LaneDim {
+                    w,
+                    h,
+                    children: child_dims,
+                }
             }
         }
     }
@@ -4365,13 +4990,22 @@ fn emit_lanes_and_nodes_rec(
 
 /// Compute the positioned geometry for an advance diagram.
 pub fn layout(d: &AdvanceDiagram) -> AdvanceScene {
+    layout_inner(d, true)
+}
+
+/// `layout` with the routing made optional. A caller that only wants to
+/// know where the nodes ended up — the drag path does, to learn their
+/// order — would otherwise pay for a full routing pass and throw it
+/// away, which was nearly free before the channel grid and is not now.
+fn layout_inner(d: &AdvanceDiagram, route: bool) -> AdvanceScene {
     let cfg = &d.config;
     let lane_idx = lane_index_map(d);
     let total_lanes_count = lane_idx.len();
     let sizes: Vec<(f64, f64)> = d.nodes.iter().map(node_size).collect();
 
     // Check if explicit coordinates are supplied on all nodes
-    let has_explicit_coords = !d.nodes.is_empty() && d.nodes.iter().all(|n| n.x.is_some() && n.y.is_some());
+    let has_explicit_coords =
+        !d.nodes.is_empty() && d.nodes.iter().all(|n| n.x.is_some() && n.y.is_some());
 
     if has_explicit_coords {
         let node_scenes: Vec<AdvanceSceneNode> = d
@@ -4381,7 +5015,11 @@ pub fn layout(d: &AdvanceDiagram) -> AdvanceScene {
             .map(|(i, n)| scene_node(n, n.x.unwrap(), n.y.unwrap(), sizes[i].0, sizes[i].1))
             .collect();
         let (lane_scenes, width, height) = build_lanes_around_nodes(d, &node_scenes);
-        let edge_scenes = route_edges(d, &node_scenes, d.direction);
+        let edge_scenes = if route {
+            route_edges(d, &node_scenes, &lane_scenes, d.direction)
+        } else {
+            Vec::new()
+        };
         return fit_canvas(
             AdvanceScene {
                 width,
@@ -4457,7 +5095,11 @@ pub fn layout(d: &AdvanceDiagram) -> AdvanceScene {
             cur_y - cfg.lane_gap + cfg.margin
         };
 
-        let edge_scenes = route_edges(d, &node_scenes, d.direction);
+        let edge_scenes = if route {
+            route_edges(d, &node_scenes, &lane_scenes, d.direction)
+        } else {
+            Vec::new()
+        };
         return AdvanceScene {
             width: total_w,
             height: total_h,
@@ -4523,7 +5165,11 @@ pub fn layout(d: &AdvanceDiagram) -> AdvanceScene {
     };
     let total_height = max_top_h + 2.0 * cfg.margin;
 
-    let edge_scenes = route_edges(d, &node_scenes, d.direction);
+    let edge_scenes = if route {
+        route_edges(d, &node_scenes, &lane_scenes, d.direction)
+    } else {
+        Vec::new()
+    };
 
     AdvanceScene {
         width: total_width,
@@ -4565,7 +5211,10 @@ fn render_node(s: &mut String, n: &AdvanceSceneNode, text_color: &str) {
         stroke = escape(v);
     }
     let sw = n.style.stroke_width.unwrap_or(1.6);
-    let style = format!("fill=\"{}\" stroke=\"{}\" stroke-width=\"{:.1}\"", fill, stroke, sw);
+    let style = format!(
+        "fill=\"{}\" stroke=\"{}\" stroke-width=\"{:.1}\"",
+        fill, stroke, sw
+    );
     let label_color = crate::scene::style_attr(n.style.color.as_deref(), text_color);
 
     match n.shape {
@@ -4624,8 +5273,15 @@ fn render_node(s: &mut String, n: &AdvanceSceneNode, text_color: &str) {
                  L {r:.1} {by:.1} A {rx:.1} {ry:.1} 0 0 1 {l:.1} {by:.1} Z\" {style}/>\n\
                  <path d=\"M {l:.1} {ty:.1} A {rx:.1} {ry:.1} 0 0 1 {r:.1} {ty:.1}\" \
                  fill=\"none\" stroke=\"{stroke}\" stroke-width=\"{sw:.1}\"/>\n",
-                l = l, r = r, ty = t + ry, by = b - ry, rx = w / 2.0, ry = ry,
-                stroke = stroke, sw = sw, style = style,
+                l = l,
+                r = r,
+                ty = t + ry,
+                by = b - ry,
+                rx = w / 2.0,
+                ry = ry,
+                stroke = stroke,
+                sw = sw,
+                style = style,
             ));
         }
         Shape::Subroutine => {
@@ -4652,12 +5308,26 @@ fn render_node(s: &mut String, n: &AdvanceSceneNode, text_color: &str) {
             let pts = if matches!(n.shape, Shape::Parallelogram) {
                 format!(
                     "{:.1},{:.1} {:.1},{:.1} {:.1},{:.1} {:.1},{:.1}",
-                    l + k, t, r, t, r - k, b, l, b
+                    l + k,
+                    t,
+                    r,
+                    t,
+                    r - k,
+                    b,
+                    l,
+                    b
                 )
             } else {
                 format!(
                     "{:.1},{:.1} {:.1},{:.1} {:.1},{:.1} {:.1},{:.1}",
-                    l, t, r - k, t, r, b, l + k, b
+                    l,
+                    t,
+                    r - k,
+                    t,
+                    r,
+                    b,
+                    l + k,
+                    b
                 )
             };
             s.push_str(&format!("<polygon points=\"{}\" {} />\n", pts, style));
@@ -4704,7 +5374,11 @@ fn render_node(s: &mut String, n: &AdvanceSceneNode, text_color: &str) {
     // Sub-elements: compartments drawn on the node body, innermost
     // last so nested ones paint over their parent.
     if !n.elements.is_empty() {
-        let node_stroke_raw = n.style.stroke.clone().unwrap_or_else(|| shape_style(n.shape).1);
+        let node_stroke_raw = n
+            .style
+            .stroke
+            .clone()
+            .unwrap_or_else(|| shape_style(n.shape).1);
         let node_text_raw = n.style.color.as_deref().unwrap_or(text_color).to_string();
         for (i, el) in n.elements.iter().enumerate() {
             let has_children = n.elements.iter().any(|c| c.parent == Some(i));
@@ -4805,7 +5479,10 @@ pub fn to_svg_with(sc: &AdvanceScene, opts: &SvgOptions) -> String {
         let (tx, ty) = if sc.direction == AdvanceDirection::Horizontal {
             (lane.x + 12.0, lane.y + lane.h / 2.0)
         } else {
-            (lane.x + DEFAULT_LANE_PAD_X, lane.y + DEFAULT_LANE_TITLE_H - 6.0)
+            (
+                lane.x + DEFAULT_LANE_PAD_X,
+                lane.y + DEFAULT_LANE_TITLE_H - 6.0,
+            )
         };
         s.push_str(&format!(
             "<text x=\"{:.1}\" y=\"{:.1}\" font-size=\"{}\" font-weight=\"bold\" \
@@ -4966,12 +5643,17 @@ fn build_lanes_around_nodes(
     let mut max_bottom: f64 = 0.0;
 
     for (i, lane) in flat_lanes.iter().enumerate() {
-        let (l, t, r, b) = bounds[i]
-            .unwrap_or((d.config.margin, d.config.margin, d.config.margin + 120.0, d.config.margin + 120.0));
+        let (l, t, r, b) = bounds[i].unwrap_or((
+            d.config.margin,
+            d.config.margin,
+            d.config.margin + 120.0,
+            d.config.margin + 120.0,
+        ));
         let x = l - d.config.lane_pad_x;
         let y = (t - d.config.lane_title_h - d.config.lane_pad_y).min(d.config.margin);
         let w = (r - x + d.config.lane_pad_x).max(120.0);
-        let h = (b - y + d.config.lane_pad_y).max(d.config.lane_title_h + 2.0 * d.config.lane_pad_y);
+        let h =
+            (b - y + d.config.lane_pad_y).max(d.config.lane_title_h + 2.0 * d.config.lane_pad_y);
 
         max_right = max_right.max(x + w);
         max_bottom = max_bottom.max(y + h);
@@ -4986,7 +5668,11 @@ fn build_lanes_around_nodes(
         });
     }
 
-    (lanes, max_right + d.config.margin, max_bottom + d.config.margin)
+    (
+        lanes,
+        max_right + d.config.margin,
+        max_bottom + d.config.margin,
+    )
 }
 
 fn validate_positions(d: &AdvanceDiagram, positions: &[f64]) -> Result<(), AdvanceError> {
@@ -5012,13 +5698,10 @@ fn validate_positions(d: &AdvanceDiagram, positions: &[f64]) -> Result<(), Advan
 /// [`layout`] itself is the only way it cannot drift from what the
 /// caller was given; mapping `d.nodes` directly made two nodes in
 /// different lanes trade places.
-fn place_nodes_at_positions(
-    d: &AdvanceDiagram,
-    positions: &[f64],
-) -> Vec<AdvanceSceneNode> {
+fn place_nodes_at_positions(d: &AdvanceDiagram, positions: &[f64]) -> Vec<AdvanceSceneNode> {
     let by_id: std::collections::HashMap<&str, &AdvanceNode> =
         d.nodes.iter().map(|n| (n.id.as_str(), n)).collect();
-    layout(d)
+    layout_inner(d, false)
         .nodes
         .iter()
         .enumerate()
@@ -5089,7 +5772,7 @@ pub fn render_advance_routed(source: &str, positions: &[f64]) -> Result<String, 
     validate_positions(&d, positions)?;
     let nodes = place_nodes_at_positions(&d, positions);
     let (lanes, width, height) = build_lanes_around_nodes(&d, &nodes);
-    let edges = route_edges(&d, &nodes, d.direction);
+    let edges = route_edges(&d, &nodes, &lanes, d.direction);
     let scene = fit_canvas(
         AdvanceScene {
             width,
@@ -5126,7 +5809,8 @@ fn build_lanes_with_widths(
             .map(|n| n.y + n.h / 2.0)
             .fold(f64::NEG_INFINITY, f64::max);
         let h = if max_bottom.is_finite() {
-            (max_bottom - margin + d.config.lane_pad_y).max(d.config.lane_title_h + 2.0 * d.config.lane_pad_y)
+            (max_bottom - margin + d.config.lane_pad_y)
+                .max(d.config.lane_title_h + 2.0 * d.config.lane_pad_y)
         } else {
             d.config.lane_title_h + 2.0 * d.config.lane_pad_y
         };
@@ -5171,7 +5855,9 @@ pub fn render_advance_routed_with_lanes(
 ) -> Result<String, AdvanceError> {
     let d = AdvanceDiagram::parse(source)?;
     if d.direction == AdvanceDirection::Horizontal {
-        return Err(adv_err("render_advance_routed_with_lanes is not supported in horizontal direction"));
+        return Err(adv_err(
+            "render_advance_routed_with_lanes is not supported in horizontal direction",
+        ));
     }
     validate_positions(&d, positions)?;
 
@@ -5196,9 +5882,8 @@ pub fn render_advance_routed_with_lanes(
     }
 
     let nodes = place_nodes_at_positions(&d, positions);
-    let (lanes, width, height) =
-        build_lanes_with_widths(&d, &nodes, lane_widths, margin, gap);
-    let edges = route_edges(&d, &nodes, d.direction);
+    let (lanes, width, height) = build_lanes_with_widths(&d, &nodes, lane_widths, margin, gap);
+    let edges = route_edges(&d, &nodes, &lanes, d.direction);
     let scene = fit_canvas(
         AdvanceScene {
             width,
@@ -5549,7 +6234,9 @@ mod tests {
         let d = AdvanceDiagram::parse(sample_json()).unwrap();
         let auto = layout(&d);
         let pos: Vec<f64> = auto.nodes.iter().flat_map(|n| [n.x, n.y]).collect();
-        let svg = render_advance_routed_with_lanes(sample_json(), &pos, &[200.0, 200.0], 24.0, 40.0).unwrap();
+        let svg =
+            render_advance_routed_with_lanes(sample_json(), &pos, &[200.0, 200.0], 24.0, 40.0)
+                .unwrap();
         assert!(svg.starts_with("<svg"));
         assert!(svg.contains("Development"));
         assert!(svg.contains("QA"));
@@ -5561,7 +6248,9 @@ mod tests {
         let auto = layout(&d);
         let pos: Vec<f64> = auto.nodes.iter().flat_map(|n| [n.x, n.y]).collect();
         let sc = {
-            let svg = render_advance_routed_with_lanes(sample_json(), &pos, &[300.0, 150.0], 10.0, 20.0).unwrap();
+            let svg =
+                render_advance_routed_with_lanes(sample_json(), &pos, &[300.0, 150.0], 10.0, 20.0)
+                    .unwrap();
             let start = svg.find("width=\"").unwrap() + 7;
             let end = svg[start..].find('"').unwrap() + start;
             svg[start..end].parse::<f64>().unwrap()
@@ -5573,23 +6262,41 @@ mod tests {
     fn routed_with_lanes_rejects_wrong_width_count() {
         let d = AdvanceDiagram::parse(sample_json()).unwrap();
         let pos: Vec<f64> = d.nodes.iter().flat_map(|_| [0.0, 0.0]).collect();
-        assert!(render_advance_routed_with_lanes(sample_json(), &pos, &[200.0], 24.0, 40.0).is_err());
+        assert!(
+            render_advance_routed_with_lanes(sample_json(), &pos, &[200.0], 24.0, 40.0).is_err()
+        );
     }
 
     #[test]
     fn routed_with_lanes_rejects_non_positive_width() {
         let d = AdvanceDiagram::parse(sample_json()).unwrap();
         let pos: Vec<f64> = d.nodes.iter().flat_map(|_| [0.0, 0.0]).collect();
-        assert!(render_advance_routed_with_lanes(sample_json(), &pos, &[200.0, -10.0], 24.0, 40.0).is_err());
-        assert!(render_advance_routed_with_lanes(sample_json(), &pos, &[200.0, f64::NAN], 24.0, 40.0).is_err());
+        assert!(
+            render_advance_routed_with_lanes(sample_json(), &pos, &[200.0, -10.0], 24.0, 40.0)
+                .is_err()
+        );
+        assert!(render_advance_routed_with_lanes(
+            sample_json(),
+            &pos,
+            &[200.0, f64::NAN],
+            24.0,
+            40.0
+        )
+        .is_err());
     }
 
     #[test]
     fn routed_with_lanes_rejects_bad_margin_gap() {
         let d = AdvanceDiagram::parse(sample_json()).unwrap();
         let pos: Vec<f64> = d.nodes.iter().flat_map(|_| [0.0, 0.0]).collect();
-        assert!(render_advance_routed_with_lanes(sample_json(), &pos, &[200.0, 200.0], -1.0, 40.0).is_err());
-        assert!(render_advance_routed_with_lanes(sample_json(), &pos, &[200.0, 200.0], 24.0, -1.0).is_err());
+        assert!(
+            render_advance_routed_with_lanes(sample_json(), &pos, &[200.0, 200.0], -1.0, 40.0)
+                .is_err()
+        );
+        assert!(
+            render_advance_routed_with_lanes(sample_json(), &pos, &[200.0, 200.0], 24.0, -1.0)
+                .is_err()
+        );
     }
 
     fn base_positions(d: &AdvanceDiagram) -> Vec<f64> {
@@ -5610,13 +6317,42 @@ mod tests {
         positions[1] = -800.0;
         let nodes = place_nodes_at_positions(&d, &positions);
         let (lanes, width, height) = build_lanes_around_nodes(&d, &nodes);
-        let edges = route_edges(&d, &nodes, d.direction);
-        let sc = fit_canvas(AdvanceScene { width, height, title: None, description: None, direction: d.direction, style: d.style.clone(), lanes, nodes, edges }, d.config.margin);
-        assert!(sc.nodes.iter().all(|n| n.y - n.h / 2.0 >= d.config.margin - 1e-9));
-        assert!(sc.nodes.iter().all(|n| n.x - n.w / 2.0 >= d.config.margin - 1e-9));
-        assert!(sc.lanes.iter().all(|l| l.y >= d.config.margin - 1e-9 && l.x >= d.config.margin - 1e-9));
-        assert!(sc.edges.iter().all(|e| e.points.iter().all(|p| p.1 >= d.config.margin - 1e-9)));
-        let max_bottom = sc.nodes.iter().map(|n| n.y + n.h / 2.0).fold(0.0_f64, f64::max);
+        let edges = route_edges(&d, &nodes, &lanes, d.direction);
+        let sc = fit_canvas(
+            AdvanceScene {
+                width,
+                height,
+                title: None,
+                description: None,
+                direction: d.direction,
+                style: d.style.clone(),
+                lanes,
+                nodes,
+                edges,
+            },
+            d.config.margin,
+        );
+        assert!(sc
+            .nodes
+            .iter()
+            .all(|n| n.y - n.h / 2.0 >= d.config.margin - 1e-9));
+        assert!(sc
+            .nodes
+            .iter()
+            .all(|n| n.x - n.w / 2.0 >= d.config.margin - 1e-9));
+        assert!(sc
+            .lanes
+            .iter()
+            .all(|l| l.y >= d.config.margin - 1e-9 && l.x >= d.config.margin - 1e-9));
+        assert!(sc
+            .edges
+            .iter()
+            .all(|e| e.points.iter().all(|p| p.1 >= d.config.margin - 1e-9)));
+        let max_bottom = sc
+            .nodes
+            .iter()
+            .map(|n| n.y + n.h / 2.0)
+            .fold(0.0_f64, f64::max);
         assert!(sc.height >= max_bottom + d.config.margin - 1e-9);
     }
 
@@ -5863,11 +6599,20 @@ mod tests {
         ];
         // Straight a→c run whose default label spot (x+8, mid) = (108,220)
         // sits right on top of the blocker node.
-        let points = vec![(100.0, 140.0), (100.0, 300.0), (300.0, 300.0), (300.0, 340.0)];
-        let chosen = choose_label_pos(&label_candidates(&points), "XX", "a", "c", &nodes, &[]).unwrap();
+        let points = vec![
+            (100.0, 140.0),
+            (100.0, 300.0),
+            (300.0, 300.0),
+            (300.0, 340.0),
+        ];
+        let chosen =
+            choose_label_pos(&label_candidates(&points), "XX", "a", "c", &nodes, &[]).unwrap();
         assert_eq!(chosen, (200.0, 300.0));
         let lb = label_box(chosen, "XX");
-        assert!(!rects_overlap(lb, node_rect(&nodes[1])), "label overlaps blocker node");
+        assert!(
+            !rects_overlap(lb, node_rect(&nodes[1])),
+            "label overlaps blocker node"
+        );
     }
 
     #[test]
@@ -5878,17 +6623,30 @@ mod tests {
             test_node("c", 100.0, 360.0),
         ];
         // First edge's label is pushed off its blocked default to (200,300).
-        let first = vec![(100.0, 140.0), (100.0, 300.0), (300.0, 300.0), (300.0, 340.0)];
-        let first_pos = choose_label_pos(&label_candidates(&first), "XX", "a", "c", &nodes, &[]).unwrap();
+        let first = vec![
+            (100.0, 140.0),
+            (100.0, 300.0),
+            (300.0, 300.0),
+            (300.0, 340.0),
+        ];
+        let first_pos =
+            choose_label_pos(&label_candidates(&first), "XX", "a", "c", &nodes, &[]).unwrap();
         assert_eq!(first_pos, (200.0, 300.0));
         let placed = vec![label_box(first_pos, "XX")];
 
         // Second edge's default (200,285) would overlap the first label,
         // so it must move to the next free candidate.
-        let second = vec![(192.0, 240.0), (192.0, 330.0), (320.0, 330.0), (320.0, 360.0)];
-        let unconstrained = choose_label_pos(&label_candidates(&second), "YY", "d", "f", &nodes, &[]).unwrap();
+        let second = vec![
+            (192.0, 240.0),
+            (192.0, 330.0),
+            (320.0, 330.0),
+            (320.0, 360.0),
+        ];
+        let unconstrained =
+            choose_label_pos(&label_candidates(&second), "YY", "d", "f", &nodes, &[]).unwrap();
         assert_eq!(unconstrained, (200.0, 285.0));
-        let second_pos = choose_label_pos(&label_candidates(&second), "YY", "d", "f", &nodes, &placed).unwrap();
+        let second_pos =
+            choose_label_pos(&label_candidates(&second), "YY", "d", "f", &nodes, &placed).unwrap();
         assert_eq!(second_pos, (256.0, 330.0));
         assert!(!rects_overlap(label_box(second_pos, "YY"), placed[0]));
     }
@@ -5906,8 +6664,14 @@ mod tests {
         );
         let scene = layout(&d);
         let svg = to_svg(&scene);
-        assert!(svg.contains(r##"fill="#fee" stroke="#900" stroke-width="4.0""##), "node body style");
-        assert!(svg.contains(r##"fill="#fff">a</text>"##), "node label color");
+        assert!(
+            svg.contains(r##"fill="#fee" stroke="#900" stroke-width="4.0""##),
+            "node body style"
+        );
+        assert!(
+            svg.contains(r##"fill="#fff">a</text>"##),
+            "node label color"
+        );
         // The unstyled node keeps the shape theme.
         assert!(svg.contains(r##"fill="#fafafa""##) || svg.contains(r##"fill="#ffffff""##));
     }
@@ -5927,9 +6691,14 @@ mod tests {
         let svg = to_svg(&scene);
 
         // A marker filled with the styled edge's stroke colour exists.
-        let f00_idx = svg.find(r##"fill="#f00"/></marker>"##).expect("no #f00 marker");
+        let f00_idx = svg
+            .find(r##"fill="#f00"/></marker>"##)
+            .expect("no #f00 marker");
         let id_start = svg[..f00_idx].rfind(r#"id=""#).expect("no marker id") + 4;
-        let id_end = svg[id_start..f00_idx].find('"').expect("unterminated marker id") + id_start;
+        let id_end = svg[id_start..f00_idx]
+            .find('"')
+            .expect("unterminated marker id")
+            + id_start;
         let f00_id = &svg[id_start..id_end];
 
         // The red edge path carries the style and references that marker.
@@ -6111,7 +6880,8 @@ mod tests {
 
         let text_node = "lane l \"L\"\na[A]\nstyle a fill:x\" onload=1\n";
         assert!(!breakout(&render_advance_text_svg(text_node).unwrap()));
-        let text_edge = "lane l \"L\"\na[A]\nb[B]\na --> b\nstyle a-->b color:x' onload=1,dash:y\" onload=1\n";
+        let text_edge =
+            "lane l \"L\"\na[A]\nb[B]\na --> b\nstyle a-->b color:x' onload=1,dash:y\" onload=1\n";
         assert!(!breakout(&render_advance_text_svg(text_edge).unwrap()));
 
         for key in [
@@ -6151,7 +6921,6 @@ mod tests {
         assert!(svg.contains("fill=\"rgb(1, 2, 3)\""), "{svg}");
     }
 
-
     // ------------------------------------------------------------
     // Terminals: anchors, sub-elements, reference grammar
     // ------------------------------------------------------------
@@ -6186,7 +6955,10 @@ mod tests {
     #[test]
     fn parse_end_reads_every_form_of_the_grammar() {
         let e = parse_end("a").unwrap();
-        assert_eq!((e.node.as_str(), e.path.len(), e.at.is_none()), ("a", 0, true));
+        assert_eq!(
+            (e.node.as_str(), e.path.len(), e.at.is_none()),
+            ("a", 0, true)
+        );
         let e = parse_end("a:right").unwrap();
         assert_eq!(e.at, Some(AnchorRef::Side(AdvanceSide::Right)));
         let e = parse_end("a@out").unwrap();
@@ -6195,7 +6967,10 @@ mod tests {
         assert_eq!(e.path, vec!["b".to_string(), "c".to_string()]);
         assert_eq!(e.at, Some(AnchorRef::Named("p".into())));
         let e = parse_end("a.b:left").unwrap();
-        assert_eq!((e.path.len(), e.at), (1, Some(AnchorRef::Side(AdvanceSide::Left))));
+        assert_eq!(
+            (e.path.len(), e.at),
+            (1, Some(AnchorRef::Side(AdvanceSide::Left)))
+        );
         // Round trip through the printed form.
         assert_eq!(parse_end("a.b.c@p").unwrap().to_ref(), "a.b.c@p");
         assert_eq!(parse_end("a:top").unwrap().to_ref(), "a:top");
@@ -6213,9 +6988,21 @@ mod tests {
         let d = text_diagram(TERMINALS);
         let cpu = d.nodes.iter().find(|n| n.id == "cpu").unwrap();
         assert_eq!(cpu.anchors.len(), 1);
-        assert_eq!((cpu.anchors[0].id.as_str(), cpu.anchors[0].side, cpu.anchors[0].offset),
-                   ("out", AdvanceSide::Bottom, 0.5));
-        assert_eq!(cpu.elements.iter().map(|e| e.id.as_str()).collect::<Vec<_>>(), ["core0", "core1"]);
+        assert_eq!(
+            (
+                cpu.anchors[0].id.as_str(),
+                cpu.anchors[0].side,
+                cpu.anchors[0].offset
+            ),
+            ("out", AdvanceSide::Bottom, 0.5)
+        );
+        assert_eq!(
+            cpu.elements
+                .iter()
+                .map(|e| e.id.as_str())
+                .collect::<Vec<_>>(),
+            ["core0", "core1"]
+        );
         // The one-line block form declared an anchor on core1.
         assert_eq!(cpu.elements[1].anchors[0].id, "irq");
         assert_eq!(cpu.elements[1].anchors[0].side, AdvanceSide::Right);
@@ -6237,9 +7024,15 @@ mod tests {
         let e = err("lane l \"L\"\na[A] {\n  p[P]\n");
         assert!(e.contains("line 2") && e.contains("never closed"), "{e}");
         let e = err("lane l \"L\"\na[A] {\n  p --> q\n}\n");
-        assert!(e.contains("line 3") && e.contains("not allowed inside"), "{e}");
+        assert!(
+            e.contains("line 3") && e.contains("not allowed inside"),
+            "{e}"
+        );
         let e = err("lane l \"L\"\na[A] { p[P]; q[Q]; r[R] }\nb[B]\na.q:top --> b\n");
-        assert!(e.contains("line 4") && e.contains("not an exposed side"), "{e}");
+        assert!(
+            e.contains("line 4") && e.contains("not an exposed side"),
+            "{e}"
+        );
         let e = err("lane l \"L\"\na.b[X]\n");
         assert!(e.contains("may not contain '.'"), "{e}");
         let e = err("lane l \"L\"\na[A] { anchor x left }\nb[B]\na@nope --> b\n");
@@ -6271,7 +7064,10 @@ mod tests {
         // Nesting: exposure must hold at every level.
         let nest = "lane l \"L\"\na[A] { p[P] { x[X]; y[Y] }; q[Q] }\nb[B]\n";
         assert!(ok(&format!("{nest}a.p.x:left --> b\n")));
-        assert!(!ok(&format!("{nest}a.p.y:bottom --> b\n")), "p is not last, so y's bottom is interior");
+        assert!(
+            !ok(&format!("{nest}a.p.y:bottom --> b\n")),
+            "p is not last, so y's bottom is interior"
+        );
         assert!(ok(&format!("{nest}a.q:bottom --> b\n")));
     }
 
@@ -6279,7 +7075,10 @@ mod tests {
     fn json_terminals_round_trip_through_to_json() {
         let d = text_diagram(TERMINALS);
         let json = to_json(&d);
-        assert!(json.contains("\"anchors\":[{\"id\":\"out\",\"side\":\"bottom\",\"offset\":0.5}]"), "{json}");
+        assert!(
+            json.contains("\"anchors\":[{\"id\":\"out\",\"side\":\"bottom\",\"offset\":0.5}]"),
+            "{json}"
+        );
         assert!(json.contains("\"elements\":["), "{json}");
         assert!(json.contains("\"layout\":\"row\""), "{json}");
         assert!(json.contains("\"from\":\"cpu.core1@irq\""), "{json}");
@@ -6289,7 +7088,10 @@ mod tests {
         // A diagram with no terminals serialises exactly as before.
         let plain = text_diagram("lane l \"L\"\na[A]\nb[B]\na:right --> b:top\n");
         let j = to_json(&plain);
-        assert!(j.contains("\"from\":\"a\",\"to\":\"b\"") && j.contains("\"from_side\":\"right\""), "{j}");
+        assert!(
+            j.contains("\"from\":\"a\",\"to\":\"b\"") && j.contains("\"from_side\":\"right\""),
+            "{j}"
+        );
         assert!(!j.contains("anchors") && !j.contains("elements"), "{j}");
     }
 
@@ -6308,9 +7110,15 @@ mod tests {
         assert_eq!(d.edges[0].from_side, Some(AdvanceSide::Bottom));
         assert_eq!(d.edges[1].to_side, Some(AdvanceSide::Top));
         let bad = src.replace("\"from\":\"a.p@q\"", "\"from\":\"a.p@zz\"");
-        assert!(AdvanceDiagram::parse(&bad).unwrap_err().message.contains("no anchor 'zz'"));
+        assert!(AdvanceDiagram::parse(&bad)
+            .unwrap_err()
+            .message
+            .contains("no anchor 'zz'"));
         let bad = src.replace("\"id\":\"p\"", "\"id\":\"p.x\"");
-        assert!(AdvanceDiagram::parse(&bad).unwrap_err().message.contains("may not contain '.'"));
+        assert!(AdvanceDiagram::parse(&bad)
+            .unwrap_err()
+            .message
+            .contains("may not contain '.'"));
     }
 
     #[test]
@@ -6319,13 +7127,29 @@ mod tests {
         let cpu = scene_node_by(&sc, "cpu");
         assert_eq!(cpu.elements.len(), 2);
         for el in &cpu.elements {
-            assert!(el.x - el.w / 2.0 >= cpu.x - cpu.w / 2.0 && el.x + el.w / 2.0 <= cpu.x + cpu.w / 2.0, "{} overflows x", el.id);
-            assert!(el.y - el.h / 2.0 >= cpu.y - cpu.h / 2.0 && el.y + el.h / 2.0 <= cpu.y + cpu.h / 2.0, "{} overflows y", el.id);
+            assert!(
+                el.x - el.w / 2.0 >= cpu.x - cpu.w / 2.0
+                    && el.x + el.w / 2.0 <= cpu.x + cpu.w / 2.0,
+                "{} overflows x",
+                el.id
+            );
+            assert!(
+                el.y - el.h / 2.0 >= cpu.y - cpu.h / 2.0
+                    && el.y + el.h / 2.0 <= cpu.y + cpu.h / 2.0,
+                "{} overflows y",
+                el.id
+            );
         }
         // Column: core1 below core0, same width. Row: bank1 right of bank0.
-        assert!(cpu.elements[1].y > cpu.elements[0].y && (cpu.elements[1].w - cpu.elements[0].w).abs() < 1e-9);
+        assert!(
+            cpu.elements[1].y > cpu.elements[0].y
+                && (cpu.elements[1].w - cpu.elements[0].w).abs() < 1e-9
+        );
         let mem = scene_node_by(&sc, "mem");
-        assert!(mem.elements[1].x > mem.elements[0].x && (mem.elements[1].y - mem.elements[0].y).abs() < 1e-9);
+        assert!(
+            mem.elements[1].x > mem.elements[0].x
+                && (mem.elements[1].y - mem.elements[0].y).abs() < 1e-9
+        );
         // The node is taller than a plain node would be.
         let plain = layout(&text_diagram("lane l \"L\"\ncpu[CPU]\n"));
         assert!(cpu.h > scene_node_by(&plain, "cpu").h);
@@ -6346,9 +7170,12 @@ mod tests {
         let irq = cpu.anchors.iter().find(|a| a.id == "irq").unwrap();
         assert!((e.from_point.0 - irq.x).abs() < 1e-9 && (e.from_point.1 - irq.y).abs() < 1e-9);
         assert_eq!(e.points[0], e.from_point);
-        // Second point: straight right of the anchor, on cpu's right edge — the lead.
+        // The lead runs straight right of the anchor and clears cpu's
+        // right edge before the route turns. The edge itself is not a
+        // vertex of the polyline — it is collinear with the lead, so it
+        // collapses away — but the segment must still cross it.
         assert!((e.points[1].1 - irq.y).abs() < 1e-9);
-        assert!((e.points[1].0 - (cpu.x + cpu.w / 2.0)).abs() < 1e-9);
+        assert!(e.points[1].0 > cpu.x + cpu.w / 2.0);
         // Target lands on bank0's boundary and the scene names both ends.
         let mem = scene_node_by(&sc, "mem");
         let bank0 = &mem.elements[0];
@@ -6362,7 +7189,10 @@ mod tests {
         assert_eq!(e.to_end.to_ref(), "mem.bank0");
         // Everything stays orthogonal.
         for w in e.points.windows(2) {
-            assert!((w[0].0 - w[1].0).abs() < 1e-9 || (w[0].1 - w[1].1).abs() < 1e-9, "diagonal segment");
+            assert!(
+                (w[0].0 - w[1].0).abs() < 1e-9 || (w[0].1 - w[1].1).abs() < 1e-9,
+                "diagonal segment"
+            );
         }
     }
 
@@ -6377,8 +7207,16 @@ mod tests {
         let e = &sc.edges[0];
         for w in e.points.windows(2) {
             for t in [0.25, 0.5, 0.75] {
-                let p = (w[0].0 + (w[1].0 - w[0].0) * t, w[0].1 + (w[1].1 - w[0].1) * t);
-                assert!(!inside_strict(p, b) && !inside_strict(p, d), "segment {:?}-{:?} crosses a node", w[0], w[1]);
+                let p = (
+                    w[0].0 + (w[1].0 - w[0].0) * t,
+                    w[0].1 + (w[1].1 - w[0].1) * t,
+                );
+                assert!(
+                    !inside_strict(p, b) && !inside_strict(p, d),
+                    "segment {:?}-{:?} crosses a node",
+                    w[0],
+                    w[1]
+                );
             }
         }
         // Still leaves d rightwards and enters b from above.
@@ -6389,10 +7227,16 @@ mod tests {
 
     #[test]
     fn a_ported_edge_that_was_already_clear_is_unchanged() {
-        let sc = layout(&text_diagram("lane L \"L\"\na[A]\nlane R \"R\"\nc[C]\na:right --> c:left\n"));
+        let sc = layout(&text_diagram(
+            "lane L \"L\"\na[A]\nlane R \"R\"\nc[C]\na:right --> c:left\n",
+        ));
         let e = &sc.edges[0];
         // p0, leader, leader, p3 — all on one horizontal line, no detour.
-        assert!(e.points.iter().all(|p| (p.1 - e.points[0].1).abs() < 1e-9), "{:?}", e.points);
+        assert!(
+            e.points.iter().all(|p| (p.1 - e.points[0].1).abs() < 1e-9),
+            "{:?}",
+            e.points
+        );
         assert!(e.points.len() <= 4, "{:?}", e.points);
     }
 
@@ -6402,11 +7246,26 @@ mod tests {
         let j = scene_to_json(&sc);
         assert!(j.contains("\"elements\":[{\"id\":\"core0\""), "{j}");
         assert!(j.contains("\"path\":[\"core0\"]"), "{j}");
-        assert!(j.contains("\"anchors\":[") && j.contains("\"id\":\"irq\"") && j.contains("\"element\":1"), "{j}");
-        assert!(j.contains("\"from_point\":[") && j.contains("\"from_end\":\"cpu.core1@irq\""), "{j}");
+        assert!(
+            j.contains("\"anchors\":[")
+                && j.contains("\"id\":\"irq\"")
+                && j.contains("\"element\":1"),
+            "{j}"
+        );
+        assert!(
+            j.contains("\"from_point\":[") && j.contains("\"from_end\":\"cpu.core1@irq\""),
+            "{j}"
+        );
         // Plain scenes gain only the two points.
-        let plain = scene_to_json(&layout(&text_diagram("lane l \"L\"\na[A]\nb[B]\na --> b\n")));
-        assert!(plain.contains("\"from_point\":[") && !plain.contains("from_end") && !plain.contains("elements"), "{plain}");
+        let plain = scene_to_json(&layout(&text_diagram(
+            "lane l \"L\"\na[A]\nb[B]\na --> b\n",
+        )));
+        assert!(
+            plain.contains("\"from_point\":[")
+                && !plain.contains("from_end")
+                && !plain.contains("elements"),
+            "{plain}"
+        );
     }
 
     #[test]
@@ -6416,13 +7275,22 @@ mod tests {
         let cpu = &sc.nodes[ni];
         let irq = cpu.anchors.iter().position(|a| a.id == "irq").unwrap();
         let a = &cpu.anchors[irq];
-        assert_eq!(sc.hit_test(a.x + 1.0, a.y - 1.0, 4.0), Some(AdvanceHit::Anchor(ni, irq)));
+        assert_eq!(
+            sc.hit_test(a.x + 1.0, a.y - 1.0, 4.0),
+            Some(AdvanceHit::Anchor(ni, irq))
+        );
         assert_eq!(sc.anchor_at(a.x, a.y, 0.1), Some((ni, irq)));
         let core0 = &cpu.elements[0];
-        assert_eq!(sc.hit_test(core0.x, core0.y, 0.5), Some(AdvanceHit::Element(ni, 0)));
+        assert_eq!(
+            sc.hit_test(core0.x, core0.y, 0.5),
+            Some(AdvanceHit::Element(ni, 0))
+        );
         assert_eq!(sc.element_at(core0.x, core0.y), Some((ni, 0)));
         // The label band above the compartments is the node itself.
-        assert_eq!(sc.hit_test(cpu.x, cpu.y - cpu.h / 2.0 + 10.0, 0.5), Some(AdvanceHit::Node(ni)));
+        assert_eq!(
+            sc.hit_test(cpu.x, cpu.y - cpu.h / 2.0 + 10.0, 0.5),
+            Some(AdvanceHit::Node(ni))
+        );
         assert_eq!(sc.element_at(cpu.x, cpu.y - cpu.h / 2.0 + 10.0), None);
     }
 
@@ -6430,7 +7298,9 @@ mod tests {
     fn svg_draws_compartments_with_their_labels() {
         let svg = to_svg(&layout(&text_diagram(TERMINALS)));
         assert_eq!(svg.matches("rx=\"4\"").count(), 4, "{svg}");
-        for l in ["CPU", "Core 0", "Core 1", "Memory", "Bank 0", "Bank 1", "Bus", "dma"] {
+        for l in [
+            "CPU", "Core 0", "Core 1", "Memory", "Bank 0", "Bank 1", "Bus", "dma",
+        ] {
             assert!(svg.contains(&format!(">{l}<")), "missing label {l}");
         }
         // A styled element escapes its colours like a node does.
@@ -6443,14 +7313,15 @@ mod tests {
     #[test]
     fn inline_block_and_multi_line_block_parse_the_same() {
         let a = text_diagram("lane l \"L\"\na[A] { anchor o left; p[P]; q[Q]; layout row }\n");
-        let b = text_diagram("lane l \"L\"\na[A] {\n  anchor o left\n  p[P]\n  q[Q]\n  layout row\n}\n");
+        let b = text_diagram(
+            "lane l \"L\"\na[A] {\n  anchor o left\n  p[P]\n  q[Q]\n  layout row\n}\n",
+        );
         assert_eq!(a.nodes, b.nodes);
         // A diamond is still a diamond, not a block.
         let d = text_diagram("lane l \"L\"\nc{Check}\n");
         assert_eq!(d.nodes[0].shape, Shape::Diamond);
         assert!(d.nodes[0].elements.is_empty());
     }
-
 
     // ------------------------------------------------------------
     // Review findings on P1 — each of these was a reproduced defect
@@ -6488,12 +7359,28 @@ mod tests {
     #[test]
     fn shape_braces_and_label_punctuation_are_not_block_syntax() {
         let d = text_diagram("lane l \"L\"\nc {Text}\nh {{Hex}}\n");
-        assert_eq!((d.nodes[0].shape, d.nodes[0].label.as_str()), (Shape::Diamond, "Text"));
-        assert_eq!((d.nodes[1].shape, d.nodes[1].label.as_str()), (Shape::Hexagon, "Hex"));
+        assert_eq!(
+            (d.nodes[0].shape, d.nodes[0].label.as_str()),
+            (Shape::Diamond, "Text")
+        );
+        assert_eq!(
+            (d.nodes[1].shape, d.nodes[1].label.as_str()),
+            (Shape::Hexagon, "Hex")
+        );
         assert!(d.nodes.iter().all(|n| n.elements.is_empty()));
         let d = text_diagram("lane l \"L\"\na[Set {x}] { p[Hello; world]; q[Q] }\n");
-        assert_eq!((d.nodes[0].id.as_str(), d.nodes[0].label.as_str()), ("a", "Set {x}"));
-        assert_eq!(d.nodes[0].elements.iter().map(|e| e.label.as_str()).collect::<Vec<_>>(), ["Hello; world", "Q"]);
+        assert_eq!(
+            (d.nodes[0].id.as_str(), d.nodes[0].label.as_str()),
+            ("a", "Set {x}")
+        );
+        assert_eq!(
+            d.nodes[0]
+                .elements
+                .iter()
+                .map(|e| e.label.as_str())
+                .collect::<Vec<_>>(),
+            ["Hello; world", "Q"]
+        );
         let d = text_diagram("lane l \"L\"\nc{Check} { anchor y right }\n");
         assert_eq!(d.nodes[0].shape, Shape::Diamond);
         assert_eq!(d.nodes[0].anchors[0].id, "y");
@@ -6502,24 +7389,48 @@ mod tests {
     #[test]
     fn directives_and_edges_inside_a_block_are_refused() {
         let err = |src: &str| AdvanceDiagram::parse_text(src).unwrap_err().message;
-        for body in ["x --- y", "style a fill:#f00", "class a hot", "config margin 4", "lane z \"Z\""] {
+        for body in [
+            "x --- y",
+            "style a fill:#f00",
+            "class a hot",
+            "config margin 4",
+            "lane z \"Z\"",
+        ] {
             let e = err(&format!("lane l \"L\"\na[A] {{\n  {body}\n}}\n"));
-            assert!(e.contains("not allowed inside"), "'{body}' slipped through: {e}");
+            assert!(
+                e.contains("not allowed inside"),
+                "'{body}' slipped through: {e}"
+            );
         }
         let e = err("lane l \"L\"\na[A] {\n  [P]\n}\n");
-        assert!(e.contains("cannot be empty") || e.contains("invalid"), "{e}");
+        assert!(
+            e.contains("cannot be empty") || e.contains("invalid"),
+            "{e}"
+        );
     }
 
     #[test]
     fn style_targets_a_terminal_edge_by_its_reference() {
-        let d = text_diagram(&format!("{TERMINALS}style cpu.core1@irq-->mem.bank0 color:#ff0000\n"));
+        let d = text_diagram(&format!(
+            "{TERMINALS}style cpu.core1@irq-->mem.bank0 color:#ff0000\n"
+        ));
         assert_eq!(d.edges[0].style.color.as_deref(), Some("#ff0000"));
-        assert_eq!(d.edges[2].style.color, None, "the other cpu->mem edge is untouched");
+        assert_eq!(
+            d.edges[2].style.color, None,
+            "the other cpu->mem edge is untouched"
+        );
         let d = text_diagram(&format!("{TERMINALS}style cpu-->mem color:#00ff00\n"));
         assert_eq!(d.edges[0].style.color.as_deref(), Some("#00ff00"));
         assert_eq!(d.edges[2].style.color.as_deref(), Some("#00ff00"));
-        let e = AdvanceDiagram::parse_text(&format!("{TERMINALS}style cpu.core1@irq-->mem.bank1 color:#f00\n")).unwrap_err();
-        assert!(e.message.contains("matches no edge") && e.message.contains("line 19"), "{}", e.message);
+        let e = AdvanceDiagram::parse_text(&format!(
+            "{TERMINALS}style cpu.core1@irq-->mem.bank1 color:#f00\n"
+        ))
+        .unwrap_err();
+        assert!(
+            e.message.contains("matches no edge") && e.message.contains("line 19"),
+            "{}",
+            e.message
+        );
     }
 
     #[test]
@@ -6532,8 +7443,12 @@ mod tests {
         let e = &sc.edges[0];
         let p = &n2.elements[0];
         assert!(
-            (e.to_point.0 - p.x).abs() <= p.w / 2.0 + 1e-9 && (e.to_point.1 - p.y).abs() <= p.h / 2.0 + 1e-9,
-            "edge ends at {:?}, not on n2.p at ({}, {})", e.to_point, p.x, p.y
+            (e.to_point.0 - p.x).abs() <= p.w / 2.0 + 1e-9
+                && (e.to_point.1 - p.y).abs() <= p.h / 2.0 + 1e-9,
+            "edge ends at {:?}, not on n2.p at ({}, {})",
+            e.to_point,
+            p.x,
+            p.y
         );
         assert_eq!(e.to_end.to_ref(), "n2.p");
     }
@@ -6543,7 +7458,10 @@ mod tests {
         let sc = layout(&text_diagram(
             "lane backend \"B\" {\n  b[API]\n}\nlane frontend \"F\" {\n  d[Dash]\n}\nd:right --> b:top\nd:right --> b:top\n",
         ));
-        assert_ne!(sc.edges[0].points, sc.edges[1].points, "the two routes collapsed onto one channel");
+        assert_ne!(
+            sc.edges[0].points, sc.edges[1].points,
+            "the two routes collapsed onto one channel"
+        );
     }
 
     #[test]
@@ -6554,8 +7472,16 @@ mod tests {
         let m = scene_node_by(&sc, "m");
         for w in sc.edges[0].points.windows(2) {
             for t in [0.25, 0.5, 0.75] {
-                let p = (w[0].0 + (w[1].0 - w[0].0) * t, w[0].1 + (w[1].1 - w[0].1) * t);
-                assert!(!inside_strict(p, m), "segment {:?}-{:?} runs through m", w[0], w[1]);
+                let p = (
+                    w[0].0 + (w[1].0 - w[0].0) * t,
+                    w[0].1 + (w[1].1 - w[0].1) * t,
+                );
+                assert!(
+                    !inside_strict(p, m),
+                    "segment {:?}-{:?} runs through m",
+                    w[0],
+                    w[1]
+                );
             }
         }
     }
@@ -6567,10 +7493,23 @@ mod tests {
                       "elements":[{"id":"p","label":"Long label here"},{"id":"q"}]}],"edges":[]}"#;
         let sc = layout(&AdvanceDiagram::parse(src).unwrap());
         let a = scene_node_by(&sc, "a");
-        assert!(a.w > 60.0 && a.h > 30.0, "node kept the too-small box: {}x{}", a.w, a.h);
+        assert!(
+            a.w > 60.0 && a.h > 30.0,
+            "node kept the too-small box: {}x{}",
+            a.w,
+            a.h
+        );
         for el in &a.elements {
-            assert!(el.w > 0.0 && el.h > 0.0, "{} has a non-positive size", el.id);
-            assert!(inside_strict((el.x, el.y), a), "{} sits outside its node", el.id);
+            assert!(
+                el.w > 0.0 && el.h > 0.0,
+                "{} has a non-positive size",
+                el.id
+            );
+            assert!(
+                inside_strict((el.x, el.y), a),
+                "{} sits outside its node",
+                el.id
+            );
         }
         assert!(!to_svg(&sc).contains("height=\"-"));
     }
@@ -6584,10 +7523,19 @@ mod tests {
         let e = &sc.edges[0];
         let (lx, ly) = e.label_pos.expect("label placed");
         let near = e.points.windows(2).any(|w| {
-            let (x0, y0, x1, y1) = (w[0].0.min(w[1].0), w[0].1.min(w[1].1), w[0].0.max(w[1].0), w[0].1.max(w[1].1));
+            let (x0, y0, x1, y1) = (
+                w[0].0.min(w[1].0),
+                w[0].1.min(w[1].1),
+                w[0].0.max(w[1].0),
+                w[0].1.max(w[1].1),
+            );
             lx >= x0 - 30.0 && lx <= x1 + 30.0 && ly >= y0 - 30.0 && ly <= y1 + 30.0
         });
-        assert!(near, "label at ({lx}, {ly}) is nowhere near its route {:?}", e.points);
+        assert!(
+            near,
+            "label at ({lx}, {ly}) is nowhere near its route {:?}",
+            e.points
+        );
     }
 
     #[test]
@@ -6600,25 +7548,40 @@ mod tests {
         let ui = sc.nodes.iter().position(|n| n.id == "under").unwrap();
         let oi = sc.nodes.iter().position(|n| n.id == "over").unwrap();
         let a = &sc.nodes[ui].anchors[0];
-        assert_eq!(sc.node_at(a.x, a.y), Some(oi), "test setup: the anchor point is covered by `over`");
+        assert_eq!(
+            sc.node_at(a.x, a.y),
+            Some(oi),
+            "test setup: the anchor point is covered by `over`"
+        );
         assert_eq!(sc.hit_test(a.x, a.y, 4.0), Some(AdvanceHit::Node(oi)));
     }
-
 
     #[test]
     fn sub_elements_need_a_rect_or_rounded_node() {
         // Compartments are rectangles; inside a diamond 6 of 8 corners
         // fell outside the outline and could not be picked.
         for decl in ["d{Dec}", "h{{Hex}}", "c((C))", "p[/P/]"] {
-            let e = AdvanceDiagram::parse_text(&format!("lane l \"L\"\n{decl} {{ p[P] }}\n")).unwrap_err();
-            assert!(e.message.contains("sub-elements need a rect or rounded node"), "{decl}: {}", e.message);
+            let e = AdvanceDiagram::parse_text(&format!("lane l \"L\"\n{decl} {{ p[P] }}\n"))
+                .unwrap_err();
+            assert!(
+                e.message
+                    .contains("sub-elements need a rect or rounded node"),
+                "{decl}: {}",
+                e.message
+            );
             assert!(e.message.contains("line 2"), "{}", e.message);
         }
         for decl in ["r[R]", "o(O)"] {
-            assert!(AdvanceDiagram::parse_text(&format!("lane l \"L\"\n{decl} {{ p[P] }}\n")).is_ok(), "{decl}");
+            assert!(
+                AdvanceDiagram::parse_text(&format!("lane l \"L\"\n{decl} {{ p[P] }}\n")).is_ok(),
+                "{decl}"
+            );
         }
         let json = r#"{"lanes":[{"id":"l","title":"L"}],"nodes":[{"id":"d","lane":"l","shape":"diamond","elements":[{"id":"p"}]}],"edges":[]}"#;
-        assert!(AdvanceDiagram::parse(json).unwrap_err().message.contains("need a rect or rounded node"));
+        assert!(AdvanceDiagram::parse(json)
+            .unwrap_err()
+            .message
+            .contains("need a rect or rounded node"));
         // A shape without sub-elements is still free to be anything.
         assert!(AdvanceDiagram::parse_text("lane l \"L\"\nd{Dec}\n").is_ok());
     }
@@ -6649,17 +7612,26 @@ mod tests {
         let ok_text = |src: &str| AdvanceDiagram::parse_text(src).is_ok();
         let inline = |n: usize| {
             let mut s = String::from("lane l \"L\"\na[A]");
-            for i in 0..n { s.push_str(&format!(" {{ e{i}[E]")); }
-            s.push_str(&" }".repeat(n)); s.push('\n'); s
+            for i in 0..n {
+                s.push_str(&format!(" {{ e{i}[E]"));
+            }
+            s.push_str(&" }".repeat(n));
+            s.push('\n');
+            s
         };
         let multi = |n: usize| {
             let mut s = String::from("lane l \"L\"\na[A] {\n");
-            for i in 0..n { s.push_str(&format!("e{i}[E] {{\n")); }
-            s.push_str(&"}\n".repeat(n + 1)); s
+            for i in 0..n {
+                s.push_str(&format!("e{i}[E] {{\n"));
+            }
+            s.push_str(&"}\n".repeat(n + 1));
+            s
         };
         let json = |n: usize| {
             let mut e = format!("{{\"id\":\"e{}\"}}", n - 1);
-            for i in (0..n - 1).rev() { e = format!("{{\"id\":\"e{i}\",\"elements\":[{e}]}}"); }
+            for i in (0..n - 1).rev() {
+                e = format!("{{\"id\":\"e{i}\",\"elements\":[{e}]}}");
+            }
             format!("{{\"lanes\":[{{\"id\":\"l\",\"title\":\"L\"}}],\"nodes\":[{{\"id\":\"a\",\"lane\":\"l\",\"elements\":[{e}]}}],\"edges\":[]}}")
         };
         assert!(ok_text(&inline(MAX_NEST_DEPTH)) && !ok_text(&inline(MAX_NEST_DEPTH + 1)));
@@ -6667,7 +7639,6 @@ mod tests {
         assert!(AdvanceDiagram::parse(&json(MAX_NEST_DEPTH)).is_ok());
         assert!(AdvanceDiagram::parse(&json(MAX_NEST_DEPTH + 1)).is_err());
     }
-
 
     // ------------------------------------------------------------
     // Whole-module review of advance mode
@@ -6689,18 +7660,29 @@ mod tests {
         );
         let positions: Vec<f64> = sc.nodes.iter().flat_map(|n| [n.x, n.y]).collect();
         let again = layout(&AdvanceDiagram::parse(TWO_LANES).unwrap());
-        let placed = place_nodes_at_positions(&AdvanceDiagram::parse(TWO_LANES).unwrap(), &positions);
+        let placed =
+            place_nodes_at_positions(&AdvanceDiagram::parse(TWO_LANES).unwrap(), &positions);
         for (want, got) in again.nodes.iter().zip(&placed) {
             assert_eq!(want.id, got.id);
-            assert!((want.x - got.x).abs() < 1e-9 && (want.y - got.y).abs() < 1e-9,
-                "{} moved from ({}, {}) to ({}, {})", got.id, want.x, want.y, got.x, got.y);
+            assert!(
+                (want.x - got.x).abs() < 1e-9 && (want.y - got.y).abs() < 1e-9,
+                "{} moved from ({}, {}) to ({}, {})",
+                got.id,
+                want.x,
+                want.y,
+                got.x,
+                got.y
+            );
         }
         // And the same through the public entry point.
         let svg = render_advance_routed(TWO_LANES, &positions).unwrap();
         for n in &sc.nodes {
-            assert!(svg.contains(&format!("x=\"{:.1}\" y=\"{:.1}\"", n.x, n.y))
+            assert!(
+                svg.contains(&format!("x=\"{:.1}\" y=\"{:.1}\"", n.x, n.y))
                     || svg.contains(&format!("cx=\"{:.1}\" cy=\"{:.1}\"", n.x, n.y)),
-                    "{} is not at its scene position", n.id);
+                "{} is not at its scene position",
+                n.id
+            );
         }
     }
 
@@ -6714,20 +7696,33 @@ mod tests {
                      {"id":"z1","lane":"B"},{"id":"z2","lane":"B"},{"id":"z3","lane":"B"}],"edges":[]}"#;
         let base = layout_advance(deep).unwrap();
         let positions: Vec<f64> = base.nodes.iter().flat_map(|n| [n.x, n.y]).collect();
-        let svg = render_advance_routed_with_lanes(deep, &positions, &[200.0, 200.0], 24.0, 24.0).unwrap();
+        let svg = render_advance_routed_with_lanes(deep, &positions, &[200.0, 200.0], 24.0, 24.0)
+            .unwrap();
         // Both lane boxes reach the bottom-most node they actually hold.
-        let deepest = base.nodes.iter().map(|n| n.y + n.h / 2.0).fold(0.0, f64::max);
+        let deepest = base
+            .nodes
+            .iter()
+            .map(|n| n.y + n.h / 2.0)
+            .fold(0.0, f64::max);
         let mut lane_h = Vec::new();
         for cap in svg.split("<rect ").skip(1) {
-            let g = |k: &str| cap.split(&format!("{k}=\"")).nth(1)
-                .and_then(|s| s.split('"').next()).and_then(|s| s.parse::<f64>().ok()).unwrap_or(0.0);
+            let g = |k: &str| {
+                cap.split(&format!("{k}=\""))
+                    .nth(1)
+                    .and_then(|s| s.split('"').next())
+                    .and_then(|s| s.parse::<f64>().ok())
+                    .unwrap_or(0.0)
+            };
             if (g("width") - 200.0).abs() < 1e-9 {
                 lane_h.push(g("height"));
             }
         }
         assert_eq!(lane_h.len(), 2, "one box per top-level lane");
         for h in lane_h {
-            assert!(h + 24.0 >= deepest, "lane box {h} does not reach the lowest node at {deepest}");
+            assert!(
+                h + 24.0 >= deepest,
+                "lane box {h} does not reach the lowest node at {deepest}"
+            );
         }
     }
 
@@ -6744,16 +7739,30 @@ mod tests {
         let oi = sc.nodes.iter().position(|n| n.id == "over").unwrap();
         let ua = &sc.nodes[ui].anchors[0];
         let p = (ua.x - 2.0, ua.y);
-        assert_eq!(sc.node_at(p.0, p.1), Some(oi), "setup: the point must sit on `over`");
-        assert_eq!(sc.anchor_at(p.0, p.1, 30.0), Some((ui, 0)), "setup: `under`'s anchor is the nearest");
+        assert_eq!(
+            sc.node_at(p.0, p.1),
+            Some(oi),
+            "setup: the point must sit on `over`"
+        );
+        assert_eq!(
+            sc.anchor_at(p.0, p.1, 30.0),
+            Some((ui, 0)),
+            "setup: `under`'s anchor is the nearest"
+        );
         assert_eq!(sc.hit_test(p.0, p.1, 30.0), Some(AdvanceHit::Anchor(oi, 0)));
     }
 
     #[test]
     fn edge_separators_inside_labels_are_text() {
         let d = text_diagram("lane l \"L\"\na[A] { p[x---y]; q[a-->b] }\n");
-        assert_eq!(d.nodes[0].elements.iter().map(|e| e.label.as_str()).collect::<Vec<_>>(),
-                   ["x---y", "a-->b"]);
+        assert_eq!(
+            d.nodes[0]
+                .elements
+                .iter()
+                .map(|e| e.label.as_str())
+                .collect::<Vec<_>>(),
+            ["x---y", "a-->b"]
+        );
         let d = text_diagram("lane l \"L\"\na[x==>y]\nb[B]\na --- b\n");
         assert_eq!(d.nodes[0].label, "x==>y");
         assert_eq!((d.edges.len(), d.edges[0].kind), (1, EdgeKind::Open));
@@ -6767,7 +7776,10 @@ mod tests {
     fn a_one_line_lane_block_takes_bare_ids() {
         let d = text_diagram("lane l \"L\" { a }\n");
         assert_eq!(d.lanes[0].title, "L");
-        assert_eq!(d.nodes.iter().map(|n| n.id.as_str()).collect::<Vec<_>>(), ["a"]);
+        assert_eq!(
+            d.nodes.iter().map(|n| n.id.as_str()).collect::<Vec<_>>(),
+            ["a"]
+        );
         let d = text_diagram("lane l \"L\" { a[A]; b }\n");
         assert_eq!(d.nodes.len(), 2);
     }
@@ -6776,19 +7788,28 @@ mod tests {
     fn an_anchor_id_with_a_colon_is_refused() {
         // `parse_end` rejects a ':' in an `@`-suffix, so such an anchor
         // could be declared but never referenced.
-        let e = AdvanceDiagram::parse_text("lane l \"L\"\na[A] { anchor my:x right }\n").unwrap_err();
+        let e =
+            AdvanceDiagram::parse_text("lane l \"L\"\na[A] { anchor my:x right }\n").unwrap_err();
         assert!(e.message.contains("may not contain ':'"), "{}", e.message);
         let json = r#"{"lanes":[{"id":"l","title":"L"}],
             "nodes":[{"id":"a","lane":"l","anchors":[{"id":"m:x","side":"right"}]}],"edges":[]}"#;
-        assert!(AdvanceDiagram::parse(json).unwrap_err().message.contains("may not contain ':'"));
+        assert!(AdvanceDiagram::parse(json)
+            .unwrap_err()
+            .message
+            .contains("may not contain ':'"));
     }
 
     #[test]
     fn a_style_target_matching_no_edge_is_an_error_either_way() {
         let base = "lane l \"L\"\na[A]\nb[B]\na --> b\n";
         // Plain node-pair target: used to be dropped in silence.
-        let e = AdvanceDiagram::parse_text(&format!("{base}style zz-->yy color:#f00\n")).unwrap_err();
-        assert!(e.message.contains("matches no edge") && e.message.contains("line 5"), "{}", e.message);
+        let e =
+            AdvanceDiagram::parse_text(&format!("{base}style zz-->yy color:#f00\n")).unwrap_err();
+        assert!(
+            e.message.contains("matches no edge") && e.message.contains("line 5"),
+            "{}",
+            e.message
+        );
         // Nodes exist but carry no edge between them.
         let e = AdvanceDiagram::parse_text(&format!("{base}style b-->a color:#f00\n")).unwrap_err();
         assert!(e.message.contains("matches no edge"), "{}", e.message);
@@ -6796,5 +7817,298 @@ mod tests {
         let d = text_diagram(&format!("{base}style a-->b color:#f00\n"));
         assert_eq!(d.edges[0].style.color.as_deref(), Some("#f00"));
     }
+    // ---- the channel-grid router -------------------------------------
 
+    /// Every scenario the router has to survive, in one place, so a new
+    /// property can be asserted across all of them by adding one loop.
+    const ROUTER_CASES: [(&str, &str); 8] = [
+        ("blocker between two lanes",
+         "lane l \"L\"\na[A]\nlane m \"M\"\nm[Middle blocker]\nlane r \"R\"\nc[C]\na --> c\n"),
+        ("blocker inside one lane",
+         "lane l \"L\"\na[A]\nb[B]\nc[C]\na --> b\nb --> c\na --> c\n"),
+        ("ports on the same side across a wider node",
+         "lane l \"L\" {\n a[A]\n m[A much wider middle node]\n b[B]\n}\na:right --> b:right\n"),
+        ("three lanes of three, crossing every way",
+         "lane a \"A\"\na1[a1]\na2[a2]\na3[a3]\nlane b \"B\"\nb1[b1]\nb2[b2]\nb3[b3]\n\
+          lane c \"C\"\nc1[c1]\nc2[c2]\nc3[c3]\na1 --> c3\na3 --> c1\nb1 --> c2\na2 --> b3\nb2 --> a1\n"),
+        ("terminals", TERMINALS),
+        ("loops on every pair of sides",
+         "lane l \"L\"\na[A]\nb[B]\na:left --> a:right\na:top --> a:bottom\n\
+          a:right --> a:right\na:right --> a:bottom\nb --> b\n"),
+        ("loops between sub-elements of one node",
+         "lane l \"L\"\na[A] {\n c0[C0]\n c1[C1]\n}\na.c0 --> a.c1\n"),
+        ("five parallel ported edges past a blocker",
+         "lane l \"L\" {\n a[A]\n b[B]\n c[C]\n}\na:bottom --> c:top\na:bottom --> c:top\n\
+          a:bottom --> c:top\na:bottom --> c:top\na:bottom --> c:top\n"),
+    ];
+
+    /// A lead runs from a terminal to its own node's boundary and stops
+    /// there; it never comes out the far side. Saying so precisely
+    /// matters: "the first segment of its own edge" also describes a
+    /// line drawn straight across the node, which is what a broken
+    /// self-loop looks like.
+    fn is_lead(w: &[(f64, f64)], rect: (f64, f64, f64, f64)) -> bool {
+        let (l, t, r, b) = rect;
+        let at = |a: f64, c: f64| (a - c).abs() < 1e-9;
+        let across_x = (at(w[0].0, l) && at(w[1].0, r)) || (at(w[0].0, r) && at(w[1].0, l));
+        let across_y = (at(w[0].1, t) && at(w[1].1, b)) || (at(w[0].1, b) && at(w[1].1, t));
+        !across_x && !across_y
+    }
+
+    /// No line through a box. The one exception is deliberate: an edge
+    /// that starts on a sub-element leads out through its own node to
+    /// reach the boundary, on its first or last segment only.
+    #[test]
+    fn no_route_passes_through_a_node() {
+        for (name, src) in ROUTER_CASES {
+            let sc = layout(&text_diagram(src));
+            for e in &sc.edges {
+                let last = e.points.len() - 2;
+                for (i, w) in e.points.windows(2).enumerate() {
+                    for n in &sc.nodes {
+                        let own = (n.id == e.from && i == 0) || (n.id == e.to && i == last);
+                        if own && is_lead(w, node_rect(n)) {
+                            continue;
+                        }
+                        assert!(
+                            !seg_crosses_rect(w[0], w[1], node_rect(n)),
+                            "{name}: {} --> {}, segment {i} {:?}-{:?} runs through {}",
+                            e.from,
+                            e.to,
+                            w[0],
+                            w[1],
+                            n.id
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn every_route_is_orthogonal() {
+        for (name, src) in ROUTER_CASES {
+            let sc = layout(&text_diagram(src));
+            for e in &sc.edges {
+                for w in e.points.windows(2) {
+                    assert!(
+                        (w[0].0 - w[1].0).abs() < 1e-9 || (w[0].1 - w[1].1).abs() < 1e-9,
+                        "{name}: diagonal segment {:?}-{:?}",
+                        w[0],
+                        w[1]
+                    );
+                }
+            }
+        }
+    }
+
+    /// Three nodes in a column with an edge skipping the middle one: the
+    /// long edge has to leave through a side, because going straight
+    /// down would run along the two short edges and through `b`.
+    #[test]
+    fn an_edge_detours_rather_than_run_over_the_edges_already_drawn() {
+        let sc = layout(&text_diagram(
+            "lane l \"L\"\na[A]\nb[B]\nc[C]\na --> b\nb --> c\na --> c\n",
+        ));
+        let skip = &sc.edges[2];
+        let a = scene_node_by(&sc, "a");
+        // It leaves through a side, not the bottom it shares with a --> b.
+        assert!(
+            (skip.points[0].1 - a.y).abs() < 1e-9,
+            "a --> c left through the bottom"
+        );
+        for w in skip.points.windows(2) {
+            for other in [&sc.edges[0], &sc.edges[1]] {
+                for o in other.points.windows(2) {
+                    assert_eq!(
+                        seg_conflict((w[0], w[1]), (o[0], o[1])),
+                        0.0,
+                        "the skipping edge touches a --> b or b --> c"
+                    );
+                }
+            }
+        }
+    }
+
+    /// A port is a promise about where the line leaves the box, so the
+    /// leader may not be walked back over: the first segment has to
+    /// carry the route clear of the node, not stop short inside it.
+    #[test]
+    fn a_ported_edge_keeps_its_whole_leader() {
+        let sc = layout(&text_diagram(
+            "lane l \"L\"\na[A]\nb[B]\nc[C]\na:right --> b:left\na:bottom --> b:top\n",
+        ));
+        let a = scene_node_by(&sc, "a");
+        let e = &sc.edges[0];
+        assert!((e.points[1].1 - a.y).abs() < 1e-9);
+        assert!(
+            (e.points[1].0 - (a.x + a.w / 2.0 + PORT_LEAD)).abs() < 1e-9,
+            "leader is {:?}, expected {} px clear of the right edge",
+            e.points[1],
+            PORT_LEAD
+        );
+    }
+
+    /// Two edges between the same nodes fan apart; two edges through
+    /// different ports already land apart and keep their full leaders.
+    #[test]
+    fn only_edges_that_would_overlap_are_fanned() {
+        let sc = layout(&text_diagram(
+            "lane l \"L\"\na[A]\nb[B]\na --> b\na --> b\n",
+        ));
+        assert!(
+            (sc.edges[0].points[0].0 - sc.edges[1].points[0].0).abs() > 1.0,
+            "identical edges were drawn on top of each other"
+        );
+    }
+
+    /// Same input, same bytes — the search must not depend on hash order.
+    #[test]
+    fn routing_is_deterministic() {
+        for (name, src) in ROUTER_CASES {
+            let d = text_diagram(src);
+            let first = to_svg(&layout(&d));
+            for _ in 0..4 {
+                assert_eq!(to_svg(&layout(&d)), first, "{name} rendered differently");
+            }
+        }
+    }
+    /// A loop has to enclose something. Opposite sides in particular
+    /// cannot be joined by one corner, and the shape that tried used to
+    /// collapse into a line straight across the node — drawn under the
+    /// node, so invisible, and unreachable by `hit_test`.
+    #[test]
+    fn a_self_loop_is_a_loop_on_every_pair_of_sides() {
+        let sides = ["left", "right", "top", "bottom"];
+        for from in sides {
+            for to in sides {
+                let src = format!("lane l \"L\"\na[A]\na:{from} --> a:{to}\n");
+                let sc = layout(&text_diagram(&src));
+                let e = &sc.edges[0];
+                let a = scene_node_by(&sc, "a");
+                assert!(
+                    e.points.len() >= 4,
+                    "a:{from} --> a:{to} drew {:?}, which is not a loop",
+                    e.points
+                );
+                for w in e.points.windows(2) {
+                    assert!(
+                        !seg_crosses_rect(w[0], w[1], node_rect(a)) || is_lead(w, node_rect(a)),
+                        "a:{from} --> a:{to} runs through its own node: {:?}",
+                        e.points
+                    );
+                }
+            }
+        }
+    }
+
+    /// Terminals are resolved before the loop is drawn, not after. The
+    /// dispatch used to test "same node?" first, so every edge from a
+    /// node to itself silently lost the anchor or compartment it named.
+    #[test]
+    fn a_loop_between_sub_elements_lands_on_them() {
+        let sc = layout(&text_diagram(
+            "lane l \"L\"\na[A] {\n c0[C0]\n c1[C1]\n}\na.c0 --> a.c1\n",
+        ));
+        let a = scene_node_by(&sc, "a");
+        let e = &sc.edges[0];
+        let on = |p: (f64, f64), el: &AdvanceSceneElement| {
+            let (l, t, r, b) = (
+                el.x - el.w / 2.0,
+                el.y - el.h / 2.0,
+                el.x + el.w / 2.0,
+                el.y + el.h / 2.0,
+            );
+            let at = |v: f64, c: f64| (v - c).abs() < 1e-9;
+            (at(p.0, l) || at(p.0, r)) && p.1 >= t - 1e-9 && p.1 <= b + 1e-9
+                || (at(p.1, t) || at(p.1, b)) && p.0 >= l - 1e-9 && p.0 <= r + 1e-9
+        };
+        assert!(on(e.from_point, &a.elements[0]), "from {:?}", e.from_point);
+        assert!(on(e.to_point, &a.elements[1]), "to {:?}", e.to_point);
+    }
+
+    /// Edges between the same two points must not be drawn on top of
+    /// each other. The fan slides their terminals along the side; when
+    /// it lengthened the lead instead, the extra length was collinear
+    /// with the route and collapsed straight back out again.
+    #[test]
+    fn parallel_edges_are_drawn_apart() {
+        let sc = layout(&text_diagram(
+            "lane l \"L\"\na[A]\nb[B]\na --> b\na --> b\na --> b\n",
+        ));
+        let starts: Vec<(f64, f64)> = sc.edges.iter().map(|e| e.points[0]).collect();
+        for i in 0..starts.len() {
+            for j in i + 1..starts.len() {
+                let d = (starts[i].0 - starts[j].0).abs() + (starts[i].1 - starts[j].1).abs();
+                assert!(
+                    d > 1.0,
+                    "edges {i} and {j} start at the same point {:?}",
+                    starts[i]
+                );
+            }
+        }
+    }
+
+    /// An edge that is never drawn must not push one that is. Invisible
+    /// edges exist to space the layout, and they were being fed to the
+    /// router as obstacles to avoid.
+    #[test]
+    fn an_invisible_edge_does_not_deflect_a_visible_one() {
+        let scene = |extra: &str| {
+            let src = format!(
+                r#"{{"lanes":[{{"id":"l","title":"L"}}],
+                    "nodes":[{{"id":"a","label":"A","lane":"l"}},
+                             {{"id":"b","label":"B","lane":"l"}},
+                             {{"id":"c","label":"C","lane":"l"}}],
+                    "edges":[{extra}{{"from":"a","to":"c"}}]}}"#
+            );
+            let d = AdvanceDiagram::parse(&src).unwrap();
+            let sc = layout(&d);
+            let e = sc
+                .edges
+                .iter()
+                .find(|e| e.kind != EdgeKind::Invisible)
+                .unwrap();
+            e.points.clone()
+        };
+        let hidden = r#"{"from":"a","to":"b","kind":"invisible"},
+                        {"from":"b","to":"c","kind":"invisible"},"#;
+        assert_eq!(
+            scene(hidden),
+            scene(""),
+            "an invisible edge moved the visible one"
+        );
+    }
+
+    /// The guarantee has to hold at a size no one tunes by hand.
+    #[test]
+    fn a_large_diagram_still_routes_around_every_node() {
+        let mut src = String::from("lane l \"L\"\n");
+        for i in 0..60 {
+            src.push_str(&format!("x{i}[n{i}]\n"));
+        }
+        for i in 0..120 {
+            src.push_str(&format!("x{} --> x{}\n", i % 60, (7 * i + 3) % 60));
+        }
+        let sc = layout(&text_diagram(&src));
+        assert_eq!(sc.edges.len(), 120);
+        for e in &sc.edges {
+            let last = e.points.len() - 2;
+            for (i, w) in e.points.windows(2).enumerate() {
+                for n in &sc.nodes {
+                    let own = (n.id == e.from && i == 0) || (n.id == e.to && i == last);
+                    if own && is_lead(w, node_rect(n)) {
+                        continue;
+                    }
+                    assert!(
+                        !seg_crosses_rect(w[0], w[1], node_rect(n)),
+                        "{} --> {} runs through {}",
+                        e.from,
+                        e.to,
+                        n.id
+                    );
+                }
+            }
+        }
+    }
 }

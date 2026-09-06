@@ -226,10 +226,7 @@ fn layout_td(d: &Timeline) -> TimelineScene {
         let (periods, w) = layout_section_periods(&sec.periods, PAD, axis_y);
         let w = if w > 0.0 { w } else { COL_MIN };
         max_w = max_w.max(w);
-        let deepest = periods
-            .iter()
-            .map(|p| p.line_bottom)
-            .fold(axis_y, f64::max);
+        let deepest = periods.iter().map(|p| p.line_bottom).fold(axis_y, f64::max);
         sections.push(SectionGlyph {
             name: sec.name.clone(),
             color: accent(si),
@@ -297,11 +294,7 @@ pub fn to_svg_with(ts: &TimelineScene, opts: &SvgOptions) -> String {
             s.push_str(&format!(
                 "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" rx=\"4\" \
                  fill=\"{}\"/>\n",
-                sec.x,
-                sec.y,
-                sec.w,
-                SECTION_H,
-                sec.color
+                sec.x, sec.y, sec.w, SECTION_H, sec.color
             ));
             s.push_str(&format!(
                 "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"middle\" \
@@ -454,7 +447,11 @@ mod tests {
     fn sectionless_timeline_has_no_header_band() {
         let svg = to_svg(&scene(&timeline("timeline\n  2002 : LinkedIn\n")));
         // Only the `svg_open` background rect — no colored section band.
-        assert_eq!(svg.matches("<rect").count(), 1, "no extra section band: {svg}");
+        assert_eq!(
+            svg.matches("<rect").count(),
+            1,
+            "no extra section band: {svg}"
+        );
         assert!(svg.contains(">2002<"), "period label still drawn");
         assert!(svg.contains(">LinkedIn<"), "event still drawn");
     }

@@ -142,7 +142,11 @@ fn place(d: &Mindmap, e: &[f64], rad: &[f64], i: usize, a0: f64, a1: f64, c: &mu
     let total: f64 = kids.iter().map(|&k| e[k]).sum();
     let mut acc = a0;
     for &k in kids {
-        let span = if total > 0.0 { (a1 - a0) * (e[k] / total) } else { 0.0 };
+        let span = if total > 0.0 {
+            (a1 - a0) * (e[k] / total)
+        } else {
+            0.0
+        };
         let (cs, ce) = (acc, acc + span);
         let mid = (cs + ce) / 2.0;
         let r = rad[d.nodes[k].depth];
@@ -163,7 +167,11 @@ pub fn scene(d: &Mindmap) -> MindScene {
     if d.nodes.is_empty() {
         return route(d, &[]);
     }
-    let sizes: Vec<(f64, f64)> = d.nodes.iter().map(|n| node_size(&n.text, n.shape)).collect();
+    let sizes: Vec<(f64, f64)> = d
+        .nodes
+        .iter()
+        .map(|n| node_size(&n.text, n.shape))
+        .collect();
     let diag: Vec<f64> = sizes.iter().map(|&(w, h)| w.hypot(h)).collect();
     let max_depth = d.nodes.iter().map(|n| n.depth).max().unwrap_or(0);
     // Ring radius per depth. A depth whose nodes' combined angular
@@ -228,7 +236,10 @@ pub fn route(d: &Mindmap, pos: &[(f64, f64)]) -> MindScene {
         let (fill, text_color) = if n.depth == 0 {
             (ROOT_FILL, ROOT_TEXT)
         } else {
-            (branch_color(branch_order[n.branch.unwrap_or(i)]), BRANCH_TEXT)
+            (
+                branch_color(branch_order[n.branch.unwrap_or(i)]),
+                BRANCH_TEXT,
+            )
         };
         nodes.push(MindNodeBox {
             x: pos[i].0 - w2 / 2.0,
@@ -248,7 +259,10 @@ pub fn route(d: &Mindmap, pos: &[(f64, f64)]) -> MindScene {
     let mut edges = Vec::new();
     for (i, n) in d.nodes.iter().enumerate() {
         let Some(p) = n.parent else { continue };
-        let (a, b) = ((nodes[p].cx(), nodes[p].cy()), (nodes[i].cx(), nodes[i].cy()));
+        let (a, b) = (
+            (nodes[p].cx(), nodes[p].cy()),
+            (nodes[i].cx(), nodes[i].cy()),
+        );
         let c1 = (a.0 + (b.0 - a.0) / 3.0, a.1 + (b.1 - a.1) / 3.0);
         let c2 = (a.0 + 2.0 * (b.0 - a.0) / 3.0, a.1 + 2.0 * (b.1 - a.1) / 3.0);
         edges.push(MindLink {
@@ -367,7 +381,11 @@ fn shape_svg(n: &MindNodeBox) -> String {
     match n.shape {
         MindShape::Circle => format!(
             "<ellipse cx=\"{:.1}\" cy=\"{:.1}\" rx=\"{:.1}\" ry=\"{:.1}\" fill=\"{}\"/>\n",
-            n.cx(), n.cy(), w / 2.0, h / 2.0, n.fill
+            n.cx(),
+            n.cy(),
+            w / 2.0,
+            h / 2.0,
+            n.fill
         ),
         _ => {
             let rx = match n.shape {
@@ -386,7 +404,11 @@ fn shape_svg(n: &MindNodeBox) -> String {
 /// SVG for a node's centred (possibly multi-line) label.
 fn label_svg(n: &MindNodeBox) -> String {
     let lines: Vec<&str> = n.text.split('\n').collect();
-    let weight = if n.depth == 0 { " font-weight=\"bold\"" } else { "" };
+    let weight = if n.depth == 0 {
+        " font-weight=\"bold\""
+    } else {
+        ""
+    };
     let cx = n.cx();
     let first_dy = 0.32 * FONT as f64 - (lines.len() as f64 - 1.0) * LINE_H / 2.0;
     let mut spans = String::new();
@@ -495,17 +517,16 @@ mod tests {
             src.push_str(&format!("    A very long branch label number {i:02}\n"));
         }
         let ms = scene(&mind(&src));
-        let boxes: Vec<(f64, f64, f64, f64)> =
-            ms.nodes.iter().map(|n| (n.x, n.y, n.x + n.w, n.y + n.h)).collect();
+        let boxes: Vec<(f64, f64, f64, f64)> = ms
+            .nodes
+            .iter()
+            .map(|n| (n.x, n.y, n.x + n.w, n.y + n.h))
+            .collect();
         for i in 0..boxes.len() {
             for j in (i + 1)..boxes.len() {
                 let (a, b) = (boxes[i], boxes[j]);
                 let overlap = a.0 < b.2 && b.0 < a.2 && a.1 < b.3 && b.1 < a.3;
-                assert!(
-                    !overlap,
-                    "node {i} ({:?}) overlaps node {j} ({:?})",
-                    a, b
-                );
+                assert!(!overlap, "node {i} ({:?}) overlaps node {j} ({:?})", a, b);
             }
         }
     }
@@ -542,8 +563,16 @@ mod tests {
     #[test]
     fn bang_and_cloud_have_perimeters() {
         let ms = scene(&mind("mindmap\nR\n  ))b((\n  )c(\n"));
-        let bang = ms.nodes.iter().find(|n| n.shape == MindShape::Bang).unwrap();
-        let cloud = ms.nodes.iter().find(|n| n.shape == MindShape::Cloud).unwrap();
+        let bang = ms
+            .nodes
+            .iter()
+            .find(|n| n.shape == MindShape::Bang)
+            .unwrap();
+        let cloud = ms
+            .nodes
+            .iter()
+            .find(|n| n.shape == MindShape::Cloud)
+            .unwrap();
         assert!(perimeter(bang).unwrap().len() >= 12);
         assert!(perimeter(cloud).unwrap().len() >= 12);
         // A plain rounded node has no polygon perimeter.

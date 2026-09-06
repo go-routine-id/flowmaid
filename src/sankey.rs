@@ -270,8 +270,18 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
     // out — a node that only splits its input must not shrink.
     let value: Vec<f64> = (0..n)
         .map(|i| {
-            let inflow: f64 = d.links.iter().filter(|l| l.target == i).map(|l| l.value).sum();
-            let outflow: f64 = d.links.iter().filter(|l| l.source == i).map(|l| l.value).sum();
+            let inflow: f64 = d
+                .links
+                .iter()
+                .filter(|l| l.target == i)
+                .map(|l| l.value)
+                .sum();
+            let outflow: f64 = d
+                .links
+                .iter()
+                .filter(|l| l.source == i)
+                .map(|l| l.value)
+                .sum();
             saturate(inflow.max(outflow))
         })
         .collect();
@@ -371,7 +381,11 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
                             }
                         }
                     }
-                    let bary = if count > 0.0 { sum / count } else { rank as f64 };
+                    let bary = if count > 0.0 {
+                        sum / count
+                    } else {
+                        rank as f64
+                    };
                     (bary, rank, i)
                 })
                 .collect();
@@ -526,12 +540,7 @@ pub fn to_svg_with(ss: &SankeyScene, opts: &SvgOptions) -> String {
                  x1=\"{:.1}\" x2=\"{:.1}\">\
                  <stop offset=\"0\" stop-color=\"{}\"/>\
                  <stop offset=\"1\" stop-color=\"{}\"/></linearGradient>\n",
-                key,
-                i,
-                l.x0,
-                l.x1,
-                ss.nodes[l.source].color,
-                ss.nodes[l.target].color
+                key, i, l.x0, l.x1, ss.nodes[l.source].color, ss.nodes[l.target].color
             ));
         }
         s.push_str("</defs>\n");
@@ -681,12 +690,18 @@ mod tests {
 
     #[test]
     fn scene_fits_everything_inside_the_canvas() {
-        let ss = scene(&diagram(
-            "sankey-beta\nA,X,5\nB,X,7\nC,X,3\nX,Y,9\nX,Z,6\n",
-        ));
+        let ss = scene(&diagram("sankey-beta\nA,X,5\nB,X,7\nC,X,3\nX,Y,9\nX,Z,6\n"));
         for n in &ss.nodes {
-            assert!(n.x >= 0.0 && n.x + n.w <= ss.width + 0.01, "{} overflows x", n.label);
-            assert!(n.y >= 0.0 && n.y + n.h <= ss.height + 0.01, "{} overflows y", n.label);
+            assert!(
+                n.x >= 0.0 && n.x + n.w <= ss.width + 0.01,
+                "{} overflows x",
+                n.label
+            );
+            assert!(
+                n.y >= 0.0 && n.y + n.h <= ss.height + 0.01,
+                "{} overflows y",
+                n.label
+            );
         }
     }
 
@@ -722,7 +737,8 @@ mod tests {
 
     #[test]
     fn flat_link_colour_emits_no_gradient() {
-        let d = diagram("---\nconfig:\n  sankey:\n    linkColor: source\n---\nsankey-beta\nA,B,1\n");
+        let d =
+            diagram("---\nconfig:\n  sankey:\n    linkColor: source\n---\nsankey-beta\nA,B,1\n");
         let svg = to_svg(&scene(&d));
         assert!(!svg.contains("linearGradient"), "{svg}");
         assert!(svg.contains(&format!("fill=\"{}\"", accent(0))), "{svg}");
@@ -859,9 +875,8 @@ mod tests {
         // is where the four alignments disagree.
         let body = "sankey-beta\nA,B,1\nB,C,1\nC,D,1\nX,D,1\n";
         let col_of_x = |alignment: &str| -> usize {
-            let src = format!(
-                "---\nconfig:\n  sankey:\n    nodeAlignment: {alignment}\n---\n{body}"
-            );
+            let src =
+                format!("---\nconfig:\n  sankey:\n    nodeAlignment: {alignment}\n---\n{body}");
             node(&scene(&diagram(&src)), "X").column
         };
         // `left` leaves X at its own depth; `center` pulls it up against
@@ -897,8 +912,16 @@ mod tests {
         // sum reaches +inf — which used to become `height="inf"`.
         let ss = scene(&diagram("sankey-beta\nA,B,1e308\nA,C,1e308\n"));
         for n in &ss.nodes {
-            assert!(n.h.is_finite() && n.y.is_finite(), "{} is not finite", n.label);
-            assert!(n.y + n.h <= ss.height + 0.01, "{} overflows the canvas", n.label);
+            assert!(
+                n.h.is_finite() && n.y.is_finite(),
+                "{} is not finite",
+                n.label
+            );
+            assert!(
+                n.y + n.h <= ss.height + 0.01,
+                "{} overflows the canvas",
+                n.label
+            );
         }
         assert!(ss.width.is_finite() && ss.height.is_finite());
         let svg = to_svg(&ss);
