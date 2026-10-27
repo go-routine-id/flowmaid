@@ -81,6 +81,13 @@ pub(crate) fn lower(raw: &str, wrap: bool, single_line: bool) -> Result<String, 
                     — write #96; or #quot;"
             .to_string());
     }
+    Ok(lower_text(raw, wrap, single_line))
+}
+
+/// [`lower`] for markdown that never went through mermaid's string
+/// lexer (a node-metadata `label`), so backticks and quotes are plain
+/// characters, printed as written like any other unsupported markdown.
+pub(crate) fn lower_text(raw: &str, wrap: bool, single_line: bool) -> String {
     let mut lines: Vec<Line> = Vec::new();
     for unit in units(&normalize_breaks(raw)) {
         match unit {
@@ -94,7 +101,7 @@ pub(crate) fn lower(raw: &str, wrap: bool, single_line: bool) -> Result<String, 
     } else {
         lines.iter().map(markup).collect()
     };
-    Ok(out.join(if single_line { " " } else { "\n" }))
+    out.join(if single_line { " " } else { "\n" })
 }
 
 /// Styled runs of one output line: (text, bold, italic).
@@ -191,6 +198,14 @@ fn is_punct(c: char) -> bool {
 /// Inline-parse one paragraph (CommonMark's delimiter-run algorithm,
 /// restricted to `*` and `_`) into styled lines.
 fn inline(para: &str) -> Vec<Line> {
+    let mut toks = tokenize(para);
+    match_emphasis(&mut toks);
+    serialise(&toks)
+}
+
+/// Split a paragraph into text and `*` / `_` delimiter runs, with
+/// CommonMark's flanking rules deciding which runs may open or close.
+fn tokenize(para: &str) -> Vec<Tok> {
     let chars: Vec<char> = para.chars().collect();
     let mut toks: Vec<Tok> = Vec::new();
     let mut text = String::new();
@@ -236,70 +251,127 @@ fn inline(para: &str) -> Vec<Line> {
     if !text.is_empty() {
         toks.push(Tok::Text(text));
     }
-    match_emphasis(&mut toks);
-    serialise(&toks)
+    toks
 }
+
+/// End of a delimiter-list link (no neighbour).
+const NIL: usize = usize::MAX;
 
 /// CommonMark "process emphasis": pair each closer with the nearest
 /// usable opener of the same character, two characters at a time when
 /// both runs allow it (strong), else one (em).
+///
+/// Linear-ish like the reference algorithm: the delimiters form a
+/// doubly linked list that matched and spent runs are unlinked from
+/// (each at most once), and a failed search records an "openers
+/// bottom" per closer kind (character, can-open, run length mod 3 —
+/// everything the opener test depends on), so no later closer of that
+/// kind rescans the same stretch. A pathological label like `_*_*…`
+/// is then linear instead of quadratic.
 fn match_emphasis(toks: &mut [Tok]) {
-    for c in 0..toks.len() {
-        loop {
-            let (cch, corig, crem, ccan_open) = match &toks[c] {
-                Tok::Delim {
-                    ch,
-                    orig,
-                    rem,
-                    can_close: true,
-                    can_open,
-                    ..
-                } if *rem > 0 => (*ch, *orig, *rem, *can_open),
-                _ => break,
-            };
-            let opener = (0..c).rev().find(|&o| match &toks[o] {
-                Tok::Delim {
-                    ch,
-                    orig,
-                    rem,
-                    can_open: true,
-                    can_close,
-                    ..
-                } if *ch == cch && *rem > 0 => {
-                    let odd = (*can_close || ccan_open)
-                        && (orig + corig) % 3 == 0
-                        && !(orig % 3 == 0 && corig % 3 == 0);
-                    !odd
+    let delims: Vec<usize> = (0..toks.len())
+        .filter(|&i| matches!(toks[i], Tok::Delim { .. }))
+        .collect();
+    let n = delims.len();
+    let mut prev: Vec<usize> = (0..n).map(|k| k.checked_sub(1).unwrap_or(NIL)).collect();
+    let mut next: Vec<usize> = (0..n)
+        .map(|k| if k + 1 < n { k + 1 } else { NIL })
+        .collect();
+    let unlink = |k: usize, prev: &mut [usize], next: &mut [usize]| {
+        let (p, q) = (prev[k], next[k]);
+        if p != NIL {
+            next[p] = q;
+        }
+        if q != NIL {
+            prev[q] = p;
+        }
+    };
+    // Lowest delimiter (list index) an opener may sit at, per closer
+    // kind: [is `_`][closer can open][closer run length % 3].
+    let mut bottom = [[[0usize; 3]; 2]; 2];
+    let mut c = if n > 0 { 0 } else { NIL };
+    while c != NIL {
+        let (cch, corig, crem, ccan_open, ccan_close) = match &toks[delims[c]] {
+            Tok::Delim {
+                ch,
+                orig,
+                rem,
+                can_open,
+                can_close,
+                ..
+            } => (*ch, *orig, *rem, *can_open, *can_close),
+            Tok::Text(_) => unreachable!("delimiter list holds delimiters"),
+        };
+        if !ccan_close || crem == 0 {
+            let nc = next[c];
+            if !ccan_open || crem == 0 {
+                unlink(c, &mut prev, &mut next);
+            }
+            c = nc;
+            continue;
+        }
+        let floor = &mut bottom[usize::from(cch == '_')][usize::from(ccan_open)][corig % 3];
+        let mut o = prev[c];
+        let opener = loop {
+            if o == NIL || o < *floor {
+                break None;
+            }
+            if let Tok::Delim {
+                ch,
+                orig,
+                rem,
+                can_open: true,
+                can_close,
+                ..
+            } = &toks[delims[o]]
+            {
+                let odd = (*can_close || ccan_open)
+                    && (orig + corig) % 3 == 0
+                    && !(orig % 3 == 0 && corig % 3 == 0);
+                if *ch == cch && *rem > 0 && !odd {
+                    break Some(o);
                 }
-                _ => false,
-            });
-            let Some(o) = opener else { break };
-            let orem = match &toks[o] {
-                Tok::Delim { rem, .. } => *rem,
-                Tok::Text(_) => unreachable!("opener is a delimiter"),
-            };
-            let used = if orem >= 2 && crem >= 2 { 2 } else { 1 };
-            let sty = if used == 2 { Sty::Strong } else { Sty::Em };
-            if let Tok::Delim { rem, opens, .. } = &mut toks[o] {
-                *rem -= used;
-                opens.push(sty);
             }
-            if let Tok::Delim { rem, closes, .. } = &mut toks[c] {
-                *rem -= used;
-                closes.push(sty);
+            o = prev[o];
+        };
+        let Some(o) = opener else {
+            // Nothing below here can open this kind of closer.
+            *floor = c;
+            let nc = next[c];
+            if !ccan_open {
+                unlink(c, &mut prev, &mut next);
             }
-            // Delimiters between the pair can no longer match.
-            for t in &mut toks[o + 1..c] {
-                if let Tok::Delim {
-                    can_open,
-                    can_close,
-                    ..
-                } = t
-                {
-                    *can_open = false;
-                    *can_close = false;
-                }
-            }
+            c = nc;
+            continue;
+        };
+        let orem = match &toks[delims[o]] {
+            Tok::Delim { rem, .. } => *rem,
+            Tok::Text(_) => unreachable!("opener is a delimiter"),
+        };
+        let used = if orem >= 2 && crem >= 2 { 2 } else { 1 };
+        let sty = if used == 2 { Sty::Strong } else { Sty::Em };
+        if let Tok::Delim { rem, opens, .. } = &mut toks[delims[o]] {
+            *rem -= used;
+            opens.push(sty);
+        }
+        if let Tok::Delim { rem, closes, .. } = &mut toks[delims[c]] {
+            *rem -= used;
+            closes.push(sty);
+        }
+        // Delimiters between the pair can no longer match.
+        let mut k = next[o];
+        while k != c {
+            let nk = next[k];
+            unlink(k, &mut prev, &mut next);
+            k = nk;
+        }
+        if orem == used {
+            unlink(o, &mut prev, &mut next);
+        }
+        if crem == used {
+            let nc = next[c];
+            unlink(c, &mut prev, &mut next);
+            c = nc;
         }
     }
 }
@@ -435,6 +507,108 @@ mod tests {
 
     fn lo(s: &str) -> String {
         lower(s, false, false).unwrap()
+    }
+
+    /// The pre-optimisation quadratic matcher, kept as the reference
+    /// the linked-list version must agree with.
+    fn naive_match_emphasis(toks: &mut [Tok]) {
+        for c in 0..toks.len() {
+            loop {
+                let (cch, corig, crem, ccan_open) = match &toks[c] {
+                    Tok::Delim {
+                        ch,
+                        orig,
+                        rem,
+                        can_close: true,
+                        can_open,
+                        ..
+                    } if *rem > 0 => (*ch, *orig, *rem, *can_open),
+                    _ => break,
+                };
+                let opener = (0..c).rev().find(|&o| match &toks[o] {
+                    Tok::Delim {
+                        ch,
+                        orig,
+                        rem,
+                        can_open: true,
+                        can_close,
+                        ..
+                    } if *ch == cch && *rem > 0 => {
+                        let odd = (*can_close || ccan_open)
+                            && (orig + corig) % 3 == 0
+                            && !(orig % 3 == 0 && corig % 3 == 0);
+                        !odd
+                    }
+                    _ => false,
+                });
+                let Some(o) = opener else { break };
+                let orem = match &toks[o] {
+                    Tok::Delim { rem, .. } => *rem,
+                    Tok::Text(_) => unreachable!("opener is a delimiter"),
+                };
+                let used = if orem >= 2 && crem >= 2 { 2 } else { 1 };
+                let sty = if used == 2 { Sty::Strong } else { Sty::Em };
+                if let Tok::Delim { rem, opens, .. } = &mut toks[o] {
+                    *rem -= used;
+                    opens.push(sty);
+                }
+                if let Tok::Delim { rem, closes, .. } = &mut toks[c] {
+                    *rem -= used;
+                    closes.push(sty);
+                }
+                // Delimiters between the pair can no longer match.
+                for t in &mut toks[o + 1..c] {
+                    if let Tok::Delim {
+                        can_open,
+                        can_close,
+                        ..
+                    } = t
+                    {
+                        *can_open = false;
+                        *can_close = false;
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn linear_matcher_agrees_with_the_reference() {
+        // Deterministic LCG over a delimiter-heavy alphabet.
+        const ALPHABET: &[char] = &['*', '_', 'a', ' ', '!', '*', '_', '\n'];
+        let mut seed: u64 = 0x2545_f491_4f6c_dd1d;
+        for _ in 0..4000 {
+            seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+            let len = (seed >> 59) as usize + 1;
+            let para: String = (0..len)
+                .map(|_| {
+                    seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+                    ALPHABET[(seed >> 61) as usize]
+                })
+                .collect();
+            let mut want = tokenize(&para);
+            naive_match_emphasis(&mut want);
+            assert_eq!(inline(&para), serialise(&want), "{para:?}");
+        }
+    }
+
+    #[test]
+    fn pathological_runs_stay_linear() {
+        // 256 KB of alternating, never-matching delimiters used to take
+        // seconds (every closer rescanned every earlier run).
+        const LABEL_BYTES: usize = 256 * 1024;
+        let bound = if cfg!(debug_assertions) {
+            std::time::Duration::from_secs(5)
+        } else {
+            std::time::Duration::from_millis(500)
+        };
+        for unit in ["_*", "*_", "**_", "_ *", "a_*b"] {
+            let label = unit.repeat(LABEL_BYTES / unit.len());
+            let t = std::time::Instant::now();
+            lower(&label, false, false).unwrap();
+            let took = t.elapsed();
+            assert!(took < bound, "{unit:?}: {took:?}");
+        }
     }
 
     #[test]

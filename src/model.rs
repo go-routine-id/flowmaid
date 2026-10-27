@@ -452,6 +452,18 @@ impl NodeLink {
     pub fn is_empty(&self) -> bool {
         *self == NodeLink::default()
     }
+
+    /// This link with an unsafe `href` dropped (see [`sanitize_href`]),
+    /// or `None` when nothing is left. Scene builders hand links to
+    /// host apps through this, so a [`Graph`] filled in by hand (not
+    /// by the parser) never passes a `javascript:` url on.
+    pub(crate) fn sanitized(&self) -> Option<NodeLink> {
+        let link = NodeLink {
+            href: self.href.as_deref().and_then(sanitize_href),
+            ..self.clone()
+        };
+        (!link.is_empty()).then_some(link)
+    }
 }
 
 /// Most times [`sanitize_href`] re-decodes a url (percent and entity

@@ -34,7 +34,8 @@
 //!   it produces obey them; debug builds assert it).
 //! - stateDiagram-only shapes (`StateStart`, `StateEnd`, `ForkBar`)
 //!   have no flowchart syntax; they degrade to a circle / rect.
-//! - A non-finite `stroke_width` is dropped, as is any style value
+//! - A `stroke_width` the parser would refuse (non-finite, negative or
+//!   over 1000px) is dropped, as is any style value
 //!   with a depth-0 comma, a control character, or unbalanced
 //!   parens (a `style` line cannot carry them — mermaid's grammar
 //!   splits on commas). Style values round-trip modulo trim.
@@ -81,6 +82,7 @@ use crate::model::{
     Direction, EdgeAnimation, EdgeEnds, EdgeKind, EdgeMeta, End, Graph, LinkStyle, Marker,
     NodeLink, NodeStyle, Shape,
 };
+use crate::parser::stroke_width_ok;
 
 /// Emit canonical mermaid flowchart text for `g`. See the module
 /// docs for the round-trip contract and its (small) honest limits.
@@ -694,7 +696,7 @@ fn style_props(st: &NodeStyle) -> Option<String> {
         }
     }
     if let Some(w) = st.stroke_width {
-        if w.is_finite() {
+        if stroke_width_ok(w) {
             // f64 Display: `2` for 2.0, `1.5` for 1.5 — parses back
             // identically, no integer cast to saturate.
             parts.push(format!("stroke-width:{}px", w));
@@ -724,7 +726,7 @@ fn link_style_props(st: &LinkStyle) -> Option<String> {
         }
     };
     put("stroke", &st.stroke);
-    if let Some(w) = st.stroke_width.filter(|w| w.is_finite()) {
+    if let Some(w) = st.stroke_width.filter(|&w| stroke_width_ok(w)) {
         put("stroke-width", &Some(format!("{w}px")));
     }
     put("stroke-dasharray", &st.stroke_dasharray);
@@ -967,13 +969,21 @@ mod tests {
         );
         // CSS function values with commas (paren-aware props split).
         assert_source_roundtrip("flowchart TD\nA --> B\nstyle A fill:rgb(255,0,0),stroke:#900\n");
-        // Extreme stroke widths must not saturate or panic.
+        // Extreme stroke widths must not saturate or panic; the largest
+        // the parser accepts round-trips, anything past it is dropped
+        // (it could not be read back).
         let mut g = Graph::default();
         let a = g.ensure_node("a", None, None);
         g.ensure_node("b", None, None);
-        g.nodes[a].style.stroke_width = Some(1e19);
+        g.nodes[a].style.stroke_width = Some(1000.0);
         g.add_edge(0, 1, None, EdgeKind::Arrow);
         assert_roundtrip(&g);
+        for w in [1e19, -5.0] {
+            g.nodes[a].style.stroke_width = Some(w);
+            let text = to_mermaid(&g);
+            assert!(!text.contains("stroke-width"), "{text}");
+            assert_eq!(parse(&text).unwrap().nodes[a].style.stroke_width, None);
+        }
         // Non-finite widths are dropped, not written as "NaNpx".
         let st = crate::model::NodeStyle {
             stroke_width: Some(f64::NAN),

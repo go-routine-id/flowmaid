@@ -42,7 +42,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
   and a styled width uses a fixed-size arrowhead. A later `linkStyle` for an index
   replaces the earlier one; the default merges under it. `interpolate` sets the edge curve.
   `to_mermaid` writes one resolved `linkStyle` line per styled link, numbered in emitted
-  order. New: `model::LinkStyle` and an `EdgeMeta::style` field (non-breaking:
+  order. `stroke-width` takes 0 to 1000px (negative, non-finite or larger widths are
+  errors). New: `model::LinkStyle` and an `EdgeMeta::style` field (non-breaking:
   `EdgeMeta` is `#[non_exhaustive]`). Diagrams without `linkStyle` render byte-identically.
 - **`accTitle` / `accDescr` accessibility statements.** `accTitle: …`, `accDescr: …` and
   the multi-line `accDescr { … }` block parse with mermaid's rules (value to end of line,
@@ -57,23 +58,33 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `ClassDiagram`, `SequenceDiagram` and `ErDiagram` (non-breaking: each has a private
   field), `scene::A11y` and `scene::to_svg_a11y_with`.
 - **Flowchart edge ids and edge metadata.** `A e1@--> B` names an edge on every operator
-  form (inline and `|pipe|` labels, markers, dotted, thick, long, `~~~`); the path gets
-  `id="edge-e1" data-id="e1"`. `e1@{ … }` (one line or several, a YAML subset read
-  without a new dependency) sets `animate` / `animation` (mermaid's `edge-animation-fast` /
-  `-slow` class plus its dash-animation CSS, written once in `<defs>`) and `curve` (all
+  form (inline and `|pipe|` labels, markers, dotted, thick, long, `~~~`); like mermaid's
+  `${diagramId}-${id}`, the path gets `id="flowmaid-<hash>-e1" data-id="e1"`, where
+  `flowmaid-<hash>` is a content-hashed (deterministic) id written on the root `<svg>`
+  only when the diagram has edge ids or animation. `e1@{ … }` (one line or several, a
+  YAML subset read without a new dependency) sets `animate` / `animation` (mermaid's
+  `edge-animation-fast` / `-slow` class plus its dash-animation CSS, written once in
+  `<defs>` and scoped to the SVG: `#flowmaid-<hash> .edge-animation-fast`, keyframes
+  `flowmaid-<hash>-dash`, so an inlined SVG never restyles its host page or another
+  diagram) and `curve` (all
   thirteen mermaid names; unknown = `basis`). Fan-out, duplicate-id and
   metadata-before-edge semantics follow mermaid; `class` / `style` on an edge id no longer
   mint a stray node. `to_mermaid` round-trips ids and metadata. New: `model::EdgeMeta`,
   `model::EdgeAnimation`, `model::EdgeCurve` (`from_mermaid`, `mermaid_name`), and a `meta`
-  field on `Edge`, `SubEdge` and `SceneEdge`. Diagrams without ids render byte-identically.
+  field on `Edge`, `SubEdge` and `SceneEdge`; `EdgeMeta` is `#[non_exhaustive]` like
+  `Edge` / `SubEdge` (set it on an edge from `Graph::add_edge`: `g.edges[i].meta.id =
+  Some(…)`). Diagrams without ids render byte-identically.
 - **Mermaid v11 node metadata (`A@{ shape: cyl, label: "DB" }`).** Accepted after a node id
   (and after its bracket shape or `:::class`) in every statement position, on one line or
   several. All mermaid registry shape names parse: the 15 families with a flowmaid
   equivalent draw it exactly, the rest fall back to the nearest existing shape (`text`,
   braces and `bolt` draw borderless), and invalid names fail with mermaid's own `No such
-  shape: X.` / `… Shape names should be lowercase.` messages. `label` replaces the label;
-  `icon`, `img`, `form`, `pos`, `w`, `h`, `constraint`, `labelType` are accepted and not
-  drawn. `id@{ … }` on a subgraph id is validated and ignored. No public API change.
+  shape: X.` / `… Shape names should be lowercase.` messages. `label` replaces the label
+  and, as in mermaid 12, is markdown (`**bold**`, `_italic_`, wrapping, like a
+  ``"`…`"`` label) unless `labelType: string` / `text` keeps it plain; `icon`, `img`,
+  `form`, `pos`, `w`, `h`, `constraint` are accepted and not drawn. A nested `{…}` value
+  is reported as such (the block ends at its first `}`, as in mermaid), not as an
+  "unclosed collection". `id@{ … }` on a subgraph id is validated and ignored. No public API change.
 - **`flowchart-elk` header.** Accepted as an alias of `flowchart` with the same direction
   rules; the ELK layout hint is dropped (`to_mermaid` writes `flowchart`).
 
@@ -118,12 +129,23 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `A -- use --xml flag --> B` are now errors. Quote the label to keep it whole:
   `A -- "go--on" --> B`. Quoted text is never scanned for a closer, so
   `A -- "a --> b" --> B` and `A -. "a .-x" .-> B` now parse too.
+- **Node `style` / `classDef` `stroke-width` must be 0 to 1000px.** Negative widths,
+  `NaN` / `inf` and larger values were accepted and wrote invalid or 300-digit SVG
+  numbers; they are now "invalid stroke-width" errors, the same check `linkStyle` uses.
+  `to_mermaid` drops a programmatic width outside that range, as it already dropped
+  non-finite ones.
 - **Glyph ends sharing a node side are spread apart.** When an edge end on a box's side
   carries a start, cross or circle glyph, the ends on that side are spaced up to 14px
   apart so the glyphs stay readable. Sides without such glyphs render exactly as before.
 
 ### Fixed
 
+- **Markdown emphasis is linear.** Matching `*` / `_` runs used to rescan every earlier
+  run per closer, so a 128 KB label of `_*` took seconds; it now uses CommonMark's
+  "openers bottom" bound and a linked delimiter list (256 KB: milliseconds).
+- **`SceneNode::link` re-sanitises urls.** A `Graph` filled in through the API (not the
+  parser) with a `javascript:` / `data:` url no longer hands it to host apps through the
+  scene; the unsafe `href` is dropped and the rest of the link kept.
 - **`classDef` / `style` accept a bare item after a property.** Mermaid splits style
   values on every comma, so `stroke-dasharray: 9,5` leaves a stray `5` that it keeps as a
   no-op; flowmaid now ignores it too, so the `classDef animate …` example from mermaid's

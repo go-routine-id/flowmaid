@@ -847,14 +847,32 @@ fn split_props(s: &str, lineno: usize) -> Result<Vec<&str>, ParseError> {
     Ok(items)
 }
 
-/// A `stroke-width` value: a number with an optional `px`.
+/// Widest `stroke-width` (px) accepted: far past any drawable line,
+/// and small enough that the SVG never carries a 300-digit number.
+const MAX_STROKE_WIDTH: f64 = 1000.0;
+
+/// Whether `w` is a `stroke-width` the parser accepts (and so the only
+/// kind `to_mermaid` may write).
+pub(crate) fn stroke_width_ok(w: f64) -> bool {
+    w.is_finite() && !w.is_sign_negative() && w <= MAX_STROKE_WIDTH
+}
+
+/// A `stroke-width` value: a number with an optional `px`, from 0 to
+/// [`MAX_STROKE_WIDTH`]. Negative (`-0` included), non-finite and huge
+/// widths are errors — they would write invalid or absurd SVG. Shared
+/// by node `style`/`classDef` and `linkStyle`.
 fn parse_stroke_width(v: &str, lineno: usize) -> Result<f64, ParseError> {
     v.trim_end_matches("px")
         .trim()
         .parse()
         .ok()
-        .filter(|n: &f64| n.is_finite())
-        .ok_or_else(|| err(lineno, format!("invalid stroke-width: '{}'", v)))
+        .filter(|&n| stroke_width_ok(n))
+        .ok_or_else(|| {
+            err(
+                lineno,
+                format!("invalid stroke-width: '{v}' (expected 0 to {MAX_STROKE_WIDTH}px)"),
+            )
+        })
 }
 
 /// `linkStyle` properties: `stroke`, `stroke-width`,
@@ -1108,10 +1126,17 @@ fn node_meta_body(
     shape_data(&body[..end], lineno)
 }
 
+/// `labelType` values that keep a metadata label plain text; any other
+/// value, or none, makes it markdown (mermaid 12's flowDb
+/// `sanitizeNodeLabelType`).
+const PLAIN_LABEL_TYPES: &[&str] = &["string", "text"];
+
 /// Apply mermaid node metadata (flowDb `addVertex`): a truthy `shape`
-/// must name a registry shape, a truthy `label` replaces the label
-/// (cleaned like a bracket label). `icon`, `img`, `form`, `pos`, `w`,
-/// `h`, `constraint` and `labelType` are accepted but not drawn — and,
+/// must name a registry shape, a truthy `label` replaces the label.
+/// As in mermaid 12 the label is markdown (lowered and wrapped like a
+/// ``"`…`"`` node label) unless `labelType` is `string` or `text`,
+/// which keep it plain (cleaned like a bracket label). `icon`, `img`,
+/// `form`, `pos`, `w`, `h` and `constraint` are accepted but not drawn — and,
 /// unlike mermaid, an icon/image node keeps its id as the label, since
 /// no icon replaces it. Unknown keys are ignored.
 fn apply_node_meta(
@@ -1122,6 +1147,10 @@ fn apply_node_meta(
     lineno: usize,
 ) -> Result<(), ParseError> {
     use shapedata::Yaml;
+    let plain = entries
+        .iter()
+        .find(|(k, _)| k == "labelType")
+        .is_some_and(|(_, v)| matches!(v, Yaml::Str(t) if PLAIN_LABEL_TYPES.contains(&t.as_str())));
     for (k, v) in entries {
         match (k.as_str(), v) {
             ("shape", Yaml::Str(name)) if !name.is_empty() => {
@@ -1138,7 +1167,11 @@ fn apply_node_meta(
             }
             ("label", v) if v.truthy() => {
                 if let Some(text) = v.text() {
-                    g.nodes[n].label = clean_label(&text);
+                    g.nodes[n].label = if plain {
+                        clean_label(&text)
+                    } else {
+                        markdown::lower_text(&text, true, false)
+                    };
                 }
             }
             _ => {}
@@ -1991,14 +2024,7 @@ fn parse_props(s: &str, lineno: usize) -> Result<NodeStyle, ParseError> {
             "fill" => st.fill = Some(v.to_string()),
             "stroke" => st.stroke = Some(v.to_string()),
             "color" => st.color = Some(v.to_string()),
-            "stroke-width" => {
-                let n: f64 = v
-                    .trim_end_matches("px")
-                    .trim()
-                    .parse()
-                    .map_err(|_| err(lineno, format!("invalid stroke-width: '{}'", v)))?;
-                st.stroke_width = Some(n);
-            }
+            "stroke-width" => st.stroke_width = Some(parse_stroke_width(v, lineno)?),
             _ => {}
         }
     }
@@ -7536,6 +7562,45 @@ mod tests {
     }
 
     #[test]
+    fn node_meta_labels_are_markdown_unless_typed_plain() {
+        // Mermaid 12: no `labelType` (or an unknown one) = markdown.
+        for src in [
+            "flowchart TB\n  A@{ label: \"**b** _i_\" }\n",
+            "flowchart TB\n  A@{ label: \"**b** _i_\", labelType: markdown }\n",
+            "flowchart TB\n  A@{ label: \"**b** _i_\", labelType: bogus }\n",
+        ] {
+            assert_eq!(
+                node(&parse(src).unwrap(), "A").label,
+                "<b>b</b> <i>i</i>",
+                "{src}"
+            );
+        }
+        // Same lowering as the ``"`…`"`` bracket form, wrapping included.
+        let long = "one two three four five six seven eight nine ten eleven twelve";
+        assert_eq!(
+            node(
+                &parse(&format!("flowchart TB\n  A@{{ label: \"{long}\" }}\n")).unwrap(),
+                "A"
+            )
+            .label,
+            node(
+                &parse(&format!("flowchart TB\n  A[\"`{long}`\"]\n")).unwrap(),
+                "A"
+            )
+            .label,
+        );
+        // `string` / `text` keep it plain.
+        for t in ["string", "text"] {
+            let src = format!("flowchart TB\n  A@{{ label: \"**b** _i_\", labelType: {t} }}\n");
+            assert_eq!(node(&parse(&src).unwrap(), "A").label, "**b** _i_", "{src}");
+        }
+        // A backtick inside a YAML label is a plain character (it never
+        // went through the markdown-string lexer).
+        let g = parse("flowchart TB\n  A@{ label: \"a `x` b\" }\n").unwrap();
+        assert_eq!(node(&g, "A").label, "a `x` b");
+    }
+
+    #[test]
     fn node_meta_order_class_and_subgraphs() {
         let g =
             parse("flowchart TB\n  A:::hot@{ shape: hex }\n  classDef hot fill:#f00\n").unwrap();
@@ -7934,6 +7999,25 @@ mod tests {
             ls_err("flowchart TD\nA --> B\nlinkStyle 0 stroke-width:2em\n")
                 .contains("invalid stroke-width")
         );
+        // Negative, non-finite and absurd widths would write invalid
+        // or 300-digit SVG numbers; node `style` shares the check.
+        for w in ["-5px", "-0", "NaN", "inf", "1e308px", "1001px"] {
+            for src in [
+                format!("flowchart TD\nA --> B\nlinkStyle 0 stroke-width:{w}\n"),
+                format!("flowchart TD\nA --> B\nstyle A stroke-width:{w}\n"),
+                format!("flowchart TD\nA --> B\nclassDef c stroke-width:{w}\n"),
+            ] {
+                assert!(ls_err(&src).contains("invalid stroke-width"), "{src}");
+            }
+        }
+        for (w, want) in [("0", 0.0), ("0.5px", 0.5), ("1000px", 1000.0)] {
+            let g = parse(&format!(
+                "flowchart TD\nA --> B\nlinkStyle 0 stroke-width:{w}\nstyle A stroke-width:{w}\n"
+            ))
+            .unwrap();
+            assert_eq!(g.edges[0].meta.style.stroke_width, Some(want));
+            assert_eq!(g.nodes[0].style.stroke_width, Some(want));
+        }
         assert!(
             ls_err("flowchart TD\nA --> B\nlinkStyle 0 stroke:rgb(1,2\n").contains("unbalanced")
         );
@@ -8521,10 +8605,16 @@ mod tests {
 
     #[test]
     fn block_scalars_follow_js_yaml() {
-        // Folded: a more-indented line keeps its own line and indent.
+        // Folded: a more-indented line keeps its own line and indent
+        // (a plain label shows it; markdown drops line indentation).
+        let g = parse(
+            "flowchart LR\n  A@{\n    labelType: text\n    label: >\n      a\n        b\n      c\n  }\n",
+        )
+        .unwrap();
+        assert_eq!(node(&g, "A").label, "a\n  b\nc");
         let g =
             parse("flowchart LR\n  A@{\n    label: >\n      a\n        b\n      c\n  }\n").unwrap();
-        assert_eq!(node(&g, "A").label, "a\n  b\nc");
+        assert_eq!(node(&g, "A").label, "a\nb\nc");
         // Literal: a line indented less than the first is an error.
         let e = parse("flowchart LR\n  A@{\n    label: |\n        a\n      b\n  }\n").unwrap_err();
         assert!(e.message.contains("bad indentation"), "{}", e.message);

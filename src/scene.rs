@@ -767,7 +767,7 @@ fn scene_from_layout(g: &Graph, sizes: &[(f64, f64)], lo: LayoutResult) -> Scene
                 shape: n.shape,
                 label: n.label.clone(),
                 style: n.style.clone(),
-                link: g.links.get(&i).cloned(),
+                link: g.links.get(&i).and_then(NodeLink::sanitized),
             }
         })
         .collect();
@@ -1079,7 +1079,7 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
             shape: n.shape,
             label: n.label.clone(),
             style: n.style.clone(),
-            link: g.links.get(&i).cloned(),
+            link: g.links.get(&i).and_then(NodeLink::sanitized),
         })
         .collect();
 
@@ -1626,10 +1626,11 @@ fn extra_marker_defs(ids: &[(Option<String>, Option<String>)]) -> String {
     out
 }
 
-/// Prefix of the DOM id a user edge id is written under (`edge-e1`),
-/// like mermaid's `<diagramId>-<id>`: it keeps an id such as `arrow`
-/// from colliding with the marker ids. `data-id` carries the raw id.
-const EDGE_DOM_ID_PREFIX: &str = "edge-";
+/// Prefix of the per-diagram DOM id (`flowmaid-<hash>`) written on the
+/// root `<svg>` when the diagram needs one — like mermaid's
+/// `mermaid-<n>` svg id, it namespaces the animation CSS and user edge
+/// ids so two SVGs inlined on one page never share them.
+const DIAGRAM_DOM_ID_PREFIX: &str = "flowmaid-";
 /// Mermaid's edge-animation CSS (`styles.ts`), ported verbatim: a
 /// `9,5` dash marching from offset 900 to 0, every `FAST`/`SLOW`
 /// seconds. `!important` overrides a dotted edge's own dash, as there.
@@ -1637,6 +1638,9 @@ const EDGE_ANIMATION_DASH: &str = "9,5";
 const EDGE_ANIMATION_DASH_OFFSET: u32 = 900;
 const EDGE_ANIMATION_FAST_SECS: u32 = 20;
 const EDGE_ANIMATION_SLOW_SECS: u32 = 50;
+/// Mermaid's keyframes name; written as `<diagram-id>-dash` so it
+/// cannot clash with a host page's own `dash` animation.
+const EDGE_ANIMATION_KEYFRAMES: &str = "dash";
 
 /// Mermaid's CSS class for an animated edge.
 fn edge_animation_class(a: EdgeAnimation) -> &'static str {
@@ -1646,15 +1650,59 @@ fn edge_animation_class(a: EdgeAnimation) -> &'static str {
     }
 }
 
-/// ` id="edge-…" data-id="…"` for a user edge id and ` class="…"` for
-/// an animated edge; empty for a plain edge, so output is unchanged.
-fn edge_meta_attrs(m: &EdgeMeta) -> String {
+/// The root `<svg>` id, or `None` when no drawn edge carries an id or
+/// an animation — those diagrams keep their historical bytes. The id
+/// hashes the diagram's content (see [`DefsKey`]), so the same input
+/// always gets the same id and different diagrams practically never
+/// share one. Two byte-identical diagrams inlined on one page do share
+/// it; their edge ids collide as their content does.
+fn diagram_dom_id(sc: &Scene, title: &str, desc: Option<&str>) -> Option<String> {
+    let needed = sc
+        .edges
+        .iter()
+        .any(|e| edge_drawn(e) && (e.meta.id.is_some() || e.meta.animation.is_some()));
+    if !needed {
+        return None;
+    }
+    let mut key = DefsKey::new();
+    key.eat(title.as_bytes());
+    key.eat(&[0]);
+    key.eat(desc.unwrap_or_default().as_bytes());
+    for n in &sc.nodes {
+        key.eat(&[0]);
+        key.eat(n.id.as_bytes());
+        key.eat(&[0]);
+        key.eat(n.label.as_bytes());
+        key.eat_f64(n.x);
+        key.eat_f64(n.y);
+    }
+    for e in &sc.edges {
+        key.eat(&[0]);
+        key.eat(e.from.as_bytes());
+        key.eat(&[0]);
+        key.eat(e.to.as_bytes());
+        key.eat(&[0]);
+        key.eat(e.meta.id.as_deref().unwrap_or_default().as_bytes());
+        key.eat(&[e.meta.animation.map_or(0, |a| a as u8 + 1)]);
+        for &(x, y) in e.bezier.iter().chain(&e.waypoints) {
+            key.eat_f64(x);
+            key.eat_f64(y);
+        }
+        if let Some((text, ..)) = &e.label {
+            key.eat(text.as_bytes());
+        }
+    }
+    Some(format!("{DIAGRAM_DOM_ID_PREFIX}{}", key.finish()))
+}
+
+/// ` id="<diagram-id>-…" data-id="…"` for a user edge id (mermaid's
+/// `${diagramId}-${edge.id}` plus the raw `data-id`) and ` class="…"`
+/// for an animated edge; empty for a plain edge, so output is
+/// unchanged. `diagram_id` is `Some` whenever `m` has an id.
+fn edge_meta_attrs(m: &EdgeMeta, diagram_id: Option<&str>) -> String {
     let mut out = String::new();
-    if let Some(id) = &m.id {
-        out.push_str(&format!(
-            " id=\"{EDGE_DOM_ID_PREFIX}{0}\" data-id=\"{0}\"",
-            escape(id)
-        ));
+    if let (Some(id), Some(dom)) = (&m.id, diagram_id) {
+        out.push_str(&format!(" id=\"{dom}-{0}\" data-id=\"{0}\"", escape(id)));
     }
     if let Some(a) = m.animation {
         out.push_str(&format!(" class=\"{}\"", edge_animation_class(a)));
@@ -1663,24 +1711,27 @@ fn edge_meta_attrs(m: &EdgeMeta) -> String {
 }
 
 /// The animation `<style>`, written once and only when some drawn edge
-/// is animated.
-fn edge_animation_css(edges: &[SceneEdge]) -> String {
+/// is animated. Every rule is scoped to the root `<svg>`'s id and the
+/// keyframes carry it in their name, as mermaid namespaces its styles,
+/// so inlined SVGs never restyle the host page or each other.
+fn edge_animation_css(edges: &[SceneEdge], diagram_id: Option<&str>) -> String {
     let animated = edges
         .iter()
         .any(|e| e.meta.animation.is_some() && edge_drawn(e));
-    if !animated {
+    let Some(dom) = diagram_id.filter(|_| animated) else {
         return String::new();
-    }
+    };
+    let frames = format!("{dom}-{EDGE_ANIMATION_KEYFRAMES}");
     let rule = |a: EdgeAnimation, secs: u32| {
         format!(
-            ".{}{{stroke-dasharray:{EDGE_ANIMATION_DASH} !important;\
+            "#{dom} .{}{{stroke-dasharray:{EDGE_ANIMATION_DASH} !important;\
              stroke-dashoffset:{EDGE_ANIMATION_DASH_OFFSET};\
-             animation:dash {secs}s linear infinite;stroke-linecap:round}}",
+             animation:{frames} {secs}s linear infinite;stroke-linecap:round}}",
             edge_animation_class(a)
         )
     };
     format!(
-        "<style>@keyframes dash{{to{{stroke-dashoffset:0}}}} {} {}</style>",
+        "<style>@keyframes {frames}{{to{{stroke-dashoffset:0}}}} {} {}</style>",
         rule(EdgeAnimation::Slow, EDGE_ANIMATION_SLOW_SECS),
         rule(EdgeAnimation::Fast, EDGE_ANIMATION_FAST_SECS)
     )
@@ -1743,8 +1794,10 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
         }
     };
 
+    let dom_id = diagram_dom_id(sc, title, desc);
+    let dom_id = dom_id.as_deref();
     let mut s = String::new();
-    svg_open_a11y(&mut s, width, height, 14, title, desc, opts);
+    svg_open_root(&mut s, width, height, 14, title, desc, dom_id, opts);
     let markers = edge_markers(&sc.edges);
     s.push_str(&format!(
         "<defs><marker id=\"arrow\" viewBox=\"0 0 10 10\" refX=\"8.5\" refY=\"5\" \
@@ -1753,7 +1806,7 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
         EDGE_COLOR,
         extra_marker_defs(&markers.ids),
         markers.defs,
-        edge_animation_css(&sc.edges)
+        edge_animation_css(&sc.edges, dom_id)
     ));
 
     // Cluster boxes first (outermost-first), behind everything. The
@@ -1852,7 +1905,7 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
             sw,
             dash,
             marker,
-            edge_meta_attrs(&e.meta),
+            edge_meta_attrs(&e.meta, dom_id),
             escape(&edge_title)
         ));
         if let Some((text, m, w)) = &e.label {
@@ -2710,6 +2763,22 @@ pub(crate) fn svg_open_a11y(
     desc: Option<&str>,
     opts: &SvgOptions,
 ) {
+    svg_open_root(s, width, height, font_size, title, desc, None, opts);
+}
+
+/// [`svg_open_a11y`] plus an optional root `id` (the per-diagram id
+/// scoped CSS and edge ids hang off); `None` writes no `id` attribute.
+#[allow(clippy::too_many_arguments)]
+fn svg_open_root(
+    s: &mut String,
+    width: f64,
+    height: f64,
+    font_size: u32,
+    title: &str,
+    desc: Option<&str>,
+    root_id: Option<&str>,
+    opts: &SvgOptions,
+) {
     // `width`/`height` become percentages only in responsive mode; the
     // `viewBox` stays intrinsic so the content scales with the container.
     let (w_attr, h_attr) = if opts.responsive {
@@ -2731,9 +2800,12 @@ pub(crate) fn svg_open_a11y(
         format!("{A11Y_DESC_ID_PREFIX}{}", key.finish())
     });
     s.push_str(&format!(
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{w}\" height=\"{h}\" \
+        "<svg{id} xmlns=\"http://www.w3.org/2000/svg\" width=\"{w}\" height=\"{h}\" \
          viewBox=\"0 0 {vw:.0} {vh:.0}\"{par} font-family=\"Helvetica, Arial, sans-serif\" \
          font-size=\"{fs}\" role=\"img\" aria-label=\"{t}\"{described}>\n",
+        id = root_id
+            .map(|i| format!(" id=\"{}\"", escape(i)))
+            .unwrap_or_default(),
         w = w_attr,
         h = h_attr,
         vw = width,
@@ -2956,28 +3028,61 @@ mod tests {
             .collect()
     }
 
+    /// The root `<svg id="…">`, if any.
+    fn root_id(svg: &str) -> Option<String> {
+        let open = svg.split('>').next()?;
+        let rest = open.strip_prefix("<svg id=\"")?;
+        Some(rest.split('"').next()?.to_string())
+    }
+
+    /// `svg` with its root id and the edge-id attributes removed.
+    fn strip_ids(svg: &str, edge_id: &str) -> String {
+        let dom = root_id(svg).expect("root id");
+        svg.replacen(&format!(" id=\"{dom}\""), "", 1).replace(
+            &format!(" id=\"{dom}-{edge_id}\" data-id=\"{edge_id}\""),
+            "",
+        )
+    }
+
     #[test]
     fn edge_ids_become_prefixed_dom_ids() {
         let svg = svg_src("flowchart LR\n  A e1@--> B\n");
+        let dom = root_id(&svg).expect("an edge id gives the svg an id");
+        assert!(dom.starts_with(DIAGRAM_DOM_ID_PREFIX), "{dom}");
         let p = edge_paths(&svg);
-        assert!(p[0].contains(" id=\"edge-e1\" data-id=\"e1\""), "{svg}");
+        assert!(
+            p[0].contains(&format!(" id=\"{dom}-e1\" data-id=\"e1\"")),
+            "{svg}"
+        );
         assert!(!svg.contains("<style>") && !svg.contains("class=\""));
+        // Deterministic: same input, same bytes.
+        assert_eq!(svg, svg_src("flowchart LR\n  A e1@--> B\n"));
+        // Another diagram gets another prefix, so inlined SVGs never
+        // share `#…-e1`.
+        let other = svg_src("flowchart LR\n  A e1@--> C\n");
+        assert_ne!(root_id(&other).unwrap(), dom);
         // Same geometry as the id-less edge; only the attributes differ.
         let plain = svg_src("flowchart LR\n  A --> B\n");
-        assert_eq!(svg.replace(" id=\"edge-e1\" data-id=\"e1\"", ""), plain);
+        assert!(root_id(&plain).is_none());
+        assert_eq!(strip_ids(&svg, "e1"), plain);
         // An id named like a marker never collides with it.
         let svg = svg_src("flowchart LR\n  A arrow@--> B\n");
-        assert!(svg.contains("id=\"edge-arrow\"") && svg.contains("<marker id=\"arrow\""));
+        let dom = root_id(&svg).unwrap();
+        assert!(
+            svg.contains(&format!("id=\"{dom}-arrow\"")) && svg.contains("<marker id=\"arrow\"")
+        );
         assert_eq!(svg.matches(" id=\"arrow\"").count(), 1);
         // XML-escaped.
         let svg = svg_src("flowchart LR\n  A e<1@--> B\n");
+        let dom = root_id(&svg).unwrap();
         assert!(
-            svg.contains("id=\"edge-e&lt;1\" data-id=\"e&lt;1\""),
+            svg.contains(&format!("id=\"{dom}-e&lt;1\" data-id=\"e&lt;1\"")),
             "{svg}"
         );
         // Invisible edges are not drawn, so neither are their ids.
         let svg = svg_src("flowchart LR\n  A e1@~~~ B\n  e1@{ animate: true }\n");
-        assert!(!svg.contains("edge-e1") && !svg.contains("<style>"));
+        assert!(!svg.contains("e1") && !svg.contains("<style>"));
+        assert!(root_id(&svg).is_none());
     }
 
     #[test]
@@ -2994,9 +3099,28 @@ mod tests {
         );
         assert!(!p[2].contains("class="));
         assert_eq!(svg.matches("<style>").count(), 1);
-        assert!(svg.contains("@keyframes dash{to{stroke-dashoffset:0}}"));
-        assert!(svg.contains(".edge-animation-fast{stroke-dasharray:9,5 !important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round}"));
-        assert!(svg.contains(".edge-animation-slow{stroke-dasharray:9,5 !important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round}"));
+        // Scoped to this SVG, keyframes included, so an inlined SVG
+        // never restyles the host page or another diagram.
+        let dom = root_id(&svg).unwrap();
+        assert!(svg.contains(&format!(
+            "@keyframes {dom}-dash{{to{{stroke-dashoffset:0}}}}"
+        )));
+        assert!(svg.contains(&format!("#{dom} .edge-animation-fast{{stroke-dasharray:9,5 !important;stroke-dashoffset:900;animation:{dom}-dash 20s linear infinite;stroke-linecap:round}}")));
+        assert!(svg.contains(&format!("#{dom} .edge-animation-slow{{stroke-dasharray:9,5 !important;stroke-dashoffset:900;animation:{dom}-dash 50s linear infinite;stroke-linecap:round}}")));
+        let css = svg
+            .split("<style>")
+            .nth(1)
+            .unwrap()
+            .split("</style>")
+            .next()
+            .unwrap();
+        let unscoped: Vec<&str> = css
+            .split('}')
+            .map(str::trim)
+            .filter(|r| r.starts_with('.'))
+            .collect();
+        assert!(unscoped.is_empty(), "{unscoped:?}");
+        assert!(!css.contains("@keyframes dash"));
         // Bogus animation: no class, no style block.
         let svg = svg_src("flowchart LR\n  A e1@--> B\n  e1@{ animate: true, animation: bogus }\n");
         assert!(!svg.contains("class=\"edge-animation") && !svg.contains("<style>"));
@@ -3007,7 +3131,7 @@ mod tests {
         let plain = svg_src("flowchart TD\n  A --> B\n");
         let wiggly = svg_src("flowchart TD\n  A e1@--> B\n  e1@{ curve: wiggly }\n");
         let basis = svg_src("flowchart TD\n  A e1@--> B\n  e1@{ curve: basis }\n");
-        let strip = |s: &str| s.replace(" id=\"edge-e1\" data-id=\"e1\"", "");
+        let strip = |s: &str| strip_ids(s, "e1");
         assert_eq!(strip(&wiggly), plain, "unknown curve = basis");
         assert_eq!(strip(&basis), plain);
         let d = |s: &str| {
@@ -3087,7 +3211,8 @@ mod tests {
         let svg = svg_src(
             "flowchart LR\n  subgraph S\n    X\n  end\n  A e1@--> S\n  e1@{ animation: fast }\n",
         );
-        assert!(svg.contains("id=\"edge-e1\""), "{svg}");
+        let dom = root_id(&svg).unwrap();
+        assert!(svg.contains(&format!("id=\"{dom}-e1\"")), "{svg}");
         assert!(svg.contains("class=\"edge-animation-fast\""));
     }
 
@@ -4090,6 +4215,34 @@ mod tests {
         );
         let svg = to_svg(&scene(&g));
         assert!(!svg.contains("javascript") && !svg.contains("<a "));
+        // ...and so is every scene a host app reads the link from: the
+        // unsafe url is dropped, the rest of the link kept.
+        g.links.insert(
+            0,
+            NodeLink {
+                href: Some("JaVaScRiPt:alert(1)".into()),
+                tooltip: Some("tip".into()),
+                ..NodeLink::default()
+            },
+        );
+        g.links.insert(
+            1,
+            NodeLink {
+                href: Some("%6Aavascript:alert(1)".into()),
+                ..NodeLink::default()
+            },
+        );
+        let sc = scene(&g);
+        let l = sc.nodes[0].link.as_ref().unwrap();
+        assert_eq!(
+            (l.href.as_deref(), l.tooltip.as_deref()),
+            (None, Some("tip"))
+        );
+        assert!(sc.nodes[1].link.is_none(), "nothing left, no link");
+        let centers: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let routed = route(&g, &centers);
+        assert!(routed.nodes[0].link.as_ref().unwrap().href.is_none());
+        assert!(routed.nodes[1].link.is_none());
     }
 
     #[test]

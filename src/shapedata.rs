@@ -239,17 +239,24 @@ fn quoted(cur: &mut Cur<'_>) -> Result<Option<String>, String> {
     }
 }
 
-/// Skip a bracketed flow collection (`[…]` / `{…}`), quote-aware.
+/// Skip a bracketed flow collection (`[…]` / `{…}`), quote-aware. A
+/// collection left open by a `{` is reported as what it is: the
+/// `@{…}` block already ended at that mapping's first `}`, as it does
+/// in mermaid's lexer, so a nested mapping can never close.
 fn skip_collection(cur: &mut Cur<'_>) -> Result<(), String> {
     let mut depth = 0i32;
     let mut quote: Option<char> = None;
+    let mut brace = false;
     while let Some(c) = cur.peek() {
         cur.pos += c.len_utf8();
         match (quote, c) {
             (Some(q), c) if c == q => quote = None,
             (Some(_), _) => {}
             (None, '"' | '\'') => quote = Some(c),
-            (None, '[' | '{') => depth += 1,
+            (None, '[' | '{') => {
+                brace |= c == '{';
+                depth += 1;
+            }
             (None, ']' | '}') => {
                 depth -= 1;
                 if depth == 0 {
@@ -258,6 +265,13 @@ fn skip_collection(cur: &mut Cur<'_>) -> Result<(), String> {
             }
             _ => {}
         }
+    }
+    if brace {
+        return Err(
+            "a '{…}' value cannot nest in '@{…}': the block ends at the first \
+                    '}', as in mermaid — quote the value"
+                .to_string(),
+        );
     }
     Err("unclosed collection in '@{…}'".to_string())
 }
@@ -695,6 +709,22 @@ mod tests {
         ] {
             assert!(parse(bad).is_err(), "{bad:?}");
         }
+    }
+
+    #[test]
+    fn a_nested_mapping_names_the_real_cause() {
+        // `A@{ label: {a: 1} }`: the block body ends at the first `}`.
+        let e = parse(" label: {a: 1").unwrap_err();
+        assert!(e.contains("cannot nest") && e.contains("first '}'"), "{e}");
+        let e = parse(" label: [{a: 1").unwrap_err();
+        assert!(e.contains("cannot nest"), "{e}");
+        // A plain unclosed sequence keeps the generic message.
+        let e = parse(" label: [1, 2").unwrap_err();
+        assert!(e.contains("unclosed collection"), "{e}");
+        // A quoted brace is just text.
+        assert!(parse(" label: [\"{\", 2")
+            .unwrap_err()
+            .contains("unclosed collection"));
     }
 
     #[test]
