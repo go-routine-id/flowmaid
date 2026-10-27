@@ -5773,6 +5773,15 @@ fn fit_canvas(mut sc: AdvanceScene, pad: f64) -> AdvanceScene {
 /// array emitted by [`layout_advance`]), recompute lane boxes and edge
 /// routing, and render to SVG.
 pub fn render_advance_routed(source: &str, positions: &[f64]) -> Result<String, AdvanceError> {
+    render_advance_routed_with(source, positions, &SvgOptions::default())
+}
+
+/// [`render_advance_routed`] with explicit SVG options (see [`SvgOptions`]).
+pub fn render_advance_routed_with(
+    source: &str,
+    positions: &[f64],
+    opts: &SvgOptions,
+) -> Result<String, AdvanceError> {
     let d = AdvanceDiagram::parse(source)?;
     validate_positions(&d, positions)?;
     let nodes = place_nodes_at_positions(&d, positions);
@@ -5792,7 +5801,7 @@ pub fn render_advance_routed(source: &str, positions: &[f64]) -> Result<String, 
         },
         d.config.margin,
     );
-    Ok(to_svg(&scene))
+    Ok(to_svg_with(&scene, opts))
 }
 
 fn build_lanes_with_widths(
@@ -5858,6 +5867,26 @@ pub fn render_advance_routed_with_lanes(
     margin: f64,
     gap: f64,
 ) -> Result<String, AdvanceError> {
+    render_advance_routed_with_lanes_with(
+        source,
+        positions,
+        lane_widths,
+        margin,
+        gap,
+        &SvgOptions::default(),
+    )
+}
+
+/// [`render_advance_routed_with_lanes`] with explicit SVG options (see
+/// [`SvgOptions`]).
+pub fn render_advance_routed_with_lanes_with(
+    source: &str,
+    positions: &[f64],
+    lane_widths: &[f64],
+    margin: f64,
+    gap: f64,
+    opts: &SvgOptions,
+) -> Result<String, AdvanceError> {
     let d = AdvanceDiagram::parse(source)?;
     if d.direction == AdvanceDirection::Horizontal {
         return Err(adv_err(
@@ -5903,7 +5932,7 @@ pub fn render_advance_routed_with_lanes(
         },
         margin,
     );
-    Ok(to_svg(&scene))
+    Ok(to_svg_with(&scene, opts))
 }
 
 /// Render a text-based swimlane diagram directly to an SVG string.
@@ -6229,6 +6258,64 @@ mod tests {
         assert!(svg.starts_with("<svg"));
         assert!(svg.contains("Code"));
         assert!(svg.contains("implements"));
+    }
+
+    #[test]
+    fn routed_with_options_honours_transparent() {
+        // The drag/re-route entry points must accept the same options as
+        // the plain advance renderer, so a host can keep the canvas
+        // transparent after a node is moved (issue #62).
+        let d = AdvanceDiagram::parse(sample_json()).unwrap();
+        let auto = layout(&d);
+        let pos: Vec<f64> = auto.nodes.iter().flat_map(|n| [n.x + 10.0, n.y]).collect();
+        let transparent = SvgOptions {
+            transparent: true,
+            ..Default::default()
+        };
+        let canvas = |svg: &str| {
+            let vb = svg.split("viewBox=\"0 0 ").nth(1).unwrap();
+            let mut it = vb.split('"').next().unwrap().split(' ');
+            let (w, h) = (it.next().unwrap(), it.next().unwrap());
+            format!("<rect width=\"{w}\" height=\"{h}\" fill=\"#ffffff\"/>\n")
+        };
+
+        let base = render_advance_routed(sample_json(), &pos).unwrap();
+        assert_eq!(
+            base,
+            render_advance_routed_with(sample_json(), &pos, &SvgOptions::default()).unwrap()
+        );
+        let rect = canvas(&base);
+        assert!(base.contains(&rect), "{base}");
+        let t = render_advance_routed_with(sample_json(), &pos, &transparent).unwrap();
+        assert_eq!(base.replacen(&rect, "", 1), t);
+
+        let lanes = [200.0, 200.0];
+        let base =
+            render_advance_routed_with_lanes(sample_json(), &pos, &lanes, 24.0, 40.0).unwrap();
+        assert_eq!(
+            base,
+            render_advance_routed_with_lanes_with(
+                sample_json(),
+                &pos,
+                &lanes,
+                24.0,
+                40.0,
+                &SvgOptions::default()
+            )
+            .unwrap()
+        );
+        let rect = canvas(&base);
+        assert!(base.contains(&rect), "{base}");
+        let t = render_advance_routed_with_lanes_with(
+            sample_json(),
+            &pos,
+            &lanes,
+            24.0,
+            40.0,
+            &transparent,
+        )
+        .unwrap();
+        assert_eq!(base.replacen(&rect, "", 1), t);
     }
 
     #[test]

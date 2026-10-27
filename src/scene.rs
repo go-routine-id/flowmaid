@@ -1971,7 +1971,8 @@ fn spline_d(pts: &[(f64, f64)]) -> String {
 /// Defaults reproduce the historical fixed-pixel output byte-for-byte, so
 /// existing callers (and `render_svg`) are unaffected. More options
 /// (theme, scale, max width, …) can be added here without new entry
-/// points.
+/// points. Build it with `..Default::default()` so a struct literal keeps
+/// compiling when a field is added.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct SvgOptions {
     /// When true, the root `<svg>` fills its container (`width="100%"`)
