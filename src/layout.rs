@@ -68,7 +68,12 @@ const CLUSTER_PAD: f64 = 18.0;
 const BORDER_GAP: f64 = 4.0;
 /// Rank room reserved for a cluster's title strip (mirrors the
 /// scene-side `SUB_HEADER` box headroom).
-const CLUSTER_HEADER: f64 = 26.0;
+pub(crate) const CLUSTER_HEADER: f64 = 26.0;
+/// Padding a drawn cluster frame keeps around its members, per nesting
+/// level (the scene-side `SUB_PAD`).
+pub(crate) const FRAME_PAD: f64 = 14.0;
+/// Least room between two frames stacked along the layer axis.
+const FRAME_GAP: f64 = 8.0;
 
 /// Line height for multi-line labels (`<br/>` → newline).
 pub const LINE_H: f64 = 17.0;
@@ -337,17 +342,21 @@ pub fn layout_clustered(
 /// waypoint's dummy was laid out in (see [`layout_clustered_ranked`]).
 pub(crate) type EdgeGroups = Vec<Vec<Vec<usize>>>;
 
-/// [`layout_clustered`] plus `rank_only` node pairs `(from, to)` that
-/// rank `to` below `from` and pull them together in the ordering, but
-/// get no channel and are never drawn — the stand-ins for edges that
-/// end on a whole subgraph box. Also returns, for every edge, the
-/// cluster path of each channel waypoint, so the caller can tell which
-/// box a lane runs inside.
+/// A rank-only link `(from, to)`: every `to` node ranks at least one
+/// layer below every `from` node.
+pub(crate) type RankGroup = (Vec<usize>, Vec<usize>);
+
+/// [`layout_clustered`] plus `rank_only` groups that rank their `to`
+/// nodes below their `from` nodes and pull them together in the
+/// ordering, but get no channel and are never drawn — the stand-ins for
+/// edges that end on a whole subgraph box. Also returns, for every
+/// edge, the cluster path of each channel waypoint, so the caller can
+/// tell which box a lane runs inside.
 pub(crate) fn layout_clustered_ranked(
     g: &Graph,
     sizes: &[(f64, f64)],
     node_cluster: &[Vec<usize>],
-    rank_only: &[(usize, usize)],
+    rank_only: &[RankGroup],
 ) -> (LayoutResult, EdgeGroups) {
     layout_core(g, sizes, Some(node_cluster), rank_only)
 }
@@ -356,7 +365,7 @@ fn layout_core(
     g: &Graph,
     sizes: &[(f64, f64)],
     node_cluster: Option<&[Vec<usize>]>,
-    rank_only: &[(usize, usize)],
+    rank_only: &[RankGroup],
 ) -> (LayoutResult, EdgeGroups) {
     assert_eq!(
         sizes.len(),
@@ -364,21 +373,35 @@ fn layout_core(
         "number of sizes must match number of nodes"
     );
     let n = g.nodes.len();
-    let mut adj: Vec<Vec<(usize, usize)>> = vec![Vec::new(); n];
+    // Ranking graph: the real nodes, then one HUB per rank-only group
+    // (`from -> hub` weighs one layer, `hub -> to` none), so a group
+    // costs |from| + |to| links instead of every from x to pair.
+    let nx = n + rank_only.len();
+    let mut adj: Vec<Vec<(usize, usize)>> = vec![Vec::new(); nx];
     for (ei, e) in g.edges.iter().enumerate() {
         adj[e.from].push((e.to, ei));
     }
-    // Rank-only pairs ride the same DFS / layering as real edges,
-    // numbered after them.
+    // Hub links ride the same DFS / layering as real edges, numbered
+    // after them; `group_eid[k]` is group k's first link id.
     let ne = g.edges.len();
-    for (k, &(a, b)) in rank_only.iter().enumerate() {
-        adj[a].push((b, ne + k));
+    let mut nlinks = ne;
+    let mut group_eid = Vec::with_capacity(rank_only.len());
+    for (k, (from, to)) in rank_only.iter().enumerate() {
+        group_eid.push(nlinks);
+        for &a in from {
+            adj[a].push((n + k, nlinks));
+            nlinks += 1;
+        }
+        for &b in to {
+            adj[n + k].push((b, nlinks));
+            nlinks += 1;
+        }
     }
 
     // --- 1. Mark back-edges (cycle breakers) with iterative DFS ---
-    let mut state = vec![0u8; n]; // 0 unvisited, 1 on stack, 2 done
-    let mut back = vec![false; ne + rank_only.len()];
-    for s in 0..n {
+    let mut state = vec![0u8; nx]; // 0 unvisited, 1 on stack, 2 done
+    let mut back = vec![false; nlinks];
+    for s in 0..nx {
         if state[s] != 0 {
             continue;
         }
@@ -409,26 +432,24 @@ fn layout_core(
     }
 
     // --- 2. Longest-path layering on the DAG (back-edges excluded) ---
-    let mut indeg = vec![0usize; n];
-    for (ei, e) in g.edges.iter().enumerate() {
-        if !back[ei] {
-            indeg[e.to] += 1;
+    let mut indeg = vec![0usize; nx];
+    for links in &adj {
+        for &(v, ei) in links {
+            if !back[ei] {
+                indeg[v] += 1;
+            }
         }
     }
-    for (k, &(_, b)) in rank_only.iter().enumerate() {
-        if !back[ne + k] {
-            indeg[b] += 1;
-        }
-    }
-    let mut layer = vec![0usize; n];
-    let mut q: VecDeque<usize> = (0..n).filter(|&v| indeg[v] == 0).collect();
+    let mut layer = vec![0usize; nx];
+    let mut q: VecDeque<usize> = (0..nx).filter(|&v| indeg[v] == 0).collect();
     while let Some(u) = q.pop_front() {
+        let step = usize::from(u < n); // hub -> to adds no layer
         for &(v, ei) in &adj[u] {
             if back[ei] {
                 continue;
             }
-            if layer[u] + 1 > layer[v] {
-                layer[v] = layer[u] + 1;
+            if layer[u] + step > layer[v] {
+                layer[v] = layer[u] + step;
             }
             indeg[v] -= 1;
             if indeg[v] == 0 {
@@ -445,6 +466,7 @@ fn layout_core(
     // `n..`. `absize`/`alsize` are the breadth/layer sizes per aug node.
     const DUMMY_B: f64 = 16.0;
     let horizontal = matches!(g.direction, Direction::LR | Direction::RL);
+    layer.truncate(n);
     let mut alayer = layer.clone();
     let mut absize: Vec<f64> = (0..n)
         .map(|v| if horizontal { sizes[v].1 } else { sizes[v].0 })
@@ -521,11 +543,28 @@ fn layout_core(
         }
         edge_chain[ei] = chain;
     }
-    // Rank-only pairs order like invisible links: no chain, no channel.
-    for (k, &(a, b)) in rank_only.iter().enumerate() {
-        if !back[ne + k] && alayer[a] < alayer[b] {
-            succs[a].push(b);
-            preds[b].push(a);
+    // Rank-only groups order like invisible links (no chain, no
+    // channel), each `from` and `to` member pulled by one partner — a
+    // pair a real edge already joins pulls through that edge.
+    let joined: std::collections::HashSet<(usize, usize)> = if rank_only.is_empty() {
+        Default::default()
+    } else {
+        g.edges.iter().map(|e| (e.from, e.to)).collect()
+    };
+    for (k, (from, to)) in rank_only.iter().enumerate() {
+        let (nf, nt) = (from.len(), to.len());
+        if nf == 0 || nt == 0 {
+            continue;
+        }
+        let m = nf.max(nt);
+        for i in 0..m {
+            let (fi, ti) = (i * nf / m, i * nt / m);
+            let (a, b) = (from[fi], to[ti]);
+            let cut = back[group_eid[k] + fi] || back[group_eid[k] + nf + ti];
+            if a != b && !cut && alayer[a] < alayer[b] && !joined.contains(&(a, b)) {
+                succs[a].push(b);
+                preds[b].push(a);
+            }
         }
     }
     let clustered = node_cluster.is_some();
@@ -546,6 +585,8 @@ fn layout_core(
         std::collections::BTreeMap::new();
     // Extra layer-slot room per real node for title strips (see below).
     let mut lextra = vec![0.0f64; n];
+    // Per real node: frame reach (towards lower, higher layers).
+    let mut reach = vec![(0.0f64, 0.0f64); n];
     if let Some(nc) = node_cluster {
         // cluster id -> (path incl. c, lo layer, hi layer over members)
         let mut span: std::collections::BTreeMap<usize, (Vec<usize>, usize, usize)> =
@@ -570,16 +611,36 @@ fn layout_core(
         // so labels between ranks never land on the header text. Only
         // the slot grows — the node keeps its real size, so edges still
         // end on its visible border. In LR/RL the strip lies across the
-        // breadth axis instead and is reserved there (compaction).
+        // breadth axis instead and is reserved there (compaction). In BT
+        // the layers are drawn bottom-up, so a box's screen top is its
+        // HIGHEST layer.
         if !horizontal {
+            let bt = matches!(g.direction, Direction::BT);
             for v in 0..n {
                 let mut extra = 0.0;
                 for &c in &nc[v] {
-                    if span[&c].1 == alayer[v] {
+                    let (_, lo, hi) = span[&c];
+                    if alayer[v] == if bt { hi } else { lo } {
                         extra += CLUSTER_HEADER;
                     }
                 }
                 lextra[v] = extra * 2.0;
+            }
+        }
+        // How far the frames a node opens / closes reach past it along
+        // the layer axis: one pad per level, plus the title strip on the
+        // screen-top side (none in LR/RL, where it lies across).
+        let hdr_lo = matches!(g.direction, Direction::TD);
+        let hdr_hi = matches!(g.direction, Direction::BT);
+        for v in 0..n {
+            for &c in &nc[v] {
+                let (_, lo, hi) = span[&c];
+                if alayer[v] == lo {
+                    reach[v].0 += FRAME_PAD + if hdr_lo { CLUSTER_HEADER } else { 0.0 };
+                }
+                if alayer[v] == hi {
+                    reach[v].1 += FRAME_PAD + if hdr_hi { CLUSTER_HEADER } else { 0.0 };
+                }
             }
         }
         // BTreeMap iterates keys in order — wall numbering is
@@ -734,13 +795,30 @@ fn layout_core(
     // --- 4. Coordinates ---
     // Layer positions (l axis): each layer is as tall as its tallest
     // REAL node (dummies contribute zero layer-size).
+    // A box closing on one layer and another opening on the next must
+    // not meet: their pads and title strips stack up with nesting depth,
+    // which can outgrow the gap, so a layer moves down until the frames
+    // reaching across clear by FRAME_GAP.
     let mut lcoord = vec![0.0f64; nlayers];
     let mut cursor = MARGIN;
+    let reach_of = |li: usize, side: usize| -> f64 {
+        layers[li]
+            .iter()
+            .filter(|&&v| v < n)
+            .map(|&v| alsize[v] / 2.0 + if side == 0 { reach[v].0 } else { reach[v].1 })
+            .fold(0.0f64, f64::max)
+    };
     for li in 0..nlayers {
         let lh = layers[li]
             .iter()
             .map(|&v| alsize[v] + lextra.get(v).copied().unwrap_or(0.0))
             .fold(0.0f64, f64::max);
+        if clustered && li > 0 {
+            let at = lcoord[li - 1] + reach_of(li - 1, 1) + reach_of(li, 0) + FRAME_GAP;
+            if at > cursor + lh / 2.0 {
+                cursor = at - lh / 2.0;
+            }
+        }
         lcoord[li] = cursor + lh / 2.0;
         cursor += lh + GAP_L;
     }

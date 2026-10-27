@@ -220,7 +220,7 @@ pub struct SubEdge {
 }
 
 /// Parsed graph, ready for layout.
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Graph {
     pub direction: Direction,
     pub nodes: Vec<Node>,
