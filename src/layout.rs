@@ -93,6 +93,19 @@ pub const LINE_H: f64 = 17.0;
 /// the table's base size.
 pub const TEXT_CALIBRATION: f64 = 14.0;
 
+/// Font size (px) subgraph titles are drawn at.
+pub(crate) const TITLE_FONT: f64 = 12.0;
+/// [`text_width`] (calibrated at [`TEXT_CALIBRATION`]) to title-font px.
+pub(crate) const TITLE_SCALE: f64 = TITLE_FONT / TEXT_CALIBRATION;
+/// Line advance of a multi-line (`<br/>`) subgraph title.
+pub(crate) const TITLE_LINE_H: f64 = LINE_H * TITLE_SCALE;
+
+/// Header room a subgraph title needs beyond a one-line strip: one
+/// [`TITLE_LINE_H`] per extra `<br/>` line.
+pub(crate) fn title_extra(title: &str) -> f64 {
+    (title.split('\n').count().max(1) - 1) as f64 * TITLE_LINE_H
+}
+
 /// Estimated rendered width of the WIDEST line in `s` (labels may
 /// be multi-line after `<br/>` normalisation), in px at
 /// [`TEXT_CALIBRATION`]. `<b>`/`<i>` styling
@@ -251,6 +264,8 @@ pub fn line_count(s: &str) -> usize {
 /// more accurate than a flat average: capitals ~9.7px, i/l ~3.4px,
 /// m/W ~12-13px, CJK/emoji ~14px.
 fn line_width(s: &str) -> f64 {
+    // A full-width glyph advances 1em at the calibration size.
+    const EM: f64 = TEXT_CALIBRATION;
     s.chars()
         .map(|c| match c {
             'i' | 'l' | 'j' => 3.4,
@@ -263,10 +278,10 @@ fn line_width(s: &str) -> f64 {
             'A'..='Z' => 9.7,
             // Joiners and emoji variation selectors draw nothing.
             '\u{200D}' | '\u{FE0F}' => 0.0,
-            '—' => 14.0,
+            '—' => EM,
             // Arrows, misc symbols and dingbats come from a fallback
             // font at about 1em — ~14px, not a Latin letter's 7.8.
-            '\u{2190}'..='\u{21FF}' | '\u{2600}'..='\u{27BF}' => 14.0,
+            '\u{2190}'..='\u{21FF}' | '\u{2600}'..='\u{27BF}' => EM,
             c if (c as u32) >= 0x2E80 => 14.0, // CJK, emoji, wide symbols
             _ => 7.8,
         })
@@ -387,6 +402,12 @@ fn layout_core(
         "number of sizes must match number of nodes"
     );
     let n = g.nodes.len();
+    // Each box's title-strip room: one line, plus any `<br/>` lines.
+    let header: Vec<f64> = g
+        .subgraphs
+        .iter()
+        .map(|s| CLUSTER_HEADER + title_extra(&s.title))
+        .collect();
     // Ranking graph: the real nodes, then one HUB per rank-only group
     // (`from -> hub` weighs one layer, `hub -> to` none), so a group
     // costs |from| + |to| links instead of every from x to pair.
@@ -635,7 +656,7 @@ fn layout_core(
                 for &c in &nc[v] {
                     let (_, lo, hi) = span[&c];
                     if alayer[v] == if bt { hi } else { lo } {
-                        extra += CLUSTER_HEADER;
+                        extra += header[c];
                     }
                 }
                 lextra[v] = extra * 2.0;
@@ -650,10 +671,10 @@ fn layout_core(
             for &c in &nc[v] {
                 let (_, lo, hi) = span[&c];
                 if alayer[v] == lo {
-                    reach[v].0 += FRAME_PAD + if hdr_lo { CLUSTER_HEADER } else { 0.0 };
+                    reach[v].0 += FRAME_PAD + if hdr_lo { header[c] } else { 0.0 };
                 }
                 if alayer[v] == hi {
-                    reach[v].1 += FRAME_PAD + if hdr_hi { CLUSTER_HEADER } else { 0.0 };
+                    reach[v].1 += FRAME_PAD + if hdr_hi { header[c] } else { 0.0 };
                 }
             }
         }
@@ -824,9 +845,9 @@ fn layout_core(
         if clustered { Some(&apath) } else { None },
         if clustered { Some(&border_side) } else { None },
         if clustered && horizontal {
-            CLUSTER_HEADER
+            Some(header.as_slice())
         } else {
-            0.0
+            None
         },
     );
 
@@ -1185,7 +1206,7 @@ fn coordinates_bk(
     absize: &[f64],
     apath: Option<&[Vec<usize>]>,
     border: Option<&[u8]>,
-    header_b: f64,
+    header_b: Option<&[f64]>,
 ) -> Vec<f64> {
     if na == 0 {
         return Vec::new();
@@ -1386,9 +1407,9 @@ fn vertical_alignment(
 /// the block graph (min-separation edges between consecutive roots in a
 /// layer), pushes every block as far left as its predecessors allow,
 /// then pulls it back right toward its successors without overlap.
-/// `header_b` is the title-strip room to keep outside each box's LEFT
-/// wall (low breadth = screen top in LR/RL); 0 when the strip lies on
-/// the layer axis instead.
+/// `header_b` is the title-strip room, per cluster, to keep outside
+/// each box's LEFT wall (low breadth = screen top in LR/RL); `None`
+/// when the strip lies on the layer axis instead.
 #[allow(clippy::too_many_arguments)] // internal: one bundle of layered-graph state
 fn horizontal_compaction(
     n: usize,
@@ -1398,7 +1419,7 @@ fn horizontal_compaction(
     absize: &[f64],
     apath: Option<&[Vec<usize>]>,
     border: Option<&[u8]>,
-    header_b: f64,
+    header_b: Option<&[f64]>,
 ) -> Vec<f64> {
     // Block graph as adjacency lists over root nodes.
     let mut bin: Vec<Vec<(usize, f64)>> = vec![Vec::new(); na]; // (pred_root, sep)
@@ -1428,13 +1449,16 @@ fn horizontal_compaction(
                 };
                 // A left wall next to anything outside its box: that is
                 // the side the box's title strip is drawn on.
-                let hdr = match (apath, border) {
-                    (Some(p), Some(b)) if header_b > 0.0 => {
+                let hdr = match (apath, border, header_b) {
+                    (Some(p), Some(b), Some(h)) => {
                         let outside = |w: usize, x: usize| b[w] == 1 && !p[x].starts_with(&p[w]);
-                        if outside(u, v) || outside(v, u) {
-                            header_b
-                        } else {
-                            0.0
+                        // The strip room of the wall's own box.
+                        let room = |w: usize| p[w].last().map_or(0.0, |&c| h[c]);
+                        match (outside(u, v), outside(v, u)) {
+                            (true, true) => room(u).max(room(v)),
+                            (true, false) => room(u),
+                            (false, true) => room(v),
+                            (false, false) => 0.0,
                         }
                     }
                     _ => 0.0,

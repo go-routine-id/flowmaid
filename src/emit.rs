@@ -401,7 +401,7 @@ fn emit_subgraph(g: &Graph, si: usize, depth: usize, visited: &mut [bool], out: 
             out.push_str("[\"\"]");
         } else {
             out.push('[');
-            out.push_str(&label_text(&s.title.replace('\n', " ")));
+            out.push_str(&label_text(&s.title));
             out.push(']');
         }
     }
@@ -1107,6 +1107,14 @@ mod tests {
         // Parser side: unbalanced '(' is a clean error, not a silent
         // property swallow.
         assert!(parse("flowchart TD\nA\nstyle A fill:rgb(255,stroke:#900\n").is_err());
+    }
+
+    #[test]
+    fn multi_line_subgraph_title_round_trips_as_br() {
+        let g = parse("flowchart TD\nsubgraph s [\"one<br/>two\"]\n  A\nend").unwrap();
+        assert_eq!(g.subgraphs[0].title, "one\ntwo");
+        assert!(to_mermaid(&g).contains("one<br/>two"));
+        assert_roundtrip(&g);
     }
 
     #[test]

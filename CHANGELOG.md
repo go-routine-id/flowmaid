@@ -73,6 +73,19 @@ project adheres to [Semantic Versioning](https://semver.org/).
   too.
 - **Subgraph titles are not clipped by the canvas edge.** A title running past the
   canvas is cut with `…` to fit its frame, like a title running into a sibling frame.
+- **`<br/>` in a subgraph title draws a new line, as in mermaid.** Titles used to be
+  joined into one line and then cut with `…`, losing most of it. Each line now gets its
+  own row (the frame's header grows to fit, in every direction); only a line still too
+  wide for its frame is cut, and a cut drops a dangling separator (` ·`, `-`, `,`, `:`)
+  before the `…`. `model::Subgraph::title` now carries `\n` for each `<br/>`, and
+  `to_mermaid` writes it back as `<br/>`.
+- **An edge between a member and its own subgraph stays off the members.** `C --> G`
+  (or `G --> C`) where `C` sits inside `G` is drawn as a short stub from `C` to the
+  nearer frame side along the flow, its label just outside the frame. In LR/RL the curve
+  used to cross `C` with its label on top of it; in TB/BT it doubled back over the node.
+- **Colliding edge labels are placed in near-linear time.** Obstacles are bucketed on a
+  grid and spots along an edge are sorted lazily, so a 2000-edge labelled fan renders in
+  about 0.2s instead of 7s. Placement is unchanged.
 
 Layout changes are confined to diagrams with subgraphs, edge labels that collided with a
 node, label or frame border, and text containing the re-measured glyphs; every other

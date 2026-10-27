@@ -12,11 +12,12 @@
 //! 4. `to_svg(&scene)` exports any arrangement to SVG.
 
 use crate::layout::{
-    intrinsic_size, layout_clustered_ranked, layout_sized, line_count, text_width, LayoutResult,
-    Placed, RankGroup, LABEL_BOX_H, LINE_H,
+    intrinsic_size, layout_clustered_ranked, layout_sized, line_count, text_width, title_extra,
+    LayoutResult, Placed, RankGroup, LABEL_BOX_H, LINE_H, TITLE_LINE_H, TITLE_SCALE,
 };
 use crate::model::{Direction, Edge, EdgeEnds, EdgeKind, End, Graph, Marker, NodeStyle, Shape};
 use std::collections::HashMap;
+use std::hash::{BuildHasherDefault, Hasher};
 
 pub(crate) const MARGIN: f64 = 28.0;
 /// Gap between parallel edges (connecting the same node pair).
@@ -378,17 +379,21 @@ fn basis_sample(pts: &[(f64, f64)]) -> Vec<(f64, f64)> {
     out
 }
 
-/// A cluster's title as drawn: whole, unless it runs past its own frame
-/// INTO another frame (a sibling, not one it sits inside) or past
-/// `canvas_right` (the drawn canvas's right edge, same coordinates) —
-/// then cut with an ellipsis to fit its frame, so neighbouring titles
-/// never overprint each other and none is clipped mid-word by the
-/// canvas. Measured at the 12px title font.
+/// A cluster's title as drawn (lines joined by `\n`, one per `<br/>`):
+/// whole, unless it runs past its own frame INTO another frame (a
+/// sibling, not one it sits inside) or past `canvas_right` (the drawn
+/// canvas's right edge, same coordinates) — then each line still too
+/// wide for its frame is cut with an ellipsis (after any dangling
+/// separator), so neighbouring titles never overprint each other and
+/// none is clipped mid-word by the canvas. Measured at the title font.
 fn fit_cluster_title(clusters: &[SceneCluster], ci: usize, canvas_right: f64) -> String {
     let c = &clusters[ci];
-    let scale = 12.0 / 14.0;
-    let chip = |w: f64| (c.x + TITLE_INSET, c.y, w + 8.0, TITLE_STRIP);
-    let (x, y, w, h) = chip(text_width(&c.title) * scale);
+    let (x, y, w, h) = (
+        c.x + TITLE_INSET,
+        c.y,
+        text_width(&c.title) * TITLE_SCALE + 8.0,
+        TITLE_STRIP + title_extra(&c.title),
+    );
     if x + w <= c.x + c.w - TITLE_INSET {
         return c.title.clone();
     }
@@ -409,12 +414,29 @@ fn fit_cluster_title(clusters: &[SceneCluster], ci: usize, canvas_right: f64) ->
         return c.title.clone();
     }
     let room = c.w - 2.0 * TITLE_INSET - 8.0;
-    let mut cut: String = c.title.clone();
-    while !cut.is_empty() && text_width(&format!("{cut}…")) * scale > room {
-        cut.pop();
-    }
-    format!("{}…", cut.trim_end())
+    let fit_line = |line: &str| -> String {
+        if text_width(line) * TITLE_SCALE <= room {
+            return line.to_string();
+        }
+        let mut cut = line.to_string();
+        while !cut.is_empty() && text_width(&format!("{cut}…")) * TITLE_SCALE > room {
+            cut.pop();
+        }
+        // A cut that ends on a separator reads as a dangling "· …".
+        let kept = cut
+            .trim_end_matches(|ch: char| ch.is_whitespace() || TITLE_CUT_SEPARATORS.contains(&ch));
+        format!("{kept}…")
+    };
+    c.title
+        .split('\n')
+        .map(fit_line)
+        .collect::<Vec<_>>()
+        .join("\n")
 }
+
+/// Characters trimmed off the end of a cut title line before its
+/// ellipsis: list separators that would otherwise dangle.
+const TITLE_CUT_SEPARATORS: &[char] = &['·', '-', '–', '—', ',', ':', ';', '|', '/'];
 
 /// How far a routed edge's label may sit from the curve actually drawn
 /// before it is moved onto it.
@@ -440,6 +462,9 @@ fn channel_label_point(wps: &[(f64, f64)]) -> (f64, f64) {
 
 /// Least room a MOVED edge label keeps from node boxes and other labels.
 const LABEL_GAP: f64 = 4.0;
+/// How many of the nearest spots a covering label sorts and tries
+/// first; each further batch doubles.
+const LABEL_SPOT_CHUNK: usize = 32;
 /// Spacing (px) of the spots along its edge a covering label tries.
 const LABEL_SLIDE_STEP: f64 = 6.0;
 /// Overlap (px, per axis) below which two boxes count as just touching.
@@ -466,6 +491,137 @@ fn covered(a: Rect, gap: f64, obstacles: &[Rect]) -> f64 {
             }
         })
         .sum()
+}
+
+/// Side (px) of a cell of the [`ObstacleGrid`] — about one label box.
+const OBSTACLE_CELL: f64 = 96.0;
+/// A rect spanning more cells than this is checked against every query
+/// instead of being bucketed (a huge node or frame border line).
+const OBSTACLE_MAX_CELLS: i64 = 256;
+
+/// Cheap multiplicative hash for grid-cell keys — the default SipHash
+/// dominated label placement on big charts. Keys are our own integers,
+/// so no hash-flooding concern.
+#[derive(Default)]
+struct CellHasher(u64);
+
+impl Hasher for CellHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+    fn write(&mut self, bytes: &[u8]) {
+        for &b in bytes {
+            self.write_u64(u64::from(b));
+        }
+    }
+    fn write_i64(&mut self, v: i64) {
+        self.write_u64(v as u64);
+    }
+    fn write_u64(&mut self, v: u64) {
+        self.0 = (self.0.rotate_left(5) ^ v).wrapping_mul(0x51_7c_c1_b7_27_22_0a_95);
+    }
+}
+
+/// The boxes edge labels must keep off, bucketed on a uniform grid so a
+/// query looks only at those near it: label placement stays near-linear
+/// in the number of edges instead of rescanning every node, frame and
+/// earlier label for each of an edge's spots.
+struct ObstacleGrid {
+    rects: Vec<Rect>,
+    cells: HashMap<(i64, i64), Vec<usize>, BuildHasherDefault<CellHasher>>,
+    /// Rects too large to bucket, checked by every query.
+    big: Vec<usize>,
+}
+
+impl ObstacleGrid {
+    fn new() -> Self {
+        ObstacleGrid {
+            rects: Vec::new(),
+            cells: HashMap::default(),
+            big: Vec::new(),
+        }
+    }
+
+    /// Cell range (inclusive) a rect touches, or None when not finite.
+    fn span(r: Rect) -> Option<(i64, i64, i64, i64)> {
+        if !(r.0.is_finite() && r.1.is_finite() && r.2.is_finite() && r.3.is_finite()) {
+            return None;
+        }
+        let c = |v: f64| (v / OBSTACLE_CELL).floor() as i64;
+        Some((c(r.0), c(r.1), c(r.2), c(r.3)))
+    }
+
+    fn push(&mut self, r: Rect) {
+        let i = self.rects.len();
+        self.rects.push(r);
+        match Self::span(r) {
+            Some((x0, y0, x1, y1))
+                if (x1 - x0 + 1).saturating_mul(y1 - y0 + 1) <= OBSTACLE_MAX_CELLS =>
+            {
+                for cx in x0..=x1 {
+                    for cy in y0..=y1 {
+                        self.cells.entry((cx, cy)).or_default().push(i);
+                    }
+                }
+            }
+            _ => self.big.push(i),
+        }
+    }
+
+    /// Indices of the rects that may overlap `q`, ascending, once each.
+    fn near(&self, q: Rect) -> Vec<usize> {
+        let mut out = self.big.clone();
+        match Self::span(q) {
+            Some((x0, y0, x1, y1))
+                if (x1 - x0 + 1).saturating_mul(y1 - y0 + 1) <= OBSTACLE_MAX_CELLS =>
+            {
+                for cx in x0..=x1 {
+                    for cy in y0..=y1 {
+                        if let Some(v) = self.cells.get(&(cx, cy)) {
+                            out.extend_from_slice(v);
+                        }
+                    }
+                }
+            }
+            _ => out = (0..self.rects.len()).collect(),
+        }
+        out.sort_unstable();
+        out.dedup();
+        out
+    }
+
+    /// Same as [`covered`] over every rect pushed so far (summed in
+    /// push order, so the result is bit-identical).
+    fn covered(&self, a: Rect, gap: f64) -> f64 {
+        let q = (a.0 - gap, a.1 - gap, a.2 + gap, a.3 + gap);
+        self.near(q)
+            .into_iter()
+            .map(|i| covered(a, gap, &self.rects[i..=i]))
+            .sum()
+    }
+
+    /// Does nothing pushed so far cover `a` grown by `gap`?
+    fn clear(&self, a: Rect, gap: f64) -> bool {
+        let free = |i: &usize| covered(a, gap, &self.rects[*i..=*i]) == 0.0;
+        if !self.big.iter().all(free) {
+            return false;
+        }
+        let q = (a.0 - gap, a.1 - gap, a.2 + gap, a.3 + gap);
+        match Self::span(q) {
+            Some((x0, y0, x1, y1))
+                if (x1 - x0 + 1).saturating_mul(y1 - y0 + 1) <= OBSTACLE_MAX_CELLS =>
+            {
+                (x0..=x1).all(|cx| {
+                    (y0..=y1).all(|cy| {
+                        self.cells
+                            .get(&(cx, cy))
+                            .map_or(true, |v| v.iter().all(free))
+                    })
+                })
+            }
+            _ => (0..self.rects.len()).all(|i| free(&i)),
+        }
+    }
 }
 
 /// Points along the curve an edge is DRAWN with (its spline through
@@ -502,29 +658,29 @@ fn avoid_label_overlaps(
     frames: &[SceneCluster],
     edges: &mut [SceneEdge],
 ) -> Vec<usize> {
-    let mut obstacles: Vec<Rect> = nodes
-        .iter()
-        .map(|n| {
-            (
-                n.x - n.w / 2.0,
-                n.y - n.h / 2.0,
-                n.x + n.w / 2.0,
-                n.y + n.h / 2.0,
-            )
-        })
-        .collect();
+    let mut obstacles = ObstacleGrid::new();
+    for n in nodes {
+        obstacles.push((
+            n.x - n.w / 2.0,
+            n.y - n.h / 2.0,
+            n.x + n.w / 2.0,
+            n.y + n.h / 2.0,
+        ));
+    }
     // A frame is only its outline: a label inside it is fine, one
     // straddling its border hides the line (and blurs which box the
     // label belongs to).
     let b = FRAME_BORDER_BAND;
     for f in frames {
         let (x0, y0, x1, y1) = (f.x, f.y, f.x + f.w, f.y + f.h);
-        obstacles.extend([
+        for r in [
             (x0 - b, y0 - b, x1 + b, y0 + b),
             (x0 - b, y1 - b, x1 + b, y1 + b),
             (x0 - b, y0 - b, x0 + b, y1 + b),
             (x1 - b, y0 - b, x1 + b, y1 + b),
-        ]);
+        ] {
+            obstacles.push(r);
+        }
     }
     let label_rect = |c: (f64, f64), w: f64| {
         (
@@ -542,16 +698,35 @@ fn avoid_label_overlaps(
         let Some((_, at, w)) = e.label.clone() else {
             continue;
         };
-        let now = covered(label_rect(at, w), 0.0, &obstacles);
+        let now = obstacles.covered(label_rect(at, w), 0.0);
         let mut best = at;
         if now > 0.0 {
-            let mut spots = drawn_points(e);
-            // Nearest first; the sort is stable, so ties stay in curve order.
-            let dist = |p: &(f64, f64)| (p.0 - at.0).hypot(p.1 - at.1);
-            spots.sort_by(|a, b| dist(a).total_cmp(&dist(b)));
-            let is_clear =
-                |p: &(f64, f64)| covered(label_rect(*p, w), LABEL_GAP, &obstacles) == 0.0;
-            let mut clear = spots.iter().copied().find(is_clear);
+            // Nearest first, ties in curve order. Sorted lazily in
+            // doubling chunks: most labels clear within a few spots, and
+            // a long edge has thousands.
+            let pts = drawn_points(e);
+            let mut keyed: Vec<(f64, usize)> = pts
+                .iter()
+                .enumerate()
+                .map(|(i, p)| ((p.0 - at.0).hypot(p.1 - at.1), i))
+                .collect();
+            let order =
+                |a: &(f64, usize), b: &(f64, usize)| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1));
+            let is_clear = |p: &(f64, f64)| obstacles.clear(label_rect(*p, w), LABEL_GAP);
+            let mut clear = None;
+            let (mut lo, mut chunk) = (0, LABEL_SPOT_CHUNK);
+            while lo < keyed.len() && clear.is_none() {
+                let hi = (lo + chunk).min(keyed.len());
+                if hi < keyed.len() {
+                    keyed[lo..].select_nth_unstable_by(hi - lo - 1, order);
+                }
+                keyed[lo..hi].sort_unstable_by(order);
+                clear = keyed[lo..hi].iter().map(|&(_, i)| pts[i]).find(is_clear);
+                (lo, chunk) = (hi, chunk * 2);
+            }
+            // Only reached in full when no spot clears — then `keyed` is
+            // completely sorted.
+            let mut spots: Vec<(f64, f64)> = keyed.iter().map(|&(_, i)| pts[i]).collect();
             // A self-loop hugs its node, so no spot ON it may clear the
             // node: then the label steps out past the loop's apex.
             if clear.is_none() && e.from == e.to {
@@ -566,7 +741,7 @@ fn avoid_label_overlaps(
             } else {
                 let mut least = now;
                 for &p in &spots {
-                    let c = covered(label_rect(p, w), 0.0, &obstacles);
+                    let c = obstacles.covered(label_rect(p, w), 0.0);
                     if c < least {
                         least = c;
                         best = p;
@@ -1186,6 +1361,37 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
             // A routed stand-in, cut back to the frame(s), when it has a
             // channel; else a curve to the facing frame side; else (no
             // side faces the other end) the old box-to-box curve.
+            // A member drawn to (or from) its own enclosing box: a
+            // short stub to the nearer flow-axis side of the frame, its
+            // label just outside — no curve can reach the box from
+            // outside without crossing the member itself.
+            let own = match (e.from, e.to) {
+                (End::Node(v), End::Sub(s)) | (End::Sub(s), End::Node(v))
+                    if node_cluster[v].contains(&s) =>
+                {
+                    frames.get(s).copied().flatten().map(|f| {
+                        let exit = matches!(e.from, End::Node(_));
+                        let lw = e.label.as_ref().map_or(0.0, |l| text_width(l) + 14.0);
+                        own_box_stub(g.direction, &sc.nodes[v], f, exit, lw)
+                    })
+                }
+                _ => None,
+            };
+            if let Some((pts, mid)) = own {
+                sc.edges.push(SceneEdge {
+                    from: end_id(e.from),
+                    to: end_id(e.to),
+                    bezier: pts,
+                    waypoints: Vec::new(),
+                    kind: e.kind,
+                    ends: e.ends,
+                    label: e
+                        .label
+                        .as_ref()
+                        .map(|l| (l.clone(), mid, text_width(l) + 14.0)),
+                });
+                continue;
+            }
             let routed = stand_in[i].and_then(|ei| {
                 cut_to_frames(
                     g.direction,
@@ -1317,6 +1523,41 @@ fn cut_to_frames(
         return None;
     }
     Some(pts.into_iter().map(|p| from_flow(dir, p)).collect())
+}
+
+/// A straight stub between member `n` and the frame `f` of a box
+/// enclosing it, on the frame side nearer to `n` along the flow axis —
+/// from the node out (`exit`) or from the frame in — plus its label
+/// point: just outside that side, clear of the frame's border line, for
+/// a label `label_w` wide. Screen coordinates.
+fn own_box_stub(
+    dir: Direction,
+    n: &SceneNode,
+    f: (f64, f64, f64, f64),
+    exit: bool,
+    label_w: f64,
+) -> ([(f64, f64); 4], (f64, f64)) {
+    let horizontal = matches!(dir, Direction::LR | Direction::RL);
+    let (b, l) = to_flow(dir, (n.x, n.y));
+    let (_, fa) = to_flow(dir, (f.0, f.1));
+    let (_, fb) = to_flow(dir, (f.0 + f.2, f.1 + f.3));
+    let (l0, l1) = (fa.min(fb), fa.max(fb));
+    let half = if horizontal { n.w } else { n.h } / 2.0;
+    let label_half = if horizontal { label_w } else { LABEL_BOX_H } / 2.0;
+    // Outward along the flow axis: -1 at the low side, +1 at the high.
+    let s = if l - l0 < l1 - l { -1.0 } else { 1.0 };
+    let side = if s < 0.0 { l0 } else { l1 };
+    let at_node = (b, l + s * half);
+    let at_frame = (b, side);
+    let (p0, p3) = if exit {
+        (at_node, at_frame)
+    } else {
+        (at_frame, at_node)
+    };
+    let lerp = |t: f64| (p0.0 + (p3.0 - p0.0) * t, p0.1 + (p3.1 - p0.1) * t);
+    let pts = [p0, lerp(1.0 / 3.0), lerp(2.0 / 3.0), p3];
+    let mid = (b, side + s * (FRAME_BORDER_BAND + LABEL_GAP + label_half));
+    (pts.map(|p| from_flow(dir, p)), from_flow(dir, mid))
 }
 
 /// Screen `(x, y)` -> flow `(breadth, layer)`, the layer axis growing
@@ -1886,9 +2127,9 @@ fn cluster_raw_boxes(g: &Graph, nodes: &[SceneNode]) -> (Vec<RawBox>, Vec<usize>
         let (minx, maxx, miny, maxy) = bb.finish();
         boxes[i] = Some((
             minx - SUB_PAD,
-            miny - SUB_PAD - SUB_HEADER,
+            miny - SUB_PAD - SUB_HEADER - title_extra(&g.subgraphs[i].title),
             (maxx - minx) + 2.0 * SUB_PAD,
-            (maxy - miny) + 2.0 * SUB_PAD + SUB_HEADER,
+            (maxy - miny) + 2.0 * SUB_PAD + SUB_HEADER + title_extra(&g.subgraphs[i].title),
         ));
     }
     (boxes, depth)
@@ -2089,21 +2330,33 @@ pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String 
             x, y, c.w, c.h
         ));
         let title = fit_cluster_title(&sc.clusters, ci, maxx + MARGIN);
-        let tw = text_width(&title) * 12.0 / 14.0; // title font is 12px
+        let tw = text_width(&title) * TITLE_SCALE;
         cluster_titles.push_str(&format!(
-            "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"16\" rx=\"4\" \
+            "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{}\" rx=\"4\" \
              fill=\"#f7f8fd\" fill-opacity=\"0.9\"/>\n",
             x + 6.0,
             y + 5.0,
-            tw + 8.0
+            tw + 8.0,
+            {
+                // Whole px print bare, as the one-line chip always has.
+                let h = 16.0 + title_extra(&title);
+                if h.fract() == 0.0 {
+                    format!("{h}")
+                } else {
+                    format!("{h:.1}")
+                }
+            }
         ));
-        cluster_titles.push_str(&format!(
-            "<text x=\"{:.1}\" y=\"{:.1}\" font-size=\"12\" font-weight=\"bold\" \
-             fill=\"#6a7086\">{}</text>\n",
-            x + 10.0,
-            y + 17.0,
-            escape(&title)
-        ));
+        for (k, line) in title.split('\n').enumerate() {
+            cluster_titles.push_str(&format!(
+                "<text x=\"{:.1}\" y=\"{:.1}\" font-size=\"{}\" font-weight=\"bold\" \
+                 fill=\"#6a7086\">{}</text>\n",
+                x + 10.0,
+                y + 17.0 + k as f64 * TITLE_LINE_H,
+                crate::layout::TITLE_FONT,
+                escape(line)
+            ));
+        }
     }
 
     let mut edge_labels = String::new();
@@ -4036,6 +4289,38 @@ mod tests {
     }
 
     #[test]
+    fn colliding_label_placement_stays_near_linear() {
+        // A 1000-edge labelled fan used to take seconds (every spot of
+        // every colliding label rescanned every obstacle). The grid keeps
+        // each query local: a label far from the rest sees none of them.
+        let k = 1000;
+        let fan: String = (0..k)
+            .map(|i| format!("  H -->|label {i}| T{i}\n"))
+            .collect();
+        let g = parse(&format!("flowchart TB\n{fan}")).unwrap();
+        let t0 = std::time::Instant::now();
+        let s = scene(&g);
+        let took = t0.elapsed();
+        assert_eq!(s.edges.iter().filter(|e| e.label.is_some()).count(), k);
+        assert!(took.as_secs_f64() < 20.0, "label placement took {took:?}");
+
+        let mut grid = ObstacleGrid::new();
+        for i in 0..k {
+            let x = i as f64 * 200.0;
+            grid.push((x, 0.0, x + 60.0, LABEL_BOX_H));
+        }
+        let probe = (500.0 * 200.0, 0.0, 500.0 * 200.0 + 60.0, LABEL_BOX_H);
+        assert!(grid.near(probe).len() <= 3, "query must stay local");
+        assert!(!grid.clear(probe, 0.0));
+        assert!(grid.clear((0.0, 100.0, 60.0, 120.0), LABEL_GAP));
+        let all: Vec<Rect> = grid.rects.clone();
+        assert_eq!(
+            grid.covered(probe, LABEL_GAP),
+            covered(probe, LABEL_GAP, &all)
+        );
+    }
+
+    #[test]
     fn routed_label_stays_on_the_drawn_curve() {
         // A zig-zag lane: curveBasis cuts the corner far from the middle
         // point, so the label moves onto the curve.
@@ -4082,7 +4367,7 @@ mod tests {
         let cut = fit_cluster_title(&s.clusters, left, f64::INFINITY);
         assert!(cut.ends_with('…'), "left title cut: {cut}");
         assert!(
-            text_width(&cut) * 12.0 / 14.0 + 8.0 <= s.clusters[left].w - 2.0 * TITLE_INSET + 0.5
+            text_width(&cut) * TITLE_SCALE + 8.0 <= s.clusters[left].w - 2.0 * TITLE_INSET + 0.5
         );
         // The rightmost one overflows into no frame: kept whole...
         assert_eq!(fit_cluster_title(&s.clusters, right, f64::INFINITY), long);
@@ -4091,6 +4376,61 @@ mod tests {
         let edge = fit_cluster_title(&s.clusters, right, canvas_right(&s));
         assert!(edge.ends_with('…'), "rightmost title cut: {edge}");
         assert!(!to_svg(&s).contains(&format!("{long}</text>")));
+    }
+
+    #[test]
+    fn br_titles_draw_every_line_and_get_header_room_in_every_direction() {
+        for dir in ["TB", "BT", "LR", "RL"] {
+            let g = parse(&format!(
+                "flowchart {dir}\nX --> a\n\
+                 subgraph S [\"First line<br/>second · line<br/>third\"]\n  a --> b\nend\n\
+                 subgraph T [\"One line\"]\n  c\nend\nb --> c"
+            ))
+            .unwrap();
+            let s = scene(&g);
+            let svg = to_svg(&s);
+            for line in ["First line</text>", "second · line</text>", "third</text>"] {
+                assert!(svg.contains(line), "{dir}: {line} missing");
+            }
+            let c = s.clusters.iter().find(|c| c.id == "S").unwrap();
+            let strip_bottom = c.y + TITLE_STRIP + title_extra(&c.title);
+            for n in s.nodes.iter().filter(|n| n.id == "a" || n.id == "b") {
+                let (x0, y0, x1, _) = rect_of_node(n);
+                let chip_right = c.x + TITLE_INSET + text_width(&c.title) * TITLE_SCALE + 8.0;
+                assert!(
+                    y0 >= strip_bottom || x0 >= chip_right || x1 <= c.x,
+                    "{dir}: node {} under the 3-line title",
+                    n.id
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn cut_title_lines_drop_a_dangling_separator() {
+        let mk = |id: &str, x: f64, title: &str| SceneCluster {
+            id: id.into(),
+            x,
+            y: 0.0,
+            w: 120.0,
+            h: 80.0,
+            title: title.into(),
+            depth: 0,
+        };
+        // The cut falls right after " · ": without the trim the line
+        // would read "ALPHA BRAV ·…".
+        let title = "Short\nALPHA BRAV · CHARLIE DELTA ECHO FOXTROT";
+        let cl = [mk("L", 0.0, title), mk("R", 130.0, "r")];
+        let cut = fit_cluster_title(&cl, 0, f64::INFINITY);
+        let lines: Vec<&str> = cut.split('\n').collect();
+        assert_eq!(lines[0], "Short", "a fitting line stays whole");
+        assert_eq!(lines[1], "ALPHA BRAV…");
+        let kept = lines[1].trim_end_matches('…');
+        assert!(
+            !kept.ends_with(|ch: char| ch.is_whitespace() || TITLE_CUT_SEPARATORS.contains(&ch)),
+            "dangling separator in {cut:?}"
+        );
+        assert!(text_width(lines[1]) * TITLE_SCALE <= 120.0 - 2.0 * TITLE_INSET - 8.0);
     }
 
     #[test]
@@ -4106,7 +4446,7 @@ mod tests {
         );
         let ri = s.clusters.iter().position(|c| c.id == "R").unwrap();
         let c = &s.clusters[ri];
-        assert!(text_width(long) * 12.0 / 14.0 + 8.0 > c.w - 2.0 * TITLE_INSET);
+        assert!(text_width(long) * TITLE_SCALE + 8.0 > c.w - 2.0 * TITLE_INSET);
         assert_eq!(fit_cluster_title(&s.clusters, ri, canvas_right(&s)), long);
         assert!(to_svg(&s).contains(&format!("{long}</text>")));
     }
@@ -4370,6 +4710,29 @@ mod tests {
             }
         }
         sc
+    }
+
+    #[test]
+    fn edges_to_their_own_box_stay_off_its_members_in_every_direction() {
+        // `C -->|..| G` from inside G used to curve across C in LR/RL,
+        // its label on top of C.
+        for dir in ["LR", "RL", "TB", "BT"] {
+            let s = assert_clean_geometry(&format!(
+                "flowchart {dir}\n\
+                 subgraph G\n  A --> B --> C --> A\nend\n\
+                 C -->|back to group| G\nG --> A"
+            ));
+            for e in s.edges.iter().filter(|e| e.from == "G" || e.to == "G") {
+                let pts = sample_cubic(&e.bezier, 24);
+                for n in &s.nodes {
+                    let (x0, y0, x1, y1) = rect_of_node(n);
+                    let inside = pts.iter().any(|p| {
+                        p.0 > x0 + 1.0 && p.0 < x1 - 1.0 && p.1 > y0 + 1.0 && p.1 < y1 - 1.0
+                    });
+                    assert!(!inside, "{dir}: edge {}->{} crosses {}", e.from, e.to, n.id);
+                }
+            }
+        }
     }
 
     #[test]
