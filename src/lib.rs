@@ -62,12 +62,14 @@ pub use parser::ParseError;
 pub use scene::SvgOptions;
 
 pub use advance::{
-    edge_kind_name, layout_advance, render_advance_routed, render_advance_routed_with_lanes,
-    render_advance_svg, render_advance_text_svg, scene_to_json, shape_name, to_json, AdvanceAnchor,
-    AdvanceConfig, AdvanceDiagram, AdvanceDirection, AdvanceEdge, AdvanceEdgeStyle, AdvanceElement,
-    AdvanceEnd, AdvanceError, AdvanceHit, AdvanceLane, AdvanceNode, AdvanceOrder, AdvanceScene,
-    AdvanceSceneAnchor, AdvanceSceneEdge, AdvanceSceneElement, AdvanceSceneLane, AdvanceSceneNode,
-    AdvanceSide, AdvanceStyle, AnchorRef, ElementLayout,
+    edge_kind_name, layout_advance, render_advance_routed, render_advance_routed_with,
+    render_advance_routed_with_lanes, render_advance_routed_with_lanes_with, render_advance_svg,
+    render_advance_svg_with, render_advance_text_svg, render_advance_text_svg_with, scene_to_json,
+    shape_name, to_json, AdvanceAnchor, AdvanceConfig, AdvanceDiagram, AdvanceDirection,
+    AdvanceEdge, AdvanceEdgeStyle, AdvanceElement, AdvanceEnd, AdvanceError, AdvanceHit,
+    AdvanceLane, AdvanceNode, AdvanceOrder, AdvanceScene, AdvanceSceneAnchor, AdvanceSceneEdge,
+    AdvanceSceneElement, AdvanceSceneLane, AdvanceSceneNode, AdvanceSide, AdvanceStyle, AnchorRef,
+    ElementLayout,
 };
 
 /// Shortcut: Mermaid-syntax text -> SVG string. Dispatches on the
@@ -81,7 +83,8 @@ pub fn render_svg(source: &str) -> Result<String, ParseError> {
 }
 
 /// [`render_svg`] with explicit viewport options — opt in to a responsive
-/// root `<svg>` (`width="100%"`) and/or a custom `preserveAspectRatio`.
+/// root `<svg>` (`width="100%"`), a custom `preserveAspectRatio`, and/or a
+/// transparent background (no white canvas `<rect>`).
 /// Dispatches on the same diagram-type headers as [`render_svg`].
 pub fn render_svg_advanced(source: &str, opts: &SvgOptions) -> Result<String, ParseError> {
     match parser::parse_document(source)? {

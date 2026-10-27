@@ -203,6 +203,16 @@ pub fn render_compact(g: &Graph, opts: &CompactOptions) -> String {
     render_compact_titled(g, opts, "Flowchart diagram")
 }
 
+/// [`render_compact`] with explicit SVG options (see
+/// [`crate::scene::SvgOptions`]).
+pub fn render_compact_with(
+    g: &Graph,
+    opts: &CompactOptions,
+    svg: &crate::scene::SvgOptions,
+) -> String {
+    render_compact_titled_with(g, opts, "Flowchart diagram", svg)
+}
+
 /// [`render_compact`] with a caller-chosen accessible name. A
 /// non-empty `g.acc_title` wins over `title`, and `g.acc_descr` becomes
 /// the SVG's `<desc>`, exactly as in [`crate::render::render_titled`].
@@ -213,6 +223,17 @@ pub fn render_compact_titled(g: &Graph, opts: &CompactOptions, title: &str) -> S
         &crate::render::graph_a11y(g),
         &crate::scene::SvgOptions::default(),
     )
+}
+
+/// [`render_compact_titled`] with explicit SVG options (see
+/// [`crate::scene::SvgOptions`]).
+pub fn render_compact_titled_with(
+    g: &Graph,
+    opts: &CompactOptions,
+    title: &str,
+    svg: &crate::scene::SvgOptions,
+) -> String {
+    crate::scene::to_svg_titled_with(&scene_compact(g, opts).scene, title, svg)
 }
 
 /// The graph as one linear run of node indices, or the reason it
@@ -587,6 +608,24 @@ mod tests {
             assert_eq!(se.ends, e.ends);
             assert_eq!(se.ends.start, Some(crate::model::Marker::Cross));
         }
+    }
+
+    #[test]
+    fn render_compact_with_matches_render_compact_and_honours_transparent() {
+        let g = parse(&chain(12)).unwrap();
+        let opts = CompactOptions::for_extent(420.0);
+        let base = render_compact(&g, &opts);
+        let svg = crate::scene::SvgOptions::default();
+        assert_eq!(base, render_compact_with(&g, &opts, &svg));
+        let mut svg = svg;
+        svg.transparent = true;
+        let t = render_compact_with(&g, &opts, &svg);
+        // Only the white canvas rect right after <title> goes away.
+        let rect_at = base.find("</title>\n<rect").unwrap() + "</title>\n".len();
+        let rect_end = rect_at + base[rect_at..].find('\n').unwrap() + 1;
+        let mut expect = base.clone();
+        expect.replace_range(rect_at..rect_end, "");
+        assert_eq!(t, expect);
     }
 
     #[test]

@@ -84,6 +84,13 @@ cargo build --release
 # or through a pipe
 cat examples/lr.mmd | ./target/release/flowmaid > lr.svg
 
+# fold a long linear chain to fit 300 px along the flow axis
+./target/release/flowmaid examples/lr.mmd --compact 300 -o lr-compact.svg
+
+# drop the white background so the SVG sits on any page colour
+# (combines with --compact, --advance and --advance-text)
+./target/release/flowmaid examples/demo.mmd --transparent -o demo.svg
+
 # during development
 cargo run -- examples/demo.mmd -o demo.svg
 cargo test
@@ -96,6 +103,17 @@ let flow = flowmaid::render_svg("flowchart TD\nA[Start] --> B[Done]")?;
 let uml  = flowmaid::render_svg("classDiagram\nAnimal <|-- Dog")?;
 let fsm  = flowmaid::render_svg("stateDiagram-v2\n[*] --> Idle")?;
 ```
+
+Rendering options go through `SvgOptions` and `render_svg_advanced` (each diagram module also has a `*_with` writer). `SvgOptions` is `#[non_exhaustive]`: start from `Default` and set the fields you need — that is the supported way to build it, and it keeps compiling as options are added:
+
+```rust
+let mut opts = flowmaid::SvgOptions::default();
+opts.transparent = true; // no white canvas rect — same as CLI --transparent
+opts.responsive = true;  // width="100%" instead of a fixed pixel size
+let svg = flowmaid::render_svg_advanced("flowchart TD\nA --> B", &opts)?;
+```
+
+Transparent output keeps the default dark text and edge colours, so it reads best on light-to-mid backgrounds; dark-page theming is tracked in [#57](https://github.com/go-routine-id/flowmaid/issues/57).
 
 ## Supported syntax
 

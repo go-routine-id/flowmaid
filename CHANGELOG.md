@@ -103,9 +103,23 @@ project adheres to [Semantic Versioning](https://semver.org/).
   same nearest look-alikes as their `@{ shape: … }` names (the `[/ /]` and `[\ \]`
   parallelograms and a rectangle). A slanted label now ends at whichever of `/]` and
   `\]` comes first, as in mermaid's lexer. No public API change.
+- **Opt-in transparent background** ([#62](https://github.com/go-routine-id/flowmaid/issues/62)).
+  `SvgOptions::transparent` omits the full-canvas white `<rect>` for every diagram type
+  (`render_svg_advanced`, each `*_with` writer, plus new `render_advance_svg_with`,
+  `render_advance_text_svg_with`, `render_advance_routed_with`,
+  `render_advance_routed_with_lanes_with`, `fold::render_compact_with` and
+  `fold::render_compact_titled_with`); CLI `--transparent`. Default output is unchanged
+  byte-for-byte. Text and edge colours are unchanged (still dark, tuned for a light
+  background), so transparent output can be hard to read on a dark page; theming is
+  tracked in [#57](https://github.com/go-routine-id/flowmaid/issues/57).
 
 ### Changed
 
+- **Breaking (minor bump required):** `SvgOptions` gained the public field `transparent`
+  and is now `#[non_exhaustive]`. Outside the crate, struct literals no longer compile
+  (not even with `..Default::default()`); build it with `SvgOptions::default()` and assign
+  the fields you need. This makes future option fields non-breaking. Release this as
+  0.31.0, not 0.30.x.
 - A pipe edge label ``|"`x`"|`` is now a markdown string (label `x`), as in mermaid; it
   used to keep the backticks.
 - **Mermaid's marker-letter rule applies.** A letter glued to the end of an operator is
