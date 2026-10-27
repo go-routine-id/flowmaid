@@ -873,10 +873,16 @@ fn layout_core(
             (LABEL_BOX_H, w)
         };
         short_labels[alayer[hi]].push((lo, hi, ext));
-        short_across[alayer[hi]].push(((bpos[lo] + bpos[hi]) / 2.0, across, ext));
+        // In LR/RL a row along the layer axis costs a label's whole
+        // width, and the scene never uses it: colliding labels there
+        // slide apart ACROSS the flow (they are only LABEL_BOX_H tall),
+        // so each gap just has to fit its widest label (above).
+        if !horizontal {
+            short_across[alayer[hi]].push(((bpos[lo] + bpos[hi]) / 2.0, across, ext));
+        }
     }
-    // Labels sharing one gap that would overlap side by side need rows
-    // of their own, stacked along the layer axis (a fan of labelled
+    // TD/BT labels sharing one gap that would overlap side by side need
+    // rows of their own, stacked along the layer axis (a fan of labelled
     // edges out of one node, or into one). Greedy interval packing on
     // each label's breadth span, centred between its ends; the gap must
     // hold every row with LABEL_CLEAR on both sides, plus one spare row:
@@ -919,9 +925,22 @@ fn layout_core(
         }
         // A label that would cover its own ends grows the gap until it
         // clears both by LABEL_CLEAR; a label that already fits leaves
-        // the gap — and the whole layout — exactly as it was.
+        // the gap — and the whole layout — exactly as it was. An end
+        // whose frame closes / opens on its layer is reached past that
+        // frame's border (the layer's farthest one), not its own box:
+        // a label on the border line would hide it.
         for &(s, t, ext) in &short_labels[li] {
-            let ends = lcoord[li - 1] + (alsize[s] + alsize[t]) / 2.0;
+            let lo_side = if reach[s].1 > 0.0 {
+                reach_of(li - 1, 1)
+            } else {
+                alsize[s] / 2.0
+            };
+            let hi_side = if reach[t].0 > 0.0 {
+                reach_of(li, 0)
+            } else {
+                alsize[t] / 2.0
+            };
+            let ends = lcoord[li - 1] + (lo_side + hi_side);
             let at = cursor + lh / 2.0;
             if at - ends < ext {
                 cursor = cursor.max(ends + ext + 2.0 * LABEL_CLEAR - lh / 2.0);

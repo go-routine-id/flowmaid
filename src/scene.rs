@@ -379,10 +379,12 @@ fn basis_sample(pts: &[(f64, f64)]) -> Vec<(f64, f64)> {
 }
 
 /// A cluster's title as drawn: whole, unless it runs past its own frame
-/// INTO another frame (a sibling, not one it sits inside) — then cut
-/// with an ellipsis to fit its frame, so neighbouring titles never
-/// overprint each other. Measured at the 12px title font.
-fn fit_cluster_title(clusters: &[SceneCluster], ci: usize) -> String {
+/// INTO another frame (a sibling, not one it sits inside) or past
+/// `canvas_right` (the drawn canvas's right edge, same coordinates) —
+/// then cut with an ellipsis to fit its frame, so neighbouring titles
+/// never overprint each other and none is clipped mid-word by the
+/// canvas. Measured at the 12px title font.
+fn fit_cluster_title(clusters: &[SceneCluster], ci: usize, canvas_right: f64) -> String {
     let c = &clusters[ci];
     let scale = 12.0 / 14.0;
     let chip = |w: f64| (c.x + TITLE_INSET, c.y, w + 8.0, TITLE_STRIP);
@@ -393,15 +395,16 @@ fn fit_cluster_title(clusters: &[SceneCluster], ci: usize) -> String {
     let within = |a: &SceneCluster, b: &SceneCluster| {
         a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h
     };
-    let collides = clusters.iter().enumerate().any(|(oi, o)| {
-        oi != ci
-            && !within(c, o)
-            && !within(o, c)
-            && x < o.x + o.w
-            && o.x < x + w
-            && y < o.y + o.h
-            && o.y < y + h
-    });
+    let collides = x + w > canvas_right
+        || clusters.iter().enumerate().any(|(oi, o)| {
+            oi != ci
+                && !within(c, o)
+                && !within(o, c)
+                && x < o.x + o.w
+                && o.x < x + w
+                && y < o.y + o.h
+                && o.y < y + h
+        });
     if !collides {
         return c.title.clone();
     }
@@ -441,6 +444,9 @@ const LABEL_GAP: f64 = 4.0;
 const LABEL_SLIDE_STEP: f64 = 6.0;
 /// Overlap (px, per axis) below which two boxes count as just touching.
 const TOUCH_EPS: f64 = 0.5;
+/// Half-thickness of the band a subgraph frame's border line blocks
+/// for edge labels (the line is drawn 1.4px wide).
+const FRAME_BORDER_BAND: f64 = 1.0;
 
 /// Axis-aligned box as (x0, y0, x1, y1).
 type Rect = (f64, f64, f64, f64);
@@ -485,13 +491,17 @@ fn drawn_points(e: &SceneEdge) -> Vec<(f64, f64)> {
     out
 }
 
-/// Slide every edge label that covers a node box or an earlier edge's
-/// label along its OWN drawn edge, to the nearest spot clear of both
-/// by [`LABEL_GAP`] — or, when no spot is, to the one covering least,
-/// if that beats where it sits. Labels that cover nothing keep their
-/// exact spot, so only colliding diagrams change. Returns the indices
-/// of the edges whose label moved.
-fn avoid_label_overlaps(nodes: &[SceneNode], edges: &mut [SceneEdge]) -> Vec<usize> {
+/// Slide every edge label that covers a node box, a subgraph frame's
+/// border line or an earlier edge's label along its OWN drawn edge, to
+/// the nearest spot clear of all of them by [`LABEL_GAP`] — or, when no
+/// spot is, to the one covering least, if that beats where it sits.
+/// Labels that cover nothing keep their exact spot, so only colliding
+/// diagrams change. Returns the indices of the edges whose label moved.
+fn avoid_label_overlaps(
+    nodes: &[SceneNode],
+    frames: &[SceneCluster],
+    edges: &mut [SceneEdge],
+) -> Vec<usize> {
     let mut obstacles: Vec<Rect> = nodes
         .iter()
         .map(|n| {
@@ -503,6 +513,19 @@ fn avoid_label_overlaps(nodes: &[SceneNode], edges: &mut [SceneEdge]) -> Vec<usi
             )
         })
         .collect();
+    // A frame is only its outline: a label inside it is fine, one
+    // straddling its border hides the line (and blurs which box the
+    // label belongs to).
+    let b = FRAME_BORDER_BAND;
+    for f in frames {
+        let (x0, y0, x1, y1) = (f.x, f.y, f.x + f.w, f.y + f.h);
+        obstacles.extend([
+            (x0 - b, y0 - b, x1 + b, y0 + b),
+            (x0 - b, y1 - b, x1 + b, y1 + b),
+            (x0 - b, y0 - b, x0 + b, y1 + b),
+            (x1 - b, y0 - b, x1 + b, y1 + b),
+        ]);
+    }
     let label_rect = |c: (f64, f64), w: f64| {
         (
             c.0 - w / 2.0,
@@ -526,10 +549,19 @@ fn avoid_label_overlaps(nodes: &[SceneNode], edges: &mut [SceneEdge]) -> Vec<usi
             // Nearest first; the sort is stable, so ties stay in curve order.
             let dist = |p: &(f64, f64)| (p.0 - at.0).hypot(p.1 - at.1);
             spots.sort_by(|a, b| dist(a).total_cmp(&dist(b)));
-            let clear = spots
-                .iter()
-                .find(|&&p| covered(label_rect(p, w), LABEL_GAP, &obstacles) == 0.0);
-            if let Some(&p) = clear {
+            let is_clear =
+                |p: &(f64, f64)| covered(label_rect(*p, w), LABEL_GAP, &obstacles) == 0.0;
+            let mut clear = spots.iter().copied().find(is_clear);
+            // A self-loop hugs its node, so no spot ON it may clear the
+            // node: then the label steps out past the loop's apex.
+            if clear.is_none() && e.from == e.to {
+                if let Some(n) = nodes.iter().find(|n| n.id == e.from) {
+                    let out = beyond_loop(&spots, (n.x, n.y), w);
+                    clear = out.iter().copied().find(is_clear);
+                    spots.extend(out);
+                }
+            }
+            if let Some(p) = clear {
                 best = p;
             } else {
                 let mut least = now;
@@ -551,6 +583,33 @@ fn avoid_label_overlaps(nodes: &[SceneNode], edges: &mut [SceneEdge]) -> Vec<usi
         obstacles.push(label_rect(best, w));
     }
     moved
+}
+
+/// Spots for a self-loop's label beyond its loop: from the drawn
+/// loop's apex (its point farthest from the node centre `c`) outward,
+/// [`LABEL_SLIDE_STEP`] apart, far enough for a `w`-wide label box to
+/// clear the node whichever side the loop sticks out of.
+fn beyond_loop(loop_pts: &[(f64, f64)], c: (f64, f64), w: f64) -> Vec<(f64, f64)> {
+    let dist = |p: &(f64, f64)| (p.0 - c.0).hypot(p.1 - c.1);
+    let Some(apex) = loop_pts
+        .iter()
+        .copied()
+        .max_by(|a, b| dist(a).total_cmp(&dist(b)))
+    else {
+        return Vec::new();
+    };
+    let len = dist(&apex);
+    if len <= f64::EPSILON {
+        return Vec::new();
+    }
+    let (dx, dy) = ((apex.0 - c.0) / len, (apex.1 - c.1) / len);
+    let steps = ((w / 2.0 + LABEL_BOX_H + LABEL_GAP) / LABEL_SLIDE_STEP).ceil() as usize;
+    (1..=steps)
+        .map(|k| {
+            let t = k as f64 * LABEL_SLIDE_STEP;
+            (apex.0 + dx * t, apex.1 + dy * t)
+        })
+        .collect()
 }
 
 /// Grow (and shift) the canvas so the labels of `moved` edges stay on
@@ -645,7 +704,7 @@ pub fn scene_sized(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
 /// The classic single-level pipeline (no subgraphs).
 fn scene_flat(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
     let mut sc = scene_from_layout(g, sizes, layout_sized(g, sizes), None);
-    let moved = avoid_label_overlaps(&sc.nodes, &mut sc.edges);
+    let moved = avoid_label_overlaps(&sc.nodes, &[], &mut sc.edges);
     fit_moved_labels(&mut sc, &moved);
     sc
 }
@@ -1179,7 +1238,7 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
     }
 
     // Labels last, once every edge (sub-edges too) is drawn.
-    let moved = avoid_label_overlaps(&sc.nodes, &mut sc.edges);
+    let moved = avoid_label_overlaps(&sc.nodes, &sc.clusters, &mut sc.edges);
     fit_moved_labels(&mut sc, &moved);
 
     // Re-normalise so the boxes' padding/header and any box-routed
@@ -1729,7 +1788,7 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
         }
     }
 
-    avoid_label_overlaps(&nodes, &mut edges);
+    avoid_label_overlaps(&nodes, &clusters, &mut edges);
     let mut bb = Bbox::new();
     grow_scene(&mut bb, &nodes, &edges, &clusters);
     let (_, maxx, _, maxy) = bb.finish();
@@ -2029,7 +2088,7 @@ pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String 
              fill=\"#f7f8fd\" stroke=\"#c9cfe8\" stroke-width=\"1.4\"/>\n",
             x, y, c.w, c.h
         ));
-        let title = fit_cluster_title(&sc.clusters, ci);
+        let title = fit_cluster_title(&sc.clusters, ci, maxx + MARGIN);
         let tw = text_width(&title) * 12.0 / 14.0; // title font is 12px
         cluster_titles.push_str(&format!(
             "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"16\" rx=\"4\" \
@@ -3973,6 +4032,13 @@ mod tests {
         assert_eq!(channel_label_point(&line), line[2]);
     }
 
+    /// The right edge of the canvas `to_svg` draws `s` on.
+    fn canvas_right(s: &Scene) -> f64 {
+        let mut bb = Bbox::new();
+        grow_scene(&mut bb, &s.nodes, &s.edges, &s.clusters);
+        bb.finish().1 + MARGIN
+    }
+
     #[test]
     fn long_titles_are_cut_only_where_they_would_run_into_a_sibling() {
         let long = "a very long subgraph title that is much wider than its box";
@@ -3988,13 +4054,35 @@ mod tests {
         } else {
             (ri, li)
         };
-        let cut = fit_cluster_title(&s.clusters, left);
+        let cut = fit_cluster_title(&s.clusters, left, f64::INFINITY);
         assert!(cut.ends_with('…'), "left title cut: {cut}");
         assert!(
             text_width(&cut) * 12.0 / 14.0 + 8.0 <= s.clusters[left].w - 2.0 * TITLE_INSET + 0.5
         );
-        // The rightmost one overflows into nothing: kept whole.
-        assert_eq!(fit_cluster_title(&s.clusters, right), long);
+        // The rightmost one overflows into no frame: kept whole...
+        assert_eq!(fit_cluster_title(&s.clusters, right, f64::INFINITY), long);
+        // ...unless it would run off the canvas, which clips it
+        // mid-word: then it is cut like its sibling.
+        let edge = fit_cluster_title(&s.clusters, right, canvas_right(&s));
+        assert!(edge.ends_with('…'), "rightmost title cut: {edge}");
+        assert!(!to_svg(&s).contains(&format!("{long}</text>")));
+    }
+
+    #[test]
+    fn a_title_overflowing_its_frame_onto_the_canvas_stays_whole() {
+        let long = "a long subgraph title, wider than its box";
+        let s = scene(
+            &parse(&format!(
+                "flowchart TB\nsubgraph R [\"{long}\"]\n  r\nend\n\
+                 r --> w[\"a node label that is far wider than the subgraph title above it, so \
+                 the canvas reaches well past the title\"]"
+            ))
+            .unwrap(),
+        );
+        let ri = s.clusters.iter().position(|c| c.id == "R").unwrap();
+        let c = &s.clusters[ri];
+        assert!(text_width(long) * 12.0 / 14.0 + 8.0 > c.w - 2.0 * TITLE_INSET);
+        assert_eq!(fit_cluster_title(&s.clusters, ri, canvas_right(&s)), long);
         assert!(to_svg(&s).contains(&format!("{long}</text>")));
     }
 
@@ -4166,8 +4254,9 @@ mod tests {
     }
 
     /// Geometry every rendered flowchart must satisfy: label boxes at
-    /// least as wide as their text and clear of every node and other
-    /// label, rect targets reached ON their border, each node inside
+    /// least as wide as their text and clear of every node, other
+    /// label and frame border line, rect targets reached ON their
+    /// border, each node inside
     /// exactly the frames of the subgraphs holding it, and frames
     /// disjoint unless one nests in the other.
     fn assert_clean_geometry(src: &str) -> Scene {
@@ -4192,6 +4281,12 @@ mod tests {
             }
             for (u, o) in &labels[..i] {
                 assert!(!overlaps(*r, *o), "label {t:?} covers label {u:?}");
+            }
+            for c in &sc.clusters {
+                let (x0, y0, x1, y1) = (c.x, c.y, c.x + c.w, c.y + c.h);
+                let inside = r.0 > x0 && r.1 > y0 && r.2 < x1 && r.3 < y1;
+                let outside = r.2 < x0 || r.0 > x1 || r.3 < y0 || r.1 > y1;
+                assert!(inside || outside, "label {t:?} on the border of {}", c.id);
             }
         }
         for (e, se) in g.edges.iter().zip(&sc.edges) {
@@ -4264,6 +4359,68 @@ mod tests {
         );
         assert_clean_geometry(
             "flowchart RL\nA -->|a rather long label here| B\nA -->|another long one| C",
+        );
+    }
+
+    #[test]
+    fn lr_colliding_labels_grow_their_gap_only_to_the_widest_one() {
+        // Four labels share the gap after `laptop`, and their spans
+        // collide across the flow. They slide apart across it, so the
+        // gap needs room for the widest label — not for a row of
+        // labels laid side by side along the flow (which once more
+        // than doubled it, all of it empty).
+        let sc = assert_clean_geometry(
+            "flowchart LR\n\
+             subgraph prod[\"PROD\"]\n  direction TB\n  sshd[\"sshd\"]\n  src[\"source\"]\nend\n\
+             laptop([\"laptop\"])\n\
+             subgraph standby[\"STANDBY\"]\n  direction TB\n  tunnel[\"tunnel\"]\n  static[\"static copy\"]\nend\n\
+             tunnel ==>|\"ssh out of standby\"| sshd\n\
+             laptop -->|\"read live state\"| src\n\
+             laptop -->|\"one-off setup: role, hba, slot\"| sshd\n\
+             laptop -->|\"write env, compose, cert\"| static",
+        );
+        let node = |id: &str| sc.nodes.iter().find(|n| n.id == id).unwrap();
+        let (laptop, sshd) = (node("laptop"), node("sshd"));
+        let gap = (sshd.x - sshd.w / 2.0) - (laptop.x + laptop.w / 2.0);
+        let widest = sc
+            .edges
+            .iter()
+            .filter_map(|e| e.label.as_ref().map(|l| l.2))
+            .fold(0.0, f64::max);
+        assert!(gap >= widest, "gap {gap} cannot hold a {widest} label");
+        assert!(gap <= widest + 2.0 * LABEL_BOX_H, "gap {gap} for {widest}");
+    }
+
+    #[test]
+    fn labels_keep_off_frame_border_lines() {
+        // The label of an edge from one frame into the next used to sit
+        // mid-gap, astride both borders (and past the first's corner).
+        assert_clean_geometry(
+            "flowchart LR\n\
+             subgraph prod[\"PROD\"]\n  direction TB\n  pg[(\"postgres primary\")]\n  minio[(\"minio\")]\nend\n\
+             subgraph standby[\"STANDBY\"]\n  direction TB\n  rpg[(\"postgres replica\")]\n  rminio[(\"minio mirror\")]\nend\n\
+             pg ==>|\"streaming replication async over tunnel :15432\"| rpg\n\
+             minio -->|\"mc mirror over tunnel :19000\"| rminio",
+        );
+        assert_clean_geometry(
+            "flowchart TD\n\
+             subgraph top[\"Top\"]\n  a[\"alpha\"]\nend\n\
+             subgraph low[\"Low\"]\n  b[\"beta\"]\nend\n\
+             a -->|\"a label crossing from one box into the next\"| b",
+        );
+    }
+
+    #[test]
+    fn td_self_loop_labels_step_out_past_their_loop() {
+        // A self-loop hugs the node's side: a label wider than the loop
+        // found no clear spot on it and stayed over the node's text.
+        for dir in ["TD", "BT", "LR", "RL"] {
+            assert_clean_geometry(&format!(
+                "flowchart {dir}\nA -->|go| B\nB -->|a self loop label, long| B"
+            ));
+        }
+        assert_clean_geometry(
+            "flowchart TD\nA -->|x| B\nB -->|y| A\nB -->|lbl 8 long text here| B",
         );
     }
 

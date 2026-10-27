@@ -50,8 +50,24 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - **Edges reach nodes at the top of a subgraph.** The title-strip room no longer inflates
   the node itself, so arrows end on the visible border instead of 26px short.
 
-Only diagrams with subgraphs change layout; diagrams without subgraphs render
-byte-identically.
+- **Edge labels no longer hide nodes or frame borders (#61).** A label too wide for the
+  gap between its two ends grows that gap until it clears them (and, when an end sits in
+  a subgraph, that frame's border); a label still covering a node, a frame border line or
+  an earlier label slides along its own edge to the nearest clear spot, and a self-loop's
+  label steps out past its loop. In TD/BT a fan of labels sharing one gap gets a row each;
+  in LR/RL the gap only grows to its widest label, since the labels separate across the
+  flow. Labels that cover nothing keep their exact spot.
+- **Arrows, em dashes and emoji are measured at about 1em (#61).** Text containing `→`,
+  `—` or symbols from the arrows / misc-symbols / dingbats blocks was measured as narrow
+  Latin letters, so node boxes clipped it. The measure is shared by every diagram type,
+  so sequence diagrams whose messages contain these glyphs come out a few pixels wider
+  too.
+- **Subgraph titles are not clipped by the canvas edge.** A title running past the
+  canvas is cut with `…` to fit its frame, like a title running into a sibling frame.
+
+Layout changes are confined to diagrams with subgraphs, edge labels that collided with a
+node, label or frame border, and text containing the re-measured glyphs; every other
+diagram renders byte-identically.
 
 ## [0.30.0] - 2026-09-07
 
