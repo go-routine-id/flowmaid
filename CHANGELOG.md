@@ -31,6 +31,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
   mint a stray node. `to_mermaid` round-trips ids and metadata. New: `model::EdgeMeta`,
   `model::EdgeAnimation`, `model::EdgeCurve` (`from_mermaid`, `mermaid_name`), and a `meta`
   field on `Edge`, `SubEdge` and `SceneEdge`. Diagrams without ids render byte-identically.
+- **Mermaid v11 node metadata (`A@{ shape: cyl, label: "DB" }`).** Accepted after a node id
+  (and after its bracket shape or `:::class`) in every statement position, on one line or
+  several. All mermaid registry shape names parse: the 15 families with a flowmaid
+  equivalent draw it exactly, the rest fall back to the nearest existing shape (`text`,
+  braces and `bolt` draw borderless), and invalid names fail with mermaid's own `No such
+  shape: X.` / `… Shape names should be lowercase.` messages. `label` replaces the label;
+  `icon`, `img`, `form`, `pos`, `w`, `h`, `constraint`, `labelType` are accepted and not
+  drawn. `id@{ … }` on a subgraph id is validated and ignored. No public API change.
 - **`flowchart-elk` header.** Accepted as an alias of `flowchart` with the same direction
   rules; the ELK layout hint is dropped (`to_mermaid` writes `flowchart`).
 

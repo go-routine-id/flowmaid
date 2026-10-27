@@ -2876,6 +2876,20 @@ mod tests {
     }
 
     #[test]
+    fn node_metadata_draws_like_the_bracket_shape() {
+        assert_eq!(
+            svg_src("flowchart TD\n  A@{ shape: cyl, label: \"DB\" } --> B\n"),
+            svg_src("flowchart TD\n  A[(DB)] --> B\n")
+        );
+        assert_eq!(
+            svg_src("flowchart TD\n  A[x]@{ shape: hex }\n"),
+            svg_src("flowchart TD\n  A{{x}}\n")
+        );
+        let svg = svg_src("flowchart TD\n  A@{ shape: text, label: hi }\n");
+        assert!(svg.contains("fill=\"none\" stroke=\"none\""), "{svg}");
+    }
+
+    #[test]
     fn a11y_desc_ids_are_content_hashed_and_default_is_unchanged() {
         let g = parse("flowchart TD\nA --> B").unwrap();
         let sc = scene(&g);

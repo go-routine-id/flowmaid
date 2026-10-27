@@ -429,6 +429,268 @@ impl RawEdgeMeta {
 struct FlowMeta {
     /// Every user edge id seen so far, with its metadata.
     edges: HashMap<String, RawEdgeMeta>,
+    /// Nodes whose `@{ shape: … }` is a borderless mermaid shape (`text`,
+    /// braces, `bolt`): drawn without fill and stroke unless styled.
+    borderless: HashSet<usize>,
+}
+
+/// Mermaid's shape names (`A@{ shape: … }`, shapes.ts registry: short
+/// names, aliases, and the internal aliases that pass its lowercase
+/// gate) and the flowmaid [`Shape`] each draws as. A name mermaid
+/// accepts but flowmaid has no geometry for falls back to the nearest
+/// look-alike, so every valid mermaid diagram still renders.
+const MERMAID_SHAPES: &[(&[&str], Shape)] = &[
+    // Exact equivalents.
+    (&["rect", "proc", "process", "rectangle"], Shape::Rect),
+    (&["rounded", "event"], Shape::Rounded),
+    (&["stadium", "terminal", "pill"], Shape::Stadium),
+    (
+        &[
+            "fr-rect",
+            "subprocess",
+            "subproc",
+            "framed-rectangle",
+            "subroutine",
+        ],
+        Shape::Subroutine,
+    ),
+    (&["cyl", "db", "database", "cylinder"], Shape::Cylinder),
+    (&["circle", "circ"], Shape::Circle),
+    (
+        &["dbl-circ", "double-circle", "doublecircle"],
+        Shape::DoubleCircle,
+    ),
+    (&["diam", "decision", "diamond", "question"], Shape::Diamond),
+    (&["hex", "hexagon", "prepare"], Shape::Hexagon),
+    (&["lean-r", "lean-right", "in-out"], Shape::Parallelogram),
+    (&["lean-l", "lean-left", "out-in"], Shape::ParallelogramAlt),
+    (&["sm-circ", "start", "small-circle"], Shape::StateStart),
+    (&["fr-circ", "stop", "framed-circle"], Shape::StateEnd),
+    (&["fork", "join"], Shape::ForkBar),
+    (&["f-circ", "junction", "filled-circle"], Shape::StateStart),
+    // Fallbacks: no flowmaid geometry yet.
+    (
+        &["trap-b", "priority", "trapezoid-bottom", "trapezoid"],
+        Shape::Parallelogram,
+    ),
+    (
+        &["trap-t", "manual", "trapezoid-top", "inv-trapezoid"],
+        Shape::ParallelogramAlt,
+    ),
+    (
+        &[
+            "odd",
+            "doc",
+            "document",
+            "docs",
+            "documents",
+            "st-doc",
+            "stacked-document",
+            "lin-doc",
+            "lined-document",
+            "tag-doc",
+            "tagged-document",
+            "notch-rect",
+            "card",
+            "notched-rectangle",
+            "div-rect",
+            "div-proc",
+            "divided-rectangle",
+            "divided-process",
+            "st-rect",
+            "procs",
+            "processes",
+            "stacked-rectangle",
+            "tag-rect",
+            "tagged-rectangle",
+            "tag-proc",
+            "tagged-process",
+            "win-pane",
+            "internal-storage",
+            "window-pane",
+            "flag",
+            "paper-tape",
+            "sl-rect",
+            "manual-input",
+            "sloped-rectangle",
+            "datastore",
+            "data-store",
+            "folder",
+            "directory",
+            "console",
+            "browser",
+        ],
+        Shape::Rect,
+    ),
+    (
+        &[
+            "lin-rect",
+            "lined-rectangle",
+            "lined-process",
+            "lin-proc",
+            "shaded-process",
+        ],
+        Shape::Subroutine,
+    ),
+    (
+        &[
+            "delay",
+            "half-rounded-rectangle",
+            "bow-rect",
+            "stored-data",
+            "bow-tie-rectangle",
+        ],
+        Shape::Stadium,
+    ),
+    (
+        &[
+            "curv-trap",
+            "curved-trapezoid",
+            "display",
+            "cloud",
+            "person",
+        ],
+        Shape::Rounded,
+    ),
+    (
+        &[
+            "h-cyl",
+            "das",
+            "horizontal-cylinder",
+            "lin-cyl",
+            "disk",
+            "lined-cylinder",
+            "bucket",
+        ],
+        Shape::Cylinder,
+    ),
+    (
+        &[
+            "notch-pent",
+            "loop-limit",
+            "notched-pentagon",
+            "hourglass",
+            "collate",
+            "bang",
+        ],
+        Shape::Hexagon,
+    ),
+    (
+        &[
+            "tri",
+            "extract",
+            "triangle",
+            "flip-tri",
+            "manual-file",
+            "flipped-triangle",
+        ],
+        Shape::Diamond,
+    ),
+    (&["cross-circ", "summary", "crossed-circle"], Shape::Circle),
+    (BORDERLESS_SHAPES, Shape::Rect),
+    // Undocumented names mermaid's registry also accepts.
+    (&["state", "composite", "bpmn-activity"], Shape::Rounded),
+    (&["choice", "bpmn-gateway"], Shape::Diamond),
+    (
+        &["note", "icon", "bpmn-data", "bpmn-annotation"],
+        Shape::Rect,
+    ),
+    (&["anchor"], Shape::StateStart),
+    (
+        &["bpmn-start", "bpmn-intermediate", "bpmn-boundary"],
+        Shape::Circle,
+    ),
+    (&["bpmn-end"], Shape::DoubleCircle),
+    (&["bpmn-data-store"], Shape::Cylinder),
+];
+
+/// Fill / stroke paint of a borderless mermaid shape.
+const BORDERLESS_PAINT: &str = "none";
+
+/// Mermaid shapes drawn as bare text (no box): a borderless rect here.
+const BORDERLESS_SHAPES: &[&str] = &[
+    "text",
+    "brace",
+    "comment",
+    "brace-l",
+    "brace-r",
+    "braces",
+    "bolt",
+    "com-link",
+    "lightning-bolt",
+];
+
+/// Resolve a mermaid `shape:` name with mermaid's own errors: a name
+/// with uppercase or `_` fails its lowercase gate, an unknown one is
+/// "No such shape". Returns the shape and whether it draws borderless.
+fn mermaid_shape(name: &str, lineno: usize) -> Result<(Shape, bool), ParseError> {
+    if name != name.to_lowercase() || name.contains('_') {
+        return Err(err(
+            lineno,
+            format!("No such shape: {name}. Shape names should be lowercase."),
+        ));
+    }
+    MERMAID_SHAPES
+        .iter()
+        .find(|(names, _)| names.contains(&name))
+        .map(|&(_, shape)| (shape, BORDERLESS_SHAPES.contains(&name)))
+        .ok_or_else(|| err(lineno, format!("No such shape: {name}.")))
+}
+
+/// Read a node's shape-data body (the cursor is just past `@{`) up to
+/// and including its closing `}`.
+fn node_meta_body(
+    cur: &mut Cur<'_>,
+    lineno: usize,
+) -> Result<Vec<(String, shapedata::Yaml)>, ParseError> {
+    let body = cur.rest();
+    let end = shapedata::body_end(body).ok_or_else(|| {
+        err(
+            lineno,
+            "'@{' metadata block is never closed with '}'".to_string(),
+        )
+    })?;
+    cur.pos += end + 1;
+    shape_data(&body[..end], lineno)
+}
+
+/// Apply mermaid node metadata (flowDb `addVertex`): a truthy `shape`
+/// must name a registry shape, a truthy `label` replaces the label
+/// (cleaned like a bracket label). `icon`, `img`, `form`, `pos`, `w`,
+/// `h`, `constraint` and `labelType` are accepted but not drawn — and,
+/// unlike mermaid, an icon/image node keeps its id as the label, since
+/// no icon replaces it. Unknown keys are ignored.
+fn apply_node_meta(
+    g: &mut Graph,
+    n: usize,
+    entries: &[(String, shapedata::Yaml)],
+    fm: &mut FlowMeta,
+    lineno: usize,
+) -> Result<(), ParseError> {
+    use shapedata::Yaml;
+    for (k, v) in entries {
+        match (k.as_str(), v) {
+            ("shape", Yaml::Str(name)) if !name.is_empty() => {
+                let (shape, borderless) = mermaid_shape(name, lineno)?;
+                g.nodes[n].shape = shape;
+                if borderless {
+                    fm.borderless.insert(n);
+                } else {
+                    fm.borderless.remove(&n);
+                }
+            }
+            ("shape", v) if v.truthy() => {
+                return Err(err(lineno, "'shape' must be a shape name".to_string()));
+            }
+            ("label", v) if v.truthy() => {
+                if let Some(text) = v.text() {
+                    g.nodes[n].label = clean_label(&text);
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(())
 }
 
 /// A whole statement of the form `id@{ … }`: the id (mermaid's LINK_ID
@@ -1145,6 +1407,12 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
 
     // Resolve styling: classDef layers first, explicit `style`
     // lines win. Unknown class names are ignored, mermaid-style.
+    // Borderless mermaid shapes first, so `style` / `classDef` win.
+    for &n in &fm.borderless {
+        let st = &mut g.nodes[n].style;
+        st.fill = Some(BORDERLESS_PAINT.to_string());
+        st.stroke = Some(BORDERLESS_PAINT.to_string());
+    }
     for (n, name) in assigns {
         if let Some(def) = class_defs.get(&name) {
             g.nodes[n].style.apply_over(def);
@@ -1694,10 +1962,20 @@ fn parse_node(
     // subgraph sharing an id — so no duplicate node is created.
     if g.node_index(&id).is_none() {
         if let Some(&si) = sub_ids.get(&id) {
+            // Subgraph metadata (`s1@{ view: collapsed }`): validated,
+            // nothing to draw with it yet.
+            if cur.eat("@{") {
+                node_meta_body(cur, lineno)?;
+            }
             return Ok(End::Sub(si));
         }
     }
     let n = g.ensure_node(&id, label, shape);
+    // A bracket shape replaces whatever an earlier `@{ shape: … }` set,
+    // borderless text included.
+    if shape.is_some() {
+        fm.borderless.remove(&n);
+    }
     // Mermaid semantics: mentioning a node inside a `subgraph`
     // block claims it for that block (the canonical docs example
     // relies on this: `c1-->a2` at top level, then `a2` inside
@@ -1727,12 +2005,11 @@ fn parse_node(
         }
         assigns.push((n, cur.s[start..cur.pos].to_string()));
     }
-    if cur.rest().starts_with("@{") {
-        let _ = &fm;
-        return Err(err(
-            lineno,
-            format!("node metadata '{id}@{{…}}' is not supported yet"),
-        ));
+    // Mermaid v11 node metadata, after the bracket shape and `:::class`
+    // and glued to them (`A[x]:::c@{ shape: cyl }`); it overrides both
+    // the shape and the label.
+    if cur.eat("@{") {
+        apply_node_meta(g, n, &node_meta_body(cur, lineno)?, fm, lineno)?;
     }
     Ok(End::Node(n))
 }
@@ -6391,5 +6668,426 @@ mod tests {
         let g = parse("flowchart TB\n  X[\"a @{ b }\"] --> Y\n  M[\"user@host\"] --> N\n").unwrap();
         assert_eq!(g.nodes[0].label, "a @{ b }");
         assert_eq!(edge_ids(&g), [None, None]);
+    }
+
+    // ── node metadata `id@{ … }` ───────────────────────────────────
+
+    fn node<'g>(g: &'g Graph, id: &str) -> &'g crate::model::Node {
+        &g.nodes[g
+            .node_index(id)
+            .unwrap_or_else(|| panic!("no node {id}: {:?}", g.nodes))]
+    }
+
+    fn meta_err(src: &str) -> String {
+        parse(src)
+            .map(|g| format!("{:?}", g.nodes))
+            .expect_err(src)
+            .message
+    }
+
+    #[test]
+    fn node_meta_shape_and_label() {
+        let g = parse("flowchart TD\n  A@{ shape: cyl, label: \"DB\" } --> B\n").unwrap();
+        assert_eq!(
+            (node(&g, "A").shape, node(&g, "A").label.as_str()),
+            (Shape::Cylinder, "DB")
+        );
+        assert_eq!(node(&g, "B").shape, Shape::Rect);
+        assert_eq!(g.edges.len(), 1);
+        let g = parse("flowchart TB\n  D@{ shape: rounded}\n  E@{shape: rounded}\n  F@{       shape: rounded         }\n").unwrap();
+        for id in ["D", "E", "F"] {
+            assert_eq!(node(&g, id).shape, Shape::Rounded);
+            assert_eq!(node(&g, id).label, id);
+        }
+        let g = parse("flowchart TB\n  D@{ shape: rounded , label: \"DD\"}\n").unwrap();
+        assert_eq!(node(&g, "D").label, "DD");
+        let g = parse("flowchart TB\n  D@{ shape: rounded } & E@{ shape: rounded } --> F@{ shape: rounded } & G@{ shape: rounded }\n").unwrap();
+        assert_eq!((g.nodes.len(), g.edges.len()), (4, 4));
+        assert!(g.nodes.iter().all(|n| n.shape == Shape::Rounded));
+        let g = parse("flowchart TB\n  A --> B@{ shape: hex } --> C\n").unwrap();
+        assert_eq!(node(&g, "B").shape, Shape::Hexagon);
+        assert_eq!(g.edges.len(), 2);
+    }
+
+    #[test]
+    fn node_meta_multi_line_forms() {
+        let g = parse("flowchart TB\n  A --> D@{\n    shape: circle\n    other: \"clock\"\n  }\n")
+            .unwrap();
+        assert_eq!(node(&g, "D").shape, Shape::Circle);
+        assert_eq!(g.edges.len(), 1);
+        let g = parse("flowchart TB\n  A[hello]\n  B@{\n    shape: circle\n  }\n  C[Hello]@{\n    shape: circle\n  }\n").unwrap();
+        assert_eq!(
+            (node(&g, "C").shape, node(&g, "C").label.as_str()),
+            (Shape::Circle, "Hello")
+        );
+        assert_eq!(node(&g, "B").shape, Shape::Circle);
+        let g = parse("flowchart TB\n  A@{\n    label: \"This is }\"\n  }\n").unwrap();
+        assert_eq!(node(&g, "A").label, "This is }");
+        let g =
+            parse("flowchart TB\n  A@{\n    label: \"This is a\n      multiline string\"\n  }\n")
+                .unwrap();
+        assert_eq!(node(&g, "A").label, "This is a\nmultiline string");
+        let g = parse(
+            "flowchart TB\n  A@{\n    label: |\n      This is a\n      multiline string\n  }\n",
+        )
+        .unwrap();
+        assert_eq!(
+            node(&g, "A").label,
+            "This is a\nmultiline string",
+            "trailing newline trimmed"
+        );
+        let g = parse("flowchart TB\n  A@{\n    %% comment\n    shape: cyl\n  }\n").unwrap();
+        assert_eq!(node(&g, "A").shape, Shape::Cylinder);
+        let e = parse("flowchart TB\n  A@{ shape: cyl\n").unwrap_err();
+        assert!(e.message.contains("never closed"), "{}", e.message);
+    }
+
+    #[test]
+    fn node_meta_mermaid_errors() {
+        assert_eq!(
+            meta_err("flowchart TB\n  A@{ shape: this-shape-does-not-exist }\n"),
+            "No such shape: this-shape-does-not-exist."
+        );
+        assert_eq!(
+            meta_err("flowchart TB\n  A@{ shape: rect_left_inv_arrow }\n"),
+            "No such shape: rect_left_inv_arrow. Shape names should be lowercase."
+        );
+        assert!(meta_err("flowchart TB\n  A@{ shape: Rect }\n").contains("lowercase"));
+        assert_eq!(
+            meta_err("flowchart TB\n  A@{ shape: square }\n"),
+            "No such shape: square."
+        );
+        assert!(meta_err("flowchart TB\n  A@{ shape: cyl label: x }\n").contains("missed comma"));
+        assert!(meta_err("flowchart TB\n  A@{ shape: cyl, shape: rect }\n").contains("duplicated"));
+        assert!(meta_err("flowchart TB\n  A@{ shape: 1 }\n").contains("shape"));
+        assert!(
+            parse("flowchart TB\n  A @{ shape: cyl }\n").is_err(),
+            "space before @"
+        );
+        assert!(
+            parse("flowchart TB\n  A@ { shape: cyl }\n").is_err(),
+            "space after @"
+        );
+        assert!(parse("flowchart TB\n  A@{ shape: hex }:::hot\n").is_err());
+        // Single quotes don't protect `}` in mermaid's lexer.
+        assert!(parse("flowchart TB\n  A@{ label: 'a}b' }\n").is_err());
+        // A `;` inside the braces is YAML text, not a statement split.
+        assert!(meta_err("flowchart TB\n  A@{ shape: cyl; label: x }\n").contains("missed comma"));
+    }
+
+    #[test]
+    fn node_meta_values_follow_js_yaml_and_truthiness() {
+        let g = parse("flowchart TB\n  A@{ label: Hello, world }\n").unwrap();
+        assert_eq!(node(&g, "A").label, "Hello");
+        let g = parse("flowchart TB\n  A@{ shape:cyl }\n").unwrap();
+        assert_eq!(
+            (node(&g, "A").shape, node(&g, "A").label.as_str()),
+            (Shape::Rect, "A")
+        );
+        let g = parse("flowchart TB\n  A@{ label: \"\" }\n  B@{}\n").unwrap();
+        assert_eq!(
+            (node(&g, "A").label.as_str(), node(&g, "B").label.as_str()),
+            ("A", "B")
+        );
+        let g = parse("flowchart TB\n  A@{ label: 123 }\n  B@{ shape: \"\" }\n").unwrap();
+        assert_eq!(node(&g, "A").label, "123");
+        assert_eq!(node(&g, "B").shape, Shape::Rect);
+        let g = parse("flowchart TB\n  A@{ shape: doublecircle }\n").unwrap();
+        assert_eq!(node(&g, "A").shape, Shape::DoubleCircle);
+        let g = parse("flowchart TB\n  A@{ label: \"#quot;q#quot; a<br/>b\" }\n").unwrap();
+        assert_eq!(node(&g, "A").label, "\"q\" a\nb");
+    }
+
+    #[test]
+    fn node_meta_order_class_and_subgraphs() {
+        let g =
+            parse("flowchart TB\n  A:::hot@{ shape: hex }\n  classDef hot fill:#f00\n").unwrap();
+        assert_eq!(node(&g, "A").shape, Shape::Hexagon);
+        assert_eq!(node(&g, "A").style.fill.as_deref(), Some("#f00"));
+        let g = parse("flowchart TB\n  A --> B\n  B@{ shape: cyl }\n  B[Again]\n").unwrap();
+        assert_eq!(
+            (node(&g, "B").shape, node(&g, "B").label.as_str()),
+            (Shape::Rect, "Again")
+        );
+        let g = parse("flowchart TB\n  A@{ label: \"L\" }\n  A\n").unwrap();
+        assert_eq!(node(&g, "A").label, "L", "a bare mention changes nothing");
+        let g = parse("flowchart TB\n  A@{ shape: cyl }; B@{ shape: doc } --> A\n").unwrap();
+        assert_eq!(node(&g, "A").shape, Shape::Cylinder);
+        assert_eq!(g.edges.len(), 1);
+        let g = parse("flowchart TB\n  subgraph s1\n    a\n  end\n  s1@{ view: collapsed }\n  x --> s1@{ view: collapsed }\n").unwrap();
+        assert!(g.node_index("s1").is_none());
+        assert_eq!(g.sub_edges.len(), 1);
+        // Quoted `@{` is label text: unchanged from before.
+        let g = parse("flowchart TB\n  X[\"a @{ b }\"] --> Y\n").unwrap();
+        assert_eq!(node(&g, "X").label, "a @{ b }");
+    }
+
+    #[test]
+    fn node_meta_icon_and_image_keys_parse() {
+        let g = parse("flowchart TB\n  A@{ icon: \"fa:user\", form: \"square\", label: \"User Icon\", pos: \"t\", h: 60 }\n  B@{ img: \"https://example.com/i.png\", w: 60, h: 60, constraint: \"on\" }\n").unwrap();
+        assert_eq!(node(&g, "A").label, "User Icon");
+        assert_eq!(node(&g, "B").label, "B", "kept: no image replaces it");
+    }
+
+    #[test]
+    fn node_meta_borderless_text_shapes() {
+        let g = parse("flowchart TB\n  A@{ shape: text, label: hi }\n  B@{ shape: brace }\n  C@{ shape: text }\n  style C fill:#ff0\n").unwrap();
+        assert_eq!(node(&g, "A").style.fill.as_deref(), Some("none"));
+        assert_eq!(node(&g, "A").style.stroke.as_deref(), Some("none"));
+        assert_eq!(node(&g, "B").style.stroke.as_deref(), Some("none"));
+        assert_eq!(
+            node(&g, "C").style.fill.as_deref(),
+            Some("#ff0"),
+            "style wins"
+        );
+        assert_eq!(node(&g, "C").style.stroke.as_deref(), Some("none"));
+        // A later bracket shape or a boxed shape drops the borderless look.
+        let g = parse("flowchart TB\n  A@{ shape: text }\n  A[box]\n  B@{ shape: text }\n  B@{ shape: rect }\n").unwrap();
+        assert_eq!(node(&g, "A").style.fill, None);
+        assert_eq!(node(&g, "B").style.fill, None);
+    }
+
+    #[test]
+    fn every_mermaid_shape_name_maps() {
+        let exact = [
+            ("rect", Shape::Rect),
+            ("rounded", Shape::Rounded),
+            ("stadium", Shape::Stadium),
+            ("fr-rect", Shape::Subroutine),
+            ("cyl", Shape::Cylinder),
+            ("circle", Shape::Circle),
+            ("dbl-circ", Shape::DoubleCircle),
+            ("diam", Shape::Diamond),
+            ("hex", Shape::Hexagon),
+            ("lean-r", Shape::Parallelogram),
+            ("lean-l", Shape::ParallelogramAlt),
+            ("sm-circ", Shape::StateStart),
+            ("fr-circ", Shape::StateEnd),
+            ("fork", Shape::ForkBar),
+            ("f-circ", Shape::StateStart),
+        ];
+        let mut src = String::from("flowchart LR\n  ");
+        for (i, (name, _)) in exact.iter().enumerate() {
+            if i > 0 {
+                src.push_str(" --> ");
+            }
+            src.push_str(&format!("n{i}@{{shape: {name}}}"));
+        }
+        let g = parse(&src).unwrap();
+        for (i, (name, want)) in exact.iter().enumerate() {
+            assert_eq!(node(&g, &format!("n{i}")).shape, *want, "{name}");
+        }
+        // Every registry name (mermaid HEAD) parses; the ones its
+        // lowercase gate rejects error.
+        let all = [
+            "rect",
+            "proc",
+            "process",
+            "rectangle",
+            "rounded",
+            "event",
+            "stadium",
+            "terminal",
+            "pill",
+            "fr-rect",
+            "subprocess",
+            "subproc",
+            "framed-rectangle",
+            "subroutine",
+            "cyl",
+            "db",
+            "database",
+            "cylinder",
+            "datastore",
+            "data-store",
+            "folder",
+            "directory",
+            "bucket",
+            "console",
+            "browser",
+            "person",
+            "circle",
+            "circ",
+            "bang",
+            "cloud",
+            "diam",
+            "decision",
+            "diamond",
+            "question",
+            "hex",
+            "hexagon",
+            "prepare",
+            "lean-r",
+            "lean-right",
+            "in-out",
+            "lean-l",
+            "lean-left",
+            "out-in",
+            "trap-b",
+            "priority",
+            "trapezoid-bottom",
+            "trapezoid",
+            "trap-t",
+            "manual",
+            "trapezoid-top",
+            "inv-trapezoid",
+            "dbl-circ",
+            "double-circle",
+            "doublecircle",
+            "text",
+            "notch-rect",
+            "card",
+            "notched-rectangle",
+            "lin-rect",
+            "lined-rectangle",
+            "lined-process",
+            "lin-proc",
+            "shaded-process",
+            "sm-circ",
+            "start",
+            "small-circle",
+            "fr-circ",
+            "stop",
+            "framed-circle",
+            "fork",
+            "join",
+            "hourglass",
+            "collate",
+            "brace",
+            "comment",
+            "brace-l",
+            "brace-r",
+            "braces",
+            "bolt",
+            "com-link",
+            "lightning-bolt",
+            "doc",
+            "document",
+            "delay",
+            "half-rounded-rectangle",
+            "h-cyl",
+            "das",
+            "horizontal-cylinder",
+            "lin-cyl",
+            "disk",
+            "lined-cylinder",
+            "curv-trap",
+            "curved-trapezoid",
+            "display",
+            "div-rect",
+            "div-proc",
+            "divided-rectangle",
+            "divided-process",
+            "tri",
+            "extract",
+            "triangle",
+            "win-pane",
+            "internal-storage",
+            "window-pane",
+            "f-circ",
+            "junction",
+            "filled-circle",
+            "notch-pent",
+            "loop-limit",
+            "notched-pentagon",
+            "flip-tri",
+            "manual-file",
+            "flipped-triangle",
+            "sl-rect",
+            "manual-input",
+            "sloped-rectangle",
+            "docs",
+            "documents",
+            "st-doc",
+            "stacked-document",
+            "st-rect",
+            "procs",
+            "processes",
+            "stacked-rectangle",
+            "bow-rect",
+            "stored-data",
+            "bow-tie-rectangle",
+            "cross-circ",
+            "summary",
+            "crossed-circle",
+            "tag-doc",
+            "tagged-document",
+            "tag-rect",
+            "tagged-rectangle",
+            "tag-proc",
+            "tagged-process",
+            "flag",
+            "paper-tape",
+            "odd",
+            "lin-doc",
+            "lined-document",
+            "state",
+            "choice",
+            "note",
+            "composite",
+            "icon",
+            "anchor",
+            "bpmn-start",
+            "bpmn-intermediate",
+            "bpmn-boundary",
+            "bpmn-end",
+            "bpmn-gateway",
+            "bpmn-activity",
+            "bpmn-data",
+            "bpmn-data-store",
+            "bpmn-annotation",
+        ];
+        for name in all {
+            assert!(mermaid_shape(name, 1).is_ok(), "{name}");
+        }
+        let listed: usize = MERMAID_SHAPES.iter().map(|(n, _)| n.len()).sum();
+        assert_eq!(listed, all.len(), "table and registry list agree");
+        for bad in [
+            "squareRect",
+            "roundedRect",
+            "lean_right",
+            "lean_left",
+            "inv_trapezoid",
+            "stateStart",
+            "stateEnd",
+            "forkJoin",
+            "rect_left_inv_arrow",
+            "rectWithTitle",
+            "block_arrow",
+            "iconSquare",
+            "imageSquare",
+            "classBox",
+            "square",
+            "round",
+        ] {
+            assert!(mermaid_shape(bad, 1).is_err(), "{bad}");
+        }
+        for (name, want) in [
+            ("trap-b", Shape::Parallelogram),
+            ("trap-t", Shape::ParallelogramAlt),
+            ("doc", Shape::Rect),
+            ("delay", Shape::Stadium),
+            ("cloud", Shape::Rounded),
+            ("lin-cyl", Shape::Cylinder),
+            ("hourglass", Shape::Hexagon),
+            ("tri", Shape::Diamond),
+            ("cross-circ", Shape::Circle),
+            ("lin-rect", Shape::Subroutine),
+            ("bpmn-end", Shape::DoubleCircle),
+            ("bpmn-data-store", Shape::Cylinder),
+            ("anchor", Shape::StateStart),
+        ] {
+            assert_eq!(mermaid_shape(name, 1).unwrap().0, want, "{name}");
+        }
+    }
+
+    #[test]
+    fn node_meta_before_its_edge_id_is_a_node() {
+        // Mermaid: metadata BEFORE the edge exists mints a node, and the
+        // edge still gets the id but no animation.
+        let g = parse("flowchart LR\n  e1@{ animate: true }\n  A e1@--> B\n").unwrap();
+        assert!(g.node_index("e1").is_some());
+        assert_eq!(g.edges[0].meta.id.as_deref(), Some("e1"));
+        assert_eq!(g.edges[0].meta.animation, None);
     }
 }

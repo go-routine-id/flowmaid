@@ -1614,4 +1614,24 @@ mod tests {
         assert!(!text.contains("has space"), "{text}");
         parse(&text).unwrap();
     }
+
+    #[test]
+    fn node_metadata_round_trips_through_bracket_forms() {
+        for src in [
+            "flowchart TD\n  A@{ shape: cyl, label: \"DB\" } --> B\n",
+            "flowchart LR\n  a@{shape: rect} --> b@{shape: rounded} --> c@{shape: stadium} --> d@{shape: fr-rect} --> e@{shape: cyl} --> f@{shape: circle} --> g@{shape: dbl-circ} --> h@{shape: diam} --> i@{shape: hex} --> j@{shape: lean-r} --> k@{shape: lean-l}\n",
+            "flowchart TB\n  A@{\n    label: |\n      two\n      lines\n  }\n",
+            "flowchart TB\n  A@{ shape: text, label: hi }\n  B@{ shape: doc }\n  C@{ shape: cloud }\n",
+            "flowchart TB\n  A:::hot@{ shape: hex }\n  classDef hot fill:#f00\n",
+        ] {
+            assert_roundtrip(&parse(src).unwrap());
+        }
+        // The mermaid name itself is not kept: a fallback shape writes
+        // its flowmaid look-alike.
+        let text = to_mermaid(&parse("flowchart TB\n  A@{ shape: doc }\n").unwrap());
+        assert!(
+            text.contains("A[\"A\"]") || text.contains("    A\n"),
+            "{text}"
+        );
+    }
 }
