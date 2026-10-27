@@ -12,7 +12,7 @@
 //! 4. `to_svg(&scene)` exports any arrangement to SVG.
 
 use crate::layout::{
-    intrinsic_size, layout_clustered, layout_sized, text_width, LayoutResult, Placed,
+    intrinsic_size, layout_clustered_ranked, layout_sized, text_width, LayoutResult, Placed,
 };
 use crate::model::{Direction, EdgeEnds, EdgeKind, End, Graph, Marker, NodeStyle, Shape};
 use std::collections::HashMap;
@@ -631,6 +631,11 @@ fn scene_from_layout(g: &Graph, sizes: &[(f64, f64)], lo: LayoutResult) -> Scene
 const SUB_HEADER: f64 = 26.0;
 /// Padding when re-wrapping cluster boxes around dragged members.
 const SUB_PAD: f64 = 14.0;
+/// Half-width of the strip a channel lane needs inside its cluster box.
+const LANE_PAD: f64 = 12.0;
+/// A subgraph needs at least this many edge-less members before they
+/// are packed into a grid instead of sharing one rank.
+const GRID_MIN_MEMBERS: usize = 4;
 
 /// Global cluster-aware pipeline: lay every real node out in ONE
 /// Sugiyama pass (no supernode collapse) with subgraph members kept
@@ -639,35 +644,60 @@ const SUB_PAD: f64 = 14.0;
 /// gaps between boxes instead of tangling straight through them.
 fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
     let node_cluster = node_cluster_paths(g);
-    let lo = layout_clustered(g, sizes, &node_cluster);
+    let grid = grid_pairs(g);
+    let mut rank_only = sub_edge_proxies(g, &node_cluster, &grid);
+    rank_only.extend_from_slice(&grid);
+    let (lo, groups) = layout_clustered_ranked(g, sizes, &node_cluster, &rank_only);
     let mut sc = scene_from_layout(g, sizes, lo);
+    let horizontal = matches!(g.direction, Direction::LR | Direction::RL);
 
     // Wrap boxes around the laid-out members, then widen each box to
-    // also cover the channel lanes of its members' edges: a lane that
+    // also cover the channel lanes laid out INSIDE it: a lane that
     // enters the box from the top may sit beside the outermost member
     // node (between it and the invisible border wall), which the
     // node-only bbox would leave poking outside the drawn rectangle.
+    // Only waypoints whose dummy the layout placed in this cluster
+    // count (plus an end anchor on one of its own members) — a lane
+    // running outside, or inside another box, must not drag the frame
+    // over to it. Lanes spread along the breadth axis (x in TB/BT,
+    // y in LR/RL).
     sc.clusters = {
         let (mut boxes, depth) = cluster_raw_boxes(g, &sc.nodes);
         for si in 0..g.subgraphs.len() {
             let Some((x, y, w, h)) = boxes[si] else {
                 continue;
             };
-            let (mut x0, mut x1) = (x, x + w);
-            for (ge, se) in g.edges.iter().zip(sc.edges.iter()) {
-                if se.waypoints.is_empty()
-                    || !(node_cluster[ge.from].contains(&si) || node_cluster[ge.to].contains(&si))
-                {
+            // (breadth lo, breadth hi, layer lo, layer hi)
+            let (mut b0, mut b1, l0, l1) = if horizontal {
+                (y, y + h, x, x + w)
+            } else {
+                (x, x + w, y, y + h)
+            };
+            for (ei, (ge, se)) in g.edges.iter().zip(sc.edges.iter()).enumerate() {
+                if se.waypoints.is_empty() {
                     continue;
                 }
-                for &(wx, wy) in &se.waypoints {
-                    if wy >= y && wy <= y + h {
-                        x0 = x0.min(wx - 12.0);
-                        x1 = x1.max(wx + 12.0);
+                let last = se.waypoints.len() - 1;
+                for (k, &(wx, wy)) in se.waypoints.iter().enumerate() {
+                    let inside = if k == 0 {
+                        node_cluster[ge.from].contains(&si)
+                    } else if k == last {
+                        node_cluster[ge.to].contains(&si)
+                    } else {
+                        groups[ei].get(k - 1).is_some_and(|p| p.contains(&si))
+                    };
+                    let (wb, wl) = if horizontal { (wy, wx) } else { (wx, wy) };
+                    if inside && wl >= l0 && wl <= l1 {
+                        b0 = b0.min(wb - LANE_PAD);
+                        b1 = b1.max(wb + LANE_PAD);
                     }
                 }
             }
-            boxes[si] = Some((x0, y, x1 - x0, h));
+            boxes[si] = Some(if horizontal {
+                (x, b0, w, b1 - b0)
+            } else {
+                (b0, y, b1 - b0, h)
+            });
         }
         // Re-enforce nesting: a parent must still enclose its
         // (possibly widened) children. Deepest-first, one level up.
@@ -777,6 +807,107 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
         sc.height = (maxy - miny) + 2.0 * MARGIN;
     }
     sc
+}
+
+/// Rank-only node pairs standing in for the edges that end on a whole
+/// subgraph box (`A --> sub`, state composites) — mermaid re-points
+/// such an edge at the cluster's contents for layout. Without them the
+/// layering never sees the edge: every member of an otherwise
+/// unconnected box lands on the first rank, beside its source. A box
+/// as TARGET stands for its entry members (no in-edge from inside the
+/// box), as SOURCE for its exit members (no out-edge to inside it).
+/// `grid` pairs count as internal edges, so a packed box is entered
+/// through its first row only.
+fn sub_edge_proxies(
+    g: &Graph,
+    node_cluster: &[Vec<usize>],
+    grid: &[(usize, usize)],
+) -> Vec<(usize, usize)> {
+    if g.sub_edges.is_empty() {
+        return Vec::new();
+    }
+    // (cluster, node) pairs with an in-edge / out-edge inside that
+    // cluster: an edge is internal to every cluster both ends share.
+    let mut has_in: std::collections::HashSet<(usize, usize)> = std::collections::HashSet::new();
+    let mut has_out: std::collections::HashSet<(usize, usize)> = std::collections::HashSet::new();
+    let pairs = g.edges.iter().map(|e| (e.from, e.to));
+    for (from, to) in pairs.chain(grid.iter().copied()) {
+        if from == to {
+            continue;
+        }
+        let (pa, pb) = (&node_cluster[from], &node_cluster[to]);
+        for (ca, cb) in pa.iter().zip(pb) {
+            if ca != cb {
+                break;
+            }
+            has_in.insert((*ca, to));
+            has_out.insert((*ca, from));
+        }
+    }
+    let members = |s: usize, flags: &std::collections::HashSet<(usize, usize)>| -> Vec<usize> {
+        (0..g.nodes.len())
+            .filter(|&v| node_cluster[v].contains(&s) && !flags.contains(&(s, v)))
+            .collect()
+    };
+    let mut out = Vec::new();
+    for e in &g.sub_edges {
+        let from = match e.from {
+            End::Node(v) => vec![v],
+            End::Sub(s) => members(s, &has_out),
+        };
+        let to = match e.to {
+            End::Node(v) => vec![v],
+            End::Sub(s) => members(s, &has_in),
+        };
+        for &a in &from {
+            for &b in &to {
+                if a != b {
+                    out.push((a, b));
+                }
+            }
+        }
+    }
+    out
+}
+
+/// Rank-only pairs that pack a subgraph's edge-less members into a
+/// roughly square grid: with `k` such members, member `i` is ranked
+/// above member `i + ceil(sqrt(k))`, so they fill rows of that width in
+/// declaration order. Left alone they would all share one rank — a
+/// list of 20 notes drawn as one 10k px row. Skipped when the subgraph
+/// sets a `direction` across the diagram's flow (`direction LR` in a
+/// TB chart): there one row is what the author asked for.
+fn grid_pairs(g: &Graph) -> Vec<(usize, usize)> {
+    let horizontal = |d: Direction| matches!(d, Direction::LR | Direction::RL);
+    let mut linked = vec![false; g.nodes.len()];
+    for e in &g.edges {
+        linked[e.from] = true;
+        linked[e.to] = true;
+    }
+    for e in &g.sub_edges {
+        for end in [e.from, e.to] {
+            if let End::Node(v) = end {
+                linked[v] = true;
+            }
+        }
+    }
+    let mut out = Vec::new();
+    for s in &g.subgraphs {
+        if s.direction
+            .is_some_and(|d| horizontal(d) != horizontal(g.direction))
+        {
+            continue;
+        }
+        let free: Vec<usize> = s.nodes.iter().copied().filter(|&v| !linked[v]).collect();
+        if free.len() < GRID_MIN_MEMBERS {
+            continue;
+        }
+        let cols = (free.len() as f64).sqrt().ceil() as usize;
+        for i in cols..free.len() {
+            out.push((free[i - cols], free[i]));
+        }
+    }
+    out
 }
 
 /// Cluster path (outermost subgraph id first) for every node; empty
@@ -2934,6 +3065,207 @@ mod tests {
             && n.y - n.h / 2.0 >= c.y
             && n.x + n.w / 2.0 <= c.x + c.w
             && n.y + n.h / 2.0 <= c.y + c.h
+    }
+
+    // --- issue #60: subgraph layout geometry ---------------------------
+
+    /// Every geometric promise a clustered scene makes: sibling frames
+    /// never intersect (only nesting may), each node sits inside exactly
+    /// the frames on its subgraph chain, an edge label box is at least
+    /// as wide as its measured text and covers no node, and every drawn
+    /// node-to-node edge ends on its target's border.
+    fn assert_clean_clusters(g: &Graph, s: &Scene) {
+        let idx = |id: &str| g.subgraphs.iter().position(|x| x.id == id).unwrap();
+        let nested = |a: usize, b: usize| {
+            let mut p = g.subgraphs[a].parent;
+            while let Some(x) = p {
+                if x == b {
+                    return true;
+                }
+                p = g.subgraphs[x].parent;
+            }
+            false
+        };
+        let overlap = |a: (f64, f64, f64, f64), b: (f64, f64, f64, f64)| {
+            let ox = (a.0 + a.2).min(b.0 + b.2) - a.0.max(b.0);
+            let oy = (a.1 + a.3).min(b.1 + b.3) - a.1.max(b.1);
+            ox > 0.5 && oy > 0.5
+        };
+        let rect = |c: &SceneCluster| (c.x, c.y, c.w, c.h);
+        let nrect = |n: &SceneNode| (n.x - n.w / 2.0, n.y - n.h / 2.0, n.w, n.h);
+        for (i, a) in s.clusters.iter().enumerate() {
+            for b in &s.clusters[i + 1..] {
+                let (ia, ib) = (idx(&a.id), idx(&b.id));
+                if nested(ia, ib) || nested(ib, ia) {
+                    continue;
+                }
+                assert!(
+                    !overlap(rect(a), rect(b)),
+                    "frames {} and {} intersect",
+                    a.id,
+                    b.id
+                );
+            }
+        }
+        let paths = node_cluster_paths(g);
+        for (v, n) in s.nodes.iter().enumerate() {
+            for c in &s.clusters {
+                if paths[v].contains(&idx(&c.id)) {
+                    assert!(cluster_contains(c, n), "{} pokes out of {}", n.id, c.id);
+                } else {
+                    assert!(
+                        !overlap(rect(c), nrect(n)),
+                        "{} drawn inside {}",
+                        n.id,
+                        c.id
+                    );
+                }
+            }
+        }
+        for e in &s.edges {
+            if let Some((t, (mx, my), w)) = &e.label {
+                assert!(*w >= text_width(t), "label box narrower than '{t}'");
+                let h = crate::layout::LINE_H * t.split('\n').count() as f64;
+                let lr = (mx - w / 2.0, my - h / 2.0, *w, h);
+                for n in &s.nodes {
+                    assert!(!overlap(lr, nrect(n)), "label '{t}' covers {}", n.id);
+                }
+            }
+        }
+        for (ge, se) in g.edges.iter().zip(&s.edges) {
+            if ge.from == ge.to || matches!(ge.kind, EdgeKind::Invisible) {
+                continue;
+            }
+            let p = se.waypoints.last().copied().unwrap_or(se.bezier[3]);
+            let n = &s.nodes[ge.to];
+            let dx = (n.x - p.0).abs() - n.w / 2.0;
+            let dy = (n.y - p.1).abs() - n.h / 2.0;
+            assert!(
+                dx.max(dy) > -3.0 && dx.max(dy) < 3.0,
+                "{} -> {} ends {:.1}px off its target's border",
+                se.from,
+                se.to,
+                dx.max(dy)
+            );
+        }
+    }
+
+    #[test]
+    fn sibling_frames_never_intersect() {
+        for src in [
+            // A cross-cluster lane must not drag A's frame over B.
+            "flowchart TB\nsubgraph A\n  a1\n  a3\nend\n\
+             subgraph B\n  b1 --> b2 --> b3\nend\na1 --> b3",
+            // LR: the title strip lies across the breadth axis.
+            "flowchart LR\ni --> p1 & d1\nsubgraph P\n  p1\nend\nsubgraph D\n  d1\nend",
+            // Siblings sharing layers keep one left-to-right order.
+            "flowchart TB\nsubgraph S\n  hv --> ss --> es\nend\n\
+             subgraph B\n  hv --> restic --> drill\n  devdb --> nodev\n  pgp --> rep\nend\n\
+             subgraph O\n  prom --> am --> tg\n  graf --> prom & loki\n  drc --> tg\n  apmOff --> apmDev\nend",
+            "flowchart RL\nx -->|to p| p1\nx -->|to d| d2\nsubgraph P\n  p1 --> p2\nend\n\
+             subgraph D\n  d1 --> d2\n  subgraph E\n    e1\n  end\nend\nd2 --> e1",
+            NESTED,
+        ] {
+            let g = parse(src).unwrap();
+            assert_clean_clusters(&g, &scene(&g));
+        }
+    }
+
+    #[test]
+    fn walls_of_a_box_are_straight_so_layers_cannot_bulge() {
+        // On every layer a cluster spans, its members must stay inside
+        // the band of its frame — the frame IS the bounding box, so the
+        // check is that no sibling member falls between its walls.
+        let g = parse(
+            "flowchart TB\nsubgraph L\n  a --> b --> c\nend\n\
+             subgraph R\n  x --> y --> z\nend\na --> z\nx --> c",
+        )
+        .unwrap();
+        assert_clean_clusters(&g, &scene(&g));
+    }
+
+    #[test]
+    fn edges_into_a_subgraph_rank_its_members_below_the_source() {
+        // `root --> a` names the box: the members must still rank under
+        // root (TB = vertical ranks), not share its row.
+        let g = parse(
+            "flowchart TB\nroot\nsubgraph a\n  a1\n  a2\nend\n\
+             subgraph b\n  b1\n  b2\nend\nroot --> a\nroot --> b",
+        )
+        .unwrap();
+        let s = scene(&g);
+        assert_clean_clusters(&g, &s);
+        let root = &s.nodes[0];
+        for n in &s.nodes[1..] {
+            assert!(
+                n.y - n.h / 2.0 > root.y + root.h / 2.0,
+                "{} beside root",
+                n.id
+            );
+        }
+        for c in &s.clusters {
+            assert!(c.y > root.y + root.h / 2.0, "box {} not below root", c.id);
+        }
+        // A box as SOURCE ranks above the target node.
+        let g = parse("flowchart LR\nsubgraph s\n  p --> q\nend\ns --> t").unwrap();
+        let s = scene(&g);
+        let (q, t) = (&s.nodes[1], &s.nodes[2]);
+        assert!(t.x > q.x, "t must follow the box's exit member");
+    }
+
+    #[test]
+    fn state_composite_keeps_flow_order() {
+        let src = "stateDiagram-v2\n[*] --> Idle\nIdle --> Checking\n\
+                   state Checking {\n  [*] --> A\n  A --> B\n  B --> [*]\n}\n\
+                   Checking --> Done\nDone --> [*]";
+        let g = match crate::parser::parse_document(src).unwrap() {
+            crate::model::Document::State(g) => g,
+            _ => unreachable!(),
+        };
+        let s = scene(&g);
+        let y = |id: &str| s.nodes.iter().find(|n| n.id == id).unwrap().y;
+        let c = s.clusters.iter().find(|c| c.id == "Checking").unwrap();
+        assert!(y("Idle") < c.y, "Idle above the composite");
+        assert!(y("Done") > c.y + c.h, "Done below the composite");
+    }
+
+    #[test]
+    fn edgeless_members_pack_into_a_grid_not_one_row() {
+        let members: String = (0..9).map(|i| format!("  m{i}[\"note {i}\"]\n")).collect();
+        let g = parse(&format!(
+            "flowchart TB\nroot\nsubgraph s\n{members}end\nroot --> s"
+        ))
+        .unwrap();
+        let s = scene(&g);
+        assert_clean_clusters(&g, &s);
+        let mut rows: Vec<i64> = s.nodes[1..].iter().map(|n| n.y.round() as i64).collect();
+        rows.sort();
+        rows.dedup();
+        assert_eq!(rows.len(), 3, "9 edge-less members fill a 3x3 grid");
+        // An explicit cross-flow `direction` keeps the author's row.
+        let g = parse(&format!(
+            "flowchart TB\nsubgraph s\n  direction LR\n{members}end"
+        ))
+        .unwrap();
+        let s = scene(&g);
+        assert!(s.nodes.iter().all(|n| (n.y - s.nodes[0].y).abs() < 0.5));
+        // Below the threshold nothing changes.
+        let g = parse("flowchart TB\nsubgraph s\n  a\n  b\n  c\nend").unwrap();
+        let s = scene(&g);
+        assert!(s.nodes.iter().all(|n| (n.y - s.nodes[0].y).abs() < 0.5));
+    }
+
+    #[test]
+    fn edges_reach_the_border_of_a_box_top_member() {
+        // The title-strip reservation must not move edge ends off the
+        // visible node (it used to inflate the node's own layer size).
+        for src in [
+            "flowchart TD\nA --> B\nsubgraph S\n  B --> C\nend",
+            "flowchart LR\nA --> B\nsubgraph S\n  B --> C\nend",
+        ] {
+            let g = parse(src).unwrap();
+            assert_clean_clusters(&g, &scene(&g));
+        }
     }
 
     const NESTED: &str = "flowchart TD\n\

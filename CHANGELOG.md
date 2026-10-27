@@ -37,6 +37,22 @@ project adheres to [Semantic Versioning](https://semver.org/).
   carries a start, cross or circle glyph, the ends on that side are spaced up to 14px
   apart so the glyphs stay readable. Sides without such glyphs render exactly as before.
 
+### Fixed
+
+- **Subgraph frames no longer overlap (#60).** Sibling subgraph boxes never intersect
+  and nodes are drawn only inside their own frames: a box widens only for edge lanes laid
+  out inside it, sibling clusters keep one left-to-right order on every rank with straight
+  sides, and LR/RL layouts reserve room for each box's title strip.
+- **Edges to a subgraph id are ranked (#60).** `A --> sub` (and state composites) now
+  places the subgraph's contents below `A` instead of on `A`'s rank, so a TB chart of
+  subgraphs no longer collapses into one row. Four or more edge-less members of a subgraph
+  are packed into a grid, unless the subgraph sets a `direction` across the chart's flow.
+- **Edges reach nodes at the top of a subgraph.** The title-strip room no longer inflates
+  the node itself, so arrows end on the visible border instead of 26px short.
+
+Only diagrams with subgraphs change layout; diagrams without subgraphs render
+byte-identically.
+
 ## [0.30.0] - 2026-09-07
 
 ### Fixed
