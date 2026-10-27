@@ -366,8 +366,7 @@ fn statements(source: &str) -> Result<Vec<(usize, Cow<'_, str>)>, ParseError> {
         if phys.is_empty() || phys.starts_with("%%") {
             continue;
         }
-        let open = |s: &str| shapedata::leaves_open(s) || markdown::leaves_open(s);
-        if !open(raw) {
+        if !leaves_open(raw) {
             for frag in split_statements(raw) {
                 let f = frag.trim();
                 if !f.is_empty() {
@@ -377,7 +376,7 @@ fn statements(source: &str) -> Result<Vec<(usize, Cow<'_, str>)>, ParseError> {
             continue;
         }
         let mut buf = raw.to_string();
-        while open(&buf) {
+        while leaves_open(&buf) {
             let Some((_, next)) = lines.next() else {
                 let what = if markdown::leaves_open(&buf) {
                     "markdown string '\"`' is never closed with '`\"'"
@@ -1375,10 +1374,36 @@ fn extract_acc(
         *slot = (!v.is_empty()).then_some(v);
     };
     let mut out: Vec<String> = lines.iter().map(|l| l.to_string()).collect();
+    // Flowchart only: the text of a statement left open by a multi-line
+    // markdown string or `@{` block, joined as [`statements`] joins it.
+    // Mermaid's acc rules fire only in its INITIAL lexer state, so a
+    // line inside one is label / YAML text, and on the line that closes
+    // it a statement may only follow a top-level `;` after the close.
+    let mut carry: Option<String> = None;
     let mut i = header_line;
     while i < lines.len() {
         let mut text: &str = lines[i];
         let mut kept = String::new();
+        if let Some(buf) = carry.as_mut() {
+            if text.trim_start().starts_with("%%") {
+                i += 1;
+                continue;
+            }
+            let Some(k) = close_point(buf, text) else {
+                buf.push('\n');
+                buf.push_str(text);
+                i += 1;
+                continue;
+            };
+            let frags = split_statements(&text[k..]);
+            let cut = if frags.len() > 1 {
+                k + frags[0].len() + 1 // past the ';'
+            } else {
+                text.len()
+            };
+            kept.push_str(&text[..cut]);
+            text = &text[cut..];
+        }
         loop {
             let Some((o, head, v)) = find_acc(text, split_semis) else {
                 kept.push_str(text);
@@ -1428,10 +1453,38 @@ fn extract_acc(
                 }
             }
         }
+        if split_semis {
+            // A full-line `%%` comment never opens one (statements()
+            // drops it before looking).
+            let joined = match carry.take() {
+                Some(buf) => Some(buf + "\n" + &kept),
+                None if kept.trim_start().starts_with("%%") => None,
+                None => Some(kept.clone()),
+            };
+            carry = joined.filter(|j| leaves_open(j));
+        }
         out[i] = kept;
         i += 1;
     }
     Ok((Cow::Owned(out.join("\n")), acc))
+}
+
+/// Whether `s` leaves a shape-data block or a markdown string open, so
+/// the statement continues on the next physical line.
+fn leaves_open(s: &str) -> bool {
+    shapedata::leaves_open(s) || markdown::leaves_open(s)
+}
+
+/// Where on `line` the multi-line construct left open by `buf` (the
+/// statement's earlier lines) closes: the byte offset just past its
+/// closing `}` or `` `" ``, or `None` when the whole line is inside it.
+fn close_point(buf: &str, line: &str) -> Option<usize> {
+    let joined = format!("{buf}\n{line}");
+    let base = buf.len() + 1;
+    line.char_indices()
+        .filter(|&(_, c)| c == '}' || c == '"')
+        .map(|(p, c)| p + c.len_utf8())
+        .find(|&k| !leaves_open(&joined[..base + k]))
 }
 
 pub fn parse_document(source: &str) -> Result<Document, ParseError> {
@@ -1908,21 +1961,31 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
 }
 
 /// Parse `fill:#f9f,stroke:#333,stroke-width:4px,color:#fff`.
-/// Unknown properties are ignored (mermaid tolerates them too).
+/// Unknown properties are ignored (mermaid tolerates them too). An item
+/// without `:` after a `property:value` one is the tail of a value that
+/// held a comma — mermaid's `classDef`/`style` split on every comma, so
+/// `stroke-dasharray: 9,5` leaves a bare `5` it keeps as a no-op
+/// declaration — and is ignored, as [`parse_link_props`] does. A bare
+/// item with no property before it is still an error.
 fn parse_props(s: &str, lineno: usize) -> Result<NodeStyle, ParseError> {
     let mut st = NodeStyle::default();
     let items = split_props(s, lineno)?;
+    let mut after_prop = false;
     for item in items {
         let item = item.trim();
         if item.is_empty() {
             continue;
         }
         let Some((k, v)) = item.split_once(':') else {
+            if after_prop {
+                continue;
+            }
             return Err(err(
                 lineno,
                 format!("expected 'property:value', got '{}'", item),
             ));
         };
+        after_prop = true;
         let v = v.trim();
         match k.trim() {
             "fill" => st.fill = Some(v.to_string()),
@@ -2424,9 +2487,18 @@ fn parse_node(
     } else if cur.eat("[[") {
         Some((Shape::Subroutine, close(cur, "]]", lineno)?))
     } else if cur.eat("[/") {
-        Some((Shape::Parallelogram, close(cur, "/]", lineno)?))
+        // `[/x/]` lean-right, `[/x\]` trapezoid (drawn as its
+        // `trap-b` shape-data fallback).
+        let closer = slant_closer(cur.rest(), LEAN_R_CLOSE);
+        Some((Shape::Parallelogram, close(cur, closer, lineno)?))
     } else if cur.eat("[\\") {
-        Some((Shape::ParallelogramAlt, close(cur, "\\]", lineno)?))
+        // `[\x\]` lean-left, `[\x/]` inverted trapezoid (`trap-t`).
+        let closer = slant_closer(cur.rest(), LEAN_L_CLOSE);
+        Some((Shape::ParallelogramAlt, close(cur, closer, lineno)?))
+    } else if cur.eat(">") {
+        // `>x]` mermaid's asymmetric `odd` shape, drawn as its
+        // shape-data fallback.
+        Some((Shape::Rect, close(cur, "]", lineno)?))
     } else if cur.eat("[") {
         Some((Shape::Rect, close(cur, "]", lineno)?))
     } else if cur.eat("{{") {
@@ -2503,6 +2575,32 @@ fn parse_node(
     Ok(End::Node(n))
 }
 
+/// Which closer ends the slanted shape (`[/…` / `[\…`) whose label
+/// starts `rest`: the earlier of its `own` closer and the other slant
+/// (`/]` vs `\]`) after any quoted label, since mermaid lexes the first
+/// one it meets. Defaults to `own`, so an unclosed label reports it.
+fn slant_closer(rest: &str, own: &'static str) -> &'static str {
+    let other = if own == LEAN_R_CLOSE {
+        LEAN_L_CLOSE
+    } else {
+        LEAN_R_CLOSE
+    };
+    let from = match rest.strip_prefix('"') {
+        Some(q) => q.find('"').map_or(rest.len(), |e| e + 2),
+        None => 0,
+    };
+    let tail = &rest[from..];
+    match (tail.find(own), tail.find(other)) {
+        (Some(a), Some(b)) if b < a => other,
+        (None, Some(_)) => other,
+        _ => own,
+    }
+}
+
+/// The `/]` and `\]` closers of the slanted bracket shapes.
+const LEAN_R_CLOSE: &str = "/]";
+const LEAN_L_CLOSE: &str = "\\]";
+
 /// A bracket label's text up to `closer`, and whether it is a
 /// markdown string (returned without its delimiters, still raw).
 fn close(cur: &mut Cur<'_>, closer: &str, lineno: usize) -> Result<(String, bool), ParseError> {
@@ -2546,6 +2644,27 @@ fn close_plain(cur: &mut Cur<'_>, closer: &str, lineno: usize) -> Result<String,
 fn edge_op_follows(rest: &str) -> bool {
     let r = rest.trim_start();
     r.starts_with('&') || parse_edge_op(&mut Cur::new(r)).is_some()
+}
+
+/// Byte length of the edge operator (`-->`, `-.->`, `==x`, …) or the
+/// whole inline-label edge (`-- text -->`, `-. text .->`,
+/// `== text ==>`) that starts `s`, or `None` when `s` does not start
+/// one. An inline label that never closes runs to the end of `s`, so
+/// its text is still label text (the edge parser reports the error).
+/// Lets the shape-data scanner step over label text the way mermaid's
+/// `edgeText` lexer state does.
+pub(crate) fn edge_span(s: &str) -> Option<usize> {
+    let mut cur = Cur::new(s);
+    if parse_edge_op(&mut cur).is_some() {
+        return Some(cur.pos);
+    }
+    let open = ["--", "-.", "=="].into_iter().find(|o| s.starts_with(o))?;
+    let after = &s[open.len()..];
+    let c0 = after.chars().next()?;
+    if matches!(c0, '-' | '>' | '.' | '=') || (open != "-." && matches!(c0, 'x' | 'o')) {
+        return None;
+    }
+    Some(find_inline_closer(open, after).map_or(s.len(), |(i, len, ..)| open.len() + i + len))
 }
 
 /// Like [`edge_op_follows`] but also recognizing the inline-label
@@ -8053,6 +8172,16 @@ mod tests {
             Some("/javascript:x")
         );
         assert_eq!(sanitize_href("%zz").as_deref(), Some("%zz"));
+        // Named whitespace entities hide a scheme too (braintree's
+        // `&tab;` / `&newline;`, any case).
+        for u in [
+            "java&tab;script:alert(1)",
+            "java&newline;script:alert(1)",
+            "java&Tab;script:alert(1)",
+            "java&NewLine;script:alert(1)",
+        ] {
+            assert_eq!(sanitize_href(u), None, "{u}");
+        }
     }
 
     // ── markdown strings ────────────────────────────────────────
@@ -8171,5 +8300,126 @@ mod tests {
         // Empty is lenient (mermaid rejects it).
         let g = parse("flowchart LR\n  A[\"``\"]\n").unwrap();
         assert_eq!(g.nodes[0].label, "");
+    }
+
+    // ── reviewer follow-ups (#syntax-gaps) ─────────────────────────
+
+    #[test]
+    fn class_def_ignores_bare_comma_items_like_mermaid() {
+        // Verbatim from mermaid's flowchart.md ("Using classDef
+        // Statements for Animations").
+        let src = "flowchart LR\n  A e1@--> B\n  classDef animate stroke-dasharray: 9,5,stroke-dashoffset: 900,animation: dash 25s linear infinite;\n  class e1 animate\n";
+        let g = parse(src).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(g.edges.len(), 1);
+        let g = parse(
+            "flowchart LR\n  classDef c fill:#f00,5,color:#fff\n  A:::c\n  style A stroke:#00f,7\n",
+        )
+        .unwrap();
+        let st = &g.nodes[0].style;
+        assert_eq!(
+            (
+                st.fill.as_deref(),
+                st.color.as_deref(),
+                st.stroke.as_deref()
+            ),
+            (Some("#f00"), Some("#fff"), Some("#00f"))
+        );
+        // A bare item with no property before it, and an unbalanced
+        // '(', are still errors.
+        assert!(parse("flowchart LR\n  classDef c 5,fill:#f00\n").is_err());
+        assert!(parse("flowchart LR\n  classDef c fill:rgb(1,2\n").is_err());
+    }
+
+    #[test]
+    fn acc_inside_multi_line_constructs_is_label_or_yaml_text() {
+        // (a) a statement after `;` on the line closing a markdown string.
+        let (t, _) = acc("flowchart LR\nA[\"`a\nb`\"] --> B; accTitle: z\n");
+        assert_eq!(t.as_deref(), Some("z"));
+        let g = parse("flowchart LR\nA[\"`a\nb`\"] --> B; accTitle: z\n").unwrap();
+        assert_eq!((g.nodes.len(), g.edges.len()), (2, 1));
+        // (b) a YAML key inside a multi-line `@{` block is not acc.
+        let src = "flowchart LR\nA@{\n  label: foo\n  accTitle: x\n}\n";
+        assert_eq!(acc(src), (None, None));
+        // (c) a markdown label line starting with an acc keyword is
+        // label text.
+        let src = "flowchart LR\nA[\"`first\naccDescr { hi }`\"]\n";
+        assert_eq!(acc(src), (None, None));
+        assert_eq!(parse(src).unwrap().nodes[0].label, "first\naccDescr { hi }");
+        let src = "flowchart LR\nA[\"`first\naccTitle: x`\"]\n";
+        assert_eq!(acc(src), (None, None));
+        assert_eq!(parse(src).unwrap().nodes[0].label, "first\naccTitle: x");
+        // A comment line holding `@{` never opens a block.
+        let src = "flowchart LR\n%% A@{\naccTitle: t\nA --> B\n";
+        assert_eq!(acc(src).0.as_deref(), Some("t"));
+        // After the construct closes, acc lines work again.
+        let src = "flowchart LR\nA@{\n  label: foo\n}\naccTitle: after\n";
+        assert_eq!(acc(src).0.as_deref(), Some("after"));
+    }
+
+    #[test]
+    fn odd_and_trapezoid_bracket_shapes() {
+        let g = parse("flowchart TD\n  id1>This is the text in the box]\n  A[/Christmas\\]\n  B[\\Go shopping/]\n  C[/a\\b/]\n  D[\\\"x/]\"/]\n").unwrap();
+        let got: Vec<(&str, Shape)> = g
+            .nodes
+            .iter()
+            .map(|n| (n.label.as_str(), n.shape))
+            .collect();
+        assert_eq!(
+            got,
+            [
+                ("This is the text in the box", Shape::Rect),
+                ("Christmas", Shape::Parallelogram),
+                ("Go shopping", Shape::ParallelogramAlt),
+                ("a\\b", Shape::Parallelogram),
+                ("x/]", Shape::ParallelogramAlt),
+            ]
+        );
+        let g = parse("flowchart LR\n  A>odd] --> B[/t\\] --> C\n").unwrap();
+        assert_eq!((g.nodes.len(), g.edges.len()), (3, 2));
+        // An unclosed label names the opener's own closer.
+        let e = parse("flowchart TD\n  A[\\x\n").unwrap_err();
+        assert!(e.message.contains("'\\]'"), "{}", e.message);
+        let e = parse("flowchart TD\n  A>x\n").unwrap_err();
+        assert!(e.message.contains("']'"), "{}", e.message);
+    }
+
+    #[test]
+    fn at_brace_inside_label_text_does_not_open_shape_data() {
+        for stmt in [
+            "A[x @{ y] --> B",
+            "A -->|x @{ y| B",
+            "A -- x @{ y --> B",
+            "A -- x@{ y --> B",
+            "A -. x @{ y .-> B",
+            "A == x @{ y ==> B",
+            "A(use @{ here) --> B",
+            "A{is @{ ok} --> B",
+            "A[template @{name] --> B",
+        ] {
+            let g = parse(&format!("flowchart TD\n  {stmt}\n  B --> C\n  C --> D\n"))
+                .unwrap_or_else(|e| panic!("{stmt}: {e}"));
+            assert_eq!(g.edges.len(), 3, "{stmt}");
+        }
+        let g = parse("flowchart TD\n  subgraph S[cfg @{ x]\n  A\n  end\n").unwrap();
+        assert_eq!(g.subgraphs.len(), 1);
+        // The next line is not swallowed into a phantom block.
+        let g = parse("flowchart TD\n  A[use @{] --> B\n  C[then }] --> D\n").unwrap();
+        assert_eq!((g.nodes.len(), g.edges.len()), (4, 2));
+        assert_eq!(node(&g, "A").label, "use @{");
+        // Real shape data after a label still opens (and may span lines).
+        let g = parse("flowchart TD\n  A -- t @{ --> B@{\n    shape: cyl\n  }\n").unwrap();
+        assert_eq!(node(&g, "B").shape, Shape::Cylinder);
+        assert_eq!(g.edges[0].label.as_deref(), Some("t @{"));
+    }
+
+    #[test]
+    fn block_scalars_follow_js_yaml() {
+        // Folded: a more-indented line keeps its own line and indent.
+        let g =
+            parse("flowchart LR\n  A@{\n    label: >\n      a\n        b\n      c\n  }\n").unwrap();
+        assert_eq!(node(&g, "A").label, "a\n  b\nc");
+        // Literal: a line indented less than the first is an error.
+        let e = parse("flowchart LR\n  A@{\n    label: |\n        a\n      b\n  }\n").unwrap_err();
+        assert!(e.message.contains("bad indentation"), "{}", e.message);
     }
 }

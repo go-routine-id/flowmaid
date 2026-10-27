@@ -70,15 +70,36 @@ pub(crate) fn body_end(s: &str) -> Option<usize> {
     None
 }
 
-/// Byte offset of the first `@{` in `s` outside double quotes.
+/// Byte offset of the first `@{` in `s` that opens a shape-data block.
+/// Mermaid lexes `@{` only in its INITIAL state, so one inside label
+/// text is plain text: a double-quoted string, a bracket shape label
+/// (`A[x @{ y]`, `A(…)`, `A{…}`, subgraph titles), an edge-label
+/// `|…|` and an inline edge label (`A -- x @{ y --> B`) are all
+/// skipped — the same contexts [`crate::parser`]'s statement splitter
+/// protects.
 pub(crate) fn find_open(s: &str) -> Option<usize> {
-    let mut in_quote = false;
-    for (i, c) in s.char_indices() {
+    let mut depth = 0usize;
+    let (mut in_quote, mut in_pipe) = (false, false);
+    let mut i = 0;
+    while let Some(c) = s[i..].chars().next() {
+        let mut step = c.len_utf8();
         match c {
             '"' => in_quote = !in_quote,
-            '@' if !in_quote && s[i + 1..].starts_with('{') => return Some(i),
+            _ if in_quote => {}
+            '|' if in_pipe => in_pipe = false,
+            _ if in_pipe => {}
+            '@' if depth == 0 && s[i + 1..].starts_with('{') => return Some(i),
+            '[' | '(' | '{' => depth += 1,
+            ']' | ')' | '}' => depth = depth.saturating_sub(1),
+            '|' if depth == 0 => in_pipe = true,
+            _ if depth == 0 => {
+                if let Some(n) = crate::parser::edge_span(&s[i..]) {
+                    step = n;
+                }
+            }
             _ => {}
         }
+        i += step;
     }
     None
 }
@@ -423,7 +444,7 @@ fn block_value(cur: &mut Cur<'_>, more: &[&str]) -> Result<Yaml, String> {
         if !matches!(chomp, "" | "-" | "+") {
             return Err(format!("unsupported block scalar header '{ind}{chomp}'"));
         }
-        return Ok(Yaml::Str(block_scalar(ind == '|', chomp, more)));
+        return Ok(Yaml::Str(block_scalar(ind == '|', chomp, more)?));
     }
     let v = if cur.at_end() {
         Yaml::Null
@@ -466,43 +487,72 @@ fn block_value(cur: &mut Cur<'_>, more: &[&str]) -> Result<Yaml, String> {
 }
 
 /// A `|` (literal) or `>` (folded) block scalar from its indented
-/// lines, with YAML's clip / strip (`-`) / keep (`+`) chomping.
-fn block_scalar(literal: bool, chomp: &str, lines: &[&str]) -> String {
-    let ind = lines
-        .iter()
-        .filter(|l| !l.trim().is_empty())
-        .map(|l| indent_of(l))
-        .min()
-        .unwrap_or(0);
-    let content: Vec<&str> = lines
-        .iter()
-        .map(|l| if l.len() >= ind { &l[ind..] } else { "" })
-        .collect();
+/// lines, with YAML's clip / strip (`-`) / keep (`+`) chomping. A port
+/// of js-yaml's `readBlockScalar`: the content indent is that of the
+/// first non-blank line (a blank line of spaces deeper than it counts
+/// too), a later line indented less ends the scalar — and since such a
+/// line is still inside the key's value, anything but a comment there is
+/// js-yaml's "bad indentation" error — and a folded scalar keeps a
+/// more-indented line (one starting with a space or tab past the content
+/// indent) on its own line instead of folding it.
+fn block_scalar(literal: bool, chomp: &str, lines: &[&str]) -> Result<String, String> {
+    let spaces = |l: &str| l.len() - l.trim_start_matches(' ').len();
+    let mut ind: Option<usize> = None;
+    let mut probe = 0;
     let mut out = String::new();
-    if literal {
-        out = content.join("\n");
-    } else {
-        let mut prev_blank = true;
-        for l in &content {
-            if l.is_empty() {
-                out.push('\n');
-                prev_blank = true;
-            } else {
-                if !prev_blank {
-                    out.push(' ');
-                }
-                out.push_str(l);
-                prev_blank = false;
+    let (mut empty, mut read, mut more_indented) = (0usize, false, false);
+    let mut i = 0;
+    while i < lines.len() {
+        let l = lines[i];
+        let n = match ind {
+            Some(t) => spaces(l).min(t),
+            None => spaces(l),
+        };
+        let rest = &l[n..];
+        if rest.is_empty() {
+            if ind.is_none() {
+                probe = probe.max(n);
             }
+            empty += 1;
+            i += 1;
+            continue;
         }
+        let t = *ind.get_or_insert(probe.max(n));
+        if n < t {
+            break;
+        }
+        let gaps = |extra: usize| "\n".repeat(empty + extra);
+        if literal {
+            out.push_str(&gaps(usize::from(read)));
+        } else if rest.starts_with([' ', '\t']) {
+            more_indented = true;
+            out.push_str(&gaps(usize::from(read)));
+        } else if more_indented {
+            more_indented = false;
+            out.push_str(&gaps(1));
+        } else if empty == 0 {
+            if read {
+                out.push(' ');
+            }
+        } else {
+            out.push_str(&gaps(0));
+        }
+        out.push_str(rest);
+        (empty, read) = (0, true);
+        i += 1;
     }
-    let trimmed = out.trim_end_matches('\n').to_string();
-    match chomp {
-        "-" => trimmed,
-        "+" => out + "\n",
-        _ if trimmed.is_empty() => trimmed,
-        _ => trimmed + "\n",
+    if lines[i..].iter().any(|l| !is_blank_or_comment(l)) {
+        return Err("bad indentation of a mapping entry in '@{…}'".to_string());
     }
+    Ok(match chomp {
+        "-" => out,
+        // Keep: every trailing break. The body's trailing blank lines
+        // are already trimmed, so this counts the one break mermaid's
+        // appended newline always leaves (js-yaml gives `|+` alone "\n").
+        "+" => out + &"\n".repeat(empty + 1),
+        _ if read => out + "\n",
+        _ => out,
+    })
 }
 
 #[cfg(test)]
@@ -601,6 +651,28 @@ mod tests {
             kv("\n label: >\n   a\n   b\n\n   c\n"),
             [("label".into(), s("a b\nc\n"))]
         );
+        // js-yaml's readBlockScalar: more-indented lines are not
+        // folded; the content indent comes from the first line.
+        assert_eq!(
+            kv("\n  label: >\n    a\n      b\n    c\n"),
+            [("label".into(), s("a\n  b\nc\n"))]
+        );
+        assert_eq!(
+            kv("\n  label: >\n    a\n\n      b\n    c\n    d\n"),
+            [("label".into(), s("a\n\n  b\nc d\n"))]
+        );
+        assert_eq!(
+            kv("\n  label: |\n      a\n    # c\n"),
+            [("label".into(), s("a\n"))]
+        );
+        assert_eq!(kv("\n  label: |+\n"), [("label".into(), s("\n"))]);
+        for bad in [
+            "\n  label: |\n      a\n    b\n",
+            "\n  label: >\n      a\n    b\n",
+            "\n  label: |\n\n        \n      a\n",
+        ] {
+            assert!(parse(bad).is_err(), "{bad:?}");
+        }
         assert_eq!(
             kv("\n label: This is\n   continued\n"),
             [("label".into(), s("This is continued"))]
@@ -635,6 +707,21 @@ mod tests {
         assert!(leaves_open("A --> D@{"));
         assert!(!leaves_open("A@{ x } --> B@{ y }"));
         assert!(leaves_open("A@{ x } --> B@{ y"));
+        // `@{` in label text is text, as in mermaid's text states.
+        for s in [
+            "A[x @{ y] --> B",
+            "A(x @{ y) --> B",
+            "A{x @{ y} --> B",
+            "A -->|x @{ y| B",
+            "A -- x @{ y --> B",
+            "A -- x @{ y",
+            "A --- B",
+        ] {
+            assert_eq!(find_open(s), None, "{s}");
+            assert!(!leaves_open(s), "{s}");
+        }
+        assert_eq!(find_open("A -- t --> B@{"), Some(12));
+        assert_eq!(find_open("A[x]@{ shape: cyl }"), Some(4));
         assert_eq!(
             fold_quoted_newlines(" label: \"This is a\n      multiline string\"\n"),
             " label: \"This is a<br/>multiline string\"\n"

@@ -87,6 +87,12 @@ project adheres to [Semantic Versioning](https://semver.org/).
   edge is the matching open kind, so consumers that only know `EdgeKind` draw a plain
   line).
 
+- **Trapezoid and asymmetric bracket shapes.** `A[/text\]` (trapezoid), `A[\text/]`
+  (inverted trapezoid) and `id>text]` (mermaid's asymmetric `odd`) parse, drawn as the
+  same nearest look-alikes as their `@{ shape: … }` names (the `[/ /]` and `[\ \]`
+  parallelograms and a rectangle). A slanted label now ends at whichever of `/]` and
+  `\]` comes first, as in mermaid's lexer. No public API change.
+
 ### Changed
 
 - A pipe edge label ``|"`x`"|`` is now a markdown string (label `x`), as in mermaid; it
@@ -106,6 +112,26 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - **Glyph ends sharing a node side are spread apart.** When an edge end on a box's side
   carries a start, cross or circle glyph, the ends on that side are spaced up to 14px
   apart so the glyphs stay readable. Sides without such glyphs render exactly as before.
+
+### Fixed
+
+- **`classDef` / `style` accept a bare item after a property.** Mermaid splits style
+  values on every comma, so `stroke-dasharray: 9,5` leaves a stray `5` that it keeps as a
+  no-op; flowmaid now ignores it too, so the `classDef animate …` example from mermaid's
+  flowchart docs parses. A statement that starts with a bare item is still an error.
+- **`@{` in label text no longer opens a metadata block.** Inside a bracket shape label,
+  a `|pipe|` label or an inline `-- text -->` label, `@{` is plain text, as in mermaid's
+  lexer. It used to join the following lines into one statement and fail with "'@{'
+  metadata block is never closed" (or swallow the next statement). Regression from the
+  multi-line `@{ … }` support in this release cycle.
+- **Accessibility statements inside multi-line labels and `@{ … }` blocks.** A line inside
+  a multi-line markdown string or `@{ … }` block is label / YAML text, so `accTitle:` /
+  `accDescr` there no longer sets the diagram's title or description (or eats the label
+  line), and `…`"] --> B; accTitle: x` on the line that closes a markdown string works.
+- **YAML block scalars in `@{ … }` follow js-yaml.** A `>` folded scalar keeps a
+  more-indented line on its own line with its extra indent instead of folding it, and a
+  `|` / `>` line indented less than the first content line is "bad indentation", as in
+  mermaid, instead of being accepted.
 
 ## [0.30.0] - 2026-09-07
 

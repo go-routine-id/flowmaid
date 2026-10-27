@@ -459,6 +459,8 @@ mod tests {
             lo("*foo**bar**baz*"),
             "<i>foo</i><b><i>bar</i></b><i>baz</i>"
         );
+        // …unless both runs are multiples of three.
+        assert_eq!(lo("foo***bar***baz"), "foo<b><i>bar</i></b>baz");
     }
 
     #[test]
