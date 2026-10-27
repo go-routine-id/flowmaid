@@ -41,12 +41,19 @@ fn has_canvas_rect(svg: &str) -> bool {
 fn transparent_flag_drops_the_background_for_every_input_mode() {
     let flow = "flowchart TD\nA --> B --> C --> D";
     let advance = "lane a \"A\" {\n  x[Start]\n  y[End]\n  x --> y\n}";
-    let cases: [(&[&str], &str); 5] = [
+    let advance_json = r#"{
+        "lanes": [{ "id": "dev", "title": "Development" }],
+        "nodes": [{ "id": "a", "label": "Design", "lane": "dev" },
+                  { "id": "b", "label": "Build", "lane": "dev" }],
+        "edges": [{ "from": "a", "to": "b" }]
+    }"#;
+    let cases: [(&[&str], &str); 6] = [
         (&[], flow),
         (&["--compact", "120"], flow),
         (&[], "erDiagram\nA ||--o{ B : has"),
         (&[], "pie\n\"a\" : 1\n\"b\" : 2"),
         (&["--advance-text"], advance),
+        (&["--advance"], advance_json),
     ];
     for (args, src) in cases {
         let base = run(args, src);
@@ -68,6 +75,9 @@ fn transparent_flag_drops_the_background_for_every_input_mode() {
 fn flowmaid_lib_default(args: &[&str], src: &str) -> String {
     if args.contains(&"--advance-text") {
         return flowmaid::render_advance_text_svg(src).unwrap();
+    }
+    if args.contains(&"--advance") {
+        return flowmaid::render_advance_svg(src).unwrap();
     }
     if let Some(i) = args.iter().position(|a| *a == "--compact") {
         let px: f64 = args[i + 1].parse().unwrap();
