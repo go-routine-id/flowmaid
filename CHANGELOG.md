@@ -9,6 +9,85 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Markdown strings in flowchart labels.** ``"`**bold** _italic_`"`` in node, edge (pipe and
+  inline) and subgraph labels: CommonMark-style `**` / `__` / `*` / `_` emphasis with
+  flanking and rule-of-three handling, backslash escapes, multi-line bodies (indentation
+  dropped, blank lines collapsed), and greedy word wrap of node labels at mermaid 11's
+  200px markdown width. Headings, lists, links and other block or inline markdown stay
+  literal, as in mermaid's default HTML labels; entity codes never act as markdown. The
+  markdown is lowered to the existing `<b>` / `<i>` / newline label markup at parse time,
+  so there is no public API change. Edge labels and subgraph titles stay single-line.
+  Subgraph titles now render `<b>` / `<i>` markup (plain titles are unchanged). Diagrams
+  without markdown strings render byte-identically.
+- **Flowchart `click` statements.** Every mermaid form parses: `click ID[,ID…] [href] "url"
+  ["tooltip"] [_self|_blank|_parent|_top]`, `click ID callback ["tooltip"]` and `click ID
+  call fn(args) ["tooltip"]`, with line-numbered errors for a bad target, a tooltip after
+  the target, or a missing url. A linked node is wrapped in `<a href xlink:href [target]>`
+  (`rel="noopener noreferrer"` on `_blank`; `xmlns:xlink` declared on the `<a>`, so the
+  root header is unchanged) and a tooltip replaces the node's `<title>`. Urls go through
+  `model::sanitize_href`, a port of the `@braintree/sanitize-url` checks mermaid's
+  default `strict` level uses: `javascript:` / `data:` / `vbscript:` urls, also hidden by
+  percent or entity encoding or control characters, are not linked. Callbacks are kept by
+  name and never run. Links land only on nodes that already exist (no phantom nodes), and
+  tooltips reach later ones, as in mermaid. `to_mermaid` round-trips links, tooltips,
+  targets and callback names. New: `model::NodeLink`, `model::LinkTarget`,
+  `model::sanitize_href`, a `Graph::links` field (non-breaking: `Graph` has a private
+  field) and a `SceneNode::link` field (non-breaking: `#[non_exhaustive]`). Diagrams
+  without `click` render byte-identically.
+- **Flowchart `linkStyle`.** `linkStyle <n>[,<n>…]` and `linkStyle default`, each with an
+  optional `interpolate <curve>`, style edges by mermaid's link index (source order, fan-out
+  pairs, `~~~` and subgraph links included; out-of-range and forward indices fail with
+  mermaid's message). `stroke`, `stroke-width`, `stroke-dasharray`, `fill` and `color`
+  (label text) are drawn; arrow, cross and circle markers get a variant in the edge colour,
+  and a styled width uses a fixed-size arrowhead. A later `linkStyle` for an index
+  replaces the earlier one; the default merges under it. `interpolate` sets the edge curve.
+  `to_mermaid` writes one resolved `linkStyle` line per styled link, numbered in emitted
+  order. `stroke-width` takes 0 to 1000px (negative, non-finite or larger widths are
+  errors). New: `model::LinkStyle` and an `EdgeMeta::style` field (non-breaking:
+  `EdgeMeta` is `#[non_exhaustive]`). Diagrams without `linkStyle` render byte-identically.
+- **`accTitle` / `accDescr` accessibility statements.** `accTitle: …`, `accDescr: …` and
+  the multi-line `accDescr { … }` block parse with mermaid's rules (value to end of line,
+  `;` and `%%` included; case-sensitive keywords; last one wins; block indentation and
+  blank lines folded). The title replaces the SVG's `<title>` / `aria-label`; the
+  description becomes a `<desc>` right after it, referenced by `aria-describedby` with a
+  content-hashed id. Flowchart, state, class, sequence and ER diagrams store and render
+  them, and `to_mermaid` round-trips them; pie, journey, timeline, gitGraph and
+  architecture accept the lines without drawing them yet (those models have all-public
+  fields, so storing them would break struct literals). Diagrams without these statements
+  render byte-identically. New: `acc_title` / `acc_descr` fields on `Graph`,
+  `ClassDiagram`, `SequenceDiagram` and `ErDiagram` (non-breaking: each has a private
+  field), `scene::A11y` and `scene::to_svg_a11y_with`.
+- **Flowchart edge ids and edge metadata.** `A e1@--> B` names an edge on every operator
+  form (inline and `|pipe|` labels, markers, dotted, thick, long, `~~~`); like mermaid's
+  `${diagramId}-${id}`, the path gets `id="flowmaid-<hash>-e1" data-id="e1"`, where
+  `flowmaid-<hash>` is a content-hashed (deterministic) id written on the root `<svg>`
+  only when the diagram has edge ids or animation. `e1@{ … }` (one line or several, a
+  YAML subset read without a new dependency) sets `animate` / `animation` (mermaid's
+  `edge-animation-fast` / `-slow` class plus its dash-animation CSS, written once in
+  `<defs>` and scoped to the SVG: `#flowmaid-<hash> .edge-animation-fast`, keyframes
+  `flowmaid-<hash>-dash`, so an inlined SVG never restyles its host page or another
+  diagram) and `curve` (all
+  thirteen mermaid names; unknown = `basis`). Fan-out, duplicate-id and
+  metadata-before-edge semantics follow mermaid; `class` / `style` on an edge id no longer
+  mint a stray node. `to_mermaid` round-trips ids and metadata. New: `model::EdgeMeta`,
+  `model::EdgeAnimation`, `model::EdgeCurve` (`from_mermaid`, `mermaid_name`), and a `meta`
+  field on `Edge`, `SubEdge` and `SceneEdge`; `EdgeMeta` is `#[non_exhaustive]` like
+  `Edge` / `SubEdge` (set it on an edge from `Graph::add_edge`: `g.edges[i].meta.id =
+  Some(…)`). Diagrams without ids render byte-identically.
+- **Mermaid v11 node metadata (`A@{ shape: cyl, label: "DB" }`).** Accepted after a node id
+  (and after its bracket shape or `:::class`) in every statement position, on one line or
+  several. All mermaid registry shape names parse: the 15 families with a flowmaid
+  equivalent draw it exactly, the rest fall back to the nearest existing shape (`text`,
+  braces and `bolt` draw borderless), and invalid names fail with mermaid's own `No such
+  shape: X.` / `… Shape names should be lowercase.` messages. `label` replaces the label
+  and, as in mermaid 12, is markdown (`**bold**`, `_italic_`, wrapping, like a
+  ``"`…`"`` label) unless `labelType: string` / `text` keeps it plain; `icon`, `img`,
+  `form`, `pos`, `w`, `h`, `constraint` are accepted and not drawn. A nested `{…}` value
+  is reported as such (the block ends at its first `}`, as in mermaid), not as an
+  "unclosed collection". `id@{ … }` on a subgraph id is validated and ignored. No public API change.
+- **`flowchart-elk` header.** Accepted as an alias of `flowchart` with the same direction
+  rules; the ELK layout hint is dropped (`to_mermaid` writes `flowchart`).
+
 - **Flowchart edge markers (#59).** Cross ends (`--x`, `-.-x`, `==x`), circle ends
   (`--o`, `-.-o`, `==o`) and two-way links (`<-->`, `<-.->`, `<==>`, `x--x`, `o--o`) parse
   on every line style and length, with `|label|` and inline (`-- text --x`,
@@ -19,16 +98,38 @@ project adheres to [Semantic Versioning](https://semver.org/).
   edge is the matching open kind, so consumers that only know `EdgeKind` draw a plain
   line).
 
+- **Trapezoid and asymmetric bracket shapes.** `A[/text\]` (trapezoid), `A[\text/]`
+  (inverted trapezoid) and `id>text]` (mermaid's asymmetric `odd`) parse, drawn as the
+  same nearest look-alikes as their `@{ shape: … }` names (the `[/ /]` and `[\ \]`
+  parallelograms and a rectangle). A slanted label now ends at whichever of `/]` and
+  `\]` comes first, as in mermaid's lexer. No public API change.
+- **Opt-in transparent background** ([#62](https://github.com/go-routine-id/flowmaid/issues/62)).
+  `SvgOptions::transparent` omits the full-canvas white `<rect>` for every diagram type
+  (`render_svg_advanced`, each `*_with` writer, plus new `render_advance_svg_with`,
+  `render_advance_text_svg_with`, `render_advance_routed_with`,
+  `render_advance_routed_with_lanes_with`, `fold::render_compact_with` and
+  `fold::render_compact_titled_with`); CLI `--transparent`. Default output is unchanged
+  byte-for-byte. Text and edge colours are unchanged (still dark, tuned for a light
+  background), so transparent output can be hard to read on a dark page; theming is
+  tracked in [#57](https://github.com/go-routine-id/flowmaid/issues/57).
+
 ### Changed
 
+- **Breaking (minor bump required):** `SvgOptions` gained the public field `transparent`
+  and is now `#[non_exhaustive]`. Outside the crate, struct literals no longer compile
+  (not even with `..Default::default()`); build it with `SvgOptions::default()` and assign
+  the fields you need. This makes future option fields non-breaking. Release this as
+  0.31.0, not 0.30.x.
+- A pipe edge label ``|"`x`"|`` is now a markdown string (label `x`), as in mermaid; it
+  used to keep the backticks.
 - **Mermaid's marker-letter rule applies.** A letter glued to the end of an operator is
   a marker, as in mermaid: `A---oB` is now a circle edge to `B` (was an open line to
   `oB`), and `A --xray` a cross edge to `ray`. Separate the id with a space to keep it.
   Code that builds `model::Edge` / `model::SubEdge` with struct literals must add
-  `ends: Default::default()`.
+  `ends: Default::default()` and `meta: Default::default()`.
 - **`model::Edge` and `model::SubEdge` are `#[non_exhaustive]`.** Fields stay public to
   read, but downstream code can no longer build them with struct literals (this release
-  already breaks those by adding `ends`), so future fields won't break it again. Build
+  already breaks those by adding `ends` and `meta`), so future fields won't break it again. Build
   edges with `Graph::add_edge` / `Graph::add_edge_with_ends`; `SubEdge`s come from the
   parser.
 - **Unquoted inline labels end at the first closer, as in mermaid.** Mermaid's lexer
@@ -42,11 +143,40 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `A -- use --xml flag --> B` are now errors. Quote the label to keep it whole:
   `A -- "go--on" --> B`. Quoted text is never scanned for a closer, so
   `A -- "a --> b" --> B` and `A -. "a .-x" .-> B` now parse too.
+- **Node `style` / `classDef` `stroke-width` must be 0 to 1000px.** Negative widths,
+  `NaN` / `inf` and larger values were accepted and wrote invalid or 300-digit SVG
+  numbers; they are now "invalid stroke-width" errors, the same check `linkStyle` uses.
+  `to_mermaid` drops a programmatic width outside that range, as it already dropped
+  non-finite ones.
 - **Glyph ends sharing a node side are spread apart.** When an edge end on a box's side
   carries a start, cross or circle glyph, the ends on that side are spaced up to 14px
   apart so the glyphs stay readable. Sides without such glyphs render exactly as before.
 
 ### Fixed
+
+- **Markdown emphasis is linear.** Matching `*` / `_` runs used to rescan every earlier
+  run per closer, so a 128 KB label of `_*` took seconds; it now uses CommonMark's
+  "openers bottom" bound and a linked delimiter list (256 KB: milliseconds).
+- **`SceneNode::link` re-sanitises urls.** A `Graph` filled in through the API (not the
+  parser) with a `javascript:` / `data:` url no longer hands it to host apps through the
+  scene; the unsafe `href` is dropped and the rest of the link kept.
+- **`classDef` / `style` accept a bare item after a property.** Mermaid splits style
+  values on every comma, so `stroke-dasharray: 9,5` leaves a stray `5` that it keeps as a
+  no-op; flowmaid now ignores it too, so the `classDef animate …` example from mermaid's
+  flowchart docs parses. A statement that starts with a bare item is still an error.
+- **`@{` in label text no longer opens a metadata block.** Inside a bracket shape label,
+  a `|pipe|` label or an inline `-- text -->` label, `@{` is plain text, as in mermaid's
+  lexer. It used to join the following lines into one statement and fail with "'@{'
+  metadata block is never closed" (or swallow the next statement). Regression from the
+  multi-line `@{ … }` support in this release cycle.
+- **Accessibility statements inside multi-line labels and `@{ … }` blocks.** A line inside
+  a multi-line markdown string or `@{ … }` block is label / YAML text, so `accTitle:` /
+  `accDescr` there no longer sets the diagram's title or description (or eats the label
+  line), and `…`"] --> B; accTitle: x` on the line that closes a markdown string works.
+- **YAML block scalars in `@{ … }` follow js-yaml.** A `>` folded scalar keeps a
+  more-indented line on its own line with its extra indent instead of folding it, and a
+  `|` / `>` line indented less than the first content line is "bad indentation", as in
+  mermaid, instead of being accepted.
 
 - **Subgraph frames no longer overlap (#60).** Sibling subgraph boxes never intersect
   and nodes are drawn only inside their own frames: a box widens only for edge lanes laid

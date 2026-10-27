@@ -34,7 +34,8 @@
 //!   it produces obey them; debug builds assert it).
 //! - stateDiagram-only shapes (`StateStart`, `StateEnd`, `ForkBar`)
 //!   have no flowchart syntax; they degrade to a circle / rect.
-//! - A non-finite `stroke_width` is dropped, as is any style value
+//! - A `stroke_width` the parser would refuse (non-finite, negative or
+//!   over 1000px) is dropped, as is any style value
 //!   with a depth-0 comma, a control character, or unbalanced
 //!   parens (a `style` line cannot carry them — mermaid's grammar
 //!   splits on commas). Style values round-trip modulo trim.
@@ -52,8 +53,36 @@
 //!   programmatic start glyph that differs from the end one (or sits
 //!   on an edge with no end glyph) is dropped, as are glyphs on an
 //!   invisible `~~~` link.
+//! - Edge ids (`A e1@--> B`) and their metadata (`e1@{ animation:
+//!   fast, curve: linear }`) round-trip. An id mermaid's token cannot
+//!   carry (whitespace, quotes, brackets, braces, pipes), or a repeat
+//!   of an id already written, is dropped together with its metadata —
+//!   a re-parse would hand the metadata to the first edge. An edge id
+//!   equal to a subgraph id writes metadata the parser routes to the
+//!   subgraph (mermaid's order), so it is lost.
+//! - `linkStyle` paint and curves round-trip as one resolved
+//!   `linkStyle <n> [interpolate <curve>] <styles>` line per styled
+//!   link, numbered in emitted order (edges, then sub-edges), so the
+//!   source's `default` line and statement order are not kept; the
+//!   per-link result is. A curve on an edge whose id is written rides
+//!   in its `id@{ curve }` instead.
+//! - `click` links, tooltips and targets round-trip as one `click`
+//!   line per node; a callback keeps its name (its arguments were
+//!   never stored). A url `sanitize_href` refuses is not written.
+//! - `accTitle` / `accDescr` round-trip right under the header. A
+//!   description holding both a newline and a `}` cannot ride in the
+//!   `accDescr { … }` block (the `}` closes it), so it flattens to one
+//!   line; blank lines and per-line indentation inside a block are
+//!   folded away by mermaid's own normalisation. A node with id
+//!   `accDescr` and a diamond shape writes `accDescr{…}`, which
+//!   mermaid (and flowmaid) read as a description block — that one
+//!   combination is unrepresentable.
 
-use crate::model::{Direction, EdgeEnds, EdgeKind, End, Graph, Marker, NodeStyle, Shape};
+use crate::model::{
+    Direction, EdgeAnimation, EdgeEnds, EdgeKind, EdgeMeta, End, Graph, LinkStyle, Marker,
+    NodeLink, NodeStyle, Shape,
+};
+use crate::parser::stroke_width_ok;
 
 /// Emit canonical mermaid flowchart text for `g`. See the module
 /// docs for the round-trip contract and its (small) honest limits.
@@ -65,6 +94,7 @@ pub fn to_mermaid(g: &Graph) -> String {
     out.push_str("flowchart ");
     out.push_str(dir_token(g.direction));
     out.push('\n');
+    push_acc(&mut out, g);
 
     // ── 1. Node declarations (index order). Top-level mentions
     //    never claim subgraph membership, so declaring everything
@@ -93,21 +123,65 @@ pub fn to_mermaid(g: &Graph) -> String {
         }
     }
 
-    // ── 3. Edges (insertion order — re-parse preserves it). ──
+    // ── 3. Edges (insertion order — re-parse preserves it). A
+    //    user edge id rides before the operator (`A e1@--> B`), and
+    //    its metadata follows as `e1@{ … }` once every edge exists. ──
+    let mut ids = std::collections::HashSet::new();
+    let mut metas: Vec<(String, &EdgeMeta)> = Vec::new();
+    // Every emitted link in mermaid's numbering (edges, then
+    // sub-edges — the order written), with whether its id rode along.
+    let mut links: Vec<(&EdgeMeta, bool)> = Vec::new();
+    let mut edge_id = |m: &'_ EdgeMeta| -> Option<String> {
+        let id = m.id.as_deref().filter(|id| edge_id_ok(id))?;
+        ids.insert(id.to_string()).then(|| id.to_string())
+    };
     for e in &g.edges {
         out.push_str("    ");
         out.push_str(&endpoint(g, e.from));
-        push_edge_op(&mut out, e.kind, e.ends, e.label.as_deref());
+        let id = edge_id(&e.meta);
+        push_edge_op(&mut out, e.kind, e.ends, e.label.as_deref(), id.as_deref());
         out.push_str(&endpoint(g, e.to));
         out.push('\n');
+        links.push((&e.meta, id.is_some()));
+        if let Some(id) = id {
+            metas.push((id, &e.meta));
+        }
     }
     // Sub-edges (whole-cluster endpoints). The parser pre-scans
     // subgraph ids, so these parse the same anywhere in the file.
     for e in &g.sub_edges {
         out.push_str("    ");
         out.push_str(&end_ref(g, e.from));
-        push_edge_op(&mut out, e.kind, e.ends, e.label.as_deref());
+        let id = edge_id(&e.meta);
+        push_edge_op(&mut out, e.kind, e.ends, e.label.as_deref(), id.as_deref());
         out.push_str(&end_ref(g, e.to));
+        out.push('\n');
+        links.push((&e.meta, id.is_some()));
+        if let Some(id) = id {
+            metas.push((id, &e.meta));
+        }
+    }
+    for (id, m) in metas {
+        push_edge_meta(&mut out, &id, m);
+    }
+    // `linkStyle <n>` for every styled link, numbered in the order
+    // written above. A curve rides here too unless `id@{ curve }`
+    // already carried it.
+    for (i, (m, has_id)) in links.into_iter().enumerate() {
+        let curve = m.curve.filter(|_| !has_id);
+        let props = link_style_props(&m.style);
+        if curve.is_none() && props.is_none() {
+            continue;
+        }
+        out.push_str(&format!("    linkStyle {i}"));
+        if let Some(c) = curve {
+            out.push_str(" interpolate ");
+            out.push_str(c.mermaid_name());
+        }
+        if let Some(p) = props {
+            out.push(' ');
+            out.push_str(&p);
+        }
         out.push('\n');
     }
 
@@ -123,7 +197,134 @@ pub fn to_mermaid(g: &Graph) -> String {
             out.push('\n');
         }
     }
+
+    // ── 5. `click` lines, after every node exists (a link only
+    //    lands on a node declared before it). ──
+    for (&i, l) in &g.links {
+        if let Some(n) = g.nodes.get(i) {
+            push_click(&mut out, &n.id, l);
+        }
+    }
     out
+}
+
+/// The `click` line for one node. A url rides in the `href` form with
+/// its tooltip and target; without one, a kept callback name carries
+/// the tooltip; a tooltip alone rides on a whitespace-only url, which
+/// mermaid (and flowmaid) read as "no link". A callback name that
+/// mermaid's grammar can't read back (or a refused url) is dropped.
+fn push_click(out: &mut String, id: &str, l: &NodeLink) {
+    let q = |v: &str| format!("\"{}\"", encode(v, &[]).replace('\n', " "));
+    let tip = l
+        .tooltip
+        .as_deref()
+        .filter(|t| !t.trim().is_empty())
+        .map(|t| format!(" {}", q(t)))
+        .unwrap_or_default();
+    let href = l
+        .href
+        .as_deref()
+        .and_then(crate::model::sanitize_href)
+        .filter(|u| !u.contains(['\n', '\r']));
+    let line = if let Some(u) = href {
+        let target = l
+            .target
+            .map(|t| format!(" {}", t.as_str()))
+            .unwrap_or_default();
+        format!("click {id} href {}{tip}{target}", q(&u))
+    } else if let Some(cb) = l.callback.as_deref().filter(|c| callback_ok(c)) {
+        format!("click {id} {cb}{tip}")
+    } else if !tip.is_empty() {
+        format!("click {id} href \" \"{tip}")
+    } else {
+        return;
+    };
+    out.push_str("    ");
+    out.push_str(&line);
+    out.push('\n');
+}
+
+/// Whether a callback name reads back as the bare-name form: a word
+/// with no whitespace, quote or parenthesis that isn't a link target
+/// or one of `click`'s own sub-keywords.
+fn callback_ok(cb: &str) -> bool {
+    !cb.is_empty()
+        && !cb
+            .chars()
+            .any(|c| c.is_whitespace() || c.is_control() || "\"()".contains(c))
+        && crate::model::LinkTarget::from_mermaid(cb).is_none()
+        && cb != "href"
+        && cb != "call"
+}
+
+/// Mermaid's accessibility statements, right under the header. A
+/// title is one line by grammar (newlines flatten to spaces); a
+/// description with newlines takes the `accDescr { … }` block form,
+/// unless it also holds a `}` (which would close the block early) —
+/// then it flattens to one line. Control characters sanitize to spaces
+/// as in labels. Empty values are not written (the parser reads an
+/// empty value as absent anyway).
+fn push_acc(out: &mut String, g: &Graph) {
+    let clean = |v: &str| -> String {
+        v.chars()
+            .map(|c| if c.is_control() && c != '\n' { ' ' } else { c })
+            .collect()
+    };
+    if let Some(t) = g.acc_title.as_deref().map(clean) {
+        let t = t.replace('\n', " ");
+        if !t.trim().is_empty() {
+            out.push_str("    accTitle: ");
+            out.push_str(t.trim());
+            out.push('\n');
+        }
+    }
+    if let Some(d) = g.acc_descr.as_deref().map(clean) {
+        let d = d.trim();
+        if d.contains('\n') && !d.contains('}') {
+            out.push_str("    accDescr {\n");
+            for l in d.lines() {
+                out.push_str("        ");
+                out.push_str(l.trim());
+                out.push('\n');
+            }
+            out.push_str("    }\n");
+        } else if !d.is_empty() {
+            out.push_str("    accDescr: ");
+            out.push_str(&d.split_whitespace().collect::<Vec<_>>().join(" "));
+            out.push('\n');
+        }
+    }
+}
+
+/// Whether a user edge id can ride as mermaid's `id@` token: non-empty,
+/// with no whitespace, quote, bracket, brace or pipe (those end the
+/// token).
+fn edge_id_ok(id: &str) -> bool {
+    !id.is_empty()
+        && !id
+            .chars()
+            .any(|c| c.is_whitespace() || c.is_control() || "\"[](){}|".contains(c))
+}
+
+/// `e1@{ animation: fast, curve: linear }` for an edge whose metadata
+/// says something; nothing for a bare id.
+fn push_edge_meta(out: &mut String, id: &str, m: &EdgeMeta) {
+    let mut keys = Vec::new();
+    if let Some(a) = m.animation {
+        keys.push(format!(
+            "animation: {}",
+            match a {
+                EdgeAnimation::Fast => "fast",
+                EdgeAnimation::Slow => "slow",
+            }
+        ));
+    }
+    if let Some(c) = m.curve {
+        keys.push(format!("curve: {}", c.mermaid_name()));
+    }
+    if !keys.is_empty() {
+        out.push_str(&format!("    {id}@{{ {} }}\n", keys.join(", ")));
+    }
 }
 
 /// The unrepresentable-in-mermaid graph shapes (see module docs).
@@ -335,7 +536,13 @@ fn defuse_md(enc: String) -> String {
 /// (quotes don't protect the slot delimiter). Edge labels are
 /// single-line by grammar (newlines flatten to spaces). An empty or
 /// whitespace-only label normalizes away to no label.
-fn push_edge_op(out: &mut String, kind: EdgeKind, ends: EdgeEnds, label: Option<&str>) {
+fn push_edge_op(
+    out: &mut String,
+    kind: EdgeKind,
+    ends: EdgeEnds,
+    label: Option<&str>,
+    id: Option<&str>,
+) {
     // Line body without its tail, then the tail glyph: `--` + `>`,
     // `-.-` + `x`, `==` + `=` (open), …
     let (body, open_tail) = match kind {
@@ -352,6 +559,10 @@ fn push_edge_op(out: &mut String, kind: EdgeKind, ends: EdgeEnds, label: Option<
         Marker::Circle => "o",
     };
     out.push(' ');
+    if let Some(id) = id {
+        out.push_str(id);
+        out.push('@');
+    }
     // Mermaid can only mirror the end glyph at the start.
     if let Some(m) = ends.start_marker(kind).filter(|&m| Some(m) == end) {
         out.push_str(glyph(m, true));
@@ -485,7 +696,7 @@ fn style_props(st: &NodeStyle) -> Option<String> {
         }
     }
     if let Some(w) = st.stroke_width {
-        if w.is_finite() {
+        if stroke_width_ok(w) {
             // f64 Display: `2` for 2.0, `1.5` for 1.5 — parses back
             // identically, no integer cast to saturate.
             parts.push(format!("stroke-width:{}px", w));
@@ -501,6 +712,27 @@ fn style_props(st: &NodeStyle) -> Option<String> {
     } else {
         Some(parts.join(","))
     }
+}
+
+/// `stroke:…,stroke-width:…px,stroke-dasharray:…,fill:…,color:…` for
+/// a link's set fields, in that fixed order; `None` when nothing is
+/// writable. Values a `linkStyle` line cannot carry (see
+/// [`style_value_ok`]) are dropped, as for node styles.
+fn link_style_props(st: &LinkStyle) -> Option<String> {
+    let mut parts: Vec<String> = Vec::new();
+    let mut put = |k: &str, v: &Option<String>| {
+        if let Some(v) = v.as_deref().filter(|v| style_value_ok(v)) {
+            parts.push(format!("{k}:{}", v.trim()));
+        }
+    };
+    put("stroke", &st.stroke);
+    if let Some(w) = st.stroke_width.filter(|&w| stroke_width_ok(w)) {
+        put("stroke-width", &Some(format!("{w}px")));
+    }
+    put("stroke-dasharray", &st.stroke_dasharray);
+    put("fill", &st.fill);
+    put("color", &st.color);
+    (!parts.is_empty()).then(|| parts.join(","))
 }
 
 #[cfg(test)]
@@ -737,13 +969,21 @@ mod tests {
         );
         // CSS function values with commas (paren-aware props split).
         assert_source_roundtrip("flowchart TD\nA --> B\nstyle A fill:rgb(255,0,0),stroke:#900\n");
-        // Extreme stroke widths must not saturate or panic.
+        // Extreme stroke widths must not saturate or panic; the largest
+        // the parser accepts round-trips, anything past it is dropped
+        // (it could not be read back).
         let mut g = Graph::default();
         let a = g.ensure_node("a", None, None);
         g.ensure_node("b", None, None);
-        g.nodes[a].style.stroke_width = Some(1e19);
+        g.nodes[a].style.stroke_width = Some(1000.0);
         g.add_edge(0, 1, None, EdgeKind::Arrow);
         assert_roundtrip(&g);
+        for w in [1e19, -5.0] {
+            g.nodes[a].style.stroke_width = Some(w);
+            let text = to_mermaid(&g);
+            assert!(!text.contains("stroke-width"), "{text}");
+            assert_eq!(parse(&text).unwrap().nodes[a].style.stroke_width, None);
+        }
         // Non-finite widths are dropped, not written as "NaNpx".
         let st = crate::model::NodeStyle {
             stroke_width: Some(f64::NAN),
@@ -1280,9 +1520,16 @@ mod tests {
             assert_roundtrip(&g);
         }
         // Bare case-variant lines are plain nodes (mermaid keywords
-        // are case-sensitive); exact-lowercase gets the targeted err.
+        // are case-sensitive); exact-lowercase is a click statement,
+        // which never mints the node it names.
         assert!(parse("flowchart TD\nClick\nClick --> B\n").is_ok());
-        assert!(parse("flowchart TD\nclick A callback\n").is_err());
+        let g = parse("flowchart TD\nA\nclick A callback\n").unwrap();
+        assert_eq!(g.nodes.len(), 1);
+        assert_eq!(g.links[&0].callback.as_deref(), Some("callback"));
+        assert!(parse("flowchart TD\nclick A callback\n")
+            .unwrap()
+            .nodes
+            .is_empty());
         // Inline-label edge from a keyword-named node still parses.
         let g = parse("flowchart TD\nclick -- go --> B\n").unwrap();
         assert_eq!(g.edges.len(), 1);
@@ -1346,6 +1593,7 @@ mod tests {
                 label: None,
                 kind: EdgeKind::Arrow,
                 ends: Default::default(),
+                meta: Default::default(),
             });
             assert_roundtrip(&g);
         }
@@ -1381,18 +1629,24 @@ mod tests {
         g.ensure_node("b", Some("bell\u{7}\n".into()), None);
         g.add_edge(0, 1, None, EdgeKind::Arrow);
         assert_roundtrip(&g);
-        // linkStyle/click: targeted message, not an edge-op error —
-        // but `click --> B` is still an edge from a node named click.
-        let e = parse("flowchart TD\nA --> B\nlinkStyle 0 stroke:#f00\n").unwrap_err();
-        assert!(e.message.contains("aren't supported"), "{}", e.message);
+        // linkStyle now parses and round-trips — but `click --> B` is
+        // still an edge from a node named click.
+        let g = parse("flowchart TD\nA --> B\nlinkStyle 0 stroke:#f00\n").unwrap();
+        assert_eq!(g.edges[0].meta.style.stroke.as_deref(), Some("#f00"));
+        assert_roundtrip(&g);
         let g = parse("flowchart TD\nclick --> B\n").unwrap();
         assert_eq!(g.edges.len(), 1);
     }
 
     #[test]
     fn round3_backtick_edge_labels_and_cr_entities_are_defused() {
-        // Edge labels get the same markdown-string guard as nodes.
+        // `"`pow`"` in a pipe is a mermaid markdown string now (label
+        // "pow"); a label that really starts with a backtick still
+        // gets the guard, so it can't turn into one on the way back.
         let g = parse("flowchart TD\nA -->|\"`pow`\"| B\n").unwrap();
+        assert_eq!(g.edges[0].label.as_deref(), Some("pow"));
+        assert_roundtrip(&g);
+        let g = parse("flowchart TD\nA -->|\"#96;pow#96;\"| B\n").unwrap();
         assert_eq!(g.edges[0].label.as_deref(), Some("`pow`"));
         let text = to_mermaid(&g);
         assert!(text.contains("#96;"), "leading backtick defused:\n{text}");
@@ -1415,5 +1669,253 @@ mod tests {
         let back = crate::parser::parse(&text)
             .unwrap_or_else(|e| panic!("re-parse failed: {}\n{text}", e.message));
         assert_eq!(back.nodes[0].style.fill.as_deref(), Some("url('#g')"));
+    }
+
+    #[test]
+    fn acc_title_and_descr_round_trip() {
+        for src in [
+            "flowchart TD\n accTitle: T\n accDescr {\n a\n b\n }\n A-->B",
+            "flowchart TD\n accTitle: a; B --> C\n accDescr: one line\n A-->B",
+            "flowchart TD\n accDescr: only a description\n A",
+            "flowchart-elk LR\n accTitle: elk\n A-->B",
+        ] {
+            let g = parse(src).unwrap();
+            let text = to_mermaid(&g);
+            let back = parse(&text).unwrap_or_else(|e| panic!("{e}\n--\n{text}"));
+            assert_eq!(back.acc_title, g.acc_title, "{text}");
+            assert_eq!(back.acc_descr, g.acc_descr, "{text}");
+            assert_roundtrip(&g);
+        }
+        // The elk layout hint is dropped: it re-emits as `flowchart`.
+        let text = to_mermaid(&parse("flowchart-elk LR\nA-->B").unwrap());
+        assert!(text.starts_with("flowchart LR\n"), "{text}");
+        // No acc: nothing extra written.
+        let text = to_mermaid(&parse("flowchart TD\nA-->B").unwrap());
+        assert!(!text.contains("acc"), "{text}");
+    }
+
+    #[test]
+    fn acc_programmatic_values_stay_representable() {
+        let mut g = parse("flowchart TD\nA").unwrap();
+        g.acc_title = Some("line\none".into());
+        g.acc_descr = Some("a }\nb".into());
+        let text = to_mermaid(&g);
+        let back = parse(&text).unwrap_or_else(|e| panic!("{e}\n--\n{text}"));
+        assert_eq!(back.acc_title.as_deref(), Some("line one"));
+        assert_eq!(back.acc_descr.as_deref(), Some("a } b"));
+        g.acc_title = Some("   ".into());
+        g.acc_descr = Some(String::new());
+        assert!(!to_mermaid(&g).contains("acc"));
+    }
+
+    fn metas(g: &Graph) -> Vec<EdgeMeta> {
+        g.edges
+            .iter()
+            .map(|e| e.meta.clone())
+            .chain(g.sub_edges.iter().map(|e| e.meta.clone()))
+            .collect()
+    }
+
+    #[test]
+    fn edge_ids_and_metadata_round_trip() {
+        for src in [
+            "flowchart LR\n  A e1@--> B\n  B e2@--> C\n  e1@{ animation: fast }\n",
+            "flowchart LR\n  A e1@-- go --> B\n  C e2@x--x D\n  E e3@<-.-> F\n  G e4@==o H\n  I e5@~~~ J\n",
+            "flowchart LR\n  A e1@==> B\n  A e2@--> C\n  e1@{ curve: linear }\n  e2@{ curve: natural, animate: true }\n",
+            "flowchart LR\n  A & B e1@--> C & D\n  e1@{ animation: slow, curve: stepBefore }\n",
+            "flowchart LR\n  subgraph S\n    X\n  end\n  A e1@--> S\n  e1@{ animation: fast }\n",
+            "flowchart LR\n  A e-1@--> B\n  B a@b@--> C\n  e-1@{ curve: bumpY }\n",
+            "flowchart LR\n  A e1@--> B\n  e1@{ curve: wiggly }\n",
+        ] {
+            let g = parse(src).unwrap();
+            let text = to_mermaid(&g);
+            let back = parse(&text).unwrap_or_else(|e| panic!("{e}\n--\n{text}"));
+            assert_eq!(metas(&back), metas(&g), "{text}");
+            assert_roundtrip(&g);
+        }
+        let text =
+            to_mermaid(&parse("flowchart LR\n  A e1@--> B\n  e1@{ animate: true }\n").unwrap());
+        assert!(text.contains("A e1@--> B"), "{text}");
+        assert!(text.contains("e1@{ animation: fast }"), "{text}");
+        // A bare id writes no metadata line.
+        let text = to_mermaid(&parse("flowchart LR\n  A e1@--> B\n").unwrap());
+        assert!(!text.contains("@{"), "{text}");
+    }
+
+    #[test]
+    fn unwritable_or_repeated_edge_ids_are_dropped_with_their_metadata() {
+        let mut g = parse("flowchart LR\n  A --> B\n  B --> C\n").unwrap();
+        g.edges[0].meta.id = Some("dup".into());
+        g.edges[0].meta.curve = Some(crate::model::EdgeCurve::Linear);
+        g.edges[1].meta.id = Some("dup".into());
+        g.edges[1].meta.animation = Some(EdgeAnimation::Slow);
+        let text = to_mermaid(&g);
+        let back = parse(&text).unwrap_or_else(|e| panic!("{e}\n--\n{text}"));
+        assert_eq!(back.edges[0].meta, g.edges[0].meta, "{text}");
+        assert_eq!(back.edges[1].meta, EdgeMeta::default(), "{text}");
+        g.edges[0].meta.id = Some("has space".into());
+        let text = to_mermaid(&g);
+        assert!(!text.contains("has space"), "{text}");
+        parse(&text).unwrap();
+    }
+
+    #[test]
+    fn node_metadata_round_trips_through_bracket_forms() {
+        for src in [
+            "flowchart TD\n  A@{ shape: cyl, label: \"DB\" } --> B\n",
+            "flowchart LR\n  a@{shape: rect} --> b@{shape: rounded} --> c@{shape: stadium} --> d@{shape: fr-rect} --> e@{shape: cyl} --> f@{shape: circle} --> g@{shape: dbl-circ} --> h@{shape: diam} --> i@{shape: hex} --> j@{shape: lean-r} --> k@{shape: lean-l}\n",
+            "flowchart TB\n  A@{\n    label: |\n      two\n      lines\n  }\n",
+            "flowchart TB\n  A@{ shape: text, label: hi }\n  B@{ shape: doc }\n  C@{ shape: cloud }\n",
+            "flowchart TB\n  A:::hot@{ shape: hex }\n  classDef hot fill:#f00\n",
+        ] {
+            assert_roundtrip(&parse(src).unwrap());
+        }
+        // The mermaid name itself is not kept: a fallback shape writes
+        // its flowmaid look-alike.
+        let text = to_mermaid(&parse("flowchart TB\n  A@{ shape: doc }\n").unwrap());
+        assert!(
+            text.contains("A[\"A\"]") || text.contains("    A\n"),
+            "{text}"
+        );
+    }
+
+    /// Every link's resolved `linkStyle` paint and curve, in mermaid's
+    /// numbering (edges then sub-edges).
+    fn link_paint(g: &Graph) -> Vec<(LinkStyle, Option<crate::model::EdgeCurve>)> {
+        g.edges
+            .iter()
+            .map(|e| &e.meta)
+            .chain(g.sub_edges.iter().map(|e| &e.meta))
+            .map(|m| (m.style.clone(), m.curve))
+            .collect()
+    }
+
+    #[test]
+    fn link_styles_round_trip_in_emitted_order() {
+        for src in [
+            "flowchart TD\nA --> B\nB --> C\nlinkStyle 1 stroke:#ff3,stroke-width:4px,color:red;\n",
+            // Sub-edge A-S is index 4 in the source but written last.
+            "flowchart LR\nsubgraph S\n  X\nend\nA & B --> C & D\nA --> S\nC ~~~ D\n\
+             D --> E --> F\nlinkStyle 4 stroke:red\nlinkStyle 6,7 stroke:blue\n",
+            "flowchart TD\nlinkStyle default stroke:#888,stroke-width:2px\nA --> B --> C\n\
+             linkStyle 1 stroke:#e11d48\n",
+            "flowchart LR\nA -.-> B\nC ==> D\nE --> F\nlinkStyle 0 stroke-dasharray:0\n\
+             linkStyle 1 stroke-width:1.5px\nlinkStyle 2 stroke-dasharray: 5 5,fill:#fde68a\n",
+            "flowchart TD\nA --> B --> C\nlinkStyle default interpolate linear stroke:red\n\
+             linkStyle 0 interpolate basis\n",
+            "flowchart TD\nA e1@--> B --> C\ne1@{ curve: step }\nlinkStyle 1 interpolate natural\n",
+            "flowchart LR\nA ~~~ B\nA --> C\nlinkStyle 0 stroke:red,stroke-width:2px\n",
+            "flowchart TD\nA --> B\nlinkStyle 0 stroke:rgb(255,0,0)\n",
+        ] {
+            let g = parse(src).unwrap();
+            let text = to_mermaid(&g);
+            let back = parse(&text).unwrap_or_else(|e| panic!("{e}\n{text}"));
+            assert_eq!(link_paint(&g), link_paint(&back), "{src}\n--\n{text}");
+            assert_roundtrip(&g);
+        }
+        let text = to_mermaid(
+            &parse(
+                "flowchart LR\nsubgraph S\n  X\nend\nA --> S\nA --> B\nlinkStyle 0 stroke:red\n",
+            )
+            .unwrap(),
+        );
+        // A-S is written after A-B: index 1 now.
+        assert!(text.contains("    linkStyle 1 stroke:red\n"), "{text}");
+        assert!(!text.contains("linkStyle 0"), "{text}");
+    }
+
+    #[test]
+    fn programmatic_link_styles_drop_unwritable_values() {
+        let mut g = parse("flowchart TD\nA --> B\n").unwrap();
+        let st = &mut g.edges[0].meta.style;
+        st.stroke = Some("a,b".into());
+        st.stroke_width = Some(f64::NAN);
+        st.color = Some("blue".into());
+        let text = to_mermaid(&g);
+        assert!(text.contains("    linkStyle 0 color:blue\n"), "{text}");
+        let back = parse(&text).unwrap();
+        assert_eq!(back.edges[0].meta.style.color.as_deref(), Some("blue"));
+        assert_eq!(back.edges[0].meta.style.stroke, None);
+        // A curve on an edge without an id rides as interpolate.
+        let mut g = parse("flowchart TD\nA --> B\n").unwrap();
+        g.edges[0].meta.curve = Some(crate::model::EdgeCurve::MonotoneX);
+        let text = to_mermaid(&g);
+        assert!(text.contains("linkStyle 0 interpolate monotoneX"), "{text}");
+        assert_eq!(link_paint(&parse(&text).unwrap()), link_paint(&g));
+    }
+
+    #[test]
+    fn click_links_tooltips_and_targets_round_trip() {
+        for src in [
+            "flowchart LR\nA-->B\nclick A \"https://example.com\"\n",
+            "flowchart LR\nA-->B\nclick A href \"https://example.com\" \"Go to docs\" _blank\n",
+            "flowchart LR\nA-->B\nclick A \"https://example.com\" _self\n",
+            "flowchart LR\nA-->B\nclick B \"https://example.com\" \"tip\"\n",
+            "flowchart LR\nA-->B\nclick A callback \"Tooltip for a callback\"\n",
+            "flowchart LR\nA-->B\nclick A call fn(\"a,b\", 2) \"tt\"\n",
+            "flowchart LR\nA-->B\nC-->D\nclick A,C \"https://example.com\"\n",
+            "flowchart LR\nA-->B\nclick A href \"https://x/?q=#35;1\" \"t #quot;q#quot; <b>\" _blank\n",
+            "flowchart LR\nA-->B\nclick A \"/docs/page?a=1&b=2\" _parent\n",
+            // Tooltip only (the link came before the node existed).
+            "flowchart LR\nclick A \"https://example.com\" \"tt\"\nA-->B\n",
+        ] {
+            let g = parse(src).unwrap();
+            assert!(!g.links.is_empty(), "{src}");
+            let text = to_mermaid(&g);
+            let back = parse(&text).unwrap_or_else(|e| panic!("{e}\n{text}"));
+            assert_eq!(back.links, g.links, "{src}\n--\n{text}");
+            assert_roundtrip(&g);
+        }
+        let g = parse(
+            "flowchart LR\nA-->B\nclick A href \"https://x/?q=#35;1\" \"t #quot;q#quot;\" _blank\n",
+        )
+        .unwrap();
+        let l = &g.links[&0];
+        assert_eq!(l.href.as_deref(), Some("https://x/?q=#1"));
+        assert_eq!(l.tooltip.as_deref(), Some("t \"q\""));
+        assert_eq!(l.target, Some(crate::model::LinkTarget::Blank));
+    }
+
+    #[test]
+    fn programmatic_click_links_stay_safe_and_readable() {
+        let mut g = parse("flowchart LR\nA-->B\n").unwrap();
+        g.links.insert(
+            0,
+            NodeLink {
+                href: Some("javascript:alert(1)".into()),
+                tooltip: Some("tip".into()),
+                ..NodeLink::default()
+            },
+        );
+        g.links.insert(
+            1,
+            NodeLink {
+                callback: Some("bad name".into()),
+                ..NodeLink::default()
+            },
+        );
+        let text = to_mermaid(&g);
+        assert!(!text.contains("javascript"), "{text}");
+        assert!(text.contains("click A href \" \" \"tip\""), "{text}");
+        assert!(!text.contains("click B"), "{text}");
+        let back = parse(&text).unwrap();
+        assert_eq!(back.links[&0].tooltip.as_deref(), Some("tip"));
+        assert_eq!(back.links[&0].href, None);
+    }
+
+    #[test]
+    fn markdown_labels_round_trip_as_their_lowered_markup() {
+        for src in [
+            "flowchart LR\n  A[\"`This **is** _Markdown_`\"] --> B\n",
+            "flowchart LR\n  n[\"`Line1\n    Line 2\n    Line 3`\"]\n",
+            "flowchart LR\n  A[\"`The quick brown fox jumps over the lazy dog and keeps running far away`\"]\n",
+            "flowchart LR\n  A -->|\"`**pipe** label`\"| B\n  A -- \"`*inline* label`\" --> C\n",
+            "flowchart LR\n  subgraph s1 [\"`*Italic* title`\"]\n    A\n  end\n",
+            "flowchart LR\nsubgraph \"`**Two**`\"\n  c(\"`The **cat**\n  in the hat`\") -- \"`Bold **edge label**`\" --> d\nend\n",
+            "flowchart LR\n  A[\"`\\*not italic\\* #42;also not#42;`\"]\n",
+        ] {
+            let g = parse(src).unwrap_or_else(|e| panic!("{e}\n{src}"));
+            assert_roundtrip(&g);
+        }
     }
 }

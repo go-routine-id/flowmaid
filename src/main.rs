@@ -2,7 +2,7 @@
 //!
 //! Pipeline: .mmd text  ->  parser  ->  layout  ->  SVG.
 
-use flowmaid::{fold, parser, render, Document};
+use flowmaid::{fold, parser, render, Document, SvgOptions};
 use std::env;
 use std::fs;
 use std::io::{self, IsTerminal, Read};
@@ -22,6 +22,7 @@ fn print_help() {
          \x20                       the flow axis (serpentine layout)\n\
          \x20 --advance             render advance / swimlane JSON input\n\
          \x20 --advance-text        render advance / swimlane text DSL input\n\
+         \x20 --transparent         omit the white background rect (transparent SVG)\n\
          \x20 -h, --help            show this help\n\n\
          Syntax example:\n\
          \x20 flowchart TD\n\
@@ -40,6 +41,7 @@ fn main() {
     let mut compact: Option<f64> = None;
     let mut advance: bool = false;
     let mut advance_text: bool = false;
+    let mut svg_opts = SvgOptions::default();
 
     let mut i = 0;
     while i < args.len() {
@@ -69,6 +71,9 @@ fn main() {
             }
             "--advance" => {
                 advance = true;
+            }
+            "--transparent" => {
+                svg_opts.transparent = true;
             }
             "-h" | "--help" => {
                 print_help();
@@ -112,7 +117,7 @@ fn main() {
 
     if advance_text || advance {
         let svg = if advance_text {
-            match flowmaid::render_advance_text_svg(&source) {
+            match flowmaid::render_advance_text_svg_with(&source, &svg_opts) {
                 Ok(s) => s,
                 Err(e) => {
                     eprintln!("advance text error — {}", e);
@@ -120,7 +125,7 @@ fn main() {
                 }
             }
         } else {
-            match flowmaid::render_advance_svg(&source) {
+            match flowmaid::render_advance_svg_with(&source, &svg_opts) {
                 Ok(s) => s,
                 Err(e) => {
                     eprintln!("advance error — {}", e);
@@ -204,22 +209,25 @@ fn main() {
                 "Flowchart diagram"
             };
             match compact {
-                Some(px) => {
-                    fold::render_compact_titled(g, &fold::CompactOptions::for_extent(px), title)
-                }
-                None => render::render_titled(g, title),
+                Some(px) => fold::render_compact_titled_with(
+                    g,
+                    &fold::CompactOptions::for_extent(px),
+                    title,
+                    &svg_opts,
+                ),
+                None => render::render_titled_with(g, title, &svg_opts),
             }
         }
-        Document::Er(d) => render::render_er(d),
-        Document::Class(d) => render::render_class(d),
-        Document::Sequence(d) => render::render_seq(d),
-        Document::Pie(d) => render::render_pie(d),
-        Document::Mindmap(d) => render::render_mindmap(d),
-        Document::Journey(d) => render::render_journey(d),
-        Document::GitGraph(d) => render::render_gitgraph(d),
-        Document::Architecture(d) => render::render_architecture(d),
-        Document::Timeline(d) => render::render_timeline(d),
-        Document::Sankey(d) => render::render_sankey(d),
+        Document::Er(d) => render::render_er_with(d, &svg_opts),
+        Document::Class(d) => render::render_class_with(d, &svg_opts),
+        Document::Sequence(d) => render::render_seq_with(d, &svg_opts),
+        Document::Pie(d) => render::render_pie_with(d, &svg_opts),
+        Document::Mindmap(d) => render::render_mindmap_with(d, &svg_opts),
+        Document::Journey(d) => render::render_journey_with(d, &svg_opts),
+        Document::GitGraph(d) => render::render_gitgraph_with(d, &svg_opts),
+        Document::Architecture(d) => render::render_architecture_with(d, &svg_opts),
+        Document::Timeline(d) => render::render_timeline_with(d, &svg_opts),
+        Document::Sankey(d) => render::render_sankey_with(d, &svg_opts),
     };
 
     match &output {

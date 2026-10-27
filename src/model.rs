@@ -1,6 +1,6 @@
 //! Core data model: graph, nodes, edges.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 /// Flow direction of the diagram.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -129,6 +129,144 @@ impl EdgeEnds {
     }
 }
 
+/// Edge animation speed from mermaid edge metadata
+/// (`e1@{ animate: true }` = fast, `e1@{ animation: slow }`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum EdgeAnimation {
+    /// Mermaid's `edge-animation-fast` (20 s dash cycle).
+    Fast,
+    /// Mermaid's `edge-animation-slow` (50 s dash cycle).
+    Slow,
+}
+
+/// Per-edge curve from mermaid edge metadata (`e1@{ curve: linear }`),
+/// named after the d3 curves mermaid maps them to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum EdgeCurve {
+    Basis,
+    Linear,
+    Step,
+    StepBefore,
+    StepAfter,
+    /// Straight segments with radius-5 rounded corners.
+    Rounded,
+    Cardinal,
+    CatmullRom,
+    Natural,
+    MonotoneX,
+    MonotoneY,
+    BumpX,
+    BumpY,
+}
+
+/// Mermaid's curve names (case-sensitive) and the curve each selects.
+const EDGE_CURVES: &[(&str, EdgeCurve)] = &[
+    ("basis", EdgeCurve::Basis),
+    ("linear", EdgeCurve::Linear),
+    ("step", EdgeCurve::Step),
+    ("stepBefore", EdgeCurve::StepBefore),
+    ("stepAfter", EdgeCurve::StepAfter),
+    ("rounded", EdgeCurve::Rounded),
+    ("cardinal", EdgeCurve::Cardinal),
+    ("catmullRom", EdgeCurve::CatmullRom),
+    ("natural", EdgeCurve::Natural),
+    ("monotoneX", EdgeCurve::MonotoneX),
+    ("monotoneY", EdgeCurve::MonotoneY),
+    ("bumpX", EdgeCurve::BumpX),
+    ("bumpY", EdgeCurve::BumpY),
+];
+
+impl EdgeCurve {
+    /// The curve a mermaid `curve:` value selects. Names are
+    /// case-sensitive and anything unknown is `Basis` — mermaid's
+    /// default branch.
+    pub fn from_mermaid(name: &str) -> EdgeCurve {
+        EDGE_CURVES
+            .iter()
+            .find(|(n, _)| *n == name)
+            .map_or(EdgeCurve::Basis, |&(_, c)| c)
+    }
+
+    /// The mermaid name of this curve.
+    pub fn mermaid_name(self) -> &'static str {
+        EDGE_CURVES
+            .iter()
+            .find(|(_, c)| *c == self)
+            .map_or("basis", |&(n, _)| n)
+    }
+}
+
+/// Mermaid's per-edge `@` syntax: a user id (`A e1@--> B`) and the
+/// metadata a later `e1@{ … }` statement attaches to it. The default
+/// (all `None`) is a plain edge and renders exactly as before.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct EdgeMeta {
+    /// User-defined edge id. Ids are unique per graph: a repeated id
+    /// leaves the later edge without one, as in mermaid.
+    pub id: Option<String>,
+    /// Resolved animation (mermaid's `animate` / `animation` keys).
+    pub animation: Option<EdgeAnimation>,
+    /// Per-edge curve (mermaid's `curve` key, or a `linkStyle …
+    /// interpolate <curve>` statement); `None` = the default.
+    pub curve: Option<EdgeCurve>,
+    /// Paint from mermaid's `linkStyle` statements, already resolved
+    /// (the `default` style overlaid with this edge's own). The default
+    /// (all `None`) draws the edge exactly as before.
+    pub style: LinkStyle,
+}
+
+/// Edge paint from mermaid's `linkStyle <n> <styles>` /
+/// `linkStyle default <styles>`. `None` fields keep the edge kind's
+/// built-in look (theme colour, 1.7px or 3.4px thick, dotted dash).
+///
+/// `Eq` holds because the parser never stores a non-finite
+/// `stroke_width`; a hand-built NaN width compares unequal to itself.
+#[derive(Debug, Clone, Default, PartialEq)]
+#[non_exhaustive]
+pub struct LinkStyle {
+    /// `stroke:<colour>`: line colour; arrow, cross and circle
+    /// markers follow it.
+    pub stroke: Option<String>,
+    /// `stroke-width:<n>[px]`, in pixels. A styled width keeps the
+    /// arrowhead at its normal size (mermaid's markers don't scale).
+    pub stroke_width: Option<f64>,
+    /// `stroke-dasharray:<v>` (`5 5`; `0` makes a dotted edge solid).
+    pub stroke_dasharray: Option<String>,
+    /// `fill:<paint>`: fills the region the curve encloses; `None`
+    /// means `none`.
+    pub fill: Option<String>,
+    /// `color:<colour>`: edge label text colour.
+    pub color: Option<String>,
+}
+
+impl Eq for LinkStyle {}
+
+impl LinkStyle {
+    /// Whether no property is set (the edge draws unstyled).
+    pub fn is_empty(&self) -> bool {
+        *self == LinkStyle::default()
+    }
+
+    /// Overlay `over`'s set fields onto `self` (`over` wins).
+    pub fn apply_over(&mut self, over: &LinkStyle) {
+        let pick = |a: &mut Option<String>, b: &Option<String>| {
+            if b.is_some() {
+                a.clone_from(b);
+            }
+        };
+        pick(&mut self.stroke, &over.stroke);
+        pick(&mut self.stroke_dasharray, &over.stroke_dasharray);
+        pick(&mut self.fill, &over.fill);
+        pick(&mut self.color, &over.color);
+        if over.stroke_width.is_some() {
+            self.stroke_width = over.stroke_width;
+        }
+    }
+}
+
 /// Custom per-node styling from Mermaid `style` / `classDef`
 /// lines. `None` fields fall back to the shape's theme color
 /// (see [`crate::style::shape_style`]).
@@ -184,6 +322,8 @@ pub struct Edge {
     /// Cross / circle / two-way end glyphs (default: none beyond
     /// what `kind` implies).
     pub ends: EdgeEnds,
+    /// Mermaid edge id + metadata (`A e1@--> B`, `e1@{ curve: … }`).
+    pub meta: EdgeMeta,
 }
 
 /// A `subgraph ... end` block: a titled cluster of nodes, possibly
@@ -224,6 +364,8 @@ pub struct SubEdge {
     pub kind: EdgeKind,
     /// End glyphs, as on [`Edge::ends`].
     pub ends: EdgeEnds,
+    /// Edge id + metadata, as on [`Edge::meta`].
+    pub meta: EdgeMeta,
 }
 
 /// Parsed graph, ready for layout.
@@ -235,7 +377,234 @@ pub struct Graph {
     pub subgraphs: Vec<Subgraph>,
     /// Edges with a subgraph as an endpoint (see [`SubEdge`]).
     pub sub_edges: Vec<SubEdge>,
+    /// Accessible title from mermaid's `accTitle:` statement — replaces
+    /// the default `<title>` / `aria-label` of the SVG. `None` = absent
+    /// or empty.
+    pub acc_title: Option<String>,
+    /// Accessible description from `accDescr:` or the multi-line
+    /// `accDescr { … }` block — written as the SVG's `<desc>`.
+    pub acc_descr: Option<String>,
+    /// Mermaid `click` links and tooltips, keyed by node index.
+    pub links: BTreeMap<usize, NodeLink>,
     index: HashMap<String, usize>,
+}
+
+/// A link target from a mermaid `click` statement — the `target`
+/// attribute of the node's `<a>`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum LinkTarget {
+    /// `_self`
+    SelfFrame,
+    /// `_blank`
+    Blank,
+    /// `_parent`
+    Parent,
+    /// `_top`
+    Top,
+}
+
+/// Mermaid's `LINK_TARGET` tokens (case-sensitive) and their targets.
+const LINK_TARGETS: &[(&str, LinkTarget)] = &[
+    ("_self", LinkTarget::SelfFrame),
+    ("_blank", LinkTarget::Blank),
+    ("_parent", LinkTarget::Parent),
+    ("_top", LinkTarget::Top),
+];
+
+impl LinkTarget {
+    /// The target a mermaid token names (`_blank`, …); `None` for
+    /// anything else.
+    pub fn from_mermaid(s: &str) -> Option<LinkTarget> {
+        LINK_TARGETS.iter().find(|(n, _)| *n == s).map(|&(_, t)| t)
+    }
+
+    /// The token as written in mermaid and in the SVG attribute.
+    pub fn as_str(self) -> &'static str {
+        LINK_TARGETS
+            .iter()
+            .find(|(_, t)| *t == self)
+            .map_or("_self", |&(n, _)| n)
+    }
+}
+
+/// What a mermaid `click` statement attached to a node. flowmaid runs
+/// no script, so a callback is kept by name only (for `to_mermaid`)
+/// and never drawn; the SVG wraps a linked node in `<a>` and shows the
+/// tooltip as the node's `<title>`.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct NodeLink {
+    /// The url, as written (entity codes decoded, trimmed). Only a url
+    /// that passes [`sanitize_href`] is stored by the parser, and the
+    /// SVG writer checks again.
+    pub href: Option<String>,
+    /// `_self` / `_blank` / `_parent` / `_top`; `None` = no `target`
+    /// attribute (the same tab).
+    pub target: Option<LinkTarget>,
+    /// Hover text.
+    pub tooltip: Option<String>,
+    /// The JavaScript callback's name (`click A cb`, `click A call
+    /// cb()`), arguments dropped. Never run.
+    pub callback: Option<String>,
+}
+
+impl NodeLink {
+    /// Whether nothing is set.
+    pub fn is_empty(&self) -> bool {
+        *self == NodeLink::default()
+    }
+
+    /// This link with an unsafe `href` dropped (see [`sanitize_href`]),
+    /// or `None` when nothing is left. Scene builders hand links to
+    /// host apps through this, so a [`Graph`] filled in by hand (not
+    /// by the parser) never passes a `javascript:` url on.
+    pub(crate) fn sanitized(&self) -> Option<NodeLink> {
+        let link = NodeLink {
+            href: self.href.as_deref().and_then(sanitize_href),
+            ..self.clone()
+        };
+        (!link.is_empty()).then_some(link)
+    }
+}
+
+/// Most times [`sanitize_href`] re-decodes a url (percent and entity
+/// layers) while it still changes, so `%256A` cannot hide a `j`.
+const SANITIZE_MAX_PASSES: usize = 8;
+/// Url schemes that run or embed content and are never linked
+/// (`@braintree/sanitize-url`, which mermaid uses).
+const BLOCKED_SCHEMES: &[&str] = &["javascript", "data", "vbscript"];
+
+/// A link url that is safe to put in an SVG `href`, or `None`.
+///
+/// Mermaid's default (`strict`) security level passes urls through
+/// `@braintree/sanitize-url`; this ports its checks: after
+/// repeatedly percent- and entity-decoding the url (HTML `&#NN;`,
+/// `&#xNN;`, `&colon;`, `&tab;`, `&newline;` and mermaid's `#NN;`) and
+/// dropping control, invisible and whitespace characters, a url whose
+/// scheme starts with `javascript`, `data` or `vbscript` is refused,
+/// as is one that is empty. Relative urls (`/x`, `./x`, `#x`, `?q`),
+/// scheme-less ones and every other scheme pass. Unlike mermaid, a
+/// passing url is returned as written (trimmed), not re-serialised,
+/// and a refused one yields `None` instead of `about:blank`.
+pub fn sanitize_href(url: &str) -> Option<String> {
+    let url = url.trim();
+    let mut s: String = url.to_string();
+    for _ in 0..SANITIZE_MAX_PASSES {
+        let next = strip_invisible(&decode_href_entities(&percent_decode(&s)));
+        if next == s {
+            break;
+        }
+        s = next;
+    }
+    let s = strip_invisible(&s);
+    if s.is_empty() {
+        return None;
+    }
+    if s.starts_with(['.', '/']) {
+        return Some(url.to_string());
+    }
+    // Braintree reads the scheme as everything up to the LAST colon.
+    if let Some(colon) = s.rfind(':') {
+        let scheme = s[..colon]
+            .trim_start_matches(|c: char| !(c.is_alphanumeric() || c == '_'))
+            .to_ascii_lowercase();
+        if BLOCKED_SCHEMES.iter().any(|b| scheme.starts_with(b)) {
+            return None;
+        }
+    }
+    Some(url.to_string())
+}
+
+/// Drop control characters, Unicode spaces and zero-width marks, and
+/// all whitespace (braintree's `ctrlCharactersRegex` plus trim).
+fn strip_invisible(s: &str) -> String {
+    s.chars()
+        .filter(|&c| {
+            !(c.is_control()
+                || c.is_whitespace()
+                || ('\u{2000}'..='\u{200D}').contains(&c)
+                || c == '\u{FEFF}')
+        })
+        .collect()
+}
+
+/// One pass of `%XX` decoding (invalid escapes stay literal; bytes
+/// that don't form UTF-8 become U+FFFD).
+fn percent_decode(s: &str) -> String {
+    let b = s.as_bytes();
+    let mut out = Vec::with_capacity(b.len());
+    let mut i = 0;
+    while i < b.len() {
+        if b[i] == b'%'
+            && i + 2 < b.len()
+            && b[i + 1].is_ascii_hexdigit()
+            && b[i + 2].is_ascii_hexdigit()
+        {
+            let hex = |c: u8| (c as char).to_digit(16).unwrap_or(0) as u8;
+            out.push(hex(b[i + 1]) * 16 + hex(b[i + 2]));
+            i += 3;
+            continue;
+        }
+        out.push(b[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+/// One pass of the entity forms that can hide a scheme: HTML
+/// `&#NN;` / `&#xNN;` (semicolon optional, as browsers allow),
+/// `&colon;`, `&tab;`, `&newline;`, and mermaid's `#NN;`.
+fn decode_href_entities(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut rest = s;
+    while let Some(c) = rest.chars().next() {
+        if c == '&' || c == '#' {
+            let named = [("&colon;", ':'), ("&tab;", '\t'), ("&newline;", '\n')];
+            let hit = named.iter().find(|(n, _)| {
+                rest.get(..n.len())
+                    .is_some_and(|h| h.eq_ignore_ascii_case(n))
+            });
+            if let Some(&(n, ch)) = hit {
+                out.push(ch);
+                rest = &rest[n.len()..];
+                continue;
+            }
+            // `&#…` (HTML) or `#…;` (mermaid, semicolon required).
+            let (body, html) = if let Some(b) = rest.strip_prefix("&#") {
+                (b, true)
+            } else if let Some(b) = rest.strip_prefix('#') {
+                (b, false)
+            } else {
+                out.push(c);
+                rest = &rest[1..];
+                continue;
+            };
+            let (radix, digits_at) = match body.chars().next() {
+                Some('x' | 'X') if html => (16, 1),
+                _ => (10, 0),
+            };
+            let digits: String = body[digits_at..]
+                .chars()
+                .take_while(|c| c.is_digit(radix))
+                .collect();
+            let after = &body[digits_at + digits.len()..];
+            let semi = after.starts_with(';');
+            if !digits.is_empty() && (html || semi) {
+                if let Some(ch) = u32::from_str_radix(&digits, radix)
+                    .ok()
+                    .and_then(char::from_u32)
+                {
+                    out.push(ch);
+                    rest = if semi { &after[1..] } else { after };
+                    continue;
+                }
+            }
+        }
+        out.push(c);
+        rest = &rest[c.len_utf8()..];
+    }
+    out
 }
 
 impl Graph {
@@ -282,6 +651,7 @@ impl Graph {
             label,
             kind,
             ends,
+            meta: EdgeMeta::default(),
         });
     }
 
@@ -317,6 +687,13 @@ pub enum Document {
 pub struct ClassDiagram {
     pub classes: Vec<Class>,
     pub relations: Vec<ClassRel>,
+    /// Accessible title from mermaid's `accTitle:` statement — replaces
+    /// the default `<title>` / `aria-label` of the SVG. `None` = absent
+    /// or empty.
+    pub acc_title: Option<String>,
+    /// Accessible description from `accDescr:` or the multi-line
+    /// `accDescr { … }` block — written as the SVG's `<desc>`.
+    pub acc_descr: Option<String>,
     index: HashMap<String, usize>,
 }
 
@@ -422,6 +799,13 @@ pub struct SequenceDiagram {
     pub items: Vec<SeqItem>,
     /// `autonumber` — messages get a bold `1.` … `n.` prefix.
     pub autonumber: bool,
+    /// Accessible title from mermaid's `accTitle:` statement — replaces
+    /// the default `<title>` / `aria-label` of the SVG. `None` = absent
+    /// or empty.
+    pub acc_title: Option<String>,
+    /// Accessible description from `accDescr:` or the multi-line
+    /// `accDescr { … }` block — written as the SVG's `<desc>`.
+    pub acc_descr: Option<String>,
     index: HashMap<String, usize>,
 }
 
@@ -544,6 +928,13 @@ impl FrameKind {
 pub struct ErDiagram {
     pub entities: Vec<Entity>,
     pub relations: Vec<Relation>,
+    /// Accessible title from mermaid's `accTitle:` statement — replaces
+    /// the default `<title>` / `aria-label` of the SVG. `None` = absent
+    /// or empty.
+    pub acc_title: Option<String>,
+    /// Accessible description from `accDescr:` or the multi-line
+    /// `accDescr { … }` block — written as the SVG's `<desc>`.
+    pub acc_descr: Option<String>,
     index: HashMap<String, usize>,
 }
 

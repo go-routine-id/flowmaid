@@ -15,7 +15,10 @@ use crate::layout::{
     intrinsic_size, layout_clustered_ranked, layout_sized, line_count, text_width, title_extra,
     LayoutResult, Placed, RankGroup, LABEL_BOX_H, LINE_H, TITLE_LINE_H, TITLE_SCALE,
 };
-use crate::model::{Direction, Edge, EdgeEnds, EdgeKind, End, Graph, Marker, NodeStyle, Shape};
+use crate::model::{
+    Direction, Edge, EdgeAnimation, EdgeCurve, EdgeEnds, EdgeKind, EdgeMeta, End, Graph, Marker,
+    NodeLink, NodeStyle, Shape,
+};
 use std::collections::HashMap;
 use std::hash::{BuildHasherDefault, Hasher};
 
@@ -61,6 +64,9 @@ pub struct SceneNode {
     pub label: String,
     /// Custom colors from `style`/`classDef`; empty = shape theme.
     pub style: NodeStyle,
+    /// Mermaid `click` link / tooltip (`Graph::links`), so a host can
+    /// open the url or show the tooltip itself; `None` = none.
+    pub link: Option<NodeLink>,
 }
 
 /// Edge with a final cubic bezier curve.
@@ -90,6 +96,10 @@ pub struct SceneEdge {
     /// [`EdgeEnds`]); resolve with `ends.end_marker(kind)` /
     /// `ends.start_marker(kind)`.
     pub ends: EdgeEnds,
+    /// Mermaid edge id + metadata (`A e1@--> B`, `e1@{ animate: true }`):
+    /// the id is written as the path's `id` / `data-id`, the animation
+    /// as a CSS class, the curve as the path shape.
+    pub meta: EdgeMeta,
     /// (text, box centre, box width) when the edge has a label.
     pub label: Option<(String, (f64, f64), f64)>,
 }
@@ -312,10 +322,168 @@ fn edge_distance(e: &SceneEdge, x: f64, y: f64) -> f64 {
 /// curveBasis spline `spline_d` emits (which pulls away from the raw
 /// waypoints), a plain edge follows its single cubic.
 fn edge_polyline(e: &SceneEdge) -> Vec<(f64, f64)> {
+    if let Some((start, segs)) = curve_geometry(e) {
+        return curve_sample(start, &segs);
+    }
     if e.waypoints.len() >= 2 {
         return basis_sample(&e.waypoints);
     }
     sample_cubic(&e.bezier, 24)
+}
+
+/// One drawing command of a non-default edge curve (the start point is
+/// held apart).
+#[derive(Debug, Clone, Copy)]
+enum Seg {
+    L((f64, f64)),
+    Q((f64, f64), (f64, f64)),
+    C((f64, f64), (f64, f64), (f64, f64)),
+}
+
+/// Corner radius of mermaid's `rounded` edge curve (`generateRoundedPath`).
+const ROUNDED_CURVE_RADIUS: f64 = 5.0;
+
+/// The geometry of an edge drawn with a non-default mermaid `curve`, as
+/// (start point, commands) in scene coordinates; `None` for the default
+/// (`basis`) curve, which keeps the historical path exactly. The curve
+/// runs through the routed waypoints, or — for a single-cubic edge —
+/// its two endpoints (a self-loop uses its four bezier points so it
+/// still loops). Interpolating curves mermaid gets from d3
+/// (`natural`, `monotoneX/Y`, `cardinal`, `catmullRom`) are drawn as a
+/// Catmull-Rom spline through the same points; with two points d3
+/// draws all of them as a straight line, and so does this.
+fn curve_geometry(e: &SceneEdge) -> Option<((f64, f64), Vec<Seg>)> {
+    let curve = e.meta.curve.filter(|&c| c != EdgeCurve::Basis)?;
+    let p: Vec<(f64, f64)> = if e.waypoints.len() >= 2 {
+        e.waypoints.clone()
+    } else if e.from == e.to {
+        e.bezier.to_vec()
+    } else {
+        vec![e.bezier[0], e.bezier[3]]
+    };
+    let n = p.len();
+    let mid = |a: f64, b: f64| (a + b) / 2.0;
+    let mut segs = Vec::new();
+    match curve {
+        EdgeCurve::Linear | EdgeCurve::Basis => segs.extend(p[1..].iter().map(|&q| Seg::L(q))),
+        EdgeCurve::Rounded => {
+            for i in 1..n - 1 {
+                let (a, b, c) = (p[i - 1], p[i], p[i + 1]);
+                let d1 = ((b.0 - a.0).powi(2) + (b.1 - a.1).powi(2)).sqrt();
+                let d2 = ((c.0 - b.0).powi(2) + (c.1 - b.1).powi(2)).sqrt();
+                if d1 == 0.0 || d2 == 0.0 {
+                    segs.push(Seg::L(b));
+                    continue;
+                }
+                let r = ROUNDED_CURVE_RADIUS.min(d1 / 2.0).min(d2 / 2.0);
+                let p1 = (b.0 - (b.0 - a.0) / d1 * r, b.1 - (b.1 - a.1) / d1 * r);
+                let p2 = (b.0 + (c.0 - b.0) / d2 * r, b.1 + (c.1 - b.1) / d2 * r);
+                segs.push(Seg::L(p1));
+                segs.push(Seg::Q(b, p2));
+            }
+            segs.push(Seg::L(p[n - 1]));
+        }
+        // d3 curveStep / curveStepBefore / curveStepAfter.
+        EdgeCurve::Step => {
+            for w in p.windows(2) {
+                let x = mid(w[0].0, w[1].0);
+                segs.push(Seg::L((x, w[0].1)));
+                segs.push(Seg::L((x, w[1].1)));
+            }
+            segs.push(Seg::L(p[n - 1]));
+        }
+        EdgeCurve::StepBefore => {
+            for w in p.windows(2) {
+                segs.push(Seg::L((w[0].0, w[1].1)));
+                segs.push(Seg::L(w[1]));
+            }
+        }
+        EdgeCurve::StepAfter => {
+            for w in p.windows(2) {
+                segs.push(Seg::L((w[1].0, w[0].1)));
+                segs.push(Seg::L(w[1]));
+            }
+        }
+        // d3 curveBumpX / curveBumpY.
+        EdgeCurve::BumpX => segs.extend(p.windows(2).map(|w| {
+            let x = mid(w[0].0, w[1].0);
+            Seg::C((x, w[0].1), (x, w[1].1), w[1])
+        })),
+        EdgeCurve::BumpY => segs.extend(p.windows(2).map(|w| {
+            let y = mid(w[0].1, w[1].1);
+            Seg::C((w[0].0, y), (w[1].0, y), w[1])
+        })),
+        _ if n == 2 => segs.push(Seg::L(p[1])),
+        _ => {
+            for i in 0..n - 1 {
+                let p0 = p[i.saturating_sub(1)];
+                let (p1, p2) = (p[i], p[i + 1]);
+                let p3 = p[(i + 2).min(n - 1)];
+                segs.push(Seg::C(
+                    (p1.0 + (p2.0 - p0.0) / 6.0, p1.1 + (p2.1 - p0.1) / 6.0),
+                    (p2.0 - (p3.0 - p1.0) / 6.0, p2.1 - (p3.1 - p1.1) / 6.0),
+                    p2,
+                ));
+            }
+        }
+    }
+    Some((p[0], segs))
+}
+
+/// SVG path data for [`curve_geometry`], mapped through `t`.
+fn curve_d(start: (f64, f64), segs: &[Seg], t: impl Fn((f64, f64)) -> (f64, f64)) -> String {
+    let s0 = t(start);
+    let mut d = format!("M {:.1} {:.1}", s0.0, s0.1);
+    for seg in segs {
+        match *seg {
+            Seg::L(p) => {
+                let p = t(p);
+                d.push_str(&format!(" L {:.1} {:.1}", p.0, p.1));
+            }
+            Seg::Q(c, p) => {
+                let (c, p) = (t(c), t(p));
+                d.push_str(&format!(" Q {:.1} {:.1}, {:.1} {:.1}", c.0, c.1, p.0, p.1));
+            }
+            Seg::C(c1, c2, p) => {
+                let (c1, c2, p) = (t(c1), t(c2), t(p));
+                d.push_str(&format!(
+                    " C {:.1} {:.1}, {:.1} {:.1}, {:.1} {:.1}",
+                    c1.0, c1.1, c2.0, c2.1, p.0, p.1
+                ));
+            }
+        }
+    }
+    d
+}
+
+/// Dense sample of [`curve_geometry`] for picking and the bounding box.
+fn curve_sample(start: (f64, f64), segs: &[Seg]) -> Vec<(f64, f64)> {
+    const STEPS: usize = 12;
+    let mut out = vec![start];
+    let mut cur = start;
+    for seg in segs {
+        match *seg {
+            Seg::L(p) => out.push(p),
+            Seg::Q(c, p) => {
+                for k in 1..=STEPS {
+                    let t = k as f64 / STEPS as f64;
+                    let u = 1.0 - t;
+                    out.push((
+                        u * u * cur.0 + 2.0 * u * t * c.0 + t * t * p.0,
+                        u * u * cur.1 + 2.0 * u * t * c.1 + t * t * p.1,
+                    ));
+                }
+            }
+            Seg::C(c1, c2, p) => {
+                let b = [cur, c1, c2, p];
+                out.extend((1..=STEPS).map(|k| cubic_at(&b, k as f64 / STEPS as f64)));
+            }
+        }
+        cur = match *seg {
+            Seg::L(p) | Seg::Q(_, p) | Seg::C(_, _, p) => p,
+        };
+    }
+    out
 }
 
 /// Sample a cubic bezier `[p0, c1, c2, p3]` into `steps + 1` points.
@@ -1136,6 +1304,7 @@ fn scene_from_layout(
                 shape: n.shape,
                 label: n.label.clone(),
                 style: n.style.clone(),
+                link: g.links.get(&i).and_then(NodeLink::sanitized),
             }
         })
         .collect();
@@ -1151,6 +1320,7 @@ fn scene_from_layout(
             waypoints: wps.iter().map(|&p| tf(p)).collect(),
             kind: e.kind,
             ends: e.ends,
+            meta: e.meta.clone(),
             label: e.label.clone().zip(label).map(|(t, (m, w))| (t, tf(m), w)),
         })
         .collect();
@@ -1209,6 +1379,7 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
             label: e.label.clone(),
             kind: e.kind,
             ends: e.ends,
+            meta: e.meta.clone(),
         });
     }
     // The clusters a stand-in's ends cut back to (its box ends).
@@ -1385,6 +1556,7 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
                     waypoints: Vec::new(),
                     kind: e.kind,
                     ends: e.ends,
+                    meta: e.meta.clone(),
                     label: e
                         .label
                         .as_ref()
@@ -1438,6 +1610,7 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
                 waypoints: wps,
                 kind: e.kind,
                 ends: e.ends,
+                meta: e.meta.clone(),
                 label,
             });
         }
@@ -1882,6 +2055,7 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
             shape: n.shape,
             label: n.label.clone(),
             style: n.style.clone(),
+            link: g.links.get(&i).and_then(NodeLink::sanitized),
         })
         .collect();
 
@@ -1955,6 +2129,7 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
             waypoints: wps,
             kind: e.kind,
             ends: e.ends,
+            meta: e.meta.clone(),
             label,
         });
     }
@@ -2024,6 +2199,7 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
                 waypoints: Vec::new(),
                 kind: e.kind,
                 ends: e.ends,
+                meta: e.meta.clone(),
                 label,
             });
         }
@@ -2193,20 +2369,189 @@ pub fn box_edge_bezier(
     )
 }
 
+/// The `<marker>` id of an unstyled edge end's glyph. The end arrow
+/// keeps its historical `#arrow` id so marker-free output is unchanged.
+fn marker_base_id(start: bool, m: Marker) -> &'static str {
+    match (start, m) {
+        (false, Marker::Arrow) => "arrow",
+        (true, Marker::Arrow) => "arrow-start",
+        (false, Marker::Cross) => "cross-end",
+        (true, Marker::Cross) => "cross-start",
+        (false, Marker::Circle) => "circle-end",
+        (true, Marker::Circle) => "circle-start",
+    }
+}
+
 /// `marker-start` / `marker-end` attribute for one edge end (empty
-/// when the end has no glyph). The end arrow keeps its historical
-/// `#arrow` id so marker-free output is unchanged.
-fn marker_attr(side: &str, m: Option<Marker>) -> String {
-    let id = match (side, m) {
-        (_, None) => return String::new(),
-        ("end", Some(Marker::Arrow)) => "arrow",
-        (_, Some(Marker::Arrow)) => "arrow-start",
-        ("end", Some(Marker::Cross)) => "cross-end",
-        (_, Some(Marker::Cross)) => "cross-start",
-        ("end", Some(Marker::Circle)) => "circle-end",
-        (_, Some(Marker::Circle)) => "circle-start",
+/// when the end has no glyph).
+fn marker_attr(side: &str, id: Option<&str>) -> String {
+    match id {
+        Some(id) => format!(" marker-{side}=\"url(#{id})\""),
+        None => String::new(),
+    }
+}
+
+/// The XLink namespace, declared on each `<a>` so `xlink:href` works
+/// in SVG 1.1 tools without touching the root `<svg>` header.
+const XLINK_NS: &str = "http://www.w3.org/1999/xlink";
+
+/// `<a …>` opening a `click`-linked node: `href` for SVG 2 browsers,
+/// `xlink:href` for SVG 1.1 tools, `target` only when the author gave
+/// one (no target = the same tab, as in mermaid), and
+/// `rel="noopener noreferrer"` with `_blank`.
+fn svg_link_open(url: &str, target: Option<crate::model::LinkTarget>) -> String {
+    let u = escape(url);
+    let mut out = format!("<a xmlns:xlink=\"{XLINK_NS}\" href=\"{u}\" xlink:href=\"{u}\"");
+    if let Some(t) = target {
+        out.push_str(&format!(" target=\"{}\"", t.as_str()));
+        if t == crate::model::LinkTarget::Blank {
+            out.push_str(" rel=\"noopener noreferrer\"");
+        }
+    }
+    out.push_str(">\n");
+    out
+}
+
+/// Default stroke width of a drawn edge, and of a thick (`==>`) one.
+const EDGE_WIDTH: f64 = 1.7;
+const EDGE_WIDTH_THICK: f64 = 3.4;
+/// Dash pattern of a dotted (`-.->`) edge.
+const EDGE_DOTTED_DASH: &str = "5 4";
+/// Size of the classic arrowhead in `#arrow`'s units (multiples of the
+/// stroke width).
+const ARROW_MARKER_UNITS: f64 = 7.0;
+/// Arrowhead size in user space for an edge whose `linkStyle` sets a
+/// stroke width: the size `#arrow` has on a default edge, so a wide
+/// styled line keeps a normal head (mermaid's markers don't scale).
+const ARROW_MARKER_PX: f64 = ARROW_MARKER_UNITS * EDGE_WIDTH;
+
+/// A marker variant a `linkStyle`d edge end needs: the glyph in the
+/// edge's stroke colour and/or at a fixed user-space size.
+#[derive(Clone, PartialEq)]
+struct MarkerVariant {
+    marker: Marker,
+    start: bool,
+    color: Option<String>,
+    /// Sized in user space rather than stroke-width units (arrows only;
+    /// cross and circle always are).
+    user_space: bool,
+}
+
+/// The marker ids every drawn edge end uses, plus the defs of the
+/// styled variants among them. An unstyled end keeps its base id, so a
+/// diagram without `linkStyle` gets exactly the defs it always had. A
+/// styled id is the base id, `-u` for a fixed-size arrow, then `_` and
+/// the colour with every non-alphanumeric character as `_` (mermaid's
+/// marker id rule); two colours that sanitise alike get a counter.
+struct EdgeMarkers {
+    /// Per scene edge: (start id, end id).
+    ids: Vec<(Option<String>, Option<String>)>,
+    defs: String,
+}
+
+fn edge_markers(edges: &[SceneEdge]) -> EdgeMarkers {
+    let mut made: Vec<(MarkerVariant, String)> = Vec::new();
+    let mut defs = String::new();
+    let mut id_for = |e: &SceneEdge, start: bool| -> Option<String> {
+        if !edge_drawn(e) {
+            return None;
+        }
+        let m = if start {
+            e.ends.start_marker(e.kind)
+        } else {
+            e.ends.end_marker(e.kind)
+        }?;
+        let st = &e.meta.style;
+        let v = MarkerVariant {
+            marker: m,
+            start,
+            color: st.stroke.clone(),
+            user_space: m == Marker::Arrow && st.stroke_width.is_some(),
+        };
+        if v.color.is_none() && !v.user_space {
+            return Some(marker_base_id(start, m).to_string());
+        }
+        if let Some((_, id)) = made.iter().find(|(w, _)| *w == v) {
+            return Some(id.clone());
+        }
+        let mut id = marker_base_id(start, m).to_string();
+        if v.user_space {
+            id.push_str("-u");
+        }
+        if let Some(c) = &v.color {
+            id.push('_');
+            id.extend(
+                c.chars()
+                    .map(|ch| if ch.is_ascii_alphanumeric() { ch } else { '_' }),
+            );
+        }
+        let base = id.clone();
+        let mut n = 1;
+        while made.iter().any(|(_, x)| *x == id) {
+            n += 1;
+            id = format!("{base}_{n}");
+        }
+        defs.push_str(&marker_def(&id, &v));
+        made.push((v, id.clone()));
+        Some(id)
     };
-    format!(" marker-{side}=\"url(#{id})\"")
+    let ids = edges
+        .iter()
+        .map(|e| (id_for(e, true), id_for(e, false)))
+        .collect();
+    EdgeMarkers { ids, defs }
+}
+
+/// The `<marker>` def of one styled variant: the same geometry as the
+/// base glyph, painted in the edge colour (arrow fill, cross stroke,
+/// circle fill and stroke).
+fn marker_def(id: &str, v: &MarkerVariant) -> String {
+    let color = style_attr(v.color.as_deref(), EDGE_COLOR);
+    match v.marker {
+        Marker::Arrow => {
+            let (refx, d) = if v.start {
+                ("1.5", "M 10 1 L 1 5 L 10 9 z")
+            } else {
+                ("8.5", "M 0 1 L 9 5 L 0 9 z")
+            };
+            let size = if v.user_space {
+                format!(
+                    "markerUnits=\"userSpaceOnUse\" markerWidth=\"{ARROW_MARKER_PX:.1}\" \
+                     markerHeight=\"{ARROW_MARKER_PX:.1}\""
+                )
+            } else {
+                format!(
+                    "markerWidth=\"{ARROW_MARKER_UNITS}\" markerHeight=\"{ARROW_MARKER_UNITS}\""
+                )
+            };
+            format!(
+                "<marker id=\"{id}\" viewBox=\"0 0 10 10\" refX=\"{refx}\" refY=\"5\" \
+                 {size} orient=\"auto\"><path d=\"{d}\" fill=\"{color}\"/></marker>"
+            )
+        }
+        Marker::Cross => format!(
+            "<marker id=\"{id}\" viewBox=\"0 0 11 11\" refX=\"{}\" refY=\"5.5\" \
+             markerUnits=\"userSpaceOnUse\" markerWidth=\"11\" markerHeight=\"11\" \
+             orient=\"auto\"><path d=\"M 1 1 L 10 10 M 10 1 L 1 10\" fill=\"none\" \
+             stroke=\"{color}\" stroke-width=\"2\"/></marker>",
+            if v.start { 0 } else { 11 }
+        ),
+        Marker::Circle => format!(
+            "<marker id=\"{id}\" viewBox=\"0 0 10 10\" refX=\"{}\" refY=\"5\" \
+             markerUnits=\"userSpaceOnUse\" markerWidth=\"10\" markerHeight=\"10\" \
+             orient=\"auto\"><circle cx=\"5\" cy=\"5\" r=\"4\" fill=\"{color}\" \
+             stroke=\"{color}\" stroke-width=\"1\"/></marker>",
+            if v.start { 0 } else { 10 }
+        ),
+    }
+}
+
+/// Whether an edge is painted: everything but `~~~`, which shows only
+/// when a `linkStyle` gives it a positive stroke width (mermaid's
+/// inline style beats the invisible class's `stroke-width:0`), and then
+/// without markers.
+pub(crate) fn edge_drawn(e: &SceneEdge) -> bool {
+    !matches!(e.kind, EdgeKind::Invisible) || e.meta.style.stroke_width.is_some_and(|w| w > 0.0)
 }
 
 /// `<marker>` defs beyond the classic end arrow, emitted only for the
@@ -2215,15 +2560,12 @@ fn marker_attr(side: &str, m: Option<Marker>) -> String {
 /// circle are sized in user space (mermaid-like, independent of the
 /// stroke width) and sit just outside the node border: the path still
 /// ends ON the border, the glyph is offset back along the tangent.
-fn extra_marker_defs(edges: &[SceneEdge]) -> String {
+fn extra_marker_defs(ids: &[(Option<String>, Option<String>)]) -> String {
     let uses = |start: bool, m: Marker| {
-        edges.iter().any(|e| {
-            let got = if start {
-                e.ends.start_marker(e.kind)
-            } else {
-                e.ends.end_marker(e.kind)
-            };
-            got == Some(m)
+        let base = marker_base_id(start, m);
+        ids.iter().any(|(s, e)| {
+            let got = if start { s } else { e };
+            got.as_deref() == Some(base)
         })
     };
     let mut out = String::new();
@@ -2261,6 +2603,117 @@ fn extra_marker_defs(edges: &[SceneEdge]) -> String {
     out
 }
 
+/// Prefix of the per-diagram DOM id (`flowmaid-<hash>`) written on the
+/// root `<svg>` when the diagram needs one — like mermaid's
+/// `mermaid-<n>` svg id, it namespaces the animation CSS and user edge
+/// ids so two SVGs inlined on one page never share them.
+const DIAGRAM_DOM_ID_PREFIX: &str = "flowmaid-";
+/// Mermaid's edge-animation CSS (`styles.ts`), ported verbatim: a
+/// `9,5` dash marching from offset 900 to 0, every `FAST`/`SLOW`
+/// seconds. `!important` overrides a dotted edge's own dash, as there.
+const EDGE_ANIMATION_DASH: &str = "9,5";
+const EDGE_ANIMATION_DASH_OFFSET: u32 = 900;
+const EDGE_ANIMATION_FAST_SECS: u32 = 20;
+const EDGE_ANIMATION_SLOW_SECS: u32 = 50;
+/// Mermaid's keyframes name; written as `<diagram-id>-dash` so it
+/// cannot clash with a host page's own `dash` animation.
+const EDGE_ANIMATION_KEYFRAMES: &str = "dash";
+
+/// Mermaid's CSS class for an animated edge.
+fn edge_animation_class(a: EdgeAnimation) -> &'static str {
+    match a {
+        EdgeAnimation::Fast => "edge-animation-fast",
+        EdgeAnimation::Slow => "edge-animation-slow",
+    }
+}
+
+/// The root `<svg>` id, or `None` when no drawn edge carries an id or
+/// an animation — those diagrams keep their historical bytes. The id
+/// hashes the diagram's content (see [`DefsKey`]), so the same input
+/// always gets the same id and different diagrams practically never
+/// share one. Two byte-identical diagrams inlined on one page do share
+/// it; their edge ids collide as their content does.
+fn diagram_dom_id(sc: &Scene, title: &str, desc: Option<&str>) -> Option<String> {
+    let needed = sc
+        .edges
+        .iter()
+        .any(|e| edge_drawn(e) && (e.meta.id.is_some() || e.meta.animation.is_some()));
+    if !needed {
+        return None;
+    }
+    let mut key = DefsKey::new();
+    key.eat(title.as_bytes());
+    key.eat(&[0]);
+    key.eat(desc.unwrap_or_default().as_bytes());
+    for n in &sc.nodes {
+        key.eat(&[0]);
+        key.eat(n.id.as_bytes());
+        key.eat(&[0]);
+        key.eat(n.label.as_bytes());
+        key.eat_f64(n.x);
+        key.eat_f64(n.y);
+    }
+    for e in &sc.edges {
+        key.eat(&[0]);
+        key.eat(e.from.as_bytes());
+        key.eat(&[0]);
+        key.eat(e.to.as_bytes());
+        key.eat(&[0]);
+        key.eat(e.meta.id.as_deref().unwrap_or_default().as_bytes());
+        key.eat(&[e.meta.animation.map_or(0, |a| a as u8 + 1)]);
+        for &(x, y) in e.bezier.iter().chain(&e.waypoints) {
+            key.eat_f64(x);
+            key.eat_f64(y);
+        }
+        if let Some((text, ..)) = &e.label {
+            key.eat(text.as_bytes());
+        }
+    }
+    Some(format!("{DIAGRAM_DOM_ID_PREFIX}{}", key.finish()))
+}
+
+/// ` id="<diagram-id>-…" data-id="…"` for a user edge id (mermaid's
+/// `${diagramId}-${edge.id}` plus the raw `data-id`) and ` class="…"`
+/// for an animated edge; empty for a plain edge, so output is
+/// unchanged. `diagram_id` is `Some` whenever `m` has an id.
+fn edge_meta_attrs(m: &EdgeMeta, diagram_id: Option<&str>) -> String {
+    let mut out = String::new();
+    if let (Some(id), Some(dom)) = (&m.id, diagram_id) {
+        out.push_str(&format!(" id=\"{dom}-{0}\" data-id=\"{0}\"", escape(id)));
+    }
+    if let Some(a) = m.animation {
+        out.push_str(&format!(" class=\"{}\"", edge_animation_class(a)));
+    }
+    out
+}
+
+/// The animation `<style>`, written once and only when some drawn edge
+/// is animated. Every rule is scoped to the root `<svg>`'s id and the
+/// keyframes carry it in their name, as mermaid namespaces its styles,
+/// so inlined SVGs never restyle the host page or each other.
+fn edge_animation_css(edges: &[SceneEdge], diagram_id: Option<&str>) -> String {
+    let animated = edges
+        .iter()
+        .any(|e| e.meta.animation.is_some() && edge_drawn(e));
+    let Some(dom) = diagram_id.filter(|_| animated) else {
+        return String::new();
+    };
+    let frames = format!("{dom}-{EDGE_ANIMATION_KEYFRAMES}");
+    let rule = |a: EdgeAnimation, secs: u32| {
+        format!(
+            "#{dom} .{}{{stroke-dasharray:{EDGE_ANIMATION_DASH} !important;\
+             stroke-dashoffset:{EDGE_ANIMATION_DASH_OFFSET};\
+             animation:{frames} {secs}s linear infinite;stroke-linecap:round}}",
+            edge_animation_class(a)
+        )
+    };
+    format!(
+        "<style>@keyframes {frames}{{to{{stroke-dashoffset:0}}}} {} {}</style>",
+        rule(EdgeAnimation::Slow, EDGE_ANIMATION_SLOW_SECS),
+        rule(EdgeAnimation::Fast, EDGE_ANIMATION_FAST_SECS)
+    )
+}
+
 /// Serialise any Scene (automatic or dragged) to SVG. Content is
 /// translated to start at MARGIN, so negative coordinates are safe.
 /// The accessible name is `"Flowchart diagram"`; use [`to_svg_titled`]
@@ -2284,6 +2737,17 @@ pub fn to_svg_titled(sc: &Scene, title: &str) -> String {
 
 /// [`to_svg_titled`] with explicit viewport options.
 pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String {
+    to_svg_a11y_with(sc, title, &A11y::default(), opts)
+}
+
+/// [`to_svg_titled_with`] plus mermaid's `accTitle` / `accDescr` (see
+/// [`A11y`]): a non-empty `a11y.title` replaces `default_title`, and a
+/// description adds the root `<desc>`. `render` / `render_svg` pass a
+/// graph's `acc_title` / `acc_descr` through here; callers of the
+/// interactive scene API pass them themselves.
+pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &SvgOptions) -> String {
+    let (title, desc) = a11y.resolve(default_title);
+    let title = title.as_str();
     let mut bb = Bbox::new();
     grow_scene(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
     let (minx, maxx, miny, maxy) = bb.finish();
@@ -2307,14 +2771,19 @@ pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String 
         }
     };
 
+    let dom_id = diagram_dom_id(sc, title, desc);
+    let dom_id = dom_id.as_deref();
     let mut s = String::new();
-    svg_open(&mut s, width, height, 14, title, opts);
+    svg_open_root(&mut s, width, height, 14, title, desc, dom_id, opts);
+    let markers = edge_markers(&sc.edges);
     s.push_str(&format!(
         "<defs><marker id=\"arrow\" viewBox=\"0 0 10 10\" refX=\"8.5\" refY=\"5\" \
          markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\">\
-         <path d=\"M 0 1 L 9 5 L 0 9 z\" fill=\"{}\"/></marker>{}</defs>\n",
+         <path d=\"M 0 1 L 9 5 L 0 9 z\" fill=\"{}\"/></marker>{}{}{}</defs>\n",
         EDGE_COLOR,
-        extra_marker_defs(&sc.edges)
+        extra_marker_defs(&markers.ids),
+        markers.defs,
+        edge_animation_css(&sc.edges, dom_id)
     ));
 
     // Cluster boxes first (outermost-first), behind everything. The
@@ -2354,30 +2823,42 @@ pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String 
                 x + 10.0,
                 y + 17.0 + k as f64 * TITLE_LINE_H,
                 crate::layout::TITLE_FONT,
-                escape(line)
+                rich(line)
             ));
         }
     }
 
     let mut edge_labels = String::new();
-    for e in &sc.edges {
-        if matches!(e.kind, EdgeKind::Invisible) {
+    for (e, (m_start, m_end)) in sc.edges.iter().zip(&markers.ids) {
+        if !edge_drawn(e) {
             continue; // layout-only link — never drawn
         }
         let (dash, sw) = match e.kind {
-            EdgeKind::Dotted | EdgeKind::DottedOpen => (" stroke-dasharray=\"5 4\"", 1.7),
-            EdgeKind::Thick | EdgeKind::ThickOpen => ("", 3.4),
-            _ => ("", 1.7),
+            EdgeKind::Dotted | EdgeKind::DottedOpen => (Some(EDGE_DOTTED_DASH), EDGE_WIDTH),
+            EdgeKind::Thick | EdgeKind::ThickOpen => (None, EDGE_WIDTH_THICK),
+            _ => (None, EDGE_WIDTH),
         };
+        // `linkStyle` paint overrides the kind's look per property.
+        let st = &e.meta.style;
+        let sw = st.stroke_width.unwrap_or(sw);
+        let dash = st
+            .stroke_dasharray
+            .as_deref()
+            .or(dash)
+            .map_or(String::new(), |d| {
+                format!(" stroke-dasharray=\"{}\"", escape(d))
+            });
         let marker = format!(
             "{}{}",
-            marker_attr("start", e.ends.start_marker(e.kind)),
-            marker_attr("end", e.ends.end_marker(e.kind))
+            marker_attr("start", m_start.as_deref()),
+            marker_attr("end", m_end.as_deref())
         );
         // A routed edge splines through its waypoints; otherwise the
         // single cubic. The arrow marker orients to the end tangent
         // (last segment) either way.
-        let path_d = if e.waypoints.len() >= 2 {
+        let path_d = if let Some((start, segs)) = curve_geometry(e) {
+            curve_d(start, &segs, t)
+        } else if e.waypoints.len() >= 2 {
             let q: Vec<(f64, f64)> = e.waypoints.iter().map(|&p| t(p)).collect();
             spline_d(&q)
         } else {
@@ -2406,17 +2887,20 @@ pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String 
             None => format!("{} {dir} {}", display(&e.from), display(&e.to)),
         };
         s.push_str(&format!(
-            "<path d=\"{}\" fill=\"none\" stroke=\"{}\" stroke-width=\"{}\"{}{}>\
+            "<path d=\"{}\" fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\"{}{}{}>\
              <title>{}</title></path>\n",
             path_d,
-            EDGE_COLOR,
+            style_attr(st.fill.as_deref(), "none"),
+            style_attr(st.stroke.as_deref(), EDGE_COLOR),
             sw,
             dash,
             marker,
+            edge_meta_attrs(&e.meta, dom_id),
             escape(&edge_title)
         ));
         if let Some((text, m, w)) = &e.label {
-            svg_label_box(&mut edge_labels, text, t(*m), *w);
+            let fill = style_attr(st.color.as_deref(), TEXT_COLOR);
+            svg_label_box_with(&mut edge_labels, text, t(*m), *w, &fill);
         }
     }
 
@@ -2440,6 +2924,19 @@ pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String 
                 }
             }
         };
+        // A `click` tooltip replaces the label-derived title, and a
+        // safe url wraps the whole group in a link.
+        let link = n.link.as_ref();
+        let node_title = link
+            .and_then(|l| l.tooltip.clone())
+            .filter(|t| !t.is_empty())
+            .unwrap_or(node_title);
+        let href = link
+            .and_then(|l| l.href.as_deref())
+            .and_then(crate::model::sanitize_href);
+        if let Some(u) = &href {
+            s.push_str(&svg_link_open(u, link.and_then(|l| l.target)));
+        }
         if node_title.is_empty() {
             s.push_str("<g>\n");
         } else {
@@ -2609,6 +3106,9 @@ pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String 
             &n.label,
         );
         s.push_str("</g>\n");
+        if href.is_some() {
+            s.push_str("</a>\n");
+        }
     }
 
     s.push_str(&edge_labels);
@@ -2665,11 +3165,18 @@ pub(crate) fn grow_scene(
         // Invisible links shape the layout but are never drawn, so
         // their curve must not inflate the canvas (bughunter: they
         // used to leave mysterious empty space).
-        if matches!(e.kind, EdgeKind::Invisible) {
+        if !edge_drawn(e) {
             continue;
         }
         for &(x, y) in &e.bezier {
             bb.add(x, y);
+        }
+        // A non-default curve (catmullRom overshoots) is bounded by
+        // what is drawn, not by the bezier hull.
+        if let Some((start, segs)) = curve_geometry(e) {
+            for (x, y) in curve_sample(start, &segs) {
+                bb.add(x, y);
+            }
         }
         if let Some((_, m, w)) = &e.label {
             bb.add(m.0 - w / 2.0, m.1 - 10.0);
@@ -3161,17 +3668,28 @@ fn spline_d(pts: &[(f64, f64)]) -> String {
     d
 }
 
-/// Opening `<svg>` tag + white background, shared by every SVG
-/// writer. `title` makes the diagram screen-reader friendly (issue
-/// #16): it becomes the root `<title>`, the `aria-label`, and the
-/// element gets `role="img"`.
 /// Viewport / responsive rendering options for [`crate::render_svg_advanced`].
 ///
 /// Defaults reproduce the historical fixed-pixel output byte-for-byte, so
 /// existing callers (and `render_svg`) are unaffected. More options
 /// (theme, scale, max width, …) can be added here without new entry
-/// points.
+/// points. The struct is `#[non_exhaustive]`, so outside this crate build
+/// it from [`Default`] and set the fields you need; adding a field then
+/// never breaks a caller:
+///
+/// ```
+/// let src = "flowchart TD\nA --> B";
+/// let mut opts = flowmaid::SvgOptions::default();
+/// opts.transparent = true;
+/// let svg = flowmaid::render_svg_advanced(src, &opts).unwrap();
+/// // Same output as the default, minus the white canvas `<rect>`.
+/// let base = flowmaid::render_svg(src).unwrap();
+/// let canvas = base.split("</title>\n").nth(1).unwrap().lines().next().unwrap();
+/// assert!(canvas.ends_with("fill=\"#ffffff\"/>"));
+/// assert_eq!(svg, base.replacen(&format!("{canvas}\n"), "", 1));
+/// ```
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct SvgOptions {
     /// When true, the root `<svg>` fills its container (`width="100%"`)
     /// instead of a fixed pixel size; the `viewBox` stays so the content
@@ -3180,14 +3698,97 @@ pub struct SvgOptions {
     /// Overrides the SVG `preserveAspectRatio` attribute. `None` keeps the
     /// SVG default `xMidYMid meet` (uniform scale, letterboxed).
     pub preserve_aspect_ratio: Option<&'static str>,
+    /// When true, the full-canvas white background `<rect>` is omitted so
+    /// the diagram sits on whatever is behind it (e.g. a dark page).
+    /// Shapes, label boxes and text keep their own fills.
+    /// Text and edge colours are unchanged (still dark, tuned for a light
+    /// background), so on a dark page they can be hard to read; theming
+    /// is tracked in issue #57.
+    pub transparent: bool,
 }
 
+/// Opening `<svg>` tag + white background (unless
+/// [`SvgOptions::transparent`]), shared by every SVG writer. `title`
+/// makes the diagram screen-reader friendly (issue #16): it becomes the
+/// root `<title>`, the `aria-label`, and the element gets `role="img"`.
 pub(crate) fn svg_open(
     s: &mut String,
     width: f64,
     height: f64,
     font_size: u32,
     title: &str,
+    opts: &SvgOptions,
+) {
+    svg_open_a11y(s, width, height, font_size, title, None, opts);
+}
+
+/// Prefix of the `<desc>` element id an accessible description gets;
+/// the root `aria-describedby` points at it.
+const A11Y_DESC_ID_PREFIX: &str = "flowmaid-desc-";
+
+/// Mermaid's `accTitle` / `accDescr` for one diagram, as the SVG
+/// writers take it. An absent or empty title keeps the writer's
+/// default accessible name ("Flowchart diagram", …); a description
+/// adds a `<desc>` right after the root `<title>` and an
+/// `aria-describedby` pointing at it. The default (both `None`)
+/// reproduces the historical output byte for byte.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct A11y {
+    /// Replaces the default accessible name (`<title>`, `aria-label`).
+    pub title: Option<String>,
+    /// Written as the root `<desc>`.
+    pub descr: Option<String>,
+}
+
+impl A11y {
+    pub fn new(title: Option<String>, descr: Option<String>) -> Self {
+        A11y { title, descr }
+    }
+
+    /// The accessible name to write (`<b>`/`<i>` interpreted away) and
+    /// the description, if any.
+    pub(crate) fn resolve(&self, default_title: &str) -> (String, Option<&str>) {
+        let title = self
+            .title
+            .as_deref()
+            .map(plain_text)
+            .filter(|t| !t.trim().is_empty())
+            .unwrap_or_else(|| default_title.to_string());
+        let descr = self.descr.as_deref().filter(|d| !d.trim().is_empty());
+        (title, descr)
+    }
+}
+
+/// [`svg_open`] plus an optional accessible description: a `<desc>`
+/// right after the root `<title>` (mermaid's title, desc, … order) and
+/// an `aria-describedby` on the root. The `<desc>` id hashes the title
+/// and description (FNV-1a, see [`DefsKey`]) so two inlined SVGs with
+/// different descriptions never share an id. `desc: None` is exactly
+/// [`svg_open`].
+pub(crate) fn svg_open_a11y(
+    s: &mut String,
+    width: f64,
+    height: f64,
+    font_size: u32,
+    title: &str,
+    desc: Option<&str>,
+    opts: &SvgOptions,
+) {
+    svg_open_root(s, width, height, font_size, title, desc, None, opts);
+}
+
+/// [`svg_open_a11y`] plus an optional root `id` (the per-diagram id
+/// scoped CSS and edge ids hang off); `None` writes no `id` attribute.
+#[allow(clippy::too_many_arguments)]
+fn svg_open_root(
+    s: &mut String,
+    width: f64,
+    height: f64,
+    font_size: u32,
+    title: &str,
+    desc: Option<&str>,
+    root_id: Option<&str>,
     opts: &SvgOptions,
 ) {
     // `width`/`height` become percentages only in responsive mode; the
@@ -3203,28 +3804,61 @@ pub(crate) fn svg_open(
         .preserve_aspect_ratio
         .map(|p| format!(" preserveAspectRatio=\"{p}\""))
         .unwrap_or_default();
+    let desc_id = desc.map(|d| {
+        let mut key = DefsKey::new();
+        key.eat(title.as_bytes());
+        key.eat(&[0]);
+        key.eat(d.as_bytes());
+        format!("{A11Y_DESC_ID_PREFIX}{}", key.finish())
+    });
     s.push_str(&format!(
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{w}\" height=\"{h}\" \
+        "<svg{id} xmlns=\"http://www.w3.org/2000/svg\" width=\"{w}\" height=\"{h}\" \
          viewBox=\"0 0 {vw:.0} {vh:.0}\"{par} font-family=\"Helvetica, Arial, sans-serif\" \
-         font-size=\"{fs}\" role=\"img\" aria-label=\"{t}\">\n",
+         font-size=\"{fs}\" role=\"img\" aria-label=\"{t}\"{described}>\n",
+        id = root_id
+            .map(|i| format!(" id=\"{}\"", escape(i)))
+            .unwrap_or_default(),
         w = w_attr,
         h = h_attr,
         vw = width,
         vh = height,
         fs = font_size,
-        t = escape(title)
+        t = escape(title),
+        described = desc_id
+            .as_ref()
+            .map(|id| format!(" aria-describedby=\"{id}\""))
+            .unwrap_or_default()
     ));
     s.push_str(&format!("<title>{}</title>\n", escape(title)));
-    s.push_str(&format!(
-        "<rect width=\"{:.0}\" height=\"{:.0}\" fill=\"#ffffff\"/>\n",
-        width, height
-    ));
+    if let (Some(d), Some(id)) = (desc, &desc_id) {
+        s.push_str(&format!("<desc id=\"{id}\">{}</desc>\n", escape(d)));
+    }
+    // The white canvas is opt-out (issue #62) so output can sit on a
+    // dark page; the default keeps it for byte-identical output.
+    if !opts.transparent {
+        s.push_str(&format!(
+            "<rect width=\"{:.0}\" height=\"{:.0}\" fill=\"#ffffff\"/>\n",
+            width, height
+        ));
+    }
 }
 
 /// White label box with centred text — used for flowchart edge
 /// labels and ER relationship labels alike. `center` is in final
 /// (already translated) coordinates.
 pub(crate) fn svg_label_box(s: &mut String, text: &str, center: (f64, f64), box_w: f64) {
+    svg_label_box_with(s, text, center, box_w, TEXT_COLOR);
+}
+
+/// [`svg_label_box`] with the text colour given (an already-escaped
+/// attribute value), for `linkStyle … color:`.
+pub(crate) fn svg_label_box_with(
+    s: &mut String,
+    text: &str,
+    center: (f64, f64),
+    box_w: f64,
+    fill: &str,
+) {
     s.push_str(&format!(
         "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"20\" rx=\"4\" \
          fill=\"#ffffff\" stroke=\"{}\"/>\n",
@@ -3238,7 +3872,7 @@ pub(crate) fn svg_label_box(s: &mut String, text: &str, center: (f64, f64), box_
          fill=\"{}\">{}</text>\n",
         center.0,
         center.1,
-        TEXT_COLOR,
+        fill,
         rich(text)
     ));
 }
@@ -3400,6 +4034,256 @@ mod tests {
     use super::*;
     use crate::parser::parse;
 
+    fn svg_src(src: &str) -> String {
+        to_svg(&scene(&parse(src).unwrap_or_else(|e| panic!("{e}\n{src}"))))
+    }
+
+    fn edge_paths(svg: &str) -> Vec<&str> {
+        svg.lines()
+            .filter(|l| l.starts_with("<path d=") && l.contains("<title>"))
+            .collect()
+    }
+
+    /// The root `<svg id="…">`, if any.
+    fn root_id(svg: &str) -> Option<String> {
+        let open = svg.split('>').next()?;
+        let rest = open.strip_prefix("<svg id=\"")?;
+        Some(rest.split('"').next()?.to_string())
+    }
+
+    /// `svg` with its root id and the edge-id attributes removed.
+    fn strip_ids(svg: &str, edge_id: &str) -> String {
+        let dom = root_id(svg).expect("root id");
+        svg.replacen(&format!(" id=\"{dom}\""), "", 1).replace(
+            &format!(" id=\"{dom}-{edge_id}\" data-id=\"{edge_id}\""),
+            "",
+        )
+    }
+
+    #[test]
+    fn edge_ids_become_prefixed_dom_ids() {
+        let svg = svg_src("flowchart LR\n  A e1@--> B\n");
+        let dom = root_id(&svg).expect("an edge id gives the svg an id");
+        assert!(dom.starts_with(DIAGRAM_DOM_ID_PREFIX), "{dom}");
+        let p = edge_paths(&svg);
+        assert!(
+            p[0].contains(&format!(" id=\"{dom}-e1\" data-id=\"e1\"")),
+            "{svg}"
+        );
+        assert!(!svg.contains("<style>") && !svg.contains("class=\""));
+        // Deterministic: same input, same bytes.
+        assert_eq!(svg, svg_src("flowchart LR\n  A e1@--> B\n"));
+        // Another diagram gets another prefix, so inlined SVGs never
+        // share `#…-e1`.
+        let other = svg_src("flowchart LR\n  A e1@--> C\n");
+        assert_ne!(root_id(&other).unwrap(), dom);
+        // Same geometry as the id-less edge; only the attributes differ.
+        let plain = svg_src("flowchart LR\n  A --> B\n");
+        assert!(root_id(&plain).is_none());
+        assert_eq!(strip_ids(&svg, "e1"), plain);
+        // An id named like a marker never collides with it.
+        let svg = svg_src("flowchart LR\n  A arrow@--> B\n");
+        let dom = root_id(&svg).unwrap();
+        assert!(
+            svg.contains(&format!("id=\"{dom}-arrow\"")) && svg.contains("<marker id=\"arrow\"")
+        );
+        assert_eq!(svg.matches(" id=\"arrow\"").count(), 1);
+        // XML-escaped.
+        let svg = svg_src("flowchart LR\n  A e<1@--> B\n");
+        let dom = root_id(&svg).unwrap();
+        assert!(
+            svg.contains(&format!("id=\"{dom}-e&lt;1\" data-id=\"e&lt;1\"")),
+            "{svg}"
+        );
+        // Invisible edges are not drawn, so neither are their ids.
+        let svg = svg_src("flowchart LR\n  A e1@~~~ B\n  e1@{ animate: true }\n");
+        assert!(!svg.contains("e1") && !svg.contains("<style>"));
+        assert!(root_id(&svg).is_none());
+    }
+
+    #[test]
+    fn animated_edges_get_mermaids_class_and_one_style_block() {
+        let svg = svg_src(
+            "flowchart LR\n  A e1@--> B\n  B e2@-.-> C\n  C e3@--> D\n  e1@{ animate: true }\n  e2@{ animation: slow }\n",
+        );
+        let p = edge_paths(&svg);
+        assert!(p[0].contains("class=\"edge-animation-fast\""), "{svg}");
+        assert!(p[1].contains("class=\"edge-animation-slow\""));
+        assert!(
+            p[1].contains("stroke-dasharray=\"5 4\""),
+            "dotted dash stays"
+        );
+        assert!(!p[2].contains("class="));
+        assert_eq!(svg.matches("<style>").count(), 1);
+        // Scoped to this SVG, keyframes included, so an inlined SVG
+        // never restyles the host page or another diagram.
+        let dom = root_id(&svg).unwrap();
+        assert!(svg.contains(&format!(
+            "@keyframes {dom}-dash{{to{{stroke-dashoffset:0}}}}"
+        )));
+        assert!(svg.contains(&format!("#{dom} .edge-animation-fast{{stroke-dasharray:9,5 !important;stroke-dashoffset:900;animation:{dom}-dash 20s linear infinite;stroke-linecap:round}}")));
+        assert!(svg.contains(&format!("#{dom} .edge-animation-slow{{stroke-dasharray:9,5 !important;stroke-dashoffset:900;animation:{dom}-dash 50s linear infinite;stroke-linecap:round}}")));
+        let css = svg
+            .split("<style>")
+            .nth(1)
+            .unwrap()
+            .split("</style>")
+            .next()
+            .unwrap();
+        let unscoped: Vec<&str> = css
+            .split('}')
+            .map(str::trim)
+            .filter(|r| r.starts_with('.'))
+            .collect();
+        assert!(unscoped.is_empty(), "{unscoped:?}");
+        assert!(!css.contains("@keyframes dash"));
+        // Bogus animation: no class, no style block.
+        let svg = svg_src("flowchart LR\n  A e1@--> B\n  e1@{ animate: true, animation: bogus }\n");
+        assert!(!svg.contains("class=\"edge-animation") && !svg.contains("<style>"));
+    }
+
+    #[test]
+    fn edge_curves_change_only_their_own_path() {
+        let plain = svg_src("flowchart TD\n  A --> B\n");
+        let wiggly = svg_src("flowchart TD\n  A e1@--> B\n  e1@{ curve: wiggly }\n");
+        let basis = svg_src("flowchart TD\n  A e1@--> B\n  e1@{ curve: basis }\n");
+        let strip = |s: &str| strip_ids(s, "e1");
+        assert_eq!(strip(&wiggly), plain, "unknown curve = basis");
+        assert_eq!(strip(&basis), plain);
+        let d = |s: &str| {
+            edge_paths(s)[0]
+                .split("d=\"")
+                .nth(1)
+                .unwrap()
+                .split('"')
+                .next()
+                .unwrap()
+                .to_string()
+        };
+        let base_d = d(&plain);
+        // d3's bumpY between two vertically aligned points IS the
+        // default cubic; it differs once the ends are offset.
+        let bump = svg_src("flowchart LR\n  A e1@--> B\n  e1@{ curve: bumpY }\n");
+        assert!(d(&bump).contains(" C "));
+        for c in [
+            "linear",
+            "rounded",
+            "step",
+            "stepBefore",
+            "stepAfter",
+            "bumpX",
+            "natural",
+            "catmullRom",
+            "cardinal",
+            "monotoneX",
+            "monotoneY",
+        ] {
+            let svg = svg_src(&format!(
+                "flowchart TD\n  A e1@--> B\n  e1@{{ curve: {c} }}\n"
+            ));
+            assert_ne!(d(&svg), base_d, "{c}");
+            assert!(
+                edge_paths(&svg)[0].contains("marker-end=\"url(#arrow)\""),
+                "{c}"
+            );
+        }
+        // A routed (multi-waypoint) edge: each curve draws its own kind
+        // of commands through the waypoints.
+        let src = |c: &str| {
+            format!("flowchart TD\n  A --> B --> C --> D\n  A e1@--> D\n  e1@{{ curve: {c} }}\n")
+        };
+        let g = parse(&src("linear")).unwrap();
+        let sc = scene(&g);
+        assert!(sc.edges[3].waypoints.len() >= 3, "the long edge is routed");
+        let lin = edge_paths(&svg_src(&src("linear")))[3].to_string();
+        assert!(lin.contains(" L ") && !lin.contains(" C "), "{lin}");
+        let rnd = edge_paths(&svg_src(&src("rounded")))[3].to_string();
+        assert!(rnd.contains(" Q "), "{rnd}");
+        let cr = edge_paths(&svg_src(&src("catmullRom")))[3].to_string();
+        assert!(cr.contains(" C "), "{cr}");
+    }
+
+    #[test]
+    fn curved_edges_pick_and_bound_what_is_drawn() {
+        let g = parse("flowchart TD\n  A e1@--> B\n  e1@{ curve: stepBefore }\n").unwrap();
+        let sc = scene(&g);
+        let e = &sc.edges[0];
+        let (start, segs) = curve_geometry(e).expect("non-default curve");
+        let pts = curve_sample(start, &segs);
+        assert_eq!(edge_polyline(e), pts);
+        let mut bb = Bbox::new();
+        grow_scene(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
+        let (minx, maxx, miny, maxy) = bb.finish();
+        for (x, y) in pts {
+            assert!(x >= minx && x <= maxx && y >= miny && y <= maxy);
+        }
+        // Default curve: no special geometry.
+        let g = parse("flowchart TD\n  A e1@--> B\n").unwrap();
+        assert!(curve_geometry(&scene(&g).edges[0]).is_none());
+    }
+
+    #[test]
+    fn sub_edges_carry_ids_and_animation() {
+        let svg = svg_src(
+            "flowchart LR\n  subgraph S\n    X\n  end\n  A e1@--> S\n  e1@{ animation: fast }\n",
+        );
+        let dom = root_id(&svg).unwrap();
+        assert!(svg.contains(&format!("id=\"{dom}-e1\"")), "{svg}");
+        assert!(svg.contains("class=\"edge-animation-fast\""));
+    }
+
+    #[test]
+    fn node_metadata_draws_like_the_bracket_shape() {
+        assert_eq!(
+            svg_src("flowchart TD\n  A@{ shape: cyl, label: \"DB\" } --> B\n"),
+            svg_src("flowchart TD\n  A[(DB)] --> B\n")
+        );
+        assert_eq!(
+            svg_src("flowchart TD\n  A[x]@{ shape: hex }\n"),
+            svg_src("flowchart TD\n  A{{x}}\n")
+        );
+        let svg = svg_src("flowchart TD\n  A@{ shape: text, label: hi }\n");
+        assert!(svg.contains("fill=\"none\" stroke=\"none\""), "{svg}");
+    }
+
+    #[test]
+    fn a11y_desc_ids_are_content_hashed_and_default_is_unchanged() {
+        let g = parse("flowchart TD\nA --> B").unwrap();
+        let sc = scene(&g);
+        assert_eq!(
+            to_svg_a11y_with(
+                &sc,
+                "Flowchart diagram",
+                &A11y::default(),
+                &SvgOptions::default()
+            ),
+            to_svg(&sc)
+        );
+        let a = A11y::new(Some("T".into()), Some("one".into()));
+        let b = A11y::new(Some("T".into()), Some("two".into()));
+        let opts = SvgOptions::default();
+        let sa = to_svg_a11y_with(&sc, "x", &a, &opts);
+        let sb = to_svg_a11y_with(&sc, "x", &b, &opts);
+        let id = |s: &str| {
+            s.split("<desc id=\"")
+                .nth(1)
+                .and_then(|r| r.split('"').next())
+                .unwrap()
+                .to_string()
+        };
+        assert_ne!(id(&sa), id(&sb), "two inlined SVGs never share a desc id");
+        assert_eq!(sa, to_svg_a11y_with(&sc, "x", &a, &opts), "deterministic");
+        assert!(sa.contains(&format!("aria-describedby=\"{}\"", id(&sa))));
+        assert!(id(&sa).starts_with(A11Y_DESC_ID_PREFIX));
+        // Title only: no desc, no aria-describedby.
+        let t = to_svg_a11y_with(&sc, "x", &A11y::new(Some("<b>T</b>".into()), None), &opts);
+        assert!(t.contains("<title>T</title>") && !t.contains("<desc"));
+        assert!(!t.contains("aria-describedby"));
+        // Blank title falls back to the default name.
+        let t = to_svg_a11y_with(&sc, "Dflt", &A11y::new(Some("  ".into()), None), &opts);
+        assert!(t.contains("<title>Dflt</title>"));
+    }
+
     #[test]
     fn svg_options_default_matches_fixed_pixel_and_responsive_overrides() {
         let g = parse("flowchart TD\nA --> B").unwrap();
@@ -3433,6 +4317,7 @@ mod tests {
             &SvgOptions {
                 responsive: true,
                 preserve_aspect_ratio: Some("none"),
+                ..Default::default()
             },
         );
         assert!(par.contains("preserveAspectRatio=\"none\""), "{par}");
@@ -3440,6 +4325,51 @@ mod tests {
             !resp.contains("preserveAspectRatio"),
             "unset -> default meet, no attribute"
         );
+    }
+
+    #[test]
+    fn svg_options_transparent_drops_only_the_canvas_rect() {
+        // The canvas rect is the first element after <title>, sized to the
+        // whole viewBox — match it exactly so shape/label fills don't count.
+        fn canvas_rect(svg: &str) -> String {
+            let vb = svg.split("viewBox=\"0 0 ").nth(1).unwrap();
+            let mut it = vb.split('"').next().unwrap().split(' ');
+            let (w, h) = (it.next().unwrap(), it.next().unwrap());
+            format!("<rect width=\"{w}\" height=\"{h}\" fill=\"#ffffff\"/>\n")
+        }
+        let transparent = SvgOptions {
+            transparent: true,
+            ..Default::default()
+        };
+        // Flowchart plus every other writer that shares `svg_open`.
+        for src in [
+            "flowchart TD\nA --> B",
+            "stateDiagram-v2\n[*] --> S",
+            "erDiagram\nA ||--o{ B : has",
+            "sequenceDiagram\nA->>B: hi",
+            "pie\n\"a\" : 1\n\"b\" : 2",
+            "timeline\nsection S\n2020 : x",
+            "classDiagram\nAnimal <|-- Dog",
+            "mindmap\n  root((R))\n    A\n    B",
+            "journey\ntitle T\nsection S\n  Task: 5: Me",
+            "gitGraph\n  commit\n  branch f\n  commit",
+            "architecture-beta\n  service a(server)[A]\n  service b(database)[B]\n  a:R -- L:b",
+            "sankey-beta\nA,B,10\nB,C,5",
+        ] {
+            let base = crate::render_svg(src).unwrap();
+            let rect = canvas_rect(&base);
+            // Default keeps the white canvas, right after <title>.
+            assert!(base.contains(&format!("</title>\n{rect}")), "{src}: {base}");
+            assert_eq!(
+                base,
+                crate::render_svg_advanced(src, &SvgOptions::default()).unwrap(),
+                "{src}: default options must match render_svg byte-for-byte"
+            );
+            let t = crate::render_svg_advanced(src, &transparent).unwrap();
+            assert!(!t.contains(&rect), "{src}: canvas rect must be gone: {t}");
+            // Nothing else changes: removing the rect gives the default back.
+            assert_eq!(base.replacen(&rect, "", 1), t, "{src}");
+        }
     }
 
     #[test]
@@ -4592,6 +5522,347 @@ mod tests {
             escape("<a & \"b\" 'c'>"),
             "&lt;a &amp; &quot;b&quot; &#39;c&#39;&gt;"
         );
+    }
+
+    // ── linkStyle ───────────────────────────────────────────────
+
+    #[test]
+    fn link_style_paints_the_edge_and_colours_its_arrow() {
+        let svg = svg_src(
+            "flowchart TD\nA --> B\nB --> C\nlinkStyle 1 stroke:#ff3,stroke-width:4px,color:red;\n",
+        );
+        let p = edge_paths(&svg);
+        assert!(
+            p[0].contains("stroke=\"#44507a\" stroke-width=\"1.7\" marker-end=\"url(#arrow)\""),
+            "{svg}"
+        );
+        assert!(
+            p[1].contains("stroke=\"#ff3\" stroke-width=\"4\" marker-end=\"url(#arrow-u__ff3)\""),
+            "{svg}"
+        );
+        // Width-independent head, coloured like the stroke.
+        assert!(svg.contains(
+            "<marker id=\"arrow-u__ff3\" viewBox=\"0 0 10 10\" refX=\"8.5\" refY=\"5\" \
+             markerUnits=\"userSpaceOnUse\" markerWidth=\"11.9\" markerHeight=\"11.9\" \
+             orient=\"auto\"><path d=\"M 0 1 L 9 5 L 0 9 z\" fill=\"#ff3\"/></marker>"
+        ));
+    }
+
+    #[test]
+    fn link_style_on_a_sub_edge_and_default_markers_are_deduped() {
+        let svg = svg_src(
+            "flowchart LR\nsubgraph S\n  X\nend\nA & B --> C & D\nA --> S\nC ~~~ D\n\
+             D --> E --> F\nlinkStyle 4 stroke:red\nlinkStyle 6,7 stroke:blue\n",
+        );
+        let p = edge_paths(&svg);
+        let a_s = p
+            .iter()
+            .find(|l| l.contains("<title>A → S</title>"))
+            .unwrap();
+        assert!(a_s.contains("stroke=\"red\"") && a_s.contains("url(#arrow_red)"));
+        for t in ["D → E", "E → F"] {
+            let l = p.iter().find(|l| l.contains(t)).unwrap();
+            assert!(l.contains("stroke=\"blue\"") && l.contains("url(#arrow_blue)"));
+        }
+        assert_eq!(svg.matches("<marker id=\"arrow_blue\"").count(), 1);
+        // The invisible link stays hidden with a stroke-only style.
+        assert!(!svg.contains("C → D"));
+    }
+
+    #[test]
+    fn link_style_effective_stroke_drives_the_marker() {
+        // Default grey 2px, edge 1 red: its arrow is red (flowmaid
+        // follows the drawn stroke; mermaid would take the default's).
+        let svg = svg_src(
+            "flowchart TD\nlinkStyle default stroke:#888,stroke-width:2px\nA --> B --> C\n\
+             linkStyle 1 stroke:#e11d48\n",
+        );
+        let p = edge_paths(&svg);
+        assert!(
+            p[0].contains("stroke=\"#888\" stroke-width=\"2\"") && p[0].contains("arrow-u__888")
+        );
+        assert!(
+            p[1].contains("stroke=\"#e11d48\" stroke-width=\"2\"")
+                && p[1].contains("arrow-u__e11d48")
+        );
+    }
+
+    #[test]
+    fn link_style_colours_every_marker_kind_and_only_used_defs() {
+        let svg =
+            svg_src("flowchart LR\nA <--> B\nC x--x D\nE o--o F\nlinkStyle 0,1,2 stroke:#16a34a\n");
+        for id in [
+            "arrow-start__16a34a",
+            "arrow__16a34a",
+            "cross-start__16a34a",
+            "cross-end__16a34a",
+            "circle-start__16a34a",
+            "circle-end__16a34a",
+        ] {
+            assert!(svg.contains(&format!("<marker id=\"{id}\"")), "{id}\n{svg}");
+            assert!(svg.contains(&format!("url(#{id})")), "{id}");
+        }
+        // No uncoloured extra defs (only the classic `#arrow` stays).
+        for id in ["arrow-start\"", "cross-end\"", "circle-end\""] {
+            assert!(!svg.contains(&format!("<marker id=\"{id}")), "{id}");
+        }
+        assert!(svg.contains("stroke=\"#16a34a\" stroke-width=\"2\"/></marker>"));
+        assert!(svg.contains("fill=\"#16a34a\" stroke=\"#16a34a\" stroke-width=\"1\""));
+    }
+
+    #[test]
+    fn link_style_dash_and_width_override_the_kind() {
+        let svg = svg_src(
+            "flowchart LR\nA -.-> B\nC ==> D\nE --> F\nlinkStyle 0 stroke-dasharray:0\n\
+             linkStyle 1 stroke-width:1px\nlinkStyle 2 stroke-dasharray: 5 5\n",
+        );
+        let p = edge_paths(&svg);
+        assert!(p[0].contains("stroke-dasharray=\"0\"") && !p[0].contains("5 4"));
+        assert!(p[1].contains("stroke-width=\"1\"") && p[1].contains("url(#arrow-u)"));
+        assert!(p[2].contains("stroke-dasharray=\"5 5\""));
+        // The plain `-u` arrow keeps the theme colour.
+        assert!(svg.contains("<marker id=\"arrow-u\""));
+    }
+
+    #[test]
+    fn link_style_color_paints_only_the_label_text() {
+        let svg = svg_src("flowchart LR\nA -- yes --> B\nlinkStyle 0 color:#2563eb\n");
+        assert!(svg.contains("fill=\"#2563eb\">yes</text>"), "{svg}");
+        let p = edge_paths(&svg);
+        assert!(p[0].contains("stroke=\"#44507a\"") && p[0].contains("url(#arrow)"));
+    }
+
+    #[test]
+    fn link_style_with_a_width_reveals_an_invisible_link_without_markers() {
+        let svg =
+            svg_src("flowchart LR\nA ~~~ B\nA --> C\nlinkStyle 0 stroke:red,stroke-width:2px\n");
+        let p = edge_paths(&svg);
+        let ab = p.iter().find(|l| l.contains("A → B")).unwrap();
+        assert!(ab.contains("stroke=\"red\" stroke-width=\"2\"") && !ab.contains("marker"));
+        let hidden = svg_src("flowchart LR\nA ~~~ B\nA --> C\nlinkStyle 0 stroke:red\n");
+        assert!(!hidden.contains("A → B"));
+        assert!(!svg_src("flowchart LR\nA ~~~ B\nlinkStyle 0 stroke-width:0\n").contains("A → B"));
+    }
+
+    #[test]
+    fn link_style_fill_and_escaping() {
+        let svg = svg_src("flowchart TD\nA --> B\nlinkStyle 0 fill:#fde68a,stroke:#b45309\n");
+        assert!(edge_paths(&svg)[0].contains("fill=\"#fde68a\" stroke=\"#b45309\""));
+        // Hostile values cannot break out of the attribute.
+        let mut g = parse("flowchart TD\nA --> B\n").unwrap();
+        g.edges[0].meta.style.stroke = Some("red\"/><script>".into());
+        let svg = to_svg(&scene(&g));
+        assert!(!svg.contains("<script>"));
+        assert!(svg.contains("arrow_red____script_"));
+    }
+
+    #[test]
+    fn link_style_colours_that_sanitise_alike_get_distinct_markers() {
+        let svg = svg_src(
+            "flowchart TD\nA --> B --> C\nlinkStyle 0 stroke:#f00\nlinkStyle 1 stroke:_f00\n",
+        );
+        assert!(svg.contains("<marker id=\"arrow__f00\""));
+        assert!(svg.contains("<marker id=\"arrow__f00_2\""));
+        let p = edge_paths(&svg);
+        assert!(p[0].contains("url(#arrow__f00)") && p[1].contains("url(#arrow__f00_2)"));
+    }
+
+    #[test]
+    fn link_style_interpolate_linear_draws_straight_segments() {
+        let plain = svg_src("flowchart TD\nA --> B --> C --> D\nA --> D\n");
+        let lin =
+            svg_src("flowchart TD\nA --> B --> C --> D\nA --> D\nlinkStyle 3 interpolate linear\n");
+        assert_ne!(plain, lin);
+        let p = edge_paths(&lin);
+        assert!(
+            !p[3].contains(" C "),
+            "linear has no cubic segments: {}",
+            p[3]
+        );
+    }
+
+    #[test]
+    fn link_style_survives_compact_folding() {
+        let g = parse(
+            "flowchart LR\nA --> B --> C --> D --> E --> F --> G --> H\nlinkStyle 3 stroke:red\n",
+        )
+        .unwrap();
+        let c = crate::fold::scene_compact(&g, &crate::fold::CompactOptions::for_extent(300.0));
+        assert!(c.skipped.is_none() && c.bands > 1, "{:?}", c.skipped);
+        assert_eq!(c.scene.edges[3].meta.style.stroke.as_deref(), Some("red"));
+        let svg = to_svg(&c.scene);
+        assert!(svg.contains("stroke=\"red\""));
+    }
+
+    #[test]
+    fn diagrams_without_link_style_render_exactly_as_before() {
+        // Byte-level: no styled defs, the historical stroke attrs.
+        let svg = svg_src("flowchart LR\nA --> B\nC -.-> D\nE ==> F\nG x--x H\n");
+        assert!(!svg.contains("-u\"") && !svg.contains("_"), "{svg}");
+        assert!(svg.contains("stroke-dasharray=\"5 4\""));
+        assert!(svg.contains("stroke-width=\"3.4\""));
+    }
+
+    // ── click ───────────────────────────────────────────────────
+
+    #[test]
+    fn click_wraps_the_node_in_a_link() {
+        let svg = svg_src("flowchart LR\nA-->B\nclick A \"https://example.com\"\n");
+        assert!(
+            svg.contains(
+                "<a xmlns:xlink=\"http://www.w3.org/1999/xlink\" href=\"https://example.com\" \
+             xlink:href=\"https://example.com\">\n<g><title>A</title>\n"
+            ),
+            "{svg}"
+        );
+        assert_eq!(svg.matches("<a ").count(), 1);
+        assert_eq!(svg.matches("</a>").count(), 1);
+        assert!(!svg.contains("target="));
+        // The root header is untouched.
+        let plain = svg_src("flowchart LR\nA-->B\n");
+        assert_eq!(svg.lines().next(), plain.lines().next());
+        let svg = svg_src(
+            "flowchart LR\nA-->B\nclick A href \"https://example.com\" \"Go to docs\" _blank\n",
+        );
+        assert!(svg.contains(
+            "target=\"_blank\" rel=\"noopener noreferrer\">\n<g><title>Go to docs</title>"
+        ));
+        assert!(!svg.contains("<title>A</title>"));
+        let svg = svg_src("flowchart LR\nA-->B\nclick A \"https://example.com\" _self\n");
+        assert!(svg.contains("target=\"_self\">") && !svg.contains("rel="));
+        let svg = svg_src("flowchart LR\nA-->B\nclick A \"/docs/page?a=1&b=2\"\n");
+        assert!(svg.contains("href=\"/docs/page?a=1&amp;b=2\""));
+    }
+
+    #[test]
+    fn click_tooltips_and_callbacks_without_links() {
+        let plain = svg_src("flowchart LR\nA-->B\n");
+        assert_eq!(svg_src("flowchart LR\nA-->B\nclick A callback\n"), plain);
+        assert_eq!(
+            svg_src("flowchart LR\nA-->B\nclick A call callback()\n"),
+            plain
+        );
+        let svg = svg_src("flowchart LR\nA-->B\nclick A callback \"Tooltip for a callback\"\n");
+        assert!(svg.contains("<g><title>Tooltip for a callback</title>") && !svg.contains("<a "));
+        let svg = svg_src(
+            "flowchart LR\nA-->B\nclick A \"https://x.example\" \"say #quot;hi#quot; <b>\"\n",
+        );
+        assert!(
+            svg.contains("<title>say &quot;hi&quot; &lt;b&gt;</title>"),
+            "{svg}"
+        );
+        // Exactly one <title> per node group.
+        let g = svg.split("<g>").nth(1).unwrap_or_default();
+        assert!(!g.contains("<title>A</title>"));
+    }
+
+    #[test]
+    fn click_never_writes_a_dangerous_url() {
+        for url in [
+            "javascript:alert(1)",
+            "javascript#58;alert(1)",
+            "%6Aavascript:alert(1)",
+            "data:text/html,x",
+        ] {
+            let svg = svg_src(&format!("flowchart LR\nA-->B\nclick A \"{url}\"\n"));
+            assert!(!svg.contains("<a "), "{url}");
+            assert!(!svg.to_lowercase().contains("javascript"), "{url}");
+        }
+        // A library user bypassing the parser is checked at emit time.
+        let mut g = parse("flowchart LR\nA-->B\n").unwrap();
+        g.links.insert(
+            0,
+            NodeLink {
+                href: Some("javascript:alert(1)".into()),
+                ..NodeLink::default()
+            },
+        );
+        let svg = to_svg(&scene(&g));
+        assert!(!svg.contains("javascript") && !svg.contains("<a "));
+        // ...and so is every scene a host app reads the link from: the
+        // unsafe url is dropped, the rest of the link kept.
+        g.links.insert(
+            0,
+            NodeLink {
+                href: Some("JaVaScRiPt:alert(1)".into()),
+                tooltip: Some("tip".into()),
+                ..NodeLink::default()
+            },
+        );
+        g.links.insert(
+            1,
+            NodeLink {
+                href: Some("%6Aavascript:alert(1)".into()),
+                ..NodeLink::default()
+            },
+        );
+        let sc = scene(&g);
+        let l = sc.nodes[0].link.as_ref().unwrap();
+        assert_eq!(
+            (l.href.as_deref(), l.tooltip.as_deref()),
+            (None, Some("tip"))
+        );
+        assert!(sc.nodes[1].link.is_none(), "nothing left, no link");
+        let centers: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let routed = route(&g, &centers);
+        assert!(routed.nodes[0].link.as_ref().unwrap().href.is_none());
+        assert!(routed.nodes[1].link.is_none());
+    }
+
+    #[test]
+    fn click_links_reach_every_scene_builder() {
+        let g = parse(
+            "flowchart LR\nA --> B --> C --> D --> E --> F --> G --> H\n\
+             click A href \"https://example.com\" \"tip\" _top\n",
+        )
+        .unwrap();
+        let sc = scene(&g);
+        let l = sc.nodes[0].link.as_ref().unwrap();
+        assert_eq!(l.href.as_deref(), Some("https://example.com"));
+        assert_eq!(l.tooltip.as_deref(), Some("tip"));
+        assert_eq!(l.target, Some(crate::model::LinkTarget::Top));
+        assert!(sc.nodes[1].link.is_none());
+        let centers: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        assert!(route(&g, &centers).nodes[0].link.is_some());
+        let c = crate::fold::scene_compact(&g, &crate::fold::CompactOptions::for_extent(300.0));
+        assert!(c.skipped.is_none());
+        assert!(c.scene.nodes[0].link.is_some());
+        assert!(to_svg(&c.scene).contains("href=\"https://example.com\""));
+        // Clustered scenes too.
+        let g =
+            parse("flowchart LR\nsubgraph S\nA\nend\nA --> B\nclick A \"https://x\"\n").unwrap();
+        assert!(scene(&g).nodes[0].link.is_some());
+    }
+
+    // ── markdown strings ────────────────────────────────────────
+
+    #[test]
+    fn markdown_labels_render_as_styled_tspans() {
+        let svg = svg_src("flowchart LR\n  A[\"`This **is** _Markdown_`\"] --> B\n");
+        assert!(
+            svg.contains("<tspan font-weight=\"bold\">is</tspan>"),
+            "{svg}"
+        );
+        assert!(svg.contains("<tspan font-style=\"italic\">Markdown</tspan>"));
+        assert!(!svg.contains("**") && !svg.contains('`'));
+        let svg = svg_src("flowchart LR\n  n[\"`Line1\n    Line 2\n    Line 3`\"]\n");
+        assert_eq!(svg.matches("dy=\"17.0\"").count(), 2, "{svg}");
+        let svg = svg_src("flowchart LR\n  A -->|\"`**pipe** label`\"| B\n");
+        assert!(svg.contains("<tspan font-weight=\"bold\">pipe</tspan> label</text>"));
+    }
+
+    #[test]
+    fn subgraph_titles_render_rich() {
+        let svg = svg_src("flowchart LR\n  subgraph s1 [\"`*Italic* title`\"]\n    A\n  end\n");
+        assert!(
+            svg.contains(
+                "fill=\"#6a7086\"><tspan font-style=\"italic\">Italic</tspan> title</text>"
+            ),
+            "{svg}"
+        );
+        // Plain titles are byte-identical to the old escape().
+        let svg = svg_src("flowchart LR\n  subgraph s1 [a & b]\n    A\n  end\n");
+        assert!(svg.contains("fill=\"#6a7086\">a &amp; b</text>"));
     }
 
     // --- issue #61: edge labels must not cover node boxes or each other ---

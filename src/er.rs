@@ -15,8 +15,8 @@
 use crate::layout::text_width;
 use crate::model::{Attr, Card, Direction, EdgeKind, Entity, ErDiagram, Graph, Shape};
 use crate::scene::{
-    escape, route_sized, scene_sized, svg_label_box, svg_open, Scene, SvgOptions, EDGE_COLOR,
-    TEXT_COLOR,
+    escape, route_sized, scene_sized, svg_label_box, svg_open_a11y, A11y, Scene, SvgOptions,
+    EDGE_COLOR, TEXT_COLOR,
 };
 
 /// Table header height in pixels.
@@ -179,16 +179,15 @@ pub fn to_svg(es: &ErScene) -> String {
 
 /// [`to_svg`] with explicit viewport options (see [`SvgOptions`]).
 pub fn to_svg_with(es: &ErScene, opts: &SvgOptions) -> String {
+    to_svg_a11y_with(es, &A11y::default(), opts)
+}
+
+/// [`to_svg_with`] plus mermaid's `accTitle` / `accDescr` (see [`A11y`]).
+pub(crate) fn to_svg_a11y_with(es: &ErScene, a11y: &A11y, opts: &SvgOptions) -> String {
+    let (title, desc) = a11y.resolve("Entity-relationship diagram");
     let sc = &es.scene;
     let mut s = String::new();
-    svg_open(
-        &mut s,
-        sc.width,
-        sc.height,
-        13,
-        "Entity-relationship diagram",
-        opts,
-    );
+    svg_open_a11y(&mut s, sc.width, sc.height, 13, &title, desc, opts);
 
     // Relationship lines + crow's foot glyphs (under the tables).
     for (e, &(card_from, card_to)) in sc.edges.iter().zip(&es.cards) {

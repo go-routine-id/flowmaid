@@ -16,8 +16,8 @@
 use crate::layout::text_width;
 use crate::model::{Class, ClassDiagram, Direction, EdgeKind, Graph, RelKind, Shape};
 use crate::scene::{
-    escape, route_sized, scene_sized, svg_label_box, svg_open, Scene, SvgOptions, EDGE_COLOR,
-    LABEL_BORDER, TEXT_COLOR,
+    escape, route_sized, scene_sized, svg_label_box, svg_open_a11y, A11y, Scene, SvgOptions,
+    EDGE_COLOR, LABEL_BORDER, TEXT_COLOR,
 };
 
 /// Name-compartment height in pixels.
@@ -188,9 +188,15 @@ pub fn to_svg(cs: &ClassScene) -> String {
 
 /// [`to_svg`] with explicit viewport options (see [`SvgOptions`]).
 pub fn to_svg_with(cs: &ClassScene, opts: &SvgOptions) -> String {
+    to_svg_a11y_with(cs, &A11y::default(), opts)
+}
+
+/// [`to_svg_with`] plus mermaid's `accTitle` / `accDescr` (see [`A11y`]).
+pub(crate) fn to_svg_a11y_with(cs: &ClassScene, a11y: &A11y, opts: &SvgOptions) -> String {
+    let (title, desc) = a11y.resolve("Class diagram");
     let sc = &cs.scene;
     let mut s = String::new();
-    svg_open(&mut s, sc.width, sc.height, 13, "Class diagram", opts);
+    svg_open_a11y(&mut s, sc.width, sc.height, 13, &title, desc, opts);
 
     // Relationship lines + UML end glyphs (under the boxes).
     for (e, rel) in sc.edges.iter().zip(&cs.rels) {
