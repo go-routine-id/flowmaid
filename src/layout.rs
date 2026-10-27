@@ -68,7 +68,20 @@ const CLUSTER_PAD: f64 = 18.0;
 const BORDER_GAP: f64 = 4.0;
 /// Rank room reserved for a cluster's title strip (mirrors the
 /// scene-side `SUB_HEADER` box headroom).
-const CLUSTER_HEADER: f64 = 26.0;
+pub(crate) const CLUSTER_HEADER: f64 = 26.0;
+/// Padding a drawn cluster frame keeps around its members, per nesting
+/// level (the scene-side `SUB_PAD`).
+pub(crate) const FRAME_PAD: f64 = 14.0;
+/// Least room between two frames stacked along the layer axis.
+const FRAME_GAP: f64 = 8.0;
+/// Width an edge-label box adds around its text (the scene draws it
+/// `text_width + LABEL_PAD_W` wide).
+pub(crate) const LABEL_PAD_W: f64 = 14.0;
+/// Height of a drawn edge-label box.
+pub(crate) const LABEL_BOX_H: f64 = 20.0;
+/// Room a label kept between adjacent layers leaves to each end node
+/// once its gap had to grow for it.
+const LABEL_CLEAR: f64 = 6.0;
 
 /// Line height for multi-line labels (`<br/>` → newline).
 pub const LINE_H: f64 = 17.0;
@@ -79,6 +92,19 @@ pub const LINE_H: f64 = 17.0;
 /// `text_width(s) * size / TEXT_CALIBRATION` — instead of guessing
 /// the table's base size.
 pub const TEXT_CALIBRATION: f64 = 14.0;
+
+/// Font size (px) subgraph titles are drawn at.
+pub(crate) const TITLE_FONT: f64 = 12.0;
+/// [`text_width`] (calibrated at [`TEXT_CALIBRATION`]) to title-font px.
+pub(crate) const TITLE_SCALE: f64 = TITLE_FONT / TEXT_CALIBRATION;
+/// Line advance of a multi-line (`<br/>`) subgraph title.
+pub(crate) const TITLE_LINE_H: f64 = LINE_H * TITLE_SCALE;
+
+/// Header room a subgraph title needs beyond a one-line strip: one
+/// [`TITLE_LINE_H`] per extra `<br/>` line.
+pub(crate) fn title_extra(title: &str) -> f64 {
+    (title.split('\n').count().max(1) - 1) as f64 * TITLE_LINE_H
+}
 
 /// Estimated rendered width of the WIDEST line in `s` (labels may
 /// be multi-line after `<br/>` normalisation), in px at
@@ -238,6 +264,8 @@ pub fn line_count(s: &str) -> usize {
 /// more accurate than a flat average: capitals ~9.7px, i/l ~3.4px,
 /// m/W ~12-13px, CJK/emoji ~14px.
 fn line_width(s: &str) -> f64 {
+    // A full-width glyph advances 1em at the calibration size.
+    const EM: f64 = TEXT_CALIBRATION;
     s.chars()
         .map(|c| match c {
             'i' | 'l' | 'j' => 3.4,
@@ -248,6 +276,12 @@ fn line_width(s: &str) -> f64 {
             'w' => 10.1,
             'W' => 13.2,
             'A'..='Z' => 9.7,
+            // Joiners and emoji variation selectors draw nothing.
+            '\u{200D}' | '\u{FE0F}' => 0.0,
+            '—' => EM,
+            // Arrows, misc symbols and dingbats come from a fallback
+            // font at about 1em — ~14px, not a Latin letter's 7.8.
+            '\u{2190}'..='\u{21FF}' | '\u{2600}'..='\u{27BF}' => EM,
             c if (c as u32) >= 0x2E80 => 14.0, // CJK, emoji, wide symbols
             _ => 7.8,
         })
@@ -315,7 +349,7 @@ pub fn layout(g: &Graph) -> LayoutResult {
 /// height in pixels) — used by pipelines where node size doesn't
 /// come from the label, e.g. ER entity tables or icon nodes.
 pub fn layout_sized(g: &Graph, sizes: &[(f64, f64)]) -> LayoutResult {
-    layout_core(g, sizes, None)
+    layout_core(g, sizes, None, &[]).0
 }
 
 /// Cluster-aware layout. `node_cluster[v]` is v's subgraph path,
@@ -330,29 +364,79 @@ pub fn layout_clustered(
     sizes: &[(f64, f64)],
     node_cluster: &[Vec<usize>],
 ) -> LayoutResult {
-    layout_core(g, sizes, Some(node_cluster))
+    layout_core(g, sizes, Some(node_cluster), &[]).0
+}
+
+/// Per original edge, per channel waypoint: the cluster path the
+/// waypoint's dummy was laid out in (see [`layout_clustered_ranked`]).
+pub(crate) type EdgeGroups = Vec<Vec<Vec<usize>>>;
+
+/// A rank-only link `(from, to)`: every `to` node ranks at least one
+/// layer below every `from` node.
+pub(crate) type RankGroup = (Vec<usize>, Vec<usize>);
+
+/// [`layout_clustered`] plus `rank_only` groups that rank their `to`
+/// nodes below their `from` nodes and pull them together in the
+/// ordering, but get no channel and are never drawn — the stand-ins for
+/// edges that end on a whole subgraph box. Also returns, for every
+/// edge, the cluster path of each channel waypoint, so the caller can
+/// tell which box a lane runs inside.
+pub(crate) fn layout_clustered_ranked(
+    g: &Graph,
+    sizes: &[(f64, f64)],
+    node_cluster: &[Vec<usize>],
+    rank_only: &[RankGroup],
+) -> (LayoutResult, EdgeGroups) {
+    layout_core(g, sizes, Some(node_cluster), rank_only)
 }
 
 fn layout_core(
     g: &Graph,
     sizes: &[(f64, f64)],
     node_cluster: Option<&[Vec<usize>]>,
-) -> LayoutResult {
+    rank_only: &[RankGroup],
+) -> (LayoutResult, EdgeGroups) {
     assert_eq!(
         sizes.len(),
         g.nodes.len(),
         "number of sizes must match number of nodes"
     );
     let n = g.nodes.len();
-    let mut adj: Vec<Vec<(usize, usize)>> = vec![Vec::new(); n];
+    // Each box's title-strip room: one line, plus any `<br/>` lines.
+    let header: Vec<f64> = g
+        .subgraphs
+        .iter()
+        .map(|s| CLUSTER_HEADER + title_extra(&s.title))
+        .collect();
+    // Ranking graph: the real nodes, then one HUB per rank-only group
+    // (`from -> hub` weighs one layer, `hub -> to` none), so a group
+    // costs |from| + |to| links instead of every from x to pair.
+    let nx = n + rank_only.len();
+    let mut adj: Vec<Vec<(usize, usize)>> = vec![Vec::new(); nx];
     for (ei, e) in g.edges.iter().enumerate() {
         adj[e.from].push((e.to, ei));
     }
+    // Hub links ride the same DFS / layering as real edges, numbered
+    // after them; `group_eid[k]` is group k's first link id.
+    let ne = g.edges.len();
+    let mut nlinks = ne;
+    let mut group_eid = Vec::with_capacity(rank_only.len());
+    for (k, (from, to)) in rank_only.iter().enumerate() {
+        group_eid.push(nlinks);
+        for &a in from {
+            adj[a].push((n + k, nlinks));
+            nlinks += 1;
+        }
+        for &b in to {
+            adj[n + k].push((b, nlinks));
+            nlinks += 1;
+        }
+    }
 
     // --- 1. Mark back-edges (cycle breakers) with iterative DFS ---
-    let mut state = vec![0u8; n]; // 0 unvisited, 1 on stack, 2 done
-    let mut back = vec![false; g.edges.len()];
-    for s in 0..n {
+    let mut state = vec![0u8; nx]; // 0 unvisited, 1 on stack, 2 done
+    let mut back = vec![false; nlinks];
+    for s in 0..nx {
         if state[s] != 0 {
             continue;
         }
@@ -383,21 +467,24 @@ fn layout_core(
     }
 
     // --- 2. Longest-path layering on the DAG (back-edges excluded) ---
-    let mut indeg = vec![0usize; n];
-    for (ei, e) in g.edges.iter().enumerate() {
-        if !back[ei] {
-            indeg[e.to] += 1;
+    let mut indeg = vec![0usize; nx];
+    for links in &adj {
+        for &(v, ei) in links {
+            if !back[ei] {
+                indeg[v] += 1;
+            }
         }
     }
-    let mut layer = vec![0usize; n];
-    let mut q: VecDeque<usize> = (0..n).filter(|&v| indeg[v] == 0).collect();
+    let mut layer = vec![0usize; nx];
+    let mut q: VecDeque<usize> = (0..nx).filter(|&v| indeg[v] == 0).collect();
     while let Some(u) = q.pop_front() {
+        let step = usize::from(u < n); // hub -> to adds no layer
         for &(v, ei) in &adj[u] {
             if back[ei] {
                 continue;
             }
-            if layer[u] + 1 > layer[v] {
-                layer[v] = layer[u] + 1;
+            if layer[u] + step > layer[v] {
+                layer[v] = layer[u] + step;
             }
             indeg[v] -= 1;
             if indeg[v] == 0 {
@@ -414,6 +501,7 @@ fn layout_core(
     // `n..`. `absize`/`alsize` are the breadth/layer sizes per aug node.
     const DUMMY_B: f64 = 16.0;
     let horizontal = matches!(g.direction, Direction::LR | Direction::RL);
+    layer.truncate(n);
     let mut alayer = layer.clone();
     let mut absize: Vec<f64> = (0..n)
         .map(|v| if horizontal { sizes[v].1 } else { sizes[v].0 })
@@ -478,7 +566,7 @@ fn layout_core(
         // (dagre models edge labels as nodes for exactly this reason).
         if let (Some(lbl), false) = (&e.label, chain.is_empty()) {
             let mid = chain[chain.len() / 2];
-            let lw = text_width(lbl) + 14.0;
+            let lw = text_width(lbl) + LABEL_PAD_W;
             let lh = LINE_H * line_count(lbl) as f64 + 6.0;
             if horizontal {
                 absize[mid] = absize[mid].max(lh);
@@ -489,6 +577,30 @@ fn layout_core(
             }
         }
         edge_chain[ei] = chain;
+    }
+    // Rank-only groups order like invisible links (no chain, no
+    // channel), each `from` and `to` member pulled by one partner — a
+    // pair a real edge already joins pulls through that edge.
+    let joined: std::collections::HashSet<(usize, usize)> = if rank_only.is_empty() {
+        Default::default()
+    } else {
+        g.edges.iter().map(|e| (e.from, e.to)).collect()
+    };
+    for (k, (from, to)) in rank_only.iter().enumerate() {
+        let (nf, nt) = (from.len(), to.len());
+        if nf == 0 || nt == 0 {
+            continue;
+        }
+        let m = nf.max(nt);
+        for i in 0..m {
+            let (fi, ti) = (i * nf / m, i * nt / m);
+            let (a, b) = (from[fi], to[ti]);
+            let cut = back[group_eid[k] + fi] || back[group_eid[k] + nf + ti];
+            if a != b && !cut && alayer[a] < alayer[b] && !joined.contains(&(a, b)) {
+                succs[a].push(b);
+                preds[b].push(a);
+            }
+        }
     }
     let clustered = node_cluster.is_some();
 
@@ -506,6 +618,10 @@ fn layout_core(
     // the one that must stay ordered for deterministic node numbering).
     let mut cluster_span: std::collections::BTreeMap<usize, (usize, usize)> =
         std::collections::BTreeMap::new();
+    // Extra layer-slot room per real node for title strips (see below).
+    let mut lextra = vec![0.0f64; n];
+    // Per real node: frame reach (towards lower, higher layers).
+    let mut reach = vec![(0.0f64, 0.0f64); n];
     if let Some(nc) = node_cluster {
         // cluster id -> (path incl. c, lo layer, hi layer over members)
         let mut span: std::collections::BTreeMap<usize, (Vec<usize>, usize, usize)> =
@@ -524,18 +640,43 @@ fn layout_core(
             cluster_span.insert(c, (lo, hi));
         }
         // Reserve rank room for each box's TITLE STRIP: a member at its
-        // cluster's top layer grows its layer-slot by a header's worth
+        // cluster's top layer grows its layer-SLOT by a header's worth
         // per cluster that starts there (dagre solves this with ranked
         // border-top nodes; the inflated slot is the compact stand-in),
-        // so labels between ranks never land on the header text.
+        // so labels between ranks never land on the header text. Only
+        // the slot grows — the node keeps its real size, so edges still
+        // end on its visible border. In LR/RL the strip lies across the
+        // breadth axis instead and is reserved there (compaction). In BT
+        // the layers are drawn bottom-up, so a box's screen top is its
+        // HIGHEST layer.
+        if !horizontal {
+            let bt = matches!(g.direction, Direction::BT);
+            for v in 0..n {
+                let mut extra = 0.0;
+                for &c in &nc[v] {
+                    let (_, lo, hi) = span[&c];
+                    if alayer[v] == if bt { hi } else { lo } {
+                        extra += header[c];
+                    }
+                }
+                lextra[v] = extra * 2.0;
+            }
+        }
+        // How far the frames a node opens / closes reach past it along
+        // the layer axis: one pad per level, plus the title strip on the
+        // screen-top side (none in LR/RL, where it lies across).
+        let hdr_lo = matches!(g.direction, Direction::TD);
+        let hdr_hi = matches!(g.direction, Direction::BT);
         for v in 0..n {
-            let mut extra = 0.0;
             for &c in &nc[v] {
-                if span[&c].1 == alayer[v] {
-                    extra += CLUSTER_HEADER;
+                let (_, lo, hi) = span[&c];
+                if alayer[v] == lo {
+                    reach[v].0 += FRAME_PAD + if hdr_lo { header[c] } else { 0.0 };
+                }
+                if alayer[v] == hi {
+                    reach[v].1 += FRAME_PAD + if hdr_hi { header[c] } else { 0.0 };
                 }
             }
-            alsize[v] += extra * 2.0;
         }
         // BTreeMap iterates keys in order — wall numbering is
         // deterministic by construction.
@@ -641,8 +782,9 @@ fn layout_core(
         }
     }
     if clustered {
+        let keys = cluster_keys(&layers, &apath, &border_side);
         for lv in layers.iter_mut() {
-            enforce_contiguity(lv, &apath, &border_side, &mut pos);
+            enforce_contiguity(lv, &apath, &border_side, &mut pos, &keys);
         }
     }
     let mut best_layers = layers.clone();
@@ -664,8 +806,9 @@ fn layout_core(
             if clustered { Some(&border_side) } else { None },
         );
         if clustered {
+            let keys = cluster_keys(&layers, &apath, &border_side);
             for lv in layers.iter_mut() {
-                enforce_contiguity(lv, &apath, &border_side, &mut pos);
+                enforce_contiguity(lv, &apath, &border_side, &mut pos, &keys);
             }
         }
         let c = count_crossings(&layers, &succs, &alayer, nlayers);
@@ -685,17 +828,6 @@ fn layout_core(
     }
 
     // --- 4. Coordinates ---
-    // Layer positions (l axis): each layer is as tall as its tallest
-    // REAL node (dummies contribute zero layer-size).
-    let mut lcoord = vec![0.0f64; nlayers];
-    let mut cursor = MARGIN;
-    for li in 0..nlayers {
-        let lh = layers[li].iter().map(|&v| alsize[v]).fold(0.0f64, f64::max);
-        lcoord[li] = cursor + lh / 2.0;
-        cursor += lh + GAP_L;
-    }
-    let total_l = cursor - GAP_L + MARGIN;
-
     // Breadth positions (b axis) via Brandes-Köpf: four vertical
     // alignments (up/down × left/right), each compacted independently,
     // then combined by the per-node median. This is dagre's coordinate
@@ -712,7 +844,140 @@ fn layout_core(
         &absize,
         if clustered { Some(&apath) } else { None },
         if clustered { Some(&border_side) } else { None },
+        if clustered && horizontal {
+            Some(header.as_slice())
+        } else {
+            None
+        },
     );
+
+    // Layer positions (l axis): each layer is as tall as its tallest
+    // REAL node (dummies contribute zero layer-size).
+    // A box closing on one layer and another opening on the next must
+    // not meet: their pads and title strips stack up with nesting depth,
+    // which can outgrow the gap, so a layer moves down until the frames
+    // reaching across clear by FRAME_GAP.
+    let mut lcoord = vec![0.0f64; nlayers];
+    let mut cursor = MARGIN;
+    let reach_of = |li: usize, side: usize| -> f64 {
+        layers[li]
+            .iter()
+            .filter(|&&v| v < n)
+            .map(|&v| alsize[v] / 2.0 + if side == 0 { reach[v].0 } else { reach[v].1 })
+            .fold(0.0f64, f64::max)
+    };
+    // An edge between ADJACENT layers has no dummy to reserve its
+    // label a slot: the label sits mid-gap, between the two borders.
+    // Per upper layer: (lower end, upper end, label extent along the
+    // layer axis) for each labelled such edge — in LR/RL that extent
+    // is the label's width, which easily outgrows GAP_L.
+    let mut short_labels: Vec<Vec<(usize, usize, f64)>> = vec![Vec::new(); nlayers];
+    // Per upper layer: (breadth centre, breadth extent, layer extent).
+    let mut short_across: Vec<Vec<(f64, f64, f64)>> = vec![Vec::new(); nlayers];
+    for (ei, e) in g.edges.iter().enumerate() {
+        let Some(lbl) = &e.label else { continue };
+        if e.from == e.to || back[ei] || matches!(e.kind, EdgeKind::Invisible) {
+            continue;
+        }
+        let (lo, hi) = if alayer[e.from] < alayer[e.to] {
+            (e.from, e.to)
+        } else {
+            (e.to, e.from)
+        };
+        if alayer[hi] != alayer[lo] + 1 {
+            continue;
+        }
+        let w = text_width(lbl) + LABEL_PAD_W;
+        let (ext, across) = if horizontal {
+            (w, LABEL_BOX_H)
+        } else {
+            (LABEL_BOX_H, w)
+        };
+        short_labels[alayer[hi]].push((lo, hi, ext));
+        // In LR/RL a row along the layer axis costs a label's whole
+        // width, and the scene never uses it: colliding labels there
+        // slide apart ACROSS the flow (they are only LABEL_BOX_H tall),
+        // so each gap just has to fit its widest label (above).
+        if !horizontal {
+            short_across[alayer[hi]].push(((bpos[lo] + bpos[hi]) / 2.0, across, ext));
+        }
+    }
+    // TD/BT labels sharing one gap that would overlap side by side need
+    // rows of their own, stacked along the layer axis (a fan of labelled
+    // edges out of one node, or into one). Greedy interval packing on
+    // each label's breadth span, centred between its ends; the gap must
+    // hold every row with LABEL_CLEAR on both sides, plus one spare row:
+    // the labels then slide along their own (slanted) curves to reach
+    // a row, which never lands them exactly side by side. One row =
+    // nothing overlaps = no requirement, so only colliding gaps grow.
+    let gap_need: Vec<f64> = short_across
+        .iter_mut()
+        .map(|spans| {
+            spans.sort_by(|a, b| (a.0 - a.1 / 2.0).total_cmp(&(b.0 - b.1 / 2.0)));
+            // Per row: (right end so far, largest extent along l).
+            let mut rows: Vec<(f64, f64)> = Vec::new();
+            for &(mid, across, ext) in spans.iter() {
+                let left = mid - across / 2.0;
+                match rows.iter_mut().find(|r| r.0 + LABEL_CLEAR <= left) {
+                    Some(r) => *r = (mid + across / 2.0, r.1.max(ext)),
+                    None => rows.push((mid + across / 2.0, ext)),
+                }
+            }
+            if rows.len() < 2 {
+                return 0.0;
+            }
+            let tallest = rows.iter().map(|r| r.1).fold(0.0, f64::max);
+            rows.iter().map(|r| r.1).sum::<f64>()
+                + tallest
+                + 2.0 * LABEL_CLEAR * (rows.len() + 1) as f64
+        })
+        .collect();
+    let mut prev_lh = 0.0;
+    for li in 0..nlayers {
+        let lh = layers[li]
+            .iter()
+            .map(|&v| alsize[v] + lextra.get(v).copied().unwrap_or(0.0))
+            .fold(0.0f64, f64::max);
+        if clustered && li > 0 {
+            let at = lcoord[li - 1] + reach_of(li - 1, 1) + reach_of(li, 0) + FRAME_GAP;
+            if at > cursor + lh / 2.0 {
+                cursor = at - lh / 2.0;
+            }
+        }
+        // A label that would cover its own ends grows the gap until it
+        // clears both by LABEL_CLEAR; a label that already fits leaves
+        // the gap — and the whole layout — exactly as it was. An end
+        // whose frame closes / opens on its layer is reached past that
+        // frame's border (the layer's farthest one), not its own box:
+        // a label on the border line would hide it.
+        for &(s, t, ext) in &short_labels[li] {
+            let lo_side = if reach[s].1 > 0.0 {
+                reach_of(li - 1, 1)
+            } else {
+                alsize[s] / 2.0
+            };
+            let hi_side = if reach[t].0 > 0.0 {
+                reach_of(li, 0)
+            } else {
+                alsize[t] / 2.0
+            };
+            let ends = lcoord[li - 1] + (lo_side + hi_side);
+            let at = cursor + lh / 2.0;
+            if at - ends < ext {
+                cursor = cursor.max(ends + ext + 2.0 * LABEL_CLEAR - lh / 2.0);
+            }
+        }
+        if li > 0 && gap_need[li] > 0.0 {
+            let prev = lcoord[li - 1] + prev_lh / 2.0;
+            if cursor - prev < gap_need[li] {
+                cursor = prev + gap_need[li];
+            }
+        }
+        prev_lh = lh;
+        lcoord[li] = cursor + lh / 2.0;
+        cursor += lh + GAP_L;
+    }
+    let total_l = cursor - GAP_L + MARGIN;
 
     // Normalise so the diagram starts at MARGIN (real-node extent).
     let mut minb = f64::INFINITY;
@@ -753,12 +1018,25 @@ fn layout_core(
         })
         .collect();
 
-    LayoutResult {
-        nodes,
-        total_b,
-        total_l,
-        edge_paths,
-    }
+    let edge_groups = edge_chain
+        .iter()
+        .map(|chain| {
+            chain
+                .iter()
+                .map(|&d| apath.get(d).cloned().unwrap_or_default())
+                .collect()
+        })
+        .collect();
+
+    (
+        LayoutResult {
+            nodes,
+            total_b,
+            total_l,
+            edge_paths,
+        },
+        edge_groups,
+    )
 }
 
 /// Reorder one layer by the weighted median of each node's neighbour
@@ -928,6 +1206,7 @@ fn coordinates_bk(
     absize: &[f64],
     apath: Option<&[Vec<usize>]>,
     border: Option<&[u8]>,
+    header_b: Option<&[f64]>,
 ) -> Vec<f64> {
     if na == 0 {
         return Vec::new();
@@ -984,8 +1263,8 @@ fn coordinates_bk(
             // Align towards the already-processed layer: predecessors
             // for a downward sweep, successors for an upward one.
             let neighbor = if vert_up { &down } else { &up };
-            let (root, _align) = vertical_alignment(na, &al, neighbor, &aorder, &conflicts);
-            let mut xs = horizontal_compaction(n, na, &al, &root, absize, apath, border);
+            let (root, _align) = vertical_alignment(na, &al, neighbor, &aorder, &conflicts, border);
+            let mut xs = horizontal_compaction(n, na, &al, &root, absize, apath, border, header_b);
             if horiz_right {
                 for x in xs.iter_mut() {
                     *x = -*x;
@@ -1057,18 +1336,47 @@ fn type1_conflicts(
 /// One BK vertical alignment. Walks layers top-to-bottom (in adjusted
 /// order); each node tries to align with its median neighbour in the
 /// already-placed layer, forming blocks identified by a shared root.
+///
+/// With cluster `border` walls, every wall dummy always aligns with its
+/// own chain neighbour, so each box side is ONE straight block, and no
+/// other node may align across a wall's segment — otherwise a bent
+/// wall lets one layer's members bulge into a sibling's band and the
+/// drawn frames intersect.
 fn vertical_alignment(
     na: usize,
     al: &[Vec<usize>],
     neighbor: &[Vec<usize>],
     aorder: &[usize],
     conflicts: &std::collections::HashSet<(usize, usize)>,
+    border: Option<&[u8]>,
 ) -> (Vec<usize>, Vec<usize>) {
     let mut root: Vec<usize> = (0..na).collect();
     let mut align: Vec<usize> = (0..na).collect();
+    let is_wall = |v: usize| border.is_some_and(|b| b[v] != 0);
     for lay in al {
         let mut prev_idx: i64 = -1;
-        for &v in lay {
+        // Per slot: the neighbour-layer position of the next wall to
+        // its right — an alignment must stay left of it.
+        let mut next_wall = vec![i64::MAX; lay.len()];
+        let mut nxt = i64::MAX;
+        for (i, &v) in lay.iter().enumerate().rev() {
+            next_wall[i] = nxt;
+            if is_wall(v) {
+                if let Some(&w) = neighbor[v].first() {
+                    nxt = aorder[w] as i64;
+                }
+            }
+        }
+        for (i, &v) in lay.iter().enumerate() {
+            if is_wall(v) {
+                if let Some(&w) = neighbor[v].first() {
+                    align[w] = v;
+                    root[v] = root[w];
+                    align[v] = root[w];
+                    prev_idx = aorder[w] as i64;
+                }
+                continue;
+            }
             let mut ws: Vec<usize> = neighbor[v].clone();
             if ws.is_empty() {
                 continue;
@@ -1079,7 +1387,11 @@ fn vertical_alignment(
             let hi = m / 2;
             for &w in &ws[lo..=hi] {
                 let pair = if v < w { (v, w) } else { (w, v) };
-                if align[v] == v && prev_idx < aorder[w] as i64 && !conflicts.contains(&pair) {
+                if align[v] == v
+                    && prev_idx < aorder[w] as i64
+                    && (aorder[w] as i64) < next_wall[i]
+                    && !conflicts.contains(&pair)
+                {
                     align[w] = v;
                     root[v] = root[w];
                     align[v] = root[w];
@@ -1095,6 +1407,10 @@ fn vertical_alignment(
 /// the block graph (min-separation edges between consecutive roots in a
 /// layer), pushes every block as far left as its predecessors allow,
 /// then pulls it back right toward its successors without overlap.
+/// `header_b` is the title-strip room, per cluster, to keep outside
+/// each box's LEFT wall (low breadth = screen top in LR/RL); `None`
+/// when the strip lies on the layer axis instead.
+#[allow(clippy::too_many_arguments)] // internal: one bundle of layered-graph state
 fn horizontal_compaction(
     n: usize,
     na: usize,
@@ -1103,6 +1419,7 @@ fn horizontal_compaction(
     absize: &[f64],
     apath: Option<&[Vec<usize>]>,
     border: Option<&[u8]>,
+    header_b: Option<&[f64]>,
 ) -> Vec<f64> {
     // Block graph as adjacency lists over root nodes.
     let mut bin: Vec<Vec<(usize, f64)>> = vec![Vec::new(); na]; // (pred_root, sep)
@@ -1130,7 +1447,23 @@ fn horizontal_compaction(
                 } else {
                     half(u) + half(v)
                 };
-                let sep = absize[u] / 2.0 + base + absize[v] / 2.0 + cgap;
+                // A left wall next to anything outside its box: that is
+                // the side the box's title strip is drawn on.
+                let hdr = match (apath, border, header_b) {
+                    (Some(p), Some(b), Some(h)) => {
+                        let outside = |w: usize, x: usize| b[w] == 1 && !p[x].starts_with(&p[w]);
+                        // The strip room of the wall's own box.
+                        let room = |w: usize| p[w].last().map_or(0.0, |&c| h[c]);
+                        match (outside(u, v), outside(v, u)) {
+                            (true, true) => room(u).max(room(v)),
+                            (true, false) => room(u),
+                            (false, true) => room(v),
+                            (false, false) => 0.0,
+                        }
+                    }
+                    _ => 0.0,
+                };
+                let sep = absize[u] / 2.0 + base + absize[v] / 2.0 + cgap + hdr;
                 // Merge parallel separations by their max.
                 if let Some(e) = bout[ur].iter_mut().find(|(t, _)| *t == vr) {
                     if sep > e.1 {
@@ -1255,20 +1588,53 @@ fn cluster_gap(a: &[usize], b: &[usize]) -> f64 {
     boundaries as f64 * CLUSTER_PAD
 }
 
+/// Ordering keys shared by every layer: per node its normalised in-layer
+/// position `(i + 0.5) / len`, and per cluster the mean of that over all
+/// its non-wall members on ALL layers.
+type OrderKeys = (Vec<f64>, std::collections::HashMap<usize, f64>);
+
+/// One ordering key per cluster for the whole diagram, so sibling
+/// groups keep the same left-to-right order on every layer they share
+/// (dagre gets the same guarantee from its subgraph constraint graph).
+/// Ordering each layer by its own mean let two siblings swap sides
+/// between layers, which crosses their frames.
+fn cluster_keys(layers: &[Vec<usize>], apath: &[Vec<usize>], border: &[u8]) -> OrderKeys {
+    let mut nkey = vec![0.0f64; apath.len()];
+    let mut acc: std::collections::HashMap<usize, (f64, f64)> = std::collections::HashMap::new();
+    for lv in layers {
+        let len = lv.len().max(1) as f64;
+        for (i, &v) in lv.iter().enumerate() {
+            nkey[v] = (i as f64 + 0.5) / len;
+            if border[v] != 0 {
+                continue;
+            }
+            for &c in &apath[v] {
+                let e = acc.entry(c).or_insert((0.0, 0.0));
+                e.0 += nkey[v];
+                e.1 += 1.0;
+            }
+        }
+    }
+    let ckey = acc.into_iter().map(|(c, (s, k))| (c, s / k)).collect();
+    (nkey, ckey)
+}
+
 /// Reorder one layer so every subgraph's members are contiguous
 /// (recursively for nested subgraphs), while ordering the groups and
-/// free nodes by their current mean position — keeping the crossing-
-/// minimised arrangement as intact as the contiguity constraint allows.
+/// free nodes by their diagram-wide keys ([`cluster_keys`]) — keeping
+/// the crossing-minimised arrangement as intact as the contiguity
+/// constraint allows.
 fn enforce_contiguity(
     layer: &mut Vec<usize>,
     apath: &[Vec<usize>],
     border: &[u8],
     pos: &mut [f64],
+    keys: &OrderKeys,
 ) {
     if layer.len() <= 1 {
         return;
     }
-    let arranged = arrange(layer, 0, apath, border, pos);
+    let arranged = arrange(layer, 0, apath, border, keys);
     *layer = arranged;
     for (i, &v) in layer.iter().enumerate() {
         pos[v] = i as f64;
@@ -1277,14 +1643,14 @@ fn enforce_contiguity(
 
 /// Recursive helper for [`enforce_contiguity`]: at `depth`, split items
 /// into subgraph groups (by cluster id at that depth) and free
-/// singletons, order those units by mean position, then recurse into
+/// singletons, order those units by their keys, then recurse into
 /// each multi-member group at `depth + 1`.
 fn arrange(
     items: &[usize],
     depth: usize,
     apath: &[Vec<usize>],
     border: &[u8],
-    pos: &[f64],
+    keys: &OrderKeys,
 ) -> Vec<usize> {
     if items.len() <= 1 {
         return items.to_vec();
@@ -1317,17 +1683,13 @@ fn arrange(
     let mut keyed: Vec<(f64, Option<usize>, Vec<usize>)> = groups
         .into_iter()
         .map(|(c, members)| {
-            let mean = members.iter().map(|&v| pos[v]).sum::<f64>() / members.len() as f64;
             // A bare wall dummy anchors to its group's edge: the left
             // wall sorts before everything, the right wall after.
-            let key = if members.len() == 1 {
-                match border[members[0]] {
-                    1 => f64::NEG_INFINITY,
-                    2 => f64::INFINITY,
-                    _ => mean,
-                }
-            } else {
-                mean
+            let key = match (members.len(), border[members[0]], c) {
+                (1, 1, _) => f64::NEG_INFINITY,
+                (1, 2, _) => f64::INFINITY,
+                (_, _, Some(c)) => keys.1.get(&c).copied().unwrap_or(keys.0[members[0]]),
+                _ => keys.0[members[0]],
             };
             (key, c, members)
         })
@@ -1336,7 +1698,7 @@ fn arrange(
     let mut out = Vec::with_capacity(items.len());
     for (_, c, members) in keyed {
         if c.is_some() && members.len() > 1 {
-            out.extend(arrange(&members, depth + 1, apath, border, pos));
+            out.extend(arrange(&members, depth + 1, apath, border, keys));
         } else {
             out.extend(members);
         }
@@ -1473,5 +1835,18 @@ mod tests {
             "bold tspan"
         );
         assert!(!svg.contains("&lt;b&gt;"), "no literal <b> in output");
+    }
+
+    #[test]
+    fn symbol_glyphs_are_not_under_measured() {
+        // Issue #61: arrows, em dashes and emoji render ~1em (14px at
+        // the calibration size); a box sized for 7.8px each clipped
+        // them. Joiners and variation selectors draw nothing.
+        assert_eq!(text_width("→→→→→→→→→→"), 140.0);
+        assert_eq!(text_width("——"), 28.0);
+        assert_eq!(text_width("⚠\u{FE0F}"), text_width("⚠"));
+        assert!(text_width("⛔ ✅ ✕") >= 3.0 * 14.0);
+        // Plain Latin text keeps its old estimate.
+        assert_eq!(text_width("Wazuh 4.14"), line_width("Wazuh 4.14"));
     }
 }

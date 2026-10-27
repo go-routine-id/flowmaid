@@ -332,6 +332,8 @@ pub struct Edge {
 #[derive(Debug, Clone)]
 pub struct Subgraph {
     pub id: String,
+    /// Display title; `<br/>` in the source becomes `\n` (drawn as
+    /// separate lines).
     pub title: String,
     /// Direct member node indices.
     pub nodes: Vec<usize>,
@@ -367,7 +369,7 @@ pub struct SubEdge {
 }
 
 /// Parsed graph, ready for layout.
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Graph {
     pub direction: Direction,
     pub nodes: Vec<Node>,

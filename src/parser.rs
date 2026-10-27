@@ -190,8 +190,8 @@ pub(crate) fn decode_entities(s: &str) -> String {
 }
 
 /// Like [`clean_label`] but collapsed to a single line — for
-/// contexts without multi-line layout (edge labels, subgraph
-/// titles) whose boxes/strips are single-line.
+/// contexts without multi-line layout (edge labels) whose boxes are
+/// single-line.
 fn clean_label_1line(s: &str) -> String {
     clean_label(s).replace('\n', " ")
 }
@@ -2173,7 +2173,13 @@ fn parse_subgraph_header(rest: &str, lineno: usize) -> Result<(String, String), 
                 "subgraph title needs an id before '['".to_string(),
             ));
         }
-        return Ok((id.to_string(), label_1line(inner, lineno)?));
+        // A markdown string is lowered to one line; a plain title keeps
+        // its `<br/>` breaks as `\n` so the frame draws one row each.
+        let title = match markdown::md_quoted(inner) {
+            Some(md) => md_label(md, lineno, false)?,
+            None => clean_label(inner),
+        };
+        return Ok((id.to_string(), title));
     }
     Ok((rest.to_string(), rest.to_string()))
 }
@@ -6494,10 +6500,11 @@ mod tests {
         assert_eq!(g.sub_edges.len(), 1);
         // A label of only <br/> collapses to empty (no blank lines).
         assert_eq!(parse("A[\"<br/>\"]").unwrap().nodes[0].label, "");
-        // Edge labels & subgraph titles are single-line.
+        // Edge labels are single-line; subgraph titles keep their
+        // `<br/>` lines, as mermaid draws them.
         let g = parse("A -->|one<br/>two| B\nsubgraph s[\"Ti<br/>tle\"]\nB\nend").unwrap();
         assert_eq!(g.edges[0].label.as_deref(), Some("one two"));
-        assert_eq!(g.subgraphs[0].title, "Ti tle");
+        assert_eq!(g.subgraphs[0].title, "Ti\ntle");
         // Empty subgraph: scene and route agree (no phantom cluster).
         let g = parse("flowchart TD\nA-->B\nsubgraph empty\nend\nB --> empty").unwrap();
         let s = crate::scene::scene(&g);
