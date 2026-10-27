@@ -52,6 +52,14 @@
 //!   programmatic start glyph that differs from the end one (or sits
 //!   on an edge with no end glyph) is dropped, as are glyphs on an
 //!   invisible `~~~` link.
+//! - `accTitle` / `accDescr` round-trip right under the header. A
+//!   description holding both a newline and a `}` cannot ride in the
+//!   `accDescr { … }` block (the `}` closes it), so it flattens to one
+//!   line; blank lines and per-line indentation inside a block are
+//!   folded away by mermaid's own normalisation. A node with id
+//!   `accDescr` and a diamond shape writes `accDescr{…}`, which
+//!   mermaid (and flowmaid) read as a description block — that one
+//!   combination is unrepresentable.
 
 use crate::model::{Direction, EdgeEnds, EdgeKind, End, Graph, Marker, NodeStyle, Shape};
 
@@ -65,6 +73,7 @@ pub fn to_mermaid(g: &Graph) -> String {
     out.push_str("flowchart ");
     out.push_str(dir_token(g.direction));
     out.push('\n');
+    push_acc(&mut out, g);
 
     // ── 1. Node declarations (index order). Top-level mentions
     //    never claim subgraph membership, so declaring everything
@@ -124,6 +133,45 @@ pub fn to_mermaid(g: &Graph) -> String {
         }
     }
     out
+}
+
+/// Mermaid's accessibility statements, right under the header. A
+/// title is one line by grammar (newlines flatten to spaces); a
+/// description with newlines takes the `accDescr { … }` block form,
+/// unless it also holds a `}` (which would close the block early) —
+/// then it flattens to one line. Control characters sanitize to spaces
+/// as in labels. Empty values are not written (the parser reads an
+/// empty value as absent anyway).
+fn push_acc(out: &mut String, g: &Graph) {
+    let clean = |v: &str| -> String {
+        v.chars()
+            .map(|c| if c.is_control() && c != '\n' { ' ' } else { c })
+            .collect()
+    };
+    if let Some(t) = g.acc_title.as_deref().map(clean) {
+        let t = t.replace('\n', " ");
+        if !t.trim().is_empty() {
+            out.push_str("    accTitle: ");
+            out.push_str(t.trim());
+            out.push('\n');
+        }
+    }
+    if let Some(d) = g.acc_descr.as_deref().map(clean) {
+        let d = d.trim();
+        if d.contains('\n') && !d.contains('}') {
+            out.push_str("    accDescr {\n");
+            for l in d.lines() {
+                out.push_str("        ");
+                out.push_str(l.trim());
+                out.push('\n');
+            }
+            out.push_str("    }\n");
+        } else if !d.is_empty() {
+            out.push_str("    accDescr: ");
+            out.push_str(&d.split_whitespace().collect::<Vec<_>>().join(" "));
+            out.push('\n');
+        }
+    }
 }
 
 /// The unrepresentable-in-mermaid graph shapes (see module docs).
@@ -1407,5 +1455,42 @@ mod tests {
         let back = crate::parser::parse(&text)
             .unwrap_or_else(|e| panic!("re-parse failed: {}\n{text}", e.message));
         assert_eq!(back.nodes[0].style.fill.as_deref(), Some("url('#g')"));
+    }
+
+    #[test]
+    fn acc_title_and_descr_round_trip() {
+        for src in [
+            "flowchart TD\n accTitle: T\n accDescr {\n a\n b\n }\n A-->B",
+            "flowchart TD\n accTitle: a; B --> C\n accDescr: one line\n A-->B",
+            "flowchart TD\n accDescr: only a description\n A",
+            "flowchart-elk LR\n accTitle: elk\n A-->B",
+        ] {
+            let g = parse(src).unwrap();
+            let text = to_mermaid(&g);
+            let back = parse(&text).unwrap_or_else(|e| panic!("{e}\n--\n{text}"));
+            assert_eq!(back.acc_title, g.acc_title, "{text}");
+            assert_eq!(back.acc_descr, g.acc_descr, "{text}");
+            assert_roundtrip(&g);
+        }
+        // The elk layout hint is dropped: it re-emits as `flowchart`.
+        let text = to_mermaid(&parse("flowchart-elk LR\nA-->B").unwrap());
+        assert!(text.starts_with("flowchart LR\n"), "{text}");
+        // No acc: nothing extra written.
+        let text = to_mermaid(&parse("flowchart TD\nA-->B").unwrap());
+        assert!(!text.contains("acc"), "{text}");
+    }
+
+    #[test]
+    fn acc_programmatic_values_stay_representable() {
+        let mut g = parse("flowchart TD\nA").unwrap();
+        g.acc_title = Some("line\none".into());
+        g.acc_descr = Some("a }\nb".into());
+        let text = to_mermaid(&g);
+        let back = parse(&text).unwrap_or_else(|e| panic!("{e}\n--\n{text}"));
+        assert_eq!(back.acc_title.as_deref(), Some("line one"));
+        assert_eq!(back.acc_descr.as_deref(), Some("a } b"));
+        g.acc_title = Some("   ".into());
+        g.acc_descr = Some(String::new());
+        assert!(!to_mermaid(&g).contains("acc"));
     }
 }

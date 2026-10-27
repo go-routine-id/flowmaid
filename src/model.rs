@@ -228,6 +228,13 @@ pub struct Graph {
     pub subgraphs: Vec<Subgraph>,
     /// Edges with a subgraph as an endpoint (see [`SubEdge`]).
     pub sub_edges: Vec<SubEdge>,
+    /// Accessible title from mermaid's `accTitle:` statement — replaces
+    /// the default `<title>` / `aria-label` of the SVG. `None` = absent
+    /// or empty.
+    pub acc_title: Option<String>,
+    /// Accessible description from `accDescr:` or the multi-line
+    /// `accDescr { … }` block — written as the SVG's `<desc>`.
+    pub acc_descr: Option<String>,
     index: HashMap<String, usize>,
 }
 
@@ -310,6 +317,13 @@ pub enum Document {
 pub struct ClassDiagram {
     pub classes: Vec<Class>,
     pub relations: Vec<ClassRel>,
+    /// Accessible title from mermaid's `accTitle:` statement — replaces
+    /// the default `<title>` / `aria-label` of the SVG. `None` = absent
+    /// or empty.
+    pub acc_title: Option<String>,
+    /// Accessible description from `accDescr:` or the multi-line
+    /// `accDescr { … }` block — written as the SVG's `<desc>`.
+    pub acc_descr: Option<String>,
     index: HashMap<String, usize>,
 }
 
@@ -415,6 +429,13 @@ pub struct SequenceDiagram {
     pub items: Vec<SeqItem>,
     /// `autonumber` — messages get a bold `1.` … `n.` prefix.
     pub autonumber: bool,
+    /// Accessible title from mermaid's `accTitle:` statement — replaces
+    /// the default `<title>` / `aria-label` of the SVG. `None` = absent
+    /// or empty.
+    pub acc_title: Option<String>,
+    /// Accessible description from `accDescr:` or the multi-line
+    /// `accDescr { … }` block — written as the SVG's `<desc>`.
+    pub acc_descr: Option<String>,
     index: HashMap<String, usize>,
 }
 
@@ -537,6 +558,13 @@ impl FrameKind {
 pub struct ErDiagram {
     pub entities: Vec<Entity>,
     pub relations: Vec<Relation>,
+    /// Accessible title from mermaid's `accTitle:` statement — replaces
+    /// the default `<title>` / `aria-label` of the SVG. `None` = absent
+    /// or empty.
+    pub acc_title: Option<String>,
+    /// Accessible description from `accDescr:` or the multi-line
+    /// `accDescr { … }` block — written as the SVG's `<desc>`.
+    pub acc_descr: Option<String>,
     index: HashMap<String, usize>,
 }
 

@@ -9,6 +9,21 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **`accTitle` / `accDescr` accessibility statements.** `accTitle: …`, `accDescr: …` and
+  the multi-line `accDescr { … }` block parse with mermaid's rules (value to end of line,
+  `;` and `%%` included; case-sensitive keywords; last one wins; block indentation and
+  blank lines folded). The title replaces the SVG's `<title>` / `aria-label`; the
+  description becomes a `<desc>` right after it, referenced by `aria-describedby` with a
+  content-hashed id. Flowchart, state, class, sequence and ER diagrams store and render
+  them, and `to_mermaid` round-trips them; pie, journey, timeline, gitGraph and
+  architecture accept the lines without drawing them yet (those models have all-public
+  fields, so storing them would break struct literals). Diagrams without these statements
+  render byte-identically. New: `acc_title` / `acc_descr` fields on `Graph`,
+  `ClassDiagram`, `SequenceDiagram` and `ErDiagram` (non-breaking: each has a private
+  field), `scene::A11y` and `scene::to_svg_a11y_with`.
+- **`flowchart-elk` header.** Accepted as an alias of `flowchart` with the same direction
+  rules; the ELK layout hint is dropped (`to_mermaid` writes `flowchart`).
+
 - **Flowchart edge markers (#59).** Cross ends (`--x`, `-.-x`, `==x`), circle ends
   (`--o`, `-.-o`, `==o`) and two-way links (`<-->`, `<-.->`, `<==>`, `x--x`, `o--o`) parse
   on every line style and length, with `|label|` and inline (`-- text --x`,

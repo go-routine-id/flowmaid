@@ -1309,6 +1309,17 @@ pub fn to_svg_titled(sc: &Scene, title: &str) -> String {
 
 /// [`to_svg_titled`] with explicit viewport options.
 pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String {
+    to_svg_a11y_with(sc, title, &A11y::default(), opts)
+}
+
+/// [`to_svg_titled_with`] plus mermaid's `accTitle` / `accDescr` (see
+/// [`A11y`]): a non-empty `a11y.title` replaces `default_title`, and a
+/// description adds the root `<desc>`. `render` / `render_svg` pass a
+/// graph's `acc_title` / `acc_descr` through here; callers of the
+/// interactive scene API pass them themselves.
+pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &SvgOptions) -> String {
+    let (title, desc) = a11y.resolve(default_title);
+    let title = title.as_str();
     let mut bb = Bbox::new();
     grow_scene(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
     let (minx, maxx, miny, maxy) = bb.finish();
@@ -1333,7 +1344,7 @@ pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String 
     };
 
     let mut s = String::new();
-    svg_open(&mut s, width, height, 14, title, opts);
+    svg_open_a11y(&mut s, width, height, 14, title, desc, opts);
     s.push_str(&format!(
         "<defs><marker id=\"arrow\" viewBox=\"0 0 10 10\" refX=\"8.5\" refY=\"5\" \
          markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\">\
@@ -2199,6 +2210,62 @@ pub(crate) fn svg_open(
     title: &str,
     opts: &SvgOptions,
 ) {
+    svg_open_a11y(s, width, height, font_size, title, None, opts);
+}
+
+/// Prefix of the `<desc>` element id an accessible description gets;
+/// the root `aria-describedby` points at it.
+const A11Y_DESC_ID_PREFIX: &str = "flowmaid-desc-";
+
+/// Mermaid's `accTitle` / `accDescr` for one diagram, as the SVG
+/// writers take it. An absent or empty title keeps the writer's
+/// default accessible name ("Flowchart diagram", …); a description
+/// adds a `<desc>` right after the root `<title>` and an
+/// `aria-describedby` pointing at it. The default (both `None`)
+/// reproduces the historical output byte for byte.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct A11y {
+    /// Replaces the default accessible name (`<title>`, `aria-label`).
+    pub title: Option<String>,
+    /// Written as the root `<desc>`.
+    pub descr: Option<String>,
+}
+
+impl A11y {
+    pub fn new(title: Option<String>, descr: Option<String>) -> Self {
+        A11y { title, descr }
+    }
+
+    /// The accessible name to write (`<b>`/`<i>` interpreted away) and
+    /// the description, if any.
+    pub(crate) fn resolve(&self, default_title: &str) -> (String, Option<&str>) {
+        let title = self
+            .title
+            .as_deref()
+            .map(plain_text)
+            .filter(|t| !t.trim().is_empty())
+            .unwrap_or_else(|| default_title.to_string());
+        let descr = self.descr.as_deref().filter(|d| !d.trim().is_empty());
+        (title, descr)
+    }
+}
+
+/// [`svg_open`] plus an optional accessible description: a `<desc>`
+/// right after the root `<title>` (mermaid's title, desc, … order) and
+/// an `aria-describedby` on the root. The `<desc>` id hashes the title
+/// and description (FNV-1a, see [`DefsKey`]) so two inlined SVGs with
+/// different descriptions never share an id. `desc: None` is exactly
+/// [`svg_open`].
+pub(crate) fn svg_open_a11y(
+    s: &mut String,
+    width: f64,
+    height: f64,
+    font_size: u32,
+    title: &str,
+    desc: Option<&str>,
+    opts: &SvgOptions,
+) {
     // `width`/`height` become percentages only in responsive mode; the
     // `viewBox` stays intrinsic so the content scales with the container.
     let (w_attr, h_attr) = if opts.responsive {
@@ -2212,18 +2279,32 @@ pub(crate) fn svg_open(
         .preserve_aspect_ratio
         .map(|p| format!(" preserveAspectRatio=\"{p}\""))
         .unwrap_or_default();
+    let desc_id = desc.map(|d| {
+        let mut key = DefsKey::new();
+        key.eat(title.as_bytes());
+        key.eat(&[0]);
+        key.eat(d.as_bytes());
+        format!("{A11Y_DESC_ID_PREFIX}{}", key.finish())
+    });
     s.push_str(&format!(
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{w}\" height=\"{h}\" \
          viewBox=\"0 0 {vw:.0} {vh:.0}\"{par} font-family=\"Helvetica, Arial, sans-serif\" \
-         font-size=\"{fs}\" role=\"img\" aria-label=\"{t}\">\n",
+         font-size=\"{fs}\" role=\"img\" aria-label=\"{t}\"{described}>\n",
         w = w_attr,
         h = h_attr,
         vw = width,
         vh = height,
         fs = font_size,
-        t = escape(title)
+        t = escape(title),
+        described = desc_id
+            .as_ref()
+            .map(|id| format!(" aria-describedby=\"{id}\""))
+            .unwrap_or_default()
     ));
     s.push_str(&format!("<title>{}</title>\n", escape(title)));
+    if let (Some(d), Some(id)) = (desc, &desc_id) {
+        s.push_str(&format!("<desc id=\"{id}\">{}</desc>\n", escape(d)));
+    }
     s.push_str(&format!(
         "<rect width=\"{:.0}\" height=\"{:.0}\" fill=\"#ffffff\"/>\n",
         width, height
@@ -2408,6 +2489,44 @@ pub(crate) fn escape(s: &str) -> String {
 mod tests {
     use super::*;
     use crate::parser::parse;
+
+    #[test]
+    fn a11y_desc_ids_are_content_hashed_and_default_is_unchanged() {
+        let g = parse("flowchart TD\nA --> B").unwrap();
+        let sc = scene(&g);
+        assert_eq!(
+            to_svg_a11y_with(
+                &sc,
+                "Flowchart diagram",
+                &A11y::default(),
+                &SvgOptions::default()
+            ),
+            to_svg(&sc)
+        );
+        let a = A11y::new(Some("T".into()), Some("one".into()));
+        let b = A11y::new(Some("T".into()), Some("two".into()));
+        let opts = SvgOptions::default();
+        let sa = to_svg_a11y_with(&sc, "x", &a, &opts);
+        let sb = to_svg_a11y_with(&sc, "x", &b, &opts);
+        let id = |s: &str| {
+            s.split("<desc id=\"")
+                .nth(1)
+                .and_then(|r| r.split('"').next())
+                .unwrap()
+                .to_string()
+        };
+        assert_ne!(id(&sa), id(&sb), "two inlined SVGs never share a desc id");
+        assert_eq!(sa, to_svg_a11y_with(&sc, "x", &a, &opts), "deterministic");
+        assert!(sa.contains(&format!("aria-describedby=\"{}\"", id(&sa))));
+        assert!(id(&sa).starts_with(A11Y_DESC_ID_PREFIX));
+        // Title only: no desc, no aria-describedby.
+        let t = to_svg_a11y_with(&sc, "x", &A11y::new(Some("<b>T</b>".into()), None), &opts);
+        assert!(t.contains("<title>T</title>") && !t.contains("<desc"));
+        assert!(!t.contains("aria-describedby"));
+        // Blank title falls back to the default name.
+        let t = to_svg_a11y_with(&sc, "Dflt", &A11y::new(Some("  ".into()), None), &opts);
+        assert!(t.contains("<title>Dflt</title>"));
+    }
 
     #[test]
     fn svg_options_default_matches_fixed_pixel_and_responsive_overrides() {

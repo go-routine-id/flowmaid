@@ -203,9 +203,16 @@ pub fn render_compact(g: &Graph, opts: &CompactOptions) -> String {
     render_compact_titled(g, opts, "Flowchart diagram")
 }
 
-/// [`render_compact`] with a caller-chosen accessible name.
+/// [`render_compact`] with a caller-chosen accessible name. A
+/// non-empty `g.acc_title` wins over `title`, and `g.acc_descr` becomes
+/// the SVG's `<desc>`, exactly as in [`crate::render::render_titled`].
 pub fn render_compact_titled(g: &Graph, opts: &CompactOptions, title: &str) -> String {
-    crate::scene::to_svg_titled(&scene_compact(g, opts).scene, title)
+    crate::scene::to_svg_a11y_with(
+        &scene_compact(g, opts).scene,
+        title,
+        &crate::render::graph_a11y(g),
+        &crate::scene::SvgOptions::default(),
+    )
 }
 
 /// The graph as one linear run of node indices, or the reason it
@@ -767,5 +774,15 @@ mod tests {
                 p0.0
             );
         }
+    }
+
+    #[test]
+    fn compact_render_carries_acc_title_and_descr() {
+        let g = parse("flowchart TD\naccTitle: Chain\naccDescr: steps\nA-->B-->C-->D").unwrap();
+        let svg = render_compact_titled(&g, &CompactOptions::for_extent(200.0), "State diagram");
+        assert!(svg.contains("<title>Chain</title>\n<desc id=\""), "{svg}");
+        let g = parse("flowchart TD\nA-->B-->C-->D").unwrap();
+        let svg = render_compact(&g, &CompactOptions::for_extent(200.0));
+        assert!(svg.contains("<title>Flowchart diagram</title>") && !svg.contains("<desc"));
     }
 }

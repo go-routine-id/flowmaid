@@ -351,6 +351,231 @@ fn statements(source: &str) -> Vec<(usize, &str)> {
     out
 }
 
+/// Header keyword of mermaid's ELK flowchart detector. Mermaid parses
+/// it with the very same flowchart grammar and only switches the
+/// layout engine; flowmaid has one layout, so it is an alias of
+/// `flowchart` and the hint is dropped.
+const FLOWCHART_ELK_HEADER: &str = "flowchart-elk";
+
+/// Mermaid's accessibility statement keywords (case-sensitive there,
+/// and here).
+const ACC_TITLE_KW: &str = "accTitle";
+const ACC_DESCR_KW: &str = "accDescr";
+
+/// The two grammars mermaid uses for `accTitle` / `accDescr`.
+#[derive(Clone, Copy, PartialEq)]
+enum AccFlavor {
+    /// jison diagrams (flowchart, state, class, sequence, ER, journey,
+    /// timeline): a single-line value runs to the end of the line,
+    /// `%%` included; a description has `\n\s+` folded to `\n`.
+    Jison,
+    /// langium diagrams (pie, gitGraph, architecture): a single-line
+    /// value stops before `%%`, runs of spaces/tabs collapse, and a
+    /// block description drops blank lines and per-line indentation.
+    Langium,
+}
+
+/// Accessibility statements pulled out of a diagram body. The last
+/// statement of each kind wins, as in mermaid; an empty value clears.
+#[derive(Default)]
+struct Acc {
+    title: Option<String>,
+    descr: Option<String>,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum AccHead {
+    Title,
+    Descr,
+    DescrBlock,
+}
+
+/// Recognise an accessibility statement at the start of `s` (already
+/// left-trimmed): `accTitle\s*:`, `accDescr\s*:` or `accDescr\s*{`.
+/// Returns the kind and the byte offset just past the `:` / `{`. A
+/// node id like `accTitle --> B` is not one.
+fn acc_head(s: &str) -> Option<(AccHead, usize)> {
+    let (kw, title) = if s.starts_with(ACC_TITLE_KW) {
+        (ACC_TITLE_KW, true)
+    } else if s.starts_with(ACC_DESCR_KW) {
+        (ACC_DESCR_KW, false)
+    } else {
+        return None;
+    };
+    let after = &s[kw.len()..];
+    let body = after.trim_start();
+    let at = kw.len() + (after.len() - body.len()) + 1;
+    match (body.chars().next()?, title) {
+        (':', true) => Some((AccHead::Title, at)),
+        (':', false) => Some((AccHead::Descr, at)),
+        ('{', false) => Some((AccHead::DescrBlock, at)),
+        _ => None,
+    }
+}
+
+/// Where the first accessibility statement on `text` starts: its byte
+/// offset, kind and value offset. With `split_semis` (flowchart) a
+/// statement may also follow a top-level `;` (`A --> B; accTitle: T`).
+fn find_acc(text: &str, split_semis: bool) -> Option<(usize, AccHead, usize)> {
+    let at_start = |frag: &str, base: usize| {
+        let t = frag.trim_start();
+        let o = base + (frag.len() - t.len());
+        acc_head(t).map(|(h, v)| (o, h, o + v))
+    };
+    if text.trim_start().starts_with("%%") {
+        return None;
+    }
+    if !split_semis {
+        return at_start(text, 0);
+    }
+    split_statements(text).into_iter().find_map(|frag| {
+        // Fragments are sub-slices of `text`.
+        let base = frag.as_ptr() as usize - text.as_ptr() as usize;
+        at_start(frag, base)
+    })
+}
+
+/// Normalise a single-line `accTitle` / `accDescr` value.
+fn acc_line_value(raw: &str, flavor: AccFlavor) -> String {
+    match flavor {
+        AccFlavor::Jison => raw.trim().to_string(),
+        AccFlavor::Langium => {
+            let v = raw.find("%%").map_or(raw, |p| &raw[..p]);
+            collapse_blanks(v.trim())
+        }
+    }
+}
+
+/// Normalise a multi-line `accDescr { … }` body.
+fn acc_block_value(raw: &str, flavor: AccFlavor) -> String {
+    match flavor {
+        // commonDb `setAccDescription`: trim, then `\n\s+` → `\n`
+        // (continuation indent goes, blank lines collapse).
+        AccFlavor::Jison => {
+            let mut out = String::new();
+            let mut chars = raw.trim().chars().peekable();
+            while let Some(c) = chars.next() {
+                out.push(c);
+                if c == '\n' {
+                    while chars.peek().is_some_and(|c| c.is_whitespace()) {
+                        chars.next();
+                    }
+                }
+            }
+            out
+        }
+        // langium value converter: per-line trim, blank lines
+        // dropped, runs of spaces/tabs collapsed.
+        AccFlavor::Langium => raw
+            .lines()
+            .map(|l| collapse_blanks(l.trim()))
+            .filter(|l| !l.is_empty())
+            .collect::<Vec<_>>()
+            .join("\n"),
+    }
+}
+
+/// Collapse every run of two or more spaces/tabs into one space.
+fn collapse_blanks(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut prev_blank = false;
+    for c in s.chars() {
+        let blank = c == ' ' || c == '\t';
+        if blank && prev_blank {
+            continue;
+        }
+        out.push(if blank { ' ' } else { c });
+        prev_blank = blank;
+    }
+    out
+}
+
+/// Pull mermaid's `accTitle:` / `accDescr:` / `accDescr { … }`
+/// statements out of the lines AFTER `header_line` (1-based), so the
+/// diagram parser never sees them. Every consumed line is blanked
+/// rather than removed, keeping later line numbers exact; text after a
+/// block's closing `}` stays on its line as ordinary statements.
+/// Full-line `%%` comments inside a block are dropped, as mermaid's
+/// comment pre-pass does. Returns the source untouched when there is
+/// nothing to pull.
+fn extract_acc(
+    source: &str,
+    header_line: usize,
+    split_semis: bool,
+    flavor: AccFlavor,
+) -> Result<(Cow<'_, str>, Acc), ParseError> {
+    let mut acc = Acc::default();
+    let lines: Vec<&str> = source.lines().collect();
+    if !lines
+        .iter()
+        .skip(header_line)
+        .any(|l| l.contains(ACC_TITLE_KW) || l.contains(ACC_DESCR_KW))
+    {
+        return Ok((Cow::Borrowed(source), acc));
+    }
+    let set = |slot: &mut Option<String>, v: String| {
+        *slot = (!v.is_empty()).then_some(v);
+    };
+    let mut out: Vec<String> = lines.iter().map(|l| l.to_string()).collect();
+    let mut i = header_line;
+    while i < lines.len() {
+        let mut text: &str = lines[i];
+        let mut kept = String::new();
+        loop {
+            let Some((o, head, v)) = find_acc(text, split_semis) else {
+                kept.push_str(text);
+                break;
+            };
+            kept.push_str(&text[..o]);
+            match head {
+                AccHead::Title => {
+                    set(&mut acc.title, acc_line_value(&text[v..], flavor));
+                    break;
+                }
+                AccHead::Descr => {
+                    set(&mut acc.descr, acc_line_value(&text[v..], flavor));
+                    break;
+                }
+                AccHead::DescrBlock => {
+                    let body = &text[v..];
+                    if let Some(p) = body.find('}') {
+                        set(&mut acc.descr, acc_block_value(&body[..p], flavor));
+                        text = &body[p + 1..];
+                        continue;
+                    }
+                    let open = i;
+                    let mut buf = body.to_string();
+                    out[i] = std::mem::take(&mut kept);
+                    loop {
+                        i += 1;
+                        let Some(&l) = lines.get(i) else {
+                            return Err(err(
+                                open + 1,
+                                "'accDescr {' is never closed with '}'".to_string(),
+                            ));
+                        };
+                        if let Some(p) = l.find('}') {
+                            buf.push('\n');
+                            buf.push_str(&l[..p]);
+                            text = &l[p + 1..];
+                            break;
+                        }
+                        if !l.trim_start().starts_with("%%") {
+                            buf.push('\n');
+                            buf.push_str(l);
+                        }
+                        out[i].clear();
+                    }
+                    set(&mut acc.descr, acc_block_value(&buf, flavor));
+                }
+            }
+        }
+        out[i] = kept;
+        i += 1;
+    }
+    Ok((Cow::Owned(out.join("\n")), acc))
+}
+
 pub fn parse_document(source: &str) -> Result<Document, ParseError> {
     // Editor Windows (Notepad, PowerShell `>`) menyisipkan BOM UTF-8.
     // U+FEFF bukan whitespace Unicode, jadi lolos trim() dan membuat
@@ -415,6 +640,21 @@ pub fn parse(source: &str) -> Result<Graph, ParseError> {
 /// would be mistaken for a second frontmatter block on the re-strip.
 fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
     let mut g = Graph::default();
+    // Accessibility statements are line-level in mermaid (an
+    // `accTitle:` value runs to the end of the line, `;` included), so
+    // they come out BEFORE the `;` statement split. Only lines after
+    // the header qualify: mermaid parses them as statements.
+    let header_line = source
+        .lines()
+        .position(|l| {
+            let t = l.trim();
+            !t.is_empty() && !t.starts_with("%%")
+        })
+        .map_or(0, |i| i + 1);
+    let (source, acc) = extract_acc(source, header_line, true, AccFlavor::Jison)?;
+    let source: &str = &source;
+    g.acc_title = acc.title;
+    g.acc_descr = acc.descr;
     let mut header_seen = false;
     // Styling is collected during the pass and resolved at the end,
     // because Mermaid allows `classDef` to appear after its usage.
@@ -490,7 +730,9 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
                 };
                 return Err(err(lineno, format!("diagram type '{}': {}", t, hint)));
             }
-            let rest = strip_keyword(line, "flowchart").or_else(|| strip_keyword(line, "graph"));
+            let rest = strip_keyword(line, FLOWCHART_ELK_HEADER)
+                .or_else(|| strip_keyword(line, "flowchart"))
+                .or_else(|| strip_keyword(line, "graph"));
             if let Some(rest) = rest {
                 g.direction = match rest.trim().to_uppercase().as_str() {
                     "" | "TD" | "TB" => Direction::TD,
@@ -1409,6 +1651,10 @@ fn edge_op_body(rest: &str) -> Option<(usize, EdgeKind, Option<Marker>)> {
 /// including it is skipped.
 fn parse_er(source: &str, header_line: usize) -> Result<ErDiagram, ParseError> {
     let mut d = ErDiagram::default();
+    let (source, acc) = extract_acc(source, header_line, false, AccFlavor::Jison)?;
+    let source: &str = &source;
+    d.acc_title = acc.title;
+    d.acc_descr = acc.descr;
     // Entity currently being filled, when inside a `{ ... }` block.
     let mut open: Option<(usize, usize)> = None; // (entity, opening line)
     for (i, raw) in source.lines().enumerate() {
@@ -1621,6 +1867,10 @@ fn parse_attr(line: &str, lineno: usize) -> Result<Attr, ParseError> {
 /// Parse a `classDiagram` body. `header_line` is 1-indexed.
 fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseError> {
     let mut d = ClassDiagram::default();
+    let (source, acc) = extract_acc(source, header_line, false, AccFlavor::Jison)?;
+    let source: &str = &source;
+    d.acc_title = acc.title;
+    d.acc_descr = acc.descr;
     // (class index, line where its `{` opened) for a good diagnostic.
     let mut open: Option<(usize, usize)> = None;
     for (i, raw) in source.lines().enumerate() {
@@ -1860,6 +2110,10 @@ fn split_card_end(s: &str, card_after: bool) -> (&str, Option<String>) {
 /// line of the header; everything up to and including it is skipped.
 fn parse_sequence(source: &str, header_line: usize) -> Result<SequenceDiagram, ParseError> {
     let mut d = SequenceDiagram::default();
+    let (source, acc) = extract_acc(source, header_line, false, AccFlavor::Jison)?;
+    let source: &str = &source;
+    d.acc_title = acc.title;
+    d.acc_descr = acc.descr;
     // Open frames (kind, opening line) for `else`/`and`/`end`
     // matching and a good unclosed-frame diagnostic.
     let mut frames: Vec<(FrameKind, usize)> = Vec::new();
@@ -2294,6 +2548,11 @@ fn parse_seq_message(
 /// value wins, matching `Graph::ensure_node`'s latest-wins rule.
 fn parse_pie(source: &str, header_line: usize) -> Result<PieChart, ParseError> {
     let mut d = PieChart::default();
+    // Accessibility statements parse (so they never misread as
+    // content) but are not stored yet: this model's fields are all
+    // public, so a new field would break struct-literal users.
+    let (source, _acc) = extract_acc(source, header_line, false, AccFlavor::Langium)?;
+    let source: &str = &source;
 
     // Header forms: `pie`, `pie showData`, `pie title T`,
     // `pie showData title T` (title consumes the rest of the line).
@@ -2529,6 +2788,11 @@ fn mind_br(s: &str) -> String {
 /// before the first `section` go into a leading unnamed section.
 fn parse_journey(source: &str, header_line: usize) -> Result<Journey, ParseError> {
     let mut d = Journey::default();
+    // Accessibility statements parse (so they never misread as
+    // content) but are not stored yet: this model's fields are all
+    // public, so a new field would break struct-literal users.
+    let (source, _acc) = extract_acc(source, header_line, false, AccFlavor::Jison)?;
+    let source: &str = &source;
     // Ensure there is always a current section to push tasks into.
     let ensure_section = |d: &mut Journey| {
         if d.sections.is_empty() {
@@ -2677,6 +2941,11 @@ fn split_timeline_events(rest: &str) -> Vec<String> {
 /// `%%` are comments; `<br>` variants become line breaks later at render.
 fn parse_timeline(source: &str, header_line: usize) -> Result<Timeline, ParseError> {
     let mut d = Timeline::default();
+    // Accessibility statements parse (so they never misread as
+    // content) but are not stored yet: this model's fields are all
+    // public, so a new field would break struct-literal users.
+    let (source, _acc) = extract_acc(source, header_line, false, AccFlavor::Jison)?;
+    let source: &str = &source;
     if let Some(header) = source.lines().nth(header_line.saturating_sub(1)) {
         d.direction = parse_timeline_direction(header);
     }
@@ -2763,6 +3032,11 @@ fn parse_timeline(source: &str, header_line: usize) -> Result<Timeline, ParseErr
 /// merge commit whose second parent is the named branch's HEAD.
 fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseError> {
     let mut d = GitGraph::default();
+    // Accessibility statements parse (so they never misread as
+    // content) but are not stored yet: this model's fields are all
+    // public, so a new field would break struct-literal users.
+    let (source, _acc) = extract_acc(source, header_line, false, AccFlavor::Langium)?;
+    let source: &str = &source;
     if let Some(header) = source.lines().nth(header_line.saturating_sub(1)) {
         d.orientation = parse_git_orientation(header, header_line)?;
     }
@@ -3039,6 +3313,11 @@ fn parse_commit_kind(s: &str, lineno: usize) -> Result<CommitKind, ParseError> {
 /// (`svc:L -- R:other`).
 fn parse_architecture(source: &str, header_line: usize) -> Result<Architecture, ParseError> {
     let mut d = Architecture::default();
+    // Accessibility statements parse (so they never misread as
+    // content) but are not stored yet: this model's fields are all
+    // public, so a new field would break struct-literal users.
+    let (source, _acc) = extract_acc(source, header_line, false, AccFlavor::Langium)?;
+    let source: &str = &source;
     let mut group_ids: HashMap<String, usize> = HashMap::new();
     let mut service_ids: HashMap<String, usize> = HashMap::new();
 
@@ -3310,6 +3589,10 @@ fn parse_arch_side(s: &str, lineno: usize) -> Result<ArchSide, ParseError> {
 /// whole flowchart layout/SVG/drag pipeline is reused unchanged.
 fn parse_state(source: &str, header_line: usize) -> Result<Graph, ParseError> {
     let mut g = Graph::default();
+    let (source, acc) = extract_acc(source, header_line, false, AccFlavor::Jison)?;
+    let source: &str = &source;
+    g.acc_title = acc.title;
+    g.acc_descr = acc.descr;
 
     // Pre-scan composite ids so a transition may target a composite
     // declared LATER (`A --> Grp` before `state Grp {`) — the same
@@ -5329,5 +5612,328 @@ mod tests {
             "got: {}",
             e.message
         );
+    }
+
+    // ── flowchart-elk header + accTitle / accDescr ─────────────────
+
+    fn svg_of(src: &str) -> String {
+        crate::render_svg(src).unwrap_or_else(|e| panic!("{e}\n--\n{src}"))
+    }
+
+    #[test]
+    fn flowchart_elk_is_a_flowchart_alias() {
+        for (elk, plain) in [
+            ("flowchart-elk\n  A --> B\n", "flowchart\n  A --> B\n"),
+            ("flowchart-elk TD\n  A --> B\n", "flowchart TD\n  A --> B\n"),
+            (
+                "flowchart-elk LR\n  A --> B --> C\n",
+                "flowchart LR\n  A --> B --> C\n",
+            ),
+            ("flowchart-elk RL\n  A --> B\n", "flowchart RL\n  A --> B\n"),
+            ("flowchart-elk BT\n  A --> B\n", "flowchart BT\n  A --> B\n"),
+        ] {
+            assert_eq!(svg_of(elk), svg_of(plain), "{elk}");
+            assert!(matches!(
+                parse_document(elk).unwrap(),
+                Document::Flowchart(_)
+            ));
+        }
+        assert_eq!(parse("flowchart-elk").unwrap().direction, Direction::TD);
+        assert_eq!(parse("flowchart-elk LR").unwrap().direction, Direction::LR);
+        // Same leniency as `flowchart` (strip_keyword is case-insensitive).
+        assert_eq!(
+            parse("FLOWCHART-ELK LR\nA").unwrap().direction,
+            Direction::LR
+        );
+        let e = parse("flowchart-elk XY\nA").unwrap_err();
+        assert!(e.message.contains("unknown direction"), "{}", e.message);
+    }
+
+    #[test]
+    fn flowchart_elk_is_not_a_header_inside_the_body_or_without_whitespace() {
+        // Second header after the first: an error, as in mermaid.
+        assert!(parse("flowchart TD\n  A --> B\n  flowchart-elk LR\n").is_err());
+        // Glued direction is not the header (same rule as `flowchartTD`).
+        assert!(parse("flowchart-elkTD\nA --> B").is_err());
+        // A longer word is never the header keyword.
+        let baseline = parse("flowchart-elkish --> B").map(|g| g.nodes.len());
+        assert!(baseline.is_err(), "flowmaid node ids are word-like");
+    }
+
+    fn acc(src: &str) -> (Option<String>, Option<String>) {
+        let g = parse(src).unwrap_or_else(|e| panic!("{e}\n--\n{src}"));
+        (g.acc_title, g.acc_descr)
+    }
+
+    #[test]
+    fn acc_title_and_descr_single_line() {
+        let src = "flowchart LR\n  accTitle: Order pipeline\n  accDescr: Orders flow from cart to payment\n  A --> B\n";
+        assert_eq!(
+            acc(src),
+            (
+                Some("Order pipeline".into()),
+                Some("Orders flow from cart to payment".into())
+            )
+        );
+        let g = parse(src).unwrap();
+        assert_eq!(g.nodes.len(), 2);
+        assert_eq!(g.edges.len(), 1);
+        let svg = svg_of(src);
+        assert!(svg.contains("aria-label=\"Order pipeline\""), "{svg}");
+        assert!(svg.contains("<title>Order pipeline</title>\n<desc id=\"flowmaid-desc-"));
+        let id = svg
+            .split("aria-describedby=\"")
+            .nth(1)
+            .and_then(|r| r.split('"').next())
+            .unwrap();
+        assert!(id.starts_with(A11Y_DESC_ID_PREFIX_TEST), "{id}");
+        assert!(svg.contains(&format!(
+            "<desc id=\"{id}\">Orders flow from cart to payment</desc>"
+        )));
+        assert!(!svg.contains("Flowchart diagram"));
+    }
+
+    const A11Y_DESC_ID_PREFIX_TEST: &str = "flowmaid-desc-";
+
+    #[test]
+    fn acc_value_spacing_and_empty_values() {
+        assert_eq!(acc("flowchart TD\naccTitle:x\nA").0.as_deref(), Some("x"));
+        assert_eq!(
+            acc("flowchart TD\naccTitle :  x  \nA").0.as_deref(),
+            Some("x")
+        );
+        // Empty title: no title, output identical to no statement.
+        let src = "flowchart TD\n  accTitle:\n  A-->B\n";
+        assert_eq!(acc(src), (None, None));
+        assert_eq!(svg_of(src), svg_of("flowchart TD\n  A-->B\n"));
+        assert_eq!(acc("flowchart TD\n  accDescr:   \n  A-->B\n"), (None, None));
+    }
+
+    #[test]
+    fn acc_descr_block_normalises_like_mermaid() {
+        let src = "flowchart TD\n  accDescr {\n    First line\n      indented second\n\n    after blank\n  }\n  A --> B\n";
+        let (t, d) = acc(src);
+        assert_eq!(t, None);
+        assert_eq!(
+            d.as_deref(),
+            Some("First line\nindented second\nafter blank")
+        );
+        let svg = svg_of(src);
+        assert!(svg.contains("<title>Flowchart diagram</title>"));
+        assert!(svg.contains(">First line\nindented second\nafter blank</desc>"));
+        assert_eq!(parse(src).unwrap().edges.len(), 1);
+    }
+
+    #[test]
+    fn acc_descr_block_one_line_and_glued_and_trailing_statements() {
+        assert_eq!(
+            acc("flowchart TD\n  accDescr { short }\n  A --> B\n")
+                .1
+                .as_deref(),
+            Some("short")
+        );
+        let src = "flowchart TD\n  accDescr{\nx\n} A --> B\n";
+        assert_eq!(acc(src).1.as_deref(), Some("x"));
+        let g = parse(src).unwrap();
+        assert_eq!(g.edges.len(), 1, "edge after '}}' still parses");
+        assert_eq!(g.nodes[0].id, "A");
+        // `accDescr{label}` is a description, not a rhombus node.
+        let g = parse("flowchart TD\naccDescr{label}\nA").unwrap();
+        assert_eq!(g.acc_descr.as_deref(), Some("label"));
+        assert_eq!(g.nodes.len(), 1);
+        // Content on the `{` line; `%%` lines inside are dropped.
+        assert_eq!(
+            acc("flowchart TD\naccDescr { a\n%% hidden\n  b }\nA")
+                .1
+                .as_deref(),
+            Some("a\nb")
+        );
+        // A single-line value keeps a `}`.
+        assert_eq!(
+            acc("flowchart TD\naccDescr: a } b\nA").1.as_deref(),
+            Some("a } b")
+        );
+    }
+
+    #[test]
+    fn acc_title_runs_to_end_of_line_through_semicolons() {
+        let src = "flowchart TD\n  accTitle: a; B --> C\n  A --> D\n";
+        let g = parse(src).unwrap();
+        assert_eq!(g.acc_title.as_deref(), Some("a; B --> C"));
+        assert!(g.node_index("B").is_none() && g.node_index("C").is_none());
+        assert_eq!(g.edges.len(), 1);
+        // After a `;` a new statement starts.
+        let g = parse("flowchart TD\n  A --> B; accTitle: T2\n").unwrap();
+        assert_eq!(g.acc_title.as_deref(), Some("T2"));
+        assert_eq!(g.edges.len(), 1);
+        // `%%` stays in a jison value.
+        assert_eq!(
+            acc("flowchart TD\naccTitle: x %% note\nA").0.as_deref(),
+            Some("x %% note")
+        );
+    }
+
+    #[test]
+    fn acc_last_statement_wins() {
+        let src = "flowchart TD\n  accTitle: one\n  accTitle: two\n  accDescr: d1\n  accDescr {\n d2\n }\n  A-->B\n";
+        assert_eq!(acc(src), (Some("two".into()), Some("d2".into())));
+        let src = "flowchart TD\naccDescr {\nd1\n}\naccDescr: d2\nA";
+        assert_eq!(acc(src).1.as_deref(), Some("d2"));
+    }
+
+    #[test]
+    fn acc_markup_is_escaped_plain_text() {
+        let src = "flowchart TD\n  accTitle: <b>Bold</b> & \"q\" #quot;\n  accDescr: <i>x</i> & y\n  A-->B\n";
+        let svg = svg_of(src);
+        assert!(
+            svg.contains("<title>Bold &amp; &quot;q&quot; #quot;</title>"),
+            "{svg}"
+        );
+        assert!(svg.contains("aria-label=\"Bold &amp; &quot;q&quot; #quot;\""));
+        assert!(
+            svg.contains(">&lt;i&gt;x&lt;/i&gt; &amp; y</desc>"),
+            "{svg}"
+        );
+        assert!(!svg.contains("<b>"));
+        // Control characters never reach the SVG.
+        let svg = svg_of("flowchart TD\naccDescr: a\u{1}b\nA");
+        assert!(svg.contains(">ab</desc>"));
+    }
+
+    #[test]
+    fn acc_inside_subgraph_sets_the_diagram_value() {
+        let src = "flowchart TD\n  subgraph S\n    accTitle: Inside\n    A --> B\n  end\n";
+        let g = parse(src).unwrap();
+        assert_eq!(g.acc_title.as_deref(), Some("Inside"));
+        assert_eq!(g.subgraphs.len(), 1);
+        let ids: Vec<_> = g.subgraphs[0]
+            .nodes
+            .iter()
+            .map(|&n| g.nodes[n].id.as_str())
+            .collect();
+        assert_eq!(ids, ["A", "B"]);
+    }
+
+    #[test]
+    fn acc_keywords_are_case_sensitive_and_need_their_punctuation() {
+        let g = parse("flowchart TD\n  accTitle --> B\n").unwrap();
+        assert_eq!(g.nodes[0].id, "accTitle");
+        assert_eq!(g.acc_title, None);
+        let g = parse("flowchart TD\n  accDescr --> B\n").unwrap();
+        assert_eq!(g.nodes[0].id, "accDescr");
+        let base = "flowchart TD\n  AccTitle: x\n";
+        let e = parse(base).unwrap_err();
+        assert!(e.message.contains("unknown edge operator"), "{}", e.message);
+        assert!(parse("flowchart TD\n  ACCDESCR: x\n").is_err());
+    }
+
+    #[test]
+    fn acc_unclosed_block_is_a_line_numbered_error() {
+        let e = parse("flowchart TD\n  accDescr {\n  never closed\n  A --> B\n").unwrap_err();
+        assert_eq!(e.line, 2);
+        assert!(e.message.contains("never closed"), "{}", e.message);
+    }
+
+    #[test]
+    fn acc_line_numbers_after_a_block_stay_exact() {
+        let e = parse("flowchart TD\naccDescr {\na\nb\n}\nA --> ???\n").unwrap_err();
+        assert_eq!(e.line, 6);
+    }
+
+    #[test]
+    fn acc_before_the_header_is_not_acc() {
+        assert!(parse("accTitle: x\nflowchart TD\nA").is_err());
+    }
+
+    #[test]
+    fn state_diagram_acc() {
+        let src = "stateDiagram-v2\n  accTitle: Door states\n  accDescr: Open and closed\n  [*] --> Open\n";
+        let Document::State(g) = parse_document(src).unwrap() else {
+            panic!("state")
+        };
+        assert_eq!(g.acc_title.as_deref(), Some("Door states"));
+        assert_eq!(g.acc_descr.as_deref(), Some("Open and closed"));
+        assert!(g
+            .nodes
+            .iter()
+            .all(|n| !n.label.contains("Door") && !n.label.contains("Open and")));
+        let svg = svg_of(src);
+        assert!(svg.contains("aria-label=\"Door states\""));
+        assert!(svg.contains(">Open and closed</desc>"));
+        assert!(!svg.contains("State diagram"));
+        // Without acc: unchanged default name.
+        let svg = svg_of("stateDiagram-v2\n  [*] --> Open\n");
+        assert!(svg.contains("<title>State diagram</title>"));
+        assert!(!svg.contains("<desc"));
+        // A multi-line block inside a composite state.
+        let src = "stateDiagram-v2\nstate G {\naccDescr {\n x\n}\nA --> B\n}\n";
+        let Document::State(g) = parse_document(src).unwrap() else {
+            panic!("state")
+        };
+        assert_eq!(g.acc_descr.as_deref(), Some("x"));
+    }
+
+    #[test]
+    fn class_sequence_er_acc() {
+        let svg = svg_of("classDiagram\n  accTitle: T1\n  accDescr: D1\n  class A\n");
+        assert!(svg.contains("<title>T1</title>\n<desc id=\""), "{svg}");
+        assert!(!svg.contains(">accTitle<") && !svg.contains(">accDescr<"));
+        let Document::Class(d) =
+            parse_document("classDiagram\n  accTitle: T1\n  accDescr: D1\n  class A\n").unwrap()
+        else {
+            panic!()
+        };
+        assert_eq!(d.classes.len(), 1);
+        let svg = svg_of("sequenceDiagram\n  accTitle: S\n  accDescr {\n a\n b\n }\n  A->>B: hi\n");
+        assert!(svg.contains("<title>S</title>\n<desc id=\""), "{svg}");
+        assert!(svg.contains(">a\nb</desc>"));
+        let svg = svg_of("erDiagram\n  accTitle: E\n  A ||--o{ B : has\n");
+        assert!(svg.contains("aria-label=\"E\""));
+        // Defaults unchanged without acc.
+        assert!(svg_of("classDiagram\n  class A\n").contains("<title>Class diagram</title>"));
+    }
+
+    #[test]
+    fn other_types_accept_acc_without_drawing_it() {
+        let Document::Timeline(t) =
+            parse_document("timeline\n  accTitle: T1\n  2020 : x\n").unwrap()
+        else {
+            panic!()
+        };
+        let periods: Vec<_> = t
+            .sections
+            .iter()
+            .flat_map(|s| &s.periods)
+            .map(|p| p.period.clone())
+            .collect();
+        assert_eq!(periods, ["2020"]);
+        // langium: `%%` ends the value, and acc no longer errors.
+        assert!(parse_document("pie\n  accTitle: T1 %% c\n  \"a\": 1\n").is_ok());
+        assert!(parse_document("journey\n  accTitle: J\n  section S\n  t: 5: me\n").is_ok());
+        assert!(parse_document("gitGraph\n  accDescr {\n x\n }\n  commit\n").is_ok());
+        assert!(
+            parse_document("architecture-beta\n  accTitle: A\n  service db(database)[DB]\n")
+                .is_ok()
+        );
+        // Mermaid has no acc in mindmap: unchanged (a node named so).
+        let Document::Mindmap(m) = parse_document("mindmap\n  root\n    accTitle: x\n").unwrap()
+        else {
+            panic!()
+        };
+        assert!(format!("{m:?}").contains("accTitle"));
+    }
+
+    #[test]
+    fn acc_langium_values() {
+        let (src, a) = extract_acc(
+            "pie\naccTitle:  a   b  %% c\naccDescr {\n  x   y\n\n    z\n}\n",
+            1,
+            false,
+            AccFlavor::Langium,
+        )
+        .unwrap();
+        assert_eq!(a.title.as_deref(), Some("a b"));
+        assert_eq!(a.descr.as_deref(), Some("x y\nz"));
+        assert!(src.lines().skip(1).all(|l| l.trim().is_empty()));
     }
 }
