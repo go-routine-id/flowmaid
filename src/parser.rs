@@ -15,6 +15,7 @@
 //! Use [`parse_document`] to accept any supported diagram type;
 //! [`parse`] stays flowchart-only for backwards compatibility.
 
+use crate::markdown;
 use crate::model::{
     ArchEdge, ArchGroup, ArchService, ArchSide, Architecture, Attr, Card, Class, ClassDiagram,
     ClassRel, CommitKind, Direction, Document, EdgeAnimation, EdgeCurve, EdgeEnds, EdgeKind,
@@ -154,7 +155,7 @@ fn clean_label(s: &str) -> String {
 /// into labels — and how [`crate::emit::to_mermaid`] writes them
 /// back out losslessly. Anything not matching the pattern passes
 /// through unchanged (`#f00`, `C#`, a lone `#`).
-fn decode_entities(s: &str) -> String {
+pub(crate) fn decode_entities(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut rest = s;
     while let Some(h) = rest.find('#') {
@@ -193,6 +194,22 @@ fn decode_entities(s: &str) -> String {
 /// titles) whose boxes/strips are single-line.
 fn clean_label_1line(s: &str) -> String {
     clean_label(s).replace('\n', " ")
+}
+
+/// Lower a markdown string body (see [`crate::markdown`]): node labels
+/// (`node`) keep their lines and wrap; edge labels and subgraph titles
+/// are one line.
+fn md_label(raw: &str, lineno: usize, node: bool) -> Result<String, ParseError> {
+    markdown::lower(raw, node, !node).map_err(|m| err(lineno, m))
+}
+
+/// An edge label or subgraph title: a whole-label markdown string is
+/// lowered to one line, anything else cleaned like before.
+fn label_1line(s: &str, lineno: usize) -> Result<String, ParseError> {
+    match markdown::md_quoted(s) {
+        Some(inner) => md_label(inner, lineno, false),
+        None => Ok(clean_label_1line(s)),
+    }
 }
 
 /// Replace `<br>` variants (case-insensitive, optional `/` and
@@ -337,9 +354,9 @@ fn split_statements(line: &str) -> Vec<&str> {
 /// identically — the no-drift invariant that keeps sub-edges bound to
 /// the right box depends on it (`;` must never desync the two passes).
 ///
-/// A shape-data block (`A@{ … }`, `e1@{ … }`) may span lines, as in
-/// mermaid: a line that leaves one open is joined with the following
-/// lines — newlines kept, since they select the YAML block form, and
+/// A shape-data block (`A@{ … }`, `e1@{ … }`) or a markdown string
+/// (`"`…`"`) may span lines, as in mermaid: a line that leaves one open
+/// is joined with the following lines — newlines kept, since they select the YAML block form, and
 /// full-line `%%` comments dropped — and numbered by its first line.
 fn statements(source: &str) -> Result<Vec<(usize, Cow<'_, str>)>, ParseError> {
     let mut out = Vec::new();
@@ -349,7 +366,8 @@ fn statements(source: &str) -> Result<Vec<(usize, Cow<'_, str>)>, ParseError> {
         if phys.is_empty() || phys.starts_with("%%") {
             continue;
         }
-        if !shapedata::leaves_open(raw) {
+        let open = |s: &str| shapedata::leaves_open(s) || markdown::leaves_open(s);
+        if !open(raw) {
             for frag in split_statements(raw) {
                 let f = frag.trim();
                 if !f.is_empty() {
@@ -359,12 +377,14 @@ fn statements(source: &str) -> Result<Vec<(usize, Cow<'_, str>)>, ParseError> {
             continue;
         }
         let mut buf = raw.to_string();
-        while shapedata::leaves_open(&buf) {
+        while open(&buf) {
             let Some((_, next)) = lines.next() else {
-                return Err(err(
-                    i + 1,
-                    "'@{' metadata block is never closed with '}'".to_string(),
-                ));
+                let what = if markdown::leaves_open(&buf) {
+                    "markdown string '\"`' is never closed with '`\"'"
+                } else {
+                    "'@{' metadata block is never closed with '}'"
+                };
+                return Err(err(i + 1, what.to_string()));
             };
             if !next.trim_start().starts_with("%%") {
                 buf.push('\n');
@@ -2047,6 +2067,12 @@ fn parse_subgraph_header(rest: &str, lineno: usize) -> Result<(String, String), 
     if rest.is_empty() {
         return Err(err(lineno, "subgraph needs an id or title".to_string()));
     }
+    // Bare markdown title (`subgraph "`**Two**`"`): mermaid's id is the
+    // markdown text; flowmaid keeps it even with spaces, as it does for
+    // a bare multi-word title.
+    if let Some(inner) = markdown::md_quoted(rest) {
+        return Ok((inner.trim().to_string(), md_label(inner, lineno, false)?));
+    }
     if let Some(bi) = rest.find('[') {
         let id = rest[..bi].trim();
         let inner = rest[bi + 1..]
@@ -2058,7 +2084,7 @@ fn parse_subgraph_header(rest: &str, lineno: usize) -> Result<(String, String), 
                 "subgraph title needs an id before '['".to_string(),
             ));
         }
-        return Ok((id.to_string(), clean_label_1line(inner)));
+        return Ok((id.to_string(), label_1line(inner, lineno)?));
     }
     Ok((rest.to_string(), rest.to_string()))
 }
@@ -2133,13 +2159,31 @@ fn parse_statement(
         let (kind, ends) = op;
         cur.skip_ws();
         if label.is_none() && cur.eat("|") {
-            let l = cur.take_until("|").ok_or_else(|| {
-                err(
-                    lineno,
-                    "edge label opened with '|' but never closed".to_string(),
-                )
-            })?;
-            label = Some(clean_label_1line(&l));
+            // A markdown string may hold `|`; it ends only at `` `" ``.
+            let save = cur.pos;
+            cur.skip_ws();
+            if cur.eat(markdown::MD_OPEN) {
+                let inner = cur
+                    .take_until(markdown::MD_CLOSE)
+                    .ok_or_else(|| err(lineno, "unclosed markdown string".to_string()))?;
+                cur.skip_ws();
+                if !cur.eat("|") {
+                    return Err(err(
+                        lineno,
+                        "edge label opened with '|' but never closed".to_string(),
+                    ));
+                }
+                label = Some(md_label(&inner, lineno, false)?);
+            } else {
+                cur.pos = save;
+                let l = cur.take_until("|").ok_or_else(|| {
+                    err(
+                        lineno,
+                        "edge label opened with '|' but never closed".to_string(),
+                    )
+                })?;
+                label = Some(clean_label_1line(&l));
+            }
         }
         cur.skip_ws();
         let nexts = parse_node_list(&mut cur, g, lineno, assigns, subs, sub_ids, fm)?;
@@ -2252,7 +2296,7 @@ fn parse_edge_inline_label(
                 ))
             }
         };
-        let label = clean_label_1line(&after[..i]);
+        let label = label_1line(&after[..i], lineno)?;
         cur.pos += (rest.len() - body.len()) + open.len() + i + len;
         return Ok(Some((kind, EdgeEnds { start, end }, label)));
     }
@@ -2369,7 +2413,7 @@ fn parse_node(
     let id = cur.s[start..cur.pos].to_string();
 
     // Check order matters: longest / most-specific openers first.
-    let parsed: Option<(Shape, String)> = if cur.eat("(((") {
+    let parsed: Option<(Shape, (String, bool))> = if cur.eat("(((") {
         Some((Shape::DoubleCircle, close(cur, ")))", lineno)?))
     } else if cur.eat("((") {
         Some((Shape::Circle, close(cur, "))", lineno)?))
@@ -2396,7 +2440,8 @@ fn parse_node(
     };
 
     let (shape, label) = match parsed {
-        Some((s, l)) => (Some(s), Some(clean_label(&l))),
+        Some((s, (l, true))) => (Some(s), Some(md_label(&l, lineno, true)?)),
+        Some((s, (l, false))) => (Some(s), Some(clean_label(&l))),
         None => (None, None),
     };
     // An id that names a declared subgraph (pre-scanned, so
@@ -2458,7 +2503,24 @@ fn parse_node(
     Ok(End::Node(n))
 }
 
-fn close(cur: &mut Cur<'_>, closer: &str, lineno: usize) -> Result<String, ParseError> {
+/// A bracket label's text up to `closer`, and whether it is a
+/// markdown string (returned without its delimiters, still raw).
+fn close(cur: &mut Cur<'_>, closer: &str, lineno: usize) -> Result<(String, bool), ParseError> {
+    // Markdown string: `A["`**x**`"]` — only `` `" `` ends it.
+    if cur.eat(markdown::MD_OPEN) {
+        let inner = cur
+            .take_until(markdown::MD_CLOSE)
+            .ok_or_else(|| err(lineno, "unclosed markdown string".to_string()))?;
+        cur.skip_ws();
+        if !cur.eat(closer) {
+            return Err(err(lineno, format!("closing '{}' not found", closer)));
+        }
+        return Ok((inner, true));
+    }
+    close_plain(cur, closer, lineno).map(|l| (l, false))
+}
+
+fn close_plain(cur: &mut Cur<'_>, closer: &str, lineno: usize) -> Result<String, ParseError> {
     // Quoted label: `A["odd [text]"]` — quotes protect bracket characters.
     if cur.rest().starts_with('"') {
         cur.bump();
@@ -7991,5 +8053,123 @@ mod tests {
             Some("/javascript:x")
         );
         assert_eq!(sanitize_href("%zz").as_deref(), Some("%zz"));
+    }
+
+    // ── markdown strings ────────────────────────────────────────
+
+    #[test]
+    fn markdown_node_labels_lower_to_label_markup() {
+        let g = parse("flowchart LR\n  A[\"`This **is** _Markdown_`\"] --> B\n").unwrap();
+        assert_eq!(g.nodes[0].label, "This <b>is</b> <i>Markdown</i>");
+        // Spans physical lines (the baseline said "unclosed label quote").
+        let g = parse(
+            "flowchart LR\n  newLines[\"`Line1\n    Line 2\n    Line 3`\"]\n  newLines --> X\n",
+        )
+        .unwrap();
+        assert_eq!(g.nodes[0].label, "Line1\nLine 2\nLine 3");
+        assert_eq!(g.edges.len(), 1);
+        let g = parse("flowchart LR\n  A[\"`***both*** __strong__ *em* _em2_`\"]\n").unwrap();
+        assert_eq!(
+            g.nodes[0].label,
+            "<b><i>both</i></b> <b>strong</b> <i>em</i> <i>em2</i>"
+        );
+        let src = "snake_case_name and 2 * 3 * 4 and **unclosed";
+        let g = parse(&format!("flowchart LR\n  A[\"`{src}`\"]\n")).unwrap();
+        // No emphasis anywhere (the long line wraps, so compare words).
+        assert_eq!(g.nodes[0].label.replace('\n', " "), src);
+        let g = parse("flowchart LR\n  A[\"`\\*not italic\\* #42;also not#42;`\"]\n").unwrap();
+        assert_eq!(g.nodes[0].label, "*not italic* *also not*");
+        let g = parse("flowchart LR\n  A[\"`# heading\n  - item`\"]\n").unwrap();
+        assert_eq!(g.nodes[0].label, "# heading\n- item");
+        let g = parse("flowchart LR\n  A[\"`a\n\n\n  b`\"]\n").unwrap();
+        assert_eq!(g.nodes[0].label, "a\nb");
+        let g = parse("flowchart LR\n  A[\"`one<br/>two **b**`\"]\n").unwrap();
+        assert_eq!(g.nodes[0].label, "one\ntwo <b>b</b>");
+        // Every shape opener takes one.
+        let g = parse("flowchart LR\n  a(\"`**r**`\") --> b{{\"`**h**`\"}} --> c((\"`**c**`\"))\n")
+            .unwrap();
+        assert!(
+            g.nodes.iter().all(|n| n.label.starts_with("<b>")),
+            "{:?}",
+            g.nodes
+        );
+    }
+
+    #[test]
+    fn markdown_node_labels_wrap() {
+        let g = parse(
+            "flowchart LR\n  A[\"`The quick brown fox jumps over the lazy dog and keeps running far away`\"]\n",
+        )
+        .unwrap();
+        let lines: Vec<&str> = g.nodes[0].label.split('\n').collect();
+        assert!(lines.len() >= 3, "{lines:?}");
+        assert!(
+            lines.iter().all(|l| crate::layout::text_width(l) <= 175.0),
+            "{lines:?}"
+        );
+        let (_, h) = crate::layout::intrinsic_size(&g.nodes[0]);
+        assert_eq!(
+            h,
+            crate::layout::BASE_H + (lines.len() - 1) as f64 * crate::layout::LINE_H
+        );
+        let w = "Supercalifragilisticexpialidociousword";
+        let g = parse(&format!("flowchart LR\n  A[\"`{w}`\"]\n")).unwrap();
+        assert_eq!(g.nodes[0].label, w);
+    }
+
+    #[test]
+    fn markdown_needs_the_quote_backtick_opener() {
+        let g = parse("flowchart LR\n  A[\" `x` \"]\n  B[`y`]\n  C[\"#96;z#96;\"]\n").unwrap();
+        let labels: Vec<&str> = g.nodes.iter().map(|n| n.label.as_str()).collect();
+        assert_eq!(labels, ["`x`", "`y`", "`z`"]);
+        let g = parse("flowchart LR\n  A[**x**]\n").unwrap();
+        assert_eq!(g.nodes[0].label, "**x**");
+    }
+
+    #[test]
+    fn markdown_edge_labels_and_subgraph_titles() {
+        let g = parse(
+            "flowchart LR\n  A -->|\"`**pipe** label`\"| B\n  A -- \"`*inline* label`\" --> C\n",
+        )
+        .unwrap();
+        assert_eq!(g.edges[0].label.as_deref(), Some("<b>pipe</b> label"));
+        assert_eq!(g.edges[1].label.as_deref(), Some("<i>inline</i> label"));
+        // A `|` inside a markdown pipe label is text.
+        let g = parse("flowchart LR\n  A -->|\"`a|b`\"| B\n").unwrap();
+        assert_eq!(g.edges[0].label.as_deref(), Some("a|b"));
+        // Phase 1: edge labels are one line.
+        let g = parse("flowchart LR\n  A -- \"`two\n  lines`\" --> B\n").unwrap();
+        assert_eq!(g.edges[0].label.as_deref(), Some("two lines"));
+        let g =
+            parse("flowchart LR\n  subgraph s1 [\"`*Italic* title`\"]\n    A\n  end\n").unwrap();
+        assert_eq!(g.subgraphs[0].title, "<i>Italic</i> title");
+        let g = parse(
+            "flowchart LR\nsubgraph \"One\"\n  a(\"`The **cat**\n  in the hat`\") -- \"edge label\" --> \
+             b{{\"`The **dog** in the hog`\"}}\nend\nsubgraph \"`**Two**`\"\n  c(\"`The **cat**\n  \
+             in the hat`\") -- \"`Bold **edge label**`\" --> d(\"The dog in the hog\")\nend\n",
+        )
+        .unwrap();
+        assert_eq!(g.nodes[0].label, "The <b>cat</b>\nin the hat");
+        assert_eq!(g.nodes[1].label, "The <b>dog</b> in the hog");
+        assert_eq!(g.edges[1].label.as_deref(), Some("Bold <b>edge label</b>"));
+        assert_eq!(g.subgraphs[1].id, "**Two**");
+        assert_eq!(g.subgraphs[1].title, "<b>Two</b>");
+        assert_eq!(g.subgraphs[1].nodes.len(), 2);
+    }
+
+    #[test]
+    fn markdown_strings_protect_semicolons_and_report_errors() {
+        let g = parse("flowchart TD\n  A[\"`x;y`\"] --> B; B --> C\n").unwrap();
+        assert_eq!(g.nodes[0].label, "x;y");
+        assert_eq!(g.edges.len(), 2);
+        let e = parse("flowchart LR\n  A[\"`bad ` tick`\"]\n").unwrap_err();
+        assert!(e.message.contains("#96;"), "{}", e.message);
+        assert_eq!(e.line, 2);
+        let e = parse("flowchart LR\n  A[\"`never closed\n  B --> C\n").unwrap_err();
+        assert!(e.message.contains("never closed"), "{}", e.message);
+        assert_eq!(e.line, 2);
+        // Empty is lenient (mermaid rejects it).
+        let g = parse("flowchart LR\n  A[\"``\"]\n").unwrap();
+        assert_eq!(g.nodes[0].label, "");
     }
 }

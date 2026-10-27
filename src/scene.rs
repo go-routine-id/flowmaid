@@ -1781,7 +1781,7 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
              fill=\"#6a7086\">{}</text>\n",
             x + 10.0,
             y + 17.0,
-            escape(&c.title)
+            rich(&c.title)
         ));
     }
 
@@ -4090,5 +4090,36 @@ mod tests {
         let g =
             parse("flowchart LR\nsubgraph S\nA\nend\nA --> B\nclick A \"https://x\"\n").unwrap();
         assert!(scene(&g).nodes[0].link.is_some());
+    }
+
+    // ── markdown strings ────────────────────────────────────────
+
+    #[test]
+    fn markdown_labels_render_as_styled_tspans() {
+        let svg = svg_src("flowchart LR\n  A[\"`This **is** _Markdown_`\"] --> B\n");
+        assert!(
+            svg.contains("<tspan font-weight=\"bold\">is</tspan>"),
+            "{svg}"
+        );
+        assert!(svg.contains("<tspan font-style=\"italic\">Markdown</tspan>"));
+        assert!(!svg.contains("**") && !svg.contains('`'));
+        let svg = svg_src("flowchart LR\n  n[\"`Line1\n    Line 2\n    Line 3`\"]\n");
+        assert_eq!(svg.matches("dy=\"17.0\"").count(), 2, "{svg}");
+        let svg = svg_src("flowchart LR\n  A -->|\"`**pipe** label`\"| B\n");
+        assert!(svg.contains("<tspan font-weight=\"bold\">pipe</tspan> label</text>"));
+    }
+
+    #[test]
+    fn subgraph_titles_render_rich() {
+        let svg = svg_src("flowchart LR\n  subgraph s1 [\"`*Italic* title`\"]\n    A\n  end\n");
+        assert!(
+            svg.contains(
+                "fill=\"#6a7086\"><tspan font-style=\"italic\">Italic</tspan> title</text>"
+            ),
+            "{svg}"
+        );
+        // Plain titles are byte-identical to the old escape().
+        let svg = svg_src("flowchart LR\n  subgraph s1 [a & b]\n    A\n  end\n");
+        assert!(svg.contains("fill=\"#6a7086\">a &amp; b</text>"));
     }
 }

@@ -9,6 +9,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Markdown strings in flowchart labels.** ``"`**bold** _italic_`"`` in node, edge (pipe and
+  inline) and subgraph labels: CommonMark-style `**` / `__` / `*` / `_` emphasis with
+  flanking and rule-of-three handling, backslash escapes, multi-line bodies (indentation
+  dropped, blank lines collapsed), and greedy word wrap of node labels at mermaid 11's
+  200px markdown width. Headings, lists, links and other block or inline markdown stay
+  literal, as in mermaid's default HTML labels; entity codes never act as markdown. The
+  markdown is lowered to the existing `<b>` / `<i>` / newline label markup at parse time,
+  so there is no public API change. Edge labels and subgraph titles stay single-line.
+  Subgraph titles now render `<b>` / `<i>` markup (plain titles are unchanged). Diagrams
+  without markdown strings render byte-identically.
 - **Flowchart `click` statements.** Every mermaid form parses: `click ID[,ID…] [href] "url"
   ["tooltip"] [_self|_blank|_parent|_top]`, `click ID callback ["tooltip"]` and `click ID
   call fn(args) ["tooltip"]`, with line-numbered errors for a bad target, a tooltip after
@@ -79,6 +89,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- A pipe edge label ``|"`x`"|`` is now a markdown string (label `x`), as in mermaid; it
+  used to keep the backticks.
 - **Mermaid's marker-letter rule applies.** A letter glued to the end of an operator is
   a marker, as in mermaid: `A---oB` is now a circle edge to `B` (was an open line to
   `oB`), and `A --xray` a cross edge to `ray`. Separate the id with a space to keep it.

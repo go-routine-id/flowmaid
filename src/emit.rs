@@ -1622,8 +1622,13 @@ mod tests {
 
     #[test]
     fn round3_backtick_edge_labels_and_cr_entities_are_defused() {
-        // Edge labels get the same markdown-string guard as nodes.
+        // `"`pow`"` in a pipe is a mermaid markdown string now (label
+        // "pow"); a label that really starts with a backtick still
+        // gets the guard, so it can't turn into one on the way back.
         let g = parse("flowchart TD\nA -->|\"`pow`\"| B\n").unwrap();
+        assert_eq!(g.edges[0].label.as_deref(), Some("pow"));
+        assert_roundtrip(&g);
+        let g = parse("flowchart TD\nA -->|\"#96;pow#96;\"| B\n").unwrap();
         assert_eq!(g.edges[0].label.as_deref(), Some("`pow`"));
         let text = to_mermaid(&g);
         assert!(text.contains("#96;"), "leading backtick defused:\n{text}");
@@ -1878,5 +1883,21 @@ mod tests {
         let back = parse(&text).unwrap();
         assert_eq!(back.links[&0].tooltip.as_deref(), Some("tip"));
         assert_eq!(back.links[&0].href, None);
+    }
+
+    #[test]
+    fn markdown_labels_round_trip_as_their_lowered_markup() {
+        for src in [
+            "flowchart LR\n  A[\"`This **is** _Markdown_`\"] --> B\n",
+            "flowchart LR\n  n[\"`Line1\n    Line 2\n    Line 3`\"]\n",
+            "flowchart LR\n  A[\"`The quick brown fox jumps over the lazy dog and keeps running far away`\"]\n",
+            "flowchart LR\n  A -->|\"`**pipe** label`\"| B\n  A -- \"`*inline* label`\" --> C\n",
+            "flowchart LR\n  subgraph s1 [\"`*Italic* title`\"]\n    A\n  end\n",
+            "flowchart LR\nsubgraph \"`**Two**`\"\n  c(\"`The **cat**\n  in the hat`\") -- \"`Bold **edge label**`\" --> d\nend\n",
+            "flowchart LR\n  A[\"`\\*not italic\\* #42;also not#42;`\"]\n",
+        ] {
+            let g = parse(src).unwrap_or_else(|e| panic!("{e}\n{src}"));
+            assert_roundtrip(&g);
+        }
     }
 }
