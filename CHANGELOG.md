@@ -7,6 +7,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Class and ER diagrams no longer clip nodes dragged past the canvas origin.**
+  `class::route` / `er::route` keep caller positions verbatim, but their `to_svg` drew the
+  canvas as `0 0 width height`, so a class or table dragged left of or above the origin fell
+  outside the viewBox (and out of exported SVGs). The scene is now shifted into view and the
+  canvas grown just enough; laid-out and in-bounds scenes render byte-identically.
+
 ## [0.31.0] - 2026-10-27
 
 ### Added

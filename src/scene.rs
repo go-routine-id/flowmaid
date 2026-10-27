@@ -1988,6 +1988,30 @@ pub(crate) fn flip_scene(sc: &mut Scene, extent: f64, horizontal: bool) {
     }
 }
 
+/// `sc` moved right/down just enough that nothing sits inside the
+/// top-left `MARGIN` gutter, canvas grown to match. [`route`] keeps
+/// caller positions verbatim, so a node dragged past the origin would
+/// otherwise fall outside the `0 0 W H` viewBox of renderers that
+/// draw `width`/`height` as-is (class, ER). Scenes already clear of
+/// the gutter — every laid-out one — come back untouched.
+pub(crate) fn fit_top_left(sc: &Scene) -> std::borrow::Cow<'_, Scene> {
+    let mut bb = Bbox::new();
+    grow_scene(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
+    if !bb.0.is_finite() {
+        return std::borrow::Cow::Borrowed(sc);
+    }
+    let dx = (MARGIN - bb.0).max(0.0);
+    let dy = (MARGIN - bb.2).max(0.0);
+    if dx == 0.0 && dy == 0.0 {
+        return std::borrow::Cow::Borrowed(sc);
+    }
+    let mut out = sc.clone();
+    shift_scene(&mut out, dx, dy);
+    out.width += dx;
+    out.height += dy;
+    std::borrow::Cow::Owned(out)
+}
+
 pub(crate) fn shift_scene(sc: &mut Scene, dx: f64, dy: f64) {
     for n in &mut sc.nodes {
         n.x += dx;
