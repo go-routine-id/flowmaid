@@ -26,6 +26,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `oB`), and `A --xray` a cross edge to `ray`. Separate the id with a space to keep it.
   Code that builds `model::Edge` / `model::SubEdge` with struct literals must add
   `ends: Default::default()`.
+- **Unquoted inline labels end at the first marker closer.** Mermaid's lexer closes edge
+  text at the first `--x`, `--o`, `==x`, `==o` (or `.-x`, `.-o`), even mid-word, and so
+  does flowmaid now. `A -- go--on --> B` becomes a circle edge `A → n` labelled `go` plus
+  `n --> B` (was one edge labelled `go--on`); `A --xfer--> B` becomes `A --x fer --> B`;
+  `A -- to--x --> B` and `A -- use --xml flag --> B` are now errors. Quote the label to
+  keep it whole: `A -- "go--on" --> B`. Quoted text is never scanned for a closer, so
+  `A -- "a --> b" --> B` and `A -. "a .-x" .-> B` now parse too.
+- **Glyph ends sharing a node side are spread apart.** When an edge end on a box's side
+  carries a start, cross or circle glyph, the ends on that side are spaced up to 14px
+  apart so the glyphs stay readable. Sides without such glyphs render exactly as before.
 
 ## [0.30.0] - 2026-09-07
 

@@ -1021,13 +1021,13 @@ fn parse_edge_inline_label(
             return Ok(None);
         }
         // The earliest closer wins.
-        let Some((i, len, kind, end)) = (0..after.len())
-            .filter(|&i| after.is_char_boundary(i))
-            .find_map(|i| inline_closer(open, &after[i..]).map(|(l, k, e)| (i, l, k, e)))
-        else {
+        let Some((i, len, kind, end)) = find_inline_closer(open, after) else {
             return Err(err(
                 lineno,
-                format!("inline edge label after '{}' is never closed", open),
+                format!(
+                    "inline edge label after '{}{open}' is never closed",
+                    lead.map(String::from).unwrap_or_default()
+                ),
             ));
         };
         // Mermaid accepts a start marker on a labelled edge only when
@@ -1071,6 +1071,28 @@ fn tail_marker(c: Option<char>) -> Option<Marker> {
         Some('o') => Some(Marker::Circle),
         _ => None,
     }
+}
+
+/// The earliest closer of an inline label opened by `open` in `after`
+/// (the text right after the opener); returns (offset, closer length,
+/// kind, explicit end marker). A `"…"` span is skipped whole, as
+/// mermaid's string state does, so a quoted label may hold
+/// closer-looking text (`-- "use --xml" -->`). An unmatched `"` is
+/// plain text.
+fn find_inline_closer(open: &str, after: &str) -> Option<(usize, usize, EdgeKind, Option<Marker>)> {
+    let mut i = 0;
+    while i < after.len() {
+        let s = &after[i..];
+        if let Some(q) = s.strip_prefix('"').and_then(|t| t.find('"')) {
+            i += q + 2;
+            continue;
+        }
+        if let Some((len, kind, end)) = inline_closer(open, s) {
+            return Some((i, len, kind, end));
+        }
+        i += s.chars().next().map_or(1, char::len_utf8);
+    }
+    None
 }
 
 /// Whether `s` starts with the closer of an inline label opened by
@@ -1247,17 +1269,24 @@ fn edge_op_follows(rest: &str) -> bool {
 /// open-line closers). The opener alone is ambiguous with statement
 /// arguments like `--x`, so the closing operator must appear later
 /// on the line, with a target after it (a line ENDING in the closer
-/// is a bare-title subgraph header, not an edge). Label text is
+/// is a bare-title subgraph header, not an edge). A complete operator
+/// likewise needs a target after it. Label text is
 /// unrestricted — `-- (note) -->` and `-- open: docs -->` are real
 /// edges — mirroring what the inline-label edge parser consumes.
 /// Used by the statement-keyword gates only — the `subgraph` header
 /// branch sticks to complete operators so 0.19-era headers titled
 /// `-- Phase 1 ---` keep parsing as headers.
 fn edge_lead_follows(rest: &str) -> bool {
-    if edge_op_follows(rest) {
+    let r = rest.trim_start();
+    if r.starts_with('&') {
         return true;
     }
-    let r = rest.trim_start();
+    // A complete operator counts only with a target after it: a bare
+    // `click x--x` is a malformed statement, not an edge from `click`.
+    let mut c = Cur::new(r);
+    if parse_edge_op(&mut c).is_some() && !c.rest().trim().is_empty() {
+        return true;
+    }
     let r = r
         .strip_prefix(['<', 'x', 'o'])
         .filter(|b| ["--", "-.", "=="].iter().any(|o| b.starts_with(o)))
@@ -1266,10 +1295,7 @@ fn edge_lead_follows(rest: &str) -> bool {
         return false;
     };
     // Earliest closer wins (that's what the edge parser would eat).
-    let after = &r[2..];
-    let end = (0..after.len())
-        .filter(|&i| after.is_char_boundary(i))
-        .find_map(|i| inline_closer(open, &after[i..]).map(|(len, ..)| 2 + i + len));
+    let end = find_inline_closer(open, &r[2..]).map(|(i, len, ..)| 2 + i + len);
     end.is_some_and(|end| !r[end..].trim().is_empty())
 }
 
@@ -4595,6 +4621,109 @@ mod tests {
                 }
             )]
         );
+    }
+
+    #[test]
+    fn quoted_inline_labels_may_hold_closer_text() {
+        // Mermaid's string state shields quoted text, so a closer
+        // inside the quotes never ends the label.
+        for (line, label) in [
+            ("A -- \"use --xml\" --> B", "use --xml"),
+            ("A -- \"a --o b\" --> B", "a --o b"),
+            ("A == \"a ==x\" ==> B", "a ==x"),
+            ("A -- \"x--x\" --> B", "x--x"),
+            ("A -- \"go--on\" --> B", "go--on"),
+            ("A -. \"a .-x\" .-> B", "a .-x"),
+            ("A -- \"a --> b\" --> B", "a --> b"),
+            ("A x-- \"t --x\" --x B", "t --x"),
+        ] {
+            let g = parse(&format!("flowchart LR\n{line}\n"))
+                .unwrap_or_else(|e| panic!("{line:?}: {}", e.message));
+            assert_eq!(g.edges.len(), 1, "{line:?}");
+            assert_eq!(g.nodes[g.edges[0].to].id, "B", "{line:?}");
+            assert_eq!(g.edges[0].label.as_deref(), Some(label), "{line:?}");
+        }
+        // The keyword gate skips quotes the same way.
+        let g = parse("flowchart LR\nclick -- \"a --x b\" --> B\n").unwrap();
+        assert_eq!(g.edges[0].label.as_deref(), Some("a --x b"));
+    }
+
+    #[test]
+    fn unquoted_inline_labels_end_at_the_first_marker_closer() {
+        // Mermaid's lexer closes edge text at the first `--+[-xo>]` /
+        // `==+[=xo>]`, even mid-word, so these split where it does.
+        let edges = |src: &str| {
+            let g = parse(src).unwrap_or_else(|e| panic!("{src:?}: {}", e.message));
+            let v: Vec<(String, String, Option<String>, Option<Marker>)> = g
+                .edges
+                .iter()
+                .map(|e| {
+                    (
+                        g.nodes[e.from].id.clone(),
+                        g.nodes[e.to].id.clone(),
+                        e.label.clone(),
+                        e.ends.end,
+                    )
+                })
+                .collect();
+            v
+        };
+        let e = |a: &str, b: &str, l: Option<&str>, m| (a.into(), b.into(), l.map(String::from), m);
+        assert_eq!(
+            edges("flowchart LR\nA -- go--on --> B\n"),
+            [
+                e("A", "n", Some("go"), Some(Marker::Circle)),
+                e("n", "B", None, None)
+            ]
+        );
+        assert_eq!(
+            edges("flowchart LR\nA == hi==on ==> B\n"),
+            [
+                e("A", "n", Some("hi"), Some(Marker::Circle)),
+                e("n", "B", None, None)
+            ]
+        );
+        assert_eq!(
+            edges("flowchart LR\nA --xfer--> B\n"),
+            [
+                e("A", "fer", None, Some(Marker::Cross)),
+                e("fer", "B", None, None)
+            ]
+        );
+        // Closed right before another operator: no target, an error.
+        for line in [
+            "A -- to--x --> B",
+            "A --o--> B",
+            "A -- use --xml flag --> B",
+        ] {
+            assert!(
+                parse(&format!("flowchart LR\n{line}\n")).is_err(),
+                "{line:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn keyword_heads_with_marker_operators() {
+        // A labelled two-way / marker edge from a keyword-named node
+        // stays an edge…
+        for line in [
+            "click x-- t --x B",
+            "linkStyle <-- t --> B",
+            "click o-- t --o B",
+        ] {
+            let g = parse(&format!("flowchart LR\n{line}\n"))
+                .unwrap_or_else(|e| panic!("{line:?}: {}", e.message));
+            assert_eq!(g.edges.len(), 1, "{line:?}");
+            assert!(g.edges[0].ends.start.is_some(), "{line:?}");
+        }
+        // …but an operator with nothing after it is not an edge, so the
+        // targeted message survives.
+        let e = parse("flowchart LR\nA --> B\nclick x--x\n").unwrap_err();
+        assert!(e.message.contains("aren't supported"), "{}", e.message);
+        // An unclosed two-way opener names the whole opener.
+        let e = parse("flowchart LR\nA <-- B\n").unwrap_err();
+        assert!(e.message.contains("'<--' is never closed"), "{}", e.message);
     }
 
     #[test]

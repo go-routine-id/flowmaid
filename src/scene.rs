@@ -20,6 +20,16 @@ use std::collections::HashMap;
 pub(crate) const MARGIN: f64 = 28.0;
 /// Gap between parallel edges (connecting the same node pair).
 const PARALLEL_GAP: f64 = 16.0;
+/// Wanted spacing between edge ends that share a node side when one
+/// of them carries a cross/circle or start glyph (the glyphs are about
+/// 11-12px across).
+const GLYPH_PORT_GAP: f64 = 14.0;
+
+/// An edge in abstract layout coordinates: bezier points + routed
+/// waypoints (empty = none) + optional (label centre, label box width).
+type AbsEdge = ([(f64, f64); 4], Vec<(f64, f64)>, Option<((f64, f64), f64)>);
+/// An edge end on a node side: (edge index, is source end, has glyph).
+type Port = (usize, bool, bool);
 
 /// Cluster box as (centre, size) — used for subgraph edge anchors.
 type BoxCS = ((f64, f64), (f64, f64));
@@ -455,9 +465,6 @@ fn scene_from_layout(g: &Graph, sizes: &[(f64, f64)], lo: LayoutResult) -> Scene
 
     // Edge geometry (abstract coordinates) with parallel-edge separation.
     let offs = parallel_offsets(g);
-    /// Bezier points + routed waypoints (empty = none) + optional
-    /// (label centre, label box width).
-    type AbsEdge = ([(f64, f64); 4], Vec<(f64, f64)>, Option<((f64, f64), f64)>);
     let mut abs_edges: Vec<AbsEdge> = Vec::with_capacity(g.edges.len());
     for (ei, (e, off)) in g.edges.iter().zip(offs).enumerate() {
         let a = &lo.nodes[e.from];
@@ -514,6 +521,7 @@ fn scene_from_layout(g: &Graph, sizes: &[(f64, f64)], lo: LayoutResult) -> Scene
         });
         abs_edges.push((pts, wps, label));
     }
+    spread_glyph_ports(g, &lo.nodes, &mut abs_edges);
 
     // Canvas from the bounding box of nodes + curves + labels. A
     // bezier curve always stays inside the convex hull of its
@@ -1682,6 +1690,123 @@ pub(crate) fn grow_scene(
     }
 }
 
+/// Spread apart the edge ends that share one top/bottom side of a box
+/// node when any of them carries a glyph beyond the plain arrowhead
+/// (a start marker, a cross or a circle). [`anchor`] keeps fan-out
+/// ports within a few px of each other, which plain lines tolerate but
+/// which piles the wider glyphs into one blob. Sides without such a
+/// glyph are left untouched, so marker-free diagrams render as before.
+/// Abstract coordinates; endpoints move along the breadth axis only,
+/// each with its neighbouring control point so the curve still leaves
+/// the border square.
+fn spread_glyph_ports(g: &Graph, placed: &[Placed], edges: &mut [AbsEdge]) {
+    // (node, bottom side) -> the edge ends on it.
+    let mut sides: HashMap<(usize, bool), Vec<Port>> = HashMap::new();
+    for (ei, e) in g.edges.iter().enumerate() {
+        if e.from == e.to || matches!(e.kind, EdgeKind::Invisible) {
+            continue;
+        }
+        let (pts, wps, _) = &edges[ei];
+        for (src, n) in [(true, e.from), (false, e.to)] {
+            if matches!(
+                g.nodes[n].shape,
+                Shape::Diamond
+                    | Shape::Circle
+                    | Shape::DoubleCircle
+                    | Shape::StateStart
+                    | Shape::StateEnd
+            ) {
+                continue;
+            }
+            let pt = match (src, wps.is_empty()) {
+                (true, true) => pts[0],
+                (false, true) => pts[3],
+                (true, false) => wps[0],
+                (false, false) => wps[wps.len() - 1],
+            };
+            let p = &placed[n];
+            let bottom = if (pt.1 - (p.l + p.lsize / 2.0)).abs() < 0.5 {
+                true
+            } else if (pt.1 - (p.l - p.lsize / 2.0)).abs() < 0.5 {
+                false
+            } else {
+                continue; // a side port (same-layer edge)
+            };
+            let glyph = if src {
+                e.ends.start_marker(e.kind).is_some()
+            } else {
+                matches!(
+                    e.ends.end_marker(e.kind),
+                    Some(Marker::Cross | Marker::Circle)
+                )
+            };
+            sides.entry((n, bottom)).or_default().push((ei, src, glyph));
+        }
+    }
+    // (endpoint index, neighbour index) into the drawn point list.
+    let ends_of = |pts: &[(f64, f64); 4], wps: &Vec<(f64, f64)>, src: bool| {
+        let (pt, nb) = match (src, wps.is_empty()) {
+            (true, true) => (pts[0], pts[1]),
+            (false, true) => (pts[3], pts[2]),
+            (true, false) => (wps[0], wps[1]),
+            (false, false) => (wps[wps.len() - 1], wps[wps.len() - 2]),
+        };
+        (pt.0, nb.0)
+    };
+    let mut keys: Vec<_> = sides.keys().copied().collect();
+    keys.sort_unstable(); // deterministic output
+    for key in keys {
+        let mut ports = sides.remove(&key).unwrap_or_default();
+        if ports.len() < 2 || !ports.iter().any(|&(.., glyph)| glyph) {
+            continue;
+        }
+        // Order by where each edge heads next (then by where it sits
+        // now), so the spread ends don't make their curves cross.
+        let key_of = |&(ei, src, _): &Port| {
+            let (at, nb) = ends_of(&edges[ei].0, &edges[ei].1, src);
+            (nb, at)
+        };
+        ports.sort_by(|a, b| {
+            key_of(a)
+                .partial_cmp(&key_of(b))
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        let at: Vec<f64> = ports
+            .iter()
+            .map(|&(ei, src, _)| ends_of(&edges[ei].0, &edges[ei].1, src).0)
+            .collect();
+        if at.windows(2).all(|w| w[1] - w[0] >= GLYPH_PORT_GAP) {
+            continue;
+        }
+        let p = &placed[key.0];
+        let half = match g.nodes[key.0].shape {
+            Shape::Stadium => p.bsize / 2.0 - p.lsize / 2.0,
+            _ => p.bsize / 2.0 - 4.0,
+        }
+        .max(0.0);
+        let n = at.len() as f64;
+        let step = GLYPH_PORT_GAP.min(2.0 * half / (n - 1.0));
+        let run = step * (n - 1.0);
+        let mean = at.iter().sum::<f64>() / n;
+        let first = (mean - run / 2.0).clamp(p.b - half, p.b + half - run);
+        for (i, &(ei, src, _)) in ports.iter().enumerate() {
+            let d = first + step * i as f64 - at[i];
+            let (pts, wps, label) = &mut edges[ei];
+            let (pi, ni) = if src { (0, 1) } else { (3, 2) };
+            pts[pi].0 += d;
+            pts[ni].0 += d;
+            if wps.is_empty() {
+                if let Some((m, _)) = label {
+                    *m = cubic_mid(pts[0], pts[1], pts[2], pts[3]);
+                }
+            } else {
+                let wi = if src { 0 } else { wps.len() - 1 };
+                wps[wi].0 += d;
+            }
+        }
+    }
+}
+
 fn pair(a: usize, b: usize) -> (usize, usize) {
     if a <= b {
         (a, b)
@@ -2543,6 +2668,63 @@ mod tests {
                 .filter(|i| !i.is_empty() && **i != "arrow")
                 .count();
             assert_eq!(defs, want, "{op}: marker defs");
+        }
+    }
+
+    #[test]
+    fn subgraph_edges_keep_their_glyphs_in_scene_and_route() {
+        let g = parse("flowchart LR\nsubgraph S\nH\nend\nS <--> A\nS --x B\n").unwrap();
+        let s = scene(&g);
+        let ends = |sc: &Scene, to: &str| {
+            sc.edges
+                .iter()
+                .find(|e| e.from == "S" && e.to == to)
+                .unwrap_or_else(|| panic!("no S -> {to}"))
+                .ends
+        };
+        for sc in [
+            &s,
+            &route(&g, &s.nodes.iter().map(|n| (n.x, n.y)).collect::<Vec<_>>()),
+        ] {
+            assert_eq!(ends(sc, "A").start, Some(Marker::Arrow));
+            assert_eq!(ends(sc, "B").end, Some(Marker::Cross));
+            let svg = to_svg(sc);
+            assert!(svg.contains("marker-start=\"url(#arrow-start)\""));
+            assert!(svg.contains("marker-end=\"url(#cross-end)\""));
+        }
+    }
+
+    #[test]
+    fn glyph_ends_sharing_a_side_are_spread_apart() {
+        let starts = |src: &str| {
+            let s = scene(&parse(src).unwrap());
+            let mut v: Vec<f64> = s
+                .edges
+                .iter()
+                .filter(|e| e.from == "A")
+                .map(|e| e.bezier[0].1)
+                .collect();
+            v.sort_by(f64::total_cmp);
+            v
+        };
+        let gaps = |v: &[f64]| v.windows(2).map(|w| w[1] - w[0]).collect::<Vec<_>>();
+        let glyphs = starts("flowchart LR\nA <--> B\nA x--x C\nA o--o D\n");
+        assert!(
+            gaps(&glyphs).iter().all(|&d| d >= GLYPH_PORT_GAP - 1e-9),
+            "{glyphs:?}"
+        );
+        // Plain fan-out keeps its tight ports (output unchanged).
+        let plain = starts("flowchart LR\nA --> B\nA --> C\nA --> D\n");
+        assert!(
+            gaps(&plain).iter().all(|&d| d < GLYPH_PORT_GAP),
+            "{plain:?}"
+        );
+        // Ends stay on the node's border.
+        let s = scene(&parse("flowchart LR\nA <--> B\nA x--x C\nA o--o D\n").unwrap());
+        let a = &s.nodes[0];
+        for e in &s.edges {
+            let p = e.bezier[0];
+            assert!((p.1 - a.y).abs() <= a.h / 2.0, "{p:?}");
         }
     }
 
