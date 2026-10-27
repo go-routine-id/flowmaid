@@ -209,8 +209,62 @@ pub struct EdgeMeta {
     pub id: Option<String>,
     /// Resolved animation (mermaid's `animate` / `animation` keys).
     pub animation: Option<EdgeAnimation>,
-    /// Per-edge curve (mermaid's `curve` key); `None` = the default.
+    /// Per-edge curve (mermaid's `curve` key, or a `linkStyle …
+    /// interpolate <curve>` statement); `None` = the default.
     pub curve: Option<EdgeCurve>,
+    /// Paint from mermaid's `linkStyle` statements, already resolved
+    /// (the `default` style overlaid with this edge's own). The default
+    /// (all `None`) draws the edge exactly as before.
+    pub style: LinkStyle,
+}
+
+/// Edge paint from mermaid's `linkStyle <n> <styles>` /
+/// `linkStyle default <styles>`. `None` fields keep the edge kind's
+/// built-in look (theme colour, 1.7px or 3.4px thick, dotted dash).
+///
+/// `Eq` holds because the parser never stores a non-finite
+/// `stroke_width`; a hand-built NaN width compares unequal to itself.
+#[derive(Debug, Clone, Default, PartialEq)]
+#[non_exhaustive]
+pub struct LinkStyle {
+    /// `stroke:<colour>`: line colour; arrow, cross and circle
+    /// markers follow it.
+    pub stroke: Option<String>,
+    /// `stroke-width:<n>[px]`, in pixels. A styled width keeps the
+    /// arrowhead at its normal size (mermaid's markers don't scale).
+    pub stroke_width: Option<f64>,
+    /// `stroke-dasharray:<v>` (`5 5`; `0` makes a dotted edge solid).
+    pub stroke_dasharray: Option<String>,
+    /// `fill:<paint>`: fills the region the curve encloses; `None`
+    /// means `none`.
+    pub fill: Option<String>,
+    /// `color:<colour>`: edge label text colour.
+    pub color: Option<String>,
+}
+
+impl Eq for LinkStyle {}
+
+impl LinkStyle {
+    /// Whether no property is set (the edge draws unstyled).
+    pub fn is_empty(&self) -> bool {
+        *self == LinkStyle::default()
+    }
+
+    /// Overlay `over`'s set fields onto `self` (`over` wins).
+    pub fn apply_over(&mut self, over: &LinkStyle) {
+        let pick = |a: &mut Option<String>, b: &Option<String>| {
+            if b.is_some() {
+                a.clone_from(b);
+            }
+        };
+        pick(&mut self.stroke, &over.stroke);
+        pick(&mut self.stroke_dasharray, &over.stroke_dasharray);
+        pick(&mut self.fill, &over.fill);
+        pick(&mut self.color, &over.color);
+        if over.stroke_width.is_some() {
+            self.stroke_width = over.stroke_width;
+        }
+    }
 }
 
 /// Custom per-node styling from Mermaid `style` / `classDef`

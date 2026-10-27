@@ -1387,20 +1387,168 @@ pub fn box_edge_bezier(
     )
 }
 
+/// The `<marker>` id of an unstyled edge end's glyph. The end arrow
+/// keeps its historical `#arrow` id so marker-free output is unchanged.
+fn marker_base_id(start: bool, m: Marker) -> &'static str {
+    match (start, m) {
+        (false, Marker::Arrow) => "arrow",
+        (true, Marker::Arrow) => "arrow-start",
+        (false, Marker::Cross) => "cross-end",
+        (true, Marker::Cross) => "cross-start",
+        (false, Marker::Circle) => "circle-end",
+        (true, Marker::Circle) => "circle-start",
+    }
+}
+
 /// `marker-start` / `marker-end` attribute for one edge end (empty
-/// when the end has no glyph). The end arrow keeps its historical
-/// `#arrow` id so marker-free output is unchanged.
-fn marker_attr(side: &str, m: Option<Marker>) -> String {
-    let id = match (side, m) {
-        (_, None) => return String::new(),
-        ("end", Some(Marker::Arrow)) => "arrow",
-        (_, Some(Marker::Arrow)) => "arrow-start",
-        ("end", Some(Marker::Cross)) => "cross-end",
-        (_, Some(Marker::Cross)) => "cross-start",
-        ("end", Some(Marker::Circle)) => "circle-end",
-        (_, Some(Marker::Circle)) => "circle-start",
+/// when the end has no glyph).
+fn marker_attr(side: &str, id: Option<&str>) -> String {
+    match id {
+        Some(id) => format!(" marker-{side}=\"url(#{id})\""),
+        None => String::new(),
+    }
+}
+
+/// Default stroke width of a drawn edge, and of a thick (`==>`) one.
+const EDGE_WIDTH: f64 = 1.7;
+const EDGE_WIDTH_THICK: f64 = 3.4;
+/// Dash pattern of a dotted (`-.->`) edge.
+const EDGE_DOTTED_DASH: &str = "5 4";
+/// Size of the classic arrowhead in `#arrow`'s units (multiples of the
+/// stroke width).
+const ARROW_MARKER_UNITS: f64 = 7.0;
+/// Arrowhead size in user space for an edge whose `linkStyle` sets a
+/// stroke width: the size `#arrow` has on a default edge, so a wide
+/// styled line keeps a normal head (mermaid's markers don't scale).
+const ARROW_MARKER_PX: f64 = ARROW_MARKER_UNITS * EDGE_WIDTH;
+
+/// A marker variant a `linkStyle`d edge end needs: the glyph in the
+/// edge's stroke colour and/or at a fixed user-space size.
+#[derive(Clone, PartialEq)]
+struct MarkerVariant {
+    marker: Marker,
+    start: bool,
+    color: Option<String>,
+    /// Sized in user space rather than stroke-width units (arrows only;
+    /// cross and circle always are).
+    user_space: bool,
+}
+
+/// The marker ids every drawn edge end uses, plus the defs of the
+/// styled variants among them. An unstyled end keeps its base id, so a
+/// diagram without `linkStyle` gets exactly the defs it always had. A
+/// styled id is the base id, `-u` for a fixed-size arrow, then `_` and
+/// the colour with every non-alphanumeric character as `_` (mermaid's
+/// marker id rule); two colours that sanitise alike get a counter.
+struct EdgeMarkers {
+    /// Per scene edge: (start id, end id).
+    ids: Vec<(Option<String>, Option<String>)>,
+    defs: String,
+}
+
+fn edge_markers(edges: &[SceneEdge]) -> EdgeMarkers {
+    let mut made: Vec<(MarkerVariant, String)> = Vec::new();
+    let mut defs = String::new();
+    let mut id_for = |e: &SceneEdge, start: bool| -> Option<String> {
+        if !edge_drawn(e) {
+            return None;
+        }
+        let m = if start {
+            e.ends.start_marker(e.kind)
+        } else {
+            e.ends.end_marker(e.kind)
+        }?;
+        let st = &e.meta.style;
+        let v = MarkerVariant {
+            marker: m,
+            start,
+            color: st.stroke.clone(),
+            user_space: m == Marker::Arrow && st.stroke_width.is_some(),
+        };
+        if v.color.is_none() && !v.user_space {
+            return Some(marker_base_id(start, m).to_string());
+        }
+        if let Some((_, id)) = made.iter().find(|(w, _)| *w == v) {
+            return Some(id.clone());
+        }
+        let mut id = marker_base_id(start, m).to_string();
+        if v.user_space {
+            id.push_str("-u");
+        }
+        if let Some(c) = &v.color {
+            id.push('_');
+            id.extend(
+                c.chars()
+                    .map(|ch| if ch.is_ascii_alphanumeric() { ch } else { '_' }),
+            );
+        }
+        let base = id.clone();
+        let mut n = 1;
+        while made.iter().any(|(_, x)| *x == id) {
+            n += 1;
+            id = format!("{base}_{n}");
+        }
+        defs.push_str(&marker_def(&id, &v));
+        made.push((v, id.clone()));
+        Some(id)
     };
-    format!(" marker-{side}=\"url(#{id})\"")
+    let ids = edges
+        .iter()
+        .map(|e| (id_for(e, true), id_for(e, false)))
+        .collect();
+    EdgeMarkers { ids, defs }
+}
+
+/// The `<marker>` def of one styled variant: the same geometry as the
+/// base glyph, painted in the edge colour (arrow fill, cross stroke,
+/// circle fill and stroke).
+fn marker_def(id: &str, v: &MarkerVariant) -> String {
+    let color = style_attr(v.color.as_deref(), EDGE_COLOR);
+    match v.marker {
+        Marker::Arrow => {
+            let (refx, d) = if v.start {
+                ("1.5", "M 10 1 L 1 5 L 10 9 z")
+            } else {
+                ("8.5", "M 0 1 L 9 5 L 0 9 z")
+            };
+            let size = if v.user_space {
+                format!(
+                    "markerUnits=\"userSpaceOnUse\" markerWidth=\"{ARROW_MARKER_PX:.1}\" \
+                     markerHeight=\"{ARROW_MARKER_PX:.1}\""
+                )
+            } else {
+                format!(
+                    "markerWidth=\"{ARROW_MARKER_UNITS}\" markerHeight=\"{ARROW_MARKER_UNITS}\""
+                )
+            };
+            format!(
+                "<marker id=\"{id}\" viewBox=\"0 0 10 10\" refX=\"{refx}\" refY=\"5\" \
+                 {size} orient=\"auto\"><path d=\"{d}\" fill=\"{color}\"/></marker>"
+            )
+        }
+        Marker::Cross => format!(
+            "<marker id=\"{id}\" viewBox=\"0 0 11 11\" refX=\"{}\" refY=\"5.5\" \
+             markerUnits=\"userSpaceOnUse\" markerWidth=\"11\" markerHeight=\"11\" \
+             orient=\"auto\"><path d=\"M 1 1 L 10 10 M 10 1 L 1 10\" fill=\"none\" \
+             stroke=\"{color}\" stroke-width=\"2\"/></marker>",
+            if v.start { 0 } else { 11 }
+        ),
+        Marker::Circle => format!(
+            "<marker id=\"{id}\" viewBox=\"0 0 10 10\" refX=\"{}\" refY=\"5\" \
+             markerUnits=\"userSpaceOnUse\" markerWidth=\"10\" markerHeight=\"10\" \
+             orient=\"auto\"><circle cx=\"5\" cy=\"5\" r=\"4\" fill=\"{color}\" \
+             stroke=\"{color}\" stroke-width=\"1\"/></marker>",
+            if v.start { 0 } else { 10 }
+        ),
+    }
+}
+
+/// Whether an edge is painted: everything but `~~~`, which shows only
+/// when a `linkStyle` gives it a positive stroke width (mermaid's
+/// inline style beats the invisible class's `stroke-width:0`), and then
+/// without markers.
+pub(crate) fn edge_drawn(e: &SceneEdge) -> bool {
+    !matches!(e.kind, EdgeKind::Invisible) || e.meta.style.stroke_width.is_some_and(|w| w > 0.0)
 }
 
 /// `<marker>` defs beyond the classic end arrow, emitted only for the
@@ -1409,15 +1557,12 @@ fn marker_attr(side: &str, m: Option<Marker>) -> String {
 /// circle are sized in user space (mermaid-like, independent of the
 /// stroke width) and sit just outside the node border: the path still
 /// ends ON the border, the glyph is offset back along the tangent.
-fn extra_marker_defs(edges: &[SceneEdge]) -> String {
+fn extra_marker_defs(ids: &[(Option<String>, Option<String>)]) -> String {
     let uses = |start: bool, m: Marker| {
-        edges.iter().any(|e| {
-            let got = if start {
-                e.ends.start_marker(e.kind)
-            } else {
-                e.ends.end_marker(e.kind)
-            };
-            got == Some(m)
+        let base = marker_base_id(start, m);
+        ids.iter().any(|(s, e)| {
+            let got = if start { s } else { e };
+            got.as_deref() == Some(base)
         })
     };
     let mut out = String::new();
@@ -1496,7 +1641,7 @@ fn edge_meta_attrs(m: &EdgeMeta) -> String {
 fn edge_animation_css(edges: &[SceneEdge]) -> String {
     let animated = edges
         .iter()
-        .any(|e| e.meta.animation.is_some() && !matches!(e.kind, EdgeKind::Invisible));
+        .any(|e| e.meta.animation.is_some() && edge_drawn(e));
     if !animated {
         return String::new();
     }
@@ -1574,12 +1719,14 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
 
     let mut s = String::new();
     svg_open_a11y(&mut s, width, height, 14, title, desc, opts);
+    let markers = edge_markers(&sc.edges);
     s.push_str(&format!(
         "<defs><marker id=\"arrow\" viewBox=\"0 0 10 10\" refX=\"8.5\" refY=\"5\" \
          markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\">\
-         <path d=\"M 0 1 L 9 5 L 0 9 z\" fill=\"{}\"/></marker>{}{}</defs>\n",
+         <path d=\"M 0 1 L 9 5 L 0 9 z\" fill=\"{}\"/></marker>{}{}{}</defs>\n",
         EDGE_COLOR,
-        extra_marker_defs(&sc.edges),
+        extra_marker_defs(&markers.ids),
+        markers.defs,
         edge_animation_css(&sc.edges)
     ));
 
@@ -1613,19 +1760,29 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
     }
 
     let mut edge_labels = String::new();
-    for e in &sc.edges {
-        if matches!(e.kind, EdgeKind::Invisible) {
+    for (e, (m_start, m_end)) in sc.edges.iter().zip(&markers.ids) {
+        if !edge_drawn(e) {
             continue; // layout-only link — never drawn
         }
         let (dash, sw) = match e.kind {
-            EdgeKind::Dotted | EdgeKind::DottedOpen => (" stroke-dasharray=\"5 4\"", 1.7),
-            EdgeKind::Thick | EdgeKind::ThickOpen => ("", 3.4),
-            _ => ("", 1.7),
+            EdgeKind::Dotted | EdgeKind::DottedOpen => (Some(EDGE_DOTTED_DASH), EDGE_WIDTH),
+            EdgeKind::Thick | EdgeKind::ThickOpen => (None, EDGE_WIDTH_THICK),
+            _ => (None, EDGE_WIDTH),
         };
+        // `linkStyle` paint overrides the kind's look per property.
+        let st = &e.meta.style;
+        let sw = st.stroke_width.unwrap_or(sw);
+        let dash = st
+            .stroke_dasharray
+            .as_deref()
+            .or(dash)
+            .map_or(String::new(), |d| {
+                format!(" stroke-dasharray=\"{}\"", escape(d))
+            });
         let marker = format!(
             "{}{}",
-            marker_attr("start", e.ends.start_marker(e.kind)),
-            marker_attr("end", e.ends.end_marker(e.kind))
+            marker_attr("start", m_start.as_deref()),
+            marker_attr("end", m_end.as_deref())
         );
         // A routed edge splines through its waypoints; otherwise the
         // single cubic. The arrow marker orients to the end tangent
@@ -1661,10 +1818,11 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
             None => format!("{} {dir} {}", display(&e.from), display(&e.to)),
         };
         s.push_str(&format!(
-            "<path d=\"{}\" fill=\"none\" stroke=\"{}\" stroke-width=\"{}\"{}{}{}>\
+            "<path d=\"{}\" fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\"{}{}{}>\
              <title>{}</title></path>\n",
             path_d,
-            EDGE_COLOR,
+            style_attr(st.fill.as_deref(), "none"),
+            style_attr(st.stroke.as_deref(), EDGE_COLOR),
             sw,
             dash,
             marker,
@@ -1672,7 +1830,8 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
             escape(&edge_title)
         ));
         if let Some((text, m, w)) = &e.label {
-            svg_label_box(&mut edge_labels, text, t(*m), *w);
+            let fill = style_attr(st.color.as_deref(), TEXT_COLOR);
+            svg_label_box_with(&mut edge_labels, text, t(*m), *w, &fill);
         }
     }
 
@@ -1921,7 +2080,7 @@ pub(crate) fn grow_scene(
         // Invisible links shape the layout but are never drawn, so
         // their curve must not inflate the canvas (bughunter: they
         // used to leave mysterious empty space).
-        if matches!(e.kind, EdgeKind::Invisible) {
+        if !edge_drawn(e) {
             continue;
         }
         for &(x, y) in &e.bezier {
@@ -2555,6 +2714,18 @@ pub(crate) fn svg_open_a11y(
 /// labels and ER relationship labels alike. `center` is in final
 /// (already translated) coordinates.
 pub(crate) fn svg_label_box(s: &mut String, text: &str, center: (f64, f64), box_w: f64) {
+    svg_label_box_with(s, text, center, box_w, TEXT_COLOR);
+}
+
+/// [`svg_label_box`] with the text colour given (an already-escaped
+/// attribute value), for `linkStyle … color:`.
+pub(crate) fn svg_label_box_with(
+    s: &mut String,
+    text: &str,
+    center: (f64, f64),
+    box_w: f64,
+    fill: &str,
+) {
     s.push_str(&format!(
         "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"20\" rx=\"4\" \
          fill=\"#ffffff\" stroke=\"{}\"/>\n",
@@ -2568,7 +2739,7 @@ pub(crate) fn svg_label_box(s: &mut String, text: &str, center: (f64, f64), box_
          fill=\"{}\">{}</text>\n",
         center.0,
         center.1,
-        TEXT_COLOR,
+        fill,
         rich(text)
     ));
 }
@@ -3595,5 +3766,184 @@ mod tests {
             escape("<a & \"b\" 'c'>"),
             "&lt;a &amp; &quot;b&quot; &#39;c&#39;&gt;"
         );
+    }
+
+    // ── linkStyle ───────────────────────────────────────────────
+
+    #[test]
+    fn link_style_paints_the_edge_and_colours_its_arrow() {
+        let svg = svg_src(
+            "flowchart TD\nA --> B\nB --> C\nlinkStyle 1 stroke:#ff3,stroke-width:4px,color:red;\n",
+        );
+        let p = edge_paths(&svg);
+        assert!(
+            p[0].contains("stroke=\"#44507a\" stroke-width=\"1.7\" marker-end=\"url(#arrow)\""),
+            "{svg}"
+        );
+        assert!(
+            p[1].contains("stroke=\"#ff3\" stroke-width=\"4\" marker-end=\"url(#arrow-u__ff3)\""),
+            "{svg}"
+        );
+        // Width-independent head, coloured like the stroke.
+        assert!(svg.contains(
+            "<marker id=\"arrow-u__ff3\" viewBox=\"0 0 10 10\" refX=\"8.5\" refY=\"5\" \
+             markerUnits=\"userSpaceOnUse\" markerWidth=\"11.9\" markerHeight=\"11.9\" \
+             orient=\"auto\"><path d=\"M 0 1 L 9 5 L 0 9 z\" fill=\"#ff3\"/></marker>"
+        ));
+    }
+
+    #[test]
+    fn link_style_on_a_sub_edge_and_default_markers_are_deduped() {
+        let svg = svg_src(
+            "flowchart LR\nsubgraph S\n  X\nend\nA & B --> C & D\nA --> S\nC ~~~ D\n\
+             D --> E --> F\nlinkStyle 4 stroke:red\nlinkStyle 6,7 stroke:blue\n",
+        );
+        let p = edge_paths(&svg);
+        let a_s = p
+            .iter()
+            .find(|l| l.contains("<title>A → S</title>"))
+            .unwrap();
+        assert!(a_s.contains("stroke=\"red\"") && a_s.contains("url(#arrow_red)"));
+        for t in ["D → E", "E → F"] {
+            let l = p.iter().find(|l| l.contains(t)).unwrap();
+            assert!(l.contains("stroke=\"blue\"") && l.contains("url(#arrow_blue)"));
+        }
+        assert_eq!(svg.matches("<marker id=\"arrow_blue\"").count(), 1);
+        // The invisible link stays hidden with a stroke-only style.
+        assert!(!svg.contains("C → D"));
+    }
+
+    #[test]
+    fn link_style_effective_stroke_drives_the_marker() {
+        // Default grey 2px, edge 1 red: its arrow is red (flowmaid
+        // follows the drawn stroke; mermaid would take the default's).
+        let svg = svg_src(
+            "flowchart TD\nlinkStyle default stroke:#888,stroke-width:2px\nA --> B --> C\n\
+             linkStyle 1 stroke:#e11d48\n",
+        );
+        let p = edge_paths(&svg);
+        assert!(
+            p[0].contains("stroke=\"#888\" stroke-width=\"2\"") && p[0].contains("arrow-u__888")
+        );
+        assert!(
+            p[1].contains("stroke=\"#e11d48\" stroke-width=\"2\"")
+                && p[1].contains("arrow-u__e11d48")
+        );
+    }
+
+    #[test]
+    fn link_style_colours_every_marker_kind_and_only_used_defs() {
+        let svg =
+            svg_src("flowchart LR\nA <--> B\nC x--x D\nE o--o F\nlinkStyle 0,1,2 stroke:#16a34a\n");
+        for id in [
+            "arrow-start__16a34a",
+            "arrow__16a34a",
+            "cross-start__16a34a",
+            "cross-end__16a34a",
+            "circle-start__16a34a",
+            "circle-end__16a34a",
+        ] {
+            assert!(svg.contains(&format!("<marker id=\"{id}\"")), "{id}\n{svg}");
+            assert!(svg.contains(&format!("url(#{id})")), "{id}");
+        }
+        // No uncoloured extra defs (only the classic `#arrow` stays).
+        for id in ["arrow-start\"", "cross-end\"", "circle-end\""] {
+            assert!(!svg.contains(&format!("<marker id=\"{id}")), "{id}");
+        }
+        assert!(svg.contains("stroke=\"#16a34a\" stroke-width=\"2\"/></marker>"));
+        assert!(svg.contains("fill=\"#16a34a\" stroke=\"#16a34a\" stroke-width=\"1\""));
+    }
+
+    #[test]
+    fn link_style_dash_and_width_override_the_kind() {
+        let svg = svg_src(
+            "flowchart LR\nA -.-> B\nC ==> D\nE --> F\nlinkStyle 0 stroke-dasharray:0\n\
+             linkStyle 1 stroke-width:1px\nlinkStyle 2 stroke-dasharray: 5 5\n",
+        );
+        let p = edge_paths(&svg);
+        assert!(p[0].contains("stroke-dasharray=\"0\"") && !p[0].contains("5 4"));
+        assert!(p[1].contains("stroke-width=\"1\"") && p[1].contains("url(#arrow-u)"));
+        assert!(p[2].contains("stroke-dasharray=\"5 5\""));
+        // The plain `-u` arrow keeps the theme colour.
+        assert!(svg.contains("<marker id=\"arrow-u\""));
+    }
+
+    #[test]
+    fn link_style_color_paints_only_the_label_text() {
+        let svg = svg_src("flowchart LR\nA -- yes --> B\nlinkStyle 0 color:#2563eb\n");
+        assert!(svg.contains("fill=\"#2563eb\">yes</text>"), "{svg}");
+        let p = edge_paths(&svg);
+        assert!(p[0].contains("stroke=\"#44507a\"") && p[0].contains("url(#arrow)"));
+    }
+
+    #[test]
+    fn link_style_with_a_width_reveals_an_invisible_link_without_markers() {
+        let svg =
+            svg_src("flowchart LR\nA ~~~ B\nA --> C\nlinkStyle 0 stroke:red,stroke-width:2px\n");
+        let p = edge_paths(&svg);
+        let ab = p.iter().find(|l| l.contains("A → B")).unwrap();
+        assert!(ab.contains("stroke=\"red\" stroke-width=\"2\"") && !ab.contains("marker"));
+        let hidden = svg_src("flowchart LR\nA ~~~ B\nA --> C\nlinkStyle 0 stroke:red\n");
+        assert!(!hidden.contains("A → B"));
+        assert!(!svg_src("flowchart LR\nA ~~~ B\nlinkStyle 0 stroke-width:0\n").contains("A → B"));
+    }
+
+    #[test]
+    fn link_style_fill_and_escaping() {
+        let svg = svg_src("flowchart TD\nA --> B\nlinkStyle 0 fill:#fde68a,stroke:#b45309\n");
+        assert!(edge_paths(&svg)[0].contains("fill=\"#fde68a\" stroke=\"#b45309\""));
+        // Hostile values cannot break out of the attribute.
+        let mut g = parse("flowchart TD\nA --> B\n").unwrap();
+        g.edges[0].meta.style.stroke = Some("red\"/><script>".into());
+        let svg = to_svg(&scene(&g));
+        assert!(!svg.contains("<script>"));
+        assert!(svg.contains("arrow_red____script_"));
+    }
+
+    #[test]
+    fn link_style_colours_that_sanitise_alike_get_distinct_markers() {
+        let svg = svg_src(
+            "flowchart TD\nA --> B --> C\nlinkStyle 0 stroke:#f00\nlinkStyle 1 stroke:_f00\n",
+        );
+        assert!(svg.contains("<marker id=\"arrow__f00\""));
+        assert!(svg.contains("<marker id=\"arrow__f00_2\""));
+        let p = edge_paths(&svg);
+        assert!(p[0].contains("url(#arrow__f00)") && p[1].contains("url(#arrow__f00_2)"));
+    }
+
+    #[test]
+    fn link_style_interpolate_linear_draws_straight_segments() {
+        let plain = svg_src("flowchart TD\nA --> B --> C --> D\nA --> D\n");
+        let lin =
+            svg_src("flowchart TD\nA --> B --> C --> D\nA --> D\nlinkStyle 3 interpolate linear\n");
+        assert_ne!(plain, lin);
+        let p = edge_paths(&lin);
+        assert!(
+            !p[3].contains(" C "),
+            "linear has no cubic segments: {}",
+            p[3]
+        );
+    }
+
+    #[test]
+    fn link_style_survives_compact_folding() {
+        let g = parse(
+            "flowchart LR\nA --> B --> C --> D --> E --> F --> G --> H\nlinkStyle 3 stroke:red\n",
+        )
+        .unwrap();
+        let c = crate::fold::scene_compact(&g, &crate::fold::CompactOptions::for_extent(300.0));
+        assert!(c.skipped.is_none() && c.bands > 1, "{:?}", c.skipped);
+        assert_eq!(c.scene.edges[3].meta.style.stroke.as_deref(), Some("red"));
+        let svg = to_svg(&c.scene);
+        assert!(svg.contains("stroke=\"red\""));
+    }
+
+    #[test]
+    fn diagrams_without_link_style_render_exactly_as_before() {
+        // Byte-level: no styled defs, the historical stroke attrs.
+        let svg = svg_src("flowchart LR\nA --> B\nC -.-> D\nE ==> F\nG x--x H\n");
+        assert!(!svg.contains("-u\"") && !svg.contains("_"), "{svg}");
+        assert!(svg.contains("stroke-dasharray=\"5 4\""));
+        assert!(svg.contains("stroke-width=\"3.4\""));
     }
 }

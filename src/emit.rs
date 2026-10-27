@@ -59,6 +59,12 @@
 //!   a re-parse would hand the metadata to the first edge. An edge id
 //!   equal to a subgraph id writes metadata the parser routes to the
 //!   subgraph (mermaid's order), so it is lost.
+//! - `linkStyle` paint and curves round-trip as one resolved
+//!   `linkStyle <n> [interpolate <curve>] <styles>` line per styled
+//!   link, numbered in emitted order (edges, then sub-edges), so the
+//!   source's `default` line and statement order are not kept; the
+//!   per-link result is. A curve on an edge whose id is written rides
+//!   in its `id@{ curve }` instead.
 //! - `accTitle` / `accDescr` round-trip right under the header. A
 //!   description holding both a newline and a `}` cannot ride in the
 //!   `accDescr { … }` block (the `}` closes it), so it flattens to one
@@ -69,7 +75,8 @@
 //!   combination is unrepresentable.
 
 use crate::model::{
-    Direction, EdgeAnimation, EdgeEnds, EdgeKind, EdgeMeta, End, Graph, Marker, NodeStyle, Shape,
+    Direction, EdgeAnimation, EdgeEnds, EdgeKind, EdgeMeta, End, Graph, LinkStyle, Marker,
+    NodeStyle, Shape,
 };
 
 /// Emit canonical mermaid flowchart text for `g`. See the module
@@ -116,6 +123,9 @@ pub fn to_mermaid(g: &Graph) -> String {
     //    its metadata follows as `e1@{ … }` once every edge exists. ──
     let mut ids = std::collections::HashSet::new();
     let mut metas: Vec<(String, &EdgeMeta)> = Vec::new();
+    // Every emitted link in mermaid's numbering (edges, then
+    // sub-edges — the order written), with whether its id rode along.
+    let mut links: Vec<(&EdgeMeta, bool)> = Vec::new();
     let mut edge_id = |m: &'_ EdgeMeta| -> Option<String> {
         let id = m.id.as_deref().filter(|id| edge_id_ok(id))?;
         ids.insert(id.to_string()).then(|| id.to_string())
@@ -127,6 +137,7 @@ pub fn to_mermaid(g: &Graph) -> String {
         push_edge_op(&mut out, e.kind, e.ends, e.label.as_deref(), id.as_deref());
         out.push_str(&endpoint(g, e.to));
         out.push('\n');
+        links.push((&e.meta, id.is_some()));
         if let Some(id) = id {
             metas.push((id, &e.meta));
         }
@@ -140,12 +151,33 @@ pub fn to_mermaid(g: &Graph) -> String {
         push_edge_op(&mut out, e.kind, e.ends, e.label.as_deref(), id.as_deref());
         out.push_str(&end_ref(g, e.to));
         out.push('\n');
+        links.push((&e.meta, id.is_some()));
         if let Some(id) = id {
             metas.push((id, &e.meta));
         }
     }
     for (id, m) in metas {
         push_edge_meta(&mut out, &id, m);
+    }
+    // `linkStyle <n>` for every styled link, numbered in the order
+    // written above. A curve rides here too unless `id@{ curve }`
+    // already carried it.
+    for (i, (m, has_id)) in links.into_iter().enumerate() {
+        let curve = m.curve.filter(|_| !has_id);
+        let props = link_style_props(&m.style);
+        if curve.is_none() && props.is_none() {
+            continue;
+        }
+        out.push_str(&format!("    linkStyle {i}"));
+        if let Some(c) = curve {
+            out.push_str(" interpolate ");
+            out.push_str(c.mermaid_name());
+        }
+        if let Some(p) = props {
+            out.push(' ');
+            out.push_str(&p);
+        }
+        out.push('\n');
     }
 
     // ── 4. Styling: one `style` line per styled node. classDef /
@@ -618,6 +650,27 @@ fn style_props(st: &NodeStyle) -> Option<String> {
     } else {
         Some(parts.join(","))
     }
+}
+
+/// `stroke:…,stroke-width:…px,stroke-dasharray:…,fill:…,color:…` for
+/// a link's set fields, in that fixed order; `None` when nothing is
+/// writable. Values a `linkStyle` line cannot carry (see
+/// [`style_value_ok`]) are dropped, as for node styles.
+fn link_style_props(st: &LinkStyle) -> Option<String> {
+    let mut parts: Vec<String> = Vec::new();
+    let mut put = |k: &str, v: &Option<String>| {
+        if let Some(v) = v.as_deref().filter(|v| style_value_ok(v)) {
+            parts.push(format!("{k}:{}", v.trim()));
+        }
+    };
+    put("stroke", &st.stroke);
+    if let Some(w) = st.stroke_width.filter(|w| w.is_finite()) {
+        put("stroke-width", &Some(format!("{w}px")));
+    }
+    put("stroke-dasharray", &st.stroke_dasharray);
+    put("fill", &st.fill);
+    put("color", &st.color);
+    (!parts.is_empty()).then(|| parts.join(","))
 }
 
 #[cfg(test)]
@@ -1491,10 +1544,11 @@ mod tests {
         g.ensure_node("b", Some("bell\u{7}\n".into()), None);
         g.add_edge(0, 1, None, EdgeKind::Arrow);
         assert_roundtrip(&g);
-        // linkStyle/click: targeted message, not an edge-op error —
-        // but `click --> B` is still an edge from a node named click.
-        let e = parse("flowchart TD\nA --> B\nlinkStyle 0 stroke:#f00\n").unwrap_err();
-        assert!(e.message.contains("aren't supported"), "{}", e.message);
+        // linkStyle now parses and round-trips — but `click --> B` is
+        // still an edge from a node named click.
+        let g = parse("flowchart TD\nA --> B\nlinkStyle 0 stroke:#f00\n").unwrap();
+        assert_eq!(g.edges[0].meta.style.stroke.as_deref(), Some("#f00"));
+        assert_roundtrip(&g);
         let g = parse("flowchart TD\nclick --> B\n").unwrap();
         assert_eq!(g.edges.len(), 1);
     }
@@ -1633,5 +1687,70 @@ mod tests {
             text.contains("A[\"A\"]") || text.contains("    A\n"),
             "{text}"
         );
+    }
+
+    /// Every link's resolved `linkStyle` paint and curve, in mermaid's
+    /// numbering (edges then sub-edges).
+    fn link_paint(g: &Graph) -> Vec<(LinkStyle, Option<crate::model::EdgeCurve>)> {
+        g.edges
+            .iter()
+            .map(|e| &e.meta)
+            .chain(g.sub_edges.iter().map(|e| &e.meta))
+            .map(|m| (m.style.clone(), m.curve))
+            .collect()
+    }
+
+    #[test]
+    fn link_styles_round_trip_in_emitted_order() {
+        for src in [
+            "flowchart TD\nA --> B\nB --> C\nlinkStyle 1 stroke:#ff3,stroke-width:4px,color:red;\n",
+            // Sub-edge A-S is index 4 in the source but written last.
+            "flowchart LR\nsubgraph S\n  X\nend\nA & B --> C & D\nA --> S\nC ~~~ D\n\
+             D --> E --> F\nlinkStyle 4 stroke:red\nlinkStyle 6,7 stroke:blue\n",
+            "flowchart TD\nlinkStyle default stroke:#888,stroke-width:2px\nA --> B --> C\n\
+             linkStyle 1 stroke:#e11d48\n",
+            "flowchart LR\nA -.-> B\nC ==> D\nE --> F\nlinkStyle 0 stroke-dasharray:0\n\
+             linkStyle 1 stroke-width:1.5px\nlinkStyle 2 stroke-dasharray: 5 5,fill:#fde68a\n",
+            "flowchart TD\nA --> B --> C\nlinkStyle default interpolate linear stroke:red\n\
+             linkStyle 0 interpolate basis\n",
+            "flowchart TD\nA e1@--> B --> C\ne1@{ curve: step }\nlinkStyle 1 interpolate natural\n",
+            "flowchart LR\nA ~~~ B\nA --> C\nlinkStyle 0 stroke:red,stroke-width:2px\n",
+            "flowchart TD\nA --> B\nlinkStyle 0 stroke:rgb(255,0,0)\n",
+        ] {
+            let g = parse(src).unwrap();
+            let text = to_mermaid(&g);
+            let back = parse(&text).unwrap_or_else(|e| panic!("{e}\n{text}"));
+            assert_eq!(link_paint(&g), link_paint(&back), "{src}\n--\n{text}");
+            assert_roundtrip(&g);
+        }
+        let text = to_mermaid(
+            &parse(
+                "flowchart LR\nsubgraph S\n  X\nend\nA --> S\nA --> B\nlinkStyle 0 stroke:red\n",
+            )
+            .unwrap(),
+        );
+        // A-S is written after A-B: index 1 now.
+        assert!(text.contains("    linkStyle 1 stroke:red\n"), "{text}");
+        assert!(!text.contains("linkStyle 0"), "{text}");
+    }
+
+    #[test]
+    fn programmatic_link_styles_drop_unwritable_values() {
+        let mut g = parse("flowchart TD\nA --> B\n").unwrap();
+        let st = &mut g.edges[0].meta.style;
+        st.stroke = Some("a,b".into());
+        st.stroke_width = Some(f64::NAN);
+        st.color = Some("blue".into());
+        let text = to_mermaid(&g);
+        assert!(text.contains("    linkStyle 0 color:blue\n"), "{text}");
+        let back = parse(&text).unwrap();
+        assert_eq!(back.edges[0].meta.style.color.as_deref(), Some("blue"));
+        assert_eq!(back.edges[0].meta.style.stroke, None);
+        // A curve on an edge without an id rides as interpolate.
+        let mut g = parse("flowchart TD\nA --> B\n").unwrap();
+        g.edges[0].meta.curve = Some(crate::model::EdgeCurve::MonotoneX);
+        let text = to_mermaid(&g);
+        assert!(text.contains("linkStyle 0 interpolate monotoneX"), "{text}");
+        assert_eq!(link_paint(&parse(&text).unwrap()), link_paint(&g));
     }
 }

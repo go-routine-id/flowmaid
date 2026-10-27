@@ -19,10 +19,11 @@ use crate::model::{
     ArchEdge, ArchGroup, ArchService, ArchSide, Architecture, Attr, Card, Class, ClassDiagram,
     ClassRel, CommitKind, Direction, Document, EdgeAnimation, EdgeCurve, EdgeEnds, EdgeKind,
     EdgeMeta, End, ErDiagram, FrameKind, GitBranch, GitCommit, GitGraph, GitOrientation, Graph,
-    Journey, JourneySection, JourneyTask, Key, Marker, Member, MindNode, MindShape, Mindmap,
-    NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation, SankeyAlignment, SankeyConfig,
-    SankeyDiagram, SankeyLink, SankeyLinkColor, SeqHead, SeqItem, SequenceDiagram, Shape, SubEdge,
-    Subgraph, Timeline, TimelineDirection, TimelinePeriod, TimelineSection, Visibility,
+    Journey, JourneySection, JourneyTask, Key, LinkStyle, Marker, Member, MindNode, MindShape,
+    Mindmap, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation, SankeyAlignment,
+    SankeyConfig, SankeyDiagram, SankeyLink, SankeyLinkColor, SeqHead, SeqItem, SequenceDiagram,
+    Shape, SubEdge, Subgraph, Timeline, TimelineDirection, TimelinePeriod, TimelineSection,
+    Visibility,
 };
 use crate::shapedata;
 use std::borrow::Cow;
@@ -432,6 +433,231 @@ struct FlowMeta {
     /// Nodes whose `@{ shape: … }` is a borderless mermaid shape (`text`,
     /// braces, `bolt`): drawn without fill and stroke unless styled.
     borderless: HashSet<usize>,
+    /// `linkStyle` state, keyed by mermaid's link index.
+    links: LinkStyles,
+}
+
+/// Where a link lives: flowmaid keeps node→node links in
+/// `Graph::edges` and links touching a subgraph in `Graph::sub_edges`,
+/// while mermaid numbers them all together in source order.
+#[derive(Clone, Copy)]
+enum LinkRef {
+    Edge(usize),
+    Sub(usize),
+}
+
+/// Per-link `linkStyle` state in mermaid's numbering (flowDb `edges`):
+/// every link in source order, fan-outs expanded, `~~~` and links to a
+/// subgraph included.
+#[derive(Default)]
+struct LinkStyles {
+    order: Vec<LinkRef>,
+    /// The link's own `interpolate`; a new link starts with the
+    /// default in force when it is created (flowDb `addSingleLink`).
+    interp: Vec<Option<String>>,
+    /// The link's own style; a later `linkStyle <n>` replaces it.
+    style: Vec<Option<LinkStyle>>,
+    default_style: Option<LinkStyle>,
+    default_interp: Option<String>,
+}
+
+impl LinkStyles {
+    fn push(&mut self, r: LinkRef) {
+        self.order.push(r);
+        self.interp.push(self.default_interp.clone());
+        self.style.push(None);
+    }
+
+    /// The edge metadata of link `k`, resolved: the default style
+    /// overlaid with the link's own, which (like mermaid's appended
+    /// `fill:none`) clears a default fill it doesn't set itself; and
+    /// a curve from `linkStyle … interpolate` unless `@{ curve }` set
+    /// one.
+    fn resolve(&self, k: usize, meta: &mut EdgeMeta) {
+        let mut st = self.default_style.clone().unwrap_or_default();
+        if let Some(own) = &self.style[k] {
+            st.apply_over(own);
+            if own.fill.is_none() {
+                st.fill = None;
+            }
+        }
+        meta.style = st;
+        if meta.curve.is_none() {
+            meta.curve = self.interp[k]
+                .as_ref()
+                .or(self.default_interp.as_ref())
+                .map(|c| EdgeCurve::from_mermaid(c));
+        }
+    }
+}
+
+/// Mermaid's `linkStyle` keyword (case-sensitive there, and here).
+const LINK_STYLE_KW: &str = "linkStyle";
+/// The `linkStyle` target naming every link.
+const LINK_STYLE_DEFAULT: &str = "default";
+/// The optional curve clause of a `linkStyle` statement.
+const LINK_STYLE_INTERPOLATE: &str = "interpolate";
+
+/// One `linkStyle` statement (`rest` follows the keyword):
+/// `default` or `N[,N…]` (no spaces), an optional `interpolate
+/// <curve>`, then optional styles — at least one of the two. Indices
+/// are checked against the links defined so far, as in mermaid; a
+/// later `linkStyle` for the same index replaces the earlier style.
+fn parse_link_style(rest: &str, lineno: usize, ls: &mut LinkStyles) -> Result<(), ParseError> {
+    let rest = rest.trim();
+    let (targets, tail) = rest
+        .split_once(char::is_whitespace)
+        .map_or((rest, ""), |(a, b)| (a, b.trim_start()));
+    let positions: Option<Vec<usize>> = if targets == LINK_STYLE_DEFAULT {
+        None
+    } else {
+        let mut v = Vec::new();
+        for n in targets.split(',') {
+            if n.is_empty() || !n.bytes().all(|b| b.is_ascii_digit()) {
+                return Err(err(
+                    lineno,
+                    format!(
+                        "linkStyle expects 'default' or a link index list like 0,2 \
+                         (no spaces), found '{targets}'"
+                    ),
+                ));
+            }
+            // An index too large for usize is out of bounds anyway.
+            let i = n.parse::<usize>().unwrap_or(usize::MAX);
+            if i >= ls.order.len() {
+                return Err(err(
+                    lineno,
+                    format!(
+                        "The index {n} for linkStyle is out of bounds. Valid indices for \
+                         linkStyle are between 0 and {}. (Help: Ensure that the index is \
+                         within the range of existing edges.)",
+                        ls.order.len() as i64 - 1
+                    ),
+                ));
+            }
+            v.push(i);
+        }
+        Some(v)
+    };
+    let (interp, props) = match strip_keyword(tail, LINK_STYLE_INTERPOLATE)
+        .filter(|_| tail.starts_with(LINK_STYLE_INTERPOLATE))
+    {
+        Some(r) => {
+            let r = r.trim_start();
+            let (name, props) = r
+                .split_once(char::is_whitespace)
+                .map_or((r, ""), |(a, b)| (a, b.trim_start()));
+            if name.is_empty() {
+                return Err(err(
+                    lineno,
+                    "linkStyle 'interpolate' needs a curve name".to_string(),
+                ));
+            }
+            (Some(name.to_string()), props)
+        }
+        None => (None, tail),
+    };
+    let style = if props.is_empty() {
+        None
+    } else {
+        Some(parse_link_props(props, lineno)?)
+    };
+    if interp.is_none() && style.is_none() {
+        return Err(err(
+            lineno,
+            "linkStyle needs styles or 'interpolate <curve>'".to_string(),
+        ));
+    }
+    match positions {
+        None => {
+            if interp.is_some() {
+                ls.default_interp = interp;
+            }
+            if style.is_some() {
+                ls.default_style = style;
+            }
+        }
+        Some(v) => {
+            for i in v {
+                if interp.is_some() {
+                    ls.interp[i].clone_from(&interp);
+                }
+                if style.is_some() {
+                    ls.style[i].clone_from(&style);
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Split style properties on commas at paren depth 0 only, so CSS
+/// function values (`rgb(255,0,0)`) survive as one property. An
+/// unbalanced '(' would otherwise swallow every later property
+/// silently — it is an error instead.
+fn split_props(s: &str, lineno: usize) -> Result<Vec<&str>, ParseError> {
+    let mut items: Vec<&str> = Vec::new();
+    let (mut depth, mut start) = (0usize, 0usize);
+    for (i, c) in s.char_indices() {
+        match c {
+            '(' => depth += 1,
+            ')' => depth = depth.saturating_sub(1),
+            ',' if depth == 0 => {
+                items.push(&s[start..i]);
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    if depth != 0 {
+        return Err(err(
+            lineno,
+            format!("unbalanced '(' in style properties: '{s}'"),
+        ));
+    }
+    items.push(&s[start..]);
+    Ok(items)
+}
+
+/// A `stroke-width` value: a number with an optional `px`.
+fn parse_stroke_width(v: &str, lineno: usize) -> Result<f64, ParseError> {
+    v.trim_end_matches("px")
+        .trim()
+        .parse()
+        .ok()
+        .filter(|n: &f64| n.is_finite())
+        .ok_or_else(|| err(lineno, format!("invalid stroke-width: '{}'", v)))
+}
+
+/// `linkStyle` properties: `stroke`, `stroke-width`,
+/// `stroke-dasharray`, `fill` and `color`. Unknown keys and empty
+/// values are ignored, and so is an item without `:` — mermaid splits
+/// `stroke-dasharray:5,5` at the comma and drops the bare `5`, so a
+/// common real-world spelling keeps rendering (as dash `5`).
+fn parse_link_props(s: &str, lineno: usize) -> Result<LinkStyle, ParseError> {
+    let mut st = LinkStyle::default();
+    for item in split_props(s, lineno)? {
+        let Some((k, v)) = item.trim().split_once(':') else {
+            continue;
+        };
+        let v = v.trim();
+        if v.is_empty() {
+            continue;
+        }
+        let slot = match k.trim() {
+            "stroke" => &mut st.stroke,
+            "stroke-dasharray" => &mut st.stroke_dasharray,
+            "fill" => &mut st.fill,
+            "color" => &mut st.color,
+            "stroke-width" => {
+                st.stroke_width = Some(parse_stroke_width(v, lineno)?);
+                continue;
+            }
+            _ => continue,
+        };
+        *slot = Some(v.to_string());
+    }
+    Ok(st)
 }
 
 /// Mermaid's shape names (`A@{ shape: … }`, shapes.ts registry: short
@@ -1360,19 +1586,26 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
             }
             continue;
         }
+        // `linkStyle`: exact-case head only — mermaid keywords are
+        // case-sensitive — and `linkStyle --> B` stays an EDGE from a
+        // node named linkStyle.
+        if let Some(rest) = strip_keyword(line, LINK_STYLE_KW) {
+            if &line[..LINK_STYLE_KW.len()] == LINK_STYLE_KW && !edge_lead_follows(rest) {
+                parse_link_style(rest, lineno, &mut fm.links)?;
+                continue;
+            }
+        }
         // Known mermaid statements flowmaid doesn't implement get a
         // targeted message instead of a baffling edge-operator error.
         // Exact-case head only — mermaid keywords are case-sensitive,
         // so `Click` is a plain node id — and `click --> B` stays an
         // EDGE from a node named click.
-        for kw in ["linkStyle", "click"] {
-            if let Some(rest) = strip_keyword(line, kw) {
-                if &line[..kw.len()] == kw && !edge_lead_follows(rest) {
-                    return Err(err(
-                        lineno,
-                        format!("'{kw}' statements aren't supported yet"),
-                    ));
-                }
+        if let Some(rest) = strip_keyword(line, "click") {
+            if &line[..5] == "click" && !edge_lead_follows(rest) {
+                return Err(err(
+                    lineno,
+                    "'click' statements aren't supported yet".to_string(),
+                ));
             }
         }
 
@@ -1404,6 +1637,15 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
     };
     g.edges.iter_mut().for_each(|e| resolve(&mut e.meta));
     g.sub_edges.iter_mut().for_each(|e| resolve(&mut e.meta));
+    // `linkStyle` resolves after it: `default` reaches every link,
+    // including those defined after it, and `@{ curve }` wins.
+    for (k, r) in fm.links.order.iter().enumerate() {
+        let meta = match *r {
+            LinkRef::Edge(i) => &mut g.edges[i].meta,
+            LinkRef::Sub(i) => &mut g.sub_edges[i].meta,
+        };
+        fm.links.resolve(k, meta);
+    }
 
     // Resolve styling: classDef layers first, explicit `style`
     // lines win. Unknown class names are ignored, mermaid-style.
@@ -1428,30 +1670,7 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
 /// Unknown properties are ignored (mermaid tolerates them too).
 fn parse_props(s: &str, lineno: usize) -> Result<NodeStyle, ParseError> {
     let mut st = NodeStyle::default();
-    // Split on commas at paren depth 0 only, so CSS function values
-    // (`fill:rgb(255,0,0)`) survive as one property. An unbalanced
-    // '(' would otherwise swallow every later property silently —
-    // reject it with a proper error instead.
-    let mut items: Vec<&str> = Vec::new();
-    let (mut depth, mut start) = (0usize, 0usize);
-    for (i, c) in s.char_indices() {
-        match c {
-            '(' => depth += 1,
-            ')' => depth = depth.saturating_sub(1),
-            ',' if depth == 0 => {
-                items.push(&s[start..i]);
-                start = i + 1;
-            }
-            _ => {}
-        }
-    }
-    if depth != 0 {
-        return Err(err(
-            lineno,
-            format!("unbalanced '(' in style properties: '{s}'"),
-        ));
-    }
-    items.push(&s[start..]);
+    let items = split_props(s, lineno)?;
     for item in items {
         let item = item.trim();
         if item.is_empty() {
@@ -1731,15 +1950,19 @@ fn parse_statement(
                         if let Some(e) = g.edges.last_mut() {
                             e.meta = meta;
                         }
+                        fm.links.push(LinkRef::Edge(g.edges.len() - 1));
                     }
-                    _ => g.sub_edges.push(SubEdge {
-                        from: a,
-                        to: b,
-                        label: label.clone(),
-                        kind,
-                        ends,
-                        meta,
-                    }),
+                    _ => {
+                        g.sub_edges.push(SubEdge {
+                            from: a,
+                            to: b,
+                            label: label.clone(),
+                            kind,
+                            ends,
+                            meta,
+                        });
+                        fm.links.push(LinkRef::Sub(g.sub_edges.len() - 1));
+                    }
                 }
             }
         }
@@ -7089,5 +7312,225 @@ mod tests {
         assert!(g.node_index("e1").is_some());
         assert_eq!(g.edges[0].meta.id.as_deref(), Some("e1"));
         assert_eq!(g.edges[0].meta.animation, None);
+    }
+
+    // ── linkStyle ───────────────────────────────────────────────
+
+    fn ls_err(src: &str) -> String {
+        parse(src).unwrap_err().message
+    }
+
+    #[test]
+    fn link_style_index_styles_one_edge_and_strips_the_trailing_semicolon() {
+        let g = parse(
+            "flowchart TD\nA --> B\nB --> C\nlinkStyle 1 stroke:#ff3,stroke-width:4px,color:red;\n",
+        )
+        .unwrap();
+        assert!(g.edges[0].meta.style.is_empty());
+        let st = &g.edges[1].meta.style;
+        assert_eq!(st.stroke.as_deref(), Some("#ff3"));
+        assert_eq!(st.stroke_width, Some(4.0));
+        assert_eq!(st.color.as_deref(), Some("red"));
+        assert_eq!(st.fill, None);
+    }
+
+    #[test]
+    fn link_style_counts_every_link_in_source_order() {
+        // Mermaid: 0 A-C, 1 A-D, 2 B-C, 3 B-D, 4 A-S, 5 C~~~D, 6 D-E, 7 E-F,
+        // though flowmaid keeps A-S apart in `sub_edges`.
+        let g = parse(
+            "flowchart LR\nsubgraph S\n  X\nend\nA & B --> C & D\nA --> S\nC ~~~ D\n\
+             D --> E --> F\nlinkStyle 4 stroke:red\nlinkStyle 6,7 stroke:blue\n\
+             linkStyle 5 stroke:green\n",
+        )
+        .unwrap();
+        assert_eq!(g.sub_edges[0].meta.style.stroke.as_deref(), Some("red"));
+        let strokes: Vec<Option<&str>> = g
+            .edges
+            .iter()
+            .map(|e| e.meta.style.stroke.as_deref())
+            .collect();
+        // edges: A-C A-D B-C B-D C~~~D D-E E-F
+        assert_eq!(
+            strokes,
+            [
+                None,
+                None,
+                None,
+                None,
+                Some("green"),
+                Some("blue"),
+                Some("blue")
+            ]
+        );
+        assert_eq!(g.edges[4].kind, EdgeKind::Invisible);
+    }
+
+    #[test]
+    fn link_style_chain_and_mixed_fanout_order() {
+        // `A --> B & C --> D`: A-B, A-C, B-D, C-D.
+        let g = parse("flowchart LR\nA --> B & C --> D\nlinkStyle 2 stroke:red\n").unwrap();
+        let styled: Vec<(String, String)> = g
+            .edges
+            .iter()
+            .filter(|e| e.meta.style.stroke.is_some())
+            .map(|e| (g.nodes[e.from].id.clone(), g.nodes[e.to].id.clone()))
+            .collect();
+        assert_eq!(styled, [("B".to_string(), "D".to_string())]);
+        // Repeated links each get an index.
+        let g = parse("flowchart LR\nA --> B\nA --> B\nlinkStyle 1 stroke:red\n").unwrap();
+        assert!(g.edges[0].meta.style.is_empty());
+        assert_eq!(g.edges[1].meta.style.stroke.as_deref(), Some("red"));
+    }
+
+    #[test]
+    fn link_style_index_out_of_bounds_uses_mermaids_message() {
+        let m = ls_err("flowchart TD\nA --> B\nlinkStyle 1 stroke:red\n");
+        assert!(
+            m.contains("The index 1 for linkStyle is out of bounds")
+                && m.contains("between 0 and 0."),
+            "{m}"
+        );
+        // A forward reference counts links defined so far: none.
+        let e = parse("flowchart TD\nlinkStyle 0 stroke:red\nA --> B\n").unwrap_err();
+        assert_eq!(e.line, 2);
+        assert!(e.message.contains("between 0 and -1."), "{}", e.message);
+        // One bad index fails the whole statement; the interpolate form
+        // gets the same message (mermaid throws a TypeError there).
+        assert!(ls_err("flowchart TD\nA --> B\nlinkStyle 0,9 stroke:red\n").contains("index 9"));
+        assert!(
+            ls_err("flowchart TD\nA --> B\nlinkStyle 3 interpolate basis\n")
+                .contains("The index 3 for linkStyle is out of bounds")
+        );
+        assert!(
+            ls_err("flowchart TD\nA --> B\nlinkStyle 99999999999999999999999 stroke:red\n")
+                .contains("out of bounds")
+        );
+    }
+
+    #[test]
+    fn link_style_malformed_statements_are_errors() {
+        assert!(ls_err("flowchart TD\nA --> B\nlinkStyle 0\n").contains("needs styles"));
+        assert!(ls_err("flowchart TD\nA --> B\nlinkStyle default\n").contains("needs styles"));
+        assert!(ls_err("flowchart TD\nA --> B\nlinkStyle 0, 1 stroke:red\n").contains("no spaces"));
+        assert!(ls_err("flowchart TD\nA --> B\nlinkStyle x stroke:red\n").contains("index list"));
+        assert!(ls_err("flowchart TD\nA --> B\nlinkStyle -1 stroke:red\n").contains("index list"));
+        assert!(ls_err("flowchart TD\nA --> B\nlinkStyle 0 interpolate\n").contains("curve name"));
+        assert!(
+            ls_err("flowchart TD\nA --> B\nlinkStyle 0 stroke-width:2em\n")
+                .contains("invalid stroke-width")
+        );
+        assert!(
+            ls_err("flowchart TD\nA --> B\nlinkStyle 0 stroke:rgb(1,2\n").contains("unbalanced")
+        );
+        // `0,0` is harmless; `1,2,7`-style lists without spaces are fine.
+        assert!(parse("flowchart TD\nA --> B\nlinkStyle 0,0 stroke:red\n").is_ok());
+    }
+
+    #[test]
+    fn link_style_replaces_per_index_and_merges_over_default() {
+        // A second `linkStyle 0` replaces the first (no merge).
+        let g =
+            parse("flowchart TD\nA --> B\nlinkStyle 0 stroke:red\nlinkStyle 0 stroke-width:4px\n")
+                .unwrap();
+        let st = &g.edges[0].meta.style;
+        assert_eq!((st.stroke.as_deref(), st.stroke_width), (None, Some(4.0)));
+        // Default reaches later edges; per-index wins per property.
+        let g = parse(
+            "flowchart TD\nlinkStyle default stroke:#888,stroke-width:2px\nA --> B --> C\n\
+             linkStyle 1 stroke:#e11d48\n",
+        )
+        .unwrap();
+        let (a, b) = (&g.edges[0].meta.style, &g.edges[1].meta.style);
+        assert_eq!(
+            (a.stroke.as_deref(), a.stroke_width),
+            (Some("#888"), Some(2.0))
+        );
+        assert_eq!(
+            (b.stroke.as_deref(), b.stroke_width),
+            (Some("#e11d48"), Some(2.0))
+        );
+        // A later default replaces the earlier one.
+        let g = parse(
+            "flowchart TD\nA --> B\nlinkStyle default stroke:red\nlinkStyle default color:blue\n",
+        )
+        .unwrap();
+        let st = &g.edges[0].meta.style;
+        assert_eq!(
+            (st.stroke.as_deref(), st.color.as_deref()),
+            (None, Some("blue"))
+        );
+        // Mermaid appends `fill:none` to an index style without fill, so
+        // it clears a default fill; the default alone keeps it.
+        let g = parse(
+            "flowchart TD\nA --> B --> C\nlinkStyle default fill:#f00\nlinkStyle 1 stroke:red\n",
+        )
+        .unwrap();
+        assert_eq!(g.edges[0].meta.style.fill.as_deref(), Some("#f00"));
+        assert_eq!(g.edges[1].meta.style.fill, None);
+    }
+
+    #[test]
+    fn link_style_property_parsing() {
+        let st = |src: &str| parse(src).unwrap().edges[0].meta.style.clone();
+        // Dash with spaces; dash with a comma keeps mermaid's `5`.
+        let a = st("flowchart TD\nA --> B\nlinkStyle 0 stroke-dasharray: 5 5\n");
+        assert_eq!(a.stroke_dasharray.as_deref(), Some("5 5"));
+        let a = st("flowchart TD\nA --> B\nlinkStyle 0 stroke-dasharray:5,5\n");
+        assert_eq!(a.stroke_dasharray.as_deref(), Some("5"));
+        // rgb() with commas is a lenient superset of mermaid.
+        let a = st("flowchart TD\nA --> B\nlinkStyle 0 stroke:rgb(255,0,0)\n");
+        assert_eq!(a.stroke.as_deref(), Some("rgb(255,0,0)"));
+        // Explicit fill, unknown keys ignored.
+        let a = st("flowchart TD\nA --> B\nlinkStyle 0 fill:#fde68a,stroke:#b45309,opacity:0.5\n");
+        assert_eq!(a.fill.as_deref(), Some("#fde68a"));
+        assert_eq!(a.stroke.as_deref(), Some("#b45309"));
+        // A style naming nothing known is accepted and draws unstyled.
+        assert!(st("flowchart TD\nA --> B\nlinkStyle 0 foo\n").is_empty());
+    }
+
+    #[test]
+    fn link_style_interpolate_sets_the_curve() {
+        let g = parse(
+            "flowchart TD\nA --> B --> C\nlinkStyle default interpolate linear stroke:red\n\
+             linkStyle 0 interpolate basis\n",
+        )
+        .unwrap();
+        assert_eq!(g.edges[0].meta.curve, Some(EdgeCurve::Basis));
+        assert_eq!(g.edges[1].meta.curve, Some(EdgeCurve::Linear));
+        assert_eq!(g.edges[1].meta.style.stroke.as_deref(), Some("red"));
+        // The interpolate-only form leaves the style alone.
+        let g = parse(
+            "flowchart TD\nA --> B\nlinkStyle 0 stroke:red\nlinkStyle 0 interpolate stepAfter\n",
+        )
+        .unwrap();
+        assert_eq!(g.edges[0].meta.curve, Some(EdgeCurve::StepAfter));
+        assert_eq!(g.edges[0].meta.style.stroke.as_deref(), Some("red"));
+        // Unknown names fall back to basis, like mermaid.
+        let g = parse("flowchart TD\nA --> B\nlinkStyle default interpolate wiggly\n").unwrap();
+        assert_eq!(g.edges[0].meta.curve, Some(EdgeCurve::Basis));
+        // `@{ curve }` wins over linkStyle.
+        let g =
+            parse("flowchart TD\nA e1@--> B\ne1@{ curve: step }\nlinkStyle 0 interpolate linear\n")
+                .unwrap();
+        assert_eq!(g.edges[0].meta.curve, Some(EdgeCurve::Step));
+        // No linkStyle: no curve.
+        assert_eq!(
+            parse("flowchart TD\nA --> B\n").unwrap().edges[0]
+                .meta
+                .curve,
+            None
+        );
+    }
+
+    #[test]
+    fn link_style_keyword_is_exact_case_and_named_nodes_stay_edges() {
+        let g = parse("flowchart TD\nlinkStyle --> B\nlinkStyle <-- t --> B\n").unwrap();
+        assert_eq!(g.edges.len(), 2);
+        assert_eq!(g.nodes[g.edges[0].from].id, "linkStyle");
+        // `linkstyle` is no statement in mermaid either.
+        assert!(parse("flowchart TD\nA --> B\nlinkstyle 0 stroke:red\n").is_err());
+        // Not a statement in state diagrams.
+        assert!(parse_document("stateDiagram-v2\nA --> B\nlinkStyle 0 stroke:red\n").is_err());
     }
 }

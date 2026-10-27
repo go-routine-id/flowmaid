@@ -9,6 +9,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Flowchart `linkStyle`.** `linkStyle <n>[,<n>…]` and `linkStyle default`, each with an
+  optional `interpolate <curve>`, style edges by mermaid's link index (source order, fan-out
+  pairs, `~~~` and subgraph links included; out-of-range and forward indices fail with
+  mermaid's message). `stroke`, `stroke-width`, `stroke-dasharray`, `fill` and `color`
+  (label text) are drawn; arrow, cross and circle markers get a variant in the edge colour,
+  and a styled width uses a fixed-size arrowhead. A later `linkStyle` for an index
+  replaces the earlier one; the default merges under it. `interpolate` sets the edge curve.
+  `to_mermaid` writes one resolved `linkStyle` line per styled link, numbered in emitted
+  order. New: `model::LinkStyle` and an `EdgeMeta::style` field (non-breaking:
+  `EdgeMeta` is `#[non_exhaustive]`). Diagrams without `linkStyle` render byte-identically.
 - **`accTitle` / `accDescr` accessibility statements.** `accTitle: …`, `accDescr: …` and
   the multi-line `accDescr { … }` block parse with mermaid's rules (value to end of line,
   `;` and `%%` included; case-sensitive keywords; last one wins; block indentation and
