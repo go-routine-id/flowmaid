@@ -1,6 +1,6 @@
 //! Core data model: graph, nodes, edges.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 /// Flow direction of the diagram.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -377,7 +377,215 @@ pub struct Graph {
     /// Accessible description from `accDescr:` or the multi-line
     /// `accDescr { … }` block — written as the SVG's `<desc>`.
     pub acc_descr: Option<String>,
+    /// Mermaid `click` links and tooltips, keyed by node index.
+    pub links: BTreeMap<usize, NodeLink>,
     index: HashMap<String, usize>,
+}
+
+/// A link target from a mermaid `click` statement — the `target`
+/// attribute of the node's `<a>`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum LinkTarget {
+    /// `_self`
+    SelfFrame,
+    /// `_blank`
+    Blank,
+    /// `_parent`
+    Parent,
+    /// `_top`
+    Top,
+}
+
+/// Mermaid's `LINK_TARGET` tokens (case-sensitive) and their targets.
+const LINK_TARGETS: &[(&str, LinkTarget)] = &[
+    ("_self", LinkTarget::SelfFrame),
+    ("_blank", LinkTarget::Blank),
+    ("_parent", LinkTarget::Parent),
+    ("_top", LinkTarget::Top),
+];
+
+impl LinkTarget {
+    /// The target a mermaid token names (`_blank`, …); `None` for
+    /// anything else.
+    pub fn from_mermaid(s: &str) -> Option<LinkTarget> {
+        LINK_TARGETS.iter().find(|(n, _)| *n == s).map(|&(_, t)| t)
+    }
+
+    /// The token as written in mermaid and in the SVG attribute.
+    pub fn as_str(self) -> &'static str {
+        LINK_TARGETS
+            .iter()
+            .find(|(_, t)| *t == self)
+            .map_or("_self", |&(n, _)| n)
+    }
+}
+
+/// What a mermaid `click` statement attached to a node. flowmaid runs
+/// no script, so a callback is kept by name only (for `to_mermaid`)
+/// and never drawn; the SVG wraps a linked node in `<a>` and shows the
+/// tooltip as the node's `<title>`.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct NodeLink {
+    /// The url, as written (entity codes decoded, trimmed). Only a url
+    /// that passes [`sanitize_href`] is stored by the parser, and the
+    /// SVG writer checks again.
+    pub href: Option<String>,
+    /// `_self` / `_blank` / `_parent` / `_top`; `None` = no `target`
+    /// attribute (the same tab).
+    pub target: Option<LinkTarget>,
+    /// Hover text.
+    pub tooltip: Option<String>,
+    /// The JavaScript callback's name (`click A cb`, `click A call
+    /// cb()`), arguments dropped. Never run.
+    pub callback: Option<String>,
+}
+
+impl NodeLink {
+    /// Whether nothing is set.
+    pub fn is_empty(&self) -> bool {
+        *self == NodeLink::default()
+    }
+}
+
+/// Most times [`sanitize_href`] re-decodes a url (percent and entity
+/// layers) while it still changes, so `%256A` cannot hide a `j`.
+const SANITIZE_MAX_PASSES: usize = 8;
+/// Url schemes that run or embed content and are never linked
+/// (`@braintree/sanitize-url`, which mermaid uses).
+const BLOCKED_SCHEMES: &[&str] = &["javascript", "data", "vbscript"];
+
+/// A link url that is safe to put in an SVG `href`, or `None`.
+///
+/// Mermaid's default (`strict`) security level passes urls through
+/// `@braintree/sanitize-url`; this ports its checks: after
+/// repeatedly percent- and entity-decoding the url (HTML `&#NN;`,
+/// `&#xNN;`, `&colon;`, `&tab;`, `&newline;` and mermaid's `#NN;`) and
+/// dropping control, invisible and whitespace characters, a url whose
+/// scheme starts with `javascript`, `data` or `vbscript` is refused,
+/// as is one that is empty. Relative urls (`/x`, `./x`, `#x`, `?q`),
+/// scheme-less ones and every other scheme pass. Unlike mermaid, a
+/// passing url is returned as written (trimmed), not re-serialised,
+/// and a refused one yields `None` instead of `about:blank`.
+pub fn sanitize_href(url: &str) -> Option<String> {
+    let url = url.trim();
+    let mut s: String = url.to_string();
+    for _ in 0..SANITIZE_MAX_PASSES {
+        let next = strip_invisible(&decode_href_entities(&percent_decode(&s)));
+        if next == s {
+            break;
+        }
+        s = next;
+    }
+    let s = strip_invisible(&s);
+    if s.is_empty() {
+        return None;
+    }
+    if s.starts_with(['.', '/']) {
+        return Some(url.to_string());
+    }
+    // Braintree reads the scheme as everything up to the LAST colon.
+    if let Some(colon) = s.rfind(':') {
+        let scheme = s[..colon]
+            .trim_start_matches(|c: char| !(c.is_alphanumeric() || c == '_'))
+            .to_ascii_lowercase();
+        if BLOCKED_SCHEMES.iter().any(|b| scheme.starts_with(b)) {
+            return None;
+        }
+    }
+    Some(url.to_string())
+}
+
+/// Drop control characters, Unicode spaces and zero-width marks, and
+/// all whitespace (braintree's `ctrlCharactersRegex` plus trim).
+fn strip_invisible(s: &str) -> String {
+    s.chars()
+        .filter(|&c| {
+            !(c.is_control()
+                || c.is_whitespace()
+                || ('\u{2000}'..='\u{200D}').contains(&c)
+                || c == '\u{FEFF}')
+        })
+        .collect()
+}
+
+/// One pass of `%XX` decoding (invalid escapes stay literal; bytes
+/// that don't form UTF-8 become U+FFFD).
+fn percent_decode(s: &str) -> String {
+    let b = s.as_bytes();
+    let mut out = Vec::with_capacity(b.len());
+    let mut i = 0;
+    while i < b.len() {
+        if b[i] == b'%'
+            && i + 2 < b.len()
+            && b[i + 1].is_ascii_hexdigit()
+            && b[i + 2].is_ascii_hexdigit()
+        {
+            let hex = |c: u8| (c as char).to_digit(16).unwrap_or(0) as u8;
+            out.push(hex(b[i + 1]) * 16 + hex(b[i + 2]));
+            i += 3;
+            continue;
+        }
+        out.push(b[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+/// One pass of the entity forms that can hide a scheme: HTML
+/// `&#NN;` / `&#xNN;` (semicolon optional, as browsers allow),
+/// `&colon;`, `&tab;`, `&newline;`, and mermaid's `#NN;`.
+fn decode_href_entities(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut rest = s;
+    while let Some(c) = rest.chars().next() {
+        if c == '&' || c == '#' {
+            let named = [("&colon;", ':'), ("&tab;", '\t'), ("&newline;", '\n')];
+            let hit = named.iter().find(|(n, _)| {
+                rest.get(..n.len())
+                    .is_some_and(|h| h.eq_ignore_ascii_case(n))
+            });
+            if let Some(&(n, ch)) = hit {
+                out.push(ch);
+                rest = &rest[n.len()..];
+                continue;
+            }
+            // `&#…` (HTML) or `#…;` (mermaid, semicolon required).
+            let (body, html) = if let Some(b) = rest.strip_prefix("&#") {
+                (b, true)
+            } else if let Some(b) = rest.strip_prefix('#') {
+                (b, false)
+            } else {
+                out.push(c);
+                rest = &rest[1..];
+                continue;
+            };
+            let (radix, digits_at) = match body.chars().next() {
+                Some('x' | 'X') if html => (16, 1),
+                _ => (10, 0),
+            };
+            let digits: String = body[digits_at..]
+                .chars()
+                .take_while(|c| c.is_digit(radix))
+                .collect();
+            let after = &body[digits_at + digits.len()..];
+            let semi = after.starts_with(';');
+            if !digits.is_empty() && (html || semi) {
+                if let Some(ch) = u32::from_str_radix(&digits, radix)
+                    .ok()
+                    .and_then(char::from_u32)
+                {
+                    out.push(ch);
+                    rest = if semi { &after[1..] } else { after };
+                    continue;
+                }
+            }
+        }
+        out.push(c);
+        rest = &rest[c.len_utf8()..];
+    }
+    out
 }
 
 impl Graph {

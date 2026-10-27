@@ -19,11 +19,11 @@ use crate::model::{
     ArchEdge, ArchGroup, ArchService, ArchSide, Architecture, Attr, Card, Class, ClassDiagram,
     ClassRel, CommitKind, Direction, Document, EdgeAnimation, EdgeCurve, EdgeEnds, EdgeKind,
     EdgeMeta, End, ErDiagram, FrameKind, GitBranch, GitCommit, GitGraph, GitOrientation, Graph,
-    Journey, JourneySection, JourneyTask, Key, LinkStyle, Marker, Member, MindNode, MindShape,
-    Mindmap, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation, SankeyAlignment,
-    SankeyConfig, SankeyDiagram, SankeyLink, SankeyLinkColor, SeqHead, SeqItem, SequenceDiagram,
-    Shape, SubEdge, Subgraph, Timeline, TimelineDirection, TimelinePeriod, TimelineSection,
-    Visibility,
+    Journey, JourneySection, JourneyTask, Key, LinkStyle, LinkTarget, Marker, Member, MindNode,
+    MindShape, Mindmap, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation,
+    SankeyAlignment, SankeyConfig, SankeyDiagram, SankeyLink, SankeyLinkColor, SeqHead, SeqItem,
+    SequenceDiagram, Shape, SubEdge, Subgraph, Timeline, TimelineDirection, TimelinePeriod,
+    TimelineSection, Visibility,
 };
 use crate::shapedata;
 use std::borrow::Cow;
@@ -435,6 +435,12 @@ struct FlowMeta {
     borderless: HashSet<usize>,
     /// `linkStyle` state, keyed by mermaid's link index.
     links: LinkStyles,
+    /// `click` tooltips and callback names by id, last write wins.
+    /// Mermaid keeps tooltips in a map with no node check (so they
+    /// reach a node declared later) and flowmaid keeps callbacks the
+    /// same way; both resolve onto existing nodes at the end.
+    click_tips: HashMap<String, String>,
+    click_callbacks: HashMap<String, String>,
 }
 
 /// Where a link lives: flowmaid keeps node→node links in
@@ -487,6 +493,209 @@ impl LinkStyles {
                 .as_ref()
                 .or(self.default_interp.as_ref())
                 .map(|c| EdgeCurve::from_mermaid(c));
+        }
+    }
+}
+
+/// Mermaid's `click` keyword and its sub-keywords (case-sensitive).
+const CLICK_KW: &str = "click";
+const CLICK_HREF: &str = "href";
+const CLICK_CALL: &str = "call";
+
+/// One parsed `click` statement.
+struct ClickStmt {
+    /// The comma-separated id list, as written.
+    ids: String,
+    /// `href` form: the url (entity codes decoded) and its target.
+    link: Option<(String, Option<LinkTarget>)>,
+    /// Callback form: the function name (arguments dropped).
+    callback: Option<String>,
+    tooltip: Option<String>,
+}
+
+/// A `"…"` string at the cursor (no escapes; mermaid's entity codes
+/// decoded).
+fn click_string(cur: &mut Cur<'_>, lineno: usize) -> Result<String, ParseError> {
+    cur.bump();
+    cur.take_until("\"")
+        .map(|s| decode_entities(&s))
+        .ok_or_else(|| err(lineno, "click: unclosed '\"' string".to_string()))
+}
+
+/// A bare word at the cursor: up to whitespace, a quote or `(`.
+fn click_word<'a>(cur: &mut Cur<'a>) -> &'a str {
+    let rest = cur.rest();
+    let end = rest
+        .find(|c: char| c.is_whitespace() || c == '"' || c == '(')
+        .unwrap_or(rest.len());
+    cur.pos += end;
+    &rest[..end]
+}
+
+/// An optional `"tooltip"`, then the end of the statement.
+fn click_tail(cur: &mut Cur<'_>, lineno: usize) -> Result<Option<String>, ParseError> {
+    cur.skip_ws();
+    let tip = if cur.rest().starts_with('"') {
+        Some(click_string(cur, lineno)?)
+    } else {
+        None
+    };
+    cur.skip_ws();
+    if !cur.at_end() {
+        return Err(err(
+            lineno,
+            format!("click: unexpected '{}' at the end", cur.rest()),
+        ));
+    }
+    Ok(tip)
+}
+
+/// Parse the text after `click` — mermaid's forms, in mermaid's order:
+/// `ID[,ID…] [href] "url" ["tooltip"] [_self|_blank|_parent|_top]`,
+/// `ID callback ["tooltip"]` or `ID call callback(args) ["tooltip"]`.
+/// Runs of whitespace are accepted where mermaid wants exactly one.
+fn parse_click(rest: &str, lineno: usize) -> Result<ClickStmt, ParseError> {
+    let mut cur = Cur::new(rest.trim());
+    let ids = {
+        let r = cur.rest();
+        let end = r.find(char::is_whitespace).unwrap_or(r.len());
+        cur.pos += end;
+        r[..end].to_string()
+    };
+    if ids.is_empty() {
+        return Err(err(lineno, "click needs a node id".to_string()));
+    }
+    cur.skip_ws();
+    if cur.at_end() {
+        return Err(err(
+            lineno,
+            format!("click: expected a url, callback or 'call' after '{ids}'"),
+        ));
+    }
+    let save = cur.pos;
+    let word = click_word(&mut cur);
+    // Like mermaid's `"href"[\s]`, where the line's own newline counts.
+    let href = word == CLICK_HREF && cur.peek().map_or(true, char::is_whitespace);
+    if !href {
+        cur.pos = save;
+    }
+    cur.skip_ws();
+    if href || cur.rest().starts_with('"') {
+        if !cur.rest().starts_with('"') {
+            return Err(err(
+                lineno,
+                "click: expected a quoted url after 'href'".to_string(),
+            ));
+        }
+        let url = click_string(&mut cur, lineno)?;
+        cur.skip_ws();
+        let tooltip = if cur.rest().starts_with('"') {
+            Some(click_string(&mut cur, lineno)?)
+        } else {
+            None
+        };
+        cur.skip_ws();
+        let target = if cur.at_end() {
+            None
+        } else {
+            let t = click_word(&mut cur);
+            let target = LinkTarget::from_mermaid(t).ok_or_else(|| {
+                err(
+                    lineno,
+                    format!(
+                        "click: link target must be _self, _blank, _parent or _top, found '{}'",
+                        if t.is_empty() { cur.rest() } else { t }
+                    ),
+                )
+            })?;
+            cur.skip_ws();
+            if cur.rest().starts_with('"') {
+                return Err(err(
+                    lineno,
+                    "click: tooltip must come before the link target".to_string(),
+                ));
+            }
+            if !cur.at_end() {
+                return Err(err(
+                    lineno,
+                    format!("click: unexpected '{}' at the end", cur.rest()),
+                ));
+            }
+            Some(target)
+        };
+        return Ok(ClickStmt {
+            ids,
+            link: Some((url, target)),
+            callback: None,
+            tooltip,
+        });
+    }
+    let word = click_word(&mut cur);
+    if word.is_empty() {
+        return Err(err(
+            lineno,
+            format!(
+                "click: expected a url, callback or 'call', found '{}'",
+                cur.rest()
+            ),
+        ));
+    }
+    if LinkTarget::from_mermaid(word).is_some() {
+        return Err(err(
+            lineno,
+            format!("click: expected a url, callback or 'call' before link target '{word}'"),
+        ));
+    }
+    let name = if word == CLICK_CALL && cur.peek().map_or(true, char::is_whitespace) {
+        cur.skip_ws();
+        let name = click_word(&mut cur);
+        if name.is_empty() {
+            return Err(err(
+                lineno,
+                "click: 'call' needs a function name".to_string(),
+            ));
+        }
+        cur.skip_ws();
+        // The arguments are dropped; mermaid's `[^)]*` ends them at
+        // the first `)`, quotes or not.
+        if cur.eat("(") && cur.take_until(")").is_none() {
+            return Err(err(
+                lineno,
+                format!("click: call {name}( is never closed with ')'"),
+            ));
+        }
+        name
+    } else {
+        word
+    };
+    let name = name.to_string();
+    let tooltip = click_tail(&mut cur, lineno)?;
+    Ok(ClickStmt {
+        ids,
+        link: None,
+        callback: Some(name),
+        tooltip,
+    })
+}
+
+/// Apply a `click` statement like mermaid's flowDb: a link lands only
+/// on a node that already exists (a later or unknown id, a subgraph or
+/// an edge id is ignored, and no node is created); a tooltip and a
+/// callback are kept by id and resolve at the end. The url is stored
+/// only if [`crate::model::sanitize_href`] passes it; a whitespace-only
+/// or refused url clears the node's link, as mermaid's `undefined` does.
+fn apply_click(g: &mut Graph, c: ClickStmt, fm: &mut FlowMeta) {
+    for id in c.ids.split(',').map(str::trim).filter(|i| !i.is_empty()) {
+        if let (Some((url, target)), Some(n)) = (&c.link, g.node_index(id)) {
+            let l = g.links.entry(n).or_default();
+            l.href = crate::model::sanitize_href(url);
+            l.target = *target;
+        }
+        if let Some(t) = c.tooltip.as_ref().filter(|t| !t.is_empty()) {
+            fm.click_tips.insert(id.to_string(), t.clone());
+        }
+        if let Some(cb) = &c.callback {
+            fm.click_callbacks.insert(id.to_string(), cb.clone());
         }
     }
 }
@@ -1600,12 +1809,12 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
         // Exact-case head only — mermaid keywords are case-sensitive,
         // so `Click` is a plain node id — and `click --> B` stays an
         // EDGE from a node named click.
-        if let Some(rest) = strip_keyword(line, "click") {
-            if &line[..5] == "click" && !edge_lead_follows(rest) {
-                return Err(err(
-                    lineno,
-                    "'click' statements aren't supported yet".to_string(),
-                ));
+        // `click`: exact-case head only (`Click` is a node id), and
+        // `click --> B` stays an EDGE from a node named click.
+        if let Some(rest) = strip_keyword(line, CLICK_KW) {
+            if &line[..CLICK_KW.len()] == CLICK_KW && !edge_lead_follows(rest) {
+                apply_click(&mut g, parse_click(rest, lineno)?, &mut fm);
+                continue;
             }
         }
 
@@ -1637,6 +1846,18 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
     };
     g.edges.iter_mut().for_each(|e| resolve(&mut e.meta));
     g.sub_edges.iter_mut().for_each(|e| resolve(&mut e.meta));
+    // `click` tooltips and callbacks reach every node that exists by
+    // now; links with nothing left on them go.
+    for (map, tip) in [(&fm.click_tips, true), (&fm.click_callbacks, false)] {
+        for (id, v) in map {
+            if let Some(n) = g.node_index(id) {
+                let l = g.links.entry(n).or_default();
+                let slot = if tip { &mut l.tooltip } else { &mut l.callback };
+                *slot = Some(v.clone());
+            }
+        }
+    }
+    g.links.retain(|_, l| !l.is_empty());
     // `linkStyle` resolves after it: `default` reaches every link,
     // including those defined after it, and `@{ curve }` wins.
     for (k, r) in fm.links.order.iter().enumerate() {
@@ -5760,10 +5981,15 @@ mod tests {
             assert_eq!(g.edges.len(), 1, "{line:?}");
             assert!(g.edges[0].ends.start.is_some(), "{line:?}");
         }
-        // …but an operator with nothing after it is not an edge, so the
-        // targeted message survives.
+        // …but an operator with nothing after it is not an edge, so it
+        // stays a (malformed) click statement.
         let e = parse("flowchart LR\nA --> B\nclick x--x\n").unwrap_err();
-        assert!(e.message.contains("aren't supported"), "{}", e.message);
+        assert!(
+            e.message
+                .contains("click: expected a url, callback or 'call'"),
+            "{}",
+            e.message
+        );
         // An unclosed two-way opener names the whole opener.
         let e = parse("flowchart LR\nA <-- B\n").unwrap_err();
         assert!(e.message.contains("'<--' is never closed"), "{}", e.message);
@@ -7532,5 +7758,238 @@ mod tests {
         assert!(parse("flowchart TD\nA --> B\nlinkstyle 0 stroke:red\n").is_err());
         // Not a statement in state diagrams.
         assert!(parse_document("stateDiagram-v2\nA --> B\nlinkStyle 0 stroke:red\n").is_err());
+    }
+
+    // ── click ───────────────────────────────────────────────────
+
+    fn link_of(src: &str, id: &str) -> Option<crate::model::NodeLink> {
+        let g = parse(src).unwrap_or_else(|e| panic!("{e}\n{src}"));
+        g.node_index(id).and_then(|n| g.links.get(&n).cloned())
+    }
+
+    #[test]
+    fn click_href_forms_parse_in_mermaids_order() {
+        let l = link_of(
+            "flowchart LR\nA-->B\nclick A \"https://example.com\"\n",
+            "A",
+        )
+        .unwrap();
+        assert_eq!(l.href.as_deref(), Some("https://example.com"));
+        assert_eq!((l.target, l.tooltip.as_deref()), (None, None));
+        let l = link_of(
+            "flowchart LR\nA-->B\nclick A href \"https://example.com\" \"Go to docs\" _blank\n",
+            "A",
+        )
+        .unwrap();
+        assert_eq!(l.tooltip.as_deref(), Some("Go to docs"));
+        assert_eq!(l.target, Some(LinkTarget::Blank));
+        let l = link_of(
+            "flowchart LR\nA-->B\nclick A \"https://example.com\" _self\n",
+            "A",
+        )
+        .unwrap();
+        assert_eq!(l.target, Some(LinkTarget::SelfFrame));
+        let l = link_of(
+            "flowchart LR\nA-->B\nclick B \"https://example.com\" \"tip\"\n",
+            "B",
+        )
+        .unwrap();
+        assert_eq!(l.tooltip.as_deref(), Some("tip"));
+        for t in ["_parent", "_top"] {
+            let l = link_of(
+                &format!("flowchart LR\nA-->B\nclick A href \"u\" {t}\n"),
+                "A",
+            );
+            assert_eq!(l.unwrap().target.unwrap().as_str(), t);
+        }
+        // Extra whitespace is accepted (mermaid wants exactly one).
+        let l = link_of(
+            "flowchart LR\nA-->B\nclick A  href  \"https://x.example\"\n",
+            "A",
+        );
+        assert!(l.unwrap().href.is_some());
+    }
+
+    #[test]
+    fn click_callbacks_are_accepted_and_keep_their_tooltip() {
+        let l = link_of("flowchart LR\nA-->B\nclick A callback\n", "A").unwrap();
+        assert_eq!((l.href, l.callback.as_deref()), (None, Some("callback")));
+        let l = link_of(
+            "flowchart LR\nA-->B\nclick A callback \"Tooltip for a callback\"\n",
+            "A",
+        )
+        .unwrap();
+        assert_eq!(l.tooltip.as_deref(), Some("Tooltip for a callback"));
+        let l = link_of("flowchart LR\nA-->B\nclick A call callback()\n", "A").unwrap();
+        assert_eq!(l.callback.as_deref(), Some("callback"));
+        let l = link_of(
+            "flowchart LR\nA-->B\nclick A call fn(\"a,b\", 2) \"tt\"\n",
+            "A",
+        )
+        .unwrap();
+        assert_eq!(
+            (l.callback.as_deref(), l.tooltip.as_deref()),
+            (Some("fn"), Some("tt"))
+        );
+        let l = link_of("flowchart LR\nA-->B\nclick A call fn\n", "A").unwrap();
+        assert_eq!(l.callback.as_deref(), Some("fn"));
+        // `callback` and `caller` are names, not `call`.
+        for name in ["caller", "callback"] {
+            let l = link_of(&format!("flowchart LR\nA-->B\nclick A {name}\n"), "A").unwrap();
+            assert_eq!(l.callback.as_deref(), Some(name));
+        }
+    }
+
+    #[test]
+    fn click_targets_ids_like_mermaid() {
+        // Several ids; a `;` separator; a `;` inside the url.
+        let g = parse("flowchart LR\nA-->B\nC-->D\nclick A,C \"https://example.com\"\n").unwrap();
+        assert_eq!(g.links.len(), 2);
+        let g = parse(
+            "flowchart LR\nA-->B\nclick A \"https://x.example\"; click B \"https://y.example\"\n",
+        )
+        .unwrap();
+        assert_eq!(g.links.len(), 2);
+        let l = link_of(
+            "flowchart LR\nA-->B\nclick A \"https://x.example/a;b\"\n",
+            "A",
+        )
+        .unwrap();
+        assert_eq!(l.href.as_deref(), Some("https://x.example/a;b"));
+        let l = link_of("flowchart LR\nA-->B\nclick A \"https://x/%%41\"\n", "A").unwrap();
+        assert_eq!(l.href.as_deref(), Some("https://x/%%41"));
+        // Unknown ids and subgraph ids: accepted, nothing created.
+        let g = parse("flowchart LR\nA-->B\nclick Z \"https://example.com\"\n").unwrap();
+        assert_eq!((g.nodes.len(), g.links.len()), (2, 0));
+        let g = parse("flowchart LR\nsubgraph S [Box]\nA\nend\nclick S \"https://example.com\"\n")
+            .unwrap();
+        assert!(g.node_index("S").is_none() && g.links.is_empty());
+        // An edge id is accepted too.
+        let g = parse("flowchart LR\nA e1@--> B\nclick e1 \"https://example.com\"\n").unwrap();
+        assert!(g.node_index("e1").is_none() && g.links.is_empty());
+        // Before the node exists: the link is dropped, the tooltip kept.
+        let l = link_of(
+            "flowchart LR\nclick A \"https://example.com\" \"tt\"\nA-->B\n",
+            "A",
+        )
+        .unwrap();
+        assert_eq!((l.href, l.tooltip.as_deref()), (None, Some("tt")));
+        // Last link and last tooltip win independently.
+        let l = link_of(
+            "flowchart LR\nA-->B\nclick A \"https://u1\" \"t1\"\nclick A cb \"tt\"\nclick A \"https://u2\"\n",
+            "A",
+        )
+        .unwrap();
+        assert_eq!(
+            (l.href.as_deref(), l.tooltip.as_deref()),
+            (Some("https://u2"), Some("tt"))
+        );
+        // A whitespace-only url clears the link; empty quotes are lenient.
+        let l = link_of(
+            "flowchart LR\nA-->B\nclick A \"https://u1\"\nclick A \"  \"\n",
+            "A",
+        );
+        assert!(l.is_none());
+        assert!(link_of("flowchart LR\nA-->B\nclick A \"\"\n", "A").is_none());
+    }
+
+    #[test]
+    fn click_rejects_dangerous_urls() {
+        for url in [
+            "javascript:alert(1)",
+            " JaVaScRiPt:alert(1)",
+            "java\tscript:alert(1)",
+            "%6Aavascript:alert(1)",
+            "javascript#58;alert(1)",
+            "&#106;avascript:alert(1)",
+            "&#x6A;avascript:alert(1)",
+            "javascript&colon;alert(1)",
+            "data:text/html,<script>alert(1)</script>",
+            "vbscript:msgbox(1)",
+            "\u{200B}javascript:alert(1)",
+        ] {
+            let src = format!("flowchart LR\nA-->B\nclick A \"{url}\" \"tip\"\n");
+            let l = link_of(&src, "A").unwrap();
+            assert_eq!(l.href, None, "{url:?}");
+            assert_eq!(l.tooltip.as_deref(), Some("tip"));
+        }
+        for url in [
+            "/docs",
+            "./a",
+            "../b",
+            "#anchor",
+            "?q=1",
+            "www.github.com",
+            "mailto:x@example.com",
+            "https://x.com/a?b=1&c=2",
+            "vscode://file/x",
+        ] {
+            let src = format!("flowchart LR\nA-->B\nclick A \"{url}\"\n");
+            assert_eq!(
+                link_of(&src, "A").unwrap().href.as_deref(),
+                Some(url),
+                "{url}"
+            );
+        }
+    }
+
+    #[test]
+    fn click_malformed_statements_are_line_numbered_errors() {
+        let e = |src: &str| {
+            let e = parse(src).unwrap_err();
+            assert_eq!(e.line, 3, "{src}");
+            e.message
+        };
+        assert!(
+            e("flowchart LR\nA-->B\nclick A \"https://x.example\" _new\n").contains("link target")
+        );
+        assert!(
+            e("flowchart LR\nA-->B\nclick A \"https://x.example\" _blank \"tt\"\n")
+                .contains("tooltip must come before")
+        );
+        assert!(e("flowchart LR\nA-->B\nclick A\n").contains("expected a url"));
+        assert!(e("flowchart LR\nA-->B\nclick A href\n").contains("quoted url after 'href'"));
+        assert!(e("flowchart LR\nA-->B\nclick A _blank\n").contains("link target '_blank'"));
+        assert!(e("flowchart LR\nA-->B\nclick A \"u\" blank\n").contains("link target"));
+        assert!(e("flowchart LR\nA-->B\nclick A \"u\n").contains("unclosed"));
+        assert!(e("flowchart LR\nA-->B\nclick A call fn(1\n").contains("never closed"));
+        assert!(e("flowchart LR\nA-->B\nclick A cb \"t\" extra\n").contains("unexpected"));
+        assert!(e("flowchart LR\nA-->B\nclick A call\n").contains("function name"));
+    }
+
+    #[test]
+    fn click_keyword_is_exact_case_and_named_nodes_stay_edges() {
+        let g = parse("flowchart LR\nclick --> B\n").unwrap();
+        assert_eq!(g.nodes[g.edges[0].from].id, "click");
+        let g = parse("flowchart LR\nclick -- go --> B\n").unwrap();
+        assert_eq!(g.edges[0].label.as_deref(), Some("go"));
+        let e = parse("flowchart LR\nA-->B\nClick A \"u\"\n").unwrap_err();
+        assert!(
+            e.message.contains("unknown edge operator near: 'A \"u\"'"),
+            "{}",
+            e.message
+        );
+        // stateDiagram has no click grammar.
+        assert!(parse_document("stateDiagram-v2\nA --> B\nclick A \"u\"\n").is_err());
+    }
+
+    #[test]
+    fn sanitize_href_ports_braintree() {
+        use crate::model::sanitize_href;
+        assert_eq!(sanitize_href("  https://x  ").as_deref(), Some("https://x"));
+        assert_eq!(sanitize_href(""), None);
+        assert_eq!(sanitize_href("\u{0}\u{1}"), None);
+        // Double-encoded percent.
+        assert_eq!(sanitize_href("%256Aavascript:alert(1)"), None);
+        assert_eq!(sanitize_href("&#0000106avascript:alert(1)"), None);
+        assert_eq!(sanitize_href("&#106avascript:alert(1)"), None);
+        // A colon later in a relative-looking url still counts, as in
+        // braintree (`database.html?x=a:b` reads as a `data…` scheme).
+        assert_eq!(sanitize_href("database.html?x=a:b"), None);
+        assert_eq!(
+            sanitize_href("/javascript:x").as_deref(),
+            Some("/javascript:x")
+        );
+        assert_eq!(sanitize_href("%zz").as_deref(), Some("%zz"));
     }
 }

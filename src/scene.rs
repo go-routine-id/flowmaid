@@ -16,7 +16,7 @@ use crate::layout::{
 };
 use crate::model::{
     Direction, EdgeAnimation, EdgeCurve, EdgeEnds, EdgeKind, EdgeMeta, End, Graph, Marker,
-    NodeStyle, Shape,
+    NodeLink, NodeStyle, Shape,
 };
 use std::collections::HashMap;
 
@@ -62,6 +62,9 @@ pub struct SceneNode {
     pub label: String,
     /// Custom colors from `style`/`classDef`; empty = shape theme.
     pub style: NodeStyle,
+    /// Mermaid `click` link / tooltip (`Graph::links`), so a host can
+    /// open the url or show the tooltip itself; `None` = none.
+    pub link: Option<NodeLink>,
 }
 
 /// Edge with a final cubic bezier curve.
@@ -764,6 +767,7 @@ fn scene_from_layout(g: &Graph, sizes: &[(f64, f64)], lo: LayoutResult) -> Scene
                 shape: n.shape,
                 label: n.label.clone(),
                 style: n.style.clone(),
+                link: g.links.get(&i).cloned(),
             }
         })
         .collect();
@@ -1075,6 +1079,7 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
             shape: n.shape,
             label: n.label.clone(),
             style: n.style.clone(),
+            link: g.links.get(&i).cloned(),
         })
         .collect();
 
@@ -1407,6 +1412,27 @@ fn marker_attr(side: &str, id: Option<&str>) -> String {
         Some(id) => format!(" marker-{side}=\"url(#{id})\""),
         None => String::new(),
     }
+}
+
+/// The XLink namespace, declared on each `<a>` so `xlink:href` works
+/// in SVG 1.1 tools without touching the root `<svg>` header.
+const XLINK_NS: &str = "http://www.w3.org/1999/xlink";
+
+/// `<a …>` opening a `click`-linked node: `href` for SVG 2 browsers,
+/// `xlink:href` for SVG 1.1 tools, `target` only when the author gave
+/// one (no target = the same tab, as in mermaid), and
+/// `rel="noopener noreferrer"` with `_blank`.
+fn svg_link_open(url: &str, target: Option<crate::model::LinkTarget>) -> String {
+    let u = escape(url);
+    let mut out = format!("<a xmlns:xlink=\"{XLINK_NS}\" href=\"{u}\" xlink:href=\"{u}\"");
+    if let Some(t) = target {
+        out.push_str(&format!(" target=\"{}\"", t.as_str()));
+        if t == crate::model::LinkTarget::Blank {
+            out.push_str(" rel=\"noopener noreferrer\"");
+        }
+    }
+    out.push_str(">\n");
+    out
 }
 
 /// Default stroke width of a drawn edge, and of a thick (`==>`) one.
@@ -1855,6 +1881,19 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
                 }
             }
         };
+        // A `click` tooltip replaces the label-derived title, and a
+        // safe url wraps the whole group in a link.
+        let link = n.link.as_ref();
+        let node_title = link
+            .and_then(|l| l.tooltip.clone())
+            .filter(|t| !t.is_empty())
+            .unwrap_or(node_title);
+        let href = link
+            .and_then(|l| l.href.as_deref())
+            .and_then(crate::model::sanitize_href);
+        if let Some(u) = &href {
+            s.push_str(&svg_link_open(u, link.and_then(|l| l.target)));
+        }
         if node_title.is_empty() {
             s.push_str("<g>\n");
         } else {
@@ -2024,6 +2063,9 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
             &n.label,
         );
         s.push_str("</g>\n");
+        if href.is_some() {
+            s.push_str("</a>\n");
+        }
     }
 
     s.push_str(&edge_labels);
@@ -3945,5 +3987,108 @@ mod tests {
         assert!(!svg.contains("-u\"") && !svg.contains("_"), "{svg}");
         assert!(svg.contains("stroke-dasharray=\"5 4\""));
         assert!(svg.contains("stroke-width=\"3.4\""));
+    }
+
+    // ── click ───────────────────────────────────────────────────
+
+    #[test]
+    fn click_wraps_the_node_in_a_link() {
+        let svg = svg_src("flowchart LR\nA-->B\nclick A \"https://example.com\"\n");
+        assert!(
+            svg.contains(
+                "<a xmlns:xlink=\"http://www.w3.org/1999/xlink\" href=\"https://example.com\" \
+             xlink:href=\"https://example.com\">\n<g><title>A</title>\n"
+            ),
+            "{svg}"
+        );
+        assert_eq!(svg.matches("<a ").count(), 1);
+        assert_eq!(svg.matches("</a>").count(), 1);
+        assert!(!svg.contains("target="));
+        // The root header is untouched.
+        let plain = svg_src("flowchart LR\nA-->B\n");
+        assert_eq!(svg.lines().next(), plain.lines().next());
+        let svg = svg_src(
+            "flowchart LR\nA-->B\nclick A href \"https://example.com\" \"Go to docs\" _blank\n",
+        );
+        assert!(svg.contains(
+            "target=\"_blank\" rel=\"noopener noreferrer\">\n<g><title>Go to docs</title>"
+        ));
+        assert!(!svg.contains("<title>A</title>"));
+        let svg = svg_src("flowchart LR\nA-->B\nclick A \"https://example.com\" _self\n");
+        assert!(svg.contains("target=\"_self\">") && !svg.contains("rel="));
+        let svg = svg_src("flowchart LR\nA-->B\nclick A \"/docs/page?a=1&b=2\"\n");
+        assert!(svg.contains("href=\"/docs/page?a=1&amp;b=2\""));
+    }
+
+    #[test]
+    fn click_tooltips_and_callbacks_without_links() {
+        let plain = svg_src("flowchart LR\nA-->B\n");
+        assert_eq!(svg_src("flowchart LR\nA-->B\nclick A callback\n"), plain);
+        assert_eq!(
+            svg_src("flowchart LR\nA-->B\nclick A call callback()\n"),
+            plain
+        );
+        let svg = svg_src("flowchart LR\nA-->B\nclick A callback \"Tooltip for a callback\"\n");
+        assert!(svg.contains("<g><title>Tooltip for a callback</title>") && !svg.contains("<a "));
+        let svg = svg_src(
+            "flowchart LR\nA-->B\nclick A \"https://x.example\" \"say #quot;hi#quot; <b>\"\n",
+        );
+        assert!(
+            svg.contains("<title>say &quot;hi&quot; &lt;b&gt;</title>"),
+            "{svg}"
+        );
+        // Exactly one <title> per node group.
+        let g = svg.split("<g>").nth(1).unwrap_or_default();
+        assert!(!g.contains("<title>A</title>"));
+    }
+
+    #[test]
+    fn click_never_writes_a_dangerous_url() {
+        for url in [
+            "javascript:alert(1)",
+            "javascript#58;alert(1)",
+            "%6Aavascript:alert(1)",
+            "data:text/html,x",
+        ] {
+            let svg = svg_src(&format!("flowchart LR\nA-->B\nclick A \"{url}\"\n"));
+            assert!(!svg.contains("<a "), "{url}");
+            assert!(!svg.to_lowercase().contains("javascript"), "{url}");
+        }
+        // A library user bypassing the parser is checked at emit time.
+        let mut g = parse("flowchart LR\nA-->B\n").unwrap();
+        g.links.insert(
+            0,
+            NodeLink {
+                href: Some("javascript:alert(1)".into()),
+                ..NodeLink::default()
+            },
+        );
+        let svg = to_svg(&scene(&g));
+        assert!(!svg.contains("javascript") && !svg.contains("<a "));
+    }
+
+    #[test]
+    fn click_links_reach_every_scene_builder() {
+        let g = parse(
+            "flowchart LR\nA --> B --> C --> D --> E --> F --> G --> H\n\
+             click A href \"https://example.com\" \"tip\" _top\n",
+        )
+        .unwrap();
+        let sc = scene(&g);
+        let l = sc.nodes[0].link.as_ref().unwrap();
+        assert_eq!(l.href.as_deref(), Some("https://example.com"));
+        assert_eq!(l.tooltip.as_deref(), Some("tip"));
+        assert_eq!(l.target, Some(crate::model::LinkTarget::Top));
+        assert!(sc.nodes[1].link.is_none());
+        let centers: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        assert!(route(&g, &centers).nodes[0].link.is_some());
+        let c = crate::fold::scene_compact(&g, &crate::fold::CompactOptions::for_extent(300.0));
+        assert!(c.skipped.is_none());
+        assert!(c.scene.nodes[0].link.is_some());
+        assert!(to_svg(&c.scene).contains("href=\"https://example.com\""));
+        // Clustered scenes too.
+        let g =
+            parse("flowchart LR\nsubgraph S\nA\nend\nA --> B\nclick A \"https://x\"\n").unwrap();
+        assert!(scene(&g).nodes[0].link.is_some());
     }
 }

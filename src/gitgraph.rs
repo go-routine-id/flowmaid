@@ -104,6 +104,7 @@ pub fn scene(d: &GitGraph) -> GitScene {
                 stroke_width: Some(2.0),
                 color: None,
             },
+            link: None,
         });
 
         // In vertical modes, place the id to the right of the circle and the

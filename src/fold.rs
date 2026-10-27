@@ -423,7 +423,10 @@ fn compose(
         .map(|v| {
             let k = band_of(v);
             let (s, _) = bands[k];
-            scenes[k].nodes[pos_of[v] - s].clone()
+            let mut n = scenes[k].nodes[pos_of[v] - s].clone();
+            // Band graphs carry no `click` links; take them from `g`.
+            n.link = g.links.get(&v).cloned();
+            n
         })
         .collect();
 

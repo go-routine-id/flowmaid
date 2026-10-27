@@ -193,6 +193,7 @@ pub fn scene(d: &Architecture) -> ArchScene {
                 stroke_width: Some(2.0),
                 color: None,
             },
+            link: None,
         });
     }
 

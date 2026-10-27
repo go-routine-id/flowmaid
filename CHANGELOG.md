@@ -9,6 +9,21 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Flowchart `click` statements.** Every mermaid form parses: `click ID[,ID…] [href] "url"
+  ["tooltip"] [_self|_blank|_parent|_top]`, `click ID callback ["tooltip"]` and `click ID
+  call fn(args) ["tooltip"]`, with line-numbered errors for a bad target, a tooltip after
+  the target, or a missing url. A linked node is wrapped in `<a href xlink:href [target]>`
+  (`rel="noopener noreferrer"` on `_blank`; `xmlns:xlink` declared on the `<a>`, so the
+  root header is unchanged) and a tooltip replaces the node's `<title>`. Urls go through
+  `model::sanitize_href`, a port of the `@braintree/sanitize-url` checks mermaid's
+  default `strict` level uses: `javascript:` / `data:` / `vbscript:` urls, also hidden by
+  percent or entity encoding or control characters, are not linked. Callbacks are kept by
+  name and never run. Links land only on nodes that already exist (no phantom nodes), and
+  tooltips reach later ones, as in mermaid. `to_mermaid` round-trips links, tooltips,
+  targets and callback names. New: `model::NodeLink`, `model::LinkTarget`,
+  `model::sanitize_href`, a `Graph::links` field (non-breaking: `Graph` has a private
+  field) and a `SceneNode::link` field (non-breaking: `#[non_exhaustive]`). Diagrams
+  without `click` render byte-identically.
 - **Flowchart `linkStyle`.** `linkStyle <n>[,<n>…]` and `linkStyle default`, each with an
   optional `interpolate <curve>`, style edges by mermaid's link index (source order, fan-out
   pairs, `~~~` and subgraph links included; out-of-range and forward indices fail with
