@@ -261,6 +261,12 @@ fn line_width(s: &str) -> f64 {
             'w' => 10.1,
             'W' => 13.2,
             'A'..='Z' => 9.7,
+            // Joiners and emoji variation selectors draw nothing.
+            '\u{200D}' | '\u{FE0F}' => 0.0,
+            '—' => 14.0,
+            // Arrows, misc symbols and dingbats come from a fallback
+            // font at about 1em — ~14px, not a Latin letter's 7.8.
+            '\u{2190}'..='\u{21FF}' | '\u{2600}'..='\u{27BF}' => 14.0,
             c if (c as u32) >= 0x2E80 => 14.0, // CJK, emoji, wide symbols
             _ => 7.8,
         })
@@ -1786,5 +1792,18 @@ mod tests {
             "bold tspan"
         );
         assert!(!svg.contains("&lt;b&gt;"), "no literal <b> in output");
+    }
+
+    #[test]
+    fn symbol_glyphs_are_not_under_measured() {
+        // Issue #61: arrows, em dashes and emoji render ~1em (14px at
+        // the calibration size); a box sized for 7.8px each clipped
+        // them. Joiners and variation selectors draw nothing.
+        assert_eq!(text_width("→→→→→→→→→→"), 140.0);
+        assert_eq!(text_width("——"), 28.0);
+        assert_eq!(text_width("⚠\u{FE0F}"), text_width("⚠"));
+        assert!(text_width("⛔ ✅ ✕") >= 3.0 * 14.0);
+        // Plain Latin text keeps its old estimate.
+        assert_eq!(text_width("Wazuh 4.14"), line_width("Wazuh 4.14"));
     }
 }
