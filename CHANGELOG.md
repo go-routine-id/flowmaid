@@ -7,6 +7,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-10-27
+
 ### Added
 
 - **Markdown strings in flowchart labels.** ``"`**bold** _italic_`"`` in node, edge (pipe and
