@@ -14,7 +14,10 @@
 use crate::layout::{
     intrinsic_size, layout_clustered, layout_sized, text_width, LayoutResult, Placed,
 };
-use crate::model::{Direction, EdgeEnds, EdgeKind, End, Graph, Marker, NodeStyle, Shape};
+use crate::model::{
+    Direction, EdgeAnimation, EdgeCurve, EdgeEnds, EdgeKind, EdgeMeta, End, Graph, Marker,
+    NodeStyle, Shape,
+};
 use std::collections::HashMap;
 
 pub(crate) const MARGIN: f64 = 28.0;
@@ -88,6 +91,10 @@ pub struct SceneEdge {
     /// [`EdgeEnds`]); resolve with `ends.end_marker(kind)` /
     /// `ends.start_marker(kind)`.
     pub ends: EdgeEnds,
+    /// Mermaid edge id + metadata (`A e1@--> B`, `e1@{ animate: true }`):
+    /// the id is written as the path's `id` / `data-id`, the animation
+    /// as a CSS class, the curve as the path shape.
+    pub meta: EdgeMeta,
     /// (text, box centre, box width) when the edge has a label.
     pub label: Option<(String, (f64, f64), f64)>,
 }
@@ -310,10 +317,168 @@ fn edge_distance(e: &SceneEdge, x: f64, y: f64) -> f64 {
 /// curveBasis spline `spline_d` emits (which pulls away from the raw
 /// waypoints), a plain edge follows its single cubic.
 fn edge_polyline(e: &SceneEdge) -> Vec<(f64, f64)> {
+    if let Some((start, segs)) = curve_geometry(e) {
+        return curve_sample(start, &segs);
+    }
     if e.waypoints.len() >= 2 {
         return basis_sample(&e.waypoints);
     }
     sample_cubic(&e.bezier, 24)
+}
+
+/// One drawing command of a non-default edge curve (the start point is
+/// held apart).
+#[derive(Debug, Clone, Copy)]
+enum Seg {
+    L((f64, f64)),
+    Q((f64, f64), (f64, f64)),
+    C((f64, f64), (f64, f64), (f64, f64)),
+}
+
+/// Corner radius of mermaid's `rounded` edge curve (`generateRoundedPath`).
+const ROUNDED_CURVE_RADIUS: f64 = 5.0;
+
+/// The geometry of an edge drawn with a non-default mermaid `curve`, as
+/// (start point, commands) in scene coordinates; `None` for the default
+/// (`basis`) curve, which keeps the historical path exactly. The curve
+/// runs through the routed waypoints, or — for a single-cubic edge —
+/// its two endpoints (a self-loop uses its four bezier points so it
+/// still loops). Interpolating curves mermaid gets from d3
+/// (`natural`, `monotoneX/Y`, `cardinal`, `catmullRom`) are drawn as a
+/// Catmull-Rom spline through the same points; with two points d3
+/// draws all of them as a straight line, and so does this.
+fn curve_geometry(e: &SceneEdge) -> Option<((f64, f64), Vec<Seg>)> {
+    let curve = e.meta.curve.filter(|&c| c != EdgeCurve::Basis)?;
+    let p: Vec<(f64, f64)> = if e.waypoints.len() >= 2 {
+        e.waypoints.clone()
+    } else if e.from == e.to {
+        e.bezier.to_vec()
+    } else {
+        vec![e.bezier[0], e.bezier[3]]
+    };
+    let n = p.len();
+    let mid = |a: f64, b: f64| (a + b) / 2.0;
+    let mut segs = Vec::new();
+    match curve {
+        EdgeCurve::Linear | EdgeCurve::Basis => segs.extend(p[1..].iter().map(|&q| Seg::L(q))),
+        EdgeCurve::Rounded => {
+            for i in 1..n - 1 {
+                let (a, b, c) = (p[i - 1], p[i], p[i + 1]);
+                let d1 = ((b.0 - a.0).powi(2) + (b.1 - a.1).powi(2)).sqrt();
+                let d2 = ((c.0 - b.0).powi(2) + (c.1 - b.1).powi(2)).sqrt();
+                if d1 == 0.0 || d2 == 0.0 {
+                    segs.push(Seg::L(b));
+                    continue;
+                }
+                let r = ROUNDED_CURVE_RADIUS.min(d1 / 2.0).min(d2 / 2.0);
+                let p1 = (b.0 - (b.0 - a.0) / d1 * r, b.1 - (b.1 - a.1) / d1 * r);
+                let p2 = (b.0 + (c.0 - b.0) / d2 * r, b.1 + (c.1 - b.1) / d2 * r);
+                segs.push(Seg::L(p1));
+                segs.push(Seg::Q(b, p2));
+            }
+            segs.push(Seg::L(p[n - 1]));
+        }
+        // d3 curveStep / curveStepBefore / curveStepAfter.
+        EdgeCurve::Step => {
+            for w in p.windows(2) {
+                let x = mid(w[0].0, w[1].0);
+                segs.push(Seg::L((x, w[0].1)));
+                segs.push(Seg::L((x, w[1].1)));
+            }
+            segs.push(Seg::L(p[n - 1]));
+        }
+        EdgeCurve::StepBefore => {
+            for w in p.windows(2) {
+                segs.push(Seg::L((w[0].0, w[1].1)));
+                segs.push(Seg::L(w[1]));
+            }
+        }
+        EdgeCurve::StepAfter => {
+            for w in p.windows(2) {
+                segs.push(Seg::L((w[1].0, w[0].1)));
+                segs.push(Seg::L(w[1]));
+            }
+        }
+        // d3 curveBumpX / curveBumpY.
+        EdgeCurve::BumpX => segs.extend(p.windows(2).map(|w| {
+            let x = mid(w[0].0, w[1].0);
+            Seg::C((x, w[0].1), (x, w[1].1), w[1])
+        })),
+        EdgeCurve::BumpY => segs.extend(p.windows(2).map(|w| {
+            let y = mid(w[0].1, w[1].1);
+            Seg::C((w[0].0, y), (w[1].0, y), w[1])
+        })),
+        _ if n == 2 => segs.push(Seg::L(p[1])),
+        _ => {
+            for i in 0..n - 1 {
+                let p0 = p[i.saturating_sub(1)];
+                let (p1, p2) = (p[i], p[i + 1]);
+                let p3 = p[(i + 2).min(n - 1)];
+                segs.push(Seg::C(
+                    (p1.0 + (p2.0 - p0.0) / 6.0, p1.1 + (p2.1 - p0.1) / 6.0),
+                    (p2.0 - (p3.0 - p1.0) / 6.0, p2.1 - (p3.1 - p1.1) / 6.0),
+                    p2,
+                ));
+            }
+        }
+    }
+    Some((p[0], segs))
+}
+
+/// SVG path data for [`curve_geometry`], mapped through `t`.
+fn curve_d(start: (f64, f64), segs: &[Seg], t: impl Fn((f64, f64)) -> (f64, f64)) -> String {
+    let s0 = t(start);
+    let mut d = format!("M {:.1} {:.1}", s0.0, s0.1);
+    for seg in segs {
+        match *seg {
+            Seg::L(p) => {
+                let p = t(p);
+                d.push_str(&format!(" L {:.1} {:.1}", p.0, p.1));
+            }
+            Seg::Q(c, p) => {
+                let (c, p) = (t(c), t(p));
+                d.push_str(&format!(" Q {:.1} {:.1}, {:.1} {:.1}", c.0, c.1, p.0, p.1));
+            }
+            Seg::C(c1, c2, p) => {
+                let (c1, c2, p) = (t(c1), t(c2), t(p));
+                d.push_str(&format!(
+                    " C {:.1} {:.1}, {:.1} {:.1}, {:.1} {:.1}",
+                    c1.0, c1.1, c2.0, c2.1, p.0, p.1
+                ));
+            }
+        }
+    }
+    d
+}
+
+/// Dense sample of [`curve_geometry`] for picking and the bounding box.
+fn curve_sample(start: (f64, f64), segs: &[Seg]) -> Vec<(f64, f64)> {
+    const STEPS: usize = 12;
+    let mut out = vec![start];
+    let mut cur = start;
+    for seg in segs {
+        match *seg {
+            Seg::L(p) => out.push(p),
+            Seg::Q(c, p) => {
+                for k in 1..=STEPS {
+                    let t = k as f64 / STEPS as f64;
+                    let u = 1.0 - t;
+                    out.push((
+                        u * u * cur.0 + 2.0 * u * t * c.0 + t * t * p.0,
+                        u * u * cur.1 + 2.0 * u * t * c.1 + t * t * p.1,
+                    ));
+                }
+            }
+            Seg::C(c1, c2, p) => {
+                let b = [cur, c1, c2, p];
+                out.extend((1..=STEPS).map(|k| cubic_at(&b, k as f64 / STEPS as f64)));
+            }
+        }
+        cur = match *seg {
+            Seg::L(p) | Seg::Q(_, p) | Seg::C(_, _, p) => p,
+        };
+    }
+    out
 }
 
 /// Sample a cubic bezier `[p0, c1, c2, p3]` into `steps + 1` points.
@@ -614,6 +779,7 @@ fn scene_from_layout(g: &Graph, sizes: &[(f64, f64)], lo: LayoutResult) -> Scene
             waypoints: wps.iter().map(|&p| tf(p)).collect(),
             kind: e.kind,
             ends: e.ends,
+            meta: e.meta.clone(),
             label: e.label.clone().zip(label).map(|(t, (m, w))| (t, tf(m), w)),
         })
         .collect();
@@ -758,6 +924,7 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
                 waypoints: Vec::new(),
                 kind: e.kind,
                 ends: e.ends,
+                meta: e.meta.clone(),
                 label,
             });
         }
@@ -981,6 +1148,7 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
             waypoints: wps,
             kind: e.kind,
             ends: e.ends,
+            meta: e.meta.clone(),
             label,
         });
     }
@@ -1050,6 +1218,7 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
                 waypoints: Vec::new(),
                 kind: e.kind,
                 ends: e.ends,
+                meta: e.meta.clone(),
                 label,
             });
         }
@@ -1286,6 +1455,66 @@ fn extra_marker_defs(edges: &[SceneEdge]) -> String {
     out
 }
 
+/// Prefix of the DOM id a user edge id is written under (`edge-e1`),
+/// like mermaid's `<diagramId>-<id>`: it keeps an id such as `arrow`
+/// from colliding with the marker ids. `data-id` carries the raw id.
+const EDGE_DOM_ID_PREFIX: &str = "edge-";
+/// Mermaid's edge-animation CSS (`styles.ts`), ported verbatim: a
+/// `9,5` dash marching from offset 900 to 0, every `FAST`/`SLOW`
+/// seconds. `!important` overrides a dotted edge's own dash, as there.
+const EDGE_ANIMATION_DASH: &str = "9,5";
+const EDGE_ANIMATION_DASH_OFFSET: u32 = 900;
+const EDGE_ANIMATION_FAST_SECS: u32 = 20;
+const EDGE_ANIMATION_SLOW_SECS: u32 = 50;
+
+/// Mermaid's CSS class for an animated edge.
+fn edge_animation_class(a: EdgeAnimation) -> &'static str {
+    match a {
+        EdgeAnimation::Fast => "edge-animation-fast",
+        EdgeAnimation::Slow => "edge-animation-slow",
+    }
+}
+
+/// ` id="edge-…" data-id="…"` for a user edge id and ` class="…"` for
+/// an animated edge; empty for a plain edge, so output is unchanged.
+fn edge_meta_attrs(m: &EdgeMeta) -> String {
+    let mut out = String::new();
+    if let Some(id) = &m.id {
+        out.push_str(&format!(
+            " id=\"{EDGE_DOM_ID_PREFIX}{0}\" data-id=\"{0}\"",
+            escape(id)
+        ));
+    }
+    if let Some(a) = m.animation {
+        out.push_str(&format!(" class=\"{}\"", edge_animation_class(a)));
+    }
+    out
+}
+
+/// The animation `<style>`, written once and only when some drawn edge
+/// is animated.
+fn edge_animation_css(edges: &[SceneEdge]) -> String {
+    let animated = edges
+        .iter()
+        .any(|e| e.meta.animation.is_some() && !matches!(e.kind, EdgeKind::Invisible));
+    if !animated {
+        return String::new();
+    }
+    let rule = |a: EdgeAnimation, secs: u32| {
+        format!(
+            ".{}{{stroke-dasharray:{EDGE_ANIMATION_DASH} !important;\
+             stroke-dashoffset:{EDGE_ANIMATION_DASH_OFFSET};\
+             animation:dash {secs}s linear infinite;stroke-linecap:round}}",
+            edge_animation_class(a)
+        )
+    };
+    format!(
+        "<style>@keyframes dash{{to{{stroke-dashoffset:0}}}} {} {}</style>",
+        rule(EdgeAnimation::Slow, EDGE_ANIMATION_SLOW_SECS),
+        rule(EdgeAnimation::Fast, EDGE_ANIMATION_FAST_SECS)
+    )
+}
+
 /// Serialise any Scene (automatic or dragged) to SVG. Content is
 /// translated to start at MARGIN, so negative coordinates are safe.
 /// The accessible name is `"Flowchart diagram"`; use [`to_svg_titled`]
@@ -1348,9 +1577,10 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
     s.push_str(&format!(
         "<defs><marker id=\"arrow\" viewBox=\"0 0 10 10\" refX=\"8.5\" refY=\"5\" \
          markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\">\
-         <path d=\"M 0 1 L 9 5 L 0 9 z\" fill=\"{}\"/></marker>{}</defs>\n",
+         <path d=\"M 0 1 L 9 5 L 0 9 z\" fill=\"{}\"/></marker>{}{}</defs>\n",
         EDGE_COLOR,
-        extra_marker_defs(&sc.edges)
+        extra_marker_defs(&sc.edges),
+        edge_animation_css(&sc.edges)
     ));
 
     // Cluster boxes first (outermost-first), behind everything. The
@@ -1400,7 +1630,9 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
         // A routed edge splines through its waypoints; otherwise the
         // single cubic. The arrow marker orients to the end tangent
         // (last segment) either way.
-        let path_d = if e.waypoints.len() >= 2 {
+        let path_d = if let Some((start, segs)) = curve_geometry(e) {
+            curve_d(start, &segs, t)
+        } else if e.waypoints.len() >= 2 {
             let q: Vec<(f64, f64)> = e.waypoints.iter().map(|&p| t(p)).collect();
             spline_d(&q)
         } else {
@@ -1429,13 +1661,14 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
             None => format!("{} {dir} {}", display(&e.from), display(&e.to)),
         };
         s.push_str(&format!(
-            "<path d=\"{}\" fill=\"none\" stroke=\"{}\" stroke-width=\"{}\"{}{}>\
+            "<path d=\"{}\" fill=\"none\" stroke=\"{}\" stroke-width=\"{}\"{}{}{}>\
              <title>{}</title></path>\n",
             path_d,
             EDGE_COLOR,
             sw,
             dash,
             marker,
+            edge_meta_attrs(&e.meta),
             escape(&edge_title)
         ));
         if let Some((text, m, w)) = &e.label {
@@ -1693,6 +1926,13 @@ pub(crate) fn grow_scene(
         }
         for &(x, y) in &e.bezier {
             bb.add(x, y);
+        }
+        // A non-default curve (catmullRom overshoots) is bounded by
+        // what is drawn, not by the bezier hull.
+        if let Some((start, segs)) = curve_geometry(e) {
+            for (x, y) in curve_sample(start, &segs) {
+                bb.add(x, y);
+            }
         }
         if let Some((_, m, w)) = &e.label {
             bb.add(m.0 - w / 2.0, m.1 - 10.0);
@@ -2489,6 +2729,151 @@ pub(crate) fn escape(s: &str) -> String {
 mod tests {
     use super::*;
     use crate::parser::parse;
+
+    fn svg_src(src: &str) -> String {
+        to_svg(&scene(&parse(src).unwrap_or_else(|e| panic!("{e}\n{src}"))))
+    }
+
+    fn edge_paths(svg: &str) -> Vec<&str> {
+        svg.lines()
+            .filter(|l| l.starts_with("<path d=") && l.contains("<title>"))
+            .collect()
+    }
+
+    #[test]
+    fn edge_ids_become_prefixed_dom_ids() {
+        let svg = svg_src("flowchart LR\n  A e1@--> B\n");
+        let p = edge_paths(&svg);
+        assert!(p[0].contains(" id=\"edge-e1\" data-id=\"e1\""), "{svg}");
+        assert!(!svg.contains("<style>") && !svg.contains("class=\""));
+        // Same geometry as the id-less edge; only the attributes differ.
+        let plain = svg_src("flowchart LR\n  A --> B\n");
+        assert_eq!(svg.replace(" id=\"edge-e1\" data-id=\"e1\"", ""), plain);
+        // An id named like a marker never collides with it.
+        let svg = svg_src("flowchart LR\n  A arrow@--> B\n");
+        assert!(svg.contains("id=\"edge-arrow\"") && svg.contains("<marker id=\"arrow\""));
+        assert_eq!(svg.matches(" id=\"arrow\"").count(), 1);
+        // XML-escaped.
+        let svg = svg_src("flowchart LR\n  A e<1@--> B\n");
+        assert!(
+            svg.contains("id=\"edge-e&lt;1\" data-id=\"e&lt;1\""),
+            "{svg}"
+        );
+        // Invisible edges are not drawn, so neither are their ids.
+        let svg = svg_src("flowchart LR\n  A e1@~~~ B\n  e1@{ animate: true }\n");
+        assert!(!svg.contains("edge-e1") && !svg.contains("<style>"));
+    }
+
+    #[test]
+    fn animated_edges_get_mermaids_class_and_one_style_block() {
+        let svg = svg_src(
+            "flowchart LR\n  A e1@--> B\n  B e2@-.-> C\n  C e3@--> D\n  e1@{ animate: true }\n  e2@{ animation: slow }\n",
+        );
+        let p = edge_paths(&svg);
+        assert!(p[0].contains("class=\"edge-animation-fast\""), "{svg}");
+        assert!(p[1].contains("class=\"edge-animation-slow\""));
+        assert!(
+            p[1].contains("stroke-dasharray=\"5 4\""),
+            "dotted dash stays"
+        );
+        assert!(!p[2].contains("class="));
+        assert_eq!(svg.matches("<style>").count(), 1);
+        assert!(svg.contains("@keyframes dash{to{stroke-dashoffset:0}}"));
+        assert!(svg.contains(".edge-animation-fast{stroke-dasharray:9,5 !important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round}"));
+        assert!(svg.contains(".edge-animation-slow{stroke-dasharray:9,5 !important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round}"));
+        // Bogus animation: no class, no style block.
+        let svg = svg_src("flowchart LR\n  A e1@--> B\n  e1@{ animate: true, animation: bogus }\n");
+        assert!(!svg.contains("class=\"edge-animation") && !svg.contains("<style>"));
+    }
+
+    #[test]
+    fn edge_curves_change_only_their_own_path() {
+        let plain = svg_src("flowchart TD\n  A --> B\n");
+        let wiggly = svg_src("flowchart TD\n  A e1@--> B\n  e1@{ curve: wiggly }\n");
+        let basis = svg_src("flowchart TD\n  A e1@--> B\n  e1@{ curve: basis }\n");
+        let strip = |s: &str| s.replace(" id=\"edge-e1\" data-id=\"e1\"", "");
+        assert_eq!(strip(&wiggly), plain, "unknown curve = basis");
+        assert_eq!(strip(&basis), plain);
+        let d = |s: &str| {
+            edge_paths(s)[0]
+                .split("d=\"")
+                .nth(1)
+                .unwrap()
+                .split('"')
+                .next()
+                .unwrap()
+                .to_string()
+        };
+        let base_d = d(&plain);
+        // d3's bumpY between two vertically aligned points IS the
+        // default cubic; it differs once the ends are offset.
+        let bump = svg_src("flowchart LR\n  A e1@--> B\n  e1@{ curve: bumpY }\n");
+        assert!(d(&bump).contains(" C "));
+        for c in [
+            "linear",
+            "rounded",
+            "step",
+            "stepBefore",
+            "stepAfter",
+            "bumpX",
+            "natural",
+            "catmullRom",
+            "cardinal",
+            "monotoneX",
+            "monotoneY",
+        ] {
+            let svg = svg_src(&format!(
+                "flowchart TD\n  A e1@--> B\n  e1@{{ curve: {c} }}\n"
+            ));
+            assert_ne!(d(&svg), base_d, "{c}");
+            assert!(
+                edge_paths(&svg)[0].contains("marker-end=\"url(#arrow)\""),
+                "{c}"
+            );
+        }
+        // A routed (multi-waypoint) edge: each curve draws its own kind
+        // of commands through the waypoints.
+        let src = |c: &str| {
+            format!("flowchart TD\n  A --> B --> C --> D\n  A e1@--> D\n  e1@{{ curve: {c} }}\n")
+        };
+        let g = parse(&src("linear")).unwrap();
+        let sc = scene(&g);
+        assert!(sc.edges[3].waypoints.len() >= 3, "the long edge is routed");
+        let lin = edge_paths(&svg_src(&src("linear")))[3].to_string();
+        assert!(lin.contains(" L ") && !lin.contains(" C "), "{lin}");
+        let rnd = edge_paths(&svg_src(&src("rounded")))[3].to_string();
+        assert!(rnd.contains(" Q "), "{rnd}");
+        let cr = edge_paths(&svg_src(&src("catmullRom")))[3].to_string();
+        assert!(cr.contains(" C "), "{cr}");
+    }
+
+    #[test]
+    fn curved_edges_pick_and_bound_what_is_drawn() {
+        let g = parse("flowchart TD\n  A e1@--> B\n  e1@{ curve: stepBefore }\n").unwrap();
+        let sc = scene(&g);
+        let e = &sc.edges[0];
+        let (start, segs) = curve_geometry(e).expect("non-default curve");
+        let pts = curve_sample(start, &segs);
+        assert_eq!(edge_polyline(e), pts);
+        let mut bb = Bbox::new();
+        grow_scene(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
+        let (minx, maxx, miny, maxy) = bb.finish();
+        for (x, y) in pts {
+            assert!(x >= minx && x <= maxx && y >= miny && y <= maxy);
+        }
+        // Default curve: no special geometry.
+        let g = parse("flowchart TD\n  A e1@--> B\n").unwrap();
+        assert!(curve_geometry(&scene(&g).edges[0]).is_none());
+    }
+
+    #[test]
+    fn sub_edges_carry_ids_and_animation() {
+        let svg = svg_src(
+            "flowchart LR\n  subgraph S\n    X\n  end\n  A e1@--> S\n  e1@{ animation: fast }\n",
+        );
+        assert!(svg.contains("id=\"edge-e1\""), "{svg}");
+        assert!(svg.contains("class=\"edge-animation-fast\""));
+    }
 
     #[test]
     fn a11y_desc_ids_are_content_hashed_and_default_is_unchanged() {

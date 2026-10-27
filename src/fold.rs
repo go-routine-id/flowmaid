@@ -398,6 +398,7 @@ fn compose(
                     label: edge.label.clone(),
                     kind: edge.kind,
                     ends: edge.ends,
+                    meta: edge.meta.clone(),
                 });
             }
         }
@@ -453,6 +454,7 @@ fn compose(
                     waypoints: Vec::new(),
                     kind: e.kind,
                     ends: e.ends,
+                    meta: e.meta.clone(),
                     label: None,
                 };
             }
@@ -554,6 +556,7 @@ fn fold_connector(
         waypoints: wps,
         kind: e.kind,
         ends: e.ends,
+        meta: e.meta.clone(),
         label,
     }
 }

@@ -216,6 +216,7 @@ pub fn scene(d: &Architecture) -> ArchScene {
             },
             // The arrow ends ride `arrow_starts` / `arrow_ends`.
             ends: Default::default(),
+            meta: Default::default(),
             label: None,
         });
         arrow_starts.push(e.arrow_start);

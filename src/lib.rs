@@ -51,6 +51,7 @@ pub mod render;
 pub mod sankey;
 pub mod scene;
 pub mod seq;
+pub(crate) mod shapedata;
 pub mod style;
 pub mod timeline;
 

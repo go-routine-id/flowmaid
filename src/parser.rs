@@ -17,13 +17,14 @@
 
 use crate::model::{
     ArchEdge, ArchGroup, ArchService, ArchSide, Architecture, Attr, Card, Class, ClassDiagram,
-    ClassRel, CommitKind, Direction, Document, EdgeEnds, EdgeKind, End, ErDiagram, FrameKind,
-    GitBranch, GitCommit, GitGraph, GitOrientation, Graph, Journey, JourneySection, JourneyTask,
-    Key, Marker, Member, MindNode, MindShape, Mindmap, NodeStyle, NoteSide, PieChart, PieSlice,
-    RelKind, Relation, SankeyAlignment, SankeyConfig, SankeyDiagram, SankeyLink, SankeyLinkColor,
-    SeqHead, SeqItem, SequenceDiagram, Shape, SubEdge, Subgraph, Timeline, TimelineDirection,
-    TimelinePeriod, TimelineSection, Visibility,
+    ClassRel, CommitKind, Direction, Document, EdgeAnimation, EdgeCurve, EdgeEnds, EdgeKind,
+    EdgeMeta, End, ErDiagram, FrameKind, GitBranch, GitCommit, GitGraph, GitOrientation, Graph,
+    Journey, JourneySection, JourneyTask, Key, Marker, Member, MindNode, MindShape, Mindmap,
+    NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation, SankeyAlignment, SankeyConfig,
+    SankeyDiagram, SankeyLink, SankeyLinkColor, SeqHead, SeqItem, SequenceDiagram, Shape, SubEdge,
+    Subgraph, Timeline, TimelineDirection, TimelinePeriod, TimelineSection, Visibility,
 };
+use crate::shapedata;
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 
@@ -334,21 +335,161 @@ fn split_statements(line: &str) -> Vec<&str> {
 /// pass BOTH iterate this, so they classify every statement
 /// identically — the no-drift invariant that keeps sub-edges bound to
 /// the right box depends on it (`;` must never desync the two passes).
-fn statements(source: &str) -> Vec<(usize, &str)> {
+///
+/// A shape-data block (`A@{ … }`, `e1@{ … }`) may span lines, as in
+/// mermaid: a line that leaves one open is joined with the following
+/// lines — newlines kept, since they select the YAML block form, and
+/// full-line `%%` comments dropped — and numbered by its first line.
+fn statements(source: &str) -> Result<Vec<(usize, Cow<'_, str>)>, ParseError> {
     let mut out = Vec::new();
-    for (i, raw) in source.lines().enumerate() {
+    let mut lines = source.lines().enumerate();
+    while let Some((i, raw)) = lines.next() {
         let phys = raw.trim();
         if phys.is_empty() || phys.starts_with("%%") {
             continue;
         }
-        for frag in split_statements(raw) {
+        if !shapedata::leaves_open(raw) {
+            for frag in split_statements(raw) {
+                let f = frag.trim();
+                if !f.is_empty() {
+                    out.push((i + 1, Cow::Borrowed(f)));
+                }
+            }
+            continue;
+        }
+        let mut buf = raw.to_string();
+        while shapedata::leaves_open(&buf) {
+            let Some((_, next)) = lines.next() else {
+                return Err(err(
+                    i + 1,
+                    "'@{' metadata block is never closed with '}'".to_string(),
+                ));
+            };
+            if !next.trim_start().starts_with("%%") {
+                buf.push('\n');
+                buf.push_str(next);
+            }
+        }
+        for frag in split_statements(&buf) {
             let f = frag.trim();
             if !f.is_empty() {
-                out.push((i + 1, f));
+                out.push((i + 1, Cow::Owned(f.to_string())));
             }
         }
     }
-    out
+    Ok(out)
+}
+
+/// Mermaid's edge metadata for one user edge id while parsing, merged
+/// key by key as `id@{ … }` statements arrive (last write wins), and
+/// resolved onto the edge once the whole source is read.
+#[derive(Default)]
+struct RawEdgeMeta {
+    /// `animate`, by JavaScript truthiness (`yes` animates, `0` not).
+    animate: bool,
+    /// A truthy `animation` value, stringified.
+    animation: Option<String>,
+    /// A truthy `curve` value, stringified.
+    curve: Option<String>,
+}
+
+impl RawEdgeMeta {
+    /// Copy the keys an edge takes (mermaid flowDb `addVertex` edge
+    /// branch); every other key is ignored.
+    fn merge(&mut self, entries: &[(String, shapedata::Yaml)]) {
+        for (k, v) in entries {
+            match k.as_str() {
+                "animate" => self.animate = v.truthy(),
+                "animation" => self.animation = v.truthy().then(|| v.text()).flatten(),
+                "curve" => self.curve = v.truthy().then(|| v.text()).flatten(),
+                _ => {}
+            }
+        }
+    }
+
+    /// Mermaid's rendering rule: a truthy `animation` picks the class
+    /// (`fast` / `slow`; any other value names a class with no CSS, so
+    /// nothing moves), else a truthy `animate` means fast.
+    fn resolve(&self) -> (Option<EdgeAnimation>, Option<EdgeCurve>) {
+        let animation = match self.animation.as_deref() {
+            Some("fast") => Some(EdgeAnimation::Fast),
+            Some("slow") => Some(EdgeAnimation::Slow),
+            Some(_) => None,
+            None => self.animate.then_some(EdgeAnimation::Fast),
+        };
+        (
+            animation,
+            self.curve.as_deref().map(EdgeCurve::from_mermaid),
+        )
+    }
+}
+
+/// Parse-time state for mermaid's `@` syntax in a flowchart.
+#[derive(Default)]
+struct FlowMeta {
+    /// Every user edge id seen so far, with its metadata.
+    edges: HashMap<String, RawEdgeMeta>,
+}
+
+/// A whole statement of the form `id@{ … }`: the id (mermaid's LINK_ID
+/// charset — anything but whitespace, quotes, brackets and pipes), the
+/// raw body, and whatever follows the closing `}`.
+fn meta_statement(line: &str) -> Option<(&str, &str, &str)> {
+    let o = shapedata::find_open(line)?;
+    let id = &line[..o];
+    if id.is_empty()
+        || id
+            .chars()
+            .any(|c| c.is_whitespace() || LINK_ID_STOP.contains(c))
+    {
+        return None;
+    }
+    let body = &line[o + 2..];
+    let e = shapedata::body_end(body)?;
+    Some((id, &body[..e], &body[e + 1..]))
+}
+
+/// Characters that end mermaid's LINK_ID token (besides whitespace).
+const LINK_ID_STOP: &str = "\"[](){}|";
+
+/// Read a shape-data body into entries, with mermaid's lexer rewrite
+/// of quoted newlines first; errors carry the statement's line.
+fn shape_data(body: &str, lineno: usize) -> Result<Vec<(String, shapedata::Yaml)>, ParseError> {
+    shapedata::parse(&shapedata::fold_quoted_newlines(body)).map_err(|m| err(lineno, m))
+}
+
+/// Mermaid's edge id before an operator (`A e1@--> B`, `A e1@ --> B`,
+/// `A e1@-- text --> B`): consumes it and returns the id — the token
+/// minus its first `@`, exactly as mermaid's `replace('@', '')` does —
+/// only when an edge operator follows. The token is the longest run of
+/// LINK_ID characters ending in an `@` that is not followed by `{` or
+/// `"` (those start shape data / a string).
+fn parse_link_id(cur: &mut Cur<'_>) -> Option<String> {
+    let rest = cur.rest();
+    let run = rest
+        .find(|c: char| c.is_whitespace() || LINK_ID_STOP.contains(c))
+        .unwrap_or(rest.len());
+    let at = rest[..run]
+        .char_indices()
+        .rev()
+        .filter(|&(i, c)| c == '@' && i > 0)
+        .map(|(i, _)| i)
+        .find(|&i| {
+            rest[i + 1..]
+                .chars()
+                .next()
+                .is_some_and(|c| c != '{' && c != '"')
+        })?;
+    let after = &rest[at + 1..];
+    let op = after.trim_start();
+    let body = op.strip_prefix(['<', 'x', 'o']).unwrap_or(op);
+    let is_op = parse_edge_op(&mut Cur::new(op)).is_some()
+        || ["--", "-.", "=="].iter().any(|o| body.starts_with(o));
+    if !is_op {
+        return None;
+    }
+    cur.pos += at + 1 + (after.len() - op.len());
+    Some(rest[..=at].replacen('@', "", 1))
 }
 
 /// Header keyword of mermaid's ELK flowchart detector. Mermaid parses
@@ -678,10 +819,11 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
     // Logical statements (physical lines split on top-level `;`).
     // Computed ONCE and shared by the pre-scan and the main pass so a
     // `;` can never make them classify a `subgraph` line differently.
-    let stmts = statements(source);
+    let stmts = statements(source)?;
     let header_sg_ids: std::collections::HashSet<String> = stmts
         .iter()
-        .filter_map(|&(_, line)| {
+        .filter_map(|(_, line)| {
+            let line: &str = line;
             let rest = strip_keyword(line, "subgraph")?;
             if edge_op_follows(rest) {
                 return None;
@@ -700,7 +842,8 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
     let mut sub_ids: HashMap<String, usize> = HashMap::new();
     {
         let mut idx = 0usize;
-        for &(_, line) in &stmts {
+        for (_, line) in &stmts {
+            let line: &str = line;
             if let Some(rest) = strip_keyword(line, "subgraph") {
                 if sg_line_is_edge(line, rest) {
                     continue;
@@ -713,7 +856,9 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
         }
     }
 
-    for &(lineno, line) in &stmts {
+    let mut fm = FlowMeta::default();
+    for (lineno, line) in &stmts {
+        let (lineno, line): (usize, &str) = (*lineno, line);
         // `line` is trimmed and non-empty; blanks and full-line `%%`
         // comments were already dropped by `statements`.
         if !header_seen {
@@ -772,7 +917,15 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
         // with an optional `direction XX` line inside.
         if let Some(rest) = strip_keyword(line, "subgraph") {
             if sg_line_is_edge(line, rest) {
-                parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack, &sub_ids)?;
+                parse_statement(
+                    &mut g,
+                    line,
+                    lineno,
+                    &mut assigns,
+                    &sub_stack,
+                    &sub_ids,
+                    &mut fm,
+                )?;
                 continue;
             }
             if sub_stack.len() >= MAX_NEST_DEPTH {
@@ -792,6 +945,31 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
             });
             sub_stack.push(idx);
             continue;
+        }
+        // `id@{ … }` on a subgraph or a user edge id is metadata for
+        // it, never a node (mermaid flowDb `addVertex`: subgraph first,
+        // then an edge whose id already exists). Anything else goes the
+        // node path below.
+        if let Some((id, body, after)) = meta_statement(line) {
+            let on_sub = sub_ids.contains_key(id);
+            if on_sub || fm.edges.contains_key(id) {
+                if !after.trim().is_empty() {
+                    return Err(err(
+                        lineno,
+                        format!(
+                            "'{id}@{{…}}' must stand alone, found after it: '{}'",
+                            after.trim()
+                        ),
+                    ));
+                }
+                let entries = shape_data(body, lineno)?;
+                // Subgraph metadata (mermaid's `view: collapsed`) is
+                // validated and dropped: nothing to draw with it yet.
+                if let (false, Some(raw)) = (on_sub, fm.edges.get_mut(id)) {
+                    raw.merge(&entries);
+                }
+                continue;
+            }
         }
         if line == "end" && !sub_stack.is_empty() {
             sub_stack.pop();
@@ -817,7 +995,15 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
         // the keyword, so `class` can't shadow `classDef`.
         if let Some(rest) = strip_keyword(line, "classDef") {
             if kw_head_is_edge("classDef", rest) {
-                parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack, &sub_ids)?;
+                parse_statement(
+                    &mut g,
+                    line,
+                    lineno,
+                    &mut assigns,
+                    &sub_stack,
+                    &sub_ids,
+                    &mut fm,
+                )?;
                 continue;
             }
             let rest = rest.trim();
@@ -832,7 +1018,15 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
         }
         if let Some(rest) = strip_keyword(line, "class") {
             if kw_head_is_edge("class", rest) {
-                parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack, &sub_ids)?;
+                parse_statement(
+                    &mut g,
+                    line,
+                    lineno,
+                    &mut assigns,
+                    &sub_stack,
+                    &sub_ids,
+                    &mut fm,
+                )?;
                 continue;
             }
             let rest = rest.trim();
@@ -853,6 +1047,12 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
                 if sub_ids.contains_key(id) {
                     continue;
                 }
+                // An edge id (`A e1@--> B` … `class e1 animate`) styles
+                // the edge in mermaid; flowmaid doesn't paint edge
+                // classes, and must not mint a stray node named so.
+                if g.node_index(id).is_none() && fm.edges.contains_key(id) {
+                    continue;
+                }
                 if id.contains(char::is_whitespace) {
                     return Err(err(
                         lineno,
@@ -869,7 +1069,15 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
         }
         if let Some(rest) = strip_keyword(line, "style") {
             if kw_head_is_edge("style", rest) {
-                parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack, &sub_ids)?;
+                parse_statement(
+                    &mut g,
+                    line,
+                    lineno,
+                    &mut assigns,
+                    &sub_stack,
+                    &sub_ids,
+                    &mut fm,
+                )?;
                 continue;
             }
             let rest = rest.trim();
@@ -881,7 +1089,8 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
             // `class` branch note) — never mint a colliding node.
             // Checked BEFORE the word-like id rule (subgraph ids are
             // free-form), and the props still get validated.
-            if sub_ids.contains_key(id) {
+            if sub_ids.contains_key(id) || (g.node_index(id).is_none() && fm.edges.contains_key(id))
+            {
                 parse_props(props.trim(), lineno)?;
             } else {
                 let n = g.ensure_node(check_stmt_id(id, "style", lineno)?, None, None);
@@ -905,7 +1114,15 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
             }
         }
 
-        parse_statement(&mut g, line, lineno, &mut assigns, &sub_stack, &sub_ids)?;
+        parse_statement(
+            &mut g,
+            line,
+            lineno,
+            &mut assigns,
+            &sub_stack,
+            &sub_ids,
+            &mut fm,
+        )?;
     }
     if let Some(&open) = sub_stack.last() {
         return Err(err(
@@ -916,6 +1133,15 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
             ),
         ));
     }
+
+    // Edge metadata resolves now that every `id@{ … }` is merged.
+    let resolve = |meta: &mut EdgeMeta| {
+        if let Some(raw) = meta.id.as_ref().and_then(|id| fm.edges.get(id)) {
+            (meta.animation, meta.curve) = raw.resolve();
+        }
+    };
+    g.edges.iter_mut().for_each(|e| resolve(&mut e.meta));
+    g.sub_edges.iter_mut().for_each(|e| resolve(&mut e.meta));
 
     // Resolve styling: classDef layers first, explicit `style`
     // lines win. Unknown class names are ignored, mermaid-style.
@@ -1138,14 +1364,15 @@ fn parse_node_list(
     assigns: &mut Vec<(usize, String)>,
     subs: &[usize],
     sub_ids: &HashMap<String, usize>,
+    fm: &mut FlowMeta,
 ) -> Result<Vec<End>, ParseError> {
-    let mut nodes = vec![parse_node(cur, g, lineno, assigns, subs, sub_ids)?];
+    let mut nodes = vec![parse_node(cur, g, lineno, assigns, subs, sub_ids, fm)?];
     loop {
         let save = cur.pos;
         cur.skip_ws();
         if cur.eat("&") {
             cur.skip_ws();
-            nodes.push(parse_node(cur, g, lineno, assigns, subs, sub_ids)?);
+            nodes.push(parse_node(cur, g, lineno, assigns, subs, sub_ids, fm)?);
         } else {
             cur.pos = save;
             break;
@@ -1161,9 +1388,10 @@ fn parse_statement(
     assigns: &mut Vec<(usize, String)>,
     subs: &[usize],
     sub_ids: &HashMap<String, usize>,
+    fm: &mut FlowMeta,
 ) -> Result<(), ParseError> {
     let mut cur = Cur::new(line);
-    let mut prevs = parse_node_list(&mut cur, g, lineno, assigns, subs, sub_ids)?;
+    let mut prevs = parse_node_list(&mut cur, g, lineno, assigns, subs, sub_ids, fm)?;
     loop {
         cur.skip_ws();
         if cur.at_end() {
@@ -1175,9 +1403,11 @@ fn parse_statement(
             if cur.at_end() {
                 break;
             }
-            prevs = parse_node_list(&mut cur, g, lineno, assigns, subs, sub_ids)?;
+            prevs = parse_node_list(&mut cur, g, lineno, assigns, subs, sub_ids, fm)?;
             continue;
         }
+        // Mermaid's optional edge id before the operator (`e1@-->`).
+        let link_id = parse_link_id(&mut cur);
         // Inline-labelled operators (`-- text -->`) carry their own
         // label; plain operators may take a `|text|` label after.
         let (op, mut label) = match parse_edge_inline_label(&mut cur, lineno)? {
@@ -1204,15 +1434,35 @@ fn parse_statement(
             label = Some(clean_label_1line(&l));
         }
         cur.skip_ws();
-        let nexts = parse_node_list(&mut cur, g, lineno, assigns, subs, sub_ids)?;
+        let nexts = parse_node_list(&mut cur, g, lineno, assigns, subs, sub_ids, fm)?;
+        // The id goes to ONE pair only — the last source and the first
+        // target, as in mermaid (`A & B e1@--> C & D`: B→C) — and only
+        // while no other edge holds it; a repeat id leaves the edge
+        // without one, silently, as mermaid's auto-id fallback does.
+        let id_pair = (*prevs.last().expect("non-empty"), nexts[0]);
+        let mut link_id = link_id.filter(|id| !fm.edges.contains_key(id));
         // Fan-out: every prev connects to every next. Node→node
         // edges go to `edges`; anything touching a subgraph to
         // `sub_edges` (drawn against the cluster box).
         for &a in &prevs {
             for &b in &nexts {
+                let meta = EdgeMeta {
+                    id: if (a, b) == id_pair {
+                        link_id.take()
+                    } else {
+                        None
+                    },
+                    ..EdgeMeta::default()
+                };
+                if let Some(id) = &meta.id {
+                    fm.edges.insert(id.clone(), RawEdgeMeta::default());
+                }
                 match (a, b) {
                     (End::Node(x), End::Node(y)) => {
-                        g.add_edge_with_ends(x, y, label.clone(), kind, ends)
+                        g.add_edge_with_ends(x, y, label.clone(), kind, ends);
+                        if let Some(e) = g.edges.last_mut() {
+                            e.meta = meta;
+                        }
                     }
                     _ => g.sub_edges.push(SubEdge {
                         from: a,
@@ -1220,6 +1470,7 @@ fn parse_statement(
                         label: label.clone(),
                         kind,
                         ends,
+                        meta,
                     }),
                 }
             }
@@ -1386,6 +1637,7 @@ fn parse_node(
     assigns: &mut Vec<(usize, String)>,
     subs: &[usize],
     sub_ids: &HashMap<String, usize>,
+    fm: &mut FlowMeta,
 ) -> Result<End, ParseError> {
     cur.skip_ws();
     let start = cur.pos;
@@ -1474,6 +1726,13 @@ fn parse_node(
             return Err(err(lineno, "expected a class name after ':::'".to_string()));
         }
         assigns.push((n, cur.s[start..cur.pos].to_string()));
+    }
+    if cur.rest().starts_with("@{") {
+        let _ = &fm;
+        return Err(err(
+            lineno,
+            format!("node metadata '{id}@{{…}}' is not supported yet"),
+        ));
     }
     Ok(End::Node(n))
 }
@@ -3702,6 +3961,7 @@ fn parse_state(source: &str, header_line: usize) -> Result<Graph, ParseError> {
                     label,
                     kind: EdgeKind::Arrow,
                     ends: EdgeEnds::default(),
+                    meta: EdgeMeta::default(),
                 }),
             }
             continue;
@@ -5935,5 +6195,201 @@ mod tests {
         assert_eq!(a.title.as_deref(), Some("a b"));
         assert_eq!(a.descr.as_deref(), Some("x y\nz"));
         assert!(src.lines().skip(1).all(|l| l.trim().is_empty()));
+    }
+
+    // ── edge ids (`A e1@--> B`) + edge metadata (`e1@{ … }`) ───────
+
+    fn edge_ids(g: &Graph) -> Vec<Option<&str>> {
+        g.edges.iter().map(|e| e.meta.id.as_deref()).collect()
+    }
+
+    #[test]
+    fn edge_id_on_every_operator_form() {
+        let g = parse("flowchart LR\n  A e1@--> B\n").unwrap();
+        assert_eq!(edge_ids(&g), [Some("e1")]);
+        assert_eq!(g.nodes.len(), 2);
+        let g = parse("flowchart LR\n  A e1@ --> B\n").unwrap();
+        assert_eq!(edge_ids(&g), [Some("e1")]);
+        let g = parse("flowchart LR\n  A e1@-- go --> B\n").unwrap();
+        assert_eq!(edge_ids(&g), [Some("e1")]);
+        assert_eq!(g.edges[0].label.as_deref(), Some("go"));
+        let g = parse("flowchart LR\n  A e1@-->|go| B\n").unwrap();
+        assert_eq!(g.edges[0].label.as_deref(), Some("go"));
+        assert_eq!(edge_ids(&g), [Some("e1")]);
+        let g = parse("flowchart LR\n  A e1@x--x B\n  C e2@<--> D\n  E e3@--o F\n").unwrap();
+        assert_eq!(edge_ids(&g), [Some("e1"), Some("e2"), Some("e3")]);
+        assert_eq!(g.edges[0].ends.start, Some(Marker::Cross));
+        assert_eq!(g.edges[1].ends.start, Some(Marker::Arrow));
+        assert_eq!(g.edges[2].ends.end, Some(Marker::Circle));
+        let g = parse("flowchart LR\n  A e1@-.-> B\n  C e2@==> D\n  E e3@----> F\n  G e4@~~~ H\n")
+            .unwrap();
+        let kinds: Vec<_> = g.edges.iter().map(|e| e.kind).collect();
+        assert_eq!(
+            kinds,
+            [
+                EdgeKind::Dotted,
+                EdgeKind::Thick,
+                EdgeKind::Arrow,
+                EdgeKind::Invisible
+            ]
+        );
+        assert_eq!(
+            edge_ids(&g),
+            [Some("e1"), Some("e2"), Some("e3"), Some("e4")]
+        );
+        // Mermaid's id charset (`-`, `.`, digits) and its first-`@` strip.
+        let g = parse("flowchart LR\n  A e-1@--> B\n  B 1@--> C\n  C a@b@--> D\n").unwrap();
+        assert_eq!(edge_ids(&g), [Some("e-1"), Some("1"), Some("ab@")]);
+    }
+
+    #[test]
+    fn edge_id_fan_out_chain_and_duplicates() {
+        let g = parse("flowchart LR\n  A & B e1@--> C & D\n").unwrap();
+        let named: Vec<_> = g
+            .edges
+            .iter()
+            .map(|e| {
+                (
+                    g.nodes[e.from].id.as_str(),
+                    g.nodes[e.to].id.as_str(),
+                    e.meta.id.as_deref(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            named,
+            [
+                ("A", "C", None),
+                ("A", "D", None),
+                ("B", "C", Some("e1")),
+                ("B", "D", None)
+            ]
+        );
+        let g = parse("flowchart LR\n  A e1@--> B e2@--> C\n").unwrap();
+        assert_eq!(edge_ids(&g), [Some("e1"), Some("e2")]);
+        let g = parse("flowchart LR\n  A e1@--> B\n  C e1@--> D\n").unwrap();
+        assert_eq!(edge_ids(&g), [Some("e1"), None]);
+        // Glued to the source node: mermaid's lexer error, ours too.
+        assert!(parse("flowchart LR\n  Ae1@-->B\n").is_err());
+        // `@` not before an operator is not an edge id.
+        assert!(parse("flowchart LR\n  A e1@ B\n").is_err());
+    }
+
+    fn meta_of(src: &str) -> EdgeMeta {
+        parse(src)
+            .unwrap_or_else(|e| panic!("{e}\n--\n{src}"))
+            .edges[0]
+            .meta
+            .clone()
+    }
+
+    #[test]
+    fn edge_metadata_animation_follows_mermaids_rule() {
+        let base = "flowchart LR\n  A e1@--> B\n";
+        let anim = |m: &str| meta_of(&format!("{base}  e1@{{ {m} }}\n")).animation;
+        assert_eq!(anim("animate: true"), Some(EdgeAnimation::Fast));
+        assert_eq!(anim("animation: slow"), Some(EdgeAnimation::Slow));
+        assert_eq!(anim("animation: fast"), Some(EdgeAnimation::Fast));
+        assert_eq!(
+            anim("animate: false, animation: fast"),
+            Some(EdgeAnimation::Fast)
+        );
+        assert_eq!(anim("animate: true, animation: bogus"), None);
+        assert_eq!(anim("animation: bogus"), None);
+        assert_eq!(anim("animate: yes"), Some(EdgeAnimation::Fast));
+        assert_eq!(anim("animate: \"false\""), Some(EdgeAnimation::Fast));
+        assert_eq!(anim("animate: 0"), None);
+        assert_eq!(anim("animate: null"), None);
+        assert_eq!(
+            anim("animate: true, animation: \"\""),
+            Some(EdgeAnimation::Fast)
+        );
+        // Unknown / node keys on an edge: ignored, no node minted.
+        let g = parse(&format!("{base}  e1@{{ shape: rect, foo: 1 }}\n")).unwrap();
+        assert_eq!(g.nodes.len(), 2);
+        assert_eq!(g.edges[0].meta.animation, None);
+    }
+
+    #[test]
+    fn edge_metadata_merges_and_spans_lines() {
+        let m =
+            meta_of("flowchart LR\n  A e1@--> B\n  e1@{ animate: true }\n  e1@{ curve: linear }\n");
+        assert_eq!(m.animation, Some(EdgeAnimation::Fast));
+        assert_eq!(m.curve, Some(EdgeCurve::Linear));
+        let m = meta_of(
+            "flowchart LR\n  A e1@--> B\n  e1@{ animation: slow }\n  e1@{ animation: fast }\n",
+        );
+        assert_eq!(m.animation, Some(EdgeAnimation::Fast));
+        let src = "flowchart LR\n  A e1@--> B\n  e1@{\n    animate: true\n    %% a comment line\n    curve: step\n  }\n  B --> C\n";
+        let g = parse(src).unwrap();
+        assert_eq!(g.edges[0].meta.curve, Some(EdgeCurve::Step));
+        assert_eq!(g.edges[0].meta.animation, Some(EdgeAnimation::Fast));
+        assert_eq!(g.edges.len(), 2);
+        // Block form keeps a trailing comma in the value (mermaid).
+        let m = meta_of("flowchart LR\n  A e1@--> B\n  e1@{\n    curve: linear,\n  }\n");
+        assert_eq!(m.curve, Some(EdgeCurve::Basis));
+        // Line numbers after a joined block stay exact.
+        let e =
+            parse("flowchart LR\nA e1@--> B\ne1@{\n animate: true\n}\nA --> ???\n").unwrap_err();
+        assert_eq!(e.line, 6);
+    }
+
+    #[test]
+    fn edge_metadata_curves() {
+        let src = "flowchart LR\n  A e1@==> B\n  A e2@--> C\n  e1@{ curve: linear }\n  e2@{ curve: natural }\n";
+        let g = parse(src).unwrap();
+        assert_eq!(g.edges[0].meta.curve, Some(EdgeCurve::Linear));
+        assert_eq!(g.edges[1].meta.curve, Some(EdgeCurve::Natural));
+        for (name, c) in [
+            ("basis", EdgeCurve::Basis),
+            ("stepBefore", EdgeCurve::StepBefore),
+            ("stepAfter", EdgeCurve::StepAfter),
+            ("rounded", EdgeCurve::Rounded),
+            ("bumpX", EdgeCurve::BumpX),
+            ("bumpY", EdgeCurve::BumpY),
+            ("cardinal", EdgeCurve::Cardinal),
+            ("catmullRom", EdgeCurve::CatmullRom),
+            ("monotoneX", EdgeCurve::MonotoneX),
+            ("monotoneY", EdgeCurve::MonotoneY),
+            ("wiggly", EdgeCurve::Basis),
+            ("Linear", EdgeCurve::Basis),
+        ] {
+            let m = meta_of(&format!(
+                "flowchart TD\n  A e1@--> B\n  e1@{{ curve: {name} }}\n"
+            ));
+            assert_eq!(m.curve, Some(c), "{name}");
+        }
+        assert_eq!(
+            meta_of("flowchart TD\nA e1@--> B\ne1@{ curve: 0 }").curve,
+            None
+        );
+    }
+
+    #[test]
+    fn edge_metadata_errors_and_routing() {
+        let e = parse("flowchart LR\n  A e1@--> B\n  e1@{ animate: true\n").unwrap_err();
+        assert_eq!(e.line, 3);
+        assert!(e.message.contains("never closed"), "{}", e.message);
+        let e = parse("flowchart LR\n  A e1@--> B\n  e1@{ animate: true curve: x }\n").unwrap_err();
+        assert!(e.message.contains("missed comma"), "{}", e.message);
+        assert!(parse("flowchart LR\n  A e1@--> B\n  e1@{ animate: true } --> C\n").is_err());
+        // A sub-edge carries its id + metadata.
+        let src =
+            "flowchart LR\n  subgraph S\n    X\n  end\n  A e1@--> S\n  e1@{ animation: fast }\n";
+        let g = parse(src).unwrap();
+        assert_eq!(g.sub_edges[0].meta.id.as_deref(), Some("e1"));
+        assert_eq!(g.sub_edges[0].meta.animation, Some(EdgeAnimation::Fast));
+        // Subgraph metadata is accepted and dropped.
+        let g =
+            parse("flowchart TB\n  subgraph s1\n    a\n  end\n  s1@{ view: collapsed }\n").unwrap();
+        assert_eq!(g.nodes.len(), 1);
+        // `class` / `style` on an edge id never mint a stray node.
+        let src = "flowchart LR\n  A e1@--> B\n  classDef animate stroke-dashoffset: 900,animation: dash 25s linear infinite\n  class e1 animate\n  style e1 stroke:#f00\n";
+        let g = parse(src).unwrap();
+        assert!(g.node_index("e1").is_none(), "{:?}", g.nodes);
+        // `@` inside a quoted label is text, not metadata or an id.
+        let g = parse("flowchart TB\n  X[\"a @{ b }\"] --> Y\n  M[\"user@host\"] --> N\n").unwrap();
+        assert_eq!(g.nodes[0].label, "a @{ b }");
+        assert_eq!(edge_ids(&g), [None, None]);
     }
 }

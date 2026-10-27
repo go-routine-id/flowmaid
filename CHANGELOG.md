@@ -21,6 +21,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
   render byte-identically. New: `acc_title` / `acc_descr` fields on `Graph`,
   `ClassDiagram`, `SequenceDiagram` and `ErDiagram` (non-breaking: each has a private
   field), `scene::A11y` and `scene::to_svg_a11y_with`.
+- **Flowchart edge ids and edge metadata.** `A e1@--> B` names an edge on every operator
+  form (inline and `|pipe|` labels, markers, dotted, thick, long, `~~~`); the path gets
+  `id="edge-e1" data-id="e1"`. `e1@{ … }` (one line or several, a YAML subset read
+  without a new dependency) sets `animate` / `animation` (mermaid's `edge-animation-fast` /
+  `-slow` class plus its dash-animation CSS, written once in `<defs>`) and `curve` (all
+  thirteen mermaid names; unknown = `basis`). Fan-out, duplicate-id and
+  metadata-before-edge semantics follow mermaid; `class` / `style` on an edge id no longer
+  mint a stray node. `to_mermaid` round-trips ids and metadata. New: `model::EdgeMeta`,
+  `model::EdgeAnimation`, `model::EdgeCurve` (`from_mermaid`, `mermaid_name`), and a `meta`
+  field on `Edge`, `SubEdge` and `SceneEdge`. Diagrams without ids render byte-identically.
 - **`flowchart-elk` header.** Accepted as an alias of `flowchart` with the same direction
   rules; the ELK layout hint is dropped (`to_mermaid` writes `flowchart`).
 
@@ -40,7 +50,7 @@ project adheres to [Semantic Versioning](https://semver.org/).
   a marker, as in mermaid: `A---oB` is now a circle edge to `B` (was an open line to
   `oB`), and `A --xray` a cross edge to `ray`. Separate the id with a space to keep it.
   Code that builds `model::Edge` / `model::SubEdge` with struct literals must add
-  `ends: Default::default()`.
+  `ends: Default::default()` and `meta: Default::default()`.
 - **Unquoted inline labels end at the first marker closer.** Mermaid's lexer closes edge
   text at the first `--x`, `--o`, `==x`, `==o` (or `.-x`, `.-o`), even mid-word, and so
   does flowmaid now. `A -- go--on --> B` becomes a circle edge `A → n` labelled `go` plus

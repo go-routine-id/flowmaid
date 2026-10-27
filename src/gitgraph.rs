@@ -164,6 +164,7 @@ pub fn scene(d: &GitGraph) -> GitScene {
                     waypoints: Vec::new(),
                     kind: crate::model::EdgeKind::Open,
                     ends: Default::default(),
+                    meta: Default::default(),
                     label: None,
                 });
             }
@@ -181,6 +182,7 @@ pub fn scene(d: &GitGraph) -> GitScene {
                 waypoints: Vec::new(),
                 kind: crate::model::EdgeKind::Open,
                 ends: Default::default(),
+                meta: Default::default(),
                 label: None,
             });
         }
@@ -199,6 +201,7 @@ pub fn scene(d: &GitGraph) -> GitScene {
                 waypoints: Vec::new(),
                 kind: crate::model::EdgeKind::Arrow,
                 ends: Default::default(),
+                meta: Default::default(),
                 label: None,
             });
         }

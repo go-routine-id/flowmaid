@@ -129,6 +129,90 @@ impl EdgeEnds {
     }
 }
 
+/// Edge animation speed from mermaid edge metadata
+/// (`e1@{ animate: true }` = fast, `e1@{ animation: slow }`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum EdgeAnimation {
+    /// Mermaid's `edge-animation-fast` (20 s dash cycle).
+    Fast,
+    /// Mermaid's `edge-animation-slow` (50 s dash cycle).
+    Slow,
+}
+
+/// Per-edge curve from mermaid edge metadata (`e1@{ curve: linear }`),
+/// named after the d3 curves mermaid maps them to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum EdgeCurve {
+    Basis,
+    Linear,
+    Step,
+    StepBefore,
+    StepAfter,
+    /// Straight segments with radius-5 rounded corners.
+    Rounded,
+    Cardinal,
+    CatmullRom,
+    Natural,
+    MonotoneX,
+    MonotoneY,
+    BumpX,
+    BumpY,
+}
+
+/// Mermaid's curve names (case-sensitive) and the curve each selects.
+const EDGE_CURVES: &[(&str, EdgeCurve)] = &[
+    ("basis", EdgeCurve::Basis),
+    ("linear", EdgeCurve::Linear),
+    ("step", EdgeCurve::Step),
+    ("stepBefore", EdgeCurve::StepBefore),
+    ("stepAfter", EdgeCurve::StepAfter),
+    ("rounded", EdgeCurve::Rounded),
+    ("cardinal", EdgeCurve::Cardinal),
+    ("catmullRom", EdgeCurve::CatmullRom),
+    ("natural", EdgeCurve::Natural),
+    ("monotoneX", EdgeCurve::MonotoneX),
+    ("monotoneY", EdgeCurve::MonotoneY),
+    ("bumpX", EdgeCurve::BumpX),
+    ("bumpY", EdgeCurve::BumpY),
+];
+
+impl EdgeCurve {
+    /// The curve a mermaid `curve:` value selects. Names are
+    /// case-sensitive and anything unknown is `Basis` — mermaid's
+    /// default branch.
+    pub fn from_mermaid(name: &str) -> EdgeCurve {
+        EDGE_CURVES
+            .iter()
+            .find(|(n, _)| *n == name)
+            .map_or(EdgeCurve::Basis, |&(_, c)| c)
+    }
+
+    /// The mermaid name of this curve.
+    pub fn mermaid_name(self) -> &'static str {
+        EDGE_CURVES
+            .iter()
+            .find(|(_, c)| *c == self)
+            .map_or("basis", |&(n, _)| n)
+    }
+}
+
+/// Mermaid's per-edge `@` syntax: a user id (`A e1@--> B`) and the
+/// metadata a later `e1@{ … }` statement attaches to it. The default
+/// (all `None`) is a plain edge and renders exactly as before.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct EdgeMeta {
+    /// User-defined edge id. Ids are unique per graph: a repeated id
+    /// leaves the later edge without one, as in mermaid.
+    pub id: Option<String>,
+    /// Resolved animation (mermaid's `animate` / `animation` keys).
+    pub animation: Option<EdgeAnimation>,
+    /// Per-edge curve (mermaid's `curve` key); `None` = the default.
+    pub curve: Option<EdgeCurve>,
+}
+
 /// Custom per-node styling from Mermaid `style` / `classDef`
 /// lines. `None` fields fall back to the shape's theme color
 /// (see [`crate::style::shape_style`]).
@@ -181,6 +265,8 @@ pub struct Edge {
     /// Cross / circle / two-way end glyphs (default: none beyond
     /// what `kind` implies).
     pub ends: EdgeEnds,
+    /// Mermaid edge id + metadata (`A e1@--> B`, `e1@{ curve: … }`).
+    pub meta: EdgeMeta,
 }
 
 /// A `subgraph ... end` block: a titled cluster of nodes, possibly
@@ -217,6 +303,8 @@ pub struct SubEdge {
     pub kind: EdgeKind,
     /// End glyphs, as on [`Edge::ends`].
     pub ends: EdgeEnds,
+    /// Edge id + metadata, as on [`Edge::meta`].
+    pub meta: EdgeMeta,
 }
 
 /// Parsed graph, ready for layout.
@@ -282,6 +370,7 @@ impl Graph {
             label,
             kind,
             ends,
+            meta: EdgeMeta::default(),
         });
     }
 

@@ -52,6 +52,13 @@
 //!   programmatic start glyph that differs from the end one (or sits
 //!   on an edge with no end glyph) is dropped, as are glyphs on an
 //!   invisible `~~~` link.
+//! - Edge ids (`A e1@--> B`) and their metadata (`e1@{ animation:
+//!   fast, curve: linear }`) round-trip. An id mermaid's token cannot
+//!   carry (whitespace, quotes, brackets, braces, pipes), or a repeat
+//!   of an id already written, is dropped together with its metadata —
+//!   a re-parse would hand the metadata to the first edge. An edge id
+//!   equal to a subgraph id writes metadata the parser routes to the
+//!   subgraph (mermaid's order), so it is lost.
 //! - `accTitle` / `accDescr` round-trip right under the header. A
 //!   description holding both a newline and a `}` cannot ride in the
 //!   `accDescr { … }` block (the `}` closes it), so it flattens to one
@@ -61,7 +68,9 @@
 //!   mermaid (and flowmaid) read as a description block — that one
 //!   combination is unrepresentable.
 
-use crate::model::{Direction, EdgeEnds, EdgeKind, End, Graph, Marker, NodeStyle, Shape};
+use crate::model::{
+    Direction, EdgeAnimation, EdgeEnds, EdgeKind, EdgeMeta, End, Graph, Marker, NodeStyle, Shape,
+};
 
 /// Emit canonical mermaid flowchart text for `g`. See the module
 /// docs for the round-trip contract and its (small) honest limits.
@@ -102,22 +111,41 @@ pub fn to_mermaid(g: &Graph) -> String {
         }
     }
 
-    // ── 3. Edges (insertion order — re-parse preserves it). ──
+    // ── 3. Edges (insertion order — re-parse preserves it). A
+    //    user edge id rides before the operator (`A e1@--> B`), and
+    //    its metadata follows as `e1@{ … }` once every edge exists. ──
+    let mut ids = std::collections::HashSet::new();
+    let mut metas: Vec<(String, &EdgeMeta)> = Vec::new();
+    let mut edge_id = |m: &'_ EdgeMeta| -> Option<String> {
+        let id = m.id.as_deref().filter(|id| edge_id_ok(id))?;
+        ids.insert(id.to_string()).then(|| id.to_string())
+    };
     for e in &g.edges {
         out.push_str("    ");
         out.push_str(&endpoint(g, e.from));
-        push_edge_op(&mut out, e.kind, e.ends, e.label.as_deref());
+        let id = edge_id(&e.meta);
+        push_edge_op(&mut out, e.kind, e.ends, e.label.as_deref(), id.as_deref());
         out.push_str(&endpoint(g, e.to));
         out.push('\n');
+        if let Some(id) = id {
+            metas.push((id, &e.meta));
+        }
     }
     // Sub-edges (whole-cluster endpoints). The parser pre-scans
     // subgraph ids, so these parse the same anywhere in the file.
     for e in &g.sub_edges {
         out.push_str("    ");
         out.push_str(&end_ref(g, e.from));
-        push_edge_op(&mut out, e.kind, e.ends, e.label.as_deref());
+        let id = edge_id(&e.meta);
+        push_edge_op(&mut out, e.kind, e.ends, e.label.as_deref(), id.as_deref());
         out.push_str(&end_ref(g, e.to));
         out.push('\n');
+        if let Some(id) = id {
+            metas.push((id, &e.meta));
+        }
+    }
+    for (id, m) in metas {
+        push_edge_meta(&mut out, &id, m);
     }
 
     // ── 4. Styling: one `style` line per styled node. classDef /
@@ -171,6 +199,37 @@ fn push_acc(out: &mut String, g: &Graph) {
             out.push_str(&d.split_whitespace().collect::<Vec<_>>().join(" "));
             out.push('\n');
         }
+    }
+}
+
+/// Whether a user edge id can ride as mermaid's `id@` token: non-empty,
+/// with no whitespace, quote, bracket, brace or pipe (those end the
+/// token).
+fn edge_id_ok(id: &str) -> bool {
+    !id.is_empty()
+        && !id
+            .chars()
+            .any(|c| c.is_whitespace() || c.is_control() || "\"[](){}|".contains(c))
+}
+
+/// `e1@{ animation: fast, curve: linear }` for an edge whose metadata
+/// says something; nothing for a bare id.
+fn push_edge_meta(out: &mut String, id: &str, m: &EdgeMeta) {
+    let mut keys = Vec::new();
+    if let Some(a) = m.animation {
+        keys.push(format!(
+            "animation: {}",
+            match a {
+                EdgeAnimation::Fast => "fast",
+                EdgeAnimation::Slow => "slow",
+            }
+        ));
+    }
+    if let Some(c) = m.curve {
+        keys.push(format!("curve: {}", c.mermaid_name()));
+    }
+    if !keys.is_empty() {
+        out.push_str(&format!("    {id}@{{ {} }}\n", keys.join(", ")));
     }
 }
 
@@ -383,7 +442,13 @@ fn defuse_md(enc: String) -> String {
 /// (quotes don't protect the slot delimiter). Edge labels are
 /// single-line by grammar (newlines flatten to spaces). An empty or
 /// whitespace-only label normalizes away to no label.
-fn push_edge_op(out: &mut String, kind: EdgeKind, ends: EdgeEnds, label: Option<&str>) {
+fn push_edge_op(
+    out: &mut String,
+    kind: EdgeKind,
+    ends: EdgeEnds,
+    label: Option<&str>,
+    id: Option<&str>,
+) {
     // Line body without its tail, then the tail glyph: `--` + `>`,
     // `-.-` + `x`, `==` + `=` (open), …
     let (body, open_tail) = match kind {
@@ -400,6 +465,10 @@ fn push_edge_op(out: &mut String, kind: EdgeKind, ends: EdgeEnds, label: Option<
         Marker::Circle => "o",
     };
     out.push(' ');
+    if let Some(id) = id {
+        out.push_str(id);
+        out.push('@');
+    }
     // Mermaid can only mirror the end glyph at the start.
     if let Some(m) = ends.start_marker(kind).filter(|&m| Some(m) == end) {
         out.push_str(glyph(m, true));
@@ -1386,6 +1455,7 @@ mod tests {
                 label: None,
                 kind: EdgeKind::Arrow,
                 ends: Default::default(),
+                meta: Default::default(),
             });
             assert_roundtrip(&g);
         }
@@ -1492,5 +1562,56 @@ mod tests {
         g.acc_title = Some("   ".into());
         g.acc_descr = Some(String::new());
         assert!(!to_mermaid(&g).contains("acc"));
+    }
+
+    fn metas(g: &Graph) -> Vec<EdgeMeta> {
+        g.edges
+            .iter()
+            .map(|e| e.meta.clone())
+            .chain(g.sub_edges.iter().map(|e| e.meta.clone()))
+            .collect()
+    }
+
+    #[test]
+    fn edge_ids_and_metadata_round_trip() {
+        for src in [
+            "flowchart LR\n  A e1@--> B\n  B e2@--> C\n  e1@{ animation: fast }\n",
+            "flowchart LR\n  A e1@-- go --> B\n  C e2@x--x D\n  E e3@<-.-> F\n  G e4@==o H\n  I e5@~~~ J\n",
+            "flowchart LR\n  A e1@==> B\n  A e2@--> C\n  e1@{ curve: linear }\n  e2@{ curve: natural, animate: true }\n",
+            "flowchart LR\n  A & B e1@--> C & D\n  e1@{ animation: slow, curve: stepBefore }\n",
+            "flowchart LR\n  subgraph S\n    X\n  end\n  A e1@--> S\n  e1@{ animation: fast }\n",
+            "flowchart LR\n  A e-1@--> B\n  B a@b@--> C\n  e-1@{ curve: bumpY }\n",
+            "flowchart LR\n  A e1@--> B\n  e1@{ curve: wiggly }\n",
+        ] {
+            let g = parse(src).unwrap();
+            let text = to_mermaid(&g);
+            let back = parse(&text).unwrap_or_else(|e| panic!("{e}\n--\n{text}"));
+            assert_eq!(metas(&back), metas(&g), "{text}");
+            assert_roundtrip(&g);
+        }
+        let text =
+            to_mermaid(&parse("flowchart LR\n  A e1@--> B\n  e1@{ animate: true }\n").unwrap());
+        assert!(text.contains("A e1@--> B"), "{text}");
+        assert!(text.contains("e1@{ animation: fast }"), "{text}");
+        // A bare id writes no metadata line.
+        let text = to_mermaid(&parse("flowchart LR\n  A e1@--> B\n").unwrap());
+        assert!(!text.contains("@{"), "{text}");
+    }
+
+    #[test]
+    fn unwritable_or_repeated_edge_ids_are_dropped_with_their_metadata() {
+        let mut g = parse("flowchart LR\n  A --> B\n  B --> C\n").unwrap();
+        g.edges[0].meta.id = Some("dup".into());
+        g.edges[0].meta.curve = Some(crate::model::EdgeCurve::Linear);
+        g.edges[1].meta.id = Some("dup".into());
+        g.edges[1].meta.animation = Some(EdgeAnimation::Slow);
+        let text = to_mermaid(&g);
+        let back = parse(&text).unwrap_or_else(|e| panic!("{e}\n--\n{text}"));
+        assert_eq!(back.edges[0].meta, g.edges[0].meta, "{text}");
+        assert_eq!(back.edges[1].meta, EdgeMeta::default(), "{text}");
+        g.edges[0].meta.id = Some("has space".into());
+        let text = to_mermaid(&g);
+        assert!(!text.contains("has space"), "{text}");
+        parse(&text).unwrap();
     }
 }
