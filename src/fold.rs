@@ -208,6 +208,17 @@ pub fn render_compact_titled(g: &Graph, opts: &CompactOptions, title: &str) -> S
     crate::scene::to_svg_titled(&scene_compact(g, opts).scene, title)
 }
 
+/// [`render_compact_titled`] with explicit SVG options (see
+/// [`crate::scene::SvgOptions`]).
+pub fn render_compact_titled_with(
+    g: &Graph,
+    opts: &CompactOptions,
+    title: &str,
+    svg: &crate::scene::SvgOptions,
+) -> String {
+    crate::scene::to_svg_titled_with(&scene_compact(g, opts).scene, title, svg)
+}
+
 /// The graph as one linear run of node indices, or the reason it
 /// isn't one. Self-loops and `~~~` invisible ranking links don't
 /// count against linearity (an invisible link never draws, so it can

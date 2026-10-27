@@ -7,6 +7,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Opt-in transparent background** ([#62](https://github.com/go-routine-id/flowmaid/issues/62)).
+  `SvgOptions::transparent` omits the full-canvas white `<rect>` for every diagram type
+  (`render_svg_advanced`, each `*_with` writer, plus new `render_advance_svg_with`,
+  `render_advance_text_svg_with` and `fold::render_compact_titled_with`); CLI `--transparent`.
+  Default output is unchanged byte-for-byte. Note: `SvgOptions` gained a public field, so
+  struct literals without `..Default::default()` need updating.
+
 ## [0.30.0] - 2026-09-07
 
 ### Fixed

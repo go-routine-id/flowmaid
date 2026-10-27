@@ -1981,6 +1981,10 @@ pub struct SvgOptions {
     /// Overrides the SVG `preserveAspectRatio` attribute. `None` keeps the
     /// SVG default `xMidYMid meet` (uniform scale, letterboxed).
     pub preserve_aspect_ratio: Option<&'static str>,
+    /// When true, the full-canvas white background `<rect>` is omitted so
+    /// the diagram sits on whatever is behind it (e.g. a dark page).
+    /// Shapes, label boxes and text keep their own fills.
+    pub transparent: bool,
 }
 
 pub(crate) fn svg_open(
@@ -2016,10 +2020,14 @@ pub(crate) fn svg_open(
         t = escape(title)
     ));
     s.push_str(&format!("<title>{}</title>\n", escape(title)));
-    s.push_str(&format!(
-        "<rect width=\"{:.0}\" height=\"{:.0}\" fill=\"#ffffff\"/>\n",
-        width, height
-    ));
+    // The white canvas is opt-out (issue #62) so output can sit on a
+    // dark page; the default keeps it for byte-identical output.
+    if !opts.transparent {
+        s.push_str(&format!(
+            "<rect width=\"{:.0}\" height=\"{:.0}\" fill=\"#ffffff\"/>\n",
+            width, height
+        ));
+    }
 }
 
 /// White label box with centred text — used for flowchart edge
@@ -2234,6 +2242,7 @@ mod tests {
             &SvgOptions {
                 responsive: true,
                 preserve_aspect_ratio: Some("none"),
+                ..Default::default()
             },
         );
         assert!(par.contains("preserveAspectRatio=\"none\""), "{par}");
@@ -2241,6 +2250,45 @@ mod tests {
             !resp.contains("preserveAspectRatio"),
             "unset -> default meet, no attribute"
         );
+    }
+
+    #[test]
+    fn svg_options_transparent_drops_only_the_canvas_rect() {
+        // The canvas rect is the first element after <title>, sized to the
+        // whole viewBox — match it exactly so shape/label fills don't count.
+        fn canvas_rect(svg: &str) -> String {
+            let vb = svg.split("viewBox=\"0 0 ").nth(1).unwrap();
+            let mut it = vb.split('"').next().unwrap().split(' ');
+            let (w, h) = (it.next().unwrap(), it.next().unwrap());
+            format!("<rect width=\"{w}\" height=\"{h}\" fill=\"#ffffff\"/>\n")
+        }
+        let transparent = SvgOptions {
+            transparent: true,
+            ..Default::default()
+        };
+        // Flowchart plus the other writers that share `svg_open`.
+        for src in [
+            "flowchart TD\nA --> B",
+            "stateDiagram-v2\n[*] --> S",
+            "erDiagram\nA ||--o{ B : has",
+            "sequenceDiagram\nA->>B: hi",
+            "pie\n\"a\" : 1\n\"b\" : 2",
+            "timeline\nsection S\n2020 : x",
+        ] {
+            let base = crate::render_svg(src).unwrap();
+            let rect = canvas_rect(&base);
+            // Default keeps the white canvas, right after <title>.
+            assert!(base.contains(&format!("</title>\n{rect}")), "{src}: {base}");
+            assert_eq!(
+                base,
+                crate::render_svg_advanced(src, &SvgOptions::default()).unwrap(),
+                "{src}: default options must match render_svg byte-for-byte"
+            );
+            let t = crate::render_svg_advanced(src, &transparent).unwrap();
+            assert!(!t.contains(&rect), "{src}: canvas rect must be gone: {t}");
+            // Nothing else changes: removing the rect gives the default back.
+            assert_eq!(base.replacen(&rect, "", 1), t, "{src}");
+        }
     }
 
     #[test]

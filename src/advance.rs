@@ -5606,9 +5606,14 @@ pub fn to_svg_with(sc: &AdvanceScene, opts: &SvgOptions) -> String {
 
 /// Parse an advance diagram from JSON, lay it out, and render to SVG.
 pub fn render_advance_svg(source: &str) -> Result<String, AdvanceError> {
+    render_advance_svg_with(source, &SvgOptions::default())
+}
+
+/// [`render_advance_svg`] with explicit SVG options (see [`SvgOptions`]).
+pub fn render_advance_svg_with(source: &str, opts: &SvgOptions) -> Result<String, AdvanceError> {
     let diagram = AdvanceDiagram::parse(source)?;
     let scene = layout(&diagram);
-    Ok(to_svg(&scene))
+    Ok(to_svg_with(&scene, opts))
 }
 
 /// Parse an advance diagram from JSON and return its positioned geometry.
@@ -5903,9 +5908,17 @@ pub fn render_advance_routed_with_lanes(
 
 /// Render a text-based swimlane diagram directly to an SVG string.
 pub fn render_advance_text_svg(source: &str) -> Result<String, AdvanceError> {
+    render_advance_text_svg_with(source, &SvgOptions::default())
+}
+
+/// [`render_advance_text_svg`] with explicit SVG options (see [`SvgOptions`]).
+pub fn render_advance_text_svg_with(
+    source: &str,
+    opts: &SvgOptions,
+) -> Result<String, AdvanceError> {
     let d = AdvanceDiagram::parse_text(source)?;
     let scene = layout(&d);
-    Ok(to_svg(&scene))
+    Ok(to_svg_with(&scene, opts))
 }
 
 // ------------------------------------------------------------------
