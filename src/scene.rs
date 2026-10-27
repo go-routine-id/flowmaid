@@ -14,12 +14,22 @@
 use crate::layout::{
     intrinsic_size, layout_clustered, layout_sized, text_width, LayoutResult, Placed,
 };
-use crate::model::{Direction, EdgeKind, End, Graph, NodeStyle, Shape};
+use crate::model::{Direction, EdgeEnds, EdgeKind, End, Graph, Marker, NodeStyle, Shape};
 use std::collections::HashMap;
 
 pub(crate) const MARGIN: f64 = 28.0;
 /// Gap between parallel edges (connecting the same node pair).
 const PARALLEL_GAP: f64 = 16.0;
+/// Wanted spacing between edge ends that share a node side when one
+/// of them carries a cross/circle or start glyph (the glyphs are about
+/// 11-12px across).
+const GLYPH_PORT_GAP: f64 = 14.0;
+
+/// An edge in abstract layout coordinates: bezier points + routed
+/// waypoints (empty = none) + optional (label centre, label box width).
+type AbsEdge = ([(f64, f64); 4], Vec<(f64, f64)>, Option<((f64, f64), f64)>);
+/// An edge end on a node side: (edge index, is source end, has glyph).
+type Port = (usize, bool, bool);
 
 /// Cluster box as (centre, size) — used for subgraph edge anchors.
 type BoxCS = ((f64, f64), (f64, f64));
@@ -74,6 +84,10 @@ pub struct SceneEdge {
     /// these so the edge stays in its channel instead of cutting across.
     pub waypoints: Vec<(f64, f64)>,
     pub kind: EdgeKind,
+    /// Cross / circle / two-way end glyphs layered over `kind` (see
+    /// [`EdgeEnds`]); resolve with `ends.end_marker(kind)` /
+    /// `ends.start_marker(kind)`.
+    pub ends: EdgeEnds,
     /// (text, box centre, box width) when the edge has a label.
     pub label: Option<(String, (f64, f64), f64)>,
 }
@@ -451,9 +465,6 @@ fn scene_from_layout(g: &Graph, sizes: &[(f64, f64)], lo: LayoutResult) -> Scene
 
     // Edge geometry (abstract coordinates) with parallel-edge separation.
     let offs = parallel_offsets(g);
-    /// Bezier points + routed waypoints (empty = none) + optional
-    /// (label centre, label box width).
-    type AbsEdge = ([(f64, f64); 4], Vec<(f64, f64)>, Option<((f64, f64), f64)>);
     let mut abs_edges: Vec<AbsEdge> = Vec::with_capacity(g.edges.len());
     for (ei, (e, off)) in g.edges.iter().zip(offs).enumerate() {
         let a = &lo.nodes[e.from];
@@ -510,6 +521,7 @@ fn scene_from_layout(g: &Graph, sizes: &[(f64, f64)], lo: LayoutResult) -> Scene
         });
         abs_edges.push((pts, wps, label));
     }
+    spread_glyph_ports(g, &lo.nodes, &mut abs_edges);
 
     // Canvas from the bounding box of nodes + curves + labels. A
     // bezier curve always stays inside the convex hull of its
@@ -601,6 +613,7 @@ fn scene_from_layout(g: &Graph, sizes: &[(f64, f64)], lo: LayoutResult) -> Scene
             bezier: [tf(pts[0]), tf(pts[1]), tf(pts[2]), tf(pts[3])],
             waypoints: wps.iter().map(|&p| tf(p)).collect(),
             kind: e.kind,
+            ends: e.ends,
             label: e.label.clone().zip(label).map(|(t, (m, w))| (t, tf(m), w)),
         })
         .collect();
@@ -744,6 +757,7 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
                 bezier: pts,
                 waypoints: Vec::new(),
                 kind: e.kind,
+                ends: e.ends,
                 label,
             });
         }
@@ -966,6 +980,7 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
             bezier: pts,
             waypoints: wps,
             kind: e.kind,
+            ends: e.ends,
             label,
         });
     }
@@ -1034,6 +1049,7 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
                 bezier: pts,
                 waypoints: Vec::new(),
                 kind: e.kind,
+                ends: e.ends,
                 label,
             });
         }
@@ -1202,6 +1218,74 @@ pub fn box_edge_bezier(
     )
 }
 
+/// `marker-start` / `marker-end` attribute for one edge end (empty
+/// when the end has no glyph). The end arrow keeps its historical
+/// `#arrow` id so marker-free output is unchanged.
+fn marker_attr(side: &str, m: Option<Marker>) -> String {
+    let id = match (side, m) {
+        (_, None) => return String::new(),
+        ("end", Some(Marker::Arrow)) => "arrow",
+        (_, Some(Marker::Arrow)) => "arrow-start",
+        ("end", Some(Marker::Cross)) => "cross-end",
+        (_, Some(Marker::Cross)) => "cross-start",
+        ("end", Some(Marker::Circle)) => "circle-end",
+        (_, Some(Marker::Circle)) => "circle-start",
+    };
+    format!(" marker-{side}=\"url(#{id})\"")
+}
+
+/// `<marker>` defs beyond the classic end arrow, emitted only for the
+/// glyphs some drawn edge actually uses — a diagram without `<-->`,
+/// `--x` or `--o` gets exactly the defs it always had. Cross and
+/// circle are sized in user space (mermaid-like, independent of the
+/// stroke width) and sit just outside the node border: the path still
+/// ends ON the border, the glyph is offset back along the tangent.
+fn extra_marker_defs(edges: &[SceneEdge]) -> String {
+    let uses = |start: bool, m: Marker| {
+        edges.iter().any(|e| {
+            let got = if start {
+                e.ends.start_marker(e.kind)
+            } else {
+                e.ends.end_marker(e.kind)
+            };
+            got == Some(m)
+        })
+    };
+    let mut out = String::new();
+    if uses(true, Marker::Arrow) {
+        // Mirror of `#arrow`: tip at x=1 pointing back at the source.
+        out.push_str(&format!(
+            "<marker id=\"arrow-start\" viewBox=\"0 0 10 10\" refX=\"1.5\" refY=\"5\" \
+             markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\">\
+             <path d=\"M 10 1 L 1 5 L 10 9 z\" fill=\"{}\"/></marker>",
+            EDGE_COLOR
+        ));
+    }
+    for (start, id, refx) in [(false, "cross-end", 11), (true, "cross-start", 0)] {
+        if uses(start, Marker::Cross) {
+            out.push_str(&format!(
+                "<marker id=\"{id}\" viewBox=\"0 0 11 11\" refX=\"{refx}\" refY=\"5.5\" \
+                 markerUnits=\"userSpaceOnUse\" markerWidth=\"11\" markerHeight=\"11\" \
+                 orient=\"auto\"><path d=\"M 1 1 L 10 10 M 10 1 L 1 10\" fill=\"none\" \
+                 stroke=\"{}\" stroke-width=\"2\"/></marker>",
+                EDGE_COLOR
+            ));
+        }
+    }
+    for (start, id, refx) in [(false, "circle-end", 10), (true, "circle-start", 0)] {
+        if uses(start, Marker::Circle) {
+            out.push_str(&format!(
+                "<marker id=\"{id}\" viewBox=\"0 0 10 10\" refX=\"{refx}\" refY=\"5\" \
+                 markerUnits=\"userSpaceOnUse\" markerWidth=\"10\" markerHeight=\"10\" \
+                 orient=\"auto\"><circle cx=\"5\" cy=\"5\" r=\"4\" fill=\"{0}\" \
+                 stroke=\"{0}\" stroke-width=\"1\"/></marker>",
+                EDGE_COLOR
+            ));
+        }
+    }
+    out
+}
+
 /// Serialise any Scene (automatic or dragged) to SVG. Content is
 /// translated to start at MARGIN, so negative coordinates are safe.
 /// The accessible name is `"Flowchart diagram"`; use [`to_svg_titled`]
@@ -1253,8 +1337,9 @@ pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String 
     s.push_str(&format!(
         "<defs><marker id=\"arrow\" viewBox=\"0 0 10 10\" refX=\"8.5\" refY=\"5\" \
          markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\">\
-         <path d=\"M 0 1 L 9 5 L 0 9 z\" fill=\"{}\"/></marker></defs>\n",
-        EDGE_COLOR
+         <path d=\"M 0 1 L 9 5 L 0 9 z\" fill=\"{}\"/></marker>{}</defs>\n",
+        EDGE_COLOR,
+        extra_marker_defs(&sc.edges)
     ));
 
     // Cluster boxes first (outermost-first), behind everything. The
@@ -1296,11 +1381,11 @@ pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String 
             EdgeKind::Thick | EdgeKind::ThickOpen => ("", 3.4),
             _ => ("", 1.7),
         };
-        let marker = if e.kind.has_arrow() {
-            " marker-end=\"url(#arrow)\""
-        } else {
-            ""
-        };
+        let marker = format!(
+            "{}{}",
+            marker_attr("start", e.ends.start_marker(e.kind)),
+            marker_attr("end", e.ends.end_marker(e.kind))
+        );
         // A routed edge splines through its waypoints; otherwise the
         // single cubic. The arrow marker orients to the end tangent
         // (last segment) either way.
@@ -1315,16 +1400,22 @@ pub fn to_svg_titled_with(sc: &Scene, title: &str, opts: &SvgOptions) -> String 
             )
         };
         // <title> child = screen-reader / hover description (issue #16).
+        // A two-way edge reads ↔ rather than →.
+        let dir = if e.ends.start_marker(e.kind).is_some() {
+            '\u{2194}'
+        } else {
+            '\u{2192}'
+        };
         let edge_title = match &e.label {
             Some((text, ..)) => {
                 format!(
-                    "{} \u{2192} {}: {}",
+                    "{} {dir} {}: {}",
                     display(&e.from),
                     display(&e.to),
                     plain_text(text)
                 )
             }
-            None => format!("{} \u{2192} {}", display(&e.from), display(&e.to)),
+            None => format!("{} {dir} {}", display(&e.from), display(&e.to)),
         };
         s.push_str(&format!(
             "<path d=\"{}\" fill=\"none\" stroke=\"{}\" stroke-width=\"{}\"{}{}>\
@@ -1595,6 +1686,126 @@ pub(crate) fn grow_scene(
         if let Some((_, m, w)) = &e.label {
             bb.add(m.0 - w / 2.0, m.1 - 10.0);
             bb.add(m.0 + w / 2.0, m.1 + 10.0);
+        }
+    }
+}
+
+/// Spread apart the edge ends that share one top/bottom side of a box
+/// node when any of them carries a glyph beyond the plain arrowhead
+/// (a start marker, a cross or a circle). [`anchor`] keeps fan-out
+/// ports within a few px of each other, which plain lines tolerate but
+/// which piles the wider glyphs into one blob. Sides without such a
+/// glyph are left untouched, so marker-free diagrams render as before.
+/// Abstract coordinates; endpoints move along the breadth axis only,
+/// each with its neighbouring control point so the curve still leaves
+/// the border square.
+fn spread_glyph_ports(g: &Graph, placed: &[Placed], edges: &mut [AbsEdge]) {
+    // (node, bottom side) -> the edge ends on it.
+    let mut sides: HashMap<(usize, bool), Vec<Port>> = HashMap::new();
+    for (ei, e) in g.edges.iter().enumerate() {
+        if e.from == e.to || matches!(e.kind, EdgeKind::Invisible) {
+            continue;
+        }
+        let (pts, wps, _) = &edges[ei];
+        for (src, n) in [(true, e.from), (false, e.to)] {
+            if matches!(
+                g.nodes[n].shape,
+                Shape::Diamond
+                    | Shape::Circle
+                    | Shape::DoubleCircle
+                    | Shape::StateStart
+                    | Shape::StateEnd
+            ) {
+                continue;
+            }
+            let pt = match (src, wps.is_empty()) {
+                (true, true) => pts[0],
+                (false, true) => pts[3],
+                (true, false) => wps[0],
+                (false, false) => wps[wps.len() - 1],
+            };
+            let p = &placed[n];
+            let bottom = if (pt.1 - (p.l + p.lsize / 2.0)).abs() < 0.5 {
+                true
+            } else if (pt.1 - (p.l - p.lsize / 2.0)).abs() < 0.5 {
+                false
+            } else {
+                continue; // a side port (same-layer edge)
+            };
+            let glyph = if src {
+                e.ends.start_marker(e.kind).is_some()
+            } else {
+                matches!(
+                    e.ends.end_marker(e.kind),
+                    Some(Marker::Cross | Marker::Circle)
+                )
+            };
+            sides.entry((n, bottom)).or_default().push((ei, src, glyph));
+        }
+    }
+    // (endpoint index, neighbour index) into the drawn point list.
+    let ends_of = |pts: &[(f64, f64); 4], wps: &Vec<(f64, f64)>, src: bool| {
+        let (pt, nb) = match (src, wps.is_empty()) {
+            (true, true) => (pts[0], pts[1]),
+            (false, true) => (pts[3], pts[2]),
+            (true, false) => (wps[0], wps[1]),
+            (false, false) => (wps[wps.len() - 1], wps[wps.len() - 2]),
+        };
+        (pt.0, nb.0)
+    };
+    let mut keys: Vec<_> = sides.keys().copied().collect();
+    keys.sort_unstable(); // deterministic output
+    for key in keys {
+        let mut ports = sides.remove(&key).unwrap_or_default();
+        if ports.len() < 2 || !ports.iter().any(|&(.., glyph)| glyph) {
+            continue;
+        }
+        // Order by where each edge heads next (then by where it sits
+        // now), so the spread ends don't make their curves cross.
+        let key_of = |&(ei, src, _): &Port| {
+            let (at, nb) = ends_of(&edges[ei].0, &edges[ei].1, src);
+            (nb, at)
+        };
+        ports.sort_by(|a, b| {
+            key_of(a)
+                .partial_cmp(&key_of(b))
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        let at: Vec<f64> = ports
+            .iter()
+            .map(|&(ei, src, _)| ends_of(&edges[ei].0, &edges[ei].1, src).0)
+            .collect();
+        if at.windows(2).all(|w| w[1] - w[0] >= GLYPH_PORT_GAP) {
+            continue;
+        }
+        let p = &placed[key.0];
+        let half = match g.nodes[key.0].shape {
+            Shape::Stadium => p.bsize / 2.0 - p.lsize / 2.0,
+            _ => p.bsize / 2.0 - 4.0,
+        }
+        .max(0.0);
+        let n = at.len() as f64;
+        let step = GLYPH_PORT_GAP.min(2.0 * half / (n - 1.0));
+        let run = step * (n - 1.0);
+        let mean = at.iter().sum::<f64>() / n;
+        // `min` then `max`, not `clamp`: when the ports fill the whole
+        // side, rounding can leave `run` an ulp over `2 * half`, which
+        // inverts the bounds (and `clamp` panics on that).
+        let first = (mean - run / 2.0).min(p.b + half - run).max(p.b - half);
+        for (i, &(ei, src, _)) in ports.iter().enumerate() {
+            let d = first + step * i as f64 - at[i];
+            let (pts, wps, label) = &mut edges[ei];
+            let (pi, ni) = if src { (0, 1) } else { (3, 2) };
+            pts[pi].0 += d;
+            pts[ni].0 += d;
+            if wps.is_empty() {
+                if let Some((m, _)) = label {
+                    *m = cubic_mid(pts[0], pts[1], pts[2], pts[3]);
+                }
+            } else {
+                let wi = if src { 0 } else { wps.len() - 1 };
+                wps[wi].0 += d;
+            }
         }
     }
 }
@@ -2403,6 +2614,179 @@ mod tests {
         assert_eq!(s.edges.len(), 2);
         assert!(s.width > 0.0 && s.height > 0.0);
         assert_eq!(to_svg(&s), crate::render::render(&g));
+    }
+
+    /// The single drawn edge `<path …>` of a one-edge flowchart.
+    fn only_edge_path(svg: &str) -> &str {
+        let i = svg.find("<path d=\"M").expect("edge path");
+        &svg[i..i + svg[i..].find("</path>").unwrap()]
+    }
+
+    #[test]
+    fn edge_markers_draw_at_the_right_ends() {
+        let cases: &[(&str, &str, &str)] = &[
+            ("--x", "", "cross-end"),
+            ("-.-x", "", "cross-end"),
+            ("==x", "", "cross-end"),
+            ("--o", "", "circle-end"),
+            ("-.-o", "", "circle-end"),
+            ("==o", "", "circle-end"),
+            ("-- t --x", "", "cross-end"),
+            ("-. t .-o", "", "circle-end"),
+            ("== t ==x", "", "cross-end"),
+            ("--x|t|", "", "cross-end"),
+            ("<-->", "arrow-start", "arrow"),
+            ("<-.->", "arrow-start", "arrow"),
+            ("<==>", "arrow-start", "arrow"),
+            ("<-- t -->", "arrow-start", "arrow"),
+            ("<-->|t|", "arrow-start", "arrow"),
+            ("x--x", "cross-start", "cross-end"),
+            ("o--o", "circle-start", "circle-end"),
+        ];
+        for (op, start, end) in cases {
+            let svg = crate::render_svg(&format!("flowchart LR\nA {op} B\n")).unwrap();
+            let path = only_edge_path(&svg);
+            assert!(
+                path.contains(&format!("marker-end=\"url(#{end})\"")),
+                "{op}: {path}"
+            );
+            if start.is_empty() {
+                assert!(!path.contains("marker-start"), "{op}: {path}");
+            } else {
+                assert!(
+                    path.contains(&format!("marker-start=\"url(#{start})\"")),
+                    "{op}: {path}"
+                );
+            }
+            // Every referenced glyph is defined, and only those.
+            for id in [*start, *end].into_iter().filter(|i| !i.is_empty()) {
+                assert!(
+                    svg.contains(&format!("<marker id=\"{id}\"")),
+                    "{op}: def {id}"
+                );
+            }
+            let defs = svg.matches("<marker id=").count();
+            let want = 1 + [*start, *end]
+                .iter()
+                .filter(|i| !i.is_empty() && **i != "arrow")
+                .count();
+            assert_eq!(defs, want, "{op}: marker defs");
+        }
+    }
+
+    #[test]
+    fn subgraph_edges_keep_their_glyphs_in_scene_and_route() {
+        let g = parse("flowchart LR\nsubgraph S\nH\nend\nS <--> A\nS --x B\n").unwrap();
+        let s = scene(&g);
+        let ends = |sc: &Scene, to: &str| {
+            sc.edges
+                .iter()
+                .find(|e| e.from == "S" && e.to == to)
+                .unwrap_or_else(|| panic!("no S -> {to}"))
+                .ends
+        };
+        for sc in [
+            &s,
+            &route(&g, &s.nodes.iter().map(|n| (n.x, n.y)).collect::<Vec<_>>()),
+        ] {
+            assert_eq!(ends(sc, "A").start, Some(Marker::Arrow));
+            assert_eq!(ends(sc, "B").end, Some(Marker::Cross));
+            let svg = to_svg(sc);
+            assert!(svg.contains("marker-start=\"url(#arrow-start)\""));
+            assert!(svg.contains("marker-end=\"url(#cross-end)\""));
+        }
+    }
+
+    #[test]
+    fn glyph_ends_sharing_a_side_are_spread_apart() {
+        let starts = |src: &str| {
+            let s = scene(&parse(src).unwrap());
+            let mut v: Vec<f64> = s
+                .edges
+                .iter()
+                .filter(|e| e.from == "A")
+                .map(|e| e.bezier[0].1)
+                .collect();
+            v.sort_by(f64::total_cmp);
+            v
+        };
+        let gaps = |v: &[f64]| v.windows(2).map(|w| w[1] - w[0]).collect::<Vec<_>>();
+        let glyphs = starts("flowchart LR\nA <--> B\nA x--x C\nA o--o D\n");
+        assert!(
+            gaps(&glyphs).iter().all(|&d| d >= GLYPH_PORT_GAP - 1e-9),
+            "{glyphs:?}"
+        );
+        // Plain fan-out keeps its tight ports (output unchanged).
+        let plain = starts("flowchart LR\nA --> B\nA --> C\nA --> D\n");
+        assert!(
+            gaps(&plain).iter().all(|&d| d < GLYPH_PORT_GAP),
+            "{plain:?}"
+        );
+        // Ends stay on the node's border.
+        let s = scene(&parse("flowchart LR\nA <--> B\nA x--x C\nA o--o D\n").unwrap());
+        let a = &s.nodes[0];
+        for e in &s.edges {
+            let p = e.bezier[0];
+            assert!((p.1 - a.y).abs() <= a.h / 2.0, "{p:?}");
+        }
+    }
+
+    #[test]
+    fn glyph_fan_in_never_panics_when_ports_fill_the_side() {
+        // Enough glyph ends to fill a hub's side make the spread run
+        // equal its width, where rounding once inverted the clamp
+        // bounds (`N1..N5 --o H[abcd]` panicked).
+        const MAX_FAN_IN: usize = 40;
+        for dir in ["TD", "BT", "LR", "RL"] {
+            for hub in ["a", "abcd", "a much wider hub label"] {
+                for op in ["--o", "--x", "<-->"] {
+                    for n in 1..=MAX_FAN_IN {
+                        let mut src = format!("flowchart {dir}\nH[{hub}]\n");
+                        for i in 1..=n {
+                            src.push_str(&format!("N{i} {op} H\n"));
+                        }
+                        let s = scene(&parse(&src).unwrap());
+                        assert_eq!(s.edges.len(), n, "{src}");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn marker_free_diagrams_keep_their_exact_defs_and_titles() {
+        let svg = crate::render_svg("flowchart LR\nA --> B\nB --- C\nC -.-> D\n").unwrap();
+        assert_eq!(svg.matches("<marker id=").count(), 1);
+        assert!(svg.contains("</marker></defs>"));
+        assert!(!svg.contains("marker-start"));
+        assert!(svg.contains("<title>A \u{2192} B</title>"));
+        // A two-way edge announces itself as such.
+        let svg = crate::render_svg("flowchart LR\nA <--> B\n").unwrap();
+        assert!(svg.contains("<title>A \u{2194} B</title>"), "{svg}");
+    }
+
+    #[test]
+    fn two_way_edges_start_on_the_source_border_like_one_way_edges() {
+        // The start glyph sits on the clipped endpoint, so a `<-->`
+        // edge must have exactly the geometry of `-->` — clipped to
+        // BOTH node borders, never to the centres.
+        for dir in ["LR", "TD"] {
+            let one = scene(&parse(&format!("flowchart {dir}\nA --> B\n")).unwrap());
+            let two = scene(&parse(&format!("flowchart {dir}\nA <--> B\n")).unwrap());
+            assert_eq!(one.edges[0].bezier, two.edges[0].bezier, "{dir}");
+            let (a, p0) = (&two.nodes[0], two.edges[0].bezier[0]);
+            let on_border =
+                (p0.0 - a.x).abs() >= a.w / 2.0 - 0.5 || (p0.1 - a.y).abs() >= a.h / 2.0 - 0.5;
+            assert!(on_border, "{dir}: start {p0:?} not on A's border");
+            assert_eq!(two.edges[0].ends.start, Some(Marker::Arrow));
+        }
+        // route() (drag path) keeps the glyphs too.
+        let g = parse("flowchart LR\nA x--x B\n").unwrap();
+        let s = scene(&g);
+        let centers: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x + 40.0, n.y)).collect();
+        let r = route(&g, &centers);
+        assert_eq!(r.edges[0].ends, g.edges[0].ends);
+        assert!(to_svg(&r).contains("marker-start=\"url(#cross-start)\""));
     }
 
     #[test]

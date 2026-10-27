@@ -390,6 +390,7 @@ fn compose(
                     to: local[edge.to],
                     label: edge.label.clone(),
                     kind: edge.kind,
+                    ends: edge.ends,
                 });
             }
         }
@@ -444,6 +445,7 @@ fn compose(
                     bezier: [(a.x, a.y), (a.x, a.y), (b.x, b.y), (b.x, b.y)],
                     waypoints: Vec::new(),
                     kind: e.kind,
+                    ends: e.ends,
                     label: None,
                 };
             }
@@ -544,6 +546,7 @@ fn fold_connector(
         bezier: [p0, mk(apex, br(a)), mk(apex, br(b)), p3],
         waypoints: wps,
         kind: e.kind,
+        ends: e.ends,
         label,
     }
 }
@@ -559,6 +562,18 @@ mod tests {
             s.push_str(&format!("N{} --> N{}\n", i, i + 1));
         }
         s
+    }
+
+    #[test]
+    fn folded_chains_keep_edge_end_glyphs() {
+        // In-band edges and fold-crossing U-turns alike carry `ends`.
+        let g = parse(&chain(12).replace("-->", "x--x")).unwrap();
+        let c = scene_compact(&g, &CompactOptions::for_extent(420.0));
+        assert!(c.skipped.is_none(), "must fold: {:?}", c.skipped);
+        for (se, e) in c.scene.edges.iter().zip(&g.edges) {
+            assert_eq!(se.ends, e.ends);
+            assert_eq!(se.ends.start, Some(crate::model::Marker::Cross));
+        }
     }
 
     #[test]

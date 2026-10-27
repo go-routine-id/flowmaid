@@ -163,6 +163,7 @@ pub fn scene(d: &GitGraph) -> GitScene {
                     bezier: edge_bezier(p0, p1, d.orientation),
                     waypoints: Vec::new(),
                     kind: crate::model::EdgeKind::Open,
+                    ends: Default::default(),
                     label: None,
                 });
             }
@@ -179,6 +180,7 @@ pub fn scene(d: &GitGraph) -> GitScene {
                 bezier: edge_bezier(p0, p1, d.orientation),
                 waypoints: Vec::new(),
                 kind: crate::model::EdgeKind::Open,
+                ends: Default::default(),
                 label: None,
             });
         }
@@ -196,6 +198,7 @@ pub fn scene(d: &GitGraph) -> GitScene {
                 bezier: edge_bezier(p0, p1, d.orientation),
                 waypoints: Vec::new(),
                 kind: crate::model::EdgeKind::Arrow,
+                ends: Default::default(),
                 label: None,
             });
         }

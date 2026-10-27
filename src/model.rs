@@ -78,6 +78,57 @@ impl EdgeKind {
     }
 }
 
+/// Glyph drawn at one end of an edge.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Marker {
+    /// Filled arrowhead (`-->`, and the `<` of `<-->`).
+    Arrow,
+    /// Small X (`--x`, `x--x`).
+    Cross,
+    /// Small filled circle (`--o`, `o--o`).
+    Circle,
+}
+
+/// End glyphs layered over an edge's [`EdgeKind`]. `EdgeKind` stays
+/// the line style plus the classic target arrowhead, so code that only
+/// knows `EdgeKind` keeps drawing every edge sensibly (an `--x` edge
+/// is `EdgeKind::Open` and degrades to a plain line); renderers that
+/// know markers resolve each end with [`EdgeEnds::end_marker`] /
+/// [`EdgeEnds::start_marker`].
+///
+/// The default (both `None`) is the pre-marker behaviour: no start
+/// glyph, and an arrowhead at the target exactly when
+/// [`EdgeKind::has_arrow`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct EdgeEnds {
+    /// Glyph at the source end (`<-->`, `x--x`, `o--o`); `None` = none.
+    pub start: Option<Marker>,
+    /// Glyph at the target end; `None` = whatever the edge's kind
+    /// implies (arrowhead for `Arrow`/`Dotted`/`Thick`, else nothing).
+    pub end: Option<Marker>,
+}
+
+impl EdgeEnds {
+    /// The glyph to draw at the target end of an edge of `kind`.
+    /// Invisible links never draw one.
+    pub fn end_marker(self, kind: EdgeKind) -> Option<Marker> {
+        if kind == EdgeKind::Invisible {
+            return None;
+        }
+        self.end
+            .or_else(|| kind.has_arrow().then_some(Marker::Arrow))
+    }
+
+    /// The glyph to draw at the source end of an edge of `kind`.
+    pub fn start_marker(self, kind: EdgeKind) -> Option<Marker> {
+        if kind == EdgeKind::Invisible {
+            return None;
+        }
+        self.start
+    }
+}
+
 /// Custom per-node styling from Mermaid `style` / `classDef`
 /// lines. `None` fields fall back to the shape's theme color
 /// (see [`crate::style::shape_style`]).
@@ -121,12 +172,18 @@ pub struct Node {
     pub style: NodeStyle,
 }
 
+/// A node-to-node edge. `#[non_exhaustive]`: build one with
+/// [`Graph::add_edge`] / [`Graph::add_edge_with_ends`].
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct Edge {
     pub from: usize,
     pub to: usize,
     pub label: Option<String>,
     pub kind: EdgeKind,
+    /// Cross / circle / two-way end glyphs (default: none beyond
+    /// what `kind` implies).
+    pub ends: EdgeEnds,
 }
 
 /// A `subgraph ... end` block: a titled cluster of nodes, possibly
@@ -155,12 +212,16 @@ pub enum End {
 /// An edge where at least one endpoint is a subgraph
 /// (`CF --> VPC`). Kept apart from [`Edge`] so the flat node→node
 /// path stays untouched; consumed only by the clustered scene.
+/// `#[non_exhaustive]`: the parser builds these; read their fields.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct SubEdge {
     pub from: End,
     pub to: End,
     pub label: Option<String>,
     pub kind: EdgeKind,
+    /// End glyphs, as on [`Edge::ends`].
+    pub ends: EdgeEnds,
 }
 
 /// Parsed graph, ready for layout.
@@ -201,11 +262,24 @@ impl Graph {
     }
 
     pub fn add_edge(&mut self, from: usize, to: usize, label: Option<String>, kind: EdgeKind) {
+        self.add_edge_with_ends(from, to, label, kind, EdgeEnds::default());
+    }
+
+    /// [`Graph::add_edge`] with explicit end glyphs (`--x`, `<-->`, …).
+    pub fn add_edge_with_ends(
+        &mut self,
+        from: usize,
+        to: usize,
+        label: Option<String>,
+        kind: EdgeKind,
+        ends: EdgeEnds,
+    ) {
         self.edges.push(Edge {
             from,
             to,
             label,
             kind,
+            ends,
         });
     }
 
