@@ -7,6 +7,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.31.1] - 2026-10-27
+
 ### Fixed
 
 - **Class and ER diagrams no longer clip nodes dragged past the canvas origin.**
