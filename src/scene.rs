@@ -2523,7 +2523,10 @@ fn spread_glyph_ports(g: &Graph, placed: &[Placed], edges: &mut [AbsEdge]) {
         let step = GLYPH_PORT_GAP.min(2.0 * half / (n - 1.0));
         let run = step * (n - 1.0);
         let mean = at.iter().sum::<f64>() / n;
-        let first = (mean - run / 2.0).clamp(p.b - half, p.b + half - run);
+        // `min` then `max`, not `clamp`: when the ports fill the whole
+        // side, rounding can leave `run` an ulp over `2 * half`, which
+        // inverts the bounds (and `clamp` panics on that).
+        let first = (mean - run / 2.0).min(p.b + half - run).max(p.b - half);
         for (i, &(ei, src, _)) in ports.iter().enumerate() {
             let d = first + step * i as f64 - at[i];
             let (pts, wps, label) = &mut edges[ei];
@@ -3460,6 +3463,28 @@ mod tests {
         for e in &s.edges {
             let p = e.bezier[0];
             assert!((p.1 - a.y).abs() <= a.h / 2.0, "{p:?}");
+        }
+    }
+
+    #[test]
+    fn glyph_fan_in_never_panics_when_ports_fill_the_side() {
+        // Enough glyph ends to fill a hub's side make the spread run
+        // equal its width, where rounding once inverted the clamp
+        // bounds (`N1..N5 --o H[abcd]` panicked).
+        const MAX_FAN_IN: usize = 40;
+        for dir in ["TD", "BT", "LR", "RL"] {
+            for hub in ["a", "abcd", "a much wider hub label"] {
+                for op in ["--o", "--x", "<-->"] {
+                    for n in 1..=MAX_FAN_IN {
+                        let mut src = format!("flowchart {dir}\nH[{hub}]\n");
+                        for i in 1..=n {
+                            src.push_str(&format!("N{i} {op} H\n"));
+                        }
+                        let s = scene(&parse(&src).unwrap());
+                        assert_eq!(s.edges.len(), n, "{src}");
+                    }
+                }
+            }
         }
     }
 

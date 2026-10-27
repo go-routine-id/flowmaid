@@ -26,12 +26,21 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `oB`), and `A --xray` a cross edge to `ray`. Separate the id with a space to keep it.
   Code that builds `model::Edge` / `model::SubEdge` with struct literals must add
   `ends: Default::default()`.
-- **Unquoted inline labels end at the first marker closer.** Mermaid's lexer closes edge
-  text at the first `--x`, `--o`, `==x`, `==o` (or `.-x`, `.-o`), even mid-word, and so
-  does flowmaid now. `A -- go--on --> B` becomes a circle edge `A → n` labelled `go` plus
-  `n --> B` (was one edge labelled `go--on`); `A --xfer--> B` becomes `A --x fer --> B`;
-  `A -- to--x --> B` and `A -- use --xml flag --> B` are now errors. Quote the label to
-  keep it whole: `A -- "go--on" --> B`. Quoted text is never scanned for a closer, so
+- **`model::Edge` and `model::SubEdge` are `#[non_exhaustive]`.** Fields stay public to
+  read, but downstream code can no longer build them with struct literals (this release
+  already breaks those by adding `ends`), so future fields won't break it again. Build
+  edges with `Graph::add_edge` / `Graph::add_edge_with_ends`; `SubEdge`s come from the
+  parser.
+- **Unquoted inline labels end at the first closer, as in mermaid.** Mermaid's lexer
+  tries its closing rule (`[xo<]?--+[-xo>]`, `[xo<]?==+[=xo>]`, `[xo<]?-?.+-[xo>]?`)
+  before every edge-text character, so edge text ends at the first match, even
+  mid-word, and an `x` / `o` / `<` right before the closer belongs to it; flowmaid now
+  does the same. `A -- go--on --> B` becomes a two-way circle edge `A o--o n` labelled
+  `g` plus `n --> B` (was one edge labelled `go--on`); `A -- hello--x B` is a cross edge
+  labelled `hell`; `A --xfer--> B` becomes `A --x fer --> B`; `A -. t -.-x B` and
+  `A -. t ..-x B` are labelled `t` (were `t -` / `t .`); `A -- to--x --> B` and
+  `A -- use --xml flag --> B` are now errors. Quote the label to keep it whole:
+  `A -- "go--on" --> B`. Quoted text is never scanned for a closer, so
   `A -- "a --> b" --> B` and `A -. "a .-x" .-> B` now parse too.
 - **Glyph ends sharing a node side are spread apart.** When an edge end on a box's side
   carries a start, cross or circle glyph, the ends on that side are spaced up to 14px
