@@ -182,6 +182,11 @@ fn compartment_h(rows: usize) -> f64 {
 }
 
 /// Serialise any class arrangement (automatic or dragged) to SVG.
+///
+/// A node dragged left of or above the origin shifts the whole drawing
+/// right/down onto the canvas, so SVG coordinates can then differ from
+/// scene coordinates by that offset: map pointer events through the
+/// rendered SVG, as with [`crate::scene::to_svg`].
 pub fn to_svg(cs: &ClassScene) -> String {
     to_svg_with(cs, &SvgOptions::default())
 }
@@ -665,35 +670,23 @@ mod tests {
         }
     }
 
-    /// Every `<rect x=… y=…>` in `svg`, as numbers.
-    fn rect_origins(svg: &str) -> Vec<(f64, f64)> {
-        let num = |l: &str, k: &str| -> f64 {
-            let pat = format!(" {k}=\"");
-            let i = l.find(&pat).unwrap() + pat.len();
-            l[i..i + l[i..].find('"').unwrap()].parse().unwrap()
-        };
-        svg.lines()
-            .filter(|l| l.starts_with("<rect ") && l.contains(" x=\"") && l.contains(" y=\""))
-            .map(|l| (num(l, "x"), num(l, "y")))
-            .collect()
-    }
-
     #[test]
     fn drag_past_origin_stays_inside_viewbox() {
-        // A class dragged left of / above the canvas origin (the
-        // playground's drag path) must not be clipped by the
-        // `0 0 W H` viewBox.
+        // A class dragged left of and/or above the canvas origin (the
+        // playground's drag path) must not be clipped by the `0 0 W H`
+        // viewBox — nor may any text, edge or marker it pulls along.
+        // The last case keeps the centre in bounds but the box past it.
         let d = cd(include_str!("../examples/class.mmd"));
         let sc = scene(&d);
-        let mut centers: Vec<(f64, f64)> = sc.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
-        centers[0] = (-120.0, -80.0);
-        let svg = to_svg(&route(&d, &centers));
-        for (x, y) in rect_origins(&svg) {
-            assert!(
-                x >= 0.0 && y >= 0.0,
-                "rect at ({x}, {y}) is outside the viewBox"
-            );
+        let laid: Vec<(f64, f64)> = sc.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let (x0, y0) = laid[0];
+        for to in [(-120.0, y0), (x0, -80.0), (-120.0, -80.0), (5.0, 5.0)] {
+            let mut centers = laid.clone();
+            centers[0] = to;
+            crate::scene::assert_drawn_inside_canvas(&to_svg(&route(&d, &centers)));
         }
+        // Laid out, the canvas already holds everything.
+        crate::scene::assert_drawn_inside_canvas(&to_svg(&sc));
     }
 
     #[test]

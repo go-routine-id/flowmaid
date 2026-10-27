@@ -4053,6 +4053,61 @@ pub(crate) fn escape(s: &str) -> String {
         .replace('\'', "&#39;")
 }
 
+/// Test helper for renderers that draw `width` × `height` as a
+/// `0 0 W H` viewBox (class, ER): panics unless every drawn coordinate
+/// — `x`/`y`/`x1`…`cy` attributes, rect far corners, path `d` points
+/// and polygon `points` — lies on that canvas.
+#[cfg(test)]
+pub(crate) fn assert_drawn_inside_canvas(svg: &str) {
+    fn attr<'a>(line: &'a str, name: &str) -> Option<&'a str> {
+        let pat = format!(" {name}=\"");
+        let i = line.find(&pat)? + pat.len();
+        Some(&line[i..i + line[i..].find('"')?])
+    }
+    fn num(v: &str) -> f64 {
+        v.parse().unwrap_or_else(|_| panic!("not a number: {v:?}"))
+    }
+    let root = svg.lines().find(|l| l.starts_with("<svg ")).unwrap();
+    let (w, h) = (
+        num(attr(root, "width").unwrap()),
+        num(attr(root, "height").unwrap()),
+    );
+    let check = |line: &str, x: f64, y: f64| {
+        assert!(
+            (0.0..=w).contains(&x) && (0.0..=h).contains(&y),
+            "({x}, {y}) is off the {w}×{h} canvas: {line}"
+        );
+    };
+    for line in svg
+        .lines()
+        .filter(|l| l.starts_with('<') && !l.starts_with("<svg "))
+    {
+        for (kx, ky) in [("x", "y"), ("x1", "y1"), ("x2", "y2"), ("cx", "cy")] {
+            if let (Some(x), Some(y)) = (attr(line, kx), attr(line, ky)) {
+                check(line, num(x), num(y));
+            }
+        }
+        if line.starts_with("<rect ") {
+            if let (Some(x), Some(y)) = (attr(line, "x"), attr(line, "y")) {
+                let far_x = num(x) + num(attr(line, "width").unwrap());
+                let far_y = num(y) + num(attr(line, "height").unwrap());
+                check(line, far_x, far_y);
+            }
+        }
+        let pts = attr(line, "d").or_else(|| attr(line, "points"));
+        if let Some(p) = pts {
+            let ns: Vec<f64> = p
+                .split(|c: char| !(c.is_ascii_digit() || c == '.' || c == '-'))
+                .filter(|t| !t.is_empty())
+                .map(num)
+                .collect();
+            for xy in ns.chunks(2) {
+                check(line, xy[0], xy[1]);
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
