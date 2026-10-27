@@ -310,7 +310,10 @@ pub struct Node {
     pub style: NodeStyle,
 }
 
+/// A node-to-node edge. `#[non_exhaustive]`: build one with
+/// [`Graph::add_edge`] / [`Graph::add_edge_with_ends`].
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct Edge {
     pub from: usize,
     pub to: usize,
@@ -349,7 +352,9 @@ pub enum End {
 /// An edge where at least one endpoint is a subgraph
 /// (`CF --> VPC`). Kept apart from [`Edge`] so the flat node→node
 /// path stays untouched; consumed only by the clustered scene.
+/// `#[non_exhaustive]`: the parser builds these; read their fields.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct SubEdge {
     pub from: End,
     pub to: End,

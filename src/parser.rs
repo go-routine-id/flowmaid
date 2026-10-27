@@ -2333,7 +2333,14 @@ fn parse_edge_inline_label(
             return Ok(None);
         }
         // The earliest closer wins.
-        let Some((i, len, kind, end)) = find_inline_closer(open, after) else {
+        let Some(InlineCloser {
+            at: i,
+            len,
+            kind,
+            end,
+            lead: close_lead,
+        }) = find_inline_closer(open, after)
+        else {
             return Err(err(
                 lineno,
                 format!(
@@ -2344,11 +2351,15 @@ fn parse_edge_inline_label(
         };
         // Mermaid accepts a start marker on a labelled edge only when
         // it mirrors the closer (`<-- t -->`, `x-- t --x`); a lone or
-        // mismatched one is an error there too.
+        // mismatched one is an error there too. A closer that mirrors
+        // itself (`o--o`, `<-->`) makes the edge two-way, unless the
+        // opener already has a start character (also an error there).
         let resolved_end = EdgeEnds { start: None, end }.end_marker(kind);
+        let two_way_closer = close_lead.is_some_and(|c| lead_marker(c) == resolved_end);
         let start = match lead {
+            None if two_way_closer => resolved_end,
             None => None,
-            Some(c) if lead_marker(c) == resolved_end => resolved_end,
+            Some(c) if !two_way_closer && lead_marker(c) == resolved_end => resolved_end,
             Some(c) => {
                 return Err(err(
                     lineno,
@@ -2385,13 +2396,26 @@ fn tail_marker(c: Option<char>) -> Option<Marker> {
     }
 }
 
+/// A closer found in inline label text: where it starts, how long it
+/// is, the line kind, its explicit end marker, and the `[xo<]` start
+/// character glued to its front (if any).
+struct InlineCloser {
+    at: usize,
+    len: usize,
+    kind: EdgeKind,
+    end: Option<Marker>,
+    lead: Option<char>,
+}
+
 /// The earliest closer of an inline label opened by `open` in `after`
-/// (the text right after the opener); returns (offset, closer length,
-/// kind, explicit end marker). A `"…"` span is skipped whole, as
-/// mermaid's string state does, so a quoted label may hold
-/// closer-looking text (`-- "use --xml" -->`). An unmatched `"` is
-/// plain text.
-fn find_inline_closer(open: &str, after: &str) -> Option<(usize, usize, EdgeKind, Option<Marker>)> {
+/// (the text right after the opener). Like mermaid's lexer, which
+/// tries its LINK rule `\s*[xo<]?…` before each edge-text character,
+/// a closer may carry a `[xo<]` start character taken from the label
+/// (`-- go--on -->` closes at `o--o`, label `g`). A `"…"` span is
+/// skipped whole, as mermaid's string state does, so a quoted label
+/// may hold closer-looking text (`-- "use --xml" -->`). An unmatched
+/// `"` is plain text.
+fn find_inline_closer(open: &str, after: &str) -> Option<InlineCloser> {
     let mut i = 0;
     while i < after.len() {
         let s = &after[i..];
@@ -2399,8 +2423,19 @@ fn find_inline_closer(open: &str, after: &str) -> Option<(usize, usize, EdgeKind
             i += q + 2;
             continue;
         }
-        if let Some((len, kind, end)) = inline_closer(open, s) {
-            return Some((i, len, kind, end));
+        let lead = s.chars().next().filter(|c| matches!(c, 'x' | 'o' | '<'));
+        let found = lead
+            .and_then(|c| inline_closer(open, &s[c.len_utf8()..]).map(|f| (f, Some(c))))
+            .or_else(|| inline_closer(open, s).map(|f| (f, None)));
+        if let Some(((len, kind, end), lead)) = found {
+            let lead_len = lead.map_or(0, char::len_utf8);
+            return Some(InlineCloser {
+                at: i,
+                len: lead_len + len,
+                kind,
+                end,
+                lead,
+            });
         }
         i += s.chars().next().map_or(1, char::len_utf8);
     }
@@ -2410,18 +2445,24 @@ fn find_inline_closer(open: &str, after: &str) -> Option<(usize, usize, EdgeKind
 /// Whether `s` starts with the closer of an inline label opened by
 /// `open`; returns (closer length, kind, explicit end marker). The
 /// solid and thick closers are mermaid's `--+[-xo>]` / `==+[=xo>]`
-/// (any length), the dotted one `.-[xo>]?`.
+/// (any length), the dotted one `-?.+-[xo>]?`.
 fn inline_closer(open: &str, s: &str) -> Option<(usize, EdgeKind, Option<Marker>)> {
     match open {
         "-." => {
-            let tail = s.strip_prefix(".-")?;
+            let dash = usize::from(s.starts_with('-'));
+            let dots = s[dash..].chars().take_while(|&c| c == '.').count();
+            if dots == 0 {
+                return None;
+            }
+            let body = dash + dots;
+            let tail = s[body..].strip_prefix('-')?;
             let c = tail.chars().next();
             if c == Some('>') {
-                Some((3, EdgeKind::Dotted, None))
+                Some((body + 2, EdgeKind::Dotted, None))
             } else if let Some(m) = tail_marker(c) {
-                Some((3, EdgeKind::DottedOpen, Some(m)))
+                Some((body + 2, EdgeKind::DottedOpen, Some(m)))
             } else {
-                Some((2, EdgeKind::DottedOpen, None))
+                Some((body + 1, EdgeKind::DottedOpen, None))
             }
         }
         _ => {
@@ -2664,7 +2705,7 @@ pub(crate) fn edge_span(s: &str) -> Option<usize> {
     if matches!(c0, '-' | '>' | '.' | '=') || (open != "-." && matches!(c0, 'x' | 'o')) {
         return None;
     }
-    Some(find_inline_closer(open, after).map_or(s.len(), |(i, len, ..)| open.len() + i + len))
+    Some(find_inline_closer(open, after).map_or(s.len(), |c| open.len() + c.at + c.len))
 }
 
 /// Like [`edge_op_follows`] but also recognizing the inline-label
@@ -2698,7 +2739,7 @@ fn edge_lead_follows(rest: &str) -> bool {
         return false;
     };
     // Earliest closer wins (that's what the edge parser would eat).
-    let end = find_inline_closer(open, &r[2..]).map(|(i, len, ..)| 2 + i + len);
+    let end = find_inline_closer(open, &r[2..]).map(|c| 2 + c.at + c.len);
     end.is_some_and(|end| !r[end..].trim().is_empty())
 }
 
@@ -6093,46 +6134,89 @@ mod tests {
         assert_eq!(g.edges[0].label.as_deref(), Some("a --x b"));
     }
 
+    /// (from, to, label, start marker, end marker) of each node edge.
+    type EdgeRow = (
+        String,
+        String,
+        Option<String>,
+        Option<Marker>,
+        Option<Marker>,
+    );
+
+    fn edge_rows(src: &str) -> Vec<EdgeRow> {
+        let g = parse(src).unwrap_or_else(|e| panic!("{src:?}: {}", e.message));
+        g.edges
+            .iter()
+            .map(|e| {
+                (
+                    g.nodes[e.from].id.clone(),
+                    g.nodes[e.to].id.clone(),
+                    e.label.clone(),
+                    e.ends.start,
+                    e.ends.end,
+                )
+            })
+            .collect()
+    }
+
+    fn row(
+        a: &str,
+        b: &str,
+        l: Option<&str>,
+        start: Option<Marker>,
+        end: Option<Marker>,
+    ) -> EdgeRow {
+        (a.into(), b.into(), l.map(String::from), start, end)
+    }
+
     #[test]
     fn unquoted_inline_labels_end_at_the_first_marker_closer() {
-        // Mermaid's lexer closes edge text at the first `--+[-xo>]` /
-        // `==+[=xo>]`, even mid-word, so these split where it does.
-        let edges = |src: &str| {
-            let g = parse(src).unwrap_or_else(|e| panic!("{src:?}: {}", e.message));
-            let v: Vec<(String, String, Option<String>, Option<Marker>)> = g
-                .edges
-                .iter()
-                .map(|e| {
-                    (
-                        g.nodes[e.from].id.clone(),
-                        g.nodes[e.to].id.clone(),
-                        e.label.clone(),
-                        e.ends.end,
-                    )
-                })
-                .collect();
-            v
-        };
-        let e = |a: &str, b: &str, l: Option<&str>, m| (a.into(), b.into(), l.map(String::from), m);
+        // Mermaid's lexer tries its LINK rule `\s*[xo<]?--+[-xo>]` /
+        // `\s*[xo<]?==+[=xo>]` before every edge-text character, so
+        // edge text closes at the first match, even mid-word, and an
+        // `x` / `o` / `<` right before the closer belongs to it.
+        let circle = Some(Marker::Circle);
+        let cross = Some(Marker::Cross);
+        // `o--o` mirrors itself: a two-way circle edge labelled `g`.
         assert_eq!(
-            edges("flowchart LR\nA -- go--on --> B\n"),
+            edge_rows("flowchart LR\nA -- go--on --> B\n"),
             [
-                e("A", "n", Some("go"), Some(Marker::Circle)),
-                e("n", "B", None, None)
+                row("A", "n", Some("g"), circle, circle),
+                row("n", "B", None, None, None)
             ]
         );
         assert_eq!(
-            edges("flowchart LR\nA == hi==on ==> B\n"),
+            edge_rows("flowchart LR\nA == go==on ==> B\n"),
             [
-                e("A", "n", Some("hi"), Some(Marker::Circle)),
-                e("n", "B", None, None)
+                row("A", "n", Some("g"), circle, circle),
+                row("n", "B", None, None, None)
             ]
         );
+        // `==o` alone: `i` is not a start character.
         assert_eq!(
-            edges("flowchart LR\nA --xfer--> B\n"),
+            edge_rows("flowchart LR\nA == hi==on ==> B\n"),
             [
-                e("A", "fer", None, Some(Marker::Cross)),
-                e("fer", "B", None, None)
+                row("A", "n", Some("hi"), None, circle),
+                row("n", "B", None, None, None)
+            ]
+        );
+        // `o--x` doesn't mirror: the `o` is eaten, the end is a cross.
+        assert_eq!(
+            edge_rows("flowchart LR\nA -- hello--x B\n"),
+            [row("A", "B", Some("hell"), None, cross)]
+        );
+        // `<---` has no arrowhead to mirror: a plain line.
+        assert_eq!(
+            edge_rows("flowchart LR\nA -- a <--- B\n"),
+            [row("A", "B", Some("a"), None, None)]
+        );
+        // A mirroring closer after a start character is invalid there.
+        assert!(parse("flowchart LR\nA x-- t x--x B\n").is_err());
+        assert_eq!(
+            edge_rows("flowchart LR\nA --xfer--> B\n"),
+            [
+                row("A", "fer", None, None, cross),
+                row("fer", "B", None, None, None)
             ]
         );
         // Closed right before another operator: no target, an error.
@@ -6146,6 +6230,29 @@ mod tests {
                 "{line:?}"
             );
         }
+    }
+
+    #[test]
+    fn dotted_inline_labels_close_at_any_dotted_closer() {
+        // Mermaid's dotted LINK rule is `[xo<]?-?.+-[xo>]?`.
+        let cross = Some(Marker::Cross);
+        for line in [
+            "A -. t -.-x B",
+            "A -. t ..-x B",
+            "A -. t .-x B",
+            "A -. t -..-x B",
+        ] {
+            assert_eq!(
+                edge_rows(&format!("flowchart LR\n{line}\n")),
+                [row("A", "B", Some("t"), None, cross)],
+                "{line:?}"
+            );
+        }
+        let g = parse("flowchart LR\nA -. t -.-> B\nC -. u ..- D\n").unwrap();
+        assert_eq!(g.edges[0].label.as_deref(), Some("t"));
+        assert_eq!(g.edges[0].kind, EdgeKind::Dotted);
+        assert_eq!(g.edges[1].label.as_deref(), Some("u"));
+        assert_eq!(g.edges[1].kind, EdgeKind::DottedOpen);
     }
 
     #[test]
