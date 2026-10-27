@@ -140,6 +140,7 @@
   .example pre {
     background: var(--code-bg); color: var(--code-ink); padding: 20px; margin: 0;
     font: 400 12.5px/1.6 var(--mono); overflow-x: auto;
+    font-variant-ligatures: none; /* show -->, ==> as typed, not as arrows */
   }
   .example .art {
     display: grid; place-items: center; padding: 24px; min-width: 0;
@@ -226,7 +227,7 @@
     <div class="stats">
       <div class="stat"><b>0</b><span>dependencies</span></div>
       <div class="stat"><b>12</b><span>diagram types</span></div>
-      <div class="stat"><b>382 KB</b><span>entire engine in wasm</span></div>
+      <div class="stat"><b>376 KB</b><span>entire engine, wasm gzipped</span></div>
       <div class="stat"><b>&lt;1 ms</b><span>typical render</span></div>
       <div class="stat"><b>1.75</b><span>minimum Rust, CI-enforced</span></div>
       <div class="stat"><b>GPL-3.0</b><span>free forever</span></div>
@@ -292,7 +293,7 @@
     <p class="lead">The same crate powers everything — every feature lands everywhere at once.</p>
     <div class="grid">
       <div class="card"><div class="label">Library</div><h3>Embed it</h3><p><code>cargo add flowmaid</code> — <code>render_svg(text)</code> for one-shot SVG, or the <code>scene</code>/<code>route</code> API for interactive canvases with live edge re-routing.</p></div>
-      <div class="card"><div class="label">Browser</div><h3>Web</h3><p>Compiles to <code>wasm32</code> out of the box. The <a href="/flowmaid-web/">playground</a> ships the whole engine in a ~380&nbsp;KB bundle — mermaid.js is ~2.5&nbsp;MB.</p></div>
+      <div class="card"><div class="label">Browser</div><h3>Web</h3><p>Compiles to <code>wasm32</code> out of the box. The <a href="/flowmaid-web/">playground</a> ships the whole engine in 936&nbsp;KB of wasm (376&nbsp;KB gzipped) — mermaid.js is ~2.5&nbsp;MB.</p></div>
       <div class="card"><div class="label">Native</div><h3>Desktop</h3><p><a href="https://github.com/go-routine-id/flowmaid-desktop">flowmaid-desktop</a>: a native editor with live text, draggable nodes, zoom/pan, and real file workflow.</p></div>
       <div class="card"><div class="label">Shell</div><h3>CLI</h3><p><code>flowmaid diagram.mmd -o out.svg</code> — pipe-friendly, line-numbered errors, sub-millisecond renders on typical diagrams.</p></div>
       <div class="card"><div class="label">TUI</div><h3>Terminal</h3><p><a href="https://github.com/go-routine-id/flowcli">flowcli</a>: renders diagrams as Unicode box- and line-drawing in your terminal (ratatui) — <strong>no SVG</strong>, drawn straight from the <code>scene</code> geometry.</p></div>
@@ -316,6 +317,7 @@
       <li class="done"><span class="txt">classDiagram · sequenceDiagram · stateDiagram</span><span class="ver">v0.9–0.11</span></li>
       <li class="done"><span class="txt">pie · mindmap · journey</span><span class="ver">v0.10–0.14</span></li>
       <li class="done"><span class="txt">gitGraph · architecture-beta</span><span class="ver">v0.22–0.24</span></li>
+      <li class="done"><span class="txt">timeline · sankey-beta</span><span class="ver">v0.28.1–0.29</span></li>
       <li class="done"><span class="txt">Mermaid-grade dagre layout — clusters, label slots, curveBasis</span><span class="ver">v0.16–0.17</span></li>
       <li class="done"><span class="txt">Real <code>&lt;b&gt;</code>/<code>&lt;i&gt;</code> in labels</span><span class="ver">v0.17</span></li>
       <li class="done"><span class="txt">Loads mermaid-live / GitHub exports — YAML frontmatter, <code>;</code> one-liners, entity codes</span><span class="ver">v0.20.1</span></li>
@@ -327,7 +329,7 @@
       <li class="done"><span class="txt"><code>@{ shape }</code> syntax, <code>accTitle</code>/<code>accDescr</code>, <code>flowchart-elk</code></span><span class="ver">v0.31.0</span></li>
       <li class="done"><span class="txt">Tidier subgraph layout, <code>--transparent</code> backgrounds</span><span class="ver">v0.31.0</span></li>
       <li class="todo"><span class="txt"><code>$$math$$</code> Phase B — TeX → MathML subset</span></li>
-      <li class="todo"><span class="txt">gantt · timeline · the whole catalog</span></li>
+      <li class="todo"><span class="txt">gantt · the rest of the catalog</span></li>
     </ul>
   </div>
 </section>

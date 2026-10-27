@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="450" height="152" viewBox="0 0 450 152" font-family="Helvetica, Arial, sans-serif" font-size="13">
+<svg xmlns="http://www.w3.org/2000/svg" width="450" height="152" viewBox="0 0 450 152" font-family="Helvetica, Arial, sans-serif" font-size="13" role="img" aria-label="Entity-relationship diagram">
+<title>Entity-relationship diagram</title>
 <rect width="450" height="152" fill="#ffffff"/>
 <path d="M 209.1 76.0 C 239.1 76.0, 239.1 76.0, 269.1 76.0" fill="none" stroke="#44507a" stroke-width="1.7"/>
 <path d="M 217.1 70.5 L 217.1 81.5" fill="none" stroke="#44507a" stroke-width="1.7"/>
