@@ -17,12 +17,12 @@
 
 use crate::model::{
     ArchEdge, ArchGroup, ArchService, ArchSide, Architecture, Attr, Card, Class, ClassDiagram,
-    ClassRel, CommitKind, Direction, Document, EdgeKind, End, ErDiagram, FrameKind, GitBranch,
-    GitCommit, GitGraph, GitOrientation, Graph, Journey, JourneySection, JourneyTask, Key, Member,
-    MindNode, MindShape, Mindmap, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation,
-    SankeyAlignment, SankeyConfig, SankeyDiagram, SankeyLink, SankeyLinkColor, SeqHead, SeqItem,
-    SequenceDiagram, Shape, SubEdge, Subgraph, Timeline, TimelineDirection, TimelinePeriod,
-    TimelineSection, Visibility,
+    ClassRel, CommitKind, Direction, Document, EdgeEnds, EdgeKind, End, ErDiagram, FrameKind,
+    GitBranch, GitCommit, GitGraph, GitOrientation, Graph, Journey, JourneySection, JourneyTask,
+    Key, Marker, Member, MindNode, MindShape, Mindmap, NodeStyle, NoteSide, PieChart, PieSlice,
+    RelKind, Relation, SankeyAlignment, SankeyConfig, SankeyDiagram, SankeyLink, SankeyLinkColor,
+    SeqHead, SeqItem, SequenceDiagram, Shape, SubEdge, Subgraph, Timeline, TimelineDirection,
+    TimelinePeriod, TimelineSection, Visibility,
 };
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
@@ -938,18 +938,19 @@ fn parse_statement(
         }
         // Inline-labelled operators (`-- text -->`) carry their own
         // label; plain operators may take a `|text|` label after.
-        let (kind, mut label) = parse_edge_inline_label(&mut cur, lineno)?
-            .map(|(k, l)| (Some(k), Some(l)))
-            .unwrap_or((None, None));
-        let kind = match kind {
-            Some(k) => k,
-            None => parse_edge_op(&mut cur).ok_or_else(|| {
-                err(
-                    lineno,
-                    format!("unknown edge operator near: '{}'", cur.rest()),
-                )
-            })?,
+        let (op, mut label) = match parse_edge_inline_label(&mut cur, lineno)? {
+            Some((k, e, l)) => ((k, e), Some(l)),
+            None => (
+                parse_edge_op(&mut cur).ok_or_else(|| {
+                    err(
+                        lineno,
+                        format!("unknown edge operator near: '{}'", cur.rest()),
+                    )
+                })?,
+                None,
+            ),
         };
+        let (kind, ends) = op;
         cur.skip_ws();
         if label.is_none() && cur.eat("|") {
             let l = cur.take_until("|").ok_or_else(|| {
@@ -968,12 +969,15 @@ fn parse_statement(
         for &a in &prevs {
             for &b in &nexts {
                 match (a, b) {
-                    (End::Node(x), End::Node(y)) => g.add_edge(x, y, label.clone(), kind),
+                    (End::Node(x), End::Node(y)) => {
+                        g.add_edge_with_ends(x, y, label.clone(), kind, ends)
+                    }
                     _ => g.sub_edges.push(SubEdge {
                         from: a,
                         to: b,
                         label: label.clone(),
                         kind,
+                        ends,
                     }),
                 }
             }
@@ -984,60 +988,131 @@ fn parse_statement(
 }
 
 /// Mermaid's inline edge labels: `-- text -->`, `-- text ---`,
-/// `-. text .->`, `-. text .-`, `== text ==>`, `== text ===`.
+/// `-. text .->`, `-. text .-`, `== text ==>`, `== text ===`, the
+/// marker closers `-- text --x` / `--o` (and `.-x`, `==x`, …), and
+/// the two-way forms `<-- text -->`, `x-- text --x`, `o-- text --o`.
 /// Returns None when the cursor isn't at an inline-label operator
-/// (plain operators like `-->` fall through to `parse_edge_op`).
+/// (plain operators like `-->` or `--x` fall through to
+/// `parse_edge_op`).
 fn parse_edge_inline_label(
     cur: &mut Cur<'_>,
     lineno: usize,
-) -> Result<Option<(EdgeKind, String)>, ParseError> {
-    // (opener, [(closer, kind)] — longest closer first)
-    const FORMS: &[(&str, &[(&str, EdgeKind)])] = &[
-        (
-            "-.",
-            &[(".->", EdgeKind::Dotted), (".-", EdgeKind::DottedOpen)],
-        ),
-        (
-            "==",
-            &[("==>", EdgeKind::Thick), ("===", EdgeKind::ThickOpen)],
-        ),
-        ("--", &[("-->", EdgeKind::Arrow), ("---", EdgeKind::Open)]),
-    ];
+) -> Result<Option<(EdgeKind, EdgeEnds, String)>, ParseError> {
     let rest = cur.rest();
-    for (open, closers) in FORMS {
-        if !rest.starts_with(open) {
+    // Optional start marker, mermaid's `[xo<]?` before the opener.
+    let (lead, body) = match rest.chars().next() {
+        Some(c @ ('<' | 'x' | 'o')) => (Some(c), &rest[1..]),
+        _ => (None, rest),
+    };
+    for open in ["-.", "==", "--"] {
+        if !body.starts_with(open) {
             continue;
         }
         // Only label mode when the opener is followed by label text,
         // not by more operator characters (`-->`, `---`, `-.-`, ...).
-        let after = &rest[open.len()..];
+        // `--x` / `--o` / `==x` / `==o` are complete marker operators
+        // — mermaid's lexer tries its LINK rule before START_LINK —
+        // so they never open a label either.
+        let after = &body[open.len()..];
         let Some(c0) = after.chars().next() else {
             continue;
         };
-        if matches!(c0, '-' | '>' | '.' | '=') {
-            continue;
+        if matches!(c0, '-' | '>' | '.' | '=') || (open != "-." && matches!(c0, 'x' | 'o')) {
+            return Ok(None);
         }
-        // Find the nearest closer; longest first so `-->` wins over `---`…
-        // (they can't overlap at the same index anyway, but keep order).
-        let mut best: Option<(usize, &str, EdgeKind)> = None;
-        for (close, kind) in *closers {
-            if let Some(i) = after.find(close) {
-                if best.map_or(true, |(bi, _, _)| i < bi) {
-                    best = Some((i, close, *kind));
-                }
-            }
-        }
-        let Some((i, close, kind)) = best else {
+        // The earliest closer wins.
+        let Some((i, len, kind, end)) = (0..after.len())
+            .filter(|&i| after.is_char_boundary(i))
+            .find_map(|i| inline_closer(open, &after[i..]).map(|(l, k, e)| (i, l, k, e)))
+        else {
             return Err(err(
                 lineno,
                 format!("inline edge label after '{}' is never closed", open),
             ));
         };
+        // Mermaid accepts a start marker on a labelled edge only when
+        // it mirrors the closer (`<-- t -->`, `x-- t --x`); a lone or
+        // mismatched one is an error there too.
+        let resolved_end = EdgeEnds { start: None, end }.end_marker(kind);
+        let start = match lead {
+            None => None,
+            Some(c) if lead_marker(c) == resolved_end => resolved_end,
+            Some(c) => {
+                return Err(err(
+                    lineno,
+                    format!(
+                        "edge start '{c}' needs the matching end marker \
+                         (`<-- text -->`, `x-- text --x`, `o-- text --o`)"
+                    ),
+                ))
+            }
+        };
         let label = clean_label_1line(&after[..i]);
-        cur.pos += open.len() + i + close.len();
-        return Ok(Some((kind, label)));
+        cur.pos += (rest.len() - body.len()) + open.len() + i + len;
+        return Ok(Some((kind, EdgeEnds { start, end }, label)));
     }
     Ok(None)
+}
+
+/// The marker a `[xo<]` start character asks for.
+fn lead_marker(c: char) -> Option<Marker> {
+    match c {
+        '<' => Some(Marker::Arrow),
+        'x' => Some(Marker::Cross),
+        'o' => Some(Marker::Circle),
+        _ => None,
+    }
+}
+
+/// The marker an `x` / `o` operator tail stands for.
+fn tail_marker(c: Option<char>) -> Option<Marker> {
+    match c {
+        Some('x') => Some(Marker::Cross),
+        Some('o') => Some(Marker::Circle),
+        _ => None,
+    }
+}
+
+/// Whether `s` starts with the closer of an inline label opened by
+/// `open`; returns (closer length, kind, explicit end marker). The
+/// solid and thick closers are mermaid's `--+[-xo>]` / `==+[=xo>]`
+/// (any length), the dotted one `.-[xo>]?`.
+fn inline_closer(open: &str, s: &str) -> Option<(usize, EdgeKind, Option<Marker>)> {
+    match open {
+        "-." => {
+            let tail = s.strip_prefix(".-")?;
+            let c = tail.chars().next();
+            if c == Some('>') {
+                Some((3, EdgeKind::Dotted, None))
+            } else if let Some(m) = tail_marker(c) {
+                Some((3, EdgeKind::DottedOpen, Some(m)))
+            } else {
+                Some((2, EdgeKind::DottedOpen, None))
+            }
+        }
+        _ => {
+            let ch = open.chars().next()?;
+            let (arrow, line) = if ch == '=' {
+                (EdgeKind::Thick, EdgeKind::ThickOpen)
+            } else {
+                (EdgeKind::Arrow, EdgeKind::Open)
+            };
+            let n = s.chars().take_while(|&c| c == ch).count();
+            if n < 2 {
+                return None;
+            }
+            let c = s[n..].chars().next();
+            if c == Some('>') {
+                Some((n + 1, arrow, None))
+            } else if let Some(m) = tail_marker(c) {
+                Some((n + 1, line, Some(m)))
+            } else if n >= 3 {
+                Some((n, line, None))
+            } else {
+                None
+            }
+        }
+    }
 }
 
 fn parse_node(
@@ -1179,24 +1254,22 @@ fn edge_op_follows(rest: &str) -> bool {
 /// branch sticks to complete operators so 0.19-era headers titled
 /// `-- Phase 1 ---` keep parsing as headers.
 fn edge_lead_follows(rest: &str) -> bool {
-    let r = rest.trim_start();
     if edge_op_follows(rest) {
         return true;
     }
-    let closers: &[&str] = if r.starts_with("--") {
-        &["-->", "---"]
-    } else if r.starts_with("-.") {
-        &[".->", ".-"]
-    } else if r.starts_with("==") {
-        &["==>", "==="]
-    } else {
+    let r = rest.trim_start();
+    let r = r
+        .strip_prefix(['<', 'x', 'o'])
+        .filter(|b| ["--", "-.", "=="].iter().any(|o| b.starts_with(o)))
+        .unwrap_or(r);
+    let Some(open) = ["--", "-.", "=="].into_iter().find(|o| r.starts_with(o)) else {
         return false;
     };
     // Earliest closer wins (that's what the edge parser would eat).
-    let end = closers
-        .iter()
-        .filter_map(|c| r[2..].find(c).map(|p| 2 + p + c.len()))
-        .min();
+    let after = &r[2..];
+    let end = (0..after.len())
+        .filter(|&i| after.is_char_boundary(i))
+        .find_map(|i| inline_closer(open, &after[i..]).map(|(len, ..)| 2 + i + len));
     end.is_some_and(|end| !r[end..].trim().is_empty())
 }
 
@@ -1216,58 +1289,86 @@ fn check_stmt_id<'a>(id: &'a str, stmt: &str, lineno: usize) -> Result<&'a str, 
 }
 
 /// Recognise an edge operator and advance the cursor. Tolerant of
-/// extra length (`--->`, `-..->`, `===>`).
-fn parse_edge_op(cur: &mut Cur<'_>) -> Option<EdgeKind> {
+/// extra length (`--->`, `-..->`, `===>`). Marker tails (`--x`,
+/// `-.-o`, `==x`) and mermaid's `[xo<]` start character (`<-->`,
+/// `x--x`, `o-.-o`) are part of the operator. Like mermaid, a start
+/// character only counts when it mirrors the end (`<` with an
+/// arrowhead, `x` with `x`, `o` with `o`); otherwise it is eaten and
+/// ignored (`<---` is a plain line).
+///
+/// The tail is lexical, exactly as in mermaid: `A---oB` is a circle
+/// edge to `B` and `A--xray` a cross edge to `ray`. Write a space
+/// (`A --- oB`) to target a node whose id starts with `o`/`x`.
+fn parse_edge_op(cur: &mut Cur<'_>) -> Option<(EdgeKind, EdgeEnds)> {
     let rest = cur.rest();
 
     // Invisible link: ~~~ (layout-only, never drawn).
     if rest.starts_with("~~~") {
         let tildes = rest.chars().take_while(|&c| c == '~').count();
         cur.pos += tildes;
-        return Some(EdgeKind::Invisible);
+        return Some((EdgeKind::Invisible, EdgeEnds::default()));
     }
 
-    // Dotted: -.-> / -..-> (arrow)  or  -.- / -..- (open)
+    let (lead, body) = match rest.chars().next() {
+        Some(c @ ('<' | 'x' | 'o')) => (Some(c), &rest[1..]),
+        _ => (None, rest),
+    };
+    let (len, kind, end) = edge_op_body(body)?;
+    let resolved_end = EdgeEnds { start: None, end }.end_marker(kind);
+    let start = lead
+        .and_then(lead_marker)
+        .filter(|&m| Some(m) == resolved_end);
+    cur.pos += (rest.len() - body.len()) + len;
+    Some((kind, EdgeEnds { start, end }))
+}
+
+/// The operator proper (after any start character): (length, kind,
+/// explicit end marker).
+fn edge_op_body(rest: &str) -> Option<(usize, EdgeKind, Option<Marker>)> {
+    // Dotted: -.-> / -..-> (arrow), -.-x / -.-o (marker), -.- (open)
     if let Some(after) = rest.strip_prefix("-.") {
         let dots = after.chars().take_while(|&c| c == '.').count();
-        let tail = &after[dots..];
-        if tail.starts_with("->") {
-            cur.pos += 2 + dots + 2;
-            return Some(EdgeKind::Dotted);
+        let tail = after[dots..].strip_prefix('-')?;
+        let c = tail.chars().next();
+        if c == Some('>') {
+            return Some((2 + dots + 2, EdgeKind::Dotted, None));
         }
-        if tail.starts_with('-') {
-            cur.pos += 2 + dots + 1;
-            return Some(EdgeKind::DottedOpen);
+        if let Some(m) = tail_marker(c) {
+            return Some((2 + dots + 2, EdgeKind::DottedOpen, Some(m)));
         }
-        return None;
+        return Some((2 + dots + 1, EdgeKind::DottedOpen, None));
     }
 
-    // Thick: ==> / ===> (arrow)  or  === (open)
+    // Thick: ==> / ===> (arrow), ==x / ==o (marker), === (open)
     if rest.starts_with("==") {
         let eqs = rest.chars().take_while(|&c| c == '=').count();
-        let tail = &rest[eqs..];
-        if tail.starts_with('>') {
-            cur.pos += eqs + 1;
-            return Some(EdgeKind::Thick);
+        let c = rest[eqs..].chars().next();
+        if c == Some('>') {
+            return Some((eqs + 1, EdgeKind::Thick, None));
+        }
+        if let Some(m) = tail_marker(c) {
+            return Some((eqs + 1, EdgeKind::ThickOpen, Some(m)));
         }
         if eqs >= 3 {
-            cur.pos += eqs;
-            return Some(EdgeKind::ThickOpen);
+            return Some((eqs, EdgeKind::ThickOpen, None));
         }
         return None;
     }
 
-    // Regular arrow (-->) or plain line (---)
+    // Regular arrow (-->), marker (--x / --o) or plain line (---)
     if rest.starts_with('-') {
         let dashes = rest.chars().take_while(|&c| c == '-').count();
-        let tail = &rest[dashes..];
-        if dashes >= 2 && tail.starts_with('>') {
-            cur.pos += dashes + 1;
-            return Some(EdgeKind::Arrow);
+        let c = rest[dashes..].chars().next();
+        if dashes >= 2 && c == Some('>') {
+            return Some((dashes + 1, EdgeKind::Arrow, None));
+        }
+        if dashes >= 2 {
+            if let Some(m) = tail_marker(c) {
+                return Some((dashes + 1, EdgeKind::Open, Some(m)));
+            }
         }
         if dashes >= 3 {
-            cur.pos += dashes;
-            return Some(EdgeKind::Open);
+            return Some((dashes, EdgeKind::Open, None));
         }
     }
     None
@@ -3291,6 +3392,7 @@ fn parse_state(source: &str, header_line: usize) -> Result<Graph, ParseError> {
                     to,
                     label,
                     kind: EdgeKind::Arrow,
+                    ends: EdgeEnds::default(),
                 }),
             }
             continue;
@@ -4315,6 +4417,192 @@ mod tests {
             .style
             .fill
             .is_some());
+    }
+
+    /// (kind, start glyph, resolved end glyph, label) of the one
+    /// edge in `flowchart LR\nA <op> B`.
+    fn one_edge(op: &str) -> (EdgeKind, Option<Marker>, Option<Marker>, Option<String>) {
+        let g = parse(&format!("flowchart LR\nA {op} B\n"))
+            .unwrap_or_else(|e| panic!("{op}: {}", e.message));
+        assert_eq!(g.edges.len(), 1, "{op}");
+        assert_eq!(g.node_index("B"), Some(1), "{op}: target is B");
+        let e = &g.edges[0];
+        (
+            e.kind,
+            e.ends.start_marker(e.kind),
+            e.ends.end_marker(e.kind),
+            e.label.clone(),
+        )
+    }
+
+    #[test]
+    fn cross_and_circle_end_markers_parse_on_every_line_style() {
+        use EdgeKind::*;
+        use Marker::{Circle, Cross};
+        let l = |s: &str| Some(s.to_string());
+        let cases: &[(&str, EdgeKind, Option<Marker>, Option<String>)] = &[
+            ("--x", Open, Some(Cross), None),
+            ("-.-x", DottedOpen, Some(Cross), None),
+            ("==x", ThickOpen, Some(Cross), None),
+            ("--o", Open, Some(Circle), None),
+            ("-.-o", DottedOpen, Some(Circle), None),
+            ("==o", ThickOpen, Some(Circle), None),
+            // Longer links, as mermaid allows.
+            ("----x", Open, Some(Cross), None),
+            ("-...-o", DottedOpen, Some(Circle), None),
+            ("====x", ThickOpen, Some(Cross), None),
+            // Pipe labels.
+            ("--x|l|", Open, Some(Cross), l("l")),
+            ("-.-o|l|", DottedOpen, Some(Circle), l("l")),
+            ("==x|l|", ThickOpen, Some(Cross), l("l")),
+            // Inline labels.
+            ("-- text --x", Open, Some(Cross), l("text")),
+            ("-- text --o", Open, Some(Circle), l("text")),
+            ("-. text .-x", DottedOpen, Some(Cross), l("text")),
+            ("-. text .-o", DottedOpen, Some(Circle), l("text")),
+            ("== text ==x", ThickOpen, Some(Cross), l("text")),
+            ("== text ==o", ThickOpen, Some(Circle), l("text")),
+            ("-- text ----x", Open, Some(Cross), l("text")),
+        ];
+        for (op, kind, end, label) in cases {
+            assert_eq!(one_edge(op), (*kind, None, *end, label.clone()), "{op}");
+        }
+    }
+
+    #[test]
+    fn bidirectional_links_parse_with_glyphs_at_both_ends() {
+        use EdgeKind::*;
+        use Marker::{Circle, Cross};
+        let l = |s: &str| Some(s.to_string());
+        let cases: &[(&str, EdgeKind, Marker, Option<String>)] = &[
+            ("<-->", Arrow, Marker::Arrow, None),
+            ("<-.->", Dotted, Marker::Arrow, None),
+            ("<==>", Thick, Marker::Arrow, None),
+            ("x--x", Open, Cross, None),
+            ("o--o", Open, Circle, None),
+            ("x-.-x", DottedOpen, Cross, None),
+            ("o==o", ThickOpen, Circle, None),
+            ("<---->", Arrow, Marker::Arrow, None),
+            ("<-..->", Dotted, Marker::Arrow, None),
+            ("<===>", Thick, Marker::Arrow, None),
+            ("<-->|l|", Arrow, Marker::Arrow, l("l")),
+            ("x--x|l|", Open, Cross, l("l")),
+            ("<-- text -->", Arrow, Marker::Arrow, l("text")),
+            ("<-. text .->", Dotted, Marker::Arrow, l("text")),
+            ("<== text ==>", Thick, Marker::Arrow, l("text")),
+            ("x-- text --x", Open, Cross, l("text")),
+            ("o-. text .-o", DottedOpen, Circle, l("text")),
+        ];
+        for (op, kind, m, label) in cases {
+            assert_eq!(
+                one_edge(op),
+                (*kind, Some(*m), Some(*m), label.clone()),
+                "{op}"
+            );
+        }
+        // Mermaid only honours a start glyph that mirrors the end one;
+        // a plain link with a mismatched lead is drawn one-way…
+        assert_eq!(one_edge("<---"), (Open, None, None, None));
+        assert_eq!(one_edge("x-->"), (Arrow, None, Some(Marker::Arrow), None));
+        // …and a labelled one is rejected, as in mermaid.
+        let e = parse("flowchart LR\nA <-- t ---x B\n").unwrap_err();
+        assert!(e.message.contains("matching end"), "{}", e.message);
+    }
+
+    #[test]
+    fn marker_operators_no_longer_read_as_unclosed_inline_labels() {
+        for op in ["--x", "--o", "==x", "==o", "-.-x", "-.-o"] {
+            for src in [
+                format!("flowchart LR\nA {op} B\n"),
+                format!("flowchart LR\nA{op}B\n"),
+                format!("flowchart LR\nA {op} B --> C\n"),
+            ] {
+                let g = parse(&src).unwrap_or_else(|e| panic!("{src:?}: {}", e.message));
+                assert!(g.edges[0].ends.end.is_some(), "{src:?}");
+                assert_eq!(g.nodes[1].id, "B", "{src:?}");
+            }
+        }
+        // The old diagnostic still fires for a genuinely open label.
+        let e = parse("flowchart LR\nA -- text B\n").unwrap_err();
+        assert!(e.message.contains("never closed"), "{}", e.message);
+    }
+
+    #[test]
+    fn node_ids_starting_with_x_or_o_still_work() {
+        let ids = |src: &str| {
+            let g = parse(src).unwrap_or_else(|e| panic!("{src:?}: {}", e.message));
+            let v: Vec<(String, String, EdgeKind, EdgeEnds)> = g
+                .edges
+                .iter()
+                .map(|e| {
+                    (
+                        g.nodes[e.from].id.clone(),
+                        g.nodes[e.to].id.clone(),
+                        e.kind,
+                        e.ends,
+                    )
+                })
+                .collect();
+            v
+        };
+        let plain = EdgeEnds::default();
+        let edge = |a: &str, b: &str, k, e| (a.to_string(), b.to_string(), k, e);
+        assert_eq!(
+            ids("flowchart LR\nA --> xray\n"),
+            [edge("A", "xray", EdgeKind::Arrow, plain)]
+        );
+        assert_eq!(
+            ids("flowchart LR\nA --- ok\n"),
+            [edge("A", "ok", EdgeKind::Open, plain)]
+        );
+        assert_eq!(
+            ids("flowchart LR\nx --> o\n"),
+            [edge("x", "o", EdgeKind::Arrow, plain)]
+        );
+        assert_eq!(
+            ids("flowchart LR\nA -- ok --> B\n"),
+            [edge("A", "B", EdgeKind::Arrow, plain)]
+        );
+        assert_eq!(
+            ids("flowchart LR\nA -->oB\nox --x xo\n"),
+            [
+                edge("A", "oB", EdgeKind::Arrow, plain),
+                edge(
+                    "ox",
+                    "xo",
+                    EdgeKind::Open,
+                    EdgeEnds {
+                        start: None,
+                        end: Some(Marker::Cross)
+                    }
+                ),
+            ]
+        );
+        // A start character glued to the source id is part of the id
+        // (mermaid's NODE_STRING eats it): `Ax--xB` is Ax → B.
+        assert_eq!(ids("flowchart LR\nAx--xB\n")[0].0, "Ax");
+        // Mermaid's documented pitfall: a marker letter glued to the
+        // operator is the marker, so `A---oB` is a circle edge to B.
+        assert_eq!(
+            ids("flowchart LR\nA---oB\n"),
+            [edge(
+                "A",
+                "B",
+                EdgeKind::Open,
+                EdgeEnds {
+                    start: None,
+                    end: Some(Marker::Circle)
+                }
+            )]
+        );
+    }
+
+    #[test]
+    fn marker_edges_reach_subgraph_endpoints() {
+        let g = parse("flowchart LR\nsubgraph S\nA\nend\nB <--> S\nS --x C\n").unwrap();
+        assert_eq!(g.sub_edges.len(), 2);
+        assert_eq!(g.sub_edges[0].ends.start, Some(Marker::Arrow));
+        assert_eq!(g.sub_edges[1].ends.end, Some(Marker::Cross));
     }
 
     #[test]

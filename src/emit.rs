@@ -46,8 +46,14 @@
 //! - Subgraph nesting deeper than the parser's 500-level cap is
 //!   unemittable (the output could never be reloaded); debug
 //!   builds assert it.
+//! - Edge end glyphs ([`crate::model::EdgeEnds`]) round-trip as
+//!   mermaid writes them (`--x`, `-.-o`, `<-->`, `x==x`, …).
+//!   Mermaid can only mirror the target glyph at the source, so a
+//!   programmatic start glyph that differs from the end one (or sits
+//!   on an edge with no end glyph) is dropped, as are glyphs on an
+//!   invisible `~~~` link.
 
-use crate::model::{Direction, EdgeKind, End, Graph, NodeStyle, Shape};
+use crate::model::{Direction, EdgeEnds, EdgeKind, End, Graph, Marker, NodeStyle, Shape};
 
 /// Emit canonical mermaid flowchart text for `g`. See the module
 /// docs for the round-trip contract and its (small) honest limits.
@@ -91,7 +97,7 @@ pub fn to_mermaid(g: &Graph) -> String {
     for e in &g.edges {
         out.push_str("    ");
         out.push_str(&endpoint(g, e.from));
-        push_edge_op(&mut out, e.kind, e.label.as_deref());
+        push_edge_op(&mut out, e.kind, e.ends, e.label.as_deref());
         out.push_str(&endpoint(g, e.to));
         out.push('\n');
     }
@@ -100,7 +106,7 @@ pub fn to_mermaid(g: &Graph) -> String {
     for e in &g.sub_edges {
         out.push_str("    ");
         out.push_str(&end_ref(g, e.from));
-        push_edge_op(&mut out, e.kind, e.label.as_deref());
+        push_edge_op(&mut out, e.kind, e.ends, e.label.as_deref());
         out.push_str(&end_ref(g, e.to));
         out.push('\n');
     }
@@ -329,18 +335,29 @@ fn defuse_md(enc: String) -> String {
 /// (quotes don't protect the slot delimiter). Edge labels are
 /// single-line by grammar (newlines flatten to spaces). An empty or
 /// whitespace-only label normalizes away to no label.
-fn push_edge_op(out: &mut String, kind: EdgeKind, label: Option<&str>) {
-    let op = match kind {
-        EdgeKind::Arrow => "-->",
-        EdgeKind::Open => "---",
-        EdgeKind::Dotted => "-.->",
-        EdgeKind::DottedOpen => "-.-",
-        EdgeKind::Thick => "==>",
-        EdgeKind::ThickOpen => "===",
-        EdgeKind::Invisible => "~~~",
+fn push_edge_op(out: &mut String, kind: EdgeKind, ends: EdgeEnds, label: Option<&str>) {
+    // Line body without its tail, then the tail glyph: `--` + `>`,
+    // `-.-` + `x`, `==` + `=` (open), …
+    let (body, open_tail) = match kind {
+        EdgeKind::Arrow | EdgeKind::Open => ("--", "-"),
+        EdgeKind::Dotted | EdgeKind::DottedOpen => ("-.-", ""),
+        EdgeKind::Thick | EdgeKind::ThickOpen => ("==", "="),
+        EdgeKind::Invisible => ("~~", "~"),
+    };
+    let end = ends.end_marker(kind);
+    let glyph = |m: Marker, lead: bool| match m {
+        Marker::Arrow if lead => "<",
+        Marker::Arrow => ">",
+        Marker::Cross => "x",
+        Marker::Circle => "o",
     };
     out.push(' ');
-    out.push_str(op);
+    // Mermaid can only mirror the end glyph at the start.
+    if let Some(m) = ends.start_marker(kind).filter(|&m| Some(m) == end) {
+        out.push_str(glyph(m, true));
+    }
+    out.push_str(body);
+    out.push_str(end.map_or(open_tail, |m| glyph(m, false)));
     if let Some(l) = label {
         if !l.trim().is_empty() {
             out.push_str("|\"");
@@ -557,6 +574,11 @@ mod tests {
             assert_eq!(eid(g, a.from), eid(&back, b.from), "edge from\n--\n{text}");
             assert_eq!(eid(g, a.to), eid(&back, b.to), "edge to\n--\n{text}");
             assert_eq!(a.kind, b.kind, "edge kind\n--\n{text}");
+            assert_eq!(
+                glyphs(a.kind, a.ends),
+                glyphs(b.kind, b.ends),
+                "edge glyphs\n--\n{text}"
+            );
             // Single-line-slot normalization (documented): control
             // chars sanitize to spaces, newlines flatten, outer
             // whitespace trims, empty → None.
@@ -623,11 +645,23 @@ mod tests {
             );
             assert_eq!(a.kind, b.kind, "sub-edge kind\n--\n{text}");
             assert_eq!(
+                glyphs(a.kind, a.ends),
+                glyphs(b.kind, b.ends),
+                "sub-edge glyphs\n--\n{text}"
+            );
+            assert_eq!(
                 norm_1line(&a.label),
                 norm_1line(&b.label),
                 "sub-edge label\n--\n{text}"
             );
         }
+    }
+
+    /// The (start, end) glyphs an edge DRAWS, modulo the documented
+    /// emit limit: a start glyph survives only when it mirrors the end.
+    fn glyphs(kind: EdgeKind, ends: EdgeEnds) -> (Option<Marker>, Option<Marker>) {
+        let end = ends.end_marker(kind);
+        (ends.start_marker(kind).filter(|&m| Some(m) == end), end)
     }
 
     /// One shared single-line label normalization for the round-trip
@@ -907,7 +941,20 @@ mod tests {
                 } else {
                     None
                 };
-                g.add_edge(a, b, label, kinds[rng.next(kinds.len())]);
+                let kind = kinds[rng.next(kinds.len())];
+                // Canonical glyphs only: an explicit end glyph rides
+                // an open line, a start glyph mirrors the end one.
+                let mut ends = EdgeEnds::default();
+                if matches!(
+                    kind,
+                    EdgeKind::Open | EdgeKind::DottedOpen | EdgeKind::ThickOpen
+                ) {
+                    ends.end = [None, Some(Marker::Cross), Some(Marker::Circle)][rng.next(3)];
+                }
+                if rng.next(3) == 0 {
+                    ends.start = ends.end_marker(kind);
+                }
+                g.add_edge_with_ends(a, b, label, kind, ends);
             }
             // Up to two subgraphs, sometimes nested, disjoint members.
             let mut claimed: Vec<usize> = Vec::new();
@@ -934,6 +981,44 @@ mod tests {
             }
             assert_roundtrip(&g);
         }
+    }
+
+    #[test]
+    fn edge_markers_round_trip_through_to_mermaid() {
+        for op in [
+            "--x", "-.-x", "==x", "--o", "-.-o", "==o", "<-->", "<-.->", "<==>", "x--x", "o--o",
+            "x-.-x", "o==o",
+        ] {
+            assert_source_roundtrip(&format!("flowchart LR\nA {op} B\nB {op}|lbl| xray\n"));
+        }
+        assert_source_roundtrip(
+            "flowchart TD\n\
+             A -- cut --x B\nB -. maybe .-o C\nC == hard ==x D\n\
+             D <-- both --> E\nE x-- t --x ok\n\
+             subgraph S\nF\nend\nS <--> A\nS --o B\n",
+        );
+        // The emitted operators are mermaid's own spellings.
+        let g = parse("flowchart LR\nA --x B\nB <-.-> C\nC o==o D\nD ---> E\n").unwrap();
+        let text = to_mermaid(&g);
+        for want in [" --x ", " <-.-> ", " o==o ", " --> "] {
+            assert!(text.contains(want), "{want:?} in\n{text}");
+        }
+        // A start glyph mermaid can't spell (no matching end) drops.
+        let mut g = Graph::default();
+        g.ensure_node("A", None, None);
+        g.ensure_node("B", None, None);
+        g.add_edge_with_ends(
+            0,
+            1,
+            None,
+            EdgeKind::Open,
+            EdgeEnds {
+                start: Some(Marker::Arrow),
+                end: None,
+            },
+        );
+        assert!(to_mermaid(&g).contains("A --- B"), "{}", to_mermaid(&g));
+        assert_roundtrip(&g);
     }
 
     #[test]
@@ -1252,6 +1337,7 @@ mod tests {
                 to: End::Node(b),
                 label: None,
                 kind: EdgeKind::Arrow,
+                ends: Default::default(),
             });
             assert_roundtrip(&g);
         }

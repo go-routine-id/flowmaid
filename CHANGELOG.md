@@ -7,6 +7,26 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Flowchart edge markers (#59).** Cross ends (`--x`, `-.-x`, `==x`), circle ends
+  (`--o`, `-.-o`, `==o`) and two-way links (`<-->`, `<-.->`, `<==>`, `x--x`, `o--o`) parse
+  on every line style and length, with `|label|` and inline (`-- text --x`,
+  `<-- text -->`) labels, render with the matching glyph at each end, and round-trip
+  through `to_mermaid`. `--x` / `--o` no longer fail with "inline edge label … is never
+  closed". New `model::Marker` / `model::EdgeEnds`, `Graph::add_edge_with_ends`, and an
+  `ends` field on `Edge`, `SubEdge` and `SceneEdge`; `EdgeKind` is unchanged (a marker
+  edge is the matching open kind, so consumers that only know `EdgeKind` draw a plain
+  line).
+
+### Changed
+
+- **Mermaid's marker-letter rule applies.** A letter glued to the end of an operator is
+  a marker, as in mermaid: `A---oB` is now a circle edge to `B` (was an open line to
+  `oB`), and `A --xray` a cross edge to `ray`. Separate the id with a space to keep it.
+  Code that builds `model::Edge` / `model::SubEdge` with struct literals must add
+  `ends: Default::default()`.
+
 ## [0.30.0] - 2026-09-07
 
 ### Fixed
