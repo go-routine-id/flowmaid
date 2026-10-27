@@ -13,7 +13,7 @@
 
 use crate::layout::{
     intrinsic_size, layout_clustered_ranked, layout_sized, line_count, text_width, LayoutResult,
-    Placed, RankGroup, LINE_H,
+    Placed, RankGroup, LABEL_BOX_H, LINE_H,
 };
 use crate::model::{Direction, Edge, EdgeEnds, EdgeKind, End, Graph, Marker, NodeStyle, Shape};
 use std::collections::HashMap;
@@ -435,6 +435,146 @@ fn channel_label_point(wps: &[(f64, f64)]) -> (f64, f64) {
     }
 }
 
+/// Least room a MOVED edge label keeps from node boxes and other labels.
+const LABEL_GAP: f64 = 4.0;
+/// Spacing (px) of the spots along its edge a covering label tries.
+const LABEL_SLIDE_STEP: f64 = 6.0;
+/// Overlap (px, per axis) below which two boxes count as just touching.
+const TOUCH_EPS: f64 = 0.5;
+
+/// Axis-aligned box as (x0, y0, x1, y1).
+type Rect = (f64, f64, f64, f64);
+
+/// How much of `a` (grown by `gap` each side) the `obstacles` cover —
+/// the summed overlap areas.
+fn covered(a: Rect, gap: f64, obstacles: &[Rect]) -> f64 {
+    obstacles
+        .iter()
+        .map(|o| {
+            let w = (a.2 + gap).min(o.2) - (a.0 - gap).max(o.0);
+            let h = (a.3 + gap).min(o.3) - (a.1 - gap).max(o.1);
+            if w > TOUCH_EPS && h > TOUCH_EPS {
+                w * h
+            } else {
+                0.0
+            }
+        })
+        .sum()
+}
+
+/// Points along the curve an edge is DRAWN with (its spline through
+/// the waypoints, else its bezier), at most [`LABEL_SLIDE_STEP`] apart.
+fn drawn_points(e: &SceneEdge) -> Vec<(f64, f64)> {
+    let coarse = if e.waypoints.is_empty() {
+        sample_cubic(&e.bezier, 24)
+    } else {
+        basis_sample(&e.waypoints)
+    };
+    let mut out = vec![coarse[0]];
+    for w in coarse.windows(2) {
+        let k = ((w[1].0 - w[0].0).hypot(w[1].1 - w[0].1) / LABEL_SLIDE_STEP).ceil();
+        let k = (k as usize).max(1);
+        for i in 1..=k {
+            let t = i as f64 / k as f64;
+            out.push((
+                w[0].0 + (w[1].0 - w[0].0) * t,
+                w[0].1 + (w[1].1 - w[0].1) * t,
+            ));
+        }
+    }
+    out
+}
+
+/// Slide every edge label that covers a node box or an earlier edge's
+/// label along its OWN drawn edge, to the nearest spot clear of both
+/// by [`LABEL_GAP`] — or, when no spot is, to the one covering least,
+/// if that beats where it sits. Labels that cover nothing keep their
+/// exact spot, so only colliding diagrams change. Returns the indices
+/// of the edges whose label moved.
+fn avoid_label_overlaps(nodes: &[SceneNode], edges: &mut [SceneEdge]) -> Vec<usize> {
+    let mut obstacles: Vec<Rect> = nodes
+        .iter()
+        .map(|n| {
+            (
+                n.x - n.w / 2.0,
+                n.y - n.h / 2.0,
+                n.x + n.w / 2.0,
+                n.y + n.h / 2.0,
+            )
+        })
+        .collect();
+    let label_rect = |c: (f64, f64), w: f64| {
+        (
+            c.0 - w / 2.0,
+            c.1 - LABEL_BOX_H / 2.0,
+            c.0 + w / 2.0,
+            c.1 + LABEL_BOX_H / 2.0,
+        )
+    };
+    let mut moved = Vec::new();
+    for (ei, e) in edges.iter_mut().enumerate() {
+        if matches!(e.kind, EdgeKind::Invisible) {
+            continue;
+        }
+        let Some((_, at, w)) = e.label.clone() else {
+            continue;
+        };
+        let now = covered(label_rect(at, w), 0.0, &obstacles);
+        let mut best = at;
+        if now > 0.0 {
+            let mut spots = drawn_points(e);
+            // Nearest first; the sort is stable, so ties stay in curve order.
+            let dist = |p: &(f64, f64)| (p.0 - at.0).hypot(p.1 - at.1);
+            spots.sort_by(|a, b| dist(a).total_cmp(&dist(b)));
+            let clear = spots
+                .iter()
+                .find(|&&p| covered(label_rect(p, w), LABEL_GAP, &obstacles) == 0.0);
+            if let Some(&p) = clear {
+                best = p;
+            } else {
+                let mut least = now;
+                for &p in &spots {
+                    let c = covered(label_rect(p, w), 0.0, &obstacles);
+                    if c < least {
+                        least = c;
+                        best = p;
+                    }
+                }
+            }
+        }
+        if best != at {
+            if let Some((_, m, _)) = &mut e.label {
+                *m = best;
+            }
+            moved.push(ei);
+        }
+        obstacles.push(label_rect(best, w));
+    }
+    moved
+}
+
+/// Grow (and shift) the canvas so the labels of `moved` edges stay on
+/// it with a [`MARGIN`] — the rest of the scene already fits.
+fn fit_moved_labels(sc: &mut Scene, moved: &[usize]) {
+    if moved.is_empty() {
+        return;
+    }
+    let mut bb = Bbox::new();
+    for &ei in moved {
+        if let Some((_, m, w)) = &sc.edges[ei].label {
+            bb.add(m.0 - w / 2.0, m.1 - LABEL_BOX_H / 2.0);
+            bb.add(m.0 + w / 2.0, m.1 + LABEL_BOX_H / 2.0);
+        }
+    }
+    let (minx, maxx, miny, maxy) = bb.finish();
+    let (dx, dy) = ((MARGIN - minx).max(0.0), (MARGIN - miny).max(0.0));
+    if dx > 0.0 || dy > 0.0 {
+        shift_scene(sc, dx, dy);
+    }
+    sc.width = (sc.width + dx).max(maxx + dx + MARGIN);
+    sc.height = (sc.height + dy).max(maxy + dy + MARGIN);
+}
+
 /// Does segment `a`–`b` intersect the axis-aligned rectangle
 /// `[rx0,rx1] × [ry0,ry1]`? Liang-Barsky clip (true when either
 /// endpoint is inside, too).
@@ -504,7 +644,10 @@ pub fn scene_sized(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
 
 /// The classic single-level pipeline (no subgraphs).
 fn scene_flat(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
-    scene_from_layout(g, sizes, layout_sized(g, sizes), None)
+    let mut sc = scene_from_layout(g, sizes, layout_sized(g, sizes), None);
+    let moved = avoid_label_overlaps(&sc.nodes, &mut sc.edges);
+    fit_moved_labels(&mut sc, &moved);
+    sc
 }
 
 /// Does a bow (abstract coordinates) or the label at its apex cover a
@@ -1034,6 +1177,10 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
             });
         }
     }
+
+    // Labels last, once every edge (sub-edges too) is drawn.
+    let moved = avoid_label_overlaps(&sc.nodes, &mut sc.edges);
+    fit_moved_labels(&mut sc, &moved);
 
     // Re-normalise so the boxes' padding/header and any box-routed
     // sub-edges (which reach past the nodes) can't clip the canvas.
@@ -1582,6 +1729,7 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
         }
     }
 
+    avoid_label_overlaps(&nodes, &mut edges);
     let mut bb = Bbox::new();
     grow_scene(&mut bb, &nodes, &edges, &clusters);
     let (_, maxx, _, maxy) = bb.finish();
@@ -3991,5 +4139,194 @@ mod tests {
             escape("<a & \"b\" 'c'>"),
             "&lt;a &amp; &quot;b&quot; &#39;c&#39;&gt;"
         );
+    }
+
+    // --- issue #61: edge labels must not cover node boxes or each other ---
+
+    fn rect_of_node(n: &SceneNode) -> Rect {
+        (
+            n.x - n.w / 2.0,
+            n.y - n.h / 2.0,
+            n.x + n.w / 2.0,
+            n.y + n.h / 2.0,
+        )
+    }
+
+    fn rect_of_label(m: (f64, f64), w: f64) -> Rect {
+        (
+            m.0 - w / 2.0,
+            m.1 - LABEL_BOX_H / 2.0,
+            m.0 + w / 2.0,
+            m.1 + LABEL_BOX_H / 2.0,
+        )
+    }
+
+    fn overlaps(a: Rect, b: Rect) -> bool {
+        covered(a, 0.0, &[b]) > 0.0
+    }
+
+    /// Geometry every rendered flowchart must satisfy: label boxes at
+    /// least as wide as their text and clear of every node and other
+    /// label, rect targets reached ON their border, each node inside
+    /// exactly the frames of the subgraphs holding it, and frames
+    /// disjoint unless one nests in the other.
+    fn assert_clean_geometry(src: &str) -> Scene {
+        let g = parse(src).unwrap();
+        let sc = scene(&g);
+        let labels: Vec<(String, Rect)> = sc
+            .edges
+            .iter()
+            .filter_map(|e| e.label.as_ref())
+            .map(|(t, m, w)| {
+                assert!(*w >= text_width(t), "label box narrower than {t:?}");
+                (t.clone(), rect_of_label(*m, *w))
+            })
+            .collect();
+        for (i, (t, r)) in labels.iter().enumerate() {
+            for n in &sc.nodes {
+                assert!(
+                    !overlaps(*r, rect_of_node(n)),
+                    "label {t:?} covers node {}",
+                    n.id
+                );
+            }
+            for (u, o) in &labels[..i] {
+                assert!(!overlaps(*r, *o), "label {t:?} covers label {u:?}");
+            }
+        }
+        for (e, se) in g.edges.iter().zip(&sc.edges) {
+            if !matches!(g.nodes[e.to].shape, Shape::Rect) || e.from == e.to {
+                continue;
+            }
+            let end = se.waypoints.last().copied().unwrap_or(se.bezier[3]);
+            let (x0, y0, x1, y1) = rect_of_node(&sc.nodes[e.to]);
+            let on_x = ((end.0 - x0).abs() < 1.0 || (end.0 - x1).abs() < 1.0)
+                && end.1 >= y0 - 1.0
+                && end.1 <= y1 + 1.0;
+            let on_y = ((end.1 - y0).abs() < 1.0 || (end.1 - y1).abs() < 1.0)
+                && end.0 >= x0 - 1.0
+                && end.0 <= x1 + 1.0;
+            assert!(
+                on_x || on_y,
+                "edge {}->{} ends at {end:?}, off the border of {:?}",
+                se.from,
+                se.to,
+                (x0, y0, x1, y1)
+            );
+        }
+        let frame = |si: usize| -> Rect {
+            let c = sc
+                .clusters
+                .iter()
+                .find(|c| c.id == g.subgraphs[si].id)
+                .unwrap();
+            (c.x, c.y, c.x + c.w, c.y + c.h)
+        };
+        let paths = node_cluster_paths(&g);
+        for (v, n) in sc.nodes.iter().enumerate() {
+            let r = rect_of_node(n);
+            for si in 0..g.subgraphs.len() {
+                let f = frame(si);
+                let inside = r.0 >= f.0 && r.1 >= f.1 && r.2 <= f.2 && r.3 <= f.3;
+                assert_eq!(
+                    inside,
+                    paths[v].contains(&si),
+                    "node {} vs frame {}",
+                    n.id,
+                    g.subgraphs[si].id
+                );
+            }
+        }
+        for a in 0..g.subgraphs.len() {
+            for b in 0..a {
+                let (fa, fb) = (frame(a), frame(b));
+                let nests = |i: Rect, o: Rect| i.0 >= o.0 && i.1 >= o.1 && i.2 <= o.2 && i.3 <= o.3;
+                assert!(
+                    !overlaps(fa, fb) || nests(fa, fb) || nests(fb, fa),
+                    "frames {} and {} cross",
+                    g.subgraphs[a].id,
+                    g.subgraphs[b].id
+                );
+            }
+        }
+        sc
+    }
+
+    #[test]
+    fn lr_fan_out_labels_clear_their_ends_and_each_other() {
+        // Labels wider than the layer gap used to sit on both ends.
+        assert_clean_geometry(
+            "flowchart LR\n\
+             F[\"failover.sh\"]\n\
+             F -->|\"1 stop tunnel + mirror\"| T[\"tunnel\"]\n\
+             F -->|\"4 symlink + nginx -t + reload\"| N[\"nginx\"]\n\
+             F -->|\"5 notif\"| X[\"telegram\"]",
+        );
+        assert_clean_geometry(
+            "flowchart RL\nA -->|a rather long label here| B\nA -->|another long one| C",
+        );
+    }
+
+    #[test]
+    fn converging_labels_on_shared_targets_are_nudged_apart() {
+        // Six labelled edges from one hub onto two shared stores: the
+        // labels near the stores used to stack on one spot.
+        let mut src = String::from("flowchart TD\nT[Traefik]\n");
+        for s in ["general", "invoice", "vendor", "account", "mcp", "ocr"] {
+            src.push_str(&format!(
+                "T -->|{s}.core.example| {s}[core-{s}]\n\
+                 {s} -->|via URL publik s3.core| S[(minio)]\n\
+                 {s} -.->|via URL publik pg| P[(postgres)]\n"
+            ));
+        }
+        assert_clean_geometry(&src);
+    }
+
+    #[test]
+    fn clustered_labels_and_endpoints_stay_clean() {
+        assert_clean_geometry(
+            "flowchart LR\n\
+             I([Internet])\n\
+             subgraph dev[\"DEV\"]\n  a[\"alpha\"]\n  b[\"beta wide label here\"]\nend\n\
+             subgraph prod[\"PROD\"]\n  c[\"gamma\"]\nend\n\
+             I -->|https public ingress| a\n\
+             I -->|ssh admin| b\n\
+             a -->|replication over tunnel| c",
+        );
+        assert_clean_geometry(
+            "flowchart TD\n\
+             subgraph top[\"Top\"]\n  a[\"alpha\"] -->|first hop| b[\"beta\"]\nend\n\
+             subgraph low[\"Low\"]\n  c[\"gamma\"]\n  d[\"delta\"]\nend\n\
+             b -->|down into low| c\n\
+             b -->|also down| d\n\
+             a -->|skipping a layer| d",
+        );
+    }
+
+    #[test]
+    fn td_ranks_stay_vertical_and_fitting_labels_keep_their_spot() {
+        let sc = assert_clean_geometry("flowchart TD\nA -->|yes| B -->|no| C");
+        assert!(sc.nodes[0].y < sc.nodes[1].y && sc.nodes[1].y < sc.nodes[2].y);
+        assert!((sc.nodes[0].x - sc.nodes[2].x).abs() < 1.0);
+        // A label with room is left exactly at its curve's midpoint.
+        for e in &sc.edges {
+            let b = e.bezier;
+            let (_, m, _) = e.label.as_ref().unwrap();
+            assert_eq!(*m, cubic_mid(b[0], b[1], b[2], b[3]));
+        }
+    }
+
+    #[test]
+    fn lr_gap_grows_only_for_a_label_that_does_not_fit() {
+        // A short label fits the default gap: layout is untouched.
+        let short = scene(&parse("flowchart LR\nA -->|ok| B").unwrap());
+        let plain = scene(&parse("flowchart LR\nA --> B").unwrap());
+        assert_eq!(short.nodes[1].x, plain.nodes[1].x);
+        // A long one pushes the next layer out until it clears both ends.
+        let long = scene(&parse("flowchart LR\nA -->|a label far wider than the gap| B").unwrap());
+        let (_, m, w) = long.edges[0].label.clone().unwrap();
+        let (a, b) = (&long.nodes[0], &long.nodes[1]);
+        assert!(m.0 - w / 2.0 >= a.x + a.w / 2.0);
+        assert!(m.0 + w / 2.0 <= b.x - b.w / 2.0);
     }
 }

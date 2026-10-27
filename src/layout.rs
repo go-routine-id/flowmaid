@@ -74,6 +74,14 @@ pub(crate) const CLUSTER_HEADER: f64 = 26.0;
 pub(crate) const FRAME_PAD: f64 = 14.0;
 /// Least room between two frames stacked along the layer axis.
 const FRAME_GAP: f64 = 8.0;
+/// Width an edge-label box adds around its text (the scene draws it
+/// `text_width + LABEL_PAD_W` wide).
+pub(crate) const LABEL_PAD_W: f64 = 14.0;
+/// Height of a drawn edge-label box.
+pub(crate) const LABEL_BOX_H: f64 = 20.0;
+/// Room a label kept between adjacent layers leaves to each end node
+/// once its gap had to grow for it.
+const LABEL_CLEAR: f64 = 6.0;
 
 /// Line height for multi-line labels (`<br/>` → newline).
 pub const LINE_H: f64 = 17.0;
@@ -531,7 +539,7 @@ fn layout_core(
         // (dagre models edge labels as nodes for exactly this reason).
         if let (Some(lbl), false) = (&e.label, chain.is_empty()) {
             let mid = chain[chain.len() / 2];
-            let lw = text_width(lbl) + 14.0;
+            let lw = text_width(lbl) + LABEL_PAD_W;
             let lh = LINE_H * line_count(lbl) as f64 + 6.0;
             if horizontal {
                 absize[mid] = absize[mid].max(lh);
@@ -793,37 +801,6 @@ fn layout_core(
     }
 
     // --- 4. Coordinates ---
-    // Layer positions (l axis): each layer is as tall as its tallest
-    // REAL node (dummies contribute zero layer-size).
-    // A box closing on one layer and another opening on the next must
-    // not meet: their pads and title strips stack up with nesting depth,
-    // which can outgrow the gap, so a layer moves down until the frames
-    // reaching across clear by FRAME_GAP.
-    let mut lcoord = vec![0.0f64; nlayers];
-    let mut cursor = MARGIN;
-    let reach_of = |li: usize, side: usize| -> f64 {
-        layers[li]
-            .iter()
-            .filter(|&&v| v < n)
-            .map(|&v| alsize[v] / 2.0 + if side == 0 { reach[v].0 } else { reach[v].1 })
-            .fold(0.0f64, f64::max)
-    };
-    for li in 0..nlayers {
-        let lh = layers[li]
-            .iter()
-            .map(|&v| alsize[v] + lextra.get(v).copied().unwrap_or(0.0))
-            .fold(0.0f64, f64::max);
-        if clustered && li > 0 {
-            let at = lcoord[li - 1] + reach_of(li - 1, 1) + reach_of(li, 0) + FRAME_GAP;
-            if at > cursor + lh / 2.0 {
-                cursor = at - lh / 2.0;
-            }
-        }
-        lcoord[li] = cursor + lh / 2.0;
-        cursor += lh + GAP_L;
-    }
-    let total_l = cursor - GAP_L + MARGIN;
-
     // Breadth positions (b axis) via Brandes-Köpf: four vertical
     // alignments (up/down × left/right), each compacted independently,
     // then combined by the per-node median. This is dagre's coordinate
@@ -846,6 +823,115 @@ fn layout_core(
             0.0
         },
     );
+
+    // Layer positions (l axis): each layer is as tall as its tallest
+    // REAL node (dummies contribute zero layer-size).
+    // A box closing on one layer and another opening on the next must
+    // not meet: their pads and title strips stack up with nesting depth,
+    // which can outgrow the gap, so a layer moves down until the frames
+    // reaching across clear by FRAME_GAP.
+    let mut lcoord = vec![0.0f64; nlayers];
+    let mut cursor = MARGIN;
+    let reach_of = |li: usize, side: usize| -> f64 {
+        layers[li]
+            .iter()
+            .filter(|&&v| v < n)
+            .map(|&v| alsize[v] / 2.0 + if side == 0 { reach[v].0 } else { reach[v].1 })
+            .fold(0.0f64, f64::max)
+    };
+    // An edge between ADJACENT layers has no dummy to reserve its
+    // label a slot: the label sits mid-gap, between the two borders.
+    // Per upper layer: (lower end, upper end, label extent along the
+    // layer axis) for each labelled such edge — in LR/RL that extent
+    // is the label's width, which easily outgrows GAP_L.
+    let mut short_labels: Vec<Vec<(usize, usize, f64)>> = vec![Vec::new(); nlayers];
+    // Per upper layer: (breadth centre, breadth extent, layer extent).
+    let mut short_across: Vec<Vec<(f64, f64, f64)>> = vec![Vec::new(); nlayers];
+    for (ei, e) in g.edges.iter().enumerate() {
+        let Some(lbl) = &e.label else { continue };
+        if e.from == e.to || back[ei] || matches!(e.kind, EdgeKind::Invisible) {
+            continue;
+        }
+        let (lo, hi) = if alayer[e.from] < alayer[e.to] {
+            (e.from, e.to)
+        } else {
+            (e.to, e.from)
+        };
+        if alayer[hi] != alayer[lo] + 1 {
+            continue;
+        }
+        let w = text_width(lbl) + LABEL_PAD_W;
+        let (ext, across) = if horizontal {
+            (w, LABEL_BOX_H)
+        } else {
+            (LABEL_BOX_H, w)
+        };
+        short_labels[alayer[hi]].push((lo, hi, ext));
+        short_across[alayer[hi]].push(((bpos[lo] + bpos[hi]) / 2.0, across, ext));
+    }
+    // Labels sharing one gap that would overlap side by side need rows
+    // of their own, stacked along the layer axis (a fan of labelled
+    // edges out of one node, or into one). Greedy interval packing on
+    // each label's breadth span, centred between its ends; the gap must
+    // hold every row with LABEL_CLEAR on both sides, plus one spare row:
+    // the labels then slide along their own (slanted) curves to reach
+    // a row, which never lands them exactly side by side. One row =
+    // nothing overlaps = no requirement, so only colliding gaps grow.
+    let gap_need: Vec<f64> = short_across
+        .iter_mut()
+        .map(|spans| {
+            spans.sort_by(|a, b| (a.0 - a.1 / 2.0).total_cmp(&(b.0 - b.1 / 2.0)));
+            // Per row: (right end so far, largest extent along l).
+            let mut rows: Vec<(f64, f64)> = Vec::new();
+            for &(mid, across, ext) in spans.iter() {
+                let left = mid - across / 2.0;
+                match rows.iter_mut().find(|r| r.0 + LABEL_CLEAR <= left) {
+                    Some(r) => *r = (mid + across / 2.0, r.1.max(ext)),
+                    None => rows.push((mid + across / 2.0, ext)),
+                }
+            }
+            if rows.len() < 2 {
+                return 0.0;
+            }
+            let tallest = rows.iter().map(|r| r.1).fold(0.0, f64::max);
+            rows.iter().map(|r| r.1).sum::<f64>()
+                + tallest
+                + 2.0 * LABEL_CLEAR * (rows.len() + 1) as f64
+        })
+        .collect();
+    let mut prev_lh = 0.0;
+    for li in 0..nlayers {
+        let lh = layers[li]
+            .iter()
+            .map(|&v| alsize[v] + lextra.get(v).copied().unwrap_or(0.0))
+            .fold(0.0f64, f64::max);
+        if clustered && li > 0 {
+            let at = lcoord[li - 1] + reach_of(li - 1, 1) + reach_of(li, 0) + FRAME_GAP;
+            if at > cursor + lh / 2.0 {
+                cursor = at - lh / 2.0;
+            }
+        }
+        // A label that would cover its own ends grows the gap until it
+        // clears both by LABEL_CLEAR; a label that already fits leaves
+        // the gap — and the whole layout — exactly as it was.
+        for &(s, t, ext) in &short_labels[li] {
+            let ends = lcoord[li - 1] + (alsize[s] + alsize[t]) / 2.0;
+            let at = cursor + lh / 2.0;
+            if at - ends < ext {
+                cursor = cursor.max(ends + ext + 2.0 * LABEL_CLEAR - lh / 2.0);
+            }
+        }
+        if li > 0 && gap_need[li] > 0.0 {
+            let prev = lcoord[li - 1] + prev_lh / 2.0;
+            if cursor - prev < gap_need[li] {
+                cursor = prev + gap_need[li];
+            }
+        }
+        prev_lh = lh;
+        lcoord[li] = cursor + lh / 2.0;
+        cursor += lh + GAP_L;
+    }
+    let total_l = cursor - GAP_L + MARGIN;
 
     // Normalise so the diagram starts at MARGIN (real-node extent).
     let mut minb = f64::INFINITY;
