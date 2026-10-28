@@ -14,7 +14,7 @@
 
 use crate::layout::text_width;
 use crate::model::{FrameKind, NoteSide, SeqHead, SeqItem, SequenceDiagram};
-use crate::scene::{escape, svg_open, SvgOptions, EDGE_COLOR, TEXT_COLOR};
+use crate::scene::{escape, svg_open_a11y, A11y, SvgOptions, EDGE_COLOR, TEXT_COLOR};
 
 /// Participant header box height.
 pub const BOX_H: f64 = 34.0;
@@ -501,8 +501,14 @@ pub fn to_svg(sc: &SeqScene) -> String {
 
 /// [`to_svg`] with explicit viewport options (see [`SvgOptions`]).
 pub fn to_svg_with(sc: &SeqScene, opts: &SvgOptions) -> String {
+    to_svg_a11y_with(sc, &A11y::default(), opts)
+}
+
+/// [`to_svg_with`] plus mermaid's `accTitle` / `accDescr` (see [`A11y`]).
+pub(crate) fn to_svg_a11y_with(sc: &SeqScene, a11y: &A11y, opts: &SvgOptions) -> String {
+    let (title, desc) = a11y.resolve("Sequence diagram");
     let mut s = String::new();
-    svg_open(&mut s, sc.width, sc.height, 13, "Sequence diagram", opts);
+    svg_open_a11y(&mut s, sc.width, sc.height, 13, &title, desc, opts);
 
     // Frame borders first (background)…
     for f in &sc.frames {

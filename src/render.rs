@@ -7,7 +7,12 @@ use crate::model::{
     Architecture, ClassDiagram, ErDiagram, GitGraph, Graph, Journey, Mindmap, PieChart,
     SankeyDiagram, SequenceDiagram, Timeline,
 };
-use crate::scene::SvgOptions;
+use crate::scene::{A11y, SvgOptions};
+
+/// A graph's `accTitle` / `accDescr`, as the SVG writer takes them.
+pub(crate) fn graph_a11y(g: &Graph) -> A11y {
+    A11y::new(g.acc_title.clone(), g.acc_descr.clone())
+}
 
 pub fn render(g: &Graph) -> String {
     render_titled(g, "Flowchart diagram")
@@ -15,40 +20,44 @@ pub fn render(g: &Graph) -> String {
 
 /// [`render`] with explicit viewport options (see [`SvgOptions`]).
 pub fn render_with(g: &Graph, opts: &SvgOptions) -> String {
-    crate::scene::to_svg_with(&crate::scene::scene(g), opts)
+    render_titled_with(g, "Flowchart diagram", opts)
 }
 
 /// [`render`] with a caller-chosen accessible name (a `stateDiagram-v2`
 /// rides the flowchart `Graph` but should announce "State diagram").
+/// A non-empty `g.acc_title` (mermaid's `accTitle:`) still wins over
+/// `title`, and `g.acc_descr` becomes the SVG's `<desc>`.
 pub fn render_titled(g: &Graph, title: &str) -> String {
-    crate::scene::to_svg_titled(&crate::scene::scene(g), title)
+    render_titled_with(g, title, &SvgOptions::default())
 }
 
 /// [`render_titled`] with explicit viewport options.
 pub fn render_titled_with(g: &Graph, title: &str, opts: &SvgOptions) -> String {
-    crate::scene::to_svg_titled_with(&crate::scene::scene(g), title, opts)
+    crate::scene::to_svg_a11y_with(&crate::scene::scene(g), title, &graph_a11y(g), opts)
 }
 
 /// Render an Entity-Relationship diagram (tables + crow's foot).
 /// Geometry & serialisation live in the `er` module.
 pub fn render_er(d: &ErDiagram) -> String {
-    crate::er::to_svg(&crate::er::scene(d))
+    render_er_with(d, &SvgOptions::default())
 }
 
 /// [`render_er`] with explicit viewport options.
 pub fn render_er_with(d: &ErDiagram, opts: &SvgOptions) -> String {
-    crate::er::to_svg_with(&crate::er::scene(d), opts)
+    let a11y = A11y::new(d.acc_title.clone(), d.acc_descr.clone());
+    crate::er::to_svg_a11y_with(&crate::er::scene(d), &a11y, opts)
 }
 
 /// Render a UML class diagram (three-compartment boxes + UML end
 /// glyphs). Geometry & serialisation live in the `class` module.
 pub fn render_class(d: &ClassDiagram) -> String {
-    crate::class::to_svg(&crate::class::scene(d))
+    render_class_with(d, &SvgOptions::default())
 }
 
 /// [`render_class`] with explicit viewport options.
 pub fn render_class_with(d: &ClassDiagram, opts: &SvgOptions) -> String {
-    crate::class::to_svg_with(&crate::class::scene(d), opts)
+    let a11y = A11y::new(d.acc_title.clone(), d.acc_descr.clone());
+    crate::class::to_svg_a11y_with(&crate::class::scene(d), &a11y, opts)
 }
 
 /// Render a pie chart (proportional slices + legend). Geometry &
@@ -65,12 +74,13 @@ pub fn render_pie_with(d: &PieChart, opts: &SvgOptions) -> String {
 /// Render a sequence diagram (lifelines + linear message rows).
 /// Geometry & serialisation live in the `seq` module.
 pub fn render_seq(d: &SequenceDiagram) -> String {
-    crate::seq::to_svg(&crate::seq::scene(d))
+    render_seq_with(d, &SvgOptions::default())
 }
 
 /// [`render_seq`] with explicit viewport options.
 pub fn render_seq_with(d: &SequenceDiagram, opts: &SvgOptions) -> String {
-    crate::seq::to_svg_with(&crate::seq::scene(d), opts)
+    let a11y = A11y::new(d.acc_title.clone(), d.acc_descr.clone());
+    crate::seq::to_svg_a11y_with(&crate::seq::scene(d), &a11y, opts)
 }
 
 /// Render a mindmap (left-to-right tidy tree with colored branches).

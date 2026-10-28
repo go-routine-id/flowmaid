@@ -193,6 +193,7 @@ pub fn scene(d: &Architecture) -> ArchScene {
                 stroke_width: Some(2.0),
                 color: None,
             },
+            link: None,
         });
     }
 
@@ -214,6 +215,9 @@ pub fn scene(d: &Architecture) -> ArchScene {
             } else {
                 crate::model::EdgeKind::Open
             },
+            // The arrow ends ride `arrow_starts` / `arrow_ends`.
+            ends: Default::default(),
+            meta: Default::default(),
             label: None,
         });
         arrow_starts.push(e.arrow_start);

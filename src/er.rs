@@ -15,8 +15,8 @@
 use crate::layout::text_width;
 use crate::model::{Attr, Card, Direction, EdgeKind, Entity, ErDiagram, Graph, Shape};
 use crate::scene::{
-    escape, route_sized, scene_sized, svg_label_box, svg_open, Scene, SvgOptions, EDGE_COLOR,
-    TEXT_COLOR,
+    escape, fit_top_left, route_sized, scene_sized, svg_label_box, svg_open_a11y, A11y, Scene,
+    SvgOptions, EDGE_COLOR, TEXT_COLOR,
 };
 
 /// Table header height in pixels.
@@ -173,22 +173,27 @@ fn row_of(a: &Attr) -> ErRow {
 }
 
 /// Serialise any ER arrangement (automatic or dragged) to SVG.
+///
+/// A node dragged left of or above the origin shifts the whole drawing
+/// right/down onto the canvas, so SVG coordinates can then differ from
+/// scene coordinates by that offset: map pointer events through the
+/// rendered SVG, as with [`crate::scene::to_svg`].
 pub fn to_svg(es: &ErScene) -> String {
     to_svg_with(es, &SvgOptions::default())
 }
 
 /// [`to_svg`] with explicit viewport options (see [`SvgOptions`]).
 pub fn to_svg_with(es: &ErScene, opts: &SvgOptions) -> String {
-    let sc = &es.scene;
+    to_svg_a11y_with(es, &A11y::default(), opts)
+}
+
+/// [`to_svg_with`] plus mermaid's `accTitle` / `accDescr` (see [`A11y`]).
+pub(crate) fn to_svg_a11y_with(es: &ErScene, a11y: &A11y, opts: &SvgOptions) -> String {
+    let (title, desc) = a11y.resolve("Entity-relationship diagram");
+    let fitted = fit_top_left(&es.scene);
+    let sc = &*fitted;
     let mut s = String::new();
-    svg_open(
-        &mut s,
-        sc.width,
-        sc.height,
-        13,
-        "Entity-relationship diagram",
-        opts,
-    );
+    svg_open_a11y(&mut s, sc.width, sc.height, 13, &title, desc, opts);
 
     // Relationship lines + crow's foot glyphs (under the tables).
     for (e, &(card_from, card_to)) in sc.edges.iter().zip(&es.cards) {
@@ -456,5 +461,35 @@ mod tests {
         );
         // Export of the dragged arrangement keeps working.
         assert!(to_svg(&s1).ends_with("</svg>\n"));
+    }
+
+    #[test]
+    fn drag_past_origin_stays_inside_viewbox() {
+        // A table dragged left of and/or above the canvas origin (the
+        // playground's drag path) must not be clipped by the `0 0 W H`
+        // viewBox — nor may any text, edge or marker it pulls along.
+        // The last case keeps the centre in bounds but the box past it.
+        let d = fixture();
+        let sc = scene(&d);
+        let laid: Vec<(f64, f64)> = sc.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let (x0, y0) = laid[0];
+        for to in [(-120.0, y0), (x0, -80.0), (-120.0, -80.0), (5.0, 5.0)] {
+            let mut centers = laid.clone();
+            centers[0] = to;
+            crate::scene::assert_drawn_inside_canvas(&to_svg(&route(&d, &centers)));
+        }
+        // Laid out, the canvas already holds everything.
+        crate::scene::assert_drawn_inside_canvas(&to_svg(&sc));
+    }
+
+    #[test]
+    fn laid_out_scene_is_not_shifted() {
+        // The shift only kicks in past the origin: a laid-out scene
+        // renders byte-for-byte as before.
+        let sc = scene(&fixture());
+        assert!(matches!(
+            fit_top_left(&sc.scene),
+            std::borrow::Cow::Borrowed(_)
+        ));
     }
 }

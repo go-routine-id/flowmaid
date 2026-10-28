@@ -104,6 +104,7 @@ pub fn scene(d: &GitGraph) -> GitScene {
                 stroke_width: Some(2.0),
                 color: None,
             },
+            link: None,
         });
 
         // In vertical modes, place the id to the right of the circle and the
@@ -163,6 +164,8 @@ pub fn scene(d: &GitGraph) -> GitScene {
                     bezier: edge_bezier(p0, p1, d.orientation),
                     waypoints: Vec::new(),
                     kind: crate::model::EdgeKind::Open,
+                    ends: Default::default(),
+                    meta: Default::default(),
                     label: None,
                 });
             }
@@ -179,6 +182,8 @@ pub fn scene(d: &GitGraph) -> GitScene {
                 bezier: edge_bezier(p0, p1, d.orientation),
                 waypoints: Vec::new(),
                 kind: crate::model::EdgeKind::Open,
+                ends: Default::default(),
+                meta: Default::default(),
                 label: None,
             });
         }
@@ -196,6 +201,8 @@ pub fn scene(d: &GitGraph) -> GitScene {
                 bezier: edge_bezier(p0, p1, d.orientation),
                 waypoints: Vec::new(),
                 kind: crate::model::EdgeKind::Arrow,
+                ends: Default::default(),
+                meta: Default::default(),
                 label: None,
             });
         }

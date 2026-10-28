@@ -203,9 +203,37 @@ pub fn render_compact(g: &Graph, opts: &CompactOptions) -> String {
     render_compact_titled(g, opts, "Flowchart diagram")
 }
 
-/// [`render_compact`] with a caller-chosen accessible name.
+/// [`render_compact`] with explicit SVG options (see
+/// [`crate::scene::SvgOptions`]).
+pub fn render_compact_with(
+    g: &Graph,
+    opts: &CompactOptions,
+    svg: &crate::scene::SvgOptions,
+) -> String {
+    render_compact_titled_with(g, opts, "Flowchart diagram", svg)
+}
+
+/// [`render_compact`] with a caller-chosen accessible name. A
+/// non-empty `g.acc_title` wins over `title`, and `g.acc_descr` becomes
+/// the SVG's `<desc>`, exactly as in [`crate::render::render_titled`].
 pub fn render_compact_titled(g: &Graph, opts: &CompactOptions, title: &str) -> String {
-    crate::scene::to_svg_titled(&scene_compact(g, opts).scene, title)
+    crate::scene::to_svg_a11y_with(
+        &scene_compact(g, opts).scene,
+        title,
+        &crate::render::graph_a11y(g),
+        &crate::scene::SvgOptions::default(),
+    )
+}
+
+/// [`render_compact_titled`] with explicit SVG options (see
+/// [`crate::scene::SvgOptions`]).
+pub fn render_compact_titled_with(
+    g: &Graph,
+    opts: &CompactOptions,
+    title: &str,
+    svg: &crate::scene::SvgOptions,
+) -> String {
+    crate::scene::to_svg_titled_with(&scene_compact(g, opts).scene, title, svg)
 }
 
 /// The graph as one linear run of node indices, or the reason it
@@ -390,6 +418,8 @@ fn compose(
                     to: local[edge.to],
                     label: edge.label.clone(),
                     kind: edge.kind,
+                    ends: edge.ends,
+                    meta: edge.meta.clone(),
                 });
             }
         }
@@ -414,7 +444,10 @@ fn compose(
         .map(|v| {
             let k = band_of(v);
             let (s, _) = bands[k];
-            scenes[k].nodes[pos_of[v] - s].clone()
+            let mut n = scenes[k].nodes[pos_of[v] - s].clone();
+            // Band graphs carry no `click` links; take them from `g`.
+            n.link = g.links.get(&v).cloned();
+            n
         })
         .collect();
 
@@ -444,6 +477,8 @@ fn compose(
                     bezier: [(a.x, a.y), (a.x, a.y), (b.x, b.y), (b.x, b.y)],
                     waypoints: Vec::new(),
                     kind: e.kind,
+                    ends: e.ends,
+                    meta: e.meta.clone(),
                     label: None,
                 };
             }
@@ -544,6 +579,8 @@ fn fold_connector(
         bezier: [p0, mk(apex, br(a)), mk(apex, br(b)), p3],
         waypoints: wps,
         kind: e.kind,
+        ends: e.ends,
+        meta: e.meta.clone(),
         label,
     }
 }
@@ -559,6 +596,36 @@ mod tests {
             s.push_str(&format!("N{} --> N{}\n", i, i + 1));
         }
         s
+    }
+
+    #[test]
+    fn folded_chains_keep_edge_end_glyphs() {
+        // In-band edges and fold-crossing U-turns alike carry `ends`.
+        let g = parse(&chain(12).replace("-->", "x--x")).unwrap();
+        let c = scene_compact(&g, &CompactOptions::for_extent(420.0));
+        assert!(c.skipped.is_none(), "must fold: {:?}", c.skipped);
+        for (se, e) in c.scene.edges.iter().zip(&g.edges) {
+            assert_eq!(se.ends, e.ends);
+            assert_eq!(se.ends.start, Some(crate::model::Marker::Cross));
+        }
+    }
+
+    #[test]
+    fn render_compact_with_matches_render_compact_and_honours_transparent() {
+        let g = parse(&chain(12)).unwrap();
+        let opts = CompactOptions::for_extent(420.0);
+        let base = render_compact(&g, &opts);
+        let svg = crate::scene::SvgOptions::default();
+        assert_eq!(base, render_compact_with(&g, &opts, &svg));
+        let mut svg = svg;
+        svg.transparent = true;
+        let t = render_compact_with(&g, &opts, &svg);
+        // Only the white canvas rect right after <title> goes away.
+        let rect_at = base.find("</title>\n<rect").unwrap() + "</title>\n".len();
+        let rect_end = rect_at + base[rect_at..].find('\n').unwrap() + 1;
+        let mut expect = base.clone();
+        expect.replace_range(rect_at..rect_end, "");
+        assert_eq!(t, expect);
     }
 
     #[test]
@@ -677,10 +744,11 @@ mod tests {
         // Every edge label survives, folded or not.
         let labelled = c.scene.edges.iter().filter(|e| e.label.is_some()).count();
         assert_eq!(labelled, 1);
-        // route_partial keeps untouched fold geometry verbatim.
+        // route_partial keeps fold geometry away from the drag verbatim
+        // (N0 dragged off the drawing's free side, clear of every turn).
         let auto: Vec<(f64, f64)> = c.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
         let mut dragged = auto.clone();
-        dragged[0].0 += 80.0;
+        dragged[0].0 -= 80.0;
         let r = crate::scene::route_partial(&g, &dragged, &c.scene, &auto);
         assert_eq!(r.edges.len(), c.scene.edges.len());
         for (ri, ci) in r.edges.iter().zip(c.scene.edges.iter()).skip(2) {
@@ -752,5 +820,15 @@ mod tests {
                 p0.0
             );
         }
+    }
+
+    #[test]
+    fn compact_render_carries_acc_title_and_descr() {
+        let g = parse("flowchart TD\naccTitle: Chain\naccDescr: steps\nA-->B-->C-->D").unwrap();
+        let svg = render_compact_titled(&g, &CompactOptions::for_extent(200.0), "State diagram");
+        assert!(svg.contains("<title>Chain</title>\n<desc id=\""), "{svg}");
+        let g = parse("flowchart TD\nA-->B-->C-->D").unwrap();
+        let svg = render_compact(&g, &CompactOptions::for_extent(200.0));
+        assert!(svg.contains("<title>Flowchart diagram</title>") && !svg.contains("<desc"));
     }
 }

@@ -1,0 +1,10 @@
+%% Edge labels much wider than the nodes they join, incl. a fan-in.
+flowchart LR
+    A[Client] -->|request with a very long descriptive label| B[Gateway]
+    B -->|forwarded after authentication and rate limiting| C[Service]
+    B -->|cached response served without hitting the backend| A
+    C -->|query by primary key| D[(Database)]
+    C -->|publish domain event to the topic| E[[Queue]]
+    E -->|consumed asynchronously by the worker pool| F[Worker]
+    F -->|writes the projection| D
+    A -->|health probe| C
