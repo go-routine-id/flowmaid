@@ -35,20 +35,30 @@
 
 pub mod advance;
 pub mod architecture;
+mod casing;
 pub mod class;
+pub(crate) mod clearance;
+mod edgepass;
 pub mod emit;
 pub mod er;
 pub mod fold;
 pub mod gitgraph;
 pub mod journey;
 pub(crate) mod json;
+mod labels;
 pub mod layout;
 mod markdown;
 pub mod mindmap;
 pub mod model;
 pub mod parser;
 pub mod pie;
+mod ports;
+// Layout-quality yardstick for tests and `examples/quality.rs`; not a
+// stable API.
+#[doc(hidden)]
+pub mod quality;
 pub mod render;
+mod router;
 pub mod sankey;
 pub mod scene;
 pub mod seq;
