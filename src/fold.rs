@@ -744,10 +744,11 @@ mod tests {
         // Every edge label survives, folded or not.
         let labelled = c.scene.edges.iter().filter(|e| e.label.is_some()).count();
         assert_eq!(labelled, 1);
-        // route_partial keeps untouched fold geometry verbatim.
+        // route_partial keeps fold geometry away from the drag verbatim
+        // (N0 dragged off the drawing's free side, clear of every turn).
         let auto: Vec<(f64, f64)> = c.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
         let mut dragged = auto.clone();
-        dragged[0].0 += 80.0;
+        dragged[0].0 -= 80.0;
         let r = crate::scene::route_partial(&g, &dragged, &c.scene, &auto);
         assert_eq!(r.edges.len(), c.scene.edges.len());
         for (ri, ci) in r.edges.iter().zip(c.scene.edges.iter()).skip(2) {
