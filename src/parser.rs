@@ -5514,6 +5514,17 @@ fn note_text(s: &str) -> String {
         .join("\n")
 }
 
+/// An id for a new note card the graph does not hold yet (`__start_*`
+/// style); should the source name it later, [`state_node`] moves the
+/// card on.
+fn fresh_note_id(g: &Graph) -> String {
+    let mut k = g.nodes.len();
+    while g.node_index(&format!("__note_{k}")).is_some() {
+        k += 1;
+    }
+    format!("__note_{k}")
+}
+
 /// A note card's colours ([`crate::style::NOTE_STYLE`]).
 fn note_style() -> NodeStyle {
     let crate::style::ShapeStyle { fill, stroke } = crate::style::NOTE_STYLE;
@@ -5551,16 +5562,7 @@ fn state_note(
             None => stack.last().map(|&(s, _)| s),
         },
     };
-    // A fresh id the source cannot have used yet (`__start_*` style).
-    let mut k = g.nodes.len();
-    while g.node_index(&format!("__note_{k}")).is_some() {
-        k += 1;
-    }
-    let note = g.ensure_node(
-        &format!("__note_{k}"),
-        Some(text.to_string()),
-        Some(Shape::Rect),
-    );
+    let note = g.ensure_node(&fresh_note_id(g), Some(text.to_string()), Some(Shape::Rect));
     g.nodes[note].style = note_style();
     if let Some(si) = owner {
         g.subgraphs[si].nodes.push(note);
@@ -5637,6 +5639,15 @@ fn state_node(
     label: Option<String>,
     shape: Option<Shape>,
 ) -> usize {
+    // A state the source names like a card made earlier is a state of
+    // its own: the card moves to a fresh id first.
+    if let Some(card) = g.node_index(id).filter(|&i| {
+        let n = &g.nodes[i];
+        crate::style::is_note_card(&n.id, n.shape, &n.style)
+    }) {
+        let fresh = fresh_note_id(g);
+        g.rename_node(card, fresh);
+    }
     let is_new = g.node_index(id).is_none();
     let idx = g.ensure_node(
         id,
@@ -7589,6 +7600,19 @@ mod tests {
         let g = state("stateDiagram-v2\n__note_1 --> X\nnote right of X : n");
         assert_eq!(g.nodes.len(), 3);
         assert_eq!(g.nodes[g.node_index("__note_1").unwrap()].label, "__note_1");
+        // ... nor one it names after the card took that id: the card moves.
+        let g = state("stateDiagram-v2\nX --> Y\nnote right of X : n\nY --> __note_2");
+        assert_eq!(g.nodes.len(), 4, "X, Y, the card and the state __note_2");
+        let named = &g.nodes[g.node_index("__note_2").unwrap()];
+        assert_eq!(
+            (named.label.as_str(), named.shape),
+            ("__note_2", Shape::Rounded)
+        );
+        let card = g.nodes.iter().position(|n| n.label == "n").unwrap();
+        assert!(g.nodes[card].id.starts_with("__note_") && g.nodes[card].id != "__note_2");
+        assert_eq!(g.node_index(&g.nodes[card].id), Some(card));
+        let y = g.node_index("Y").unwrap();
+        assert!(g.edges.iter().any(|e| e.from == y && e.to != card));
     }
 
     #[test]
