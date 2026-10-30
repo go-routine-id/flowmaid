@@ -18,6 +18,7 @@
 use crate::labels::{FAN_FAR, FAN_SIBLING_GAP, STROKE_PAD};
 use crate::model::{Direction, EdgeKind, Graph, Node, Shape};
 use crate::scene::{port_lean, ARROW_MARKER_PX};
+use std::borrow::Cow;
 use std::collections::VecDeque;
 
 /// Position & size of one node in abstract coordinates.
@@ -220,6 +221,49 @@ fn fan_line_at(line: &FanLine, share: f64) -> f64 {
         }
     }
     line.from + (line.to - line.from) * (3.0 * hi * hi - 2.0 * hi * hi * hi)
+}
+
+/// Every (note card, fork/join bar) pair a state note links (see
+/// [`crate::style::is_note_card`]).
+fn bar_cards(g: &Graph) -> Vec<(usize, usize)> {
+    let card = |v: usize| {
+        let n = &g.nodes[v];
+        crate::style::is_note_card(&n.id, n.shape, &n.style)
+    };
+    let bar = |v: usize| g.nodes[v].shape == Shape::ForkBar;
+    g.edges
+        .iter()
+        .filter_map(|e| match (card(e.from), card(e.to)) {
+            (true, false) if bar(e.to) => Some((e.from, e.to)),
+            (false, true) if bar(e.from) => Some((e.to, e.from)),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Per layered node, its neighbours one way (`preds` or `succs`).
+type Links<'a> = Cow<'a, [Vec<usize>]>;
+
+/// `preds` / `succs` without the links between a fork/join bar and a
+/// state note card (see [`crate::style::is_note_card`]) one layer apart;
+/// borrowed when the graph has none.
+fn unlink_bar_cards<'a>(
+    g: &Graph,
+    preds: &'a [Vec<usize>],
+    succs: &'a [Vec<usize>],
+) -> (Links<'a>, Links<'a>) {
+    let pairs = bar_cards(g);
+    if pairs.is_empty() {
+        return (Cow::Borrowed(preds), Cow::Borrowed(succs));
+    }
+    let (mut p, mut s) = (preds.to_vec(), succs.to_vec());
+    for (a, b) in pairs {
+        for (u, v) in [(a, b), (b, a)] {
+            s[u].retain(|&w| w != v);
+            p[v].retain(|&w| w != u);
+        }
+    }
+    (Cow::Owned(p), Cow::Owned(s))
 }
 
 /// Most a gap grows (px, past the least it needs anyway) to stack the
@@ -1851,9 +1895,37 @@ fn place(
         }
     }
     layers = best_layers;
+    // A note card beside a fork/join bar goes past the bar's branches
+    // in its layer, on its own side (after them for `right of`, before
+    // them for `left of`): between two branches it would push them
+    // apart under the bar spanning them.
+    for (card, bar) in bar_cards(g) {
+        let lv = &mut layers[alayer[card]];
+        let branch = |v: &usize| *v != card && (preds[bar].contains(v) || succs[bar].contains(v));
+        let (Some(first), Some(last)) = (lv.iter().position(branch), lv.iter().rposition(branch))
+        else {
+            continue;
+        };
+        let Some(at) = lv.iter().position(|&v| v == card) else {
+            continue;
+        };
+        let to = if g.lead_nodes.contains(&card) {
+            first.min(at)
+        } else {
+            last.max(at)
+        };
+        let v = lv.remove(at);
+        lv.insert(to, v);
+    }
     for lv in &layers {
         for (i, &v) in lv.iter().enumerate() {
             pos[v] = i as f64;
+        }
+    }
+    if clustered && !bar_cards(g).is_empty() {
+        let keys = cluster_keys(&layers, &apath, &border_side);
+        for lv in layers.iter_mut() {
+            enforce_contiguity(lv, &apath, &border_side, &mut pos, &keys);
         }
     }
     // A subgraph [`centre_largest`] moves: its key changes, every layer
@@ -1869,8 +1941,10 @@ fn place(
     // (G3), one crossing-neutral swap at a time. Like the rest of the
     // search it is skipped past the budget: on a layer of k nodes the
     // walk is up to k/2 swaps, each re-counting two gaps.
+    // A bar's note card stays beside the bar's branches (above).
     let big = if opts.judge {
         largest_free_node(sizes, node_cluster, &layers, &alayer)
+            .filter(|&v| bar_cards(g).iter().all(|&(card, _)| card != v))
     } else {
         None
     };
@@ -1886,6 +1960,12 @@ fn place(
         );
     }
     // --- 4. Coordinates ---
+    // A state's note card beside a fork/join bar is no branch of it: the
+    // bar centres over its branches (as `scene::fit_bars` sizes it) and
+    // the card takes the room beside them, so their link does not pull
+    // either. It still orders the layers.
+    let (cpreds, csuccs) = unlink_bar_cards(g, &preds, &succs);
+    let (preds_c, succs_c) = (&cpreds[..], &csuccs[..]);
     // Breadth positions (b axis) via Brandes-Köpf: four vertical
     // alignments (up/down × left/right), each compacted independently,
     // then combined by the per-node median. This is dagre's coordinate
@@ -1896,8 +1976,8 @@ fn place(
         na,
         nlayers,
         &layers,
-        &preds,
-        &succs,
+        preds_c,
+        succs_c,
         &alayer,
         &absize,
         if clustered { Some(&apath) } else { None },
@@ -1912,8 +1992,8 @@ fn place(
         compact_breadth(
             n,
             &layers,
-            &preds,
-            &succs,
+            preds_c,
+            succs_c,
             &alayer,
             &absize,
             if clustered { Some(&apath) } else { None },

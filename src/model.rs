@@ -695,6 +695,17 @@ impl Graph {
     pub fn node_index(&self, id: &str) -> Option<usize> {
         self.index.get(id).copied()
     }
+
+    /// Give node `i` the id `id` (free, else nothing changes): the parser
+    /// moves a generated `__note_*` card off an id the source then names.
+    pub(crate) fn rename_node(&mut self, i: usize, id: String) {
+        if self.index.contains_key(&id) || i >= self.nodes.len() {
+            return;
+        }
+        self.index.remove(&self.nodes[i].id);
+        self.index.insert(id.clone(), i);
+        self.nodes[i].id = id;
+    }
 }
 
 /// One parsed Mermaid document of any supported diagram type.
