@@ -324,6 +324,11 @@ pub struct Edge {
     pub ends: EdgeEnds,
     /// Mermaid edge id + metadata (`A e1@--> B`, `e1@{ curve: … }`).
     pub meta: EdgeMeta,
+    /// Length (px, along the edge) that end glyphs drawn by a renderer
+    /// of its own occupy at the `(from, to)` ends — ER crow's feet. The
+    /// layout spaces two adjacent layers so the glyphs, and the edge's
+    /// label between them, all fit. `(0.0, 0.0)` (the default) = none.
+    pub end_room: (f64, f64),
 }
 
 /// A `subgraph ... end` block: a titled cluster of nodes, possibly
@@ -652,6 +657,7 @@ impl Graph {
             kind,
             ends,
             meta: EdgeMeta::default(),
+            end_room: (0.0, 0.0),
         });
     }
 
@@ -928,6 +934,9 @@ impl FrameKind {
 pub struct ErDiagram {
     pub entities: Vec<Entity>,
     pub relations: Vec<Relation>,
+    /// Flow direction from a `direction TB|BT|LR|RL` statement. The
+    /// default is top-to-bottom ([`Direction::TD`]), as in mermaid.
+    pub direction: Direction,
     /// Accessible title from mermaid's `accTitle:` statement — replaces
     /// the default `<title>` / `aria-label` of the SVG. `None` = absent
     /// or empty.
@@ -948,6 +957,7 @@ impl ErDiagram {
             let i = self.entities.len();
             self.entities.push(Entity {
                 name: name.to_string(),
+                alias: None,
                 attrs: Vec::new(),
             });
             self.index.insert(name.to_string(), i);
@@ -956,11 +966,26 @@ impl ErDiagram {
     }
 }
 
-/// A database entity, rendered as a table.
+/// A database entity, rendered as a table. `#[non_exhaustive]`: build
+/// one with [`ErDiagram::ensure_entity`].
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct Entity {
+    /// The entity's id: what relationships name it by.
     pub name: String,
+    /// Display name from mermaid's alias syntax (`p[Person]`,
+    /// `c["Customer Account"]`): drawn in place of `name`. `None` =
+    /// draw `name`.
+    pub alias: Option<String>,
     pub attrs: Vec<Attr>,
+}
+
+impl Entity {
+    /// The text a table header shows: the alias when given, else the
+    /// name.
+    pub fn title(&self) -> &str {
+        self.alias.as_deref().unwrap_or(&self.name)
+    }
 }
 
 /// One attribute row inside an entity block:
