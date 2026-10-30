@@ -2416,6 +2416,10 @@ mod tests {
         assert_eq!(d.relations[0].to, 0);
         let svg = to_svg(&scene(&d));
         assert!(svg.contains(">Box&lt;T&gt;</text>"));
+        // A comma inside a generic does not split a declaration list.
+        let d = cd("classDiagram\nclass Map~K, V~, Set~T~");
+        let names: Vec<String> = d.classes.iter().map(Class::display_name).collect();
+        assert_eq!(names, ["Map<K, V>", "Set<T>"]);
     }
 
     /// Report "faint compartments" / "header notch" / "tight rows":
