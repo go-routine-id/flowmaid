@@ -50,6 +50,11 @@ pub const PAD_X: f64 = 16.0;
 pub const BASE_H: f64 = 38.0;
 /// Minimum node width.
 pub const MIN_W: f64 = 54.0;
+/// Side of an unlabelled diamond — a stateDiagram `<<choice>>` (mermaid
+/// draws it 28×28). The decision-diamond minimum exists to fit text in
+/// the middle; with no text it would only inflate an empty branch point
+/// (80×64.6) and push its outgoing ports apart.
+pub const CHOICE_SIZE: f64 = 28.0;
 // Mermaid's dagre defaults (nodeSpacing / rankSpacing ≈ 50) — labels
 // no longer ride between ranks (they own dummy slots), so the extra
 // breathing room the old 62/84 reserved is dead space now.
@@ -435,6 +440,9 @@ pub fn intrinsic_size_with(node: &Node, measure: impl Fn(&str) -> f64) -> (f64, 
         Shape::Hexagon => ((tw + 2.0 * PAD_X + 28.0).max(MIN_W + 28.0), base_h),
         // Cylinder caps add vertical room.
         Shape::Cylinder => ((tw + 2.0 * PAD_X).max(MIN_W), base_h + 16.0),
+        // A diamond with nothing to say is a branch point (a state
+        // `<<choice>>`, or a flowchart `A{ }`): compact, mermaid-style.
+        Shape::Diamond if node.label.trim().is_empty() => (CHOICE_SIZE, CHOICE_SIZE),
         // Diamonds need extra room so the text fits in the middle.
         Shape::Diamond => (((tw + 24.0) * 1.6).max(80.0), base_h * 1.7),
         Shape::Circle => {
@@ -1109,6 +1117,32 @@ fn rank(g: &Graph, rank_only: &[RankGroup]) -> Ranking {
             if indeg[v] == 0 {
                 q.push_back(v);
             }
+        }
+    }
+
+    // --- 3. Lead nodes (a state `note left of X`) one layer before
+    // their nearest target, as dagre's tight ranking puts them: the
+    // pass above parks every source on layer 0. Only a source moves, so
+    // no other node's layer depends on it; through a rank-only hub the
+    // target is the nearest member the hub ranks below it.
+    for &v in g.lead_nodes.iter().filter(|&&v| v < n) {
+        let has_in = adj
+            .iter()
+            .any(|links| links.iter().any(|&(w, ei)| w == v && !back[ei]));
+        let reach = |w: usize| -> Option<usize> {
+            if w < n {
+                Some(layer[w])
+            } else {
+                adj[w].iter().map(|&(t, _)| layer[t]).min()
+            }
+        };
+        let to = adj[v]
+            .iter()
+            .filter(|&&(_, ei)| !back[ei])
+            .filter_map(|&(w, _)| reach(w))
+            .min();
+        if let Some(to) = to.filter(|&t| !has_in && t > layer[v] + 1) {
+            layer[v] = to - 1;
         }
     }
 
@@ -3336,6 +3370,34 @@ mod tests {
         assert_eq!(wrap_text("x\ny", 1.0, 1.0), "x\ny");
         let at_13 = wrap_text(s, 80.0, 13.0 / TEXT_CALIBRATION);
         assert!(at_13.lines().count() <= w.lines().count());
+    }
+
+    #[test]
+    fn unlabelled_diamond_is_a_compact_choice() {
+        // A state `<<choice>>` has no text: mermaid draws it 28×28, not
+        // the 80×64.6 a decision diamond needs round its label.
+        let doc = crate::parser::parse_document(
+            "stateDiagram-v2\nstate c <<choice>>\n[*] --> c\nc --> A : yes\nc --> B : no",
+        )
+        .unwrap();
+        let crate::model::Document::State(g) = doc else {
+            panic!("a state diagram");
+        };
+        let c = &g.nodes[g.node_index("c").unwrap()];
+        assert_eq!(intrinsic_size(c), (CHOICE_SIZE, CHOICE_SIZE));
+        // Labelled diamonds keep the text-fitting rule and its minimum.
+        let g = crate::parser::parse("flowchart TD\nA{ok?} --> B{a much longer question}").unwrap();
+        let (wa, ha) = intrinsic_size(&g.nodes[0]);
+        assert_eq!((wa, ha), (80.0, BASE_H * 1.7), "short label: the minimum");
+        let (wb, _) = intrinsic_size(&g.nodes[1]);
+        let tw = text_width("a much longer question");
+        assert_eq!(wb, (tw + 24.0) * 1.6, "long label: text-fitted");
+        // The compact choice still lays out and anchors on its border.
+        let sc = crate::scene::scene(&crate::parser::parse("flowchart TD\nA{ } --> B").unwrap());
+        assert_eq!((sc.nodes[0].w, sc.nodes[0].h), (CHOICE_SIZE, CHOICE_SIZE));
+        let start = sc.edges[0].bezier[0];
+        let bottom = sc.nodes[0].y + CHOICE_SIZE / 2.0;
+        assert!((start.1 - bottom).abs() < 0.5, "edge leaves the vertex");
     }
 
     #[test]

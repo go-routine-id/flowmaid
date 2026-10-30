@@ -2851,16 +2851,18 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
     let height = (maxy - miny) + 2.0 * MARGIN;
     let t = |p: (f64, f64)| (p.0 + tx, p.1 + ty);
 
-    // Endpoint display name: pseudostates announce "start"/"end", not
-    // their parser-synthesized `__start_*`/`__end_*` ids (#16). Keyed
-    // on Shape (not the id prefix) so a user node literally named
+    // Endpoint display name: pseudostates announce "start"/"end", and a
+    // state note card "note", not their parser-synthesized `__start_*` /
+    // `__end_*` / `__note_*` ids (#16). Keyed on Shape (and a card's
+    // colours, not the id prefix alone) so a user node literally named
     // "__start_x" is unaffected. BTreeMap keeps it zero-dep + ordered.
-    let shape_of: std::collections::BTreeMap<&str, Shape> =
-        sc.nodes.iter().map(|n| (n.id.as_str(), n.shape)).collect();
+    let node_of: std::collections::BTreeMap<&str, &SceneNode> =
+        sc.nodes.iter().map(|n| (n.id.as_str(), n)).collect();
     let display = |id: &str| -> String {
-        match shape_of.get(id) {
-            Some(Shape::StateStart) => "start".to_string(),
-            Some(Shape::StateEnd) => "end".to_string(),
+        match node_of.get(id) {
+            Some(n) if n.shape == Shape::StateStart => "start".to_string(),
+            Some(n) if n.shape == Shape::StateEnd => "end".to_string(),
+            Some(n) if is_note_card(n) => "note".to_string(),
             _ => id.to_string(),
         }
     };
@@ -2992,9 +2994,11 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
         let (cx, cy) = t((n.x, n.y));
         let (w, h) = (n.w, n.h);
         // Group per node so the <title> (a11y + hover tooltip) covers
-        // shape AND label together (issue #16). An unlabelled node
-        // (pseudostate / choice / fork) uses a shape-derived name, and
-        // never emits an empty `<title>` (a11y anti-pattern).
+        // shape AND label together (issue #16). An unlabelled start/end
+        // pseudostate announces its role (its id is synthesized); an
+        // unlabelled choice or fork/join bar its own id (`decide`,
+        // `forked`), the name the edge titles use for it too. Never an
+        // empty `<title>` (a11y anti-pattern).
         let node_title = {
             let lbl = plain_text(&n.label);
             if !lbl.is_empty() {
@@ -3003,7 +3007,7 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
                 match n.shape {
                     Shape::StateStart => "start".to_string(),
                     Shape::StateEnd => "end".to_string(),
-                    Shape::ForkBar => "fork/join".to_string(),
+                    Shape::Diamond | Shape::ForkBar => n.id.clone(),
                     _ => String::new(),
                 }
             }
@@ -3776,6 +3780,16 @@ fn border(p: &Placed, shape: Shape, toward: (f64, f64)) -> (f64, f64) {
         }
     };
     (p.b + dx * t, p.l + dy * t)
+}
+
+/// A state `note` card ([`crate::parser`] names it `__note_*` and paints
+/// it in [`crate::style::NOTE_STYLE`]).
+fn is_note_card(n: &SceneNode) -> bool {
+    let card = crate::style::NOTE_STYLE;
+    n.id.starts_with("__note_")
+        && n.shape == Shape::Rect
+        && n.style.fill.as_deref() == Some(card.fill)
+        && n.style.stroke.as_deref() == Some(card.stroke)
 }
 
 /// Midpoint of a cubic bezier (t = 0.5), used to place labels.

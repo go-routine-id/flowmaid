@@ -414,6 +414,11 @@ pub struct Graph {
     /// to its class — then sits just above its class, and a class
     /// pointing at one deep in the hierarchy sits next to it.
     pub(crate) tight_sources: bool,
+    /// Sources ranked one layer before their nearest target instead of
+    /// on the first layer: a state `note left of X` card (mermaid's
+    /// dagre ranks it just ahead of X; longest-path layering would park
+    /// it at the top however deep X sits).
+    pub(crate) lead_nodes: Vec<usize>,
     index: HashMap<String, usize>,
 }
 

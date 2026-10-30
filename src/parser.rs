@@ -5392,7 +5392,9 @@ fn parse_state(source: &str, header_line: usize) -> Result<Graph, ParseError> {
 
     // Open composite blocks: (subgraph index, opening line).
     let mut stack: Vec<(usize, usize)> = Vec::new();
-    let mut note_block = false;
+    // A block note being read: where it attaches, and its lines so far.
+    // `None` inside the block = a note form we keep skipping.
+    let mut note_block: Option<Option<(StateNote, Vec<String>)>> = None;
     for (i, raw) in source.lines().enumerate() {
         let lineno = i + 1;
         if lineno <= header_line {
@@ -5406,9 +5408,13 @@ fn parse_state(source: &str, header_line: usize) -> Result<Graph, ParseError> {
         if line.is_empty() {
             continue;
         }
-        if note_block {
+        if let Some(open) = note_block.as_mut() {
             if line.eq_ignore_ascii_case("end note") {
-                note_block = false;
+                if let Some((at, lines)) = note_block.take().flatten() {
+                    state_note(&mut g, &stack, &sub_ids, at, &lines.join("\n"));
+                }
+            } else if let Some((_, lines)) = open {
+                lines.push(note_text(line));
             }
             continue;
         }
@@ -5426,12 +5432,27 @@ fn parse_state(source: &str, header_line: usize) -> Result<Graph, ParseError> {
             }
             continue;
         }
-        // Notes are accepted and skipped (not rendered yet):
-        // `note left of X : text` is one line; without a ':' it is a
-        // block that runs until `end note`.
+        // Notes, mermaid-style: a yellow card joined to its state by a
+        // dotted line. `note left of X : text` is one line; without a
+        // ':' the text runs on the next lines until `end note`.
+        // `note "text" as N` is a free-standing card named N. Any other
+        // note form is skipped as before (a block one to `end note`).
         if let Some(rest) = strip_keyword(line, "note") {
-            if !rest.contains(':') {
-                note_block = true;
+            let rest = rest.trim();
+            if let Some((text, id)) = floating_note(rest) {
+                let idx = state_node(&mut g, &stack, id, Some(text), Some(Shape::Rect));
+                g.nodes[idx].style = note_style();
+                continue;
+            }
+            let (head, text) = match rest.split_once(':') {
+                Some((h, t)) => (h, Some(t)),
+                None => (rest, None),
+            };
+            let at = state_note_head(head);
+            match (at, text) {
+                (Some(at), Some(t)) => state_note(&mut g, &stack, &sub_ids, at, &note_text(t)),
+                (at, None) => note_block = Some(at.map(|a| (a, Vec::new()))),
+                (None, Some(_)) => {}
             }
             continue;
         }
@@ -5517,7 +5538,126 @@ fn parse_state(source: &str, header_line: usize) -> Result<Graph, ParseError> {
             ),
         ));
     }
+    // A block note left open runs to the end of the source: draw what
+    // it swallowed, so the missing `end note` shows instead of the rest
+    // of the diagram vanishing.
+    if let Some(Some((at, lines))) = note_block {
+        state_note(&mut g, &stack, &sub_ids, at, &lines.join("\n"));
+    }
     Ok(g)
+}
+
+/// Where a `note left of X` / `note right of X` attaches: X (a state or
+/// a composite id) and whether the card goes before it along the flow.
+struct StateNote {
+    target: String,
+    before: bool,
+}
+
+/// The head of a positioned note (`left of X`, `right of X`, before any
+/// `:`), or `None` for any other form.
+fn state_note_head(head: &str) -> Option<StateNote> {
+    let (before, rest) = if let Some(r) = strip_keyword(head.trim(), "left") {
+        (true, r)
+    } else {
+        (false, strip_keyword(head.trim(), "right")?)
+    };
+    let target = strip_keyword(rest.trim(), "of")?.trim();
+    is_class_ident(target).then(|| StateNote {
+        target: target.to_string(),
+        before,
+    })
+}
+
+/// `"text" as N` after `note`: the card's text and its id.
+fn floating_note(rest: &str) -> Option<(String, &str)> {
+    let body = rest.strip_prefix('"')?;
+    let close = body.find('"')?;
+    let id = strip_keyword(body[close + 1..].trim(), "as")?.trim();
+    is_class_ident(id).then(|| (note_text(&body[..close]), id))
+}
+
+/// Note text: cleaned like a label, `<br/>` breaks kept as lines, each
+/// line trimmed (`a <br/> b` is "a" over "b").
+fn note_text(s: &str) -> String {
+    clean_label(s)
+        .split('\n')
+        .map(str::trim)
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// A note card's colours ([`crate::style::NOTE_STYLE`]).
+fn note_style() -> NodeStyle {
+    let crate::style::ShapeStyle { fill, stroke } = crate::style::NOTE_STYLE;
+    NodeStyle {
+        fill: Some(fill.to_string()),
+        stroke: Some(stroke.to_string()),
+        ..NodeStyle::default()
+    }
+}
+
+/// Add a note card with `text` and the dotted line joining it to its
+/// state, mermaid-style: a node of its own (so it is laid out, routed,
+/// picked and dragged like any box) in the state's own box, linked by a
+/// `DottedOpen` edge that runs from the state to a `right of` card (one
+/// layer after it) and from a `left of` card to the state (one layer
+/// before it, see [`Graph::lead_nodes`]). A note on a composite links
+/// to its frame and sits in the composite's parent box.
+fn state_note(
+    g: &mut Graph,
+    stack: &[(usize, usize)],
+    sub_ids: &HashMap<String, usize>,
+    at: StateNote,
+    text: &str,
+) {
+    let target = match sub_ids.get(&at.target) {
+        Some(&si) => End::Sub(si),
+        None => End::Node(state_node(g, stack, &at.target, None, None)),
+    };
+    // The box the card joins: the state's own, or the composite's
+    // parent (the open block when the composite is not declared yet).
+    let owner = match target {
+        End::Node(v) => g.subgraphs.iter().position(|s| s.nodes.contains(&v)),
+        End::Sub(si) => match g.subgraphs.get(si) {
+            Some(s) => s.parent,
+            None => stack.last().map(|&(s, _)| s),
+        },
+    };
+    // A fresh id the source cannot have used yet (`__start_*` style).
+    let mut k = g.nodes.len();
+    while g.node_index(&format!("__note_{k}")).is_some() {
+        k += 1;
+    }
+    let note = g.ensure_node(
+        &format!("__note_{k}"),
+        Some(text.to_string()),
+        Some(Shape::Rect),
+    );
+    g.nodes[note].style = note_style();
+    if let Some(si) = owner {
+        g.subgraphs[si].nodes.push(note);
+    }
+    if at.before {
+        g.lead_nodes.push(note);
+    }
+    let card = End::Node(note);
+    let (from, to) = if at.before {
+        (card, target)
+    } else {
+        (target, card)
+    };
+    match (from, to) {
+        (End::Node(a), End::Node(b)) => g.add_edge(a, b, None, EdgeKind::DottedOpen),
+        (from, to) => g.sub_edges.push(SubEdge {
+            from,
+            to,
+            label: None,
+            kind: EdgeKind::DottedOpen,
+            ends: EdgeEnds::default(),
+            meta: EdgeMeta::default(),
+        }),
+    }
 }
 
 /// Head of a `state` declaration (everything after the keyword,
@@ -7436,13 +7576,92 @@ mod tests {
     }
 
     #[test]
-    fn state_notes_are_skipped_and_v1_header_works() {
+    fn state_notes_become_cards_and_v1_header_works() {
         let g = state(
-            "stateDiagram\nA --> B\nnote right of A : hi\n\
-             note left of B\nmulti\nline\nend note\nB --> A",
+            "stateDiagram\nA --> B\nnote right of A : hi <br/> there\n\
+             note left of B\nmulti\n  line\nEND NOTE\nB --> A",
         );
+        // Two states, two note cards; two transitions, two note links.
+        assert_eq!(g.nodes.len(), 4);
+        assert_eq!(g.edges.len(), 4);
+        let card = |text: &str| {
+            let v = g.nodes.iter().position(|n| n.label == text).unwrap();
+            let n = &g.nodes[v];
+            assert!(n.id.starts_with("__note_"), "{}", n.id);
+            assert_eq!(n.shape, Shape::Rect);
+            let note = crate::style::NOTE_STYLE;
+            assert_eq!(n.style.fill.as_deref(), Some(note.fill));
+            assert_eq!(n.style.stroke.as_deref(), Some(note.stroke));
+            v
+        };
+        let (a, b) = (g.node_index("A").unwrap(), g.node_index("B").unwrap());
+        let link = |from: usize, to: usize| {
+            let e = g.edges.iter().find(|e| e.from == from && e.to == to);
+            let e = e.expect("a note link");
+            assert_eq!((e.kind, e.label.as_deref()), (EdgeKind::DottedOpen, None));
+        };
+        // `right of`: the state links to its card (after it on the flow);
+        // `left of`: the card links to the state (before it).
+        let hi = card("hi\nthere");
+        link(a, hi);
+        let multi = card("multi\nline");
+        link(multi, b);
+        assert_eq!(g.lead_nodes, vec![multi]);
+    }
+
+    #[test]
+    fn state_notes_join_their_states_box() {
+        let g = state(
+            "stateDiagram-v2\nstate Outer {\nX --> Y\nnote right of X : in\n}\n\
+             note left of Y : from outside\nnote right of Outer : on the box\n\
+             state Later {\nZ --> W\n}\nnote left of Later : ahead",
+        );
+        let at = |text: &str| g.nodes.iter().position(|n| n.label == text).unwrap();
+        // A note on a member sits in the member's box, wherever the
+        // note line is.
+        let members = &g.subgraphs[0].nodes;
+        assert!(members.contains(&at("in")) && members.contains(&at("from outside")));
+        // A note on a composite links to its frame from the parent box.
+        let boxed = at("on the box");
+        assert!(g.subgraphs.iter().all(|s| !s.nodes.contains(&boxed)));
+        let sub = |v: usize| {
+            g.sub_edges
+                .iter()
+                .find(|e| e.from == End::Node(v) || e.to == End::Node(v))
+                .expect("a note link to a frame")
+        };
+        let e = sub(boxed);
+        assert_eq!((e.from, e.to), (End::Sub(0), End::Node(boxed)));
+        assert_eq!(e.kind, EdgeKind::DottedOpen);
+        let ahead = at("ahead");
+        let e = sub(ahead);
+        assert_eq!((e.from, e.to), (End::Node(ahead), End::Sub(1)));
+        assert!(g.lead_nodes.contains(&ahead));
+    }
+
+    #[test]
+    fn state_note_forms_mermaid_ignores_stay_harmless() {
+        // A floating note used to open a block that swallowed the rest
+        // of the diagram; it is now a free card named by its alias.
+        let g = state("stateDiagram-v2\nnote \"free text\" as N1\nA --> B\nN1 --> A");
+        let n1 = &g.nodes[g.node_index("N1").unwrap()];
+        assert_eq!((n1.label.as_str(), n1.shape), ("free text", Shape::Rect));
+        assert!(n1.style.fill.is_some());
+        assert_eq!(g.edges.len(), 2, "the lines after it still parse");
+        // Note forms with no state to attach to are skipped as before,
+        // a block one up to its `end note`.
+        let g =
+            state("stateDiagram-v2\nnote over A : x\nnote over A\nA --> Gone\nend note\nA --> B");
         assert_eq!(g.nodes.len(), 2);
-        assert_eq!(g.edges.len(), 2);
+        assert_eq!(g.edges.len(), 1);
+        // A block note never closed keeps what it swallowed, visibly.
+        let g = state("stateDiagram-v2\nA --> B\nnote right of B\nB --> C");
+        assert!(g.nodes.iter().any(|n| n.label == "B --> C"));
+        assert!(g.node_index("C").is_none());
+        // Card ids never collide with a state the source already named.
+        let g = state("stateDiagram-v2\n__note_1 --> X\nnote right of X : n");
+        assert_eq!(g.nodes.len(), 3);
+        assert_eq!(g.nodes[g.node_index("__note_1").unwrap()].label, "__note_1");
     }
 
     #[test]
