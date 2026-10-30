@@ -1535,7 +1535,11 @@ pub fn parse_document(source: &str) -> Result<Document, ParseError> {
         return match diagram_type(line) {
             Some("erDiagram") => parse_er(source, i + 1).map(Document::Er),
             Some("classDiagram") => parse_class(source, i + 1).map(Document::Class),
-            Some("sequenceDiagram") => parse_sequence(source, i + 1).map(Document::Sequence),
+            // Config is read from the ORIGINAL source (see sankey below).
+            Some("sequenceDiagram") => parse_sequence(source, i + 1).map(|mut d| {
+                apply_sequence_config(&mut d, raw_source);
+                Document::Sequence(d)
+            }),
             Some("pie") => parse_pie(source, i + 1).map(Document::Pie),
             Some("stateDiagram-v2") | Some("stateDiagram") => {
                 parse_state(source, i + 1).map(Document::State)
@@ -3548,6 +3552,21 @@ fn split_card_end(s: &str, card_after: bool) -> (&str, Option<String>) {
 // Sequence diagram (`sequenceDiagram`)
 // ---------------------------------------------------------------
 
+/// Apply `config.sequence.*` from YAML frontmatter (see
+/// [`frontmatter_config`]): mermaid's `mirrorActors`, plus flowmaid's
+/// `scopedFrames`. A value that is not a YAML boolean keeps the
+/// default; unknown keys (mermaid has many) are skipped.
+fn apply_sequence_config(d: &mut SequenceDiagram, source: &str) {
+    for (k, v) in frontmatter_config(source, "sequence") {
+        let v = unquote_yaml(v);
+        match k {
+            "mirrorActors" => d.mirror_actors = yaml_bool(&v, d.mirror_actors),
+            "scopedFrames" => d.scoped_frames = yaml_bool(&v, d.scoped_frames),
+            _ => {}
+        }
+    }
+}
+
 /// Parse a `sequenceDiagram` body. `header_line` is the 1-indexed
 /// line of the header; everything up to and including it is skipped.
 fn parse_sequence(source: &str, header_line: usize) -> Result<SequenceDiagram, ParseError> {
@@ -5303,48 +5322,60 @@ fn frontmatter_body(source: &str) -> Option<Vec<&str>> {
     Some(source.lines().take(close).skip(1).collect())
 }
 
-/// Read `config.sankey.*` out of YAML frontmatter.
-///
-/// Deliberately NOT a YAML parser: it walks indentation for the
-/// `config:` -> `sankey:` path and reads scalar `key: value` pairs under
-/// it. Richer YAML (anchors, flow maps, block scalars) is ignored rather
-/// than guessed at, and unknown keys are skipped mermaid-style so a file
-/// carrying config for other diagrams still renders.
+/// Read `config.sankey.*` out of YAML frontmatter (see
+/// [`frontmatter_config`]).
 fn sankey_config(source: &str) -> SankeyConfig {
     let mut cfg = SankeyConfig::default();
+    for (k, v) in frontmatter_config(source, "sankey") {
+        apply_sankey_key(&mut cfg, k, v);
+    }
+    cfg
+}
+
+/// The scalar `key: value` pairs (key trimmed, value raw — run it
+/// through [`unquote_yaml`]) of the `config.<section>:` block in YAML
+/// frontmatter, in source order; empty when there is none.
+///
+/// Deliberately NOT a YAML parser: it walks indentation for the
+/// `config:` -> `<section>:` path and reads scalar `key: value` pairs
+/// under it. Richer YAML (anchors, flow maps, block scalars) is ignored
+/// rather than guessed at, and callers skip unknown keys mermaid-style
+/// so a file carrying config for other diagrams still renders.
+fn frontmatter_config<'a>(source: &'a str, section: &str) -> Vec<(&'a str, &'a str)> {
+    let mut out = Vec::new();
     let Some(body) = frontmatter_body(source) else {
-        return cfg;
+        return out;
     };
     let indent_of = |l: &str| l.len() - l.trim_start().len();
-    // Indent of `config:` / `sankey:` once seen. A line at or left of a
-    // recorded indent has closed that block.
+    // Indent of `config:` / `<section>:` once seen. A line at or left
+    // of a recorded indent has closed that block.
     let mut config_at: Option<usize> = None;
     // Indent shared by `config:`'s DIRECT children, learnt from the
     // first one seen. Without it a `sankey:` nested under some other
     // namespace (`config.themeVariables.sankey`) would reconfigure the
     // diagram.
     let mut child_at: Option<usize> = None;
-    let mut sankey_at: Option<usize> = None;
+    let mut section_at: Option<usize> = None;
     for line in body {
         let t = line.trim();
         if t.is_empty() || t.starts_with('#') {
             continue;
         }
         let ind = indent_of(line);
-        if let Some(inner) = sankey_at {
+        if let Some(inner) = section_at {
             if ind > inner {
                 if let Some((k, v)) = t.split_once(':') {
-                    apply_sankey_key(&mut cfg, k.trim(), v);
+                    out.push((k.trim(), v));
                 }
                 continue;
             }
-            sankey_at = None;
+            section_at = None;
         }
         if let Some(outer) = config_at {
             if ind > outer {
                 let direct = *child_at.get_or_insert(ind);
-                if ind == direct && t == "sankey:" {
-                    sankey_at = Some(ind);
+                if ind == direct && t.strip_suffix(':') == Some(section) {
+                    section_at = Some(ind);
                 }
                 continue;
             }
@@ -5355,7 +5386,7 @@ fn sankey_config(source: &str) -> SankeyConfig {
             config_at = Some(ind);
         }
     }
-    cfg
+    out
 }
 
 /// Apply one `config.sankey.<key>: <value>` pair. A value that does not

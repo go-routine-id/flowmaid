@@ -799,7 +799,7 @@ pub enum RelKind {
 
 /// Sequence diagram (`sequenceDiagram` header). Items keep source
 /// order — the layout is one row per item, top-down.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SequenceDiagram {
     pub participants: Vec<Participant>,
     pub items: Vec<SeqItem>,
@@ -812,7 +812,32 @@ pub struct SequenceDiagram {
     /// Accessible description from `accDescr:` or the multi-line
     /// `accDescr { … }` block — written as the SVG's `<desc>`.
     pub acc_descr: Option<String>,
+    /// Repeat the participant boxes below the lifelines, as mermaid's
+    /// `mirrorActors` does (on by default there and here). Read from
+    /// frontmatter `config.sequence.mirrorActors`.
+    pub mirror_actors: bool,
+    /// Size each `loop` / `opt` / `alt` / `par` frame to the lifelines
+    /// (and notes) it covers, as mermaid does, instead of flowmaid's
+    /// default full-width aligned bands. Off by default; read from
+    /// frontmatter `config.sequence.scopedFrames` (a flowmaid key that
+    /// mermaid ignores — its frames are always scoped).
+    pub scoped_frames: bool,
     index: HashMap<String, usize>,
+}
+
+impl Default for SequenceDiagram {
+    fn default() -> Self {
+        SequenceDiagram {
+            participants: Vec::new(),
+            items: Vec::new(),
+            autonumber: false,
+            acc_title: None,
+            acc_descr: None,
+            mirror_actors: true,
+            scoped_frames: false,
+            index: HashMap::new(),
+        }
+    }
 }
 
 impl SequenceDiagram {
@@ -844,8 +869,8 @@ impl SequenceDiagram {
 pub struct Participant {
     pub id: String,
     pub label: String,
-    /// Declared with `actor` — drawn as an outlined box instead of
-    /// the filled participant box.
+    /// Declared with `actor` — drawn as a stick figure with its name
+    /// below instead of the filled participant box.
     pub actor: bool,
 }
 
