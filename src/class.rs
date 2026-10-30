@@ -19,6 +19,7 @@
 //! [`card_spots`] expose the end glyphs and cardinality positions as
 //! plain geometry so GUI painters draw exactly what SVG exports.
 
+use std::cell::Cell;
 use std::collections::{BTreeMap, HashMap};
 
 use crate::labels::{avoid_label_overlaps, LABEL_ROUTE_WORK, LABEL_STATIC_WORK};
@@ -308,16 +309,25 @@ const ORTHO_R: f64 = 7.0;
 /// with — room for the longest end glyph (the 18 px diamond) plus air.
 const ORTHO_STUB: f64 = 22.0;
 /// Two horizontal (or vertical) runs closer than this that overlap
-/// along their length read as one line: the later one steps aside.
+/// along their length read as one line — two edges merged into one
+/// read as the wrong connection — so a route that would lie on a run
+/// already placed is refused like one through a box: the edge takes
+/// another lane, or keeps its curve.
 const ORTHO_SEP: f64 = 8.0;
-/// Cost of an orthogonal stretch lying on another route's run: two
-/// edges merged into one line read as the wrong connection.
-const ORTHO_OVERLAP: usize = 100;
+/// Parallel runs closer than this (but [`ORTHO_SEP`] or more apart)
+/// still read as one double line over a long stretch: a route keeps
+/// this far from them when the gap has room, at [`ORTHO_CRAMPED`].
+const ORTHO_ROOM: f64 = 14.0;
+/// Cost of an orthogonal stretch running closer than [`ORTHO_ROOM`]
+/// alongside another route's run (less than a crossing).
+const ORTHO_CRAMPED: usize = 3;
 /// Cost of an orthogonal stretch running under another edge's label
 /// (the chip hides it there).
 const ORTHO_UNDER_LABEL: usize = 60;
 /// Cost of an orthogonal route crossing another.
 const ORTHO_CROSSING: usize = 10;
+/// Step between the spots tried for a rerouted edge's label.
+const LABEL_SPOT_STEP: f64 = 6.0;
 /// An edge end alone on its face keeps at least this far from the
 /// face's corners when it is moved.
 const ORTHO_INSET: f64 = 24.0;
@@ -335,8 +345,24 @@ const ORTHO_INSET: f64 = 24.0;
 /// curve. Edges the router routed (axis-aligned waypoints) are kept as
 /// routed; a label moves onto its new line.
 fn orthogonalize(sc: &mut Scene) {
-    let rects: Vec<Rect> = sc
-        .nodes
+    let laid = sc.edges.clone();
+    let (curves, cramped) = ortho_pass(&sc.nodes, &mut sc.edges, true);
+    if curves > 0 && cramped {
+        // Roomy lanes can use up a crowded gap: pack it tight instead
+        // when that leaves fewer edges on their curves.
+        let mut tight = laid;
+        if ortho_pass(&sc.nodes, &mut tight, false).0 < curves {
+            sc.edges = tight;
+        }
+    }
+}
+
+/// One [`orthogonalize`] pass over `edges` among `nodes`; `room` =
+/// keep [`ORTHO_ROOM`] between parallel runs where a gap allows. Returns
+/// how many free edges kept their curve, and whether any candidate was
+/// cramped (else a tight pass would choose the same).
+fn ortho_pass(nodes: &[SceneNode], edges: &mut [SceneEdge], room: bool) -> (usize, bool) {
+    let rects: Vec<Rect> = nodes
         .iter()
         .map(|n| {
             (
@@ -347,8 +373,7 @@ fn orthogonalize(sc: &mut Scene) {
             )
         })
         .collect();
-    let idx: HashMap<String, usize> = sc
-        .nodes
+    let idx: HashMap<String, usize> = nodes
         .iter()
         .enumerate()
         .map(|(i, n)| (n.id.clone(), i))
@@ -369,12 +394,12 @@ fn orthogonalize(sc: &mut Scene) {
     // along the face, free to move). A long edge's ends stay with its
     // layout channels; a routed edge's with its route.
     let mut faces: BTreeMap<(usize, (i8, i8)), Vec<FaceEnd>> = BTreeMap::new();
-    for (j, e) in sc.edges.iter().enumerate() {
+    for (j, e) in edges.iter().enumerate() {
         let Some((ia, ib)) = ends_of(e) else { continue };
         let (a, b) = edge_ends(e);
         let movable = free(e) && e.waypoints.is_empty();
         for (i, p, start) in [(ia, a, true), (ib, b, false)] {
-            let n = face_normal(&sc.nodes[i], p);
+            let n = face_normal(&nodes[i], p);
             let along = if n.0 == 0.0 { p.0 } else { p.1 };
             faces
                 .entry((i, face_key(n)))
@@ -420,42 +445,48 @@ fn orthogonalize(sc: &mut Scene) {
             from = (to, k + 1);
         }
     }
-    let mut runs: Vec<Run> = sc
-        .edges
-        .iter()
-        .filter(|e| routed(e))
-        .flat_map(|e| e.waypoints.windows(2).map(|w| Run::of(w[0], w[1])))
-        .collect();
+    let mut runs = Runs::default();
+    for e in edges.iter().filter(|e| routed(e)) {
+        for w in e.waypoints.windows(2) {
+            runs.push(Run::of(w[0], w[1]));
+        }
+    }
     // Shortest first: short edges have the fewest ways to go, and a
     // back-edge bow — the longest way round — fits its lane and legs
     // around routes (and labels) already final.
-    let mut order: Vec<usize> = (0..sc.edges.len()).collect();
+    let mut order: Vec<usize> = (0..edges.len()).collect();
+    // Edges whose line (and label) is final: the kept ones, then each
+    // free one once handled. Only their labels count against a route —
+    // a free edge's label still sits on its old curve and moves onto
+    // its new line when that edge's turn comes.
+    let mut settled: Vec<bool> = edges.iter().map(|e| !free(e)).collect();
+    let mut curves = 0;
+    let cramped = Cell::new(false);
     order.sort_by(|&p, &q| {
         let span = |e: &SceneEdge| {
             let (a, b) = (e.bezier[0], e.bezier[3]);
             (a.0 - b.0).abs() + (a.1 - b.1).abs()
         };
-        span(&sc.edges[p]).total_cmp(&span(&sc.edges[q]))
+        span(&edges[p]).total_cmp(&span(&edges[q]))
     });
     for j in order {
-        let e = &sc.edges[j];
+        let e = &edges[j];
         if !free(e) {
             continue;
         }
         let Some((ia, ib)) = ends_of(e) else { continue };
         let (a, b) = edge_ends(e);
-        let (na, nb) = (face_normal(&sc.nodes[ia], a), face_normal(&sc.nodes[ib], b));
+        let (na, nb) = (face_normal(&nodes[ia], a), face_normal(&nodes[ib], b));
         let alone = (
             faces[&(ia, face_key(na))].len() == 1,
             faces[&(ib, face_key(nb))].len() == 1,
         );
         let a = moved.get(&(j, true)).copied().unwrap_or(a);
         let b = moved.get(&(j, false)).copied().unwrap_or(b);
-        let labels: Vec<Rect> = sc
-            .edges
+        let labels: Vec<Rect> = edges
             .iter()
             .enumerate()
-            .filter(|&(k, _)| k != j)
+            .filter(|&(k, _)| k != j && settled[k])
             .filter_map(|(_, o)| o.label.as_ref())
             .map(|(_, m, w)| {
                 (
@@ -466,12 +497,15 @@ fn orthogonalize(sc: &mut Scene) {
                 )
             })
             .collect();
+        settled[j] = true;
         let ctx = Ortho {
             rects: &rects,
             labels: &labels,
             ia,
             ib,
             runs: &runs,
+            room,
+            cramped: &cramped,
         };
         let corners = if e.waypoints.len() >= 2 {
             ctx.chain(&e.waypoints, na, nb)
@@ -482,10 +516,19 @@ fn orthogonalize(sc: &mut Scene) {
         } else {
             None
         };
-        let Some(corners) = corners else { continue };
-        runs.extend(corners.windows(2).map(|w| Run::of(w[0], w[1])));
+        let Some(corners) = corners else {
+            curves += 1;
+            continue;
+        };
+        let spot = edges[j]
+            .label
+            .as_ref()
+            .map(|l| ctx.label_spot(&corners, l.2, l.1));
+        for w in corners.windows(2) {
+            runs.push(Run::of(w[0], w[1]));
+        }
         let (a, b) = (corners[0], corners[corners.len() - 1]);
-        let e = &mut sc.edges[j];
+        let e = &mut edges[j];
         if corners.len() == 2 {
             // Straight: a straight cubic, no waypoints — sampled as
             // finely as any curve (two bare waypoints would be sampled
@@ -506,10 +549,11 @@ fn orthogonalize(sc: &mut Scene) {
             e.waypoints = crate::router::smooth(&corners, ORTHO_R);
         }
         let line = edge_polyline(e);
-        if let Some((_, m, _)) = &mut e.label {
-            *m = nearest_on(&line, *m);
+        if let (Some((_, m, _)), Some(spot)) = (&mut e.label, spot) {
+            *m = nearest_on(&line, spot);
         }
     }
+    (curves, cramped.get())
 }
 
 /// An edge end on a box face: (edge, at its start, place along the
@@ -535,7 +579,12 @@ struct Ortho<'a> {
     labels: &'a [Rect],
     ia: usize,
     ib: usize,
-    runs: &'a [Run],
+    runs: &'a Runs,
+    /// Keep [`ORTHO_ROOM`] between parallel runs where there is room.
+    room: bool,
+    /// Set once a candidate pays [`ORTHO_CRAMPED`]: only then can the
+    /// room kept have cost another edge its lane.
+    cramped: &'a Cell<bool>,
 }
 
 impl Ortho<'_> {
@@ -543,7 +592,12 @@ impl Ortho<'_> {
     /// touched (at the ends) but not entered.
     fn blocked(&self, pts: &[(f64, f64)]) -> bool {
         pts.windows(2).any(|s| {
+            let (x0, x1) = (s[0].0.min(s[1].0), s[0].0.max(s[1].0));
+            let (y0, y1) = (s[0].1.min(s[1].1), s[0].1.max(s[1].1));
             self.rects.iter().enumerate().any(|(k, &r)| {
+                if r.2 < x0 || x1 < r.0 || r.3 < y0 || y1 < r.1 {
+                    return false;
+                }
                 let r = if k == self.ia || k == self.ib {
                     (r.0 + 0.5, r.1 + 0.5, r.2 - 0.5, r.3 - 0.5)
                 } else {
@@ -555,22 +609,39 @@ impl Ortho<'_> {
     }
 
     /// What polyline `pts` costs among the routes placed so far:
-    /// `None` through a box; else [`ORTHO_OVERLAP`] per stretch lying
-    /// on a placed run, [`ORTHO_UNDER_LABEL`] per stretch under another
-    /// edge's label and [`ORTHO_CROSSING`] per crossing.
+    /// `None` through a box or along a placed run (closer than
+    /// [`ORTHO_SEP`]); else [`ORTHO_UNDER_LABEL`] per stretch under
+    /// another edge's label, [`ORTHO_CROSSING`] per crossing and
+    /// [`ORTHO_CRAMPED`] per stretch closer than [`ORTHO_ROOM`] beside
+    /// a placed run.
     fn cost(&self, pts: &[(f64, f64)]) -> Option<usize> {
+        self.cost_under(pts, usize::MAX)
+    }
+
+    /// [`Ortho::cost`], or `None` as soon as it reaches `bound` (a
+    /// candidate that cannot beat the best so far).
+    fn cost_under(&self, pts: &[(f64, f64)], bound: usize) -> Option<usize> {
         if self.blocked(pts) {
             return None;
         }
         let mut c = 0;
+        let near = if self.room { ORTHO_ROOM } else { ORTHO_SEP };
         for w in pts.windows(2) {
             let r = Run::of(w[0], w[1]);
-            for q in self.runs {
-                if q.vertical == r.vertical {
-                    if (q.c - r.c).abs() < ORTHO_SEP && q.l < r.h - 2.0 && r.l + 2.0 < q.h {
-                        c += ORTHO_OVERLAP;
+            for q in self.runs.within(r.vertical, r.c - near, r.c + near) {
+                if q.l < r.h - 2.0 && r.l + 2.0 < q.h {
+                    let gap = (q.c - r.c).abs();
+                    if gap < ORTHO_SEP {
+                        return None;
                     }
-                } else if r.l + 1.0 < q.c && q.c < r.h - 1.0 && q.l + 1.0 < r.c && r.c < q.h - 1.0 {
+                    if self.room && gap < ORTHO_ROOM {
+                        c += ORTHO_CRAMPED;
+                        self.cramped.set(true);
+                    }
+                }
+            }
+            for q in self.runs.within(!r.vertical, r.l + 1.0, r.h - 1.0) {
+                if q.l + 1.0 < r.c && r.c < q.h - 1.0 {
                     c += ORTHO_CROSSING;
                 }
             }
@@ -581,22 +652,25 @@ impl Ortho<'_> {
             {
                 c += ORTHO_UNDER_LABEL;
             }
+            if c >= bound {
+                return None;
+            }
         }
         Some(c)
     }
 
     /// The cheapest of `cands` ([`Ortho::cost`]; the earlier wins a
-    /// tie, so candidates come in order of preference).
+    /// tie, so candidates come in order of preference); `None` when
+    /// each one crosses a box or lies on a placed run.
     fn best(
         &self,
         cands: impl Iterator<Item = Vec<(f64, f64)>>,
     ) -> Option<(usize, Vec<(f64, f64)>)> {
         let mut best: Option<(usize, Vec<(f64, f64)>)> = None;
         for pts in cands {
-            if let Some(c) = self.cost(&pts) {
-                if best.as_ref().map_or(true, |b| c < b.0) {
-                    best = Some((c, pts));
-                }
+            let bound = best.as_ref().map_or(usize::MAX, |b| b.0);
+            if let Some(c) = self.cost_under(&pts, bound) {
+                best = Some((c, pts));
                 // Nothing beats free, and the earlier is preferred.
                 if c == 0 {
                     break;
@@ -654,9 +728,10 @@ impl Ortho<'_> {
             self.best(std::iter::once(back(vec![fa, (fa.0, fb.1)])))
         } else {
             let mid = (fa.1 + fb.1) / 2.0;
+            let span = (fa.0.min(fb.0), fa.0.max(fb.0));
             self.best(
-                offsets(mid)
-                    .filter(|y| (glo..=ghi).contains(y))
+                self.jog_places(mid, (glo, ghi), span, flip)
+                    .into_iter()
                     .map(|y| back(vec![fa, (fa.0, y), (fb.0, y), fb])),
             )
         };
@@ -665,25 +740,46 @@ impl Ortho<'_> {
                 return Some(pts.clone());
             }
         }
-        // Blocked between (or crowded): a lane at the curve's outer
-        // extent (the bow), entered and left square to the faces, from
-        // the ends as laid out — if the curve bows out past both ends.
+        // Blocked between (or crowded): a lane beside the way, entered
+        // and left square to the faces from the ends as laid out — at
+        // the curve's outer extent when it bows out past both ends (a
+        // back-edge bow); else, with no direct way left, just past the
+        // boxes in the way (or the ends), on either side.
         let (fa, fb) = ((sa, fa.1), (sb, fb.1));
         let mid = (fa.0 + fb.0) / 2.0;
-        let lane = edge_polyline(e)
+        let (near, far) = (fa.0.min(fb.0) - ORTHO_STUB, fa.0.max(fb.0) + ORTHO_STUB);
+        let bow = edge_polyline(e)
             .into_iter()
             .map(|p| f(p).0)
             .max_by(|p, q| (p - mid).abs().total_cmp(&(q - mid).abs()))
             .unwrap_or(mid);
-        let out = if lane < fa.0.min(fb.0) - ORTHO_STUB {
-            -1.0
-        } else if lane > fa.0.max(fb.0) + ORTHO_STUB {
-            1.0
+        let starts = if bow < near {
+            [Some((bow, -1.0)), None]
+        } else if bow > far {
+            [Some((bow, 1.0)), None]
+        } else if direct.is_none() {
+            // Past every box between the faces across the ends' span.
+            let (ylo, yhi) = (fa.1.min(fb.1), fa.1.max(fb.1));
+            let (mut lo, mut hi) = (near, far);
+            for (k, &r) in self.rects.iter().enumerate() {
+                let r = f_rect(r, flip);
+                if k != self.ia
+                    && k != self.ib
+                    && r.1 < yhi
+                    && ylo < r.3
+                    && r.0 <= fa.0.max(fb.0)
+                    && fa.0.min(fb.0) <= r.2
+                {
+                    lo = lo.min(r.0 - ORTHO_STUB);
+                    hi = hi.max(r.2 + ORTHO_STUB);
+                }
+            }
+            [Some((lo, -1.0)), Some((hi, 1.0))]
         } else {
             return direct.map(|d| d.1);
         };
-        // Each leg as close to its face as is cheap; the lane at the
-        // bow, or a step in or out of it.
+        // Each leg as close to its face as is cheap; the lane at its
+        // start, or a step in or out of it.
         let half = ((fb.1 - fa.1) * s / 2.0).max(ORTHO_STUB);
         let leg = |from: (f64, f64), dir: f64, x: f64| {
             self.best(
@@ -694,10 +790,12 @@ impl Ortho<'_> {
             )
             .map(|(_, p)| f(p[1]).1)
         };
-        let lanes = self.best([0, -1, 1, -2, 2, 3, 4, 5].into_iter().filter_map(|k| {
-            let x = lane + out * f64::from(k) * ORTHO_SEP;
-            let (ya, yb) = (leg(fa, s, x)?, leg(fb, -s, x)?);
-            Some(back(vec![fa, (fa.0, ya), (x, ya), (x, yb), (fb.0, yb), fb]))
+        let lanes = self.best(starts.into_iter().flatten().flat_map(|(lane, out)| {
+            [0, -1, 1, -2, 2, 3, 4, 5].into_iter().filter_map(move |k| {
+                let x = lane + out * f64::from(k) * ORTHO_SEP;
+                let (ya, yb) = (leg(fa, s, x)?, leg(fb, -s, x)?);
+                Some(back(vec![fa, (fa.0, ya), (x, ya), (x, yb), (fb.0, yb), fb]))
+            })
         }));
         match (direct, lanes) {
             (Some(d), Some(l)) => Some(if l.0 < d.0 { l.1 } else { d.1 }),
@@ -717,7 +815,7 @@ impl Ortho<'_> {
         let out_a = (c.0 - a.0) * na.0 + (c.1 - a.1) * na.1;
         let out_b = (c.0 - b.0) * nb.0 + (c.1 - b.1) * nb.1;
         let pts = vec![a, c, b];
-        (out_a >= ORTHO_STUB && out_b >= ORTHO_STUB && !self.blocked(&pts)).then_some(pts)
+        (out_a >= ORTHO_STUB && out_b >= ORTHO_STUB && self.cost(&pts).is_some()).then_some(pts)
     }
 
     /// A long edge's layout chain (`pts`, its ends on faces `na` and
@@ -744,9 +842,10 @@ impl Ortho<'_> {
             let lo = q[i - 1].1.min(p.1) + if i == 1 { ORTHO_STUB } else { 8.0 };
             let hi = q[i - 1].1.max(p.1) - if i == last { ORTHO_STUB } else { 8.0 };
             let from = *out.last().unwrap_or(&q[0]);
+            let span = (x.min(p.0), x.max(p.0));
             let (_, jog) = self.best(
-                offsets((q[i - 1].1 + p.1) / 2.0)
-                    .filter(|y| (lo..=hi).contains(y))
+                self.jog_places((q[i - 1].1 + p.1) / 2.0, (lo, hi), span, flip)
+                    .into_iter()
                     .map(|y| back(vec![from, (x, y), (p.0, y), p])),
             )?;
             let y = f(jog[1]).1;
@@ -756,7 +855,107 @@ impl Ortho<'_> {
         }
         out.push((x, q[last].1));
         let out = back(out);
-        (!self.blocked(&out)).then_some(out)
+        self.cost(&out).is_some().then_some(out)
+    }
+
+    /// Where a label `w` wide sits on route `pts` (its corners): where
+    /// it was (`was`, brought onto the route) when its chip covers no
+    /// other route's run, box or settled label there; else the clear
+    /// spot nearest the route's middle, else the one covering the
+    /// fewest. A chip over another route's corner reads as joining
+    /// that route, and the label stage would leave it there (it only
+    /// moves labels off boxes, glyphs and labels).
+    fn label_spot(&self, pts: &[(f64, f64)], w: f64, was: (f64, f64)) -> (f64, f64) {
+        let seg_len = |s: &[(f64, f64)]| (s[1].0 - s[0].0).abs() + (s[1].1 - s[0].1).abs();
+        let total: f64 = pts.windows(2).map(seg_len).sum();
+        let at = |mut d: f64| {
+            for s in pts.windows(2) {
+                let l = seg_len(s);
+                if d <= l && l > 0.0 {
+                    let t = d / l;
+                    return (
+                        s[0].0 + (s[1].0 - s[0].0) * t,
+                        s[0].1 + (s[1].1 - s[0].1) * t,
+                    );
+                }
+                d -= l;
+            }
+            pts[pts.len() - 1]
+        };
+        let mid = total / 2.0;
+        let was = nearest_on(pts, was);
+        if total <= 2.0 * ORTHO_STUB {
+            return was;
+        }
+        // Where it was, then every LABEL_SPOT_STEP px from stub to stub,
+        // nearest the middle first.
+        let n = ((mid - ORTHO_STUB) / LABEL_SPOT_STEP).floor() as i32;
+        let steps = (0..=2 * n).map(|k| if k % 2 == 1 { -(k + 1) / 2 } else { k / 2 });
+        let mut best = (usize::MAX, was);
+        for p in std::iter::once(was).chain(steps.map(|k| at(mid + f64::from(k) * LABEL_SPOT_STEP)))
+        {
+            let chip = (
+                p.0 - w / 2.0 - 1.0,
+                p.1 - 11.0,
+                p.0 + w / 2.0 + 1.0,
+                p.1 + 11.0,
+            );
+            let hits = self
+                .runs
+                .all()
+                .filter(|q| {
+                    let (a, b) = if q.vertical {
+                        ((q.c, q.l), (q.c, q.h))
+                    } else {
+                        ((q.l, q.c), (q.h, q.c))
+                    };
+                    rect_hits_segment(chip, a, b)
+                })
+                .count()
+                + self.rects.iter().filter(|&&r| rects_meet(chip, r)).count()
+                + self.labels.iter().filter(|&&r| rects_meet(chip, r)).count();
+            if hits < best.0 {
+                best = (hits, p);
+                if hits == 0 {
+                    break;
+                }
+            }
+        }
+        best.1
+    }
+
+    /// Where a jog across a gap may run, nearest `mid` first, within
+    /// `lo..=hi` (coordinates as `opposite` / `chain` work in: `flip`
+    /// swaps x / y, the jog spans `span` across): the [`ORTHO_SEP`]
+    /// grid around `mid`, plus places [`ORTHO_SEP`] (and, with `room`,
+    /// [`ORTHO_ROOM`]) to either side of each parallel run already
+    /// placed over `span`.
+    /// Jogs sharing a gap but centred on different mids (ends on boxes
+    /// of different heights) then stack at a readable spacing, or as
+    /// tight as allowed, instead of losing a lane between two grids.
+    fn jog_places(&self, mid: f64, (lo, hi): (f64, f64), span: (f64, f64), flip: bool) -> Vec<f64> {
+        let mut ys: Vec<f64> = offsets(mid).collect();
+        // Parallel to the jog = horizontal in the unflipped frame.
+        let reach = ORTHO_ROOM + 1.0;
+        for q in self.runs.within(flip, lo - reach, hi + reach) {
+            if q.l < span.1 && span.0 < q.h {
+                ys.extend([q.c - ORTHO_SEP, q.c + ORTHO_SEP]);
+                if self.room {
+                    ys.extend([q.c - ORTHO_ROOM, q.c + ORTHO_ROOM]);
+                }
+            }
+        }
+        ys.retain(|y| (lo..=hi).contains(y));
+        // Nearest the middle first; of two as near, the later one (as
+        // `offsets` orders them).
+        ys.sort_by(|a, b| {
+            (a - mid)
+                .abs()
+                .total_cmp(&(b - mid).abs())
+                .then(b.total_cmp(a))
+        });
+        ys.dedup_by(|a, b| (*a - *b).abs() < 0.5);
+        ys
     }
 }
 
@@ -770,6 +969,35 @@ fn offsets(mid: f64) -> impl Iterator<Item = f64> {
             mid - step
         }
     })
+}
+
+/// The runs placed so far, horizontal and vertical apart, each sorted
+/// by its fixed coordinate so a check visits only the runs near it (a
+/// big diagram places hundreds).
+#[derive(Default)]
+struct Runs {
+    h: Vec<Run>,
+    v: Vec<Run>,
+}
+
+impl Runs {
+    fn push(&mut self, r: Run) {
+        let list = if r.vertical { &mut self.v } else { &mut self.h };
+        let at = list.partition_point(|q| q.c <= r.c);
+        list.insert(at, r);
+    }
+
+    /// The runs along y (`vertical`) or x with `lo < c < hi`.
+    fn within(&self, vertical: bool, lo: f64, hi: f64) -> &[Run] {
+        let list = if vertical { &self.v } else { &self.h };
+        let a = list.partition_point(|q| q.c <= lo);
+        let b = list.partition_point(|q| q.c < hi).max(a);
+        &list[a..b]
+    }
+
+    fn all(&self) -> impl Iterator<Item = &Run> {
+        self.h.iter().chain(&self.v)
+    }
 }
 
 impl Run {
@@ -2522,6 +2750,195 @@ mod tests {
             }
         }
         crate::scene::assert_drawn_inside_canvas(&to_svg(&cs));
+    }
+
+    /// The verifier's 16-class e-commerce model (`x6_realistic`, TB):
+    /// six edges leave User's bottom face into one gap.
+    const SHOP: &str = "classDiagram
+    class User {
+        +String id
+        +String email
+        +login() bool
+    }
+    class Admin
+    class Guest
+    class Session {
+        +String token
+        +Date expires
+    }
+    class Cart {
+        +add(Item i) void
+        +total() Money
+    }
+    class Item
+    class Product
+    class Category
+    class Review
+    class Address
+    class Payment
+    class Invoice
+    class Shipment
+    class Warehouse
+    class Supplier
+    User <|-- Admin
+    User <|-- Guest
+    User \"1\" --> \"*\" Session : opens
+    User \"1\" *-- \"1\" Cart : owns
+    Cart \"1\" o-- \"*\" Item : holds
+    Item \"*\" --> \"1\" Product : of
+    Product \"*\" --> \"1\" Category : in
+    User \"1\" --> \"*\" Review : writes
+    Review \"*\" --> \"1\" Product : about
+    User \"1\" o-- \"*\" Address : lives at
+    Cart ..> Payment : pays with
+    Payment --> Invoice : produces
+    Invoice --> Shipment : triggers
+    Shipment --> Warehouse : from
+    Warehouse \"*\" o-- \"*\" Product : stocks
+    Supplier --> Product : supplies
+    note for Cart \"one per user\"";
+
+    /// Maximal straight axis-aligned stretches of an edge as drawn:
+    /// (vertical, fixed coordinate, from, to).
+    fn drawn_runs(e: &SceneEdge) -> Vec<(bool, f64, f64, f64)> {
+        let pts = edge_polyline(e);
+        let mut out = Vec::new();
+        let mut i = 0;
+        while i + 1 < pts.len() {
+            let vertical = (pts[i].0 - pts[i + 1].0).abs() < 0.5;
+            let horizontal = (pts[i].1 - pts[i + 1].1).abs() < 0.5;
+            if !vertical && !horizontal {
+                i += 1;
+                continue;
+            }
+            let mut k = i + 1;
+            while k + 1 < pts.len()
+                && if vertical {
+                    (pts[k + 1].0 - pts[i].0).abs() < 0.5
+                } else {
+                    (pts[k + 1].1 - pts[i].1).abs() < 0.5
+                }
+            {
+                k += 1;
+            }
+            let (a, b) = (pts[i], pts[k]);
+            let run = if vertical {
+                (true, a.0, a.1.min(b.1), a.1.max(b.1))
+            } else {
+                (false, a.1, a.0.min(b.0), a.0.max(b.0))
+            };
+            if run.3 - run.2 > 4.0 {
+                out.push(run);
+            }
+            i = k;
+        }
+        out
+    }
+
+    /// Pairs of edge indexes.
+    type Pairs = Vec<(usize, usize)>;
+
+    /// Pairs of edges whose drawn lines run along each other (closer
+    /// than ORTHO_SEP over more than 4 px, less a pixel: the spline
+    /// through a long run's rounded corners bulges by a fraction of
+    /// one), and pairs that cross.
+    fn merged_and_crossing(cs: &ClassScene) -> (Pairs, Pairs) {
+        let runs: Vec<_> = cs.scene.edges.iter().map(drawn_runs).collect();
+        let (mut merged, mut crossing) = (Vec::new(), Vec::new());
+        for i in 0..runs.len() {
+            for j in i + 1..runs.len() {
+                for &(va, ca, la, ha) in &runs[i] {
+                    for &(vb, cb, lb, hb) in &runs[j] {
+                        if va == vb {
+                            if (ca - cb).abs() < ORTHO_SEP - 1.0 && ha.min(hb) - la.max(lb) > 4.0 {
+                                merged.push((i, j));
+                            }
+                        } else if la + 1.0 < cb && cb < ha - 1.0 && lb + 1.0 < ca && ca < hb - 1.0 {
+                            crossing.push((i, j));
+                        }
+                    }
+                }
+            }
+        }
+        (merged, crossing)
+    }
+
+    /// Verifier repro (x6_realistic): two relationships out of User
+    /// (`writes`, `lives at`) were drawn on one line for ~150 px, and
+    /// Admin's leg crossed Guest's (inverted jog heights): the
+    /// orthogonalizer took a merged run when it was the cheapest, and
+    /// priced lanes against labels still on their old curves. A merged
+    /// run is now refused, labels count once their edge is final, and
+    /// jogs sharing a gap stack in nesting order.
+    #[test]
+    fn routes_never_merge_and_fans_nest_without_crossings() {
+        let d = cd(SHOP);
+        let cs = scene(&d);
+        let (merged, crossing) = merged_and_crossing(&cs);
+        assert!(merged.is_empty(), "merged runs: {merged:?}");
+        let user = d.class_index("User").unwrap();
+        let fan: Vec<usize> = d
+            .relations
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| r.from == user || r.to == user)
+            .map(|(j, _)| j)
+            .collect();
+        assert_eq!(fan.len(), 6);
+        for &(i, j) in &crossing {
+            assert!(
+                !(fan.contains(&i) && fan.contains(&j)),
+                "User's edges {i} and {j} cross"
+            );
+        }
+        // Every one of them is orthogonal (none fell back to a curve).
+        for &j in &fan {
+            let e = &cs.scene.edges[j];
+            let pts = if e.waypoints.is_empty() {
+                vec![e.bezier[0], e.bezier[3]]
+            } else {
+                e.waypoints.clone()
+            };
+            let (a, b) = (pts[0], pts[pts.len() - 1]);
+            assert!(
+                (a.0 - b.0).abs() < 0.5 || !e.waypoints.is_empty(),
+                "{}->{} kept its curve",
+                e.from,
+                e.to
+            );
+        }
+        // Dragged: swapping two classes, or one far off, merges nothing,
+        // and the swap's row of boxes is gone round, not through.
+        let laid: Vec<(f64, f64)> = cs.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let n = d.classes.len();
+        let mut swapped = laid[..n].to_vec();
+        swapped.swap(0, 1);
+        let mut far = laid[..n].to_vec();
+        far[n / 2] = (-300.0, -200.0);
+        for (k, centers) in [swapped, far].into_iter().enumerate() {
+            let cs = route(&d, &centers);
+            let (merged, _) = merged_and_crossing(&cs);
+            assert!(merged.is_empty(), "drag {k}: merged runs: {merged:?}");
+            if k == 0 {
+                for e in &cs.scene.edges {
+                    let line = edge_polyline(e);
+                    for b in &cs.scene.nodes {
+                        if b.id == e.from || b.id == e.to {
+                            continue;
+                        }
+                        let r = rect(b);
+                        let r = (r.0 + 1.0, r.1 + 1.0, r.2 - 1.0, r.3 - 1.0);
+                        assert!(
+                            !line.windows(2).any(|s| rect_hits_segment(r, s[0], s[1])),
+                            "{}->{} through {}",
+                            e.from,
+                            e.to,
+                            b.id
+                        );
+                    }
+                }
+            }
+        }
     }
 
     #[test]
