@@ -1880,7 +1880,11 @@ fn place(
         } else {
             (LABEL_BOX_H, w)
         };
-        short_labels[alayer[hi]].push((lo, hi, ext, room));
+        // The label sits mid-gap, so room a class diagram keeps at
+        // either end of a labelled edge (`Graph::label_end_room`: glyph
+        // and cardinalities) is kept at both.
+        let label_room = 2.0 * g.label_end_room.get(ei).copied().unwrap_or(0.0);
+        short_labels[alayer[hi]].push((lo, hi, ext, room + label_room));
         // In LR/RL a row along the layer axis costs a label's whole
         // width, and the scene never uses it: colliding labels there
         // slide apart ACROSS the flow (they are only LABEL_BOX_H tall),

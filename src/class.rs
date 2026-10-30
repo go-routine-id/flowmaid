@@ -1088,6 +1088,25 @@ fn build(d: &ClassDiagram) -> Built {
         .any(|r| r.label.is_some() || r.from_card.is_some() || r.to_card.is_some());
     if annotated {
         g.rank_gap = Some(RANK_GAP);
+        // A short edge's label sits mid-gap; past it, each end holds
+        // its glyph and a cardinality from just off the face outward.
+        // In LR / RL a cardinality is as long along the gap as it is
+        // wide, so the gap grows to hold them clear of the label.
+        let horizontal = matches!(d.direction, Direction::LR | Direction::RL);
+        let card = |c: &Option<String>| {
+            c.as_deref()
+                .map_or(0.0, |t| 2.0 + if horizontal { card_w(t) } else { CARD_H })
+        };
+        g.label_end_room = d
+            .relations
+            .iter()
+            .map(|r| {
+                glyph_size(r.kind)
+                    .0
+                    .max(card(&r.to_card))
+                    .max(card(&r.from_card))
+            })
+            .collect();
     }
     for c in &d.classes {
         g.ensure_node(&c.name, Some(c.display_name()), Some(Shape::Rect));
@@ -1510,6 +1529,13 @@ fn card_w(text: &str) -> f64 {
 }
 /// Height of a cardinality's box.
 const CARD_H: f64 = 13.0;
+/// Step farther out across the line for a cardinality whose spots
+/// beside it are all taken.
+const CARD_FAR: f64 = 12.0;
+/// Weight of a cardinality covering a box, a label chip or another
+/// cardinality, against touching a stroke: a chip is painted over it
+/// and hides it, where a stroke only grazes it.
+const CARD_HIDDEN: usize = 4;
 
 /// Length of an end glyph along its edge, and its half width.
 fn glyph_size(kind: RelKind) -> (f64, f64) {
@@ -1663,8 +1689,10 @@ fn rects_meet(a: Rect, b: Rect) -> bool {
 /// the side of the glyph, on the side the line leaves away from (or
 /// toward the nearer corner for a line leaving straight). A spot that
 /// would touch any stroke, glyph, box, label or earlier cardinality
-/// gives way to the other side, then to spots farther out; failing all,
-/// the spot touching the fewest of them stands.
+/// gives way to the other side, then to spots farther along the line,
+/// then farther out across it; failing all, the spot with the fewest
+/// collisions stands — covering a box, label or card counts
+/// [`CARD_HIDDEN`] times a stroke, a glyph twice.
 fn place_cards(sc: &Scene, rels: &[RelStyle], heads: &[Head]) -> Vec<[Option<(f64, f64)>; 2]> {
     let idx = node_index(sc);
     // Every drawn line with its bounding box, so a spot far from a
@@ -1686,6 +1714,8 @@ fn place_cards(sc: &Scene, rels: &[RelStyle], heads: &[Head]) -> Vec<[Option<(f6
             (bb, pts)
         })
         .collect();
+    // Boxes and label chips: a card on one is hidden (chips are
+    // painted over the cards) or unreadable (member text).
     let mut solid: Vec<Rect> = sc
         .nodes
         .iter()
@@ -1745,46 +1775,53 @@ fn place_cards(sc: &Scene, rels: &[RelStyle], heads: &[Head]) -> Vec<[Option<(f6
             } else {
                 1.0
             };
-            // (collisions, centre, box) of the best spot so far.
+            // (weighted collisions, centre, box) of the best spot so far.
             let mut best: Option<(usize, (f64, f64), Rect)> = None;
-            'search: for depth in [0.0, 10.0, 20.0, 34.0] {
-                for side in [first, -first] {
-                    let dn = 2.0 + depth + ext_n / 2.0;
-                    // Where the line is at that depth, then past the
-                    // glyph (within its length) or the stroke.
-                    let line_t = ut / un * dn;
-                    let half = if dn - ext_n / 2.0 < glen { ghalf } else { 0.0 };
-                    let dt = line_t + side * (half + CARD_CLEAR + 1.0 + ext_t / 2.0);
-                    let c = (tip.0 + n.0 * dn + t.0 * dt, tip.1 + n.1 * dn + t.1 * dt);
-                    let r = (c.0 - w / 2.0, c.1 - h / 2.0, c.0 + w / 2.0, c.1 + h / 2.0);
-                    let grown = (
-                        r.0 - CARD_CLEAR,
-                        r.1 - CARD_CLEAR,
-                        r.2 + CARD_CLEAR,
-                        r.3 + CARD_CLEAR,
-                    );
-                    let hits = solid.iter().filter(|&&b| rects_meet(r, b)).count()
-                        + placed.iter().filter(|&&b| rects_meet(grown, b)).count()
-                        + lines
-                            .iter()
-                            .filter(|(bb, l)| {
-                                grown.0 <= bb.2
-                                    && bb.0 <= grown.2
-                                    && grown.1 <= bb.3
-                                    && bb.1 <= grown.3
-                                    && l.windows(2).any(|s| rect_hits_segment(grown, s[0], s[1]))
-                            })
-                            .count()
-                        + glyph_segs
-                            .iter()
-                            .filter(|&&(a, b)| rect_hits_segment(grown, a, b))
-                            .count();
-                    if best.map_or(true, |b| hits < b.0) {
-                        best = Some((hits, c, r));
-                    }
-                    if hits == 0 {
-                        break 'search;
-                    }
+            // Beside the line first; then farther out across it (past
+            // a label chip sitting on the line near the end).
+            'search: for (extra, depth, side) in
+                [0.0, CARD_FAR, 2.0 * CARD_FAR].into_iter().flat_map(|x| {
+                    [0.0, 10.0, 20.0, 34.0]
+                        .into_iter()
+                        .flat_map(move |d| [(x, d, first), (x, d, -first)])
+                })
+            {
+                let dn = 2.0 + depth + ext_n / 2.0;
+                // Where the line is at that depth, then past the
+                // glyph (within its length) or the stroke.
+                let line_t = ut / un * dn;
+                let half = if dn - ext_n / 2.0 < glen { ghalf } else { 0.0 };
+                let dt = line_t + side * (half + CARD_CLEAR + 1.0 + extra + ext_t / 2.0);
+                let c = (tip.0 + n.0 * dn + t.0 * dt, tip.1 + n.1 * dn + t.1 * dt);
+                let r = (c.0 - w / 2.0, c.1 - h / 2.0, c.0 + w / 2.0, c.1 + h / 2.0);
+                let grown = (
+                    r.0 - CARD_CLEAR,
+                    r.1 - CARD_CLEAR,
+                    r.2 + CARD_CLEAR,
+                    r.3 + CARD_CLEAR,
+                );
+                let hits = CARD_HIDDEN
+                    * (solid.iter().filter(|&&b| rects_meet(r, b)).count()
+                        + placed.iter().filter(|&&b| rects_meet(grown, b)).count())
+                    + lines
+                        .iter()
+                        .filter(|(bb, l)| {
+                            grown.0 <= bb.2
+                                && bb.0 <= grown.2
+                                && grown.1 <= bb.3
+                                && bb.1 <= grown.3
+                                && l.windows(2).any(|s| rect_hits_segment(grown, s[0], s[1]))
+                        })
+                        .count()
+                    + 2 * glyph_segs
+                        .iter()
+                        .filter(|&&(a, b)| rect_hits_segment(grown, a, b))
+                        .count();
+                if best.map_or(true, |b| hits < b.0) {
+                    best = Some((hits, c, r));
+                }
+                if hits == 0 {
+                    break 'search;
                 }
             }
             if let Some((_, c, r)) = best {
@@ -2415,10 +2452,30 @@ mod tests {
         }
     }
 
+    /// `src` laid out in direction `dir` (its own `direction` line, if
+    /// any, replaced).
+    fn with_direction(src: &str, dir: &str) -> String {
+        let mut out = String::new();
+        for line in src.lines() {
+            if line.trim_start().starts_with("direction ") {
+                continue;
+            }
+            out.push_str(line);
+            out.push('\n');
+            if line.trim_start().starts_with("classDiagram") {
+                out.push_str(&format!("direction {dir}\n"));
+            }
+        }
+        out
+    }
+
     /// Report M13 / "cardinality collisions": multiplicities sat on the
     /// strokes and arrowheads (fixed offsets along the tangent). Each
     /// one now clears every stroke, glyph, box, label and other
-    /// cardinality.
+    /// cardinality — in every direction: in LR / RL the rank gap runs
+    /// along x, where the label chip, the glyph and the cards share
+    /// one short edge (verifier repros: the showcase in LR hid '1..*'
+    /// under 'contains', x1m hid 'many' under 'holds').
     #[test]
     fn cardinalities_clear_strokes_glyphs_boxes_and_each_other() {
         let big = "classDiagram
@@ -2427,7 +2484,24 @@ mod tests {
     OrderLine \"*\" --> \"1\" Product
     Customer \"0..1\" o-- \"many\" Order : holds
     Product \"1\" <|-- \"1\" Gift";
-        for src in [include_str!("../examples/class.mmd"), big, ZOO] {
+        let x1m = "classDiagram
+    class Shape
+    <<interface>> Shape
+    class Box~T~ {
+        +List~T~ items
+        +size() int
+    }
+    class Map~K, V~
+    Shape <|.. Box
+    Box \"1\" *-- \"many\" Map : holds
+    Shape <|-- Circle
+    note for Box \"generic container\"";
+        let srcs = [include_str!("../examples/class.mmd"), big, ZOO, x1m];
+        for src in srcs
+            .iter()
+            .flat_map(|s| ["TB", "BT", "LR", "RL"].map(|dir| with_direction(s, dir)))
+        {
+            let src = src.as_str();
             let cs = scene(&cd(src));
             let heads: Vec<Head> = (0..cs.rels.len()).map(|j| rel_head(&cs, j)).collect();
             let mut boxes: Vec<Rect> = Vec::new();
@@ -2448,32 +2522,35 @@ mod tests {
             }
             for (i, &b) in boxes.iter().enumerate() {
                 for &o in &boxes[i + 1..] {
-                    assert!(!rects_meet(b, o), "cards {b:?} {o:?} overlap");
+                    assert!(!rects_meet(b, o), "cards {b:?} {o:?} overlap\n{src}");
                 }
                 for n in &cs.scene.nodes {
-                    assert!(!rects_meet(b, rect(n)), "card {b:?} on {}", n.id);
+                    assert!(!rects_meet(b, rect(n)), "card {b:?} on {}\n{src}", n.id);
                 }
                 for e in &cs.scene.edges {
                     let line = edge_polyline(e);
                     assert!(
                         !line.windows(2).any(|s| rect_hits_segment(b, s[0], s[1])),
-                        "card {b:?} on {}->{}",
+                        "card {b:?} on {}->{}\n{src}",
                         e.from,
                         e.to
                     );
                     if let Some((t, m, w)) = &e.label {
                         let l = (m.0 - w / 2.0, m.1 - 10.0, m.0 + w / 2.0, m.1 + 10.0);
-                        assert!(!rects_meet(b, l), "card {b:?} on label {t}");
+                        assert!(!rects_meet(b, l), "card {b:?} on label {t}\n{src}");
                     }
                 }
                 for h in &heads {
                     let k = h.polygon.len();
                     for s in 0..k {
                         let (p, q) = (h.polygon[s], h.polygon[(s + 1) % k]);
-                        assert!(!rect_hits_segment(b, p, q), "card {b:?} on a glyph");
+                        assert!(!rect_hits_segment(b, p, q), "card {b:?} on a glyph\n{src}");
                     }
                     for s in &h.segments {
-                        assert!(!rect_hits_segment(b, s[0], s[1]), "card {b:?} on a head");
+                        assert!(
+                            !rect_hits_segment(b, s[0], s[1]),
+                            "card {b:?} on a head\n{src}"
+                        );
                     }
                 }
             }

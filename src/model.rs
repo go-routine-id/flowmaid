@@ -396,6 +396,12 @@ pub struct Graph {
     /// cardinalities and an end glyph on one short edge); `None` = the
     /// default.
     pub(crate) rank_gap: Option<f64>,
+    /// Per edge (index-parallel with `edges`; missing = 0): room a
+    /// short edge's label keeps from each of its ends on top of the
+    /// usual clearance — class diagrams put an end glyph and a
+    /// cardinality there, which in LR / RL lie along the same axis as
+    /// the label.
+    pub(crate) label_end_room: Vec<f64>,
     index: HashMap<String, usize>,
 }
 
