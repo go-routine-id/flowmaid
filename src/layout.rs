@@ -1835,7 +1835,10 @@ fn place(
         } else {
             (LABEL_BOX_H, w)
         };
-        short_labels[alayer[hi]].push((lo, hi, ext));
+        // The label sits mid-gap, so room kept at either end is kept
+        // at both.
+        let room = 2.0 * g.label_end_room.get(ei).copied().unwrap_or(0.0);
+        short_labels[alayer[hi]].push((lo, hi, ext + room));
         // In LR/RL a row along the layer axis costs a label's whole
         // width, and the scene never uses it: colliding labels there
         // slide apart ACROSS the flow (they are only LABEL_BOX_H tall),
