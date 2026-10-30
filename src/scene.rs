@@ -3478,6 +3478,20 @@ fn toward(me: (&Placed, Shape, bool), far: (&Placed, Shape, bool)) -> f64 {
     }
 }
 
+/// How far (along the flow-facing side, from the centre) a boxy end's
+/// port leans toward the other end, `toward` (its breadth less this
+/// box's centre) away: 0.35 of the way, shifted by the parallel-edge
+/// offset `off`, kept on the straight part of the side (`size` is the
+/// box's (breadth, layer) size). See [`anchor`].
+pub(crate) fn port_lean(shape: Shape, size: (f64, f64), toward: f64, off: f64) -> f64 {
+    let flat = match shape {
+        Shape::Stadium => size.0 / 2.0 - size.1 / 2.0 - 4.0,
+        _ => size.0 / 2.0 - 12.0,
+    }
+    .max(0.0);
+    (toward * 0.35 + off).clamp(-flat, flat)
+}
+
 /// Edge exit/entry point on a node's border.
 ///
 /// For boxy shapes, points are spread along the top/bottom side
@@ -3510,12 +3524,7 @@ pub(crate) fn anchor(
             ((other.0 + off).max(p.b - r).min(p.b + r), l)
         }
         _ => {
-            let flat = match shape {
-                Shape::Stadium => p.bsize / 2.0 - p.lsize / 2.0 - 4.0,
-                _ => p.bsize / 2.0 - 12.0,
-            }
-            .max(0.0);
-            let bias = ((other.0 - p.b) * 0.35 + off).clamp(-flat, flat);
+            let bias = port_lean(shape, (p.bsize, p.lsize), other.0 - p.b, off);
             let l = if bottom {
                 p.l + p.lsize / 2.0
             } else {
