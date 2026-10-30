@@ -13,12 +13,14 @@
 
 use crate::layout::{
     intrinsic_size, layout_clustered_ranked, layout_sized, line_count, text_width, title_extra,
-    LayoutResult, Placed, RankGroup, FRAME_GAP, LABEL_BOX_H, LINE_H, TITLE_LINE_H, TITLE_SCALE,
+    LayoutResult, Placed, RankGroup, FRAME_GAP, GAP_B, LABEL_BOX_H, LINE_H, TITLE_LINE_H,
+    TITLE_SCALE,
 };
 use crate::model::{
     Direction, Edge, EdgeAnimation, EdgeCurve, EdgeEnds, EdgeKind, EdgeMeta, End, Graph, Marker,
     NodeLink, NodeStyle, Shape, SubEdge,
 };
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 // Edge-label placement lives in `labels`; these keep the call sites
@@ -756,13 +758,16 @@ pub fn scene(g: &Graph) -> Scene {
 
 /// Same as [`scene`] but with caller-provided node sizes — for
 /// nodes whose size doesn't come from the label (ER entity tables,
-/// icon nodes, ...).
+/// icon nodes, ...). A fork/join bar's size is fitted to its branches
+/// (laid across the flow and spanning them, see [`fit_bars`]); every
+/// other size is used as given.
 pub fn scene_sized(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
     assert_eq!(
         sizes.len(),
         g.nodes.len(),
         "number of sizes must match number of nodes"
     );
+    let sizes = &fit_bars(g, sizes)[..];
     let mut sc = if g.subgraphs.is_empty() {
         scene_flat(g, sizes)
     } else {
@@ -849,10 +854,12 @@ fn scene_from_layout(
 
     // Edge geometry (abstract coordinates) with parallel-edge separation.
     let offs = parallel_offsets(g);
+    let bars = bar_degrees(g);
     let mut abs_edges: Vec<AbsEdge> = Vec::with_capacity(g.edges.len());
     for (ei, (e, off)) in g.edges.iter().zip(offs).enumerate() {
         let a = &lo.nodes[e.from];
         let b = &lo.nodes[e.to];
+        let lone = lone_ends(g, &bars, e);
         let shared: Vec<usize> = node_cluster.map_or_else(Vec::new, |nc| {
             nc[e.from]
                 .iter()
@@ -875,6 +882,7 @@ fn scene_from_layout(
                 off,
                 ext,
                 lbl_w,
+                lone,
             )
         };
         let pts = match node_cluster {
@@ -928,14 +936,12 @@ fn scene_from_layout(
         } else {
             let chain = &lo.edge_paths[ei];
             let a_bottom = b.layer > a.layer; // exit side of the source
-            let p0 = anchor(a, g.nodes[e.from].shape, chain[0], off, a_bottom);
-            let p3 = anchor(
-                b,
-                g.nodes[e.to].shape,
-                *chain.last().unwrap(),
-                off,
-                !a_bottom,
-            );
+                                              // A bar side holding only this edge meets it at its middle.
+            let (c0, c1) = (chain[0], *chain.last().unwrap());
+            let c0 = if lone.0 { (a.b, c0.1) } else { c0 };
+            let c1 = if lone.1 { (b.b, c1.1) } else { c1 };
+            let p0 = anchor(a, g.nodes[e.from].shape, c0, off, a_bottom);
+            let p3 = anchor(b, g.nodes[e.to].shape, c1, off, !a_bottom);
             let mut v = Vec::with_capacity(chain.len() + 2);
             v.push(p0);
             v.extend(chain.iter().copied());
@@ -1355,7 +1361,7 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
                             else {
                                 continue;
                             };
-                            free_edge(&pa, &pb, sa, sb, false, 0.0, Some(g.direction))
+                            free_edge(&pa, &pb, sa, sb, false, 0.0, Some(g.direction), NO_LONE)
                         }
                     };
                     (pts, Vec::new())
@@ -1842,7 +1848,8 @@ pub fn route(g: &Graph, centers: &[(f64, f64)]) -> Scene {
     route_sized(g, centers, &sizes)
 }
 
-/// Same as [`route`] but with caller-provided node sizes.
+/// Same as [`route`] but with caller-provided node sizes (a fork/join
+/// bar's fitted as [`scene_sized`] fits it).
 pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> Scene {
     assert_eq!(
         centers.len(),
@@ -1854,6 +1861,7 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
         g.nodes.len(),
         "number of sizes must match number of nodes"
     );
+    let sizes = &fit_bars(g, sizes)[..];
     let mut sc = route_built(g, centers, sizes, true);
     crate::edgepass::finish(g, &mut sc, crate::edgepass::Mode::Routed);
     sc
@@ -1927,6 +1935,7 @@ fn route_built(
     };
 
     let offs = parallel_offsets(g);
+    let bars = bar_degrees(g);
     let mut edges = Vec::with_capacity(g.edges.len());
     for (e, off) in g.edges.iter().zip(offs) {
         let a = &placed[e.from];
@@ -1939,6 +1948,7 @@ fn route_built(
             e.from == e.to,
             off,
             Some(g.direction),
+            lone_ends(g, &bars, e),
         );
         let wps = if e.from != e.to && top_of(e.from) != top_of(e.to) {
             // Parallel edges between one pair get the same channel: each
@@ -2048,7 +2058,7 @@ fn route_built(
             let (pts, own_mid) = match own {
                 Some((pts, mid)) => (pts, Some(mid)),
                 None => (
-                    free_edge(&pa, &pb, sa, sb, false, off, Some(g.direction)),
+                    free_edge(&pa, &pb, sa, sb, false, off, Some(g.direction), NO_LONE),
                     None,
                 ),
             };
@@ -2157,6 +2167,7 @@ pub fn route_partial(
         return base.clone();
     }
     let sizes: Vec<(f64, f64)> = g.nodes.iter().map(intrinsic_size).collect();
+    let sizes = fit_bars(g, &sizes);
     // No builder label pass: a redrawn edge's label starts at its spot
     // on the new line and the label stage moves it only if it covers
     // something. route() slides every label first so the router can
@@ -2460,6 +2471,7 @@ pub fn box_edge_bezier(
         self_loop,
         offset,
         None,
+        NO_LONE,
     )
 }
 
@@ -3324,13 +3336,156 @@ fn sub_parallel_offsets(g: &Graph) -> Vec<f64> {
         .collect()
 }
 
+/// How far (px) a fork/join bar reaches past the outermost branch it
+/// spans ([`fit_bars`]): more than [`crate::ports::PORT_INSET`], so the
+/// port right over the outermost branch still lies on the usable span.
+const BAR_OVERHANG: f64 = 16.0;
+
+/// Node sizes with every fork/join bar fitted to its branches: laid
+/// across the flow (upright in `LR`/`RL`, mermaid-style) and long enough
+/// to reach every state on its busier side, so each branch drops
+/// straight onto its state (see [`anchor`]) instead of S-bending off a
+/// 60px bar. The reach is estimated before layout ([`bar_half`]), so the
+/// static and the interactive builders fit the same sizes and a drag
+/// never resizes a bar. Other sizes pass through untouched (borrowed
+/// when there is no bar).
+pub(crate) fn fit_bars<'a>(g: &Graph, sizes: &'a [(f64, f64)]) -> Cow<'a, [(f64, f64)]> {
+    if !g.nodes.iter().any(|n| n.shape == Shape::ForkBar) {
+        return Cow::Borrowed(sizes);
+    }
+    let across = matches!(g.direction, Direction::LR | Direction::RL);
+    let breadth = |v: usize| if across { sizes[v].1 } else { sizes[v].0 };
+    // Per bar and side (in, out): the breadths of the states it joins.
+    let mut fan: HashMap<usize, [Vec<f64>; 2]> = HashMap::new();
+    for e in g.edges.iter().filter(|e| bar_counts(e)) {
+        if g.nodes[e.to].shape == Shape::ForkBar {
+            fan.entry(e.to).or_default()[0].push(breadth(e.from));
+        }
+        if g.nodes[e.from].shape == Shape::ForkBar {
+            fan.entry(e.from).or_default()[1].push(breadth(e.to));
+        }
+    }
+    let mut out = sizes.to_vec();
+    for (v, n) in g.nodes.iter().enumerate() {
+        if n.shape != Shape::ForkBar {
+            continue;
+        }
+        let (w, h) = sizes[v];
+        let half = fan.get_mut(&v).map_or(0.0, |sides| {
+            sides.iter_mut().map(|b| bar_half(b)).fold(0.0, f64::max)
+        });
+        let len = if half > 0.0 {
+            w.max(h).max(2.0 * (half + BAR_OVERHANG))
+        } else {
+            w.max(h)
+        };
+        out[v] = if across {
+            (w.min(h), len)
+        } else {
+            (len, w.min(h))
+        };
+    }
+    Cow::Owned(out)
+}
+
+/// How far from its centre a bar must reach to meet the centres of the
+/// states it fans out to (breadths `b`; 0 for fewer than two), laid side
+/// by side a node gap apart in an order the layout picks. An even fan
+/// centres the bar between its middle two: half the widest span, with
+/// the two narrowest states at the ends. An odd one aligns the bar with
+/// its middle state: the farthest reach puts the `k / 2 + 1` broadest on
+/// one side, the two narrowest of those at the middle and the end.
+fn bar_half(b: &mut [f64]) -> f64 {
+    let k = b.len();
+    if k < 2 {
+        return 0.0;
+    }
+    b.sort_by(|x, y| y.total_cmp(x));
+    let ends = |top: &[f64]| (top[top.len() - 1] + top[top.len() - 2]) / 2.0;
+    if k % 2 == 0 {
+        (b.iter().sum::<f64>() - ends(b) + (k - 1) as f64 * GAP_B) / 2.0
+    } else {
+        let top = &b[..=k / 2];
+        top.iter().sum::<f64>() - ends(top) + (k / 2) as f64 * GAP_B
+    }
+}
+
+/// Whether an edge counts towards a fork/join bar's branches: drawn
+/// and joining two nodes.
+fn bar_counts(e: &Edge) -> bool {
+    e.from != e.to && e.kind != EdgeKind::Invisible
+}
+
+/// Per node: the (incoming, outgoing) edges it has, when the graph has
+/// a fork/join bar (else empty) — what [`lone_ends`] reads.
+fn bar_degrees(g: &Graph) -> Vec<(usize, usize)> {
+    if !g.nodes.iter().any(|n| n.shape == Shape::ForkBar) {
+        return Vec::new();
+    }
+    let mut deg = vec![(0, 0); g.nodes.len()];
+    for e in g.edges.iter().filter(|e| bar_counts(e)) {
+        deg[e.from].1 += 1;
+        deg[e.to].0 += 1;
+    }
+    for e in &g.sub_edges {
+        if let End::Node(v) = e.from {
+            deg[v].1 += 1;
+        }
+        if let End::Node(v) = e.to {
+            deg[v].0 += 1;
+        }
+    }
+    deg
+}
+
+/// No end of the edge is a bar side's only edge.
+const NO_LONE: (bool, bool) = (false, false);
+
+/// For edge `e`: is its start the only edge leaving a fork/join bar,
+/// and is its end the only edge entering one? Such a side (a fork's
+/// way in, a join's way out) meets its edge at the bar's middle.
+fn lone_ends(g: &Graph, deg: &[(usize, usize)], e: &Edge) -> (bool, bool) {
+    let bar = |v: usize| g.nodes[v].shape == Shape::ForkBar;
+    let one = |v: usize, out: bool| {
+        deg.get(v)
+            .is_some_and(|d| (if out { d.1 } else { d.0 }) == 1)
+    };
+    (
+        bar(e.from) && one(e.from, true),
+        bar(e.to) && one(e.to, false),
+    )
+}
+
+/// Half the stretch of a fork/join bar its branches may meet it on.
+fn bar_reach(p: &Placed) -> f64 {
+    (p.bsize / 2.0 - crate::ports::PORT_INSET).max(0.0)
+}
+
+/// The breadth coordinate the end at `me` aims its port at (the
+/// `other` of [`anchor`]): the far end's port when that is a fork/join
+/// bar — which meets each branch right where the branch lies — else the
+/// far node's centre. A bar end alone on its side (`me_lone`) aims at
+/// its own middle, and an edge into such a side at that middle too.
+fn toward(me: (&Placed, Shape, bool), far: (&Placed, Shape, bool)) -> f64 {
+    let ((p, shape, lone), (q, far_shape, far_lone)) = (me, far);
+    if shape == Shape::ForkBar && lone {
+        p.b
+    } else if far_shape == Shape::ForkBar && !far_lone {
+        let r = bar_reach(q);
+        p.b.max(q.b - r).min(q.b + r)
+    } else {
+        q.b
+    }
+}
+
 /// Edge exit/entry point on a node's border.
 ///
 /// For boxy shapes, points are spread along the top/bottom side
 /// towards the opposite node (instead of piling up at the centre);
 /// stadiums are constrained to their flat section so anchors don't
 /// float on the rounded caps. Circles/diamonds use exact border
-/// intersection.
+/// intersection. A fork/join bar meets the edge right where `other`
+/// lies (clamped to the bar), so a branch drops straight down to it.
 pub(crate) fn anchor(
     p: &Placed,
     shape: Shape,
@@ -3344,6 +3499,16 @@ pub(crate) fn anchor(
         | Shape::DoubleCircle
         | Shape::StateStart
         | Shape::StateEnd => border(p, shape, (other.0 + off * 4.0, other.1)),
+        Shape::ForkBar => {
+            let r = bar_reach(p);
+            let l = if bottom {
+                p.l + p.lsize / 2.0
+            } else {
+                p.l - p.lsize / 2.0
+            };
+            // `max`/`min`, not `clamp`: a NaN centre must not panic.
+            ((other.0 + off).max(p.b - r).min(p.b + r), l)
+        }
         _ => {
             let flat = match shape {
                 Shape::Stadium => p.bsize / 2.0 - p.lsize / 2.0 - 4.0,
@@ -3373,6 +3538,7 @@ fn edge_points(
     off: f64,
     lay_ext: &[(f64, f64)],
     label_w: f64,
+    lone: (bool, bool),
 ) -> [(f64, f64); 4] {
     if self_loop {
         return loop_points(a, off);
@@ -3380,8 +3546,9 @@ fn edge_points(
 
     if b.layer != a.layer {
         let down = b.layer > a.layer;
-        let p0 = anchor(a, sa, (b.b, b.l), off, down);
-        let p3 = anchor(b, sb, (a.b, a.l), off, !down);
+        let (ea, eb) = ((a, sa, lone.0), (b, sb, lone.1));
+        let p0 = anchor(a, sa, (toward(ea, eb), b.l), off, down);
+        let p3 = anchor(b, sb, (toward(eb, ea), a.l), off, !down);
 
         if down {
             let dl = ((p3.1 - p0.1) * 0.5).max(20.0);
@@ -3598,6 +3765,7 @@ fn free_edge(
     self_loop: bool,
     off: f64,
     dir: Option<Direction>,
+    lone: (bool, bool),
 ) -> [(f64, f64); 4] {
     if self_loop {
         return loop_points(a, off);
@@ -3611,16 +3779,19 @@ fn free_edge(
     }
     let fwd_gap = (fb.l - fb.lsize / 2.0) - (fa.l + fa.lsize / 2.0);
     let back_gap = (fa.l - fa.lsize / 2.0) - (fb.l + fb.lsize / 2.0);
+    // Where each end aims, as the static layout aims it (`edge_points`).
+    let (ea, eb) = ((&fa, sa, lone.0), (&fb, sb, lone.1));
+    let (ta, tb) = (toward(ea, eb), toward(eb, ea));
     let pts = if fwd_gap >= FLOW_MIN_GAP {
-        let p0 = anchor(&fa, sa, (fb.b, fb.l), off, true);
-        let p3 = anchor(&fb, sb, (fa.b, fa.l), off, false);
+        let p0 = anchor(&fa, sa, (ta, fb.l), off, true);
+        let p3 = anchor(&fb, sb, (tb, fa.l), off, false);
         let dl = tangent(p3.1 - p0.1);
         [p0, (p0.0, p0.1 + dl), (p3.0, p3.1 - dl), p3]
     } else if back_gap >= FLOW_MIN_GAP {
         // Out of the source's flow-in side, into the target's flow-out
         // side, bowing past the wider box on the side the source lies.
-        let p0 = anchor(&fa, sa, (fb.b, fb.l), off, false);
-        let p3 = anchor(&fb, sb, (fa.b, fa.l), off, true);
+        let p0 = anchor(&fa, sa, (ta, fb.l), off, false);
+        let p3 = anchor(&fb, sb, (tb, fa.l), off, true);
         let lead = BACK_LEAD.min(0.5 * (p0.1 - p3.1).max(0.0));
         let right = fa.b >= fb.b;
         let bt = if right {
@@ -5498,6 +5669,102 @@ mod tests {
         let c = s.clusters.iter().find(|c| c.id == "Checking").unwrap();
         assert!(y("Idle") < c.y, "Idle above the composite");
         assert!(y("Done") > c.y + c.h, "Done below the composite");
+    }
+
+    /// Fork/join bars span their branches, which then drop straight
+    /// onto their states (no S-bends off a 60px bar); the bar's single
+    /// way in (fork) or out (join) meets it at its middle. The static
+    /// layout and the interactive builders agree on all of it.
+    #[test]
+    fn fork_join_branches_drop_straight_and_drags_agree() {
+        let state = |src: &str| match crate::parser::parse_document(src).unwrap() {
+            crate::model::Document::State(g) => g,
+            _ => unreachable!(),
+        };
+        let g = state(include_str!("../examples/state.mmd"));
+        let ix = |id: &str| g.node_index(id).unwrap();
+        let (fork, join) = (ix("forked"), ix("joined"));
+        // Branch edges: straight (start and end on one x). The lone
+        // in/out edge: at the bar's middle.
+        let check = |s: &Scene, why: &str| {
+            for e in s.edges.iter().take(g.edges.len()) {
+                let (from, to) = (ix(&e.from), ix(&e.to));
+                let (p0, p3) = (e.bezier[0], e.bezier[3]);
+                if from == fork || to == join {
+                    assert!((p0.0 - p3.0).abs() < 0.5, "{why}: {e:?} bends");
+                }
+                if to == fork {
+                    assert!((p3.0 - s.nodes[fork].x).abs() < 0.5, "{why}: fork way in");
+                }
+                if from == join {
+                    assert!((p0.0 - s.nodes[join].x).abs() < 0.5, "{why}: join way out");
+                }
+            }
+            // The bar reaches past its outermost branch.
+            let reach = (s.nodes[ix("Notify")].x - s.nodes[ix("Persist")].x).abs() / 2.0;
+            assert!(s.nodes[fork].w / 2.0 >= reach + BAR_OVERHANG - 0.5, "{why}");
+        };
+        let sc = scene(&g);
+        check(&sc, "scene");
+        let centres: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let rt = route(&g, &centres);
+        check(&rt, "route");
+        for (a, b) in sc.nodes.iter().zip(&rt.nodes) {
+            assert_eq!((a.w, a.h), (b.w, b.h), "{}: drag keeps the size", a.id);
+        }
+        // Drag a branch sideways (still under the bar): its branch
+        // follows it straight down, in a full and a partial reroute.
+        let mut moved = centres.clone();
+        moved[ix("Persist")].0 += 6.0;
+        for s in [route(&g, &moved), route_partial(&g, &moved, &sc, &centres)] {
+            assert_eq!(s.nodes[fork].w, sc.nodes[fork].w);
+            let e = s
+                .edges
+                .iter()
+                .find(|e| e.from == "forked" && e.to == "Persist");
+            let e = e.unwrap();
+            assert!(
+                (e.bezier[0].0 - moved[ix("Persist")].0).abs() < 0.5,
+                "{e:?}"
+            );
+            assert!(
+                (e.bezier[3].0 - moved[ix("Persist")].0).abs() < 0.5,
+                "{e:?}"
+            );
+        }
+        // Across an `LR` flow the bar stands upright.
+        let g = state("stateDiagram-v2\ndirection LR\nstate f <<fork>>\nA --> f\nf --> B\nf --> C");
+        let s = scene(&g);
+        let bar = &s.nodes[g.node_index("f").unwrap()];
+        assert!(bar.h > 2.0 * bar.w, "upright: {}x{}", bar.w, bar.h);
+        for e in s.edges.iter().filter(|e| e.from == "f") {
+            assert!((e.bezier[0].1 - e.bezier[3].1).abs() < 0.5, "{e:?}");
+        }
+    }
+
+    #[test]
+    fn bar_reach_covers_any_branch_order() {
+        // Two branches: the bar sits between them, half the span.
+        assert_eq!(bar_half(&mut [60.0, 80.0]), (70.0 + GAP_B) / 2.0);
+        // Three: aligned with the middle one, the farthest reach puts
+        // the two broadest on one side.
+        let three = bar_half(&mut [190.0, 66.0, 56.0]);
+        assert_eq!(three, (190.0 + 66.0) / 2.0 + GAP_B);
+        assert_eq!(bar_half(&mut [40.0]), 0.0);
+        // A bar with no fan keeps its intrinsic size; fitting is
+        // idempotent (the static and route builders both fit).
+        let g = parse("flowchart TD\nA@{ shape: fork } --> B").unwrap();
+        let sizes: Vec<(f64, f64)> = g.nodes.iter().map(intrinsic_size).collect();
+        assert_eq!(fit_bars(&g, &sizes)[0], (60.0, 8.0));
+        let g = parse("flowchart TD\nA@{ shape: fork } --> B & C & D").unwrap();
+        let sizes: Vec<(f64, f64)> = g.nodes.iter().map(intrinsic_size).collect();
+        let once = fit_bars(&g, &sizes).into_owned();
+        assert!(once[0].0 > 60.0);
+        assert_eq!(fit_bars(&g, &once).as_ref(), &once[..]);
+        // No bar: the caller's sizes come back borrowed.
+        let g = parse("flowchart TD\nA --> B").unwrap();
+        let sizes: Vec<(f64, f64)> = g.nodes.iter().map(intrinsic_size).collect();
+        assert!(matches!(fit_bars(&g, &sizes), Cow::Borrowed(_)));
     }
 
     #[test]
