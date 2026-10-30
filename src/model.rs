@@ -1070,13 +1070,23 @@ pub enum Card {
 
 /// Pie chart (`pie` header). Slices keep source order; a duplicate
 /// label keeps one slice whose value is the LAST one written.
+/// `#[non_exhaustive]`: build one with `PieChart::default()` and set
+/// the (public) fields.
 #[derive(Debug, Default)]
+#[non_exhaustive]
 pub struct PieChart {
     /// `pie title …` or a standalone `title …` line.
     pub title: Option<String>,
     /// `pie showData` — legend entries carry the raw value.
     pub show_data: bool,
     pub slices: Vec<PieSlice>,
+    /// Accessible title from mermaid's `accTitle:` statement — replaces
+    /// the default `<title>` / `aria-label` of the SVG. `None` = absent
+    /// or empty.
+    pub acc_title: Option<String>,
+    /// Accessible description from `accDescr:` or the multi-line
+    /// `accDescr { … }` block — written as the SVG's `<desc>`.
+    pub acc_descr: Option<String>,
 }
 
 /// One pie data row: `"Quoted Label" : value` (non-negative).
@@ -1112,11 +1122,22 @@ pub struct MindNode {
 /// sections, each holding scored tasks. `actors` is the de-duplicated
 /// set of every participant, in first-appearance order — its index is
 /// the stable color key for the legend and per-task dots.
+///
+/// `#[non_exhaustive]`: build one with `Journey::default()` and set the
+/// (public) fields.
 #[derive(Debug, Default)]
+#[non_exhaustive]
 pub struct Journey {
     pub title: Option<String>,
     pub sections: Vec<JourneySection>,
     pub actors: Vec<String>,
+    /// Accessible title from mermaid's `accTitle:` statement — replaces
+    /// the default `<title>` / `aria-label` of the SVG. `None` = absent
+    /// or empty.
+    pub acc_title: Option<String>,
+    /// Accessible description from `accDescr:` or the multi-line
+    /// `accDescr { … }` block — written as the SVG's `<desc>`.
+    pub acc_descr: Option<String>,
 }
 
 /// A named group of consecutive tasks (`section X`). Tasks before the
@@ -1129,19 +1150,35 @@ pub struct JourneySection {
 
 /// One step: `Task name: score: Actor1, Actor2`. `score` is clamped to
 /// 1..=5 (satisfaction); `actors` are indices into [`Journey::actors`].
+/// `#[non_exhaustive]`: the parser builds these; read their fields.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct JourneyTask {
     pub name: String,
+    /// The score rounded to a whole 1..=5 step (face colour and mouth).
     pub score: u8,
     pub actors: Vec<usize>,
+    /// The score as written, clamped to 1..=5 but not rounded: mermaid
+    /// reads it with `Number()`, so `3.5` is a valid score and sits
+    /// halfway between 3 and 4 on the satisfaction curve.
+    pub exact_score: f64,
 }
 
-/// Timeline diagram (`timeline` header).
+/// Timeline diagram (`timeline` header). `#[non_exhaustive]`: build
+/// one with `Timeline::default()` and set the (public) fields.
 #[derive(Debug, Default)]
+#[non_exhaustive]
 pub struct Timeline {
     pub title: Option<String>,
     pub direction: TimelineDirection,
     pub sections: Vec<TimelineSection>,
+    /// Accessible title from mermaid's `accTitle:` statement — replaces
+    /// the default `<title>` / `aria-label` of the SVG. `None` = absent
+    /// or empty.
+    pub acc_title: Option<String>,
+    /// Accessible description from `accDescr:` or the multi-line
+    /// `accDescr { … }` block — written as the SVG's `<desc>`.
+    pub acc_descr: Option<String>,
 }
 
 /// Timeline layout orientation.

@@ -4038,23 +4038,42 @@ pub(crate) fn svg_label_box_with(
 /// per line, block vertically centred on `(cx, cy)`. `<b>`/`<i>`
 /// runs inside a line render as real bold/italic tspans.
 pub(crate) fn svg_text_multiline(s: &mut String, cx: f64, cy: f64, fill: &str, label: &str) {
+    svg_text_lines(s, cx, cy, fill, label, "", false);
+}
+
+/// [`svg_text_multiline`] with extra attributes written into the
+/// `<text>` tag (`attrs`: already escaped, each with a leading space,
+/// e.g. ` font-weight="bold"`). `literal` escapes each line as plain
+/// text instead of interpreting `<b>`/`<i>` runs — for diagram types
+/// whose mermaid renderer shows such tags verbatim.
+pub(crate) fn svg_text_lines(
+    s: &mut String,
+    cx: f64,
+    cy: f64,
+    fill: &str,
+    label: &str,
+    attrs: &str,
+    literal: bool,
+) {
+    let markup = |l: &str| if literal { escape(l) } else { rich(l) };
     let lines: Vec<&str> = label.split('\n').collect();
     if lines.len() <= 1 {
         s.push_str(&format!(
-            "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"middle\" \
+            "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"middle\"{} \
              fill=\"{}\">{}</text>\n",
             cx,
             cy,
+            attrs,
             fill,
-            rich(label)
+            markup(label)
         ));
         return;
     }
     let lh = crate::layout::LINE_H;
     let top = cy - (lines.len() as f64 - 1.0) * lh / 2.0;
     s.push_str(&format!(
-        "<text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\" fill=\"{}\">",
-        cx, top, fill
+        "<text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\"{} fill=\"{}\">",
+        cx, top, attrs, fill
     ));
     for (i, line) in lines.iter().enumerate() {
         s.push_str(&format!(
@@ -4065,7 +4084,7 @@ pub(crate) fn svg_text_multiline(s: &mut String, cx: f64, cy: f64, fill: &str, l
             } else {
                 format!("{lh:.1}")
             },
-            rich(line)
+            markup(line)
         ));
     }
     s.push_str("</text>\n");

@@ -337,6 +337,39 @@ pub fn line_count(s: &str) -> usize {
     s.split('\n').count().max(1)
 }
 
+/// Greedy word wrap of `s` to lines at most `max_w` px wide, where a
+/// line measures `text_width(line) * scale` (pass `size /
+/// TEXT_CALIBRATION` for text drawn at another size). Existing `\n`
+/// breaks stay; a single word wider than `max_w` keeps a line to
+/// itself, unsplit, as mermaid's wrapped labels do. Runs of spaces at
+/// a break are dropped. For the fixed-column diagrams (journey tasks,
+/// timeline periods and events) whose text would otherwise widen its
+/// column without bound.
+pub(crate) fn wrap_text(s: &str, max_w: f64, scale: f64) -> String {
+    let mut out: Vec<String> = Vec::new();
+    for line in s.split('\n') {
+        if text_width(line) * scale <= max_w {
+            out.push(line.to_string());
+            continue;
+        }
+        let mut cur = String::new();
+        for word in line.split(' ').filter(|w| !w.is_empty()) {
+            if cur.is_empty() {
+                cur.push_str(word);
+                continue;
+            }
+            let cand = format!("{cur} {word}");
+            if text_width(&cand) * scale > max_w {
+                out.push(std::mem::replace(&mut cur, word.to_string()));
+            } else {
+                cur = cand;
+            }
+        }
+        out.push(cur);
+    }
+    out.join("\n")
+}
+
 /// Width of a single line (Helvetica at [`TEXT_CALIBRATION`] px)
 /// per character class.
 /// Without real font metrics this stays approximate, but it is far
@@ -3264,6 +3297,34 @@ mod tests {
             (g - (55.0 + LABEL_BOX_H + 2.0 * LABEL_CLEAR)).abs() < 1e-9,
             "{g}"
         );
+    }
+
+    #[test]
+    fn wrap_text_is_greedy_keeps_breaks_and_never_splits_words() {
+        // Fits: untouched (including inner runs of spaces).
+        assert_eq!(wrap_text("short  text", 200.0, 1.0), "short  text");
+        let s = "one two three four five six seven eight nine ten";
+        let w = wrap_text(s, 80.0, 1.0);
+        assert!(w.lines().count() > 1);
+        assert_eq!(w.replace('\n', " "), s, "words kept in order");
+        for line in w.lines() {
+            assert!(text_width(line) <= 80.0, "{line:?} too wide");
+        }
+        // Greedy: no line could take the next line's first word.
+        let lines: Vec<&str> = w.lines().collect();
+        for pair in lines.windows(2) {
+            let next = pair[1].split(' ').next().unwrap();
+            assert!(text_width(&format!("{} {next}", pair[0])) > 80.0);
+        }
+        // An over-long word keeps a line to itself, unsplit.
+        assert_eq!(
+            wrap_text("a Pneumonoultramicroscopic b", 40.0, 1.0),
+            "a\nPneumonoultramicroscopic\nb"
+        );
+        // Existing breaks stay; the scale measures at another size.
+        assert_eq!(wrap_text("x\ny", 1.0, 1.0), "x\ny");
+        let at_13 = wrap_text(s, 80.0, 13.0 / TEXT_CALIBRATION);
+        assert!(at_13.lines().count() <= w.lines().count());
     }
 
     #[test]

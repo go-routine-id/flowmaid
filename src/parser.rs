@@ -4021,11 +4021,10 @@ fn parse_seq_message(
 /// value wins, matching `Graph::ensure_node`'s latest-wins rule.
 fn parse_pie(source: &str, header_line: usize) -> Result<PieChart, ParseError> {
     let mut d = PieChart::default();
-    // Accessibility statements parse (so they never misread as
-    // content) but are not stored yet: this model's fields are all
-    // public, so a new field would break struct-literal users.
-    let (source, _acc) = extract_acc(source, header_line, false, AccFlavor::Langium)?;
+    let (source, acc) = extract_acc(source, header_line, false, AccFlavor::Langium)?;
     let source: &str = &source;
+    d.acc_title = acc.title;
+    d.acc_descr = acc.descr;
 
     // Header forms: `pie`, `pie showData`, `pie title T`,
     // `pie showData title T` (title consumes the rest of the line).
@@ -4261,11 +4260,10 @@ fn mind_br(s: &str) -> String {
 /// before the first `section` go into a leading unnamed section.
 fn parse_journey(source: &str, header_line: usize) -> Result<Journey, ParseError> {
     let mut d = Journey::default();
-    // Accessibility statements parse (so they never misread as
-    // content) but are not stored yet: this model's fields are all
-    // public, so a new field would break struct-literal users.
-    let (source, _acc) = extract_acc(source, header_line, false, AccFlavor::Jison)?;
+    let (source, acc) = extract_acc(source, header_line, false, AccFlavor::Jison)?;
     let source: &str = &source;
+    d.acc_title = acc.title;
+    d.acc_descr = acc.descr;
     // Ensure there is always a current section to push tasks into.
     let ensure_section = |d: &mut Journey| {
         if d.sections.is_empty() {
@@ -4317,10 +4315,17 @@ fn parse_journey(source: &str, header_line: usize) -> Result<Journey, ParseError
         if name.is_empty() {
             return Err(err(lineno, "journey task needs a name".to_string()));
         }
-        let score: u8 = score_str
-            .parse()
-            .map_err(|_| err(lineno, format!("invalid journey score: '{}'", score_str)))?;
-        let score = score.clamp(1, 5);
+        // Mermaid reads the score with `Number()`, so `3.5` and `-1`
+        // are scores too; clamp to the 1..=5 scale the faces draw (a
+        // NaN has no place on it and stays an error).
+        let exact_score: f64 = score_str
+            .parse::<f64>()
+            .ok()
+            .filter(|v| !v.is_nan())
+            .ok_or_else(|| err(lineno, format!("invalid journey score: '{}'", score_str)))?
+            .clamp(1.0, 5.0);
+        // `as` is exact here: the value is a whole number in 1..=5.
+        let score = exact_score.round() as u8;
         // Resolve actors to stable indices (dedup, first-appearance order).
         let mut actor_ids = Vec::new();
         for a in actors_str.split(',') {
@@ -4341,6 +4346,7 @@ fn parse_journey(source: &str, header_line: usize) -> Result<Journey, ParseError
             name: name.to_string(),
             score,
             actors: actor_ids,
+            exact_score,
         });
     }
     Ok(d)
@@ -4414,11 +4420,10 @@ fn split_timeline_events(rest: &str) -> Vec<String> {
 /// `%%` are comments; `<br>` variants become line breaks later at render.
 fn parse_timeline(source: &str, header_line: usize) -> Result<Timeline, ParseError> {
     let mut d = Timeline::default();
-    // Accessibility statements parse (so they never misread as
-    // content) but are not stored yet: this model's fields are all
-    // public, so a new field would break struct-literal users.
-    let (source, _acc) = extract_acc(source, header_line, false, AccFlavor::Jison)?;
+    let (source, acc) = extract_acc(source, header_line, false, AccFlavor::Jison)?;
     let source: &str = &source;
+    d.acc_title = acc.title;
+    d.acc_descr = acc.descr;
     if let Some(header) = source.lines().nth(header_line.saturating_sub(1)) {
         d.direction = parse_timeline_direction(header);
     }
