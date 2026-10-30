@@ -58,7 +58,7 @@ pub const CHOICE_SIZE: f64 = 28.0;
 // Mermaid's dagre defaults (nodeSpacing / rankSpacing ≈ 50) — labels
 // no longer ride between ranks (they own dummy slots), so the extra
 // breathing room the old 62/84 reserved is dead space now.
-const GAP_B: f64 = 50.0; // gap between REAL nodes within a layer
+pub(crate) const GAP_B: f64 = 50.0; // gap between REAL nodes within a layer (fork bars too)
 pub(crate) const GAP_L: f64 = 60.0; // gap between layers (fold DP glue too)
 const MARGIN: f64 = 28.0;
 /// Gap contribution of an edge DUMMY within a layer (dagre's
