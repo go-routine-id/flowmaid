@@ -497,9 +497,6 @@ pub(crate) fn edge_path_d(e: &SceneEdge, t: impl Fn((f64, f64)) -> (f64, f64)) -
 /// ends (where "toward the adjacent control point" has no direction at
 /// all and the glyph collapses to a zero-size polygon). `toward ==
 /// tip` only for a curve of zero length.
-// The class / ER painters adopt this (with `edge_path_d`) in their own
-// work packages; until then only the tests call it.
-#[cfg_attr(not(test), allow(dead_code))]
 pub(crate) fn edge_end_chord(
     e: &SceneEdge,
     at_start: bool,
