@@ -1293,10 +1293,12 @@ fn rank(g: &Graph, rank_only: &[RankGroup]) -> Ranking {
     // pass above parks every source on layer 0. Only a source moves, so
     // no other node's layer depends on it; through a rank-only hub the
     // target is the nearest member the hub ranks below it.
+    // A rank-only group linking into the node (a transition into its
+    // composite) only keeps it below the group's sources: the floor.
     for &v in g.lead_nodes.iter().filter(|&&v| v < n) {
-        let has_in = adj
-            .iter()
-            .any(|links| links.iter().any(|&(w, ei)| w == v && !back[ei]));
+        let into = |u: usize| adj[u].iter().any(|&(w, ei)| w == v && !back[ei]);
+        let has_in = (0..n).any(into);
+        let floor = (n..nx).filter(|&h| into(h)).map(|h| layer[h]).max();
         let reach = |w: usize| -> Option<usize> {
             if w < n {
                 Some(layer[w])
@@ -1310,7 +1312,7 @@ fn rank(g: &Graph, rank_only: &[RankGroup]) -> Ranking {
             .filter_map(|&(w, _)| reach(w))
             .min();
         if let Some(to) = to.filter(|&t| !has_in && t > layer[v] + 1) {
-            layer[v] = to - 1;
+            layer[v] = (to - 1).max(floor.unwrap_or(0));
         }
     }
 
@@ -3614,6 +3616,34 @@ mod tests {
         assert_eq!(wrap_text("x\ny", 1.0, 1.0), "x\ny");
         let at_13 = wrap_text(s, 80.0, 13.0 / TEXT_CALIBRATION);
         assert!(at_13.lines().count() <= w.lines().count());
+    }
+
+    #[test]
+    fn a_left_note_leads_its_state_inside_a_composite_entered_from_outside() {
+        // `First --> Second` keeps Second's members below First (a
+        // rank-only group into every member, the card included); that
+        // floor must not park `left of b` on Second's top layer, two
+        // layers ahead of b: the card leads b by one, beside a.
+        let src = "stateDiagram-v2\n[*] --> First\nstate First {\n[*] --> fir\n}\n\
+                   First --> Second\nstate Second {\n[*] --> a\na --> b\n}\n\
+                   note left of b : left of b";
+        let crate::model::Document::State(g) = crate::parser::parse_document(src).unwrap() else {
+            panic!("a state diagram");
+        };
+        let sc = crate::scene::scene(&g);
+        let at = |id: &str| &sc.nodes[g.node_index(id).unwrap()];
+        let card = sc.nodes.iter().find(|n| n.label == "left of b").unwrap();
+        assert!(
+            (card.y - at("a").y).abs() < 1.0,
+            "beside a: {} vs {}",
+            card.y,
+            at("a").y
+        );
+        assert!(card.y < at("b").y);
+        // Still inside Second, below First.
+        let frame = |id: &str| sc.clusters.iter().find(|c| c.id == id).unwrap();
+        let (first, second) = (frame("First"), frame("Second"));
+        assert!(card.y - card.h / 2.0 > second.y && card.y - card.h / 2.0 > first.y + first.h);
     }
 
     #[test]
