@@ -888,8 +888,29 @@ fn scene_from_layout(
                 lone,
             )
         };
-        let pts = match node_cluster {
-            Some(nc) if b.layer < a.layer => {
+        let card = |v: usize| {
+            let n = &g.nodes[v];
+            crate::style::is_note_card(&n.id, n.shape, &n.style)
+        };
+        let elbow = if lo.edge_paths[ei].is_empty() && (card(e.from) || card(e.to)) {
+            note_elbow(
+                a,
+                b,
+                g.nodes[e.from].shape,
+                g.nodes[e.to].shape,
+                (card(e.from), card(e.to)),
+                lo.nodes
+                    .iter()
+                    .enumerate()
+                    .filter(|&(v, _)| v != e.from && v != e.to)
+                    .map(|(_, p)| p),
+            )
+        } else {
+            None
+        };
+        let pts = match (elbow, node_cluster) {
+            (Some(pts), _) => pts,
+            (None, Some(nc)) if b.layer < a.layer => {
                 // The bow runs between the target's bottom and the
                 // source's top: only nodes reaching into that band are
                 // in its way (all of an in-between layer, but on the end
@@ -1940,19 +1961,48 @@ fn route_built(
     let offs = parallel_offsets(g);
     let bars = bar_degrees(g);
     let mut edges = Vec::with_capacity(g.edges.len());
+    // State note cards' links elbow round as the static layout draws
+    // them (see `note_elbow`), judged in flow coordinates.
+    let card = |v: usize| {
+        let n = &g.nodes[v];
+        crate::style::is_note_card(&n.id, n.shape, &n.style)
+    };
+    let flow: Vec<Placed> = if (0..g.nodes.len()).any(card) {
+        placed.iter().map(|p| flow_placed(g.direction, p)).collect()
+    } else {
+        Vec::new()
+    };
     for (e, off) in g.edges.iter().zip(offs) {
         let a = &placed[e.from];
         let b = &placed[e.to];
-        let pts = free_edge(
-            a,
-            b,
-            g.nodes[e.from].shape,
-            g.nodes[e.to].shape,
-            e.from == e.to,
-            off,
-            Some(g.direction),
-            lone_ends(g, &bars, e),
-        );
+        let elbow = if !flow.is_empty() && e.from != e.to && (card(e.from) || card(e.to)) {
+            note_elbow(
+                &flow[e.from],
+                &flow[e.to],
+                g.nodes[e.from].shape,
+                g.nodes[e.to].shape,
+                (card(e.from), card(e.to)),
+                flow.iter()
+                    .enumerate()
+                    .filter(|&(v, _)| v != e.from && v != e.to)
+                    .map(|(_, p)| p),
+            )
+            .map(|pts| pts.map(|p| from_flow(g.direction, p)))
+        } else {
+            None
+        };
+        let pts = elbow.unwrap_or_else(|| {
+            free_edge(
+                a,
+                b,
+                g.nodes[e.from].shape,
+                g.nodes[e.to].shape,
+                e.from == e.to,
+                off,
+                Some(g.direction),
+                lone_ends(g, &bars, e),
+            )
+        });
         let wps = if e.from != e.to && top_of(e.from) != top_of(e.to) {
             // Parallel edges between one pair get the same channel: each
             // runs `off` across the flow from it, so they never coincide.
@@ -4106,6 +4156,80 @@ fn is_note_card(n: &SceneNode) -> bool {
     crate::style::is_note_card(&n.id, n.shape, &n.style)
 }
 
+/// A state note card's link (`card`: which end is the card, see
+/// [`crate::style::is_note_card`]) when the card lies wholly to one side
+/// of its state across the flow and apart from it along the flow: out of
+/// the state's breadth side facing the card, round into the card's flow
+/// side facing the state. Aimed from the state's flow side, the link
+/// would cross the channel the state's own transitions and their labels
+/// use (in `LR`, a `note right of` card below the next state). `None`
+/// for any other edge, for a state with no flat side (a `<<choice>>`'s
+/// cards would share its corner; a fork/join bar's card sits past its
+/// branches), or when another box (`others`, the two ends left out)
+/// stands within [`crate::clearance::NODE_SEP`] of the elbow. Flow
+/// coordinates.
+fn note_elbow<'a>(
+    a: &Placed,
+    b: &Placed,
+    sa: Shape,
+    sb: Shape,
+    card: (bool, bool),
+    others: impl IntoIterator<Item = &'a Placed>,
+) -> Option<[(f64, f64); 4]> {
+    let (s, c, shape, flip) = match card {
+        (false, true) => (a, b, sa, false),
+        (true, false) => (b, a, sb, true),
+        _ => return None,
+    };
+    let apart = |d: f64, x: f64, y: f64| d.abs() > (x + y) / 2.0;
+    let flat = !matches!(
+        shape,
+        Shape::Diamond
+            | Shape::Circle
+            | Shape::DoubleCircle
+            | Shape::StateStart
+            | Shape::StateEnd
+            | Shape::ForkBar
+    );
+    if !flat || !apart(c.b - s.b, c.bsize, s.bsize) || !apart(c.l - s.l, c.lsize, s.lsize) {
+        return None;
+    }
+    let p0 = side_point(s, shape, (c.b - s.b).signum(), s.l);
+    let p3 = (c.b, c.l - (c.l - s.l).signum() * c.lsize / 2.0);
+    let corner = (c.b, s.l);
+    // The elbow's two legs: across the flow at the state's layer, then
+    // along it at the card's breadth.
+    let span = |u: f64, v: f64| (u.min(v), u.max(v));
+    let legs = [
+        (span(p0.0, corner.0), span(s.l, s.l)),
+        (span(c.b, c.b), span(s.l, p3.1)),
+    ];
+    let pad = crate::clearance::NODE_SEP;
+    let blocked = others.into_iter().any(|o| {
+        let (b0, b1) = (o.b - o.bsize / 2.0 - pad, o.b + o.bsize / 2.0 + pad);
+        let (l0, l1) = (o.l - o.lsize / 2.0 - pad, o.l + o.lsize / 2.0 + pad);
+        legs.iter()
+            .any(|&((x0, x1), (y0, y1))| x0 < b1 && b0 < x1 + 1e-9 && y0 < l1 && l0 < y1 + 1e-9)
+    });
+    if blocked {
+        return None;
+    }
+    // Control points KAPPA of the way to the corner: a quarter-ellipse.
+    const KAPPA: f64 = 0.552;
+    let toward = |p: (f64, f64)| {
+        (
+            p.0 + KAPPA * (corner.0 - p.0),
+            p.1 + KAPPA * (corner.1 - p.1),
+        )
+    };
+    let run = [p0, toward(p0), toward(p3), p3];
+    Some(if flip {
+        [run[3], run[2], run[1], run[0]]
+    } else {
+        run
+    })
+}
+
 /// Midpoint of a cubic bezier (t = 0.5), used to place labels.
 fn cubic_mid(p0: (f64, f64), c1: (f64, f64), c2: (f64, f64), p3: (f64, f64)) -> (f64, f64) {
     (
@@ -5992,6 +6116,90 @@ mod tests {
         let g = parse("flowchart TD\nA --> B").unwrap();
         let sizes: Vec<(f64, f64)> = g.nodes.iter().map(intrinsic_size).collect();
         assert!(matches!(fit_bars(&g, &sizes), Cow::Borrowed(_)));
+    }
+
+    #[test]
+    fn a_note_card_beside_its_state_links_from_the_facing_side() {
+        let state = |src: &str| match crate::parser::parse_document(src).unwrap() {
+            crate::model::Document::State(g) => g,
+            other => panic!("not a state diagram: {other:?}"),
+        };
+        // LR: `note right of Draft` lands a layer on, below Review,
+        // wholly past Draft across the flow. Its link used to leave
+        // Draft's flow side and run under the 'changes' label between
+        // Draft and Review; it now leaves Draft's bottom and rounds
+        // into the card's left side.
+        let g = state(
+            "stateDiagram-v2\ndirection LR\n[*] --> Draft\nDraft --> Review : submit\n\
+             Review --> Draft : changes\nReview --> Published : approve\n\
+             note right of Draft : author edits here\nPublished --> [*]",
+        );
+        let link = |sc: &Scene| {
+            let ei = sc
+                .edges
+                .iter()
+                .position(|e| {
+                    e.from == "Draft" && sc.nodes.iter().any(|n| n.id == e.to && is_note_card(n))
+                })
+                .expect("Draft's note link");
+            let e = &sc.edges[ei];
+            let node = |id: &str| sc.nodes.iter().find(|n| n.id == id).unwrap().clone();
+            (ei, e.clone(), node("Draft"), node(&e.to))
+        };
+        let s = scene(&g);
+        let centres: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+        for (what, sc) in [("scene", s.clone()), ("route", route(&g, &centres))] {
+            let (ei, e, draft, card) = link(&sc);
+            let (p0, p3) = (e.bezier[0], e.bezier[3]);
+            assert!(
+                (p0.1 - (draft.y + draft.h / 2.0)).abs() < 0.5
+                    && (p0.0 - draft.x).abs() < draft.w / 2.0,
+                "{what}: leaves Draft's bottom: {e:?}"
+            );
+            assert!(
+                (p3.0 - (card.x - card.w / 2.0)).abs() < 0.5,
+                "{what}: enters the card's left side: {e:?}"
+            );
+            let line = edge_polyline(&e);
+            for (oj, o) in sc.edges.iter().enumerate() {
+                let Some((text, c, w)) = &o.label else {
+                    continue;
+                };
+                let r = (c.0 - w / 2.0, c.1 - 10.0, c.0 + w / 2.0, c.1 + 10.0);
+                let hit = line
+                    .iter()
+                    .any(|p| p.0 > r.0 && p.0 < r.2 && p.1 > r.1 && p.1 < r.3);
+                assert!(oj == ei || !hit, "{what}: the link runs under '{text}'");
+            }
+        }
+        // A card level with its state (overlapping it across the flow)
+        // keeps the ordinary link, off Draft's flow side.
+        let (_, _, draft, card) = link(&s);
+        let mut moved = centres.clone();
+        let ci = g.node_index(&card.id).unwrap();
+        moved[ci].1 = draft.y;
+        let r = route(&g, &moved);
+        let (_, e, draft, _) = link(&r);
+        assert!(
+            (e.bezier[0].0 - (draft.x + draft.w / 2.0)).abs() < 0.5,
+            "flow side: {e:?}"
+        );
+        // A <<choice>> has no flat side: its cards' links stay as they were.
+        let g = state(
+            "stateDiagram-v2\nstate c <<choice>>\n[*] --> A\nA --> c\nc --> B : yes\n\
+             c --> C : no\nnote right of c : decide here",
+        );
+        let s = scene(&g);
+        let ci = g.node_index("c").unwrap();
+        let (c, n) = (&s.nodes[ci], g.edges.len());
+        let e = s.edges[..n]
+            .iter()
+            .find(|e| e.from == "c" && e.label.is_none())
+            .unwrap();
+        assert!(
+            e.bezier[0].1 > c.y + 0.5,
+            "off the choice's lower half: {e:?}"
+        );
     }
 
     #[test]
