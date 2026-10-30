@@ -702,7 +702,14 @@ const TITLE_CUT_SEPARATORS: &[char] = &['·', '-', '–', '—', ',', ':', ';', 
 /// Does segment `a`–`b` intersect the axis-aligned rectangle
 /// `[rx0,rx1] × [ry0,ry1]`? Liang-Barsky clip (true when either
 /// endpoint is inside, too).
-fn seg_aabb(a: (f64, f64), b: (f64, f64), rx0: f64, ry0: f64, rx1: f64, ry1: f64) -> bool {
+pub(crate) fn seg_aabb(
+    a: (f64, f64),
+    b: (f64, f64),
+    rx0: f64,
+    ry0: f64,
+    rx1: f64,
+    ry1: f64,
+) -> bool {
     let (dx, dy) = (b.0 - a.0, b.1 - a.1);
     let p = [-dx, dx, -dy, dy];
     let q = [a.0 - rx0, rx1 - a.0, a.1 - ry0, ry1 - a.1];
