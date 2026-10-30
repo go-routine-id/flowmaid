@@ -3365,8 +3365,17 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
                 let ci = ensure_generic_class(&mut d, name.trim());
                 open = Some((ci, lineno));
             } else {
-                // `class A, B, C` declares several at once (Mermaid).
-                for name in rest.split(',').map(str::trim).filter(|n| !n.is_empty()) {
+                // `class A, B, C` declares several at once (Mermaid); a
+                // comma inside a generic (`class Map~K, V~`) is not a
+                // separator.
+                let mut depth_odd = false;
+                let names = rest.split(|c: char| {
+                    if c == '~' {
+                        depth_odd = !depth_odd;
+                    }
+                    c == ',' && !depth_odd
+                });
+                for name in names.map(str::trim).filter(|n| !n.is_empty()) {
                     ensure_generic_class(&mut d, name);
                 }
             }
