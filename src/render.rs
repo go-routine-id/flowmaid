@@ -302,6 +302,13 @@ mod tests {
         let svg = render(&g);
         assert!(!svg.contains("NaN") && !svg.contains("inf"));
         assert!(svg.contains("Validating") && svg.contains(">submit</text>"));
+        // The note is drawn (it used to vanish without a trace), its
+        // link named after the card, the choice and bars after their ids.
+        assert!(svg.contains(">shown to the user</text>"));
+        assert!(svg.contains("<title>Rejected → note</title>"));
+        for id in ["decide", "forked", "joined"] {
+            assert!(svg.contains(&format!("<g><title>{id}</title>")), "{id}");
+        }
         let (w, h) = (attr(&svg, "width"), attr(&svg, "height"));
         for line in paths(&svg).iter().filter(|p| p.contains(" C ")) {
             for (x, y) in coords(line) {
@@ -315,6 +322,60 @@ mod tests {
         let s1 = crate::scene::route(&g, &pos);
         assert_eq!(s0.nodes.len(), s1.nodes.len());
         assert_eq!(s0.edges.len(), s1.edges.len());
+    }
+
+    /// State notes ride the flowchart pipeline as boxes of their own:
+    /// placed by `right of` / `left of` along the flow like mermaid,
+    /// joined by a dotted line, and picked, dragged and rerouted like
+    /// any node.
+    #[test]
+    fn state_note_cards_are_placed_and_interactive() {
+        use crate::model::Document;
+        use crate::scene::{route, route_partial, scene, Hit};
+        let src = "stateDiagram-v2\n[*] --> A\nA --> B\nB --> C\nC --> [*]\n\
+                   note right of A : after A\nnote left of C : before C";
+        let Document::State(g) = crate::parser::parse_document(src).unwrap() else {
+            panic!("a state diagram");
+        };
+        let sc = scene(&g);
+        let at = |id: &str| &sc.nodes[g.node_index(id).unwrap()];
+        let card = |text: &str| sc.nodes.iter().position(|n| n.label == text).unwrap();
+        let (after, before) = (card("after A"), card("before C"));
+        let (a, b, c) = (at("A"), at("B"), at("C"));
+        // `right of A` sits on B's layer (after A); `left of C` on B's
+        // layer too (just before C), not parked on the top layer.
+        assert!((sc.nodes[after].y - b.y).abs() < 1.0, "right of: after A");
+        assert!((sc.nodes[before].y - b.y).abs() < 1.0, "left of: before C");
+        assert!(a.y < b.y && b.y < c.y);
+        // The link is drawn dotted, without an arrowhead.
+        let svg = render(&g);
+        let link = svg
+            .lines()
+            .find(|l| l.contains("<title>A → note</title>"))
+            .expect("the note link is drawn");
+        assert!(link.contains("stroke-dasharray") && !link.contains("marker-end"));
+        // Interactive: a card is picked where it is drawn, and dragging
+        // it reroutes its link from the new spot.
+        let n = &sc.nodes[after];
+        assert_eq!(sc.hit_test(n.x, n.y, 4.0), Some(Hit::Node(after)));
+        let base: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let mut moved = base.clone();
+        // Down and left, into free space below B.
+        moved[after].0 -= 100.0;
+        moved[after].1 += 110.0;
+        assert_eq!(sc.node_at(moved[after].0, moved[after].1), None);
+        let link_of = |s: &crate::scene::Scene| {
+            s.edges
+                .iter()
+                .find(|e| e.to == g.nodes[after].id)
+                .map(|e| e.bezier[3])
+                .unwrap()
+        };
+        for s in [route(&g, &moved), route_partial(&g, &moved, &sc, &base)] {
+            assert_eq!(s.node_at(moved[after].0, moved[after].1), Some(after));
+            let end = link_of(&s);
+            assert!((end.0 - moved[after].0).abs() < n.w / 2.0 + 0.5, "{end:?}");
+        }
     }
 
     #[test]
