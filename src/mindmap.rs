@@ -2,12 +2,13 @@
 //! and branches radiate outward, clockwise from 12 o'clock in source
 //! order. Every child hangs off its PARENT on a short spoke of one
 //! length ([`TRUNK`] from the root, [`SPOKE`] below that), and siblings
-//! fan out around their parent's outward direction, each subtree packed
-//! into its own angular cone as seen from the parent — so leaves cluster
-//! round the node they belong to, boxes never overlap and connectors
-//! never cross. Every top-level branch gets a stable accent that its
-//! whole subtree fills, and the seven node shapes (default / rounded /
-//! square / circle / hexagon / bang / cloud) are drawn for real.
+//! are swept round their parent's outward direction, each taking the
+//! first direction where its whole subtree clears the siblings already
+//! placed — so leaves cluster round the node they belong to, boxes never
+//! overlap and connectors never cross. Every top-level branch gets a
+//! stable accent that its whole subtree fills, and the seven node shapes
+//! (default / rounded / square / circle / hexagon / bang / cloud) are
+//! drawn for real.
 //!
 //! Like `pie`/`seq` there is nothing auto-routed: [`scene`] computes
 //! every coordinate a painter needs, [`route`] rebuilds the scene from
@@ -858,7 +859,7 @@ fn fan_centres(d: &Mindmap, size: &[(f64, f64)]) -> Option<Vec<(f64, f64)>> {
 
 /// The fan layout's safety net: no two boxes closer than half of
 /// [`SEP`], no connector crossing another, none running through a box
-/// other than its own two ends. The cone packing guarantees these by
+/// other than its own two ends. The sweep guarantees these by
 /// construction; this re-checks the finished geometry (skipped on huge
 /// maps, where the quadratic check would cost more than the layout).
 fn clean(d: &Mindmap, size: &[(f64, f64)], pos: &[(f64, f64)]) -> bool {
@@ -1804,7 +1805,7 @@ mod tests {
 
     #[test]
     fn wide_siblings_do_not_overlap() {
-        // Many long labels round the root: every box keeps its own cone.
+        // Many long labels round the root: every box keeps clear.
         let mut src = String::from("mindmap\n  root(Center)\n");
         for i in 0..12 {
             src.push_str(&format!("    A very long branch label number {i:02}\n"));
