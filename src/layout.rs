@@ -468,9 +468,12 @@ fn fan_label_room(
         let lines: Vec<FanLine> = spots
             .iter()
             .map(|&(v, b, w)| {
-                let lean = match flat(v) {
-                    0.0 => 0.0,
-                    _ => port_lean(g.nodes[v].shape, (absize[v], alsize[v]), bp - b, 0.0),
+                // Not a `match` on 0.0: a float literal pattern is a
+                // future-incompatibility warning on the MSRV.
+                let lean = if flat(v) == 0.0 {
+                    0.0
+                } else {
+                    port_lean(g.nodes[v].shape, (absize[v], alsize[v]), bp - b, 0.0)
                 };
                 FanLine {
                     point: p,
