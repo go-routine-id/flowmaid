@@ -61,6 +61,10 @@ const HANG_COST: f64 = 0.5;
 const WRAP_SHARE: f64 = 0.3;
 /// ...but never narrower than this (px).
 const WRAP_MIN: f64 = 90.0;
+/// Factor by which the columns spread apart per step while a label
+/// between them still overprints another label or a node (see
+/// `Placed::overprint`).
+const SPREAD_STEP: f64 = 1.2;
 
 /// A placed node: a rectangle plus the text drawn beside it.
 ///
@@ -498,7 +502,6 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
     // can still overflow to +inf, and an infinite canvas is unparseable
     // SVG. Fall back to the configured size when that happens.
     let finite = |v: f64, fallback: f64| if v.is_finite() { v } else { fallback };
-    let width = finite(cfg.width.max(PAD * 2.0 + plot_w), 600.0);
     let height = finite(cfg.height.max(PAD * 2.0 + plot_h), 400.0);
 
     // Stack each column, centred vertically in the plot area.
@@ -521,7 +524,7 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
         .collect();
     let colors = node_colors(d, &cols, &custom);
 
-    let mut nodes: Vec<SankeyNodeGlyph> = (0..n)
+    let nodes: Vec<SankeyNodeGlyph> = (0..n)
         .map(|i| SankeyNodeGlyph {
             label: d.nodes[i].clone(),
             x: col_x(depth[i], PAD, PAD + plot_w),
@@ -543,8 +546,15 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
     // nodes). The canvas keeps its configured width while it can: the
     // columns draw in from the margins to make room, down to
     // MIN_SPAN_SHARE of their span; then long labels wrap; only what is
-    // left over widens the canvas on that side.
-    let fit = |nodes: &mut [SankeyNodeGlyph], label_w: &[f64], label_h: &[f64]| -> Placed {
+    // left over widens the canvas on that side. Labels between columns
+    // cannot hang anywhere: while one still overprints a label or a
+    // node, the columns spread further apart (see below).
+    let fit = |nodes: &mut [SankeyNodeGlyph],
+               label_w: &[f64],
+               label_h: &[f64],
+               span: f64,
+               width: f64|
+     -> Placed {
         let place = |nodes: &mut [SankeyNodeGlyph], lo: f64, hi: f64| {
             for nd in nodes.iter_mut() {
                 nd.x = col_x(nd.column, lo, hi);
@@ -555,10 +565,8 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
             };
             place_labels(nodes, sizes, &order, n_cols, cfg.label_style, width, height)
         };
-        let (mut lo, mut hi) = (PAD, PAD + plot_w);
-        let min_span = (plot_w * MIN_SPAN_SHARE)
-            .max(cfg.node_width * 2.0)
-            .min(plot_w);
+        let (mut lo, mut hi) = (PAD, PAD + span);
+        let min_span = (span * MIN_SPAN_SHARE).max(cfg.node_width * 2.0).min(span);
         let mut got = place(nodes, lo, hi);
         'fit: for _ in 0..LABEL_FIT_PASSES {
             let over_l = (PAD - got.left).max(0.0);
@@ -587,35 +595,71 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
         }
         got
     };
-    let overrun = |p: &Placed| (PAD - p.left).max(0.0) + (p.right - (width - PAD)).max(0.0);
+    let overrun =
+        |p: &Placed, width: f64| (PAD - p.left).max(0.0) + (p.right - (width - PAD)).max(0.0);
     let one_line = vec![LABEL_H; n];
-    let mut got = fit(&mut nodes, &label_w, &one_line);
-    if overrun(&got) > 0.5 {
-        // Still too wide for the canvas: wrap the long labels (at spaces,
-        // the value kept whole) and keep that if it needs less room
-        // without crowding anything.
-        let target = (plot_w * WRAP_SHARE).max(WRAP_MIN);
-        let lines: Vec<Vec<String>> = (0..n)
-            .map(|i| {
-                let value = cfg
-                    .show_values
-                    .then(|| format!("({})", format_value(value[i], &cfg.prefix, &cfg.suffix)));
-                wrap_label(&d.nodes[i], value.as_deref(), target, &measure)
-            })
-            .collect();
-        let wrap_w: Vec<f64> = lines
-            .iter()
-            .map(|l| l.iter().map(|t| measure(t)).fold(0.0, f64::max))
-            .collect();
-        let wrap_h: Vec<f64> = lines.iter().map(|l| LABEL_H * l.len() as f64).collect();
-        let mut trial = nodes.clone();
-        let wrapped = fit(&mut trial, &wrap_w, &wrap_h);
-        if overrun(&wrapped) < overrun(&got) - 0.5 && wrapped.crowding <= got.crowding {
-            for (nd, l) in trial.iter_mut().zip(lines) {
-                nd.label_lines = l;
+    // The labels fitted with the columns spread over `span`: one line
+    // each, or — when they still overrun the canvas or crowd each other —
+    // the long ones wrapped (at spaces, the value kept whole), if that
+    // does better on one count and no worse on the other. The wrap width
+    // is the configured plot's share, however far the columns spread, so
+    // wrapped labels stay narrow and need the least extra room. Returns
+    // the nodes, what their labels achieved and the canvas width.
+    let target = (plot_w * WRAP_SHARE).max(WRAP_MIN);
+    let attempt = |span: f64| -> (Vec<SankeyNodeGlyph>, Placed, f64) {
+        let width = finite(cfg.width.max(PAD * 2.0 + span), 600.0);
+        let mut nodes = nodes.clone();
+        let mut got = fit(&mut nodes, &label_w, &one_line, span, width);
+        if overrun(&got, width) > 0.5 || got.crowding > 0.0 {
+            let lines: Vec<Vec<String>> = (0..n)
+                .map(|i| {
+                    let value = cfg
+                        .show_values
+                        .then(|| format!("({})", format_value(value[i], &cfg.prefix, &cfg.suffix)));
+                    wrap_label(&d.nodes[i], value.as_deref(), target, &measure)
+                })
+                .collect();
+            let wrap_w: Vec<f64> = lines
+                .iter()
+                .map(|l| l.iter().map(|t| measure(t)).fold(0.0, f64::max))
+                .collect();
+            let wrap_h: Vec<f64> = lines.iter().map(|l| LABEL_H * l.len() as f64).collect();
+            let mut trial = nodes.clone();
+            let wrapped = fit(&mut trial, &wrap_w, &wrap_h, span, width);
+            let (o_got, o_wrap) = (overrun(&got, width), overrun(&wrapped, width));
+            let better = (o_wrap < o_got - 0.5 && wrapped.crowding <= got.crowding)
+                || (wrapped.crowding < got.crowding && o_wrap <= o_got + 0.5);
+            if better {
+                for (nd, l) in trial.iter_mut().zip(lines) {
+                    nd.label_lines = l;
+                }
+                nodes = trial;
+                got = wrapped;
             }
-            nodes = trial;
-            got = wrapped;
+        }
+        (nodes, got, width)
+    };
+    let (mut nodes, mut got, mut width) = attempt(plot_w);
+    // A label between two columns that still overprints a label or a
+    // node (a long name at a narrow width) gets room by spreading the
+    // columns apart, a step at a time, until none does — at most until
+    // every gap holds the widest label from each side, where none can.
+    // Each step keeps the configured width's preference for drawing in
+    // and wrapping; a wider plot is kept only when it overprints less.
+    // Labels that merely graze the clear margin above or below another
+    // keep the configured width.
+    if got.overprint > 0.0 && n_cols > 1 {
+        let widest = label_w.iter().copied().fold(0.0, f64::max);
+        let roomy = (n_cols - 1) as f64
+            * (cfg.node_width + 2.0 * (widest + LABEL_GAP + LABEL_CLEAR_X))
+            + cfg.node_width;
+        let mut span = plot_w;
+        while got.overprint > 0.0 && span < roomy {
+            span = (span * SPREAD_STEP).min(roomy);
+            let tried = attempt(span);
+            if tried.1.overprint < got.overprint {
+                (nodes, got, width) = tried;
+            }
         }
     }
     let reach = (got.left, got.right);
@@ -955,6 +999,7 @@ fn place_labels(
     let mut placed: Vec<Rect> = Vec::with_capacity(nodes.len());
     let mut reach = (f64::INFINITY, f64::NEG_INFINITY);
     let mut crowding = 0.0;
+    let mut overprint = 0.0;
     for &i in &by_room {
         let nd = &nodes[i];
         let first = n_cols > 1 && nd.column == 0;
@@ -1024,6 +1069,32 @@ fn place_labels(
         if let Some((cost, y, left, r)) = best {
             if cost > HANG_COST {
                 crowding += cost;
+                // Of that, what a reader sees: the label itself on a node
+                // or on another label, or two labels on a baseline too
+                // close to read apart — not the clear margins above and
+                // below.
+                let wide = (r.0 - LABEL_CLEAR_X, r.1, r.2 + LABEL_CLEAR_X, r.3);
+                overprint += placed.iter().map(|&p| overlap(wide, p)).sum::<f64>()
+                    + rects
+                        .iter()
+                        .enumerate()
+                        .filter(|&(j, _)| j != i)
+                        .map(|(_, &q)| overlap(r, q))
+                        .sum::<f64>()
+                    + (r.2 - r.0) * (r.3 - r.1)
+                    - overlap(
+                        r,
+                        (
+                            if first && left {
+                                f64::NEG_INFINITY
+                            } else {
+                                0.0
+                            },
+                            0.0,
+                            if last && !left { f64::INFINITY } else { width },
+                            height,
+                        ),
+                    );
             }
             let nd = &mut nodes[i];
             nd.label_pos = if left {
@@ -1040,6 +1111,7 @@ fn place_labels(
         left: reach.0,
         right: reach.1,
         crowding,
+        overprint,
     }
 }
 
@@ -1087,12 +1159,17 @@ fn wrap_label(
 }
 
 /// What [`place_labels`] achieved: the leftmost and rightmost x any
-/// label reaches, and the summed cost of the labels that found no spot
-/// clear of every other label and node (0 when all did).
+/// label reaches, the summed cost of the labels that found no spot
+/// clear of every other label and node (0 when all did), and how much
+/// of that is visible overprinting (see [`place_labels`]).
 struct Placed {
     left: f64,
     right: f64,
     crowding: f64,
+    /// Area (px²) of labels drawn on another label or a node, or closer
+    /// than twice [`LABEL_CLEAR_X`] to another label on their baseline,
+    /// or off the canvas where they may not hang.
+    overprint: f64,
 }
 
 /// The ribbon outline: two cubic beziers with mirrored control points,
@@ -1869,6 +1946,123 @@ mod tests {
         assert!(
             svg.contains("dy=\"0.33em\" text-anchor=\"start\" fill=\"#232840\">Nuclear (25 TWh)<")
         );
+    }
+
+    /// Four columns of 17 nodes with long names (verifier input): at
+    /// `width: 350` the canvas widened for the first and last columns'
+    /// labels, yet "Heat networks (53)" printed across the Households bar,
+    /// "Households (51)" across Heat networks and "Industry and
+    /// manufacturing (53)" across Grid and Wind; at 250 two labels
+    /// overprinted as well. Labels between columns could not hang
+    /// anywhere, so nothing made room for them. The columns now spread
+    /// apart until they clear, with the long names wrapped at the
+    /// configured width's share — so only as far as that needs.
+    #[test]
+    fn middle_column_labels_never_overprint_at_narrow_widths() {
+        let body = "sankey-beta\nCoal,Grid,24\nCoal,Heat networks,35\n\
+            Oil,Thermal power plants,17\nOil,Refineries and upgraders,5\n\
+            Gas,Refineries and upgraders,25\nGas,Thermal power plants,32\n\
+            Hydro,Refineries and upgraders,36\nHydro,Heat networks,8\n\
+            Wind,Refineries and upgraders,15\nWind,Thermal power plants,28\n\
+            Solar,Grid,26\nSolar,Thermal power plants,12\n\
+            Biomass,Thermal power plants,30\nBiomass,Heat networks,10\n\
+            Thermal power plants,Households,9\n\
+            Thermal power plants,Industry and manufacturing,27\n\
+            Thermal power plants,Transport,9\nRefineries and upgraders,Households,13\n\
+            Refineries and upgraders,Industry and manufacturing,9\n\
+            Refineries and upgraders,Services,20\nGrid,Households,15\n\
+            Grid,Industry and manufacturing,12\nGrid,Transport,3\n\
+            Heat networks,Transport,7\nHeat networks,Households,11\n\
+            Heat networks,Industry and manufacturing,5\n\
+            Industry and manufacturing,Useful energy,13\n\
+            Industry and manufacturing,Rejected energy and losses,12\n\
+            Households,Useful energy,29\nHouseholds,Rejected energy and losses,22\n\
+            Transport,Useful energy,21\nTransport,Rejected energy and losses,3\n\
+            Services,Useful energy,22\nServices,Rejected energy and losses,24\n";
+        for width in [250, 350, 450, 600] {
+            let src = format!(
+                "---\nconfig:\n  sankey:\n    width: {width}\n    height: 420\n    \
+                 showValues: true\n---\n{body}"
+            );
+            let ss = scene(&diagram(&src));
+            assert_labels_clear(&ss);
+            // Room for the wrapped labels, not for every name on one line
+            // (which would need about 1 000px).
+            assert!(ss.width < 640.0, "width {width}: canvas {}", ss.width);
+        }
+    }
+
+    /// Random diagrams of three to five columns with long names, at
+    /// widths from 250 to 600: every label stays clear of every other
+    /// label and node, and inside the canvas.
+    #[test]
+    fn random_diagrams_keep_every_label_clear() {
+        let names = [
+            "Coal",
+            "Gas",
+            "Oil",
+            "Nuclear power",
+            "Offshore wind farms",
+            "Solar",
+            "Hydro",
+            "Biomass and waste",
+            "Imports from abroad",
+            "Electricity grid",
+            "District heating networks",
+            "Refineries and upgraders",
+            "Thermal power plants",
+            "Hydrogen",
+            "Households",
+            "Industry and manufacturing",
+            "Transport",
+            "Services and commerce",
+            "Agriculture",
+            "Useful energy",
+            "Rejected energy and losses",
+            "Exports",
+        ];
+        for seed in 0..24u64 {
+            let mut x = seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1;
+            let mut next = |m: u64| {
+                x ^= x << 13;
+                x ^= x >> 7;
+                x ^= x << 17;
+                x % m
+            };
+            let mut pool: Vec<&str> = names.to_vec();
+            for i in (1..pool.len()).rev() {
+                pool.swap(i, next(i as u64 + 1) as usize);
+            }
+            let mut cols: Vec<Vec<&str>> = Vec::new();
+            let mut at = 0;
+            for _ in 0..3 + next(3) {
+                let take = (2 + next(4) as usize).min(pool.len() - at);
+                if take < 2 {
+                    break;
+                }
+                cols.push(pool[at..at + take].to_vec());
+                at += take;
+            }
+            let width = [250, 300, 350, 450, 600][next(5) as usize];
+            let mut src = format!(
+                "---\nconfig:\n  sankey:\n    width: {width}\n    showValues: {}\n---\n\
+                 sankey-beta\n",
+                next(2) == 0
+            );
+            let mut links = std::collections::BTreeSet::new();
+            for c in 0..cols.len() - 1 {
+                for &t in &cols[c + 1] {
+                    links.insert((cols[c][next(cols[c].len() as u64) as usize], t));
+                }
+                for &s in &cols[c] {
+                    links.insert((s, cols[c + 1][next(cols[c + 1].len() as u64) as usize]));
+                }
+            }
+            for (s, t) in links {
+                src.push_str(&format!("{s},{t},{}\n", 3 + next(58)));
+            }
+            assert_labels_clear(&scene(&diagram(&src)));
+        }
     }
 
     /// A long first-column name with room to spare at the default width
