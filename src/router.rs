@@ -2567,7 +2567,7 @@ fn simplify(pts: &[Pt]) -> Vec<Pt> {
 /// Waypoints the `curveBasis` painter draws as a rounded orthogonal
 /// path: every interior corner gets a point `rmax` (at most half of
 /// each leg) before and after it, so the spline hugs the corner.
-fn smooth(corners: &[Pt], rmax: f64) -> Vec<Pt> {
+pub(crate) fn smooth(corners: &[Pt], rmax: f64) -> Vec<Pt> {
     let n = corners.len();
     if n < 3 {
         return corners.to_vec();

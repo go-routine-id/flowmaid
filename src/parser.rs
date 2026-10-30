@@ -18,10 +18,10 @@
 use crate::markdown;
 use crate::model::{
     ArchEdge, ArchGroup, ArchService, ArchSide, Architecture, Attr, Card, Class, ClassDiagram,
-    ClassRel, CommitKind, Direction, Document, EdgeAnimation, EdgeCurve, EdgeEnds, EdgeKind,
-    EdgeMeta, End, ErDiagram, FrameKind, GitBranch, GitCommit, GitGraph, GitOrientation, Graph,
-    Journey, JourneySection, JourneyTask, Key, LinkStyle, LinkTarget, Marker, Member, MindNode,
-    MindShape, Mindmap, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation,
+    ClassNote, ClassRel, CommitKind, Direction, Document, EdgeAnimation, EdgeCurve, EdgeEnds,
+    EdgeKind, EdgeMeta, End, ErDiagram, FrameKind, GitBranch, GitCommit, GitGraph, GitOrientation,
+    Graph, Journey, JourneySection, JourneyTask, Key, LinkStyle, LinkTarget, Marker, Member,
+    MindNode, MindShape, Mindmap, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation,
     SankeyAlignment, SankeyConfig, SankeyDiagram, SankeyLabelStyle, SankeyLink, SankeyLinkColor,
     SeqHead, SeqItem, SequenceDiagram, Shape, SubEdge, Subgraph, Timeline, TimelineDirection,
     TimelinePeriod, TimelineSection, Visibility,
@@ -3349,9 +3349,11 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
         if let Some((ci, _)) = open {
             if line == "}" {
                 open = None;
-            } else if !line.starts_with("<<") {
-                // Skip `<<interface>>` / `<<abstract>>` stereotypes
-                // (not yet rendered) rather than treat them as fields.
+            } else if let Some(a) = annotation_of(line) {
+                // `<<interface>>` / `<<abstract>>` inside the block is
+                // the class's stereotype, never a field.
+                d.classes[ci].annotations.push(a.to_string());
+            } else {
                 add_class_member(&mut d.classes[ci], line);
             }
             continue;
@@ -3360,19 +3362,32 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
             let rest = rest.trim();
             // `class Name {` opens a block; `class Name` just declares.
             if let Some(name) = rest.strip_suffix('{') {
-                let ci = d.ensure_class(name.trim());
+                let ci = ensure_generic_class(&mut d, name.trim());
                 open = Some((ci, lineno));
             } else {
                 // `class A, B, C` declares several at once (Mermaid).
                 for name in rest.split(',').map(str::trim).filter(|n| !n.is_empty()) {
-                    d.ensure_class(name);
+                    ensure_generic_class(&mut d, name);
                 }
             }
             continue;
         }
-        // Ignore directives we don't render yet (`direction LR`,
-        // `note ...`) instead of mis-reading them as relations.
-        if strip_keyword(line, "direction").is_some() || strip_keyword(line, "note").is_some() {
+        // `<<interface>> Name` on its own line annotates that class.
+        if let Some(a) = line.strip_prefix("<<").and_then(|r| r.split_once(">>")) {
+            let (a, name) = (a.0.trim(), a.1.trim());
+            if !a.is_empty() && !name.is_empty() {
+                let ci = ensure_generic_class(&mut d, name);
+                d.classes[ci].annotations.push(a.to_string());
+                continue;
+            }
+        }
+        if let Some(rest) = strip_keyword(line, "direction") {
+            d.direction = parse_direction(rest, lineno)?;
+            continue;
+        }
+        if let Some(rest) = strip_keyword(line, "note") {
+            let note = parse_class_note(&mut d, rest.trim(), lineno)?;
+            d.notes.push(note);
             continue;
         }
         // Classify by the part BEFORE the first unquoted colon: if it
@@ -3386,8 +3401,8 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
             if let Some(c) = colon {
                 let name = line[..c].trim();
                 let member = line[c + 1..].trim();
-                if is_class_ident(name) && !member.is_empty() {
-                    let ci = d.ensure_class(name);
+                if is_class_ident(split_generic(name).0) && !member.is_empty() {
+                    let ci = ensure_generic_class(&mut d, name);
                     add_class_member(&mut d.classes[ci], member);
                     continue;
                 }
@@ -3409,6 +3424,66 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
 
 fn is_class_ident(s: &str) -> bool {
     !s.is_empty() && s.chars().all(|c| c.is_alphanumeric() || c == '_')
+}
+
+/// `Box~T~` → (`Box`, `Some("T")`): mermaid's generic class name. The
+/// id is the part before the first `~`, so `class Box~T~` and a later
+/// `Box : +size() int` are one class, not two. A name without a
+/// closed `~…~` suffix is returned whole.
+fn split_generic(name: &str) -> (&str, Option<&str>) {
+    match name.find('~') {
+        Some(i) if i > 0 && name.len() > i + 2 && name.ends_with('~') => {
+            (&name[..i], Some(&name[i + 1..name.len() - 1]))
+        }
+        _ => (name, None),
+    }
+}
+
+/// [`ClassDiagram::ensure_class`] for a possibly generic name
+/// (`Box~T~`); the first spelling that names the generic sets it.
+fn ensure_generic_class(d: &mut ClassDiagram, name: &str) -> usize {
+    let (id, generic) = split_generic(name);
+    let ci = d.ensure_class(id);
+    if let (Some(t), None) = (generic, &d.classes[ci].generic) {
+        d.classes[ci].generic = Some(t.to_string());
+    }
+    ci
+}
+
+/// The stereotype of a `<<interface>>` member line, without guillemets.
+fn annotation_of(line: &str) -> Option<&str> {
+    let a = line.strip_prefix("<<")?.strip_suffix(">>")?.trim();
+    (!a.is_empty()).then_some(a)
+}
+
+/// `note "text"` or `note for Class "text"` (the part after `note`).
+/// The text may be quoted; `\n` and `<br/>` break lines, as mermaid's
+/// own class notes do.
+fn parse_class_note(
+    d: &mut ClassDiagram,
+    rest: &str,
+    lineno: usize,
+) -> Result<ClassNote, ParseError> {
+    let (class, text) = match strip_keyword(rest, "for") {
+        Some(r) => {
+            let r = r.trim();
+            let end = r.find(char::is_whitespace).unwrap_or(r.len());
+            let name = &r[..end];
+            if !is_class_ident(split_generic(name).0) {
+                return Err(err(
+                    lineno,
+                    format!("'note for' needs a class name, got '{name}'"),
+                ));
+            }
+            (Some(ensure_generic_class(d, name)), r[end..].trim())
+        }
+        None => (None, rest),
+    };
+    if text.is_empty() {
+        return Err(err(lineno, "note text is empty".to_string()));
+    }
+    let text = clean_label(&text.replace("\\n", "<br/>"));
+    Ok(ClassNote { text, class })
 }
 
 /// First byte index of `needle` in `s` that lies outside any `"..."`
@@ -3515,29 +3590,28 @@ fn parse_class_relation(d: &mut ClassDiagram, line: &str, lineno: usize) -> Resu
     // Strip optional cardinality quotes from the inner edges.
     let (left_name, left_card) = split_card_end(left, true);
     let (right_name, right_card) = split_card_end(right, false);
-    if !is_class_ident(left_name) || !is_class_ident(right_name) {
+    if !is_class_ident(split_generic(left_name).0) || !is_class_ident(split_generic(right_name).0) {
         return Err(err(
             lineno,
             format!("class relation needs two class names, got '{left_name}' / '{right_name}'"),
         ));
     }
-    let li = d.ensure_class(left_name);
-    let ri = d.ensure_class(right_name);
-    // Normalise so the decorated end is `to`.
+    let li = ensure_generic_class(d, left_name);
+    let ri = ensure_generic_class(d, right_name);
+    // Normalise so the decorated end is `to`; `head_left` keeps the
+    // source order, which the layout ranks by.
     let (from, to, from_card, to_card) = if head_left {
         (ri, li, right_card, left_card)
     } else {
         (li, ri, left_card, right_card)
     };
-    d.relations.push(ClassRel {
-        from,
-        to,
-        kind,
-        dashed,
-        from_card,
-        to_card,
-        label,
-    });
+    let mut rel = ClassRel::new(from, to, kind);
+    rel.dashed = dashed;
+    rel.from_card = from_card;
+    rel.to_card = to_card;
+    rel.label = label;
+    rel.head_left = head_left;
+    d.relations.push(rel);
     Ok(())
 }
 
