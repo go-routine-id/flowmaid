@@ -929,6 +929,38 @@ mod tests {
     }
 
     #[test]
+    fn state_note_cards_and_choice_survive_as_flowchart_text() {
+        // A state diagram's note cards are plain styled boxes with a
+        // dotted link, and its choice an empty diamond: all of it has a
+        // flowchart form, so the text keeps the cards, their colours and
+        // the compact choice.
+        let doc = crate::parser::parse_document(
+            "stateDiagram-v2\nstate c <<choice>>\nA --> c\nc --> B : yes\n\
+             note right of B\nkept\nas text\nend note",
+        )
+        .unwrap();
+        let crate::model::Document::State(g) = doc else {
+            panic!("a state diagram");
+        };
+        let text = to_mermaid(&g);
+        let back = parse(&text).unwrap_or_else(|e| panic!("{e}\n--\n{text}"));
+        assert_eq!((back.nodes.len(), back.edges.len()), (4, 3), "{text}");
+        let card = back
+            .nodes
+            .iter()
+            .find(|n| n.label == "kept\nas text")
+            .unwrap();
+        assert_eq!(card.style, g.nodes[3].style, "{text}");
+        assert!(back.edges.iter().any(|e| e.kind == EdgeKind::DottedOpen));
+        let c = &back.nodes[back.node_index("c").unwrap()];
+        let size = crate::layout::intrinsic_size(c);
+        assert_eq!(
+            size,
+            (crate::layout::CHOICE_SIZE, crate::layout::CHOICE_SIZE)
+        );
+    }
+
+    #[test]
     fn labels_with_brackets_pipes_and_breaks_round_trip() {
         assert_source_roundtrip(
             "flowchart TD\n\
