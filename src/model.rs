@@ -391,6 +391,11 @@ pub struct Graph {
     pub acc_descr: Option<String>,
     /// Mermaid `click` links and tooltips, keyed by node index.
     pub links: BTreeMap<usize, NodeLink>,
+    /// Gap between layers for a synthetic graph that needs more than
+    /// the flowchart's (class diagrams: room for a label, two
+    /// cardinalities and an end glyph on one short edge); `None` = the
+    /// default.
+    pub(crate) rank_gap: Option<f64>,
     index: HashMap<String, usize>,
 }
 
@@ -693,6 +698,13 @@ pub enum Document {
 pub struct ClassDiagram {
     pub classes: Vec<Class>,
     pub relations: Vec<ClassRel>,
+    /// Layout direction from mermaid's `direction TB|BT|LR|RL` line
+    /// (default top-down). Relations rank in SOURCE order along it:
+    /// the left operand of `A <|-- B` sits before (above, in TB) the
+    /// right one, so parents and wholes lead, as in UML and mermaid.
+    pub direction: Direction,
+    /// `note "text"` / `note for Class "text"` lines, in source order.
+    pub notes: Vec<ClassNote>,
     /// Accessible title from mermaid's `accTitle:` statement — replaces
     /// the default `<title>` / `aria-label` of the SVG. `None` = absent
     /// or empty.
@@ -714,6 +726,8 @@ impl ClassDiagram {
                 name: name.to_string(),
                 fields: Vec::new(),
                 methods: Vec::new(),
+                annotations: Vec::new(),
+                generic: None,
             });
             self.index.insert(name.to_string(), i);
             i
@@ -726,11 +740,94 @@ impl ClassDiagram {
 }
 
 /// A class box: name header + fields compartment + methods compartment.
+/// Create one with [`ClassDiagram::ensure_class`] (the struct is
+/// `#[non_exhaustive]`, so later versions may add fields).
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct Class {
+    /// The class id: what relations, notes and members refer to
+    /// (`Box` for `class Box~T~`).
     pub name: String,
     pub fields: Vec<Member>,
     pub methods: Vec<Member>,
+    /// Stereotypes without the guillemets, in source order: `interface`
+    /// from `<<interface>>` inside the class block or a standalone
+    /// `<<interface>> Name` line. Drawn as `«interface»` above the name.
+    pub annotations: Vec<String>,
+    /// Generic parameter from `class Box~T~` (`T`), shown as `Box<T>`;
+    /// `None` = not generic.
+    pub generic: Option<String>,
+}
+
+impl Class {
+    /// The header text: the name, plus `<T>` for a generic class.
+    pub fn display_name(&self) -> String {
+        match &self.generic {
+            Some(t) => format!("{}<{}>", self.name, generics_to_angles(t)),
+            None => self.name.clone(),
+        }
+    }
+}
+
+/// Mermaid's generic notation with angle brackets, by mermaid's own
+/// rule (`parseGenericTypes`): within each comma-separated piece the
+/// first and last `~` pair up, repeatedly, so `List~int~` reads
+/// `List<int>` and `List~List~int~~` reads `List<List<int>>`; two
+/// pieces holding one `~` each rejoin across their comma, so
+/// `Map~K, V~` reads `Map<K, V>`. A lone `~` stays as written.
+pub(crate) fn generics_to_angles(s: &str) -> String {
+    if s.matches('~').count() < 2 {
+        return s.to_string();
+    }
+    let pair = |piece: &str| -> String {
+        let mut chars: Vec<char> = piece.chars().collect();
+        // An odd count that starts with `~` keeps that leading one.
+        let skip = usize::from(
+            chars.iter().filter(|&&c| c == '~').count() % 2 == 1 && chars.first() == Some(&'~'),
+        );
+        loop {
+            let first = chars
+                .iter()
+                .skip(skip)
+                .position(|&c| c == '~')
+                .map(|i| i + skip);
+            let last = chars.iter().rposition(|&c| c == '~');
+            match (first, last) {
+                (Some(a), Some(b)) if a < b => {
+                    chars[a] = '<';
+                    chars[b] = '>';
+                }
+                _ => break,
+            }
+        }
+        chars.into_iter().collect()
+    };
+    let pieces: Vec<&str> = s.split(',').collect();
+    let mut out: Vec<String> = Vec::with_capacity(pieces.len());
+    let mut i = 0;
+    while i < pieces.len() {
+        let one = |p: &str| p.matches('~').count() == 1;
+        if one(pieces[i]) && i + 1 < pieces.len() && one(pieces[i + 1]) {
+            out.push(pair(&format!("{},{}", pieces[i], pieces[i + 1])));
+            i += 2;
+        } else {
+            out.push(pair(pieces[i]));
+            i += 1;
+        }
+    }
+    out.join(",")
+}
+
+/// A `note` in a class diagram: a yellow card, linked by a dotted line
+/// to its class when written `note for Class "text"`.
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct ClassNote {
+    /// Note text; `\n` and `<br/>` in the source are line breaks.
+    pub text: String,
+    /// Index into [`ClassDiagram::classes`] for `note for Class`;
+    /// `None` = a free-standing note.
+    pub class: Option<usize>,
 }
 
 /// One field or method row.
@@ -765,8 +862,11 @@ impl Visibility {
 }
 
 /// A relationship between two classes. Normalised so the end glyph
-/// (triangle / diamond / arrow) always sits at the `to` end.
+/// (triangle / diamond / arrow) always sits at the `to` end;
+/// [`ClassRel::head_left`] remembers which operand the source wrote
+/// first, which the layout ranks by.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct ClassRel {
     pub from: usize,
     pub to: usize,
@@ -776,6 +876,42 @@ pub struct ClassRel {
     pub from_card: Option<String>,
     pub to_card: Option<String>,
     pub label: Option<String>,
+    /// The source wrote the decorated end on the LEFT (`Animal <|--
+    /// Dog`, `Order *-- Line`, `A <-- B`), so the source order is
+    /// `to` → `from`. Mermaid ranks by source order (left operand
+    /// first), which puts parents, interfaces and wholes above their
+    /// children in a top-down diagram; see [`ClassRel::source_order`].
+    pub head_left: bool,
+}
+
+impl ClassRel {
+    /// A relation `from` → `to` of `kind` with its glyph at `to`, as
+    /// `B --|> A` would parse: solid unless `kind` is realization or
+    /// dependency, no cardinalities, no label, source order `from`
+    /// first. The fields are public; adjust them after.
+    pub fn new(from: usize, to: usize, kind: RelKind) -> ClassRel {
+        ClassRel {
+            from,
+            to,
+            kind,
+            dashed: matches!(kind, RelKind::Realization | RelKind::Dependency),
+            from_card: None,
+            to_card: None,
+            label: None,
+            head_left: false,
+        }
+    }
+
+    /// `(left, right)` class indexes as the source wrote them —
+    /// `(to, from)` when [`ClassRel::head_left`], else `(from, to)`.
+    /// The layout ranks the left operand first.
+    pub fn source_order(&self) -> (usize, usize) {
+        if self.head_left {
+            (self.to, self.from)
+        } else {
+            (self.from, self.to)
+        }
+    }
 }
 
 /// UML relationship type (determines line style + end glyph).

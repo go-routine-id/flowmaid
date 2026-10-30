@@ -1922,6 +1922,7 @@ fn place(
                 + 2.0 * LABEL_CLEAR * (rows.len() + 1) as f64
         })
         .collect();
+    let gap_l = g.rank_gap.unwrap_or(GAP_L);
     let mut prev_lh = 0.0;
     for li in 0..nlayers {
         let lh = layers[li]
@@ -1967,9 +1968,9 @@ fn place(
         }
         prev_lh = lh;
         lcoord[li] = cursor + lh / 2.0;
-        cursor += lh + GAP_L;
+        cursor += lh + gap_l;
     }
-    let total_l = cursor - GAP_L + MARGIN;
+    let total_l = cursor - gap_l + MARGIN;
 
     // Normalise so the diagram starts at MARGIN (real-node extent).
     let mut minb = f64::INFINITY;
