@@ -13,6 +13,15 @@
 //! shapes (default / rounded / square / circle / hexagon / bang / cloud)
 //! are drawn for real.
 //!
+//! The search has a work budget that grows with the map, so maps of a
+//! few hundred nodes of any ordinary shape finish well inside it (in
+//! tens of milliseconds). A map that needs more — a full binary tree of
+//! 511 nodes, or a few thousand nodes against the budget's cap of about
+//! a second's work — or that has more branches on the root than fit 3°
+//! apart round it (over 120) is laid out on rings instead: depth by
+//! depth round the root, much sparser, but with the same guarantee — no
+//! overlaps, no crossings, no connector through a box.
+//!
 //! Like `pie`/`seq` there is nothing auto-routed: [`scene`] computes
 //! every coordinate a painter needs, [`route`] rebuilds the scene from
 //! dragged node centres, and [`to_svg`] serialises it. [`perimeter`],
@@ -31,12 +40,15 @@ pub const PAD_X: f64 = 16.0;
 pub const PAD_Y: f64 = 8.0;
 /// Height of one label line at [`FONT`]; other sizes scale it.
 pub const LINE_H: f64 = 18.0;
-/// Ring spacing of the fallback layout (see [`scene`]): depth `k` on a
-/// ring of radius `k · RING` around the root.
+/// Least ring spacing of the fallback layout (see [`scene`]): depth `k`
+/// on a ring at least `RING` further out than depth `k - 1`'s.
 pub const RING: f64 = 172.0;
-/// Angular separation (radians) kept between adjacent sibling wedges of
-/// the fallback ring layout.
-const GAP: f64 = 0.06;
+/// Factor by which the fallback layout widens a ring gap whose
+/// connectors are not yet clear (see [`ring_centres`]).
+const RING_GROWTH: f64 = 1.2;
+/// Most rounds of [`RING_GROWTH`] the fallback layout runs (the widest
+/// family seen in testing needs six).
+const RING_GROWTHS: usize = 64;
 /// Canvas margin around the whole tree.
 pub const MARGIN: f64 = 28.0;
 /// Base font size (px): every node below the first level.
@@ -82,10 +94,19 @@ const GAP_BISECTIONS: usize = 7;
 /// Factor by which children slide in per round once their fan fits
 /// (see [`Fan::shorten`]).
 const SHORTEN_STEP: f64 = 0.85;
-/// Box-pair tests the fan layout may run before it falls back to the
-/// ring layout — a time guard for very large or pathological maps (a
-/// realistic map of a hundred nodes uses about a quarter of it).
-const FAN_WORK: usize = 6_000_000;
+/// Box-pair tests the fan layout may run per node and per level of the
+/// tree (counting the root's) before it falls back to the ring layout:
+/// a time guard that grows with the map. Random maps of 25–220 nodes and
+/// three to five levels use at most 36% of it, a 255-node binary tree
+/// and a 1 093-node ternary tree two thirds; a 511-node binary tree
+/// needs half as much again as it gets.
+const FAN_WORK_PER: usize = 64_000;
+/// Least budget of the fan layout, however small the map.
+const FAN_WORK_MIN: usize = 6_000_000;
+/// Most budget of the fan layout, however big the map: about a second
+/// of work. A map of a couple of thousand nodes may run out of it (and
+/// take the ring layout) rather than keep its reader waiting.
+const FAN_WORK_MAX: usize = 1_000_000_000;
 /// Side of an `::icon(…)` glyph box, drawn left of the label.
 pub const ICON: f64 = 14.0;
 /// Gap between an icon glyph and the label text.
@@ -466,8 +487,10 @@ struct Fan<'a> {
     /// direction: with [`Fan::fitted`] it brackets the next direction's
     /// search, which then rarely needs to bisect again.
     failed: Vec<f64>,
-    /// Box-pair tests run so far, against [`FAN_WORK`].
+    /// Box-pair tests run so far, against `budget`.
     work: std::cell::Cell<usize>,
+    /// Box-pair tests this map may run (see [`fan_budget`]).
+    budget: usize,
     /// Unit vector of every whole-step direction (sweeps are a hot path).
     units: Vec<(f64, f64)>,
     /// Every first-level fan keeps within [`NARROW_FAN`] instead of
@@ -482,24 +505,46 @@ struct Fan<'a> {
     last: Vec<Option<(i32, usize)>>,
 }
 
+/// The tree in preorder from the root (children in source order), and
+/// each node's `[start, end)` span in it, so a subtree's members are one
+/// contiguous slice. Iterative: a chain thousands deep is a fine map.
+fn preorder(d: &Mindmap) -> (Vec<usize>, Vec<(usize, usize)>) {
+    let n = d.nodes.len();
+    let mut pre = Vec::with_capacity(n);
+    let mut span = vec![(0, 0); n];
+    if n == 0 {
+        return (pre, span);
+    }
+    let mut stack = vec![(0usize, false)];
+    while let Some((i, done)) = stack.pop() {
+        if done {
+            span[i].1 = pre.len();
+            continue;
+        }
+        span[i].0 = pre.len();
+        pre.push(i);
+        stack.push((i, true));
+        for &c in d.nodes[i].children.iter().rev() {
+            stack.push((c, false));
+        }
+    }
+    (pre, span)
+}
+
+/// Work budget of the fan layout for `d` (see [`FAN_WORK_PER`]).
+fn fan_budget(d: &Mindmap) -> usize {
+    let depth = d.nodes.iter().map(|n| n.depth).max().unwrap_or(0);
+    d.nodes
+        .len()
+        .saturating_mul(depth + 1)
+        .saturating_mul(FAN_WORK_PER)
+        .clamp(FAN_WORK_MIN, FAN_WORK_MAX)
+}
+
 impl Fan<'_> {
     fn new<'a>(d: &'a Mindmap, size: &'a [(f64, f64)]) -> Option<Fan<'a>> {
         let n = d.nodes.len();
-        let mut pre = Vec::with_capacity(n);
-        let mut span = vec![(0, 0); n];
-        let mut stack = vec![(0usize, false)];
-        while let Some((i, done)) = stack.pop() {
-            if done {
-                span[i].1 = pre.len();
-                continue;
-            }
-            span[i].0 = pre.len();
-            pre.push(i);
-            stack.push((i, true));
-            for &c in d.nodes[i].children.iter().rev() {
-                stack.push((c, false));
-            }
-        }
+        let (pre, span) = preorder(d);
         if pre.len() != n {
             return None;
         }
@@ -514,6 +559,7 @@ impl Fan<'_> {
             fitted: vec![None; n],
             failed: vec![0.0; n],
             work: std::cell::Cell::new(0),
+            budget: fan_budget(d),
             units: (0..360 / DEG_STEP)
                 .map(|k| (rad(k * DEG_STEP).cos(), rad(k * DEG_STEP).sin()))
                 .collect(),
@@ -558,7 +604,7 @@ impl Fan<'_> {
     }
 
     fn spent(&self) -> bool {
-        self.work.get() > FAN_WORK
+        self.work.get() > self.budget
     }
 
     fn boxed(&self, m: usize, at: (f64, f64)) -> Rect {
@@ -1419,78 +1465,189 @@ fn segment_hits_box(a: (f64, f64), b: (f64, f64), bx: (f64, f64, f64, f64)) -> b
     t0 < t1
 }
 
-/// Angular half-width (radians) a node occupies on a ring of radius
-/// `r` (fallback layout): the box diagonal projected onto the circle.
-fn angular_half(diag: f64, r: f64) -> f64 {
+/// Cone (radians) a disc of radius `disc` fills seen from the root at
+/// distance `r` — the angle between its two tangents (ring layout).
+fn cone(disc: f64, r: f64) -> f64 {
     if r <= 0.0 {
         return 0.0;
     }
-    ((diag * 0.5) / r).min(1.0).asin()
+    2.0 * (disc / r).min(1.0).asin()
 }
 
-/// Bottom-up angular extent of each subtree on the rings (fallback).
-fn extent(d: &Mindmap, i: usize, diag: &[f64], rad: &[f64], e: &mut [f64]) -> f64 {
-    let own = if d.nodes[i].depth == 0 {
-        0.0
-    } else {
-        2.0 * angular_half(diag[i], rad[d.nodes[i].depth]) + GAP
-    };
-    let kids = &d.nodes[i].children;
-    let total = if kids.is_empty() {
-        own
-    } else {
-        own.max(kids.iter().map(|&c| extent(d, c, diag, rad, e)).sum())
-    };
-    e[i] = total;
-    total
-}
-
-/// Place subtree `i` inside the wedge `[a0, a1]` on the rings (fallback).
-fn place(d: &Mindmap, e: &[f64], rad: &[f64], i: usize, a0: f64, a1: f64, c: &mut [(f64, f64)]) {
-    let kids = &d.nodes[i].children;
-    if kids.is_empty() {
-        return;
-    }
-    let total: f64 = kids.iter().map(|&k| e[k]).sum();
-    let mut acc = a0;
-    for &k in kids {
-        let span = if total > 0.0 {
-            (a1 - a0) * (e[k] / total)
-        } else {
-            0.0
-        };
-        let (cs, ce) = (acc, acc + span);
-        let mid = (cs + ce) / 2.0;
-        let r = rad[d.nodes[k].depth];
-        c[k] = (r * mid.cos(), r * mid.sin());
-        place(d, e, rad, k, cs, ce, c);
-        acc = ce;
-    }
-}
-
-/// The fallback ring layout (flowmaid's original): depth `k` on a ring
-/// of radius `k · RING` (grown until its nodes fit), each subtree owning
-/// a wedge sized by its boxes' diagonals. Sparse, but overlap- and
-/// crossing-free for any tree, so it backs the fan layout up.
-fn ring_centres(d: &Mindmap, sizes: &[(f64, f64)]) -> Vec<(f64, f64)> {
-    let diag: Vec<f64> = sizes.iter().map(|&(w, h)| w.hypot(h)).collect();
-    let max_depth = d.nodes.iter().map(|n| n.depth).max().unwrap_or(0);
-    let mut rad: Vec<f64> = (0..=max_depth).map(|k| RING * k as f64).collect();
-    let mut demand: Vec<f64> = vec![0.0; max_depth + 1];
+/// Radius of every ring of the fallback layout (depth `k` on ring `k`)
+/// for ring gaps `gap` (from ring `k - 1` out to ring `k`). Every node
+/// counts as its disc `disc[i]`, and `band[k]` is the widest disc of
+/// depth `k`, so each ring is at least the two bands out from the one
+/// inside it: boxes of different depths never meet. A ring whose discs
+/// do not fit side by side round it grows until they do, and if the
+/// subtree wedges (see [`ring_extents`]) still overrun the circle, every
+/// ring scales out together. Both growths are exact in one step: a
+/// disc's cone shrinks at least in proportion as its ring grows
+/// (`asin` is convex), so scaling the radius by `need / TAU` brings the
+/// need to `TAU` or under.
+fn ring_radii(
+    d: &Mindmap,
+    pre: &[usize],
+    disc: &[f64],
+    band: &[f64],
+    gap: &[f64],
+    e: &mut [f64],
+) -> Vec<f64> {
+    let mut rad = vec![0.0f64; band.len()];
+    let mut by_depth: Vec<Vec<usize>> = vec![Vec::new(); band.len()];
     for (i, n) in d.nodes.iter().enumerate() {
-        if n.depth > 0 {
-            demand[n.depth] += 2.0 * angular_half(diag[i], rad[n.depth]) + GAP;
+        by_depth[n.depth].push(i);
+    }
+    for k in 1..band.len() {
+        rad[k] = rad[k - 1] + gap[k].max(band[k - 1] + band[k]);
+        let need: f64 = by_depth[k].iter().map(|&i| cone(disc[i], rad[k])).sum();
+        if need > TAU {
+            rad[k] *= need / TAU * (1.0 + 1e-9);
         }
     }
-    for k in 1..=max_depth {
-        if demand[k] > TAU {
-            rad[k] *= demand[k] / TAU;
+    for _ in 0..8 {
+        let need = ring_extents(d, pre, disc, &rad, e);
+        if need <= TAU {
+            break;
+        }
+        for r in rad.iter_mut() {
+            *r *= need / TAU * (1.0 + 1e-9);
         }
     }
-    let mut e = vec![0.0f64; d.nodes.len()];
-    extent(d, 0, &diag, &rad, &mut e);
-    let mut c = vec![(0.0f64, 0.0f64); d.nodes.len()];
-    place(d, &e, &rad, 0, -FRAC_PI_2, TAU - FRAC_PI_2, &mut c);
+    rad
+}
+
+/// Bottom-up angular extent of every subtree on the rings (fallback):
+/// the larger of its own node's cone and its children's extents
+/// together. Returns the root's — the circle the top-level wedges need.
+fn ring_extents(d: &Mindmap, pre: &[usize], disc: &[f64], rad: &[f64], e: &mut [f64]) -> f64 {
+    for &i in pre.iter().rev() {
+        let n = &d.nodes[i];
+        let own = cone(disc[i], rad[n.depth]);
+        let kids: f64 = n.children.iter().map(|&c| e[c]).sum();
+        e[i] = own.max(kids);
+    }
+    e[0]
+}
+
+/// Ring gaps whose connectors break the ring layout's guarantee (see
+/// [`ring_centres`]): `true` at depth `k + 1` when a node on ring `k`
+/// has a connector to a child that does not run outward all the way
+/// (it bends back towards the root, where it can cross another) or
+/// that runs through one of that child's siblings. The root's own
+/// connectors are rays and always clear.
+fn ring_faults(d: &Mindmap, sizes: &[(f64, f64)], c: &[(f64, f64)]) -> Vec<bool> {
+    let max_depth = d.nodes.iter().map(|n| n.depth).max().unwrap_or(0);
+    let mut faults = vec![false; max_depth + 1];
+    for (i, n) in d.nodes.iter().enumerate() {
+        if n.depth == 0 || n.children.is_empty() || faults[n.depth + 1] {
+            continue;
+        }
+        let p = c[i];
+        let bad = n.children.iter().any(|&ch| {
+            let q = c[ch];
+            // The distance from the root grows all along p→q exactly
+            // when it grows at p (it is convex along a line).
+            let outward = p.0 * (q.0 - p.0) + p.1 * (q.1 - p.1) > 0.0;
+            !outward
+                || n.children.iter().any(|&o| {
+                    let (w, h) = sizes[o];
+                    o != ch
+                        && segment_hits_box(
+                            p,
+                            q,
+                            (
+                                c[o].0 - w / 2.0 - SEG_CLEAR,
+                                c[o].1 - h / 2.0 - SEG_CLEAR,
+                                c[o].0 + w / 2.0 + SEG_CLEAR,
+                                c[o].1 + h / 2.0 + SEG_CLEAR,
+                            ),
+                        )
+                })
+        });
+        if bad {
+            faults[n.depth + 1] = true;
+        }
+    }
+    faults
+}
+
+/// The fallback ring layout (flowmaid's original, made safe for any
+/// tree): depth `k` on a ring round the root, at least [`RING`] out from
+/// the ring inside it. Every box counts as a disc (half its diagonal
+/// plus half of [`SEP`]):
+/// - each ring sits far enough out that its discs clear the previous
+///   ring's, and far enough round that they fit side by side (see
+///   [`ring_radii`]), so boxes of different depths never meet;
+/// - each subtree owns a wedge as wide as its own disc's cone and its
+///   children's wedges together; the root's children share the whole
+///   circle clockwise from 12 o'clock, so boxes of one depth never meet
+///   either;
+/// - a node's children sit packed side by side centred on it, not spread
+///   over its whole wedge, so every connector stays inside its parent's
+///   wedge.
+///
+/// A connector from ring `k` to ring `k + 1` that runs outward all the
+/// way therefore crosses no other and can pass through no box but its
+/// own child's siblings'. Wherever one does not run outward or does pass
+/// through a sibling (a wide family on a ring close to its parent's),
+/// the gap out to that ring is widened (×[`RING_GROWTH`]) and the layout
+/// redone: the children's cones narrow and their connectors straighten,
+/// until none is left ([`ring_faults`]). Sparse, but clean.
+fn ring_centres(d: &Mindmap, sizes: &[(f64, f64)]) -> Vec<(f64, f64)> {
+    let n = d.nodes.len();
+    let (pre, _) = preorder(d);
+    let disc: Vec<f64> = sizes
+        .iter()
+        .map(|&(w, h)| w.hypot(h) / 2.0 + SEP / 2.0)
+        .collect();
+    let max_depth = d.nodes.iter().map(|nd| nd.depth).max().unwrap_or(0);
+    let mut band = vec![0.0f64; max_depth + 1];
+    for (i, nd) in d.nodes.iter().enumerate() {
+        band[nd.depth] = band[nd.depth].max(disc[i]);
+    }
+    let mut gap = vec![RING; max_depth + 1];
+    let mut e = vec![0.0f64; n];
+    let mut c = vec![(0.0f64, 0.0f64); n];
+    for _ in 0..RING_GROWTHS {
+        let rad = ring_radii(d, &pre, &disc, &band, &gap, &mut e);
+        ring_extents(d, &pre, &disc, &rad, &mut e);
+        // Each node's wedge, top-down; a node sits at its wedge's middle.
+        let mut wedge = vec![(0.0f64, 0.0f64); n];
+        wedge[0] = (-FRAC_PI_2, TAU - FRAC_PI_2);
+        for &i in &pre {
+            let kids = &d.nodes[i].children;
+            if kids.is_empty() {
+                continue;
+            }
+            let total: f64 = kids.iter().map(|&k| e[k]).sum();
+            let (a0, a1) = wedge[i];
+            // The root shares its circle out in proportion; anyone else
+            // packs its children centred on itself.
+            let (mut at, scale) = if i == 0 {
+                (a0, (a1 - a0) / total.max(1e-12))
+            } else {
+                ((a0 + a1 - total) / 2.0, 1.0)
+            };
+            for &k in kids {
+                let span = e[k] * scale;
+                wedge[k] = (at, at + span);
+                let mid = at + span / 2.0;
+                let r = rad[d.nodes[k].depth];
+                c[k] = (r * mid.cos(), r * mid.sin());
+                at += span;
+            }
+        }
+        let faults = ring_faults(d, sizes, &c);
+        if !faults.contains(&true) {
+            break;
+        }
+        for (g, f) in gap.iter_mut().zip(&faults) {
+            if *f {
+                *g *= RING_GROWTH;
+            }
+        }
+    }
     c
 }
 
@@ -1500,10 +1657,11 @@ fn branch_color(order: usize) -> &'static str {
 }
 
 /// Auto-layout: the parent-centred fan layout (see the module docs),
-/// then [`route`] with those centres. Should a fan ever fail to fit or
-/// the finished geometry fail its overlap/crossing check, the whole map
-/// falls back to the ring layout, which is sparse but always clean. An
-/// empty mindmap yields a minimal canvas.
+/// then [`route`] with those centres. Should the fan layout run out of
+/// its work budget, a fan fail to fit, or the finished geometry fail its
+/// overlap/crossing check, the whole map falls back to the ring layout,
+/// which is sparse but passes the same check (it widens its rings until
+/// it does). An empty mindmap yields a minimal canvas.
 pub fn scene(d: &Mindmap) -> MindScene {
     if d.nodes.is_empty() {
         return route(d, &[]);
@@ -2276,6 +2434,27 @@ mod tests {
         }
     }
 
+    /// No connector (centre to centre) runs through a box other than its
+    /// own two ends.
+    fn assert_no_connector_through_box(m: &Mindmap, ms: &MindScene) {
+        for (i, n) in m.nodes.iter().enumerate() {
+            let Some(p) = n.parent else { continue };
+            let (a, b) = (
+                (ms.nodes[p].cx(), ms.nodes[p].cy()),
+                (ms.nodes[i].cx(), ms.nodes[i].cy()),
+            );
+            for (j, o) in ms.nodes.iter().enumerate() {
+                assert!(
+                    j == i || j == p || !segment_hits_box(a, b, (o.x, o.y, o.x + o.w, o.y + o.h)),
+                    "connector {:?} -> {:?} runs through {:?}",
+                    ms.nodes[p].text,
+                    ms.nodes[i].text,
+                    o.text
+                );
+            }
+        }
+    }
+
     #[test]
     fn wide_siblings_do_not_overlap() {
         // Many long labels round the root: every box keeps clear.
@@ -2716,11 +2895,78 @@ mod tests {
         assert!(clean(&m, &sizes, &pos));
     }
 
+    /// The ring layout used to put depth `k` on a ring `k · RING` out and
+    /// spread every family over its whole wedge: big boxes on
+    /// neighbouring rings overlapped, and a connector to a child far
+    /// round the ring cut back across others. On any tree it is now
+    /// clean — deep or shallow, wide families, big circles and
+    /// three-line labels.
+    #[test]
+    fn ring_fallback_is_clean_on_any_tree() {
+        let shapes = ["", "(", "[", "((", "{{", "))", ")"];
+        let closes = ["", ")", "]", "))", "}}", "((", "("];
+        let words = [
+            "node",
+            "a longer label here",
+            "x",
+            "multi<br/>line<br/>three",
+            "Customer interviews Planning delta",
+        ];
+        for seed in 0..150u64 {
+            let mut x = seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1;
+            let mut next = |m: u64| {
+                x ^= x << 13;
+                x ^= x >> 7;
+                x ^= x << 17;
+                x % m
+            };
+            let mut src = String::from("mindmap\n  ((Root topic))\n");
+            let max_depth = 1 + next(9) as usize;
+            let mut depth = 1usize;
+            for i in 0..2 + next(120) {
+                depth = match next(10) {
+                    0..=2 => (depth + 1).min(max_depth),
+                    3 | 4 => depth.saturating_sub(1 + next(3) as usize).max(1),
+                    _ => depth,
+                };
+                let s = next(shapes.len() as u64) as usize;
+                let w = words[next(words.len() as u64) as usize];
+                src.push_str(&format!(
+                    "{}{}{w} {i}{}\n",
+                    "  ".repeat(depth + 1),
+                    shapes[s],
+                    closes[s]
+                ));
+            }
+            let m = mind(&src);
+            let sizes: Vec<(f64, f64)> = m.nodes.iter().map(mind_node_size).collect();
+            let pos = ring_centres(&m, &sizes);
+            assert!(clean(&m, &sizes, &pos), "seed {seed}:\n{src}");
+        }
+    }
+
+    #[test]
+    fn a_root_with_too_many_branches_takes_a_clean_ring() {
+        // Branches at least one direction step apart: over 120 cannot
+        // share the circle, so the map falls back — and stays clean.
+        let mut src = String::from("mindmap\n  Root\n");
+        for i in 0..300 {
+            src.push_str(&format!("    leaf {i}\n"));
+        }
+        let m = mind(&src);
+        let sizes: Vec<(f64, f64)> = m.nodes.iter().map(mind_node_size).collect();
+        assert!(fan_centres(&m, &sizes).is_none());
+        let ms = scene(&m);
+        assert_no_overlap(&ms);
+        assert_no_crossing(&ms);
+        assert_no_connector_through_box(&m, &ms);
+    }
+
     #[test]
     fn a_deep_bushy_tree_still_lays_out() {
-        // Three children per node, six levels: the fan budget may run
-        // out, in which case the ring layout takes over — either way
-        // the scene is complete and clean.
+        // Three children per node, six levels (1 093 nodes): the fan
+        // layout finishes within its budget, which grows with the map;
+        // whichever layout lands, the scene is complete and clean.
         let mut src = String::from("mindmap\nR\n");
         fn grow(src: &mut String, depth: usize, max: usize) {
             if depth > max {
@@ -2732,9 +2978,36 @@ mod tests {
             }
         }
         grow(&mut src, 1, 6);
-        let ms = scene(&mind(&src));
+        let m = mind(&src);
+        let ms = scene(&m);
         assert_eq!(ms.nodes.len(), 1 + 3 + 9 + 27 + 81 + 243 + 729);
         assert_no_overlap(&ms);
+        assert_no_crossing(&ms);
+        assert_no_connector_through_box(&m, &ms);
+    }
+
+    /// Ordinary large maps (here 177–191 nodes, five levels, 1–3-word
+    /// labels, every fourth node shaped) needed one and a half to three
+    /// times the fan layout's old fixed budget, so they fell back to the
+    /// ring layout and its overlapping boxes. The budget now grows with
+    /// the map, and they get the fan layout, clean.
+    #[test]
+    fn ordinary_large_maps_use_the_fan_layout() {
+        for seed in [0, 1, 4, 5] {
+            let src = big_map(seed);
+            let m = mind(&src);
+            assert!((150..=200).contains(&m.nodes.len()), "seed {seed}");
+            assert_eq!(m.nodes.iter().map(|n| n.depth).max(), Some(5));
+            let sizes: Vec<(f64, f64)> = m.nodes.iter().map(mind_node_size).collect();
+            assert!(
+                fan_centres(&m, &sizes).is_some(),
+                "seed {seed} fell back to rings:\n{src}"
+            );
+            let ms = scene(&m);
+            assert_no_overlap(&ms);
+            assert_no_crossing(&ms);
+            assert_no_connector_through_box(&m, &ms);
+        }
     }
 
     #[test]
@@ -3039,6 +3312,71 @@ mod tests {
         };
         assert!(!fan.siblings_clear(a, b));
         assert!(!fan.siblings_clear(b, a));
+    }
+
+    /// A large map of the kind people write: three to six branches, five
+    /// levels, 1–3-word labels, every fourth node in a wrapper shape —
+    /// 150 to 200 nodes.
+    fn big_map(seed: u64) -> String {
+        let words = [
+            "alpha",
+            "beta",
+            "gamma",
+            "delta",
+            "epsilon",
+            "zeta",
+            "theta",
+            "kappa",
+            "sigma",
+            "omega",
+            "API",
+            "Planning",
+            "Research notes",
+            "Design system",
+            "Customer interviews",
+            "long label text",
+        ];
+        let wrap = [
+            ("((", "))"),
+            ("[", "]"),
+            ("(", ")"),
+            ("))", "(("),
+            (")", "("),
+            ("{{", "}}"),
+        ];
+        let mut x = seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1;
+        let mut next = move |m: u64| {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            x % m
+        };
+        let mut src = String::from("mindmap\n  Root topic\n");
+        // Children per node by depth: [low, high).
+        let fan = [(3, 7), (1, 5), (1, 5), (0, 4), (0, 5)];
+        let mut stack = vec![(0usize, 3 + next(4))];
+        while let Some(&mut (depth, ref mut left)) = stack.last_mut() {
+            if *left == 0 {
+                stack.pop();
+                continue;
+            }
+            *left -= 1;
+            let label = (0..1 + next(3))
+                .map(|_| words[next(words.len() as u64) as usize])
+                .collect::<Vec<_>>()
+                .join(" ");
+            let (open, close) = if next(4) == 0 {
+                wrap[next(wrap.len() as u64) as usize]
+            } else {
+                ("", "")
+            };
+            src.push_str(&format!("{}{open}{label}{close}\n", "  ".repeat(depth + 2)));
+            if depth + 1 < fan.len() {
+                let (lo, hi) = fan[depth + 1];
+                stack.push((depth + 1, lo + next(hi - lo)));
+            }
+        }
+        src
     }
 
     /// A spread of realistic maps (4-10 branches, up to seven topics of
