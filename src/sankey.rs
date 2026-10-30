@@ -13,7 +13,7 @@
 use crate::layout::{text_width, TEXT_CALIBRATION};
 use crate::model::{SankeyAlignment, SankeyDiagram, SankeyLabelStyle, SankeyLinkColor};
 use crate::scene::{escape, svg_open, SvgOptions, TEXT_COLOR};
-use crate::style::{accent_wide, ACCENTS, ACCENTS_DEEP};
+use crate::style::{accent_wide, css_rgb, ACCENTS, ACCENTS_DEEP};
 
 /// Canvas margin around the plot area.
 pub const PAD: f64 = 24.0;
@@ -46,6 +46,21 @@ const ORDER_PASSES: usize = 4;
 /// glance — indigo/steel blue (29) and green/teal (33) in the accent
 /// palette — so linked or stacked nodes never get such a pair.
 const CLASH_DE: f64 = 35.0;
+/// Share of their configured span the columns may draw in to, to make
+/// room for labels hanging off the first or last column, before the
+/// canvas grows instead.
+const MIN_SPAN_SHARE: f64 = 0.5;
+/// Label passes (each after the columns draw in) before what still
+/// hangs out widens the canvas.
+const LABEL_FIT_PASSES: usize = 3;
+/// Placement cost of a label hanging off the canvas where that is
+/// allowed: more than a clean spot inside, less than any real overlap.
+const HANG_COST: f64 = 0.5;
+/// When the labels still do not fit the configured width, ones wider
+/// than this share of the plot width wrap onto more lines...
+const WRAP_SHARE: f64 = 0.3;
+/// ...but never narrower than this (px).
+const WRAP_MIN: f64 = 90.0;
 
 /// A placed node: a rectangle plus the text drawn beside it.
 ///
@@ -74,9 +89,12 @@ pub struct SankeyNodeGlyph {
     /// colour); when set it is painted instead of `color`. See
     /// [`SankeyNodeGlyph::fill`].
     pub custom_color: Option<String>,
-    /// The label text as drawn: the name, plus the value when
-    /// `showValues` is on.
+    /// The label text: the name, plus the value when `showValues` is on.
     pub label_text: String,
+    /// The label as drawn, one entry per line, centred on `label_pos`
+    /// [`LABEL_H`] apart: just `label_text`, unless the labels did not
+    /// fit the configured width and this one was wrapped at spaces.
+    pub label_lines: Vec<String>,
 }
 
 impl SankeyNodeGlyph {
@@ -442,10 +460,8 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
             }
         })
         .collect();
-    let label_w: Vec<f64> = label_text
-        .iter()
-        .map(|t| text_width(t) * FONT as f64 / TEXT_CALIBRATION)
-        .collect();
+    let measure = |t: &str| text_width(t) * FONT as f64 / TEXT_CALIBRATION;
+    let label_w: Vec<f64> = label_text.iter().map(|t| measure(t)).collect();
 
     // Vertical gap between two stacked nodes: the configured padding,
     // widened only where both nodes are so thin that their centred
@@ -467,14 +483,14 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
     let tallest = cols.iter().map(|c| block_of(c)).fold(0.0, f64::max);
     let plot_h = plot_h.max(tallest);
 
-    // Column x positions: the first column starts at the left margin,
-    // the last ends at the right one.
+    // Column x positions: the first column starts at `lo`, the last
+    // ends at `hi` — the margins, unless labels need room (see below).
     let plot_w = (cfg.width - PAD * 2.0).max(cfg.node_width * 2.0);
-    let col_x = |c: usize| {
+    let col_x = |c: usize, lo: f64, hi: f64| {
         if n_cols <= 1 {
-            PAD
+            lo
         } else {
-            PAD + (plot_w - cfg.node_width) * (c as f64) / ((n_cols - 1) as f64)
+            lo + (hi - lo - cfg.node_width) * (c as f64) / ((n_cols - 1) as f64)
         }
     };
 
@@ -508,7 +524,7 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
     let mut nodes: Vec<SankeyNodeGlyph> = (0..n)
         .map(|i| SankeyNodeGlyph {
             label: d.nodes[i].clone(),
-            x: col_x(depth[i]),
+            x: col_x(depth[i], PAD, PAD + plot_w),
             y: y_of[i],
             w: cfg.node_width,
             h: height_of(i),
@@ -519,20 +535,98 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
             label_anchor: "start",
             custom_color: custom[i].clone(),
             label_text: label_text[i].clone(),
+            label_lines: vec![label_text[i].clone()],
         })
         .collect();
-    let label_right = place_labels(
-        &mut nodes,
-        &label_w,
-        &order,
-        n_cols,
-        cfg.label_style,
-        width,
-        height,
-    );
-    // A last-column label that found no room inside hangs off the right
-    // edge instead; widen the canvas to keep it in view.
-    let width = finite(width.max(label_right + PAD), width);
+    // Labels of the first and last columns may hang outside the columns
+    // (a long name that would otherwise run across the next column's
+    // nodes). The canvas keeps its configured width while it can: the
+    // columns draw in from the margins to make room, down to
+    // MIN_SPAN_SHARE of their span; then long labels wrap; only what is
+    // left over widens the canvas on that side.
+    let fit = |nodes: &mut [SankeyNodeGlyph], label_w: &[f64], label_h: &[f64]| -> Placed {
+        let place = |nodes: &mut [SankeyNodeGlyph], lo: f64, hi: f64| {
+            for nd in nodes.iter_mut() {
+                nd.x = col_x(nd.column, lo, hi);
+            }
+            let sizes = Sizes {
+                w: label_w,
+                h: label_h,
+            };
+            place_labels(nodes, sizes, &order, n_cols, cfg.label_style, width, height)
+        };
+        let (mut lo, mut hi) = (PAD, PAD + plot_w);
+        let min_span = (plot_w * MIN_SPAN_SHARE)
+            .max(cfg.node_width * 2.0)
+            .min(plot_w);
+        let mut got = place(nodes, lo, hi);
+        'fit: for _ in 0..LABEL_FIT_PASSES {
+            let over_l = (PAD - got.left).max(0.0);
+            let over_r = (got.right - (width - PAD)).max(0.0);
+            let room = (hi - lo) - min_span;
+            if over_l + over_r < 0.5 || room < 0.5 {
+                break;
+            }
+            // Drawing the columns in must not crowd the labels inside
+            // them into each other: back off by halves until it does not.
+            let mut take = (over_l + over_r).min(room);
+            for _ in 0..4 {
+                let (l, h) = (
+                    lo + take * over_l / (over_l + over_r),
+                    hi - take * over_r / (over_l + over_r),
+                );
+                let tried = place(nodes, l, h);
+                if tried.crowding <= got.crowding {
+                    (lo, hi, got) = (l, h, tried);
+                    continue 'fit;
+                }
+                take /= 2.0;
+            }
+            got = place(nodes, lo, hi);
+            break;
+        }
+        got
+    };
+    let overrun = |p: &Placed| (PAD - p.left).max(0.0) + (p.right - (width - PAD)).max(0.0);
+    let one_line = vec![LABEL_H; n];
+    let mut got = fit(&mut nodes, &label_w, &one_line);
+    if overrun(&got) > 0.5 {
+        // Still too wide for the canvas: wrap the long labels (at spaces,
+        // the value kept whole) and keep that if it needs less room
+        // without crowding anything.
+        let target = (plot_w * WRAP_SHARE).max(WRAP_MIN);
+        let lines: Vec<Vec<String>> = (0..n)
+            .map(|i| {
+                let value = cfg
+                    .show_values
+                    .then(|| format!("({})", format_value(value[i], &cfg.prefix, &cfg.suffix)));
+                wrap_label(&d.nodes[i], value.as_deref(), target, &measure)
+            })
+            .collect();
+        let wrap_w: Vec<f64> = lines
+            .iter()
+            .map(|l| l.iter().map(|t| measure(t)).fold(0.0, f64::max))
+            .collect();
+        let wrap_h: Vec<f64> = lines.iter().map(|l| LABEL_H * l.len() as f64).collect();
+        let mut trial = nodes.clone();
+        let wrapped = fit(&mut trial, &wrap_w, &wrap_h);
+        if overrun(&wrapped) < overrun(&got) - 0.5 && wrapped.crowding <= got.crowding {
+            for (nd, l) in trial.iter_mut().zip(lines) {
+                nd.label_lines = l;
+            }
+            nodes = trial;
+            got = wrapped;
+        }
+    }
+    let reach = (got.left, got.right);
+    let shift = finite((PAD - reach.0).max(0.0), 0.0);
+    if shift > 0.0 {
+        for nd in &mut nodes {
+            nd.x += shift;
+            nd.label_pos.0 += shift;
+        }
+    }
+    let width = finite((width + shift).max(reach.1 + shift + PAD), width);
 
     // Ribbons leave a node stacked in the vertical order of their
     // targets and enter it in the order of their sources, so they fan
@@ -692,17 +786,10 @@ fn crossings(d: &SankeyDiagram, depth: &[usize], cols: &[Vec<usize>]) -> usize {
     count
 }
 
-/// CIE L*a*b* (D65) of a `#rrggbb` / `#rgb` colour, for [`CLASH_DE`];
-/// `None` for anything else (named colours, `rgb()`, ...).
+/// CIE L*a*b* (D65) of a CSS colour, for [`CLASH_DE`]: hex, a named
+/// colour or `rgb()` (see [`css_rgb`]); `None` for anything else.
 fn lab(color: &str) -> Option<[f64; 3]> {
-    let hex = color.strip_prefix('#')?;
-    let d: Vec<u32> = hex.chars().map(|c| c.to_digit(16)).collect::<Option<_>>()?;
-    let rgb = match d.len() {
-        3 => [d[0] * 17, d[1] * 17, d[2] * 17],
-        6 => [d[0] * 16 + d[1], d[2] * 16 + d[3], d[4] * 16 + d[5]],
-        _ => return None,
-    };
-    let [r, g, b] = rgb.map(|c| {
+    let [r, g, b] = css_rgb(color)?.map(|c| {
         let c = f64::from(c) / 255.0;
         if c <= 0.04045 {
             c / 12.92
@@ -724,7 +811,7 @@ fn lab(color: &str) -> Option<[f64; 3]> {
     Some([116.0 * fy - 16.0, 500.0 * (fx - fy), 200.0 * (fy - fz)])
 }
 
-/// CIE76 colour difference; `None` when either colour is not hex.
+/// CIE76 colour difference; `None` when either colour is unreadable.
 fn delta_e(a: &str, b: &str) -> Option<f64> {
     let (p, q) = (lab(a)?, lab(b)?);
     Some(((p[0] - q[0]).powi(2) + (p[1] - q[1]).powi(2) + (p[2] - q[2]).powi(2)).sqrt())
@@ -821,19 +908,19 @@ fn node_colors(
 /// least-overlapping one does. Nothing is measured against ribbons:
 /// a label on a translucent ribbon reads fine.
 ///
-/// The right of the last column is the one place outside the canvas a
-/// label may go (a long sink name that would otherwise run across the
-/// previous column's nodes); the caller widens the canvas to the
-/// returned right edge of such labels (0 when there are none).
+/// The left of the first column and the right of the last are the only
+/// places outside the canvas a label may go, and only when no clean spot
+/// is left inside (a long name that would otherwise run across the next
+/// column's nodes); the caller makes room for them.
 fn place_labels(
     nodes: &mut [SankeyNodeGlyph],
-    label_w: &[f64],
+    size: Sizes,
     order: &[usize],
     n_cols: usize,
     style: SankeyLabelStyle,
     width: f64,
     height: f64,
-) -> f64 {
+) -> Placed {
     type Rect = (f64, f64, f64, f64);
     let overlap = |a: Rect, b: Rect| -> f64 {
         let w = (a.2.min(b.2) - a.0.max(b.0)).max(0.0);
@@ -866,16 +953,19 @@ fn place_labels(
             .then(a.cmp(&b))
     });
     let mut placed: Vec<Rect> = Vec::with_capacity(nodes.len());
-    let mut outside_right = 0.0f64;
+    let mut reach = (f64::INFINITY, f64::NEG_INFINITY);
+    let mut crowding = 0.0;
     for &i in &by_room {
         let nd = &nodes[i];
+        let first = n_cols > 1 && nd.column == 0;
         let last = n_cols > 1 && nd.column == n_cols - 1;
         let left_first = match style {
             SankeyLabelStyle::Legacy => last,
             SankeyLabelStyle::Outlined => last || nd.column < central,
         };
         let centre = nd.y + nd.h / 2.0;
-        let (lo, hi) = (nd.y + LABEL_H / 2.0, nd.y + nd.h - LABEL_H / 2.0);
+        let (lw, lh) = (size.w[i], size.h[i]);
+        let (lo, hi) = (nd.y + lh / 2.0, nd.y + nd.h - lh / 2.0);
         let mut ys = vec![centre];
         let step = LABEL_H / 2.0;
         let mut k = 1.0;
@@ -891,21 +981,29 @@ fn place_labels(
         'search: for left in [left_first, !left_first] {
             for &y in &ys {
                 let (x0, x1) = if left {
-                    (nd.x - LABEL_GAP - label_w[i], nd.x - LABEL_GAP)
+                    (nd.x - LABEL_GAP - lw, nd.x - LABEL_GAP)
                 } else {
                     let x0 = nd.x + nd.w + LABEL_GAP;
-                    (x0, x0 + label_w[i])
+                    (x0, x0 + lw)
                 };
-                let r: Rect = (x0, y - LABEL_H / 2.0, x1, y + LABEL_H / 2.0);
+                let r: Rect = (x0, y - lh / 2.0, x1, y + lh / 2.0);
                 let grown = (
                     r.0 - LABEL_CLEAR_X,
                     r.1 - LABEL_CLEAR,
                     r.2 + LABEL_CLEAR_X,
                     r.3 + LABEL_CLEAR,
                 );
+                let left_edge = if first && left {
+                    f64::NEG_INFINITY
+                } else {
+                    0.0
+                };
                 let right_edge = if last && !left { f64::INFINITY } else { width };
                 let outside =
-                    (r.2 - r.0) * (r.3 - r.1) - overlap(r, (0.0, 0.0, right_edge, height));
+                    (r.2 - r.0) * (r.3 - r.1) - overlap(r, (left_edge, 0.0, right_edge, height));
+                // Hanging off the canvas is allowed there, but a clean
+                // spot inside still comes first.
+                let hangs = (first && left && r.0 < 0.0) || (last && !left && r.2 > width);
                 let on_labels: f64 = placed.iter().map(|&p| overlap(grown, p)).sum();
                 let on_nodes: f64 = rects
                     .iter()
@@ -913,7 +1011,8 @@ fn place_labels(
                     .filter(|&(j, _)| j != i)
                     .map(|(_, &q)| overlap(grown, q))
                     .sum();
-                let cost = 4.0 * (outside + on_labels) + on_nodes;
+                let cost =
+                    4.0 * (outside + on_labels) + on_nodes + if hangs { HANG_COST } else { 0.0 };
                 if best.as_ref().map_or(true, |b| cost < b.0) {
                     best = Some((cost, y, left, r));
                 }
@@ -922,7 +1021,10 @@ fn place_labels(
                 }
             }
         }
-        if let Some((_, y, left, r)) = best {
+        if let Some((cost, y, left, r)) = best {
+            if cost > HANG_COST {
+                crowding += cost;
+            }
             let nd = &mut nodes[i];
             nd.label_pos = if left {
                 (nd.x - LABEL_GAP, y)
@@ -930,13 +1032,67 @@ fn place_labels(
                 (nd.x + nd.w + LABEL_GAP, y)
             };
             nd.label_anchor = if left { "end" } else { "start" };
-            if last && !left {
-                outside_right = outside_right.max(r.2);
-            }
+            reach = (reach.0.min(r.0), reach.1.max(r.2));
             placed.push(r);
         }
     }
-    outside_right
+    Placed {
+        left: reach.0,
+        right: reach.1,
+        crowding,
+    }
+}
+
+/// Each label's width and height (one [`LABEL_H`] per line), by node.
+#[derive(Clone, Copy)]
+struct Sizes<'a> {
+    w: &'a [f64],
+    h: &'a [f64],
+}
+
+/// `name` (and the `(value)` text, kept whole) broken at spaces into
+/// lines no wider than `target` where it can be (a single word wider
+/// than that keeps a line of its own); one line when it already fits.
+fn wrap_label(
+    name: &str,
+    value: Option<&str>,
+    target: f64,
+    measure: &dyn Fn(&str) -> f64,
+) -> Vec<String> {
+    let whole = match value {
+        Some(v) => format!("{name} {v}"),
+        None => name.to_string(),
+    };
+    if measure(&whole) <= target {
+        return vec![whole];
+    }
+    let mut lines: Vec<String> = Vec::new();
+    let mut line = String::new();
+    for word in name.split(' ').filter(|w| !w.is_empty()).chain(value) {
+        let longer = if line.is_empty() {
+            word.to_string()
+        } else {
+            format!("{line} {word}")
+        };
+        if !line.is_empty() && measure(&longer) > target {
+            lines.push(std::mem::replace(&mut line, word.to_string()));
+        } else {
+            line = longer;
+        }
+    }
+    if !line.is_empty() {
+        lines.push(line);
+    }
+    lines
+}
+
+/// What [`place_labels`] achieved: the leftmost and rightmost x any
+/// label reaches, and the summed cost of the labels that found no spot
+/// clear of every other label and node (0 when all did).
+struct Placed {
+    left: f64,
+    right: f64,
+    crowding: f64,
 }
 
 /// The ribbon outline: two cubic beziers with mirrored control points,
@@ -1021,11 +1177,40 @@ pub fn to_svg_with(ss: &SankeyScene, opts: &SvgOptions) -> String {
     // with `paint-order`, which older SVG renderers ignore (they would
     // paint the white stroke OVER the glyphs).
     for n in &ss.nodes {
-        let at = format!(
-            "x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"{}\"",
-            n.label_pos.0, n.label_pos.1, n.label_anchor
-        );
-        let text = escape(&n.label_text);
+        let (x, y) = n.label_pos;
+        let lines = n.label_lines.len();
+        let (at, text) = if lines <= 1 {
+            (
+                format!(
+                    "x=\"{x:.1}\" y=\"{y:.1}\" dy=\"0.33em\" text-anchor=\"{}\"",
+                    n.label_anchor
+                ),
+                escape(&n.label_text),
+            )
+        } else {
+            // A wrapped label: one <tspan> per line, the block centred
+            // on `label_pos` as a single line would be.
+            let first = 0.33 - 0.625 * (lines - 1) as f64;
+            let spans: String = n
+                .label_lines
+                .iter()
+                .enumerate()
+                .map(|(k, line)| {
+                    let dy = if k == 0 { first } else { 1.25 };
+                    format!(
+                        "<tspan x=\"{x:.1}\" dy=\"{dy:.3}em\">{}</tspan>",
+                        escape(line)
+                    )
+                })
+                .collect();
+            (
+                format!(
+                    "x=\"{x:.1}\" y=\"{y:.1}\" text-anchor=\"{}\"",
+                    n.label_anchor
+                ),
+                spans,
+            )
+        };
         if ss.label_style == SankeyLabelStyle::Outlined {
             s.push_str(&format!(
                 "<text {at} fill=\"#ffffff\" stroke=\"#ffffff\" stroke-width=\"4\" \
@@ -1393,16 +1578,21 @@ mod tests {
 
     type Rect = (f64, f64, f64, f64);
 
-    /// A label's box as the label pass measures it.
+    /// A label's box as the label pass measures it (every line).
     fn label_box(n: &SankeyNodeGlyph) -> Rect {
-        let w = text_width(&n.label_text) * FONT as f64 / TEXT_CALIBRATION;
+        let w = n
+            .label_lines
+            .iter()
+            .map(|l| text_width(l) * FONT as f64 / TEXT_CALIBRATION)
+            .fold(0.0, f64::max);
+        let h = LABEL_H * n.label_lines.len() as f64;
         let x0 = if n.label_anchor == "end" {
             n.label_pos.0 - w
         } else {
             n.label_pos.0
         };
         let y = n.label_pos.1;
-        (x0, y - LABEL_H / 2.0, x0 + w, y + LABEL_H / 2.0)
+        (x0, y - h / 2.0, x0 + w, y + h / 2.0)
     }
 
     fn overlaps(a: Rect, b: Rect) -> bool {
@@ -1464,11 +1654,11 @@ mod tests {
             )],
         );
         assert_labels_clear(&long);
-        // The long sink name hangs off the right instead, and the
-        // canvas grows to hold it.
+        // The long sink name wraps instead, and the canvas keeps its
+        // configured width.
         let heavy = node(&long, "Heavy industry and manufacturing");
-        assert_eq!(heavy.label_anchor, "start");
-        assert!(long.width > 600.0);
+        assert!(heavy.label_lines.len() >= 2, "{heavy:?}");
+        assert_eq!(long.width, 600.0);
         // At the default size, Electricity and Industry no longer share
         // a baseline (they read as one phrase).
         let ss = showcase_with("", &[]);
@@ -1640,6 +1830,76 @@ mod tests {
             "gradients follow: {svg}"
         );
         assert!(!svg.contains("\" onload=x"), "{svg}");
+    }
+
+    /// Review: at `width: 450` with long names a first-column label was
+    /// drawn across the middle column's node (there was no free spot and
+    /// the least-cost one won), the middle label clipped the last
+    /// column's nodes, and the canvas grew to 733px past the configured
+    /// width. Labels may now hang off the first column too, the columns
+    /// draw in to make room, and labels that still do not fit wrap.
+    #[test]
+    fn a_narrow_canvas_keeps_its_width_and_every_label_clear() {
+        let src = "---\nconfig:\n  sankey:\n    width: 450\n    showValues: true\n    \
+                   suffix: \" TWh\"\n---\nsankey-beta\n\
+                   Coal and lignite from the north,Electricity generation,42\n\
+                   Natural gas imports,Electricity generation,31\n\
+                   Natural gas imports,District heating,18\n\
+                   Nuclear,Electricity generation,25\n\
+                   Offshore wind,Electricity generation,17\n\
+                   Solar,Electricity generation,9\n\
+                   Electricity generation,Heavy industry and manufacturing,48\n\
+                   Electricity generation,Residential homes,40\n\
+                   Electricity generation,Transmission losses,36\n\
+                   District heating,Residential homes,12\n\
+                   District heating,\"Industry, light\",6\n";
+        let ss = scene(&diagram(src));
+        assert_eq!(ss.width, 450.0);
+        assert_labels_clear(&ss);
+        let coal = node(&ss, "Coal and lignite from the north");
+        assert!(coal.label_lines.len() >= 2, "{coal:?}");
+        // Wrapped lines keep the whole value together and add up to
+        // the label text.
+        assert_eq!(coal.label_lines.join(" "), coal.label_text);
+        assert!(coal.label_lines.last().unwrap().starts_with('('));
+        let svg = to_svg(&ss);
+        assert!(svg.contains("<tspan x="), "{svg}");
+        // Short labels stay on one line, drawn as before.
+        assert_eq!(node(&ss, "Nuclear").label_lines.len(), 1);
+        assert!(
+            svg.contains("dy=\"0.33em\" text-anchor=\"start\" fill=\"#232840\">Nuclear (25 TWh)<")
+        );
+    }
+
+    /// A long first-column name with room to spare at the default width
+    /// never sits across the next column's node.
+    #[test]
+    fn a_long_source_name_never_runs_across_the_next_column() {
+        let src =
+            "sankey-beta\nA rather long name for a source node here,Mid,10\nB,Mid,5\nMid,Out,15\n";
+        let ss = scene(&diagram(src));
+        assert_labels_clear(&ss);
+        assert_eq!(ss.width, 600.0);
+    }
+
+    /// Review: `Electricity: steelblue` was invisible to the clash check
+    /// (it could only read hex), so linked Industry took steel blue
+    /// `#4d8fbf` beside it — one flat blue ribbon.
+    #[test]
+    fn a_named_node_colour_is_kept_clear_of_too() {
+        let ss = showcase_with(
+            "    nodeColors:\n      Electricity: steelblue\n      Gas: rgb(51, 163, 92)\n",
+            &[],
+        );
+        assert_eq!(node(&ss, "Electricity").fill(), "steelblue");
+        for linked in [
+            "Coal", "Nuclear", "Wind", "Solar", "Industry", "Homes", "Losses",
+        ] {
+            let de = delta_e(node(&ss, linked).fill(), "steelblue").unwrap();
+            assert!(de >= CLASH_DE, "{linked} is {de:.0} ΔE from steelblue");
+        }
+        let de = delta_e(node(&ss, "Heating").fill(), "#33a35c").unwrap();
+        assert!(de >= CLASH_DE, "Heating is {de:.0} ΔE from Gas");
     }
 
     #[test]

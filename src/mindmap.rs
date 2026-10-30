@@ -22,7 +22,7 @@
 use crate::layout::{line_count, text_width, TEXT_CALIBRATION};
 use crate::model::{MindShape, Mindmap, NodeStyle};
 use crate::scene::{escape, svg_open, SvgOptions};
-use crate::style::text_on;
+use crate::style::{css_hex, text_on};
 use std::f64::consts::{FRAC_PI_2, PI, TAU};
 
 /// Horizontal padding inside a node box (mermaid uses 20 on 16px text).
@@ -1562,8 +1562,10 @@ pub fn route(d: &Mindmap, pos: &[(f64, f64)]) -> MindScene {
             branch_color(branch_order[n.branch.unwrap_or(i)])
         };
         // Text is white or dark ink by contrast with the fill actually
-        // painted (white alone failed AA on most accents).
-        let text_color = text_on(n.style.fill.as_deref().unwrap_or(fill));
+        // painted (white alone failed AA on most accents); a `classDef`
+        // fill may be a named colour or `rgb()`, measured as hex.
+        let painted = n.style.fill.as_deref().unwrap_or(fill);
+        let text_color = text_on(&css_hex(painted).unwrap_or_else(|| painted.to_string()));
         let (font_size, font_weight) = font_of(n.depth);
         nodes.push(MindNodeBox {
             x: pos[i].0 - w2 / 2.0,
@@ -2636,6 +2638,25 @@ mod tests {
         assert!(svg.contains("fill=\"#ffd43b\""), "{svg}");
         // The branch colour is still what the connector uses.
         assert!(ms.edges.iter().all(|e| !e.color.starts_with("#ffe")));
+    }
+
+    /// Review: `classDef hot fill:yellow` got white text (1.07:1) — the
+    /// contrast pick could only read hex, so a named fill fell back to
+    /// white; `#ffff00` correctly got dark ink.
+    #[test]
+    fn a_named_class_fill_still_gets_a_readable_ink() {
+        for fill in ["yellow", "Yellow", "rgb(255, 255, 0)", "#ff0"] {
+            let m = mind(&format!(
+                "mindmap\nRoot\n  Hot\n  :::hot\nclassDef hot fill:{fill}\n"
+            ));
+            let ms = scene(&m);
+            let hot = by_text(&ms, "Hot");
+            assert_eq!(hot.ink(), crate::style::text_on("#ffff00"), "{fill}");
+            crate::style::assert_text_reads(&to_svg(&ms), "Hot", "#ffff00");
+        }
+        // A dark named fill keeps white.
+        let m = mind("mindmap\nRoot\n  Hot\n  :::hot\nclassDef hot fill:navy\n");
+        assert_eq!(by_text(&scene(&m), "Hot").ink(), "#ffffff");
     }
 
     #[test]
