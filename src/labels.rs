@@ -2690,6 +2690,19 @@ mod tests {
         tb: bool,
         what: &str,
     ) -> Vec<(String, f64)> {
+        assert_fan_labels_clear_but(sc, point, tb, what, &[], FAN_SIBLING_GAP)
+    }
+
+    /// [`assert_fan_labels_clear`] for every label but those in `skip`,
+    /// siblings beside each other `gap` clear.
+    fn assert_fan_labels_clear_but(
+        sc: &Scene,
+        point: &str,
+        tb: bool,
+        what: &str,
+        skip: &[&str],
+        gap: f64,
+    ) -> Vec<(String, f64)> {
         let lines: Vec<_> = sc.edges.iter().map(|e| Some(edge_polyline(e))).collect();
         let strokes = StrokeGrid::new(&lines);
         let mut boxes: Vec<(String, Rect)> = Vec::new();
@@ -2698,7 +2711,7 @@ mod tests {
             let Some((text, c, w)) = &e.label else {
                 continue;
             };
-            if e.from != point {
+            if e.from != point || skip.contains(&text.as_str()) {
                 continue;
             }
             let r = label_rect(*c, *w);
@@ -2724,8 +2737,10 @@ mod tests {
                 } else {
                     (a.0 < b.2 && b.0 < a.2, (b.1 - a.3).max(a.1 - b.3))
                 };
+                // As `stack_fans` keeps it: boxes that overlap by less
+                // than TOUCH_EPS only touch.
                 assert!(
-                    !along || across >= FAN_SIBLING_GAP - 0.01,
+                    !along || across >= gap - TOUCH_EPS,
                     "{what}: '{ta}' and '{tb_}' {across:.1}px apart side by side"
                 );
             }
@@ -2786,6 +2801,118 @@ mod tests {
         assert_fan_labels_clear(&routed, "c", true, "dragged choice, route");
         let partial = crate::scene::route_partial(&g, &moved, &sc, &at);
         assert_fan_labels_clear(&partial, "c", true, "dragged choice, route_partial");
+    }
+
+    #[test]
+    fn choice_twin_labels_keep_beside_their_own_lines_among_more_siblings() {
+        let state = |src: &str| match crate::parser::parse_document(src).unwrap() {
+            crate::model::Document::State(g) => g,
+            other => panic!("not a state diagram: {other:?}"),
+        };
+        // Two transitions to B beside two more siblings, in every
+        // direction. 'medium' used to sit on the 'low' line: spaced in
+        // the order they head, the twins' ends at B swapped, the lines
+        // crossed, the router rerouted 'medium' into B's side, and no
+        // spot was left on or beside it. Now their ends keep the order
+        // they are drawn in (neither is rerouted), B is spaced for a
+        // label either side, and each twin's label sits beside its own
+        // line, outward: in the static scene, after a full reroute and
+        // while the choice is dragged.
+        let mix = "state c <<choice>>\n[*] --> P\nP --> c\n\
+                   c --> B : low\nc --> B : medium\nc --> C : high\nc --> D : critical";
+        let lr = "state c <<choice>>\n[*] --> P\nP --> c\n\
+                  c --> B : yes\nc --> B : maybe\nc --> C : no";
+        let three = "state c <<choice>>\n[*] --> P\nP --> c\n\
+                     c --> B : one\nc --> B : two\nc --> B : three";
+        // (diagram, direction, the outer twins, labels not checked,
+        // whether to drag the choice too).
+        let cases = [
+            (mix, "TB", ("low", "medium"), &[][..], true),
+            (mix, "BT", ("low", "medium"), &[], true),
+            (mix, "LR", ("low", "medium"), &[], true),
+            (mix, "RL", ("low", "medium"), &[], true),
+            // Small enough that a dragged choice leaves 'maybe' no spot
+            // clear of 'no'.
+            (lr, "LR", ("yes", "maybe"), &[], false),
+            // Three lines to one state: the middle one's label has a
+            // twin on either side, so no spot is clear of them; the
+            // outer two sit beside their lines.
+            (three, "TB", ("one", "three"), &["two"], true),
+            (three, "LR", ("one", "three"), &["two"], true),
+        ];
+        for (body, dir, (a, b), skip, drag) in cases {
+            let g = state(&format!("stateDiagram-v2\ndirection {dir}\n{body}"));
+            let tb = matches!(dir, "TB" | "BT");
+            let sc = crate::scene::scene(&g);
+            let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let routed = crate::scene::route(&g, &at);
+            let ci = g.node_index("c").unwrap();
+            let mut scenes = vec![(format!("{dir} scene"), sc.clone())];
+            scenes.push((format!("{dir} route"), routed));
+            // The choice dragged across the flow both ways and, down or
+            // up the page, 25px toward its targets. (Across LR/RL a gap
+            // only just fits its widest label, so a drag toward the
+            // targets leaves no row; the labels then take the general
+            // placer's best spots.)
+            let (across, toward) = match dir {
+                "TB" => ((1.0, 0.0), (0.0, 1.0)),
+                "BT" => ((1.0, 0.0), (0.0, -1.0)),
+                _ => ((0.0, 1.0), (0.0, 0.0)),
+            };
+            for (k, by) in [(-30.0, 0.0), (30.0, 0.0), (0.0, 25.0)] {
+                if !drag || by > 0.0 && !tb {
+                    continue;
+                }
+                let (dx, dy) = (across.0 * k + toward.0 * by, across.1 * k + toward.1 * by);
+                let mut moved = at.clone();
+                moved[ci].0 += dx;
+                moved[ci].1 += dy;
+                let dragged = crate::scene::route_partial(&g, &moved, &sc, &at);
+                scenes.push((format!("{dir} drag ({dx},{dy})"), dragged));
+            }
+            for (k, (what, s)) in scenes.iter().enumerate() {
+                let what = format!("{what}: {body}");
+                // A drag that leaves the fan too little room for rows
+                // hands its labels to the general placer, which keeps
+                // them apart but not FAN_SIBLING_GAP apart.
+                let gap = if k < 2 { FAN_SIBLING_GAP } else { 0.0 };
+                assert_fan_labels_clear_but(s, "c", tb, &what, skip, gap);
+                // Per twin: its far end, and its label's offset from the
+                // nearest point of its line, across the flow.
+                let twin = |t: &str| {
+                    let e = s
+                        .edges
+                        .iter()
+                        .find(|e| e.label.as_ref().is_some_and(|l| l.0 == t));
+                    let e = e.unwrap();
+                    let c = e.label.as_ref().unwrap().1;
+                    let pts = densify(&edge_polyline(e));
+                    let d2 = |p: &Pt| (p.0 - c.0).powi(2) + (p.1 - c.1).powi(2);
+                    let near = *pts.iter().min_by(|p, q| d2(p).total_cmp(&d2(q))).unwrap();
+                    let far = *pts.last().unwrap();
+                    if tb {
+                        (far.0, c.0 - near.0)
+                    } else {
+                        (far.1, c.1 - near.1)
+                    }
+                };
+                // Each sits on its line or beside it away from its twin,
+                // never toward it.
+                let ((fa, sa), (fb, sb)) = (twin(a), twin(b));
+                let out = (fa - fb).signum();
+                assert!(
+                    sa * out > -1.0 && sb * out < 1.0,
+                    "{what}: '{a}' ({sa:.1}) or '{b}' ({sb:.1}) toward its twin"
+                );
+                // The static scene and a full reroute draw the twins as
+                // the builder does: neither detours round the other.
+                if k < 2 {
+                    for e in s.edges.iter().filter(|e| e.from == "c" && e.to == "B") {
+                        assert!(e.waypoints.is_empty(), "{what}: a twin was rerouted");
+                    }
+                }
+            }
+        }
     }
 
     #[test]

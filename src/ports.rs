@@ -335,6 +335,29 @@ fn port_order(a: &PortEnd, b: &PortEnd) -> std::cmp::Ordering {
         .then(a.edge.cmp(&b.edge))
 }
 
+/// Re-sorts each run of neighbouring parallel ends (one pair of ends,
+/// one way) in `ports`, sorted by [`port_order`], by where they are
+/// drawn, ties kept in heading order. The builders' parallel offsets
+/// order such edges alike at both ends, but seen from one end two of
+/// them converging on nearly one point at the other (a small
+/// `<<choice>>` diamond, a port the lean pinned to a box's corner) head
+/// the other way round: spaced in heading order, they would cross on
+/// the way, and the router would then reroute one of them.
+fn keep_parallel_order(ports: &mut [PortEnd], cx: &Ctx) {
+    let mut i = 0;
+    while i < ports.len() {
+        let mut j = i + 1;
+        while j < ports.len()
+            && ports[j].src == ports[i].src
+            && cx.ends.get(ports[j].edge) == cx.ends.get(ports[i].edge)
+        {
+            j += 1;
+        }
+        ports[i..j].sort_by(|a, b| a.want.total_cmp(&b.want));
+        i = j;
+    }
+}
+
 /// The sides next to `side` at its low and high tangent ends.
 fn neighbours(side: Side) -> (Side, Side) {
     match side {
@@ -390,6 +413,8 @@ pub(crate) fn reorder(
 /// over-full side move its outermost ends onto the neighbouring sides;
 /// `uncross` re-places a side whose neighbouring ends cross on their
 /// legs, each side's change kept only when `judge` (if any) says so.
+/// Without a `judge`, parallel edges keep the order they are drawn in
+/// (see [`keep_parallel_order`]).
 #[allow(clippy::too_many_arguments)]
 fn place_ports(
     _g: &Graph,
@@ -456,6 +481,11 @@ fn place_ports(
             continue;
         }
         ports.sort_by(port_order);
+        // Spacing keeps parallel edges in the order they are drawn;
+        // only `reorder` re-places them in the order they head.
+        if judge.is_none() {
+            keep_parallel_order(&mut ports, cx);
+        }
         let k = ports.len();
         let glyph = ports.iter().any(|p| p.glyph);
         let want = if glyph {
@@ -1003,6 +1033,42 @@ mod tests {
             .iter()
             .find(|e| e.from == from && e.to == to)
             .unwrap_or_else(|| panic!("no {from} -> {to}"))
+    }
+
+    #[test]
+    fn parallel_edges_keep_the_order_they_are_drawn_in() {
+        // Two transitions from a 28px <<choice>> to one state leave the
+        // diamond at almost one point and lean on one side of B: seen
+        // from B they head the other way round, so spacing B's ends in
+        // heading order crossed them, and the router then rerouted one
+        // of them into B's side. Spacing keeps their drawn order.
+        for dir in ["TB", "BT", "LR", "RL"] {
+            let src = format!(
+                "stateDiagram-v2\ndirection {dir}\nstate c <<choice>>\n[*] --> P\nP --> c\n\
+                 c --> B : low\nc --> B : medium\nc --> C : high\nc --> D : critical"
+            );
+            let crate::model::Document::State(g) = crate::parser::parse_document(&src).unwrap()
+            else {
+                panic!("a state diagram");
+            };
+            let s = scene(&g);
+            let c: Vec<Pt> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let r = route(&g, &c);
+            for (what, sc) in [("scene", &s), ("route", &r)] {
+                let twins: Vec<Vec<Pt>> = sc
+                    .edges
+                    .iter()
+                    .filter(|e| e.from == "c" && e.to == "B")
+                    .inspect(|e| assert!(e.waypoints.is_empty(), "{dir} {what}: rerouted"))
+                    .map(edge_polyline)
+                    .collect();
+                let (a, b) = (&twins[0], &twins[1]);
+                let crossed = a
+                    .windows(2)
+                    .any(|u| b.windows(2).any(|v| segs_cross(u[0], u[1], v[0], v[1])));
+                assert!(!crossed, "{dir} {what}: the twins cross");
+            }
+        }
     }
 
     #[test]

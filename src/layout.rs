@@ -17,6 +17,7 @@
 
 use crate::labels::{FAN_FAR, FAN_SIBLING_GAP, LABEL_SIDE_AIR, LABEL_STRADDLE, STROKE_PAD};
 use crate::model::{Direction, EdgeKind, Graph, Node, Shape};
+use crate::ports::PORT_INSET;
 use crate::scene::{port_lean, ARROW_MARKER_PX};
 use std::borrow::Cow;
 use std::collections::BTreeMap;
@@ -228,6 +229,37 @@ fn fan_line_at(line: &FanLine, share: f64) -> f64 {
     line.from + (line.to - line.from) * (3.0 * hi * hi - 2.0 * hi * hi * hi)
 }
 
+/// Per edge: how far the outermost of the parallel edges it belongs to
+/// (one node pair, `par` = `scene::parallel_offsets`) sits off their
+/// middle; 0 for an edge with no parallel twin.
+fn parallel_reach(g: &Graph, par: &[f64]) -> Vec<f64> {
+    let pair = |ei: usize| {
+        let e = &g.edges[ei];
+        (e.from.min(e.to), e.from.max(e.to))
+    };
+    let mut reach: BTreeMap<(usize, usize), f64> = BTreeMap::new();
+    for (ei, off) in par.iter().enumerate() {
+        let r = reach.entry(pair(ei)).or_insert(0.0);
+        *r = r.max(off.abs());
+    }
+    (0..par.len()).map(|ei| reach[&pair(ei)]).collect()
+}
+
+/// Where a compact branch point's fan line meets a boxy far end, off the
+/// end's centre: [`port_lean`] toward the point (`toward`: its breadth
+/// less the end's), shifted by its parallel offset `off`. Parallel lines
+/// to one end (the outermost `reach` off their middle) keep their
+/// spacing, as the port stage spaces their ends (`ports::assign`): their
+/// shared lean only goes as far as keeps the outermost [`PORT_INSET`]
+/// in from the box's corner.
+fn fan_end_lean(shape: Shape, size: (f64, f64), toward: f64, off: f64, reach: f64) -> f64 {
+    if reach <= 0.0 {
+        return port_lean(shape, size, toward, off);
+    }
+    let span = (size.0 / 2.0 - PORT_INSET - reach).max(0.0);
+    port_lean(shape, size, toward, 0.0).clamp(-span, span) + off
+}
+
 /// Every (note card, fork/join bar) pair a state note links (see
 /// [`crate::style::is_note_card`]).
 fn bar_cards(g: &Graph) -> Vec<(usize, usize)> {
@@ -395,8 +427,11 @@ fn fan_rows_fit(lines: &[FanLine], need: f64, beside: bool) -> Option<f64> {
 /// estimate packs the far ends side by side in their layer's order, the
 /// point centred over them; each widened end gets its label's width,
 /// [`FAN_SIBLING_GAP`] to its neighbour and room for both ends' lines
-/// to lean (see `scene::anchor`), less the node gap. The boxes keep
-/// their size. `None` when no fan needs it.
+/// to lean (see `scene::anchor`), less the node gap. Parallel lines to
+/// one end (two transitions to one state) put their labels beside them
+/// instead: when those find no spot, that end alone is widened, by
+/// [`FAN_TWIN_STEP`]s, until they do (see [`fan_twin_room`]). The boxes
+/// keep their size. `None` when no fan needs it.
 #[allow(clippy::too_many_arguments)]
 fn fan_label_room(
     g: &Graph,
@@ -412,10 +447,10 @@ fn fan_label_room(
     if horizontal || !(0..g.nodes.len()).any(branch) {
         return None;
     }
-    // Per (point, far layer): the far ends of its labelled short fan
-    // lines, each with its widest label. Two lines to one end (their
-    // labels go beside them) ask nothing of the spacing.
-    let mut fans: BTreeMap<(usize, usize), BTreeMap<usize, f64>> = BTreeMap::new();
+    let par = crate::scene::parallel_offsets(g);
+    let reach = parallel_reach(g, &par);
+    // Per (point, far layer): its labelled short fan lines.
+    let mut fans: BTreeMap<(usize, usize), Vec<FanLabel>> = BTreeMap::new();
     for (ei, e) in g.edges.iter().enumerate() {
         if e.from == e.to || back[ei] || matches!(e.kind, EdgeKind::Invisible) {
             continue;
@@ -430,9 +465,9 @@ fn fan_label_room(
             continue;
         }
         let w = text_width(lbl) + LABEL_PAD_W;
-        let ends = fans.entry((p, alayer[far])).or_default();
-        let at = ends.entry(far).or_insert(0.0);
-        *at = at.max(w);
+        fans.entry((p, alayer[far]))
+            .or_default()
+            .push((far, w, par[ei], reach[ei]));
     }
     // How far a line leans off its far end's centre at most.
     let flat = |v: usize| match g.nodes[v].shape {
@@ -445,53 +480,141 @@ fn fan_label_room(
         shape => port_lean(shape, (absize[v], alsize[v]), f64::MAX, 0.0).abs(),
     };
     let mut out: Option<Vec<f64>> = None;
-    for ((p, li), ends) in fans {
+    for ((p, li), fan) in fans {
+        let mut ends: Vec<usize> = fan.iter().map(|l| l.0).collect();
+        ends.sort_unstable();
+        ends.dedup();
         if ends.len() < 2 {
             continue;
         }
         let layer = &layers[li];
-        let mut pos = vec![0.0; layer.len()];
-        for i in 1..layer.len() {
-            pos[i] = pos[i - 1] + pair_sep(layer[i - 1], layer[i], n, absize, None, None, None);
-        }
-        let at = |v: usize| layer.iter().position(|&w| w == v).map(|i| pos[i]);
-        let spots: Vec<(usize, f64, f64)> = ends
+        // The ends reached by parallel lines.
+        let twins: Vec<usize> = ends
             .iter()
-            .filter_map(|(&v, &w)| Some((v, at(v)?, w)))
+            .copied()
+            .filter(|&v| fan.iter().filter(|l| l.0 == v).count() > 1)
             .collect();
-        let (lo, hi) = spots
-            .iter()
-            .fold((f64::INFINITY, f64::NEG_INFINITY), |m, s| {
-                (m.0.min(s.1), m.1.max(s.1))
-            });
-        let bp = (lo + hi) / 2.0;
-        let lines: Vec<FanLine> = spots
-            .iter()
-            .map(|&(v, b, w)| {
-                // Not a `match` on 0.0: a float literal pattern is a
-                // future-incompatibility warning on the MSRV.
-                let lean = if flat(v) == 0.0 {
+        // The fan's lines with the far ends spaced by `sep`.
+        let lines = |sep: &[f64]| -> Vec<FanLine> {
+            let mut pos = vec![0.0; layer.len()];
+            for i in 1..layer.len() {
+                pos[i] = pos[i - 1] + pair_sep(layer[i - 1], layer[i], n, sep, None, None, None);
+            }
+            let at = |v: usize| layer.iter().position(|&w| w == v).map(|i| pos[i]);
+            let bp = if twins.is_empty() {
+                let (lo, hi) = ends
+                    .iter()
+                    .filter_map(|&v| at(v))
+                    .fold((f64::INFINITY, f64::NEG_INFINITY), |m, b| {
+                        (m.0.min(b), m.1.max(b))
+                    });
+                (lo + hi) / 2.0
+            } else {
+                // The coordinate stage aligns the point with the median
+                // of its lines' far ends: an end reached twice pulls it
+                // that much nearer.
+                let mut all: Vec<f64> = fan.iter().filter_map(|l| at(l.0)).collect();
+                all.sort_by(f64::total_cmp);
+                let k = all.len();
+                if k == 0 {
                     0.0
                 } else {
-                    port_lean(g.nodes[v].shape, (absize[v], alsize[v]), bp - b, 0.0)
-                };
-                FanLine {
-                    point: p,
-                    from: bp + (b - bp).clamp(-CHOICE_SIZE / 4.0, CHOICE_SIZE / 4.0),
-                    to: b + lean,
-                    width: Some(w),
+                    (all[(k - 1) / 2] + all[k / 2]) / 2.0
                 }
-            })
-            .collect();
-        if fan_rows_fit(&lines, 0.0, false).is_some() {
+            };
+            fan.iter()
+                .filter_map(|&(v, w, off, reach)| {
+                    let b = at(v)?;
+                    let lean = if flat(v) > 0.0 {
+                        let size = (absize[v], alsize[v]);
+                        fan_end_lean(g.nodes[v].shape, size, bp - b, off, reach)
+                    } else {
+                        off
+                    };
+                    Some(FanLine {
+                        point: p,
+                        from: bp + (b - bp).clamp(-CHOICE_SIZE / 4.0, CHOICE_SIZE / 4.0),
+                        to: b + lean,
+                        // Between two twins a label has no clear spot.
+                        width: (off.abs() >= reach).then_some(w),
+                    })
+                })
+                .collect()
+        };
+        let now = lines(absize);
+        if fan_rows_fit(&now, 0.0, false).is_some()
+            || !twins.is_empty() && fan_rows_fit(&now, 0.0, true).is_some()
+        {
             continue;
         }
-        let sep = out.get_or_insert_with(|| absize.to_vec());
-        for &(v, _, w) in &spots {
-            sep[v] = sep[v].max(w + FAN_SIBLING_GAP + 2.0 * flat(v) - GAP_B);
+        if twins.is_empty() {
+            let sep = out.get_or_insert_with(|| absize.to_vec());
+            for &v in &ends {
+                let w = fan
+                    .iter()
+                    .filter(|l| l.0 == v)
+                    .map(|l| l.1)
+                    .fold(0.0, f64::max);
+                sep[v] = sep[v].max(w + FAN_SIBLING_GAP + 2.0 * flat(v) - GAP_B);
+            }
+        } else if let Some(room) =
+            fan_twin_room(out.as_deref().unwrap_or(absize), &twins, &fan, &lines)
+        {
+            out = Some(room);
         }
     }
     out
+}
+
+/// A labelled line of a compact branch point's fan, as
+/// [`fan_label_room`] estimates it: (far end, label width, parallel
+/// offset, parallel reach; see [`fan_end_lean`]).
+type FanLabel = (usize, f64, f64, f64);
+
+/// Step (px) by which [`fan_twin_room`] widens a far end.
+const FAN_TWIN_STEP: f64 = LABEL_CLEAR;
+
+/// Rows of labels past the first that [`fan_twin_room`] lets a fan's gap
+/// grow by before it widens the far ends further instead.
+const FAN_TWIN_ROWS: f64 = 2.0;
+
+/// `sep` with the far ends `twins` (each reached by parallel lines of
+/// the fan `fan`) widened by the fewest [`FAN_TWIN_STEP`]s that let the
+/// fan's labels fit in rows, the twins' beside their lines (`lines`
+/// draws the fan for a spacing), in a gap of at most [`FAN_TWIN_ROWS`]
+/// more rows than one; failing that, the fewest that fit at all. The
+/// ends grow by at most twice the widest of their labels, one label
+/// either side. `None` when even that leaves no room.
+fn fan_twin_room(
+    sep: &[f64],
+    twins: &[usize],
+    fan: &[FanLabel],
+    lines: &dyn Fn(&[f64]) -> Vec<FanLine>,
+) -> Option<Vec<f64>> {
+    let most = twins
+        .iter()
+        .map(|&v| {
+            fan.iter()
+                .filter(|l| l.0 == v)
+                .map(|l| l.1)
+                .fold(0.0, f64::max)
+        })
+        .fold(0.0, f64::max);
+    let steps = (2.0 * most / FAN_TWIN_STEP).ceil() as usize;
+    let compact = fan_gap(LABEL_BOX_H / 2.0) + FAN_TWIN_ROWS * (LABEL_BOX_H + LABEL_CLEAR);
+    let mut first: Option<Vec<f64>> = None;
+    let mut room = sep.to_vec();
+    for k in 1..=steps {
+        for &v in twins {
+            room[v] = sep[v] + k as f64 * FAN_TWIN_STEP;
+        }
+        match fan_rows_fit(&lines(&room), 0.0, true) {
+            Some(gap) if gap <= compact => return Some(room),
+            Some(_) if first.is_none() => first = Some(room.clone()),
+            _ => {}
+        }
+    }
+    first
 }
 
 /// Line height for multi-line labels (`<br/>` → newline).
@@ -2276,6 +2399,7 @@ fn place(
     } else {
         Vec::new()
     };
+    let par_reach = parallel_reach(g, &par);
     for (ei, e) in g.edges.iter().enumerate() {
         if e.from == e.to || back[ei] || matches!(e.kind, EdgeKind::Invisible) {
             continue;
@@ -2290,6 +2414,7 @@ fn place(
             // Near its far end a fan's line runs at that end's port,
             // leaning toward the point on a box (see `scene::anchor`).
             let off = par.get(ei).copied().unwrap_or(0.0);
+            let reach = par_reach.get(ei).copied().unwrap_or(0.0);
             let lean = match g.nodes[far].shape {
                 Shape::Diamond
                 | Shape::Circle
@@ -2297,7 +2422,13 @@ fn place(
                 | Shape::StateStart
                 | Shape::StateEnd
                 | Shape::ForkBar => off,
-                shape => port_lean(shape, (absize[far], alsize[far]), bpos[p] - bpos[far], off),
+                shape => fan_end_lean(
+                    shape,
+                    (absize[far], alsize[far]),
+                    bpos[p] - bpos[far],
+                    off,
+                    reach,
+                ),
             };
             // It leaves the small diamond's border on the way to the far
             // end's centre: about a quarter of the diamond off its centre
@@ -2307,7 +2438,13 @@ fn place(
                 point: p,
                 from: bpos[p] + toward.clamp(-CHOICE_SIZE / 4.0, CHOICE_SIZE / 4.0),
                 to: bpos[far] + lean,
-                width: e.label.as_ref().map(|l| text_width(l) + LABEL_PAD_W),
+                // A line with parallel twins on both sides has no spot
+                // clear of them for its label: no gap makes one.
+                width: e
+                    .label
+                    .as_ref()
+                    .filter(|_| off.abs() >= reach)
+                    .map(|l| text_width(l) + LABEL_PAD_W),
             });
         }
         let room = e.end_room.0 + e.end_room.1;
