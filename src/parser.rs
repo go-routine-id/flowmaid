@@ -3107,6 +3107,9 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
     d.acc_descr = acc.descr;
     // (class index, line where its `{` opened) for a good diagnostic.
     let mut open: Option<(usize, usize)> = None;
+    // `note for Name` notes by index, resolved once every class is
+    // known (the class may be declared after the note).
+    let mut note_for: Vec<(usize, String)> = Vec::new();
     for (i, raw) in source.lines().enumerate() {
         let lineno = i + 1;
         if lineno <= header_line {
@@ -3167,11 +3170,18 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
             }
         }
         if let Some(rest) = strip_keyword(line, "direction") {
-            d.direction = parse_direction(rest, lineno)?;
+            // An unknown direction is ignored, as mermaid ignores it
+            // (and as flowmaid did before it read the line at all).
+            if let Ok(dir) = parse_direction(rest, lineno) {
+                d.direction = dir;
+            }
             continue;
         }
         if let Some(rest) = strip_keyword(line, "note") {
-            let note = parse_class_note(&mut d, rest.trim(), lineno)?;
+            let (note, class) = parse_class_note(rest.trim(), lineno)?;
+            if let Some(name) = class {
+                note_for.push((d.notes.len(), name));
+            }
             d.notes.push(note);
             continue;
         }
@@ -3203,6 +3213,11 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
                 d.classes[ci].name
             ),
         ));
+    }
+    // A note for a class the diagram never declares stays free, as
+    // mermaid draws it: it does not create the class.
+    for (k, name) in note_for {
+        d.notes[k].class = d.class_index(split_generic(&name).0);
     }
     Ok(d)
 }
@@ -3241,14 +3256,13 @@ fn annotation_of(line: &str) -> Option<&str> {
     (!a.is_empty()).then_some(a)
 }
 
-/// `note "text"` or `note for Class "text"` (the part after `note`).
-/// The text may be quoted; `\n` and `<br/>` break lines, as mermaid's
-/// own class notes do.
-fn parse_class_note(
-    d: &mut ClassDiagram,
-    rest: &str,
-    lineno: usize,
-) -> Result<ClassNote, ParseError> {
+/// `note "text"` or `note for Class "text"` (the part after `note`):
+/// the note (still free) and, for `note for`, the class name it names
+/// (resolved by [`parse_class`] once the whole diagram is read). The
+/// text may be quoted; `\n` and `<br/>` break lines, as mermaid's own
+/// class notes do. A note without text, or `note for` without a class
+/// name, is an error, as in mermaid.
+fn parse_class_note(rest: &str, lineno: usize) -> Result<(ClassNote, Option<String>), ParseError> {
     let (class, text) = match strip_keyword(rest, "for") {
         Some(r) => {
             let r = r.trim();
@@ -3260,7 +3274,7 @@ fn parse_class_note(
                     format!("'note for' needs a class name, got '{name}'"),
                 ));
             }
-            (Some(ensure_generic_class(d, name)), r[end..].trim())
+            (Some(name.to_string()), r[end..].trim())
         }
         None => (None, rest),
     };
@@ -3268,7 +3282,7 @@ fn parse_class_note(
         return Err(err(lineno, "note text is empty".to_string()));
     }
     let text = clean_label(&text.replace("\\n", "<br/>"));
-    Ok(ClassNote { text, class })
+    Ok((ClassNote { text, class: None }, class))
 }
 
 /// First byte index of `needle` in `s` that lies outside any `"..."`
