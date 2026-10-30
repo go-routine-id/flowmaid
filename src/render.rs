@@ -84,8 +84,9 @@ pub fn render_seq_with(d: &SequenceDiagram, opts: &SvgOptions) -> String {
     crate::seq::to_svg_a11y_with(&crate::seq::scene(d), &a11y, opts)
 }
 
-/// Render a mindmap (left-to-right tidy tree with colored branches).
-/// Geometry & serialisation live in the `mindmap` module.
+/// Render a mindmap (radial: the root at the centre, children fanned
+/// round their parents, colored branches). Geometry & serialisation
+/// live in the `mindmap` module.
 pub fn render_mindmap(d: &Mindmap) -> String {
     crate::mindmap::to_svg(&crate::mindmap::scene(d))
 }

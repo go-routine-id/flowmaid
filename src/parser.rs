@@ -4118,11 +4118,16 @@ fn parse_pie_row(line: &str, lineno: usize) -> Result<(String, f64), ParseError>
 /// shallower line. Node text may be wrapped to pick a shape
 /// (`[..]` square, `(..)` rounded, `((..))` circle, `{{..}}` hexagon,
 /// `))..((` bang, `)..(` cloud); an optional leading id is dropped.
-/// `::icon(..)` and `:::class` decoration lines are ignored.
+/// A `::icon(..)` line and a `:::a b` class line decorate the node
+/// above them, as in mermaid. `classDef name fill:..,color:..` lines
+/// (a flowmaid extension — mermaid's mindmap leaves classes to page
+/// CSS) colour the nodes carrying that class.
 fn parse_mindmap(source: &str, header_line: usize) -> Result<Mindmap, ParseError> {
     let mut d = Mindmap::default();
     // Stack of open ancestors as (indent, node index), shallow -> deep.
     let mut stack: Vec<(usize, usize)> = Vec::new();
+    // classDefs may follow their use, as in flowcharts: resolved at the end.
+    let mut class_defs: HashMap<String, NodeStyle> = HashMap::new();
 
     for (i, raw) in source.lines().enumerate() {
         let lineno = i + 1;
@@ -4133,10 +4138,35 @@ fn parse_mindmap(source: &str, header_line: usize) -> Result<Mindmap, ParseError
         if trimmed.is_empty() || trimmed.starts_with("%%") {
             continue;
         }
-        // Decoration lines attach to the previous node — we don't draw
-        // icons/classes, so skip them without creating a node.
-        if trimmed.starts_with("::icon(") || trimmed.starts_with(":::") {
+        // Decoration lines attach to the previous node, whatever their
+        // indentation (mermaid's `decorateNode`); before any node there
+        // is nothing to decorate.
+        if let Some(rest) = trimmed.strip_prefix("::icon(") {
+            // The icon runs to the first `)`, like mermaid's lexer.
+            let icon = rest.split(')').next().unwrap_or("").trim();
+            if let (Some(last), false) = (d.nodes.last_mut(), icon.is_empty()) {
+                last.icon = Some(icon.to_string());
+            }
             continue;
+        }
+        if let Some(rest) = trimmed.strip_prefix(":::") {
+            if let Some(last) = d.nodes.last_mut() {
+                last.classes
+                    .extend(rest.split_whitespace().map(str::to_string));
+            }
+            continue;
+        }
+        // `classDef name props` — only when the props parse, so a node
+        // whose text merely starts with the word stays a node.
+        if let Some(rest) = strip_keyword(trimmed, "classDef") {
+            if let Some((names, props)) = rest.trim().split_once(char::is_whitespace) {
+                if let Ok(st) = parse_props(props.trim(), lineno) {
+                    for name in names.split(',').filter(|n| !n.is_empty()) {
+                        class_defs.insert(name.to_string(), st.clone());
+                    }
+                    continue;
+                }
+            }
         }
 
         let indent = mind_indent(raw);
@@ -4179,6 +4209,9 @@ fn parse_mindmap(source: &str, header_line: usize) -> Result<Mindmap, ParseError
             children: Vec::new(),
             depth,
             branch,
+            icon: None,
+            classes: Vec::new(),
+            style: NodeStyle::default(),
         });
         if let Some(p) = parent {
             d.nodes[p].children.push(idx);
@@ -4191,6 +4224,13 @@ fn parse_mindmap(source: &str, header_line: usize) -> Result<Mindmap, ParseError
             header_line,
             "mindmap has no nodes (expected an indented tree under the header)".to_string(),
         ));
+    }
+    for n in &mut d.nodes {
+        for c in &n.classes {
+            if let Some(st) = class_defs.get(c) {
+                n.style.apply_over(st);
+            }
+        }
     }
     Ok(d)
 }
@@ -4233,7 +4273,7 @@ fn parse_mind_node(t: &str) -> (String, MindShape) {
             }
         }
     }
-    (mind_br(t), MindShape::Rounded)
+    (mind_br(t), MindShape::Default)
 }
 
 /// Normalise a mindmap label: `<br>` / `<br/>` / `<br />` -> newline,

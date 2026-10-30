@@ -1108,7 +1108,10 @@ pub struct Mindmap {
 /// One mindmap node. `text` may contain `\n` (from `<br/>`) for a
 /// multi-line label. `branch` is the index of the depth-1 ancestor
 /// this node descends from (its colored branch); `None` for the root.
+///
+/// `#[non_exhaustive]`: the parser builds these; read their fields.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct MindNode {
     pub text: String,
     pub shape: MindShape,
@@ -1116,6 +1119,17 @@ pub struct MindNode {
     pub children: Vec<usize>,
     pub depth: usize,
     pub branch: Option<usize>,
+    /// The `::icon(…)` line under the node, verbatim (`fa fa-book`,
+    /// `mdi mdi-skull`); `None` without one.
+    pub icon: Option<String>,
+    /// CSS classes from `:::a b` lines under the node, in order. The SVG
+    /// carries them as a `class` attribute (mermaid leaves styling them
+    /// to the page), and any matching mindmap `classDef` is folded into
+    /// [`MindNode::style`].
+    pub classes: Vec<String>,
+    /// Colours from the `classDef`s of [`MindNode::classes`] (later
+    /// classes win); empty `NodeStyle` = the branch colours.
+    pub style: NodeStyle,
 }
 
 /// A user-journey diagram (`journey` header): an ordered list of
@@ -1207,20 +1221,28 @@ pub struct TimelinePeriod {
 }
 
 /// Node outline in a mindmap, from the wrapper around its text.
+///
+/// `#[non_exhaustive]`: match it with a `_` arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[non_exhaustive]
 pub enum MindShape {
-    /// `id(text)` or no wrapper — the default.
+    /// No wrapper — mermaid's default node: a box with softly rounded
+    /// top corners and a darker underline along its flat bottom.
     #[default]
+    Default,
+    /// `id(text)` — a pill (fully rounded ends).
     Rounded,
-    /// `id[text]`.
+    /// `id[text]` — sharp corners.
     Square,
-    /// `id((text))`.
+    /// `id((text))` — a true circle (width = height).
     Circle,
     /// `id{{text}}`.
     Hexagon,
-    /// `id))text((` — a "bang"/explosion; approximated as a bold pill.
+    /// `id))text((` — a "bang": a starburst of evenly spaced spikes of
+    /// one depth around an ellipse that holds the label.
     Bang,
-    /// `id)text(` — a cloud; approximated as an ellipse.
+    /// `id)text(` — a cloud: round overlapping lobes around an ellipse
+    /// that holds the label.
     Cloud,
 }
 
