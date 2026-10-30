@@ -10,8 +10,10 @@
 //! another or swallows a stranger ([`legalize`]); and the grid becomes
 //! pixels with each column and row only as wide and tall as what is in
 //! it ([`Axis`]). Edges leave and enter along their port normals and
-//! are routed orthogonally around every service box and group title
-//! ([`Grid`]), so no line passes behind a box.
+//! are routed orthogonally around every service box, junction and
+//! group title ([`Grid`]), so no line passes behind a box or strikes a
+//! title, and no edge turns on (or runs along) an unrelated one, which
+//! would draw a junction that is not there.
 //!
 //! Like `pie`/`journey`/`mindmap`/`gitgraph`, the layout is fully
 //! automatic and the result is exposed as a generic [`Scene`] so
@@ -72,10 +74,26 @@ const TITLE_CY: f64 = 20.0;
 const STUB: f64 = 16.0;
 /// Clearance a route keeps from every service box it passes.
 const CLEAR: f64 = 10.0;
-/// Clearance a route keeps from a group title.
-const TITLE_CLEAR: f64 = 4.0;
-/// How far outside the drawing the outermost routing channel runs.
+/// Clearance a route keeps from either end of a group title. The
+/// title's width is only an estimate ([`title_px`] errs wide), and a
+/// line beside a word reads as striking it well before it touches.
+const TITLE_CLEAR: f64 = 8.0;
+/// Clearance a route keeps above and below a group title, whose
+/// height ([`TITLE_HALF_H`]) already spans an emoji's full box.
+const TITLE_CLEAR_Y: f64 = 4.0;
+/// Half the height of a group title's ink: a 14px colour emoji runs
+/// about 0.6em above and below the title's centre line.
+const TITLE_HALF_H: f64 = FONT as f64 * 0.6;
+/// How far right of an edge that rises through a title band into a
+/// port the title starts when it is moved off that edge's line.
+const TITLE_SHIFT: f64 = TITLE_CLEAR + 4.0;
+/// Margin the canvas keeps around every route and label chip.
 const OUTER: f64 = 12.0;
+/// Routing channels run around the outside of the drawing ...
+const OUTER_CHANNELS: usize = 3;
+/// ... this far apart, and the first this far beyond every clearance
+/// and stub end (so it never runs a hair from one of those lines).
+const CHANNEL_GAP: f64 = 8.0;
 /// Corner radius of a drawn route (never more than half a leg).
 const CORNER_R: f64 = 8.0;
 /// Samples per rounded corner in an edge's waypoints: dense enough
@@ -85,9 +103,29 @@ const CORNER_STEPS: usize = 6;
 const BEND_COST: f64 = 40.0;
 /// Route cost of crossing an edge routed earlier, in px of length.
 const CROSS_COST: f64 = 60.0;
+/// Route cost of turning on a line an unrelated edge (one that shares
+/// no port) has taken, or of running through the point where it turns.
+/// Either draws a T on that edge — a junction that is not there, which
+/// misreads the topology far worse than a crossing or a longer route.
+const TOUCH_COST: f64 = 200.0;
 /// Extra route cost per px run on top of an edge routed earlier: two
 /// edges share a line only where they must (into a shared port).
 const OVERLAP_COST: f64 = 3.0;
+/// States the routes of one diagram may settle before later searches
+/// weight their estimate (see [`Grid::search`]). Real diagrams settle a
+/// small fraction of it (fifteen groups of eight services wired as
+/// grids, 170 edges, settle ~60k); a large tangle of crossing edges
+/// would otherwise search the whole lattice for every edge, taking
+/// seconds.
+const SEARCH_BUDGET: usize = 300_000;
+/// Two parallel lines closer than this draw as one: edges on them
+/// count as sharing a line.
+const NEAR: f64 = 5.0;
+/// A route running closer than this alongside a group frame's side
+/// reads as part of the frame's outline ...
+const FRAME_NEAR: f64 = 8.0;
+/// ... so a px of it costs this much more than one down the gap.
+const FRAME_HUG: f64 = 1.3;
 /// Cost per px of running along a box's clearance line rather than
 /// down the middle of a gap, so routes take the middle when they can.
 const HUG_RATE: f64 = 1.15;
@@ -142,7 +180,11 @@ pub fn icon_glyph(name: &str) -> Option<&'static str> {
 }
 
 /// Positioned geometry for an architecture diagram.
+///
+/// `#[non_exhaustive]`: future versions may add fields without a
+/// breaking release; field access stays ordinary.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct ArchScene {
     /// Services and junctions (index-parallel with
     /// `Architecture::services`; a junction is a small `Circle` with an
@@ -156,12 +198,25 @@ pub struct ArchScene {
     /// arrowhead pointing at its `from` / `to` endpoint.
     pub arrow_starts: Vec<bool>,
     pub arrow_ends: Vec<bool>,
+    /// Where each group title is drawn, index-parallel with
+    /// `scene.clusters`: the left end of its text and the centre line
+    /// it sits on. Usually [`GROUP_PAD`] in from the frame's left side;
+    /// further right when an edge rises through the title band into a
+    /// port below it, so that the edge runs beside the title instead
+    /// of striking it. Edges are routed clear of the title drawn here.
+    pub title_at: Vec<(f64, f64)>,
 }
 
 type Pt = (f64, f64);
 
 /// Compute the scene for an architecture diagram.
 pub fn scene(d: &Architecture) -> ArchScene {
+    build(d).0
+}
+
+/// The scene, and each edge's route as its corner points (before the
+/// corners are rounded into `waypoints`).
+fn build(d: &Architecture) -> (ArchScene, Vec<Vec<Pt>>) {
     let cards: Vec<Card> = d
         .services
         .iter()
@@ -190,23 +245,62 @@ pub fn scene(d: &Architecture) -> ArchScene {
         })
         .collect();
     let title_w: Vec<f64> = titles.iter().map(|s| title_px(s)).collect();
-    let (x, y) = solve(d, &t, &cell, &title_w);
 
+    // Lay out, then move every title off the edges that rise through
+    // its band into a port below it. A title that moves may need a
+    // wider frame: lay out again with that width (the frame's own
+    // contents keep their places, only what lies right of it moves),
+    // and a title that still does not fit stays put for the router to
+    // go around.
     let na = t.na();
-    let frame = |g: usize| Rect {
-        x0: x.lo(na + g),
-        y0: y.lo(na + g),
-        x1: x.hi(na + g),
-        y1: y.hi(na + g),
+    let ns = d.services.len();
+    let ng = d.groups.len();
+    let mut min_w: Vec<f64> = title_w.iter().map(|w| w + 2.0 * GROUP_PAD).collect();
+    let mut pass = 0;
+    let (boxes, frames, ends, title_x) = loop {
+        let (x, y) = solve(d, &t, &cell, &min_w);
+        let boxes: Vec<Rect> = (0..ns)
+            .map(|i| Rect {
+                x0: x.at[i] - sizes[i].0 / 2.0,
+                y0: y.at[i] - sizes[i].1 / 2.0,
+                x1: x.at[i] + sizes[i].0 / 2.0,
+                y1: y.at[i] + sizes[i].1 / 2.0,
+            })
+            .collect();
+        let frames: Vec<Rect> = (0..ng)
+            .map(|g| Rect {
+                x0: x.lo(na + g),
+                y0: y.lo(na + g),
+                x1: x.hi(na + g),
+                y1: y.hi(na + g),
+            })
+            .collect();
+        let ends = edge_ends(d, &boxes, &frames);
+        let mut title_x = title_starts(d, &t, &boxes, &frames, &ends, &title_w);
+        let mut grown = false;
+        for g in 0..ng {
+            let need = title_x[g] + title_w[g] + GROUP_PAD - frames[g].x0;
+            if need > frames[g].x1 - frames[g].x0 + EPS {
+                if pass < 2 {
+                    min_w[g] = min_w[g].max(need);
+                    grown = true;
+                } else {
+                    title_x[g] = frames[g].x0 + GROUP_PAD;
+                }
+            }
+        }
+        pass += 1;
+        if !grown {
+            break (boxes, frames, ends, title_x);
+        }
     };
-    let frames: Vec<Rect> = (0..d.groups.len()).map(frame).collect();
     let (mut right, mut bottom) = (PAD, PAD);
-    for &it in &t.kids[t.root] {
-        right = right.max(x.hi(it));
-        bottom = bottom.max(y.hi(it));
+    for r in boxes.iter().chain(&frames) {
+        right = right.max(r.x1);
+        bottom = bottom.max(r.y1);
     }
 
-    let clusters: Vec<SceneCluster> = d
+    let mut clusters: Vec<SceneCluster> = d
         .groups
         .iter()
         .enumerate()
@@ -233,8 +327,8 @@ pub fn scene(d: &Architecture) -> ArchScene {
         .map(|&it| it - na)
         .collect();
     let mut loose = top_groups.len();
-    let mut nodes = Vec::with_capacity(d.services.len());
-    let mut icons: Vec<Option<String>> = Vec::with_capacity(d.services.len());
+    let mut nodes = Vec::with_capacity(ns);
+    let mut icons: Vec<Option<String>> = Vec::with_capacity(ns);
     for (i, s) in d.services.iter().enumerate() {
         let top = *t.chain[i]
             .last()
@@ -248,7 +342,10 @@ pub fn scene(d: &Architecture) -> ArchScene {
             loose += 1;
             loose - 1
         };
-        let (cx, cy) = (x.at[i], y.at[i]);
+        let (cx, cy) = (
+            (boxes[i].x0 + boxes[i].x1) / 2.0,
+            (boxes[i].y0 + boxes[i].y1) / 2.0,
+        );
         let c = &cards[i];
         if s.junction {
             icons.push(None);
@@ -294,93 +391,40 @@ pub fn scene(d: &Architecture) -> ArchScene {
         });
     }
 
-    // Edge ends: a port on a box side, a junction's centre, or — for
-    // a `{group}` end — the point where the port's normal leaves the
-    // service's group frame.
-    let ends: Vec<(Pt, Pt)> = d
-        .edges
-        .iter()
-        .map(|e| {
-            let end = |s: usize, side: ArchSide, group_end: bool| -> Pt {
-                let n = &nodes[s];
-                let p = port(n, side, d.services[s].junction);
-                match d.services[s].group.filter(|_| group_end) {
-                    Some(g) if g < frames.len() => {
-                        let f = frames[g];
-                        match side {
-                            ArchSide::T => (p.0, f.y0),
-                            ArchSide::B => (p.0, f.y1),
-                            ArchSide::L => (f.x0, p.1),
-                            ArchSide::R => (f.x1, p.1),
-                        }
-                    }
-                    _ => p,
-                }
-            };
-            (
-                end(e.from, e.from_side, e.from_group),
-                end(e.to, e.to_side, e.to_group),
-            )
-        })
-        .collect();
-
-    // Obstacles: every service box (junctions are bare points) and
-    // every group title, which edges must never strike.
-    let boxes: Vec<Rect> = nodes
+    // Obstacles: every service box, every junction (a route through a
+    // junction's dot would read as joining it) and every group title,
+    // which edges must never strike.
+    let mut obstacles: Vec<(Rect, bool)> = boxes.iter().map(|b| (b.grow(CLEAR), true)).collect();
+    for g in 0..ng {
+        if title_w[g] > 0.0 {
+            let tr = title_rect(frames[g], title_x[g], title_w[g]);
+            obstacles.push((tr.grow_xy(TITLE_CLEAR, TITLE_CLEAR_Y), true));
+        }
+    }
+    let mut plain: Vec<Rect> = boxes
         .iter()
         .zip(&d.services)
         .filter(|(_, s)| !s.junction)
-        .map(|(n, _)| Rect::around(n))
+        .map(|(b, _)| *b)
         .collect();
-    let mut obstacles: Vec<(Rect, bool)> = boxes.iter().map(|b| (b.grow(CLEAR), true)).collect();
-    for (g, f) in frames.iter().enumerate() {
-        if title_w[g] > 0.0 {
-            let tr = Rect {
-                x0: f.x0 + GROUP_PAD,
-                y0: f.y0 + TITLE_CY - FONT as f64 * 0.6,
-                x1: f.x0 + GROUP_PAD + title_w[g],
-                y1: f.y0 + TITLE_CY + FONT as f64 * 0.6,
-            };
-            obstacles.push((tr.grow(TITLE_CLEAR), true));
-        }
-    }
-    let mut plain: Vec<Rect> = boxes.clone();
     plain.extend(frames.iter().copied());
-    let outer = Rect {
-        x0: PAD - OUTER,
-        y0: PAD - OUTER,
-        x1: right + OUTER,
-        y1: bottom + OUTER,
-    };
-    let mut grid = Grid::new(&obstacles, &plain, outer, d, &ends);
+    let mut grid = Grid::new(&obstacles, &plain, &frames, d, &ends);
 
-    // The canvas keeps PAD around the boxes and frames; a route on the
-    // outermost channel (OUTER beyond them) keeps OUTER more, and a
-    // label a little.
-    let (mut width, mut height) = (right + PAD, bottom + PAD);
     let mut edges: Vec<SceneEdge> = Vec::with_capacity(d.edges.len());
+    let mut routes: Vec<Vec<Pt>> = Vec::with_capacity(d.edges.len());
     let mut arrow_starts: Vec<bool> = Vec::with_capacity(d.edges.len());
     let mut arrow_ends: Vec<bool> = Vec::with_capacity(d.edges.len());
-    for (e, &(p0, p1)) in d.edges.iter().zip(&ends) {
-        let corners = grid.route(p0, e.from_side, p1, e.to_side);
+    for (k, (e, &(p0, p1))) in d.edges.iter().zip(&ends).enumerate() {
+        let corners = grid.route(k, p0, e.from_side, p1, e.to_side);
         let label = e.title.as_ref().map(|text| {
             let w = text_px(text) + LABEL_PAD_W;
             (text.clone(), label_spot(&corners, w), w)
         });
-        if let Some((_, c, w)) = &label {
-            width = width.max(c.0 + w / 2.0 + OUTER);
-            height = height.max(c.1 + LABEL_BOX_H / 2.0 + OUTER);
-        }
-        let waypoints = rounded(&corners);
-        for p in &waypoints {
-            width = width.max(p.0 + OUTER);
-            height = height.max(p.1 + OUTER);
-        }
         edges.push(SceneEdge {
             from: d.services[e.from].id.clone(),
             to: d.services[e.to].id.clone(),
             bezier: [p0, p0, p1, p1],
-            waypoints,
+            waypoints: rounded(&corners),
             kind: if e.arrow_start || e.arrow_end {
                 crate::model::EdgeKind::Arrow
             } else {
@@ -393,9 +437,62 @@ pub fn scene(d: &Architecture) -> ArchScene {
         });
         arrow_starts.push(e.arrow_start);
         arrow_ends.push(e.arrow_end);
+        routes.push(corners);
     }
 
-    ArchScene {
+    // The canvas keeps PAD around the boxes and frames, and OUTER
+    // around every route and label chip — on all four sides: a route
+    // over the top row (on a top port's stub line, above the outermost
+    // channel) or its label chip may reach above or left of the
+    // margin, and then the whole drawing moves down or right instead
+    // of the chip being cut off.
+    let (mut lo_x, mut lo_y) = (0.0f64, 0.0f64);
+    let (mut width, mut height) = (right + PAD, bottom + PAD);
+    for e in &edges {
+        for p in &e.waypoints {
+            lo_x = lo_x.min(p.0 - OUTER);
+            lo_y = lo_y.min(p.1 - OUTER);
+            width = width.max(p.0 + OUTER);
+            height = height.max(p.1 + OUTER);
+        }
+        if let Some((_, c, w)) = &e.label {
+            lo_x = lo_x.min(c.0 - w / 2.0 - OUTER);
+            lo_y = lo_y.min(c.1 - LABEL_BOX_H / 2.0 - OUTER);
+            width = width.max(c.0 + w / 2.0 + OUTER);
+            height = height.max(c.1 + LABEL_BOX_H / 2.0 + OUTER);
+        }
+    }
+    let (dx, dy) = (-lo_x, -lo_y);
+    let mv = |p: &mut Pt| {
+        p.0 += dx;
+        p.1 += dy;
+    };
+    let mut title_at: Vec<Pt> = (0..ng)
+        .map(|g| (title_x[g], frames[g].y0 + TITLE_CY))
+        .collect();
+    if dx > 0.0 || dy > 0.0 {
+        for n in &mut nodes {
+            n.x += dx;
+            n.y += dy;
+        }
+        for c in &mut clusters {
+            c.x += dx;
+            c.y += dy;
+        }
+        for e in &mut edges {
+            e.waypoints.iter_mut().for_each(mv);
+            e.bezier.iter_mut().for_each(mv);
+            if let Some((_, c, _)) = &mut e.label {
+                mv(c);
+            }
+        }
+        title_at.iter_mut().for_each(mv);
+        routes.iter_mut().flatten().for_each(mv);
+        width += dx;
+        height += dy;
+    }
+
+    let arch = ArchScene {
         scene: Scene {
             nodes,
             edges,
@@ -406,22 +503,139 @@ pub fn scene(d: &Architecture) -> ArchScene {
         icons,
         arrow_starts,
         arrow_ends,
+        title_at,
+    };
+    (arch, routes)
+}
+
+/// The attach point of `side` on a box: the middle of that side, or a
+/// junction's centre (every side of a junction is its centre).
+fn port(r: &Rect, side: ArchSide, junction: bool) -> Pt {
+    let (cx, cy) = ((r.x0 + r.x1) / 2.0, (r.y0 + r.y1) / 2.0);
+    if junction {
+        return (cx, cy);
+    }
+    match side {
+        ArchSide::T => (cx, r.y0),
+        ArchSide::B => (cx, r.y1),
+        ArchSide::L => (r.x0, cy),
+        ArchSide::R => (r.x1, cy),
     }
 }
 
-/// The attach point of `side` on a node: the middle of that box side,
-/// or a junction's centre (every side of a junction is its centre).
-fn port(n: &SceneNode, side: ArchSide, junction: bool) -> Pt {
-    if junction {
-        return (n.x, n.y);
+/// Both ends of every edge: a port on a box side, a junction's centre,
+/// or — for a `{group}` end — the point where the port's normal leaves
+/// the service's group frame.
+fn edge_ends(d: &Architecture, boxes: &[Rect], frames: &[Rect]) -> Vec<(Pt, Pt)> {
+    let end = |s: usize, side: ArchSide, group_end: bool| -> Pt {
+        let p = port(&boxes[s], side, d.services[s].junction);
+        match d.services[s].group.filter(|_| group_end) {
+            Some(g) if g < frames.len() => {
+                let f = frames[g];
+                match side {
+                    ArchSide::T => (p.0, f.y0),
+                    ArchSide::B => (p.0, f.y1),
+                    ArchSide::L => (f.x0, p.1),
+                    ArchSide::R => (f.x1, p.1),
+                }
+            }
+            _ => p,
+        }
+    };
+    d.edges
+        .iter()
+        .map(|e| {
+            (
+                end(e.from, e.from_side, e.from_group),
+                end(e.to, e.to_side, e.to_group),
+            )
+        })
+        .collect()
+}
+
+/// The ink box of a group title of width `w` that starts at `x`.
+fn title_rect(f: Rect, x: f64, w: f64) -> Rect {
+    Rect {
+        x0: x,
+        y0: f.y0 + TITLE_CY - TITLE_HALF_H,
+        x1: x + w,
+        y1: f.y0 + TITLE_CY + TITLE_HALF_H,
     }
-    let (hw, hh) = (n.w / 2.0, n.h / 2.0);
-    match side {
-        ArchSide::T => (n.x, n.y - hh),
-        ArchSide::B => (n.x, n.y + hh),
-        ArchSide::L => (n.x - hw, n.y),
-        ArchSide::R => (n.x + hw, n.y),
+}
+
+/// Where each group title starts: [`GROUP_PAD`] in from its frame,
+/// or right of every edge that rises through its band into a port
+/// below. Such an edge leaves (or enters) a top port straight up, and
+/// when nothing stands between the port and the band it either runs
+/// straight through the band or — if the title sat on its line —
+/// would have to wiggle round the title just above the port, with no
+/// room to do it cleanly. The edge's line is kept for it when the port
+/// is that close below the band, or when the edge's far end lies above
+/// the band (so the edge comes straight down to it).
+fn title_starts(
+    d: &Architecture,
+    t: &Tree,
+    boxes: &[Rect],
+    frames: &[Rect],
+    ends: &[(Pt, Pt)],
+    title_w: &[f64],
+) -> Vec<f64> {
+    let na = t.na();
+    let mut cols: Vec<Vec<f64>> = vec![Vec::new(); frames.len()];
+    for (e, &(p0, p1)) in d.edges.iter().zip(ends) {
+        for (s, side, group_end, p, q) in [
+            (e.from, e.from_side, e.from_group, p0, p1),
+            (e.to, e.to_side, e.to_group, p1, p0),
+        ] {
+            if side != ArchSide::T {
+                continue;
+            }
+            // The frames around the port: around the service, or —
+            // for a `{group}` end, which sits on its group's frame —
+            // around that frame.
+            let skip = 1 + usize::from(group_end && t.chain[s].len() > 1);
+            for &it in t.chain[s].iter().skip(skip) {
+                let g = it - na;
+                if title_w[g] <= 0.0 {
+                    continue;
+                }
+                let f = frames[g];
+                let (top, bottom) = (
+                    f.y0 + TITLE_CY - TITLE_HALF_H,
+                    f.y0 + TITLE_CY + TITLE_HALF_H,
+                );
+                let between = boxes.iter().enumerate().any(|(b, r)| {
+                    b != s
+                        && !d.services[b].junction
+                        && r.x0 - CLEAR < p.0
+                        && p.0 < r.x1 + CLEAR
+                        && r.y1 > bottom
+                        && r.y0 < p.1
+                });
+                if between {
+                    // The frames further out are behind that box too.
+                    break;
+                }
+                let tight = p.1 - STUB < bottom + TITLE_CLEAR_Y + 2.0 * CORNER_R;
+                if tight || q.1 < top {
+                    cols[g].push(p.0);
+                }
+            }
+        }
     }
+    cols.iter_mut()
+        .enumerate()
+        .map(|(g, c)| {
+            c.sort_by(f64::total_cmp);
+            let mut x = frames[g].x0 + GROUP_PAD;
+            for &r in c.iter() {
+                if r > x - TITLE_SHIFT && r < x + title_w[g] + TITLE_SHIFT {
+                    x = r + TITLE_SHIFT;
+                }
+            }
+            x
+        })
+        .collect()
 }
 
 // ------------------------------------------------------------------
@@ -440,9 +654,16 @@ fn text_px(s: &str) -> f64 {
     text_width(s) * FONT as f64 / TEXT_CALIBRATION
 }
 
-/// Estimated width of a bold group title at [`FONT`].
+/// Width a bold group title may take at [`FONT`], erring wide: edges
+/// keep clear of it, and a title measured short gets struck. Bold
+/// Helvetica/Arial runs up to ~12% wider than the regular-weight
+/// estimate of [`text_width`], and a colour emoji draws about 1.25em
+/// wide where [`text_width`] counts 1em.
 fn title_px(s: &str) -> f64 {
-    text_px(s) * 1.06
+    let emoji = |c: char| c >= '\u{2600}' && c != '\u{FE0F}' && c != '\u{200D}';
+    let n = s.chars().filter(|&c| emoji(c)).count();
+    let rest: String = s.chars().filter(|&c| !emoji(c)).collect();
+    n as f64 * 1.3 * FONT as f64 + text_px(&rest) * 1.12
 }
 
 fn card(title: &str, icon: bool) -> Card {
@@ -722,11 +943,20 @@ fn cell_step(from: ArchSide, to: ArchSide) -> (i32, i32) {
 
 /// Grid cell of every atom. A breadth-first walk over the edges steps
 /// from each placed service to its neighbours by [`cell_step`]; a cell
-/// already taken pushes the newcomer on across the step, so two
-/// services feeding one port stack in a column instead of landing on
-/// each other. Each
-/// connected component is walked on its own grid; [`legalize`] then
-/// keeps every group's cells together and packs the components.
+/// already taken by a service of the same container pushes the
+/// newcomer on across the step, so two services feeding one port stack
+/// in a column instead of landing on each other.
+///
+/// The walk finishes a container before it leaves it. Edges inside a
+/// container are followed first, breadth-first; an edge into another
+/// container waits until nothing inside is left, and the first such
+/// edge to come up places its service — the anchor — whose own
+/// container is then walked in full before the next waiting edge is
+/// looked at (and edges found on the way wait behind all of those). So
+/// every group is laid out by its own edges from a single anchor, and
+/// services of other groups never push its cells around — [`legalize`]
+/// then moves whole groups apart where they collide, and packs the
+/// connected components.
 fn place_cells(d: &Architecture, t: &Tree) -> Vec<(i32, i32)> {
     let na = t.na();
     let ns = d.services.len();
@@ -744,11 +974,30 @@ fn place_cells(d: &Architecture, t: &Tree) -> Vec<(i32, i32)> {
         if comp[start] != usize::MAX {
             continue;
         }
-        comp[start] = next;
-        let mut taken: HashSet<(i32, i32)> = HashSet::new();
-        taken.insert((0, 0));
-        let mut queue = VecDeque::from([start]);
-        while let Some(u) = queue.pop_front() {
+        // Cells taken in each container, and the walk's queues of
+        // (service, the cell it wants, the step that led there): inside
+        // the container being walked, into another container now, and
+        // into another container once those are done.
+        let mut taken: HashSet<(usize, i32, i32)> = HashSet::new();
+        type Item = (usize, (i32, i32), (i32, i32));
+        let mut inside: VecDeque<Item> = VecDeque::new();
+        let mut queue: VecDeque<Item> = VecDeque::from([(start, (0, 0), (0, 0))]);
+        let mut later: VecDeque<Item> = VecDeque::new();
+        loop {
+            if inside.is_empty() && queue.is_empty() {
+                std::mem::swap(&mut queue, &mut later);
+            }
+            let Some((u, want, step)) = inside.pop_front().or_else(|| queue.pop_front()) else {
+                break;
+            };
+            if comp[u] != usize::MAX {
+                continue;
+            }
+            let parent = t.atoms[u].parent;
+            let c = free_cell(&taken, parent, want, step);
+            taken.insert((parent, c.0, c.1));
+            cell[u] = c;
+            comp[u] = next;
             for &k in &adj[u] {
                 let e = &d.edges[k];
                 let step = cell_step(e.from_side, e.to_side);
@@ -760,12 +1009,12 @@ fn place_cells(d: &Architecture, t: &Tree) -> Vec<(i32, i32)> {
                 if comp[v] != usize::MAX {
                     continue;
                 }
-                let want = (cell[u].0 + step.0, cell[u].1 + step.1);
-                let c = free_cell(&taken, want, step);
-                taken.insert(c);
-                cell[v] = c;
-                comp[v] = next;
-                queue.push_back(v);
+                let item = (v, (c.0 + step.0, c.1 + step.1), step);
+                if t.atoms[v].parent == parent {
+                    inside.push_back(item);
+                } else {
+                    later.push_back(item);
+                }
             }
         }
         next += 1;
@@ -774,14 +1023,19 @@ fn place_cells(d: &Architecture, t: &Tree) -> Vec<(i32, i32)> {
     cell
 }
 
-/// `want`, or the first free cell past it across the step that led
-/// there: below it for a sideways (or diagonal) step, right of it for a
-/// vertical one. Always the same way, so the services feeding one port
-/// stack in declaration order.
-fn free_cell(taken: &HashSet<(i32, i32)>, want: (i32, i32), step: (i32, i32)) -> (i32, i32) {
+/// `want`, or the first cell past it that no service of `container`
+/// has taken, across the step that led there: below it for a sideways
+/// (or diagonal) step, right of it for a vertical one. Always the same
+/// way, so the services feeding one port stack in declaration order.
+fn free_cell(
+    taken: &HashSet<(usize, i32, i32)>,
+    container: usize,
+    want: (i32, i32),
+    step: (i32, i32),
+) -> (i32, i32) {
     let (dx, dy) = if step.0 == 0 { (1, 0) } else { (0, 1) };
     let mut c = want;
-    while taken.contains(&c) {
+    while taken.contains(&(container, c.0, c.1)) {
         c = (c.0 + dx, c.1 + dy);
     }
     c
@@ -1045,12 +1299,13 @@ fn union(uf: &mut [usize], a: usize, b: usize) {
     }
 }
 
-/// Pixel centres of every atom (x axis, y axis) from its cell.
+/// Pixel centres of every atom (x axis, y axis) from its cell; each
+/// group's frame is at least `min_w` wide (its title and padding).
 fn solve<'a>(
     d: &Architecture,
     t: &'a Tree,
     cell: &[(i32, i32)],
-    title_w: &[f64],
+    min_w: &[f64],
 ) -> (Axis<'a>, Axis<'a>) {
     let na = t.na();
     let ns = d.services.len();
@@ -1087,13 +1342,35 @@ fn solve<'a>(
             LABEL_BOX_H + 2.0 * STUB + 8.0
         }
     };
+    // The box sides (as DIRS indices) that carry a port, the stub
+    // reaching STUB out of it.
+    let mut ported = vec![[false; 4]; na];
+    for e in &d.edges {
+        if e.from < ns && e.to < ns {
+            for (s, side, group_end) in [
+                (e.from, e.from_side, e.from_group),
+                (e.to, e.to_side, e.to_group),
+            ] {
+                if !(group_end && d.services[s].group.is_some()) {
+                    ported[s][dir_of(side)] = true;
+                }
+            }
+        }
+    }
+    // `p` lies before `q` on the axis. Two boxes that face each other
+    // with a port each keep an edge's gap even when no edge joins them:
+    // at a child's gap (2 × STUB) their stubs would meet and draw a link
+    // between them that is not there.
     let gap = |p: usize, q: usize, on_x: bool| -> f64 {
         let lw = link(p, q);
+        let (far, near) = if on_x { (0, 2) } else { (1, 3) };
         if t.is_group(p) || t.is_group(q) {
             let room = lw.map_or(0.0, |w| label_room(w, on_x) - 2.0 * GROUP_PAD);
             GROUP_GAP.max(room)
         } else if let Some(w) = lw {
             EDGE_GAP.max(label_room(w, on_x))
+        } else if ported[p][far] && ported[q][near] {
+            EDGE_GAP
         } else if on_x {
             CHILD_GAP_X
         } else {
@@ -1192,7 +1469,7 @@ fn solve<'a>(
         size: t.atoms.iter().map(|a| a.w).collect(),
         pad_lo: GROUP_PAD,
         pad_hi: GROUP_PAD,
-        min_len: title_w.iter().map(|w| w + 2.0 * GROUP_PAD).collect(),
+        min_len: min_w.to_vec(),
         pred: xpred,
         at: vec![0.0; na],
     };
@@ -1225,6 +1502,7 @@ struct Rect {
 }
 
 impl Rect {
+    #[cfg(test)]
     fn around(n: &SceneNode) -> Rect {
         Rect {
             x0: n.x - n.w / 2.0,
@@ -1235,11 +1513,15 @@ impl Rect {
     }
 
     fn grow(self, m: f64) -> Rect {
+        self.grow_xy(m, m)
+    }
+
+    fn grow_xy(self, mx: f64, my: f64) -> Rect {
         Rect {
-            x0: self.x0 - m,
-            y0: self.y0 - m,
-            x1: self.x1 + m,
-            y1: self.y1 + m,
+            x0: self.x0 - mx,
+            y0: self.y0 - my,
+            x1: self.x1 + mx,
+            y1: self.y1 + my,
         }
     }
 }
@@ -1282,10 +1564,12 @@ fn min_turns(dx: f64, dy: f64, d: usize) -> u32 {
 
 /// The orthogonal routing lattice: lines along every box's clearance
 /// boundary and title, down the middle of every gap between boxes and
-/// frames, through every port and its stub point, and just outside the
-/// drawing. A route is a cheapest path along the lines — length, plus a
-/// price per bend, per crossing of an edge routed earlier and per px
-/// run on top of one — that never enters a box's clearance.
+/// frames, through every port and its stub point, and in a few
+/// channels around the drawing. A route is a cheapest path along the
+/// lines — length, plus a price per bend, per crossing of another
+/// edge, per px run on top of (or beside) one or alongside a frame,
+/// and a steep one for touching an unrelated edge — that never enters
+/// a box's clearance.
 struct Grid {
     xs: Vec<f64>,
     ys: Vec<f64>,
@@ -1293,23 +1577,40 @@ struct Grid {
     /// horizontal (`y_rate`) line.
     x_rate: Vec<f64>,
     y_rate: Vec<f64>,
+    /// Whether the step with each [`Grid::runs`] key runs alongside a
+    /// group frame's side, within [`FRAME_NEAR`].
+    framed: Vec<bool>,
+    /// For each vertical (`near_x`) or horizontal (`near_y`) line, the
+    /// lines within [`NEAR`] of it ([`near_lines`]): an edge on one of
+    /// them is as good as on this one.
+    near_x: Vec<(usize, usize)>,
+    near_y: Vec<(usize, usize)>,
     /// Lattice points inside a clearance, indexed `j * nx + i`.
     blocked: Vec<bool>,
     /// Whether the step east (`h_open`) / south (`v_open`) of a point
     /// stays out of every clearance.
     h_open: Vec<bool>,
     v_open: Vec<bool>,
-    /// The routed edges using each lattice step, at `2 * point` for
-    /// the step east of a point and `2 * point + 1` for the step south
-    /// of it.
-    runs: Vec<Vec<usize>>,
-    /// The routed edges through each point, each with whether it runs
+    /// The edges using each lattice step, at `2 * point` for the step
+    /// east of a point and `2 * point + 1` for the step south of it:
+    /// every edge's stubs from the start, each route once it is found.
+    runs: Lists<usize>,
+    /// The edges through each point, each with whether it runs
     /// east-west there.
-    marks: Vec<Vec<(usize, bool)>>,
-    /// The two end points of each routed edge. Edges that share an end
-    /// (a fan-in to one port) may run together without paying for it,
-    /// so they merge into one trunk in the gap, as a bus would.
+    marks: Lists<(usize, bool)>,
+    /// The two end points of every edge, by edge index. Edges that
+    /// share an end (a fan-in to one port) may run together without
+    /// paying for it, so they merge into one trunk in the gap, as a bus
+    /// would; any other edge is foreign to them.
     ports: Vec<[Pt; 2]>,
+    /// The lattice points on each edge's stubs between its ports and
+    /// its stub ends. Its route may not use them: it would cross its
+    /// own stub, or come back along it into the port.
+    stub_pts: Vec<Vec<usize>>,
+    /// The edges whose stub (stub end included) covers each point. A
+    /// route through a foreign stub passes right by that edge's port
+    /// and reads as joining it there, so it costs [`TOUCH_COST`].
+    stubs_at: Lists<usize>,
     /// Search buffers, per (point, heading) state, kept between
     /// searches: a state's entries are current only when its `seen`
     /// stamp is the running search's.
@@ -1318,6 +1619,43 @@ struct Grid {
     seen: Vec<u32>,
     done: Vec<u32>,
     stamp: u32,
+    /// States settled by every search so far (see [`SEARCH_BUDGET`]).
+    spent: usize,
+}
+
+/// Many short lists kept in one arena, list `k` threaded from
+/// `head[k]` through `items` (newest entry first): the lattice's
+/// per-point and per-step edge lists, nearly all of them empty, without
+/// a heap allocation each.
+struct Lists<T> {
+    head: Vec<u32>,
+    items: Vec<(T, u32)>,
+}
+
+impl<T: Copy> Lists<T> {
+    const NONE: u32 = u32::MAX;
+
+    fn new(n: usize) -> Self {
+        Lists {
+            head: vec![Self::NONE; n],
+            items: Vec::new(),
+        }
+    }
+
+    fn push(&mut self, k: usize, t: T) {
+        let next = self.head[k];
+        self.head[k] = self.items.len() as u32;
+        self.items.push((t, next));
+    }
+
+    fn iter(&self, k: usize) -> impl Iterator<Item = T> + '_ {
+        let mut at = self.head[k];
+        std::iter::from_fn(move || {
+            let (t, next) = *self.items.get(at as usize)?;
+            at = next;
+            Some(t)
+        })
+    }
 }
 
 /// Sort and de-duplicate lattice lines, a coincident pair keeping the
@@ -1338,6 +1676,24 @@ fn dedup_lines(mut v: Vec<(f64, f64)>) -> (Vec<f64>, Vec<f64>) {
         }
     }
     (at, rate)
+}
+
+/// For each line, the range of lines (indices, inclusive) within
+/// [`NEAR`] of it — itself, and any neighbour close enough that the
+/// two draw as one.
+fn near_lines(at: &[f64]) -> Vec<(usize, usize)> {
+    (0..at.len())
+        .map(|i| {
+            let (mut lo, mut hi) = (i, i);
+            while lo > 0 && at[i] - at[lo - 1] < NEAR {
+                lo -= 1;
+            }
+            while hi + 1 < at.len() && at[hi + 1] - at[i] < NEAR {
+                hi += 1;
+            }
+            (lo, hi)
+        })
+        .collect()
 }
 
 /// Middle of the gap between each rect and the nearest edge to its
@@ -1378,11 +1734,13 @@ fn midlines(rects: &[Rect], on_x: bool) -> Vec<f64> {
 impl Grid {
     /// `obstacles` are clearances routes may not enter (with whether
     /// their boundary lines cost [`HUG_RATE`]); `plain` the boxes and
-    /// frames whose gaps get a middle line; `outer` the outermost lines.
+    /// frames whose gaps get a middle line; `frames` the group frames,
+    /// along whose sides a route pays [`FRAME_HUG`]. [`OUTER_CHANNELS`]
+    /// lines run beyond all of them on every side.
     fn new(
         obstacles: &[(Rect, bool)],
         plain: &[Rect],
-        outer: Rect,
+        frames: &[Rect],
         d: &Architecture,
         ends: &[(Pt, Pt)],
     ) -> Grid {
@@ -1394,10 +1752,6 @@ impl Grid {
             xl.extend([(o.x0, rate), (o.x1, rate)]);
             yl.extend([(o.y0, rate), (o.y1, rate)]);
         }
-        xl.extend(midlines(plain, true).into_iter().map(|x| (x, 1.0)));
-        yl.extend(midlines(plain, false).into_iter().map(|y| (y, 1.0)));
-        xl.extend([(outer.x0, 1.0), (outer.x1, 1.0)]);
-        yl.extend([(outer.y0, 1.0), (outer.y1, 1.0)]);
         // A search runs between stub ends, so each stub end needs both
         // its lines: the port's own line along the normal, and the line
         // across it, which costs HUG_RATE so a route turns there only
@@ -1415,35 +1769,88 @@ impl Grid {
                 }
             }
         }
+        for l in [&mut xl, &mut yl] {
+            let lo = l.iter().map(|a| a.0).fold(f64::INFINITY, f64::min);
+            let hi = l.iter().map(|a| a.0).fold(f64::NEG_INFINITY, f64::max);
+            for k in 1..=OUTER_CHANNELS {
+                let off = CHANNEL_GAP * k as f64;
+                l.extend([(lo - off, 1.0), (hi + off, 1.0)]);
+            }
+        }
+        xl.extend(midlines(plain, true).into_iter().map(|x| (x, 1.0)));
+        yl.extend(midlines(plain, false).into_iter().map(|y| (y, 1.0)));
         let (xs, x_rate) = dedup_lines(xl);
         let (ys, y_rate) = dedup_lines(yl);
         let (nx, ny) = (xs.len(), ys.len());
-        let inside = |lo: f64, v: f64, hi: f64| lo + EPS < v && v < hi - EPS;
+        // A point is blocked strictly inside a clearance, and a step is
+        // closed where it runs strictly inside one or across it. Each
+        // clearance marks only the lines it covers (found by bisection),
+        // so building the lattice costs what the clearances cover rather
+        // than every point times every clearance.
         let mut blocked = vec![false; nx * ny];
-        let mut h_open = vec![false; nx * ny];
-        let mut v_open = vec![false; nx * ny];
+        let mut h_open = vec![true; nx * ny];
+        let mut v_open = vec![true; nx * ny];
         for j in 0..ny {
-            for i in 0..nx {
-                let (x, y) = (xs[i], ys[j]);
-                let v = j * nx + i;
-                blocked[v] = obstacles
-                    .iter()
-                    .any(|(o, _)| inside(o.x0, x, o.x1) && inside(o.y0, y, o.y1));
-                if i + 1 < nx {
-                    let x2 = xs[i + 1];
-                    h_open[v] = !obstacles
-                        .iter()
-                        .any(|(o, _)| inside(o.y0, y, o.y1) && x < o.x1 - EPS && x2 > o.x0 + EPS);
+            h_open[j * nx + nx - 1] = false;
+        }
+        for i in 0..nx {
+            v_open[(ny - 1) * nx + i] = false;
+        }
+        let strictly = |v: &[f64], lo: f64, hi: f64| {
+            (
+                v.partition_point(|&a| a <= lo + EPS),
+                v.partition_point(|&a| a < hi - EPS),
+            )
+        };
+        for (o, _) in obstacles {
+            let (i0, i1) = strictly(&xs, o.x0, o.x1);
+            let (j0, j1) = strictly(&ys, o.y0, o.y1);
+            for j in j0..j1 {
+                for i in i0..i1 {
+                    blocked[j * nx + i] = true;
                 }
-                if j + 1 < ny {
-                    let y2 = ys[j + 1];
-                    v_open[v] = !obstacles
-                        .iter()
-                        .any(|(o, _)| inside(o.x0, x, o.x1) && y < o.y1 - EPS && y2 > o.y0 + EPS);
+                for i in i0.saturating_sub(1)..i1.min(nx - 1) {
+                    h_open[j * nx + i] = false;
+                }
+            }
+            for j in j0.saturating_sub(1)..j1.min(ny - 1) {
+                for i in i0..i1 {
+                    v_open[j * nx + i] = false;
                 }
             }
         }
-        Grid {
+        // Steps that run alongside a frame side, within FRAME_NEAR.
+        let mut framed = vec![false; 2 * nx * ny];
+        let within = |v: &[f64], c: f64, m: f64| {
+            (
+                v.partition_point(|&a| a <= c - m),
+                v.partition_point(|&a| a < c + m),
+            )
+        };
+        for f in frames {
+            let (i0, i1) = within(&xs, (f.x0 + f.x1) / 2.0, (f.x1 - f.x0) / 2.0 + EPS);
+            for y in [f.y0, f.y1] {
+                let (j0, j1) = within(&ys, y, FRAME_NEAR);
+                for j in j0..j1 {
+                    for i in i0..i1.saturating_sub(1) {
+                        framed[2 * (j * nx + i)] = true;
+                    }
+                }
+            }
+            let (j0, j1) = within(&ys, (f.y0 + f.y1) / 2.0, (f.y1 - f.y0) / 2.0 + EPS);
+            for x in [f.x0, f.x1] {
+                let (i0, i1) = within(&xs, x, FRAME_NEAR);
+                for i in i0..i1 {
+                    for j in j0..j1.saturating_sub(1) {
+                        framed[2 * (j * nx + i) + 1] = true;
+                    }
+                }
+            }
+        }
+        let mut grid = Grid {
+            framed,
+            near_x: near_lines(&xs),
+            near_y: near_lines(&ys),
             xs,
             ys,
             x_rate,
@@ -1451,14 +1858,50 @@ impl Grid {
             blocked,
             h_open,
             v_open,
-            runs: vec![Vec::new(); 2 * nx * ny],
-            marks: vec![Vec::new(); nx * ny],
-            ports: Vec::new(),
+            runs: Lists::new(2 * nx * ny),
+            marks: Lists::new(nx * ny),
+            ports: ends.iter().map(|&(p0, p1)| [p0, p1]).collect(),
+            stub_pts: vec![Vec::new(); ends.len()],
+            stubs_at: Lists::new(nx * ny),
             dist_to: vec![0.0; 4 * nx * ny],
             prev: vec![0; 4 * nx * ny],
             seen: vec![0; 4 * nx * ny],
             done: vec![0; 4 * nx * ny],
             stamp: 0,
+            spent: 0,
+        };
+        grid.reserve_stubs(d, ends);
+        grid
+    }
+
+    /// Mark every edge's stubs — the stretch straight out of each port
+    /// — as taken by that edge before any route is searched, so a route
+    /// found earlier pays to cross or touch a stub drawn later just as
+    /// it would a route.
+    fn reserve_stubs(&mut self, d: &Architecture, ends: &[(Pt, Pt)]) {
+        for (k, (e, &(p0, p1))) in d.edges.iter().zip(ends).enumerate() {
+            for (p, side) in [(p0, e.from_side), (p1, e.to_side)] {
+                let out = dir_of(side);
+                let n = DIRS[out];
+                let Some(mut v) = self.node_at((p.0 + n.0 * STUB, p.1 + n.1 * STUB)) else {
+                    continue;
+                };
+                let ew = horizontal(side);
+                self.marks.push(v, (k, ew));
+                self.stubs_at.push(v, k);
+                // Inwards to the port, up to the box's clearance.
+                while let Some((w, _, _, key)) = self.step(v, (out + 2) % 4) {
+                    let q = self.point(w);
+                    if (q.0 - p.0) * n.0 + (q.1 - p.1) * n.1 < -EPS || self.blocked[w] {
+                        break;
+                    }
+                    self.runs.push(key, k);
+                    self.marks.push(w, (k, ew));
+                    self.stub_pts[k].push(w);
+                    self.stubs_at.push(w, k);
+                    v = w;
+                }
+            }
         }
     }
 
@@ -1505,8 +1948,11 @@ impl Grid {
 
     /// Cheapest lattice path from `start` (leaving in direction `d0`)
     /// to `goal` (where the route turns into the port moving `d_in`),
-    /// by A* over (point, heading), for an edge whose ends are `mine`.
-    /// The estimate is the Manhattan distance plus a bend for every
+    /// by A* over (point, heading), for an edge whose ends are `mine`
+    /// and whose stubs cover the points `own`. Turning on a line a
+    /// foreign edge takes, running through a point where one turns or
+    /// through a foreign stub costs [`TOUCH_COST`]; so does turning
+    /// into the port at a goal a foreign edge passes. The estimate is the Manhattan distance plus a bend for every
     /// turn an empty plane would still need ([`min_turns`]), so it
     /// never overestimates. Ties go to the lower state index, so the
     /// result is deterministic.
@@ -1517,6 +1963,7 @@ impl Grid {
         goal: usize,
         d_in: usize,
         mine: [Pt; 2],
+        own: &[usize],
     ) -> Option<Vec<usize>> {
         if start == goal {
             return Some(vec![start]);
@@ -1529,10 +1976,56 @@ impl Grid {
             let (dx, dy) = (g_pt.0 - p.0, g_pt.1 - p.1);
             dx.abs() + dy.abs() + BEND_COST * min_turns(dx, dy, d) as f64
         };
-        let foreign = |grid: &Grid, r: usize| {
-            !grid.ports[r]
-                .iter()
-                .any(|q| mine.iter().any(|m| dist(*q, *m) < EPS))
+        let alien: Vec<bool> = self
+            .ports
+            .iter()
+            .map(|ps| !ps.iter().any(|q| mine.iter().any(|m| same(*q, *m))))
+            .collect();
+        let foreign = |_: &Grid, r: usize| alien[r];
+        // Whether a foreign edge passes through `v` (or a point within
+        // NEAR of it), and whether one turns right at `v` (runs through
+        // it both ways).
+        let nx = self.xs.len();
+        let touched = |grid: &Grid, v: usize| {
+            let ((i0, i1), (j0, j1)) = (grid.near_x[v % nx], grid.near_y[v / nx]);
+            (j0..=j1).any(|j| {
+                (i0..=i1).any(|i| grid.marks.iter(j * nx + i).any(|(r, _)| foreign(grid, r)))
+            })
+        };
+        // Foreign edges on the step with `key`, or on a parallel step
+        // within NEAR of it.
+        let sharing = |grid: &Grid, key: usize| {
+            let (a, south) = (key / 2, key % 2 == 1);
+            let (i, j) = (a % nx, a / nx);
+            let ((lo, hi), stride) = if south {
+                (grid.near_x[i], 2)
+            } else {
+                (grid.near_y[j], 2 * nx)
+            };
+            let first = key - (if south { i } else { j } - lo) * stride;
+            (0..=hi - lo)
+                .map(|k| {
+                    grid.runs
+                        .iter(first + k * stride)
+                        .filter(|&r| foreign(grid, r))
+                        .count()
+                })
+                .sum::<usize>()
+        };
+        let cornered = |grid: &Grid, v: usize| {
+            grid.marks.iter(v).any(|(r, ew)| {
+                !ew && grid.marks.iter(v).any(|(q, e2)| q == r && e2) && foreign(grid, r)
+            })
+        };
+        // Exact while the diagram's searches have been cheap; past each
+        // SEARCH_BUDGET of settled states, later searches trust their
+        // estimate more (weighted A*), trading a slightly dearer route
+        // for a search that no longer floods the lattice.
+        let weight = match self.spent / SEARCH_BUDGET {
+            0 => 1.0,
+            1 => 1.5,
+            2 | 3 => 2.0,
+            _ => 3.0,
         };
         let mut heap = BinaryHeap::new();
         let s0 = start * 4 + d0;
@@ -1545,7 +2038,9 @@ impl Grid {
                 continue;
             }
             self.done[s] = stamp;
+            self.spent += 1;
             let (v, d) = (s / 4, s % 4);
+            let turn_here = if touched(self, v) { TOUCH_COST } else { 0.0 };
             if v == goal {
                 let mut path = vec![v];
                 let mut at = s;
@@ -1563,74 +2058,89 @@ impl Grid {
                 let Some((w, len, rate, key)) = self.step(v, nd) else {
                     continue;
                 };
-                if self.blocked[w] && w != goal {
+                if (self.blocked[w] || own.contains(&w)) && w != goal {
                     continue;
                 }
-                let shared = self.runs[key].iter().filter(|&&r| foreign(self, r)).count();
+                let shared = sharing(self, key);
+                let rate = if self.framed[key] {
+                    rate * FRAME_HUG
+                } else {
+                    rate
+                };
                 let mut c = self.dist_to[s] + len * rate + OVERLAP_COST * len * shared as f64;
                 let east_west = nd % 2 == 0;
-                let across = self.marks[w]
-                    .iter()
-                    .any(|&(r, ew)| ew != east_west && foreign(self, r));
-                if across && w != goal {
+                let across = self
+                    .marks
+                    .iter(w)
+                    .any(|(r, ew)| ew != east_west && foreign(self, r));
+                if w != goal && self.stubs_at.iter(w).any(|r| foreign(self, r)) {
+                    c += TOUCH_COST;
+                } else if across && w != goal {
                     c += CROSS_COST;
                 }
                 if nd != d {
-                    c += BEND_COST;
+                    c += BEND_COST + turn_here;
                 }
-                if w == goal {
-                    c += if nd == d_in {
-                        0.0
-                    } else if nd == (d_in + 2) % 4 {
+                if cornered(self, w) {
+                    c += TOUCH_COST;
+                }
+                if w == goal && nd != d_in {
+                    c += if nd == (d_in + 2) % 4 {
                         2.0 * BEND_COST
                     } else {
                         BEND_COST
                     };
+                    if touched(self, w) {
+                        c += TOUCH_COST;
+                    }
                 }
                 let ws = w * 4 + nd;
                 if self.seen[ws] != stamp || c < self.dist_to[ws] - EPS {
                     self.seen[ws] = stamp;
                     self.dist_to[ws] = c;
                     self.prev[ws] = s;
-                    heap.push(Reverse(((c + est(self, w, nd)).to_bits(), ws)));
+                    heap.push(Reverse(((c + weight * est(self, w, nd)).to_bits(), ws)));
                 }
             }
         }
         None
     }
 
-    /// Mark a routed path so later edges pay to cross or share it.
-    fn record(&mut self, path: &[usize], ends: [Pt; 2]) {
-        let r = self.ports.len();
-        self.ports.push(ends);
+    /// Mark edge `r`'s routed path so later edges pay to cross, touch
+    /// or share it.
+    fn record(&mut self, path: &[usize], r: usize) {
         let nx = self.xs.len();
         for w in path.windows(2) {
             let (a, b) = (w[0].min(w[1]), w[0].max(w[1]));
             let east_west = a / nx == b / nx;
             let key = 2 * a + usize::from(!east_west);
-            self.runs[key].push(r);
+            self.runs.push(key, r);
             for p in [a, b] {
-                self.marks[p].push((r, east_west));
+                self.marks.push(p, (r, east_west));
             }
         }
     }
 
-    /// The corner points of the route from port `p0` (side `side0`) to
-    /// port `p1` (side `side1`): straight out of `p0` along its normal
-    /// for [`STUB`], along the lattice, and straight into `p1`.
-    fn route(&mut self, p0: Pt, side0: ArchSide, p1: Pt, side1: ArchSide) -> Vec<Pt> {
+    /// The corner points of edge `k`'s route from port `p0` (side
+    /// `side0`) to port `p1` (side `side1`): straight out of `p0` along
+    /// its normal for [`STUB`], along the lattice, and straight into
+    /// `p1`.
+    fn route(&mut self, k: usize, p0: Pt, side0: ArchSide, p1: Pt, side1: ArchSide) -> Vec<Pt> {
         let (d0, d1) = (dir_of(side0), dir_of(side1));
         let (n0, n1) = (DIRS[d0], DIRS[d1]);
         let s0 = (p0.0 + n0.0 * STUB, p0.1 + n0.1 * STUB);
         let s1 = (p1.0 + n1.0 * STUB, p1.1 + n1.1 * STUB);
         let path = match (self.node_at(s0), self.node_at(s1)) {
-            (Some(a), Some(b)) => self.search(a, d0, b, (d1 + 2) % 4, [p0, p1]),
+            (Some(a), Some(b)) => {
+                let own = self.stub_pts[k].clone();
+                self.search(a, d0, b, (d1 + 2) % 4, [p0, p1], &own)
+            }
             _ => None,
         };
         let mut corners = vec![p0];
         match path {
             Some(path) => {
-                self.record(&path, [p0, p1]);
+                self.record(&path, k);
                 corners.extend(path.iter().map(|&v| self.point(v)));
             }
             // Unreachable on a lattice that runs around the drawing;
@@ -1660,6 +2170,11 @@ fn simplify(pts: &[Pt]) -> Vec<Pt> {
         out.push(p);
     }
     out
+}
+
+/// Whether two points coincide (within [`EPS`] on each axis).
+fn same(a: Pt, b: Pt) -> bool {
+    (a.0 - b.0).abs() < EPS && (a.1 - b.1).abs() < EPS
 }
 
 fn dist(a: Pt, b: Pt) -> f64 {
@@ -1759,18 +2274,23 @@ pub(crate) fn to_svg_a11y_with(as_: &ArchScene, a11y: &A11y, opts: &SvgOptions) 
     ));
 
     // Group boxes, outermost first.
-    for c in &as_.scene.clusters {
+    for (g, c) in as_.scene.clusters.iter().enumerate() {
         s.push_str(&format!(
             "<rect x='{:.1}' y='{:.1}' width='{:.1}' height='{:.1}' \
              rx='8' fill='#f7f8fc' stroke='#d5d9ec' stroke-width='2'/>\n",
             c.x, c.y, c.w, c.h
         ));
         if !c.title.is_empty() {
+            let (tx, ty) = as_
+                .title_at
+                .get(g)
+                .copied()
+                .unwrap_or((c.x + GROUP_PAD, c.y + TITLE_CY));
             s.push_str(&format!(
                 "<text x='{:.1}' y='{:.1}' dy='0.33em' font-weight='bold' \
                  fill='{}'>{}</text>\n",
-                c.x + GROUP_PAD,
-                c.y + TITLE_CY,
+                tx,
+                ty,
                 TEXT_COLOR,
                 escape(&c.title)
             ));
@@ -2196,6 +2716,266 @@ mod tests {
     a{group}:R --> L:b{group}
     a:B -- T:c",
     ];
+
+    /// Diagrams an independent review drew badly: an edge rising into
+    /// the top port of a group's first service under a title wider than
+    /// half the box (struck or grazed it, with a wiggle), a realistic
+    /// 18-service tier diagram (a jog on another edge drew a false
+    /// junction), a label chip over the top row (cut off by the canvas)
+    /// and random tangles (two unrelated edges sharing a line).
+    const REPROS: &[&str] = &[
+        "architecture-beta
+    service user(user)[Engineer]
+    group obs(server)[Observability]
+    service prom(monitoring)[Prometheus] in obs
+    service graf(chart)[Grafana] in obs
+    user:B --> T:prom
+    prom:R -- L:graf",
+        "architecture-beta
+    service user(user)[User]
+    group frontend(cloud)[Frontend]
+    service web(web)[Web App] in frontend
+    user:B --> T:web",
+        "architecture-beta
+    group vpc(cloud)[Production VPC]
+    group pub(internet)[Public Subnet] in vpc
+    group priv(server)[Private Subnet] in vpc
+    service igw(internet)[Internet Gateway]
+    service alb(network)[Load Balancer] in pub
+    service app(server)[App Server] in priv
+    service db(database)[Database] in priv
+    igw:B --> T:alb
+    alb:B --> T:app
+    app:R -- L:db",
+        "architecture-beta
+    group edge(cloud)[Edge]
+    service cdn(internet)[CDN] in edge
+    service waf(firewall)[WAF] in edge
+    service lb(network)[Load Balancer] in edge
+    group app(server)[Application Tier]
+    service web1(server)[Web 1] in app
+    service web2(server)[Web 2] in app
+    service web3(server)[Web 3] in app
+    service worker(cpu)[Worker] in app
+    group data(database)[Data Tier]
+    service pg(database)[Postgres Primary] in data
+    service pgr(database)[Postgres Replica] in data
+    service redis(cache)[Redis] in data
+    service s3(disk)[Object Storage] in data
+    group obs(monitoring)[Observability]
+    service prom(metrics)[Prometheus] in obs
+    service graf(chart)[Grafana] in obs
+    service loki(logs)[Loki] in obs
+    cdn:R --> L:waf
+    waf:R --> L:lb
+    lb:B --> T:web1
+    lb:B --> T:web2
+    lb:B --> T:web3
+    web1:B -- T:pg
+    web2:B -- T:redis
+    web3:B -- T:s3
+    worker:L -- R:web3
+    worker:B -- T:pg
+    pg:R -- L:pgr
+    prom:L -- R:worker
+    prom:B -- T:graf
+    loki:L -- R:graf",
+        "architecture-beta
+    group public_api(cloud)[Public API]
+    group private_api(cloud)[Private API] in public_api
+    service database(database)[Database] in private_api
+    service server(server)[Server] in private_api
+    service gateway(internet)[Gateway] in public_api
+    service lb(network)[Load Balancer]
+    group storage(disk)[Storage]
+    service s3(disk)[Object Store] in storage
+    service bk(disk)[Backup] in storage
+    lb:R --> L:gateway
+    gateway:R --> L:server
+    server:R -- L:database
+    database:B -- T:s3
+    s3:R -- L:bk
+    server:B -- T:bk",
+        "architecture-beta
+    service a(server)[A]
+    service b(server)[B]
+    a:R -[]- L:b
+    a:B -[\"quoted, label\"]-> T:b",
+        "architecture-beta
+    group g0(internet)[Backend Services]
+    group g1(server)[Backend Services] in g0
+    group g2(server)[Observability]
+    service s0(cloud)[Service 0] in g0
+    service s1(monitoring)[Service 1] in g2
+    service s2(cloud)[Service 2] in g0
+    service s3(internet)[Service 3]
+    service s4(database)[Service 4] in g2
+    service s5(database)[Service 5] in g2
+    service s6(server)[Service 6] in g2
+    service s7(cloud)[Service 7]
+    service s8(database)[Service 8] in g2
+    service s9(disk)[Service 9] in g0
+    service s10(database)[Service 10] in g2
+    s5:T --> B:s6
+    s9:T --> B:s4
+    s9:R --> T:s7
+    s9:B -- R:s5
+    s4:B -- T:s10
+    s7:L --> R:s2
+    s0:R -- L:s9
+    s0:T --> B:s1
+    s7:B -- T:s6",
+    ];
+
+    /// A deterministic pseudo-random diagram (xorshift on `seed`): `ns`
+    /// services, most in one of `ng` groups (some nested), and `ne`
+    /// edges between random services, mostly on facing ports as real
+    /// diagrams have them, each with a 1-in-3 chance of any side.
+    fn tangle(seed: u64, ns: usize, ng: usize, ne: usize) -> String {
+        let mut x = seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1;
+        let mut below = |n: usize| {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            (x % n as u64) as usize
+        };
+        let titles = [
+            "Frontend",
+            "Backend Services",
+            "Data",
+            "Observability",
+            "Data Storage Layer",
+            "Private API",
+        ];
+        let icons = ["cloud", "server", "database", "disk", "internet"];
+        let mut s = String::from("architecture-beta\n");
+        for g in 0..ng {
+            let parent = if g > 0 && below(4) == 0 {
+                format!(" in g{}", below(g))
+            } else {
+                String::new()
+            };
+            let (icon, title) = (icons[below(5)], titles[below(6)]);
+            s += &format!("group g{g}({icon})[{title}]{parent}\n");
+        }
+        for i in 0..ns {
+            let grp = if ng > 0 && below(5) != 0 {
+                format!(" in g{}", below(ng))
+            } else {
+                String::new()
+            };
+            s += &format!("service s{i}({})[Service {i}]{grp}\n", icons[below(5)]);
+        }
+        let sides = ["L", "R", "T", "B"];
+        let facing = |a: &str| match a {
+            "L" => "R",
+            "R" => "L",
+            "T" => "B",
+            _ => "T",
+        };
+        for _ in 0..ne {
+            let a = below(ns);
+            let b = (a + 1 + below(ns - 1)) % ns;
+            let sa = sides[below(4)];
+            let sb = if below(3) != 0 {
+                facing(sa)
+            } else {
+                sides[below(4)]
+            };
+            let arrow = if below(2) == 0 { "-->" } else { "--" };
+            s += &format!("s{a}:{sa} {arrow} {sb}:s{b}\n");
+        }
+        s
+    }
+
+    /// No edge turns on a line another edge runs along, and no two
+    /// edges share a line for more than a few px — unless they share an
+    /// end service, where merging into one trunk is meant — and no edge
+    /// runs through a junction it does not end at. Each draws a
+    /// junction that is not there.
+    fn assert_no_false_junction(src: &str) {
+        if let Some(why) = false_junction(src) {
+            panic!("{src}\n{why}");
+        }
+    }
+
+    /// The first false junction [`assert_no_false_junction`] looks for.
+    fn false_junction(src: &str) -> Option<String> {
+        let (as_, routes) = build(&arch(src));
+        let sc = as_.scene;
+        for j in sc.nodes.iter().filter(|n| n.shape == Shape::Circle) {
+            for e in sc.edges.iter().filter(|e| e.from != j.id && e.to != j.id) {
+                let near = e
+                    .waypoints
+                    .windows(2)
+                    .map(|w| seg_dist((j.x, j.y), w[0], w[1]))
+                    .fold(f64::INFINITY, f64::min);
+                if near < CLEAR {
+                    return Some(format!("{}->{} passes junction {}", e.from, e.to, j.id));
+                }
+            }
+        }
+        // Each route's straight legs, and the corners between them.
+        type Legs = Vec<(Pt, Pt)>;
+        let drawn: Vec<(Legs, Vec<Pt>)> = routes
+            .iter()
+            .map(|r| {
+                let legs = r.windows(2).map(|w| (w[0], w[1])).collect();
+                (legs, r[1..r.len() - 1].to_vec())
+            })
+            .collect();
+        for (i, e) in sc.edges.iter().enumerate() {
+            for (j, f) in sc.edges.iter().enumerate() {
+                if i == j
+                    || [&e.from, &e.to]
+                        .iter()
+                        .any(|s| **s == f.from || **s == f.to)
+                {
+                    continue;
+                }
+                for &c in &drawn[i].1 {
+                    for &(a, b) in &drawn[j].0 {
+                        if seg_dist(c, a, b) < 1.5 {
+                            return Some(format!(
+                                "{}->{} turns at {c:?} on {}->{}",
+                                e.from, e.to, f.from, f.to
+                            ));
+                        }
+                    }
+                }
+                if j < i {
+                    continue;
+                }
+                let mut shared = 0.0;
+                for &(a0, a1) in &drawn[i].0 {
+                    for &(b0, b1) in &drawn[j].0 {
+                        // How far the two legs overlap along x (k = 0) or y.
+                        let along = |k: usize| {
+                            let (u, v, w2, z) = if k == 0 {
+                                (a0.0, a1.0, b0.0, b1.0)
+                            } else {
+                                (a0.1, a1.1, b0.1, b1.1)
+                            };
+                            (u.max(v).min(w2.max(z)) - u.min(v).max(w2.min(z))).max(0.0)
+                        };
+                        let (ha, hb) = ((a0.1 - a1.1).abs() < EPS, (b0.1 - b1.1).abs() < EPS);
+                        if ha && hb && (a0.1 - b0.1).abs() < NEAR {
+                            shared += along(0);
+                        } else if !ha && !hb && (a0.0 - b0.0).abs() < NEAR {
+                            shared += along(1);
+                        }
+                    }
+                }
+                if shared > 4.0 {
+                    return Some(format!(
+                        "{}->{} and {}->{} share {shared}px",
+                        e.from, e.to, f.from, f.to
+                    ));
+                }
+            }
+        }
+        None
+    }
 
     /// Whether the segment `a`–`b` enters the interior of `r` (1px in
     /// from its outline, so a route ending ON a box side does not).
@@ -2732,15 +3512,24 @@ mod tests {
         let last_box = svg.rfind("fill='#ffffff' stroke=").unwrap();
         let first_edge = svg.find("<polyline").unwrap();
         assert!(first_edge > last_box, "a hidden edge would hide a bug");
-        for src in std::iter::once(&CORPUS).chain(MORE) {
-            let sc = scene(&arch(src)).scene;
-            for c in sc.clusters.iter().filter(|c| !c.title.is_empty()) {
+        for src in std::iter::once(&CORPUS).chain(MORE).chain(REPROS) {
+            let as_ = scene(&arch(src));
+            let sc = &as_.scene;
+            for (g, c) in sc.clusters.iter().enumerate() {
+                if c.title.is_empty() {
+                    continue;
+                }
+                // The title as drawn, at its wide-erring width, and the
+                // clearance less a px: no stroke comes within ~6px of a
+                // title's ends or ~2px of its top and bottom.
+                let (x, y) = as_.title_at[g];
                 let r = Rect {
-                    x0: c.x + GROUP_PAD,
-                    y0: c.y + TITLE_CY - FONT as f64 * 0.6,
-                    x1: c.x + GROUP_PAD + title_px(&c.title),
-                    y1: c.y + TITLE_CY + FONT as f64 * 0.6,
-                };
+                    x0: x,
+                    y0: y - TITLE_HALF_H,
+                    x1: x + title_px(&c.title),
+                    y1: y + TITLE_HALF_H,
+                }
+                .grow_xy(TITLE_CLEAR - 1.0, TITLE_CLEAR_Y - 1.0);
                 for e in &sc.edges {
                     for w in e.waypoints.windows(2) {
                         assert!(
@@ -2780,8 +3569,256 @@ mod tests {
     }
 
     #[test]
+    fn title_widths_err_wide_of_what_a_browser_draws() {
+        // Bold 14px Helvetica/Arial with a colour emoji, as Chrome
+        // measures the ink (getExtentOfChar): the old estimate counted
+        // the emoji as 1em and bold as 6% wider, ~5px short on
+        // "🗄️ Observability" — an edge beside it went through the "y".
+        for (title, chrome) in [
+            ("\u{1F5C4}\u{FE0F} Observability", 110.06),
+            ("\u{1F5C4}\u{FE0F} Application Tier", 126.38),
+            ("\u{2601}\u{FE0F} Frontend", 82.02),
+            ("\u{1F310} Public Subnet", 114.7),
+            ("\u{1F4BE} Storage", 73.48),
+            ("\u{1F4C8} Backend Services", 141.22),
+            ("\u{1F6E2}\u{FE0F} Data Storage Layer", 148.97),
+            ("\u{2601}\u{FE0F} Group 12", 82.83),
+            ("Observability", 88.7),
+            ("Utilities", 50.58),
+            ("Billing", 42.78),
+            ("Kubernetes Cluster", 129.16),
+        ] {
+            assert!(
+                title_px(title) >= chrome,
+                "{title}: {} < {chrome}",
+                title_px(title)
+            );
+        }
+    }
+
+    #[test]
+    fn an_edge_into_a_top_port_runs_straight_beside_the_title() {
+        // The edge rises straight into Prometheus's top port; the title
+        // moves right of its line instead of the edge wiggling round it
+        // (and grazing it), and the frame widens to hold it.
+        for src in &REPROS[..3] {
+            let as_ = scene(&arch(src));
+            let sc = &as_.scene;
+            let e = &sc.edges[0];
+            assert_eq!(e.waypoints.len(), 2, "{src}\n{:?}", e.waypoints);
+            let x = e.waypoints[0].0;
+            for (g, c) in sc.clusters.iter().enumerate() {
+                let (tx, _) = as_.title_at[g];
+                let right = tx + title_px(&c.title);
+                assert!(
+                    right + TITLE_CLEAR < x || tx > x + TITLE_CLEAR,
+                    "{src}\n{} spans {tx}..{right}, the edge runs at {x}",
+                    c.id
+                );
+                assert!(right + GROUP_PAD <= c.x + c.w + EPS, "{} sticks out", c.id);
+            }
+        }
+        // With nothing rising through it, a title keeps its place.
+        let as_ = scene(&arch(CORPUS));
+        for (g, c) in as_.scene.clusters.iter().enumerate() {
+            assert_eq!(as_.title_at[g], (c.x + GROUP_PAD, c.y + TITLE_CY));
+        }
+        let svg = to_svg(&scene(&arch(REPROS[0])));
+        let as_ = scene(&arch(REPROS[0]));
+        assert!(svg.contains(&format!("<text x='{:.1}'", as_.title_at[0].0)));
+    }
+
+    #[test]
+    fn no_edge_draws_a_junction_that_is_not_there() {
+        // The 18-service tier diagram ran worker -> pg six px up the
+        // web2 -> redis line and off it again: a T on the Redis edge.
+        // Random tangles (one in fourteen used to) turned on a foreign
+        // line or shared one for hundreds of px.
+        for src in std::iter::once(&CORPUS).chain(MORE).chain(REPROS) {
+            assert_no_false_junction(src);
+        }
+        // c -- d runs along the junction's row, straight at its dot.
+        assert_no_false_junction(
+            "architecture-beta
+    service a(server)[A]
+    junction j
+    service b(server)[B]
+    service c(server)[C]
+    service d(server)[D]
+    a:B -- T:j
+    j:B -- T:b
+    a:B -- R:c
+    a:B -- L:d
+    c:R -- L:d",
+        );
+        // Random tangles of up to 16 services with up to four edges more
+        // than services, between random ports: a dense enough tangle
+        // can leave a route no clean way into its port, so this is a
+        // rate. The reviewer's harness found a false junction in about
+        // one such diagram in fourteen; it is now under one in fifty.
+        let mut touching = Vec::new();
+        for seed in 1..=200u64 {
+            let ns = 3 + (seed as usize * 7) % 13;
+            let ne = 1 + (seed as usize * 5) % (ns + 4);
+            let src = tangle(seed, ns, (seed % 5) as usize, ne);
+            if let Some(why) = false_junction(&src) {
+                touching.push(format!("seed {seed}: {why}"));
+            }
+            assert_no_edge_through_a_box(&src);
+            assert_layout_is_clean(&src);
+        }
+        assert!(touching.len() <= 4, "{touching:#?}");
+    }
+
+    #[test]
+    fn routes_and_label_chips_stay_on_the_canvas() {
+        // a:B -[label]-> T:b runs over the top row; its chip used to sit
+        // at y = -2, cut off. The drawing moves down (or right) instead.
+        let sc = scene(&arch(REPROS[5])).scene;
+        let (_, c, _) = sc.edges[1].label.clone().unwrap();
+        assert!(c.1 - LABEL_BOX_H / 2.0 >= OUTER - EPS, "chip at {c:?}");
+        for src in std::iter::once(&CORPUS).chain(MORE).chain(REPROS) {
+            let sc = scene(&arch(src)).scene;
+            let on = |p: Pt, m: f64| {
+                p.0 >= m - EPS
+                    && p.1 >= m - EPS
+                    && p.0 <= sc.width - m + EPS
+                    && p.1 <= sc.height - m + EPS
+            };
+            for e in &sc.edges {
+                assert!(
+                    e.waypoints.iter().all(|&p| on(p, OUTER)),
+                    "{src}\n{:?}",
+                    e.waypoints
+                );
+                if let Some((_, c, w)) = &e.label {
+                    let h = LABEL_BOX_H / 2.0;
+                    assert!(on((c.0 - w / 2.0, c.1 - h), 0.0) && on((c.0 + w / 2.0, c.1 + h), 0.0));
+                }
+            }
+            for n in &sc.nodes {
+                assert!(
+                    on((n.x - n.w / 2.0, n.y - n.h / 2.0), PAD)
+                        && on((n.x + n.w / 2.0, n.y + n.h / 2.0), PAD)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn linked_groups_keep_their_own_grid() {
+        // Six groups of 2x4 services wired like a grid, linked in a
+        // chain with two extra cross links, so groups 4 and 5 are each
+        // reached from two other groups at once. One placement pass for
+        // the whole component let other groups' services push their
+        // cells around; each group now keeps its own grid.
+        let mut src = String::from("architecture-beta\n");
+        for g in 0..6 {
+            src += &format!("group g{g}(cloud)[Group {g}]\n");
+            for i in 0..8 {
+                src += &format!("service s{g}_{i}(server)[Service {g}.{i}] in g{g}\n");
+            }
+        }
+        let mut inner = Vec::new();
+        for g in 0..6 {
+            for i in 0..8 {
+                if i % 4 < 3 {
+                    inner.push(format!("s{g}_{i}:R --> L:s{g}_{}", i + 1));
+                }
+                if i < 4 {
+                    inner.push(format!("s{g}_{i}:B --> T:s{g}_{}", i + 4));
+                }
+            }
+        }
+        let links = [
+            "s0_3:R --> L:s1_0",
+            "s1_7:B --> T:s2_0",
+            "s2_3:R --> L:s3_0",
+            "s3_7:B --> T:s4_0",
+            "s4_3:R --> L:s5_0",
+            "s4_4:T -- B:s2_0",
+            "s5_7:T -- B:s3_5",
+        ];
+        for l in inner.iter().map(String::as_str).chain(links) {
+            src += l;
+            src.push('\n');
+        }
+        assert_layout_is_clean(&src);
+        let sc = scene(&arch(&src)).scene;
+        for l in &inner {
+            let (a, rest) = l.split_once(':').unwrap();
+            let b = rest.rsplit(':').next().unwrap();
+            let (na, nb) = (node(&sc, a), node(&sc, b));
+            if l.contains(":R") {
+                assert!((na.y - nb.y).abs() < 0.5 && nb.x > na.x, "{l}");
+            } else {
+                assert!((na.x - nb.x).abs() < 0.5 && nb.y > na.y, "{l}");
+            }
+        }
+        // A service outside the group that the walk put in the cell b
+        // wants no longer pushes b off a's row: cells are taken per
+        // container, and the stranger moves aside instead.
+        let src = "architecture-beta
+    service x(server)[X]
+    service y(server)[Y]
+    group g[G]
+    service a(server)[A] in g
+    service b(server)[B] in g
+    x:R -- T:y
+    x:B -- T:a
+    a:R -- L:b";
+        assert_layout_is_clean(src);
+        let sc = scene(&arch(src)).scene;
+        let (a, b) = (node(&sc, "a"), node(&sc, "b"));
+        assert!((a.y - b.y).abs() < 0.5 && b.x > a.x);
+        let (x, y) = (node(&sc, "x"), node(&sc, "y"));
+        assert!(y.x > x.x && y.y > x.y, "x:R -- T:y stays diagonal");
+    }
+
+    #[test]
+    fn the_lattice_marks_exactly_what_the_clearances_cover() {
+        // Grid::new finds each clearance's lines by bisection instead of
+        // testing every point against every clearance; it must block and
+        // close exactly what the direct test does.
+        let rects = [
+            (10.0, 10.0, 60.0, 40.0),
+            (55.0, 30.0, 120.0, 90.0),
+            (0.0, 100.0, 30.0, 101.0),
+            (70.0, 0.0, 71.0, 200.0),
+            (35.0, 45.0, 36.0, 46.0),
+        ];
+        let obstacles: Vec<(Rect, bool)> = rects
+            .iter()
+            .map(|&(x0, y0, x1, y1)| (Rect { x0, y0, x1, y1 }, true))
+            .collect();
+        let plain: Vec<Rect> = obstacles.iter().map(|o| o.0).collect();
+        let g = Grid::new(&obstacles, &plain, &[], &Architecture::default(), &[]);
+        let (nx, ny) = (g.xs.len(), g.ys.len());
+        let inside = |lo: f64, v: f64, hi: f64| lo + EPS < v && v < hi - EPS;
+        for j in 0..ny {
+            for i in 0..nx {
+                let (x, y, v) = (g.xs[i], g.ys[j], j * nx + i);
+                let blocked = obstacles
+                    .iter()
+                    .any(|(o, _)| inside(o.x0, x, o.x1) && inside(o.y0, y, o.y1));
+                assert_eq!(g.blocked[v], blocked, "point {x},{y}");
+                let h = i + 1 < nx
+                    && !obstacles.iter().any(|(o, _)| {
+                        inside(o.y0, y, o.y1) && x < o.x1 - EPS && g.xs[i + 1] > o.x0 + EPS
+                    });
+                assert_eq!(g.h_open[v], h, "step east of {x},{y}");
+                let vv = j + 1 < ny
+                    && !obstacles.iter().any(|(o, _)| {
+                        inside(o.x0, x, o.x1) && y < o.y1 - EPS && g.ys[j + 1] > o.y0 + EPS
+                    });
+                assert_eq!(g.v_open[v], vv, "step south of {x},{y}");
+            }
+        }
+    }
+
+    #[test]
     fn output_is_deterministic() {
-        for src in std::iter::once(&CORPUS).chain(MORE) {
+        for src in std::iter::once(&CORPUS).chain(MORE).chain(REPROS) {
             let a = arch(src);
             assert_eq!(to_svg(&scene(&a)), to_svg(&scene(&a)));
         }
