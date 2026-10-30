@@ -402,6 +402,18 @@ pub struct Graph {
     /// cardinality there, which in LR / RL lie along the same axis as
     /// the label.
     pub(crate) label_end_room: Vec<f64>,
+    /// Keep every layer's leaves on their layer: no leaf staggering
+    /// when the drawing is a ribbon. Class diagrams set it — a
+    /// hierarchy's children read as one row under their parent (as
+    /// mermaid draws them), and a staggered second row interleaves its
+    /// legs with the first row's on the parent's face, crossing them.
+    pub(crate) flat_leaves: bool,
+    /// Rank every source one layer above its nearest target, as dagre's
+    /// network simplex does, instead of on the first layer (longest
+    /// path's choice). Class diagrams set it: a note — a source linked
+    /// to its class — then sits just above its class, and a class
+    /// pointing at one deep in the hierarchy sits next to it.
+    pub(crate) tight_sources: bool,
     index: HashMap<String, usize>,
 }
 
