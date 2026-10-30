@@ -169,6 +169,20 @@ pub const NOTE_STYLE: ShapeStyle = ShapeStyle {
     stroke: "#9c8a2c",
 };
 
+/// A state `note` card: the parser names it `__note_*`, draws it as a
+/// [`Shape::Rect`](crate::model::Shape::Rect) and paints it in
+/// [`NOTE_STYLE`] (a source state is only one when written exactly so).
+pub(crate) fn is_note_card(
+    id: &str,
+    shape: crate::model::Shape,
+    style: &crate::model::NodeStyle,
+) -> bool {
+    id.starts_with("__note_")
+        && shape == crate::model::Shape::Rect
+        && style.fill.as_deref() == Some(NOTE_STYLE.fill)
+        && style.stroke.as_deref() == Some(NOTE_STYLE.stroke)
+}
+
 /// WCAG 2.x AA minimum contrast ratio for normal-size text.
 pub const MIN_TEXT_CONTRAST: f64 = 4.5;
 
