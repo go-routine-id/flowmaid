@@ -10,39 +10,81 @@
 //! `route()`: [`scene`] computes every coordinate and [`to_svg`]
 //! serialises it.
 
-use crate::model::{SankeyAlignment, SankeyDiagram, SankeyLinkColor};
+use crate::layout::{text_width, TEXT_CALIBRATION};
+use crate::model::{SankeyAlignment, SankeyDiagram, SankeyLabelStyle, SankeyLinkColor};
 use crate::scene::{escape, svg_open, SvgOptions, TEXT_COLOR};
-use crate::style::accent;
+use crate::style::{accent_wide, ACCENTS, ACCENTS_DEEP};
 
 /// Canvas margin around the plot area.
 pub const PAD: f64 = 24.0;
 /// Gap between a node and its label.
 pub const LABEL_GAP: f64 = 6.0;
-/// Font size for node labels.
-pub const FONT: u32 = 13;
+/// Font size for node labels — mermaid's 14px, which is also the size
+/// [`text_width`] is calibrated at, so labels are measured exactly as
+/// they are drawn.
+pub const FONT: u32 = 14;
+/// Height of a label's box for collision checks: one line of [`FONT`]
+/// with its ascenders and descenders.
+pub const LABEL_H: f64 = FONT as f64 * 1.25;
+/// Clear space kept above and below a label box, against other labels
+/// and nodes.
+const LABEL_CLEAR: f64 = 2.0;
+/// Clear space kept left and right of a label box. Two labels on one
+/// baseline closer than twice this read as a single phrase
+/// ("Electricity (124 TWh) Industry (48 TWh)"), so it is wider.
+const LABEL_CLEAR_X: f64 = 8.0;
 /// Thinnest ribbon we will draw, so a tiny flow stays visible.
 pub const MIN_RIBBON: f64 = 1.0;
-/// Barycentre passes used to reduce ribbon crossings. Ordering nodes to
-/// minimise crossings is NP-hard, so this is the usual heuristic; four
-/// sweeps is where the layout stops visibly improving.
+/// Barycentre sweep pairs (one forward, one backward) used to reduce
+/// ribbon crossings. Ordering nodes to minimise crossings is NP-hard,
+/// so this is the usual heuristic. Alternating sweeps can oscillate,
+/// so the ordering with the fewest crossings seen is kept — the first
+/// forward sweep's when nothing beats it, so more sweeps never cost a
+/// crossing.
 const ORDER_PASSES: usize = 4;
+/// Two node colours closer than this (CIE76 ΔE) read as one hue at a
+/// glance — indigo/steel blue (29) and green/teal (33) in the accent
+/// palette — so linked or stacked nodes never get such a pair.
+const CLASH_DE: f64 = 35.0;
 
 /// A placed node: a rectangle plus the text drawn beside it.
+///
+/// `#[non_exhaustive]`: [`scene`] builds these; read their fields.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct SankeyNodeGlyph {
     pub label: String,
     pub x: f64,
     pub y: f64,
     pub w: f64,
     pub h: f64,
+    /// Palette colour: distinct from every linked node and from the
+    /// nodes directly above and below it (see [`scene`]).
     pub color: &'static str,
     /// Column index, left to right.
     pub column: usize,
     /// Sum of the flows through this node.
     pub value: f64,
     /// Where the label sits, and which side of the node it hangs off.
+    /// The label pass keeps labels clear of each other, so `label_pos.1`
+    /// may sit off the node's centre (always inside its vertical span).
     pub label_pos: (f64, f64),
     pub label_anchor: &'static str,
+    /// The node's `config.sankey.nodeColors` entry, verbatim (any CSS
+    /// colour); when set it is painted instead of `color`. See
+    /// [`SankeyNodeGlyph::fill`].
+    pub custom_color: Option<String>,
+    /// The label text as drawn: the name, plus the value when
+    /// `showValues` is on.
+    pub label_text: String,
+}
+
+impl SankeyNodeGlyph {
+    /// The colour to paint this node (and its gradient stops) with:
+    /// the `nodeColors` override when there is one, else the palette.
+    pub fn fill(&self) -> &str {
+        self.custom_color.as_deref().unwrap_or(self.color)
+    }
 }
 
 /// A placed ribbon. `thickness` is the flow's share of the canvas.
@@ -61,7 +103,10 @@ pub struct SankeyLinkGlyph {
 }
 
 /// Everything needed to draw the diagram.
+///
+/// `#[non_exhaustive]`: [`scene`] builds it; read its fields.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct SankeyScene {
     pub width: f64,
     pub height: f64,
@@ -71,6 +116,8 @@ pub struct SankeyScene {
     pub show_values: bool,
     pub prefix: String,
     pub suffix: String,
+    /// Plain or haloed labels (`config.sankey.labelStyle`).
+    pub label_style: SankeyLabelStyle,
 }
 
 /// Format a value the way mermaid does: whole numbers read as integers,
@@ -258,6 +305,7 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
             show_values: cfg.show_values,
             prefix: cfg.prefix.clone(),
             suffix: cfg.suffix.clone(),
+            label_style: cfg.label_style,
         };
     }
 
@@ -346,62 +394,78 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
         .collect();
     let height_of = |i: usize| heights[i];
 
-    // Clamping can push a column past the configured canvas. Grow the
-    // canvas to fit rather than draw nodes outside the viewport.
-    let tallest = cols
-        .iter()
-        .map(|c| {
-            saturate(
-                c.iter().map(|&i| heights[i]).sum::<f64>()
-                    + cfg.node_padding * (c.len() as f64 - 1.0).max(0.0),
-            )
-        })
-        .fold(0.0, f64::max);
-    let plot_h = plot_h.max(tallest);
-
     // Order within each column by the barycentre of a node's neighbours
-    // in the previous column, which is the standard crossing-reduction
-    // heuristic. Ties keep declaration order, so the layout is stable.
-    let mut order: Vec<usize> = vec![0; n];
-    for _ in 0..ORDER_PASSES {
-        for c in 1..n_cols {
-            let prev: Vec<usize> = cols[c - 1].clone();
-            let pos_in_prev = |node: usize| prev.iter().position(|&p| p == node);
-            let mut keyed: Vec<(f64, usize, usize)> = cols[c]
-                .iter()
-                .enumerate()
-                .map(|(rank, &i)| {
-                    let mut sum = 0.0;
-                    let mut count = 0.0;
-                    for l in &d.links {
-                        if l.target == i {
-                            if let Some(p) = pos_in_prev(l.source) {
-                                sum += p as f64;
-                                count += 1.0;
-                            }
-                        }
-                    }
-                    let bary = if count > 0.0 {
-                        sum / count
-                    } else {
-                        rank as f64
-                    };
-                    (bary, rank, i)
-                })
-                .collect();
-            keyed.sort_by(|a, b| {
-                a.0.partial_cmp(&b.0)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-                    .then(a.1.cmp(&b.1))
-            });
-            cols[c] = keyed.into_iter().map(|(_, _, i)| i).collect();
+    // in the adjacent column — the standard crossing-reduction
+    // heuristic. A forward sweep keys each column on its sources in the
+    // column before; a backward sweep keys it on its targets in the
+    // column after, which is the only way the FIRST column ever moves.
+    // Ties keep the current order, so the layout is stable.
+    let first_forward = barycentre_sweep(d, &mut cols, true);
+    let mut best_x = crossings(d, &depth, &first_forward);
+    let mut best = first_forward;
+    for pass in 0..ORDER_PASSES {
+        for forward in [false, true] {
+            if pass == 0 && forward {
+                // Already done above, as the baseline to beat.
+                continue;
+            }
+            let ordered = barycentre_sweep(d, &mut cols, forward);
+            let x = crossings(d, &depth, &ordered);
+            // Strictly fewer only: a sweep that merely reshuffles keeps
+            // the earlier ordering, so the extra sweeps can only ever
+            // remove crossings, never add or move them.
+            if x < best_x {
+                best_x = x;
+                best = ordered;
+            }
         }
     }
+    let cols = best;
+    let mut order: Vec<usize> = vec![0; n];
     for c in &cols {
         for (rank, &i) in c.iter().enumerate() {
             order[i] = rank;
         }
     }
+
+    // The label text of each node, measured at the size it is drawn.
+    let label_text: Vec<String> = (0..n)
+        .map(|i| {
+            if cfg.show_values {
+                format!(
+                    "{} ({})",
+                    d.nodes[i],
+                    format_value(value[i], &cfg.prefix, &cfg.suffix)
+                )
+            } else {
+                d.nodes[i].clone()
+            }
+        })
+        .collect();
+    let label_w: Vec<f64> = label_text
+        .iter()
+        .map(|t| text_width(t) * FONT as f64 / TEXT_CALIBRATION)
+        .collect();
+
+    // Vertical gap between two stacked nodes: the configured padding,
+    // widened only where both nodes are so thin that their centred
+    // labels would otherwise overprint each other.
+    let gap = |a: usize, b: usize| {
+        cfg.node_padding
+            .max(LABEL_H + LABEL_CLEAR - (heights[a] + heights[b]) / 2.0)
+    };
+    let block_of = |members: &[usize]| -> f64 {
+        saturate(
+            members.iter().map(|&i| height_of(i)).sum::<f64>()
+                + members.windows(2).map(|w| gap(w[0], w[1])).sum::<f64>(),
+        )
+    };
+
+    // Clamping (and label room) can push a column past the configured
+    // canvas. Grow the canvas to fit rather than draw nodes outside the
+    // viewport.
+    let tallest = cols.iter().map(|c| block_of(c)).fold(0.0, f64::max);
+    let plot_h = plot_h.max(tallest);
 
     // Column x positions: the first column starts at the left margin,
     // the last ends at the right one.
@@ -414,87 +478,120 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
         }
     };
 
-    // Stack each column, centred vertically in the plot area.
-    let mut nodes: Vec<SankeyNodeGlyph> = Vec::with_capacity(n);
-    let mut y_of = vec![0.0f64; n];
-    for members in &cols {
-        let block: f64 = members.iter().map(|&i| height_of(i)).sum::<f64>()
-            + cfg.node_padding * (members.len() as f64 - 1.0).max(0.0);
-        let mut y = PAD + (plot_h - block).max(0.0) / 2.0;
-        for &i in members {
-            y_of[i] = y;
-            y += height_of(i) + cfg.node_padding;
-        }
-    }
-    for i in 0..n {
-        let c = depth[i];
-        let x = col_x(c);
-        let h = height_of(i);
-        // Labels hang outside the diagram at the edges and to the right
-        // everywhere else, so they never sit on top of a ribbon.
-        let (lx, anchor) = if c == n_cols - 1 && n_cols > 1 {
-            (x - LABEL_GAP, "end")
-        } else {
-            (x + cfg.node_width + LABEL_GAP, "start")
-        };
-        nodes.push(SankeyNodeGlyph {
-            label: d.nodes[i].clone(),
-            x,
-            y: y_of[i],
-            w: cfg.node_width,
-            h,
-            color: accent(i),
-            column: c,
-            value: value[i],
-            label_pos: (lx, y_of[i] + h / 2.0),
-            label_anchor: anchor,
-        });
-    }
-
-    // Ribbons leave and enter their nodes stacked in the same order the
-    // nodes appear, so they fan out without crossing themselves.
-    let mut out_cursor = vec![0.0f64; n];
-    let mut in_cursor = vec![0.0f64; n];
-    let mut idx: Vec<usize> = (0..d.links.len()).collect();
-    idx.sort_by_key(|&k| {
-        let l = &d.links[k];
-        (order[l.source], order[l.target], k)
-    });
-    let mut placed: Vec<(usize, SankeyLinkGlyph)> = Vec::with_capacity(d.links.len());
-    for &k in &idx {
-        let l = &d.links[k];
-        let t = link_t[k];
-        let s_node = &nodes[l.source];
-        let t_node = &nodes[l.target];
-        let y0 = s_node.y + out_cursor[l.source] + t / 2.0;
-        let y1 = t_node.y + in_cursor[l.target] + t / 2.0;
-        out_cursor[l.source] += t;
-        in_cursor[l.target] += t;
-        placed.push((
-            k,
-            SankeyLinkGlyph {
-                source: l.source,
-                target: l.target,
-                value: l.value,
-                x0: s_node.x + s_node.w,
-                y0,
-                x1: t_node.x,
-                y1,
-                thickness: t,
-            },
-        ));
-    }
-    // Restore declaration order so the SVG is a stable function of the
-    // input, not of the layout pass.
-    placed.sort_by_key(|(k, _)| *k);
-    let links: Vec<SankeyLinkGlyph> = placed.into_iter().map(|(_, g)| g).collect();
-
     // Individual link values are checked by the parser, but their SUM
     // can still overflow to +inf, and an infinite canvas is unparseable
     // SVG. Fall back to the configured size when that happens.
     let finite = |v: f64, fallback: f64| if v.is_finite() { v } else { fallback };
     let width = finite(cfg.width.max(PAD * 2.0 + plot_w), 600.0);
     let height = finite(cfg.height.max(PAD * 2.0 + plot_h), 400.0);
+
+    // Stack each column, centred vertically in the plot area.
+    let mut y_of = vec![0.0f64; n];
+    for members in &cols {
+        let mut y = PAD + (plot_h - block_of(members)).max(0.0) / 2.0;
+        for (k, &i) in members.iter().enumerate() {
+            y_of[i] = y;
+            y += height_of(i) + members.get(k + 1).map_or(0.0, |&j| gap(i, j));
+        }
+    }
+
+    let custom: Vec<Option<String>> = (0..n)
+        .map(|i| {
+            cfg.node_colors
+                .iter()
+                .find(|(label, _)| *label == d.nodes[i])
+                .map(|(_, c)| c.clone())
+        })
+        .collect();
+    let colors = node_colors(d, &cols, &custom);
+
+    let mut nodes: Vec<SankeyNodeGlyph> = (0..n)
+        .map(|i| SankeyNodeGlyph {
+            label: d.nodes[i].clone(),
+            x: col_x(depth[i]),
+            y: y_of[i],
+            w: cfg.node_width,
+            h: height_of(i),
+            color: colors[i],
+            column: depth[i],
+            value: value[i],
+            label_pos: (0.0, 0.0),
+            label_anchor: "start",
+            custom_color: custom[i].clone(),
+            label_text: label_text[i].clone(),
+        })
+        .collect();
+    let label_right = place_labels(
+        &mut nodes,
+        &label_w,
+        &order,
+        n_cols,
+        cfg.label_style,
+        width,
+        height,
+    );
+    // A last-column label that found no room inside hangs off the right
+    // edge instead; widen the canvas to keep it in view.
+    let width = finite(width.max(label_right + PAD), width);
+
+    // Ribbons leave a node stacked in the vertical order of their
+    // targets and enter it in the order of their sources, so they fan
+    // out without crossing themselves — by position, not column rank,
+    // so a ribbon that skips a column stacks correctly too.
+    let centre = |i: usize| nodes[i].y + nodes[i].h / 2.0;
+    let by_far_end = |pick_far: fn(&crate::model::SankeyLink) -> usize,
+                      pick_near: fn(&crate::model::SankeyLink) -> usize| {
+        let mut lists: Vec<Vec<usize>> = vec![Vec::new(); n];
+        for (k, l) in d.links.iter().enumerate() {
+            lists[pick_near(l)].push(k);
+        }
+        for list in &mut lists {
+            list.sort_by(|&a, &b| {
+                centre(pick_far(&d.links[a]))
+                    .partial_cmp(&centre(pick_far(&d.links[b])))
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then(a.cmp(&b))
+            });
+        }
+        lists
+    };
+    let outgoing = by_far_end(|l| l.target, |l| l.source);
+    let incoming = by_far_end(|l| l.source, |l| l.target);
+    let mut y0 = vec![0.0f64; d.links.len()];
+    let mut y1 = vec![0.0f64; d.links.len()];
+    for i in 0..n {
+        let mut cursor = nodes[i].y;
+        for &k in &outgoing[i] {
+            y0[k] = cursor + link_t[k] / 2.0;
+            cursor += link_t[k];
+        }
+        let mut cursor = nodes[i].y;
+        for &k in &incoming[i] {
+            y1[k] = cursor + link_t[k] / 2.0;
+            cursor += link_t[k];
+        }
+    }
+    // Declaration order, so the SVG is a stable function of the input,
+    // not of the layout pass.
+    let links: Vec<SankeyLinkGlyph> = d
+        .links
+        .iter()
+        .enumerate()
+        .map(|(k, l)| {
+            let (s_node, t_node) = (&nodes[l.source], &nodes[l.target]);
+            SankeyLinkGlyph {
+                source: l.source,
+                target: l.target,
+                value: l.value,
+                x0: s_node.x + s_node.w,
+                y0: y0[k],
+                x1: t_node.x,
+                y1: y1[k],
+                thickness: link_t[k],
+            }
+        })
+        .collect();
+
     SankeyScene {
         width,
         height,
@@ -504,7 +601,342 @@ pub fn scene(d: &SankeyDiagram) -> SankeyScene {
         show_values: cfg.show_values,
         prefix: cfg.prefix.clone(),
         suffix: cfg.suffix.clone(),
+        label_style: cfg.label_style,
     }
+}
+
+/// One barycentre sweep over every column. `forward` keys column `c` on
+/// the mean rank of each node's sources in column `c - 1`, left to
+/// right; backward keys it on its targets in column `c + 1`, right to
+/// left. A node with no neighbour there keeps its current rank as its
+/// key, and ties keep the current order. Returns the new ordering
+/// (also left in `cols`).
+fn barycentre_sweep(d: &SankeyDiagram, cols: &mut [Vec<usize>], forward: bool) -> Vec<Vec<usize>> {
+    let n_cols = cols.len();
+    let steps: Vec<(usize, usize)> = if forward {
+        (1..n_cols).map(|c| (c, c - 1)).collect()
+    } else {
+        (0..n_cols.saturating_sub(1))
+            .rev()
+            .map(|c| (c, c + 1))
+            .collect()
+    };
+    for (c, other) in steps {
+        let rank_in_other: std::collections::HashMap<usize, usize> = cols[other]
+            .iter()
+            .enumerate()
+            .map(|(r, &i)| (i, r))
+            .collect();
+        let mut keyed: Vec<(f64, usize, usize)> = cols[c]
+            .iter()
+            .enumerate()
+            .map(|(rank, &i)| {
+                let mut sum = 0.0;
+                let mut count = 0.0;
+                for l in &d.links {
+                    let neighbour = if forward {
+                        (l.target == i).then_some(l.source)
+                    } else {
+                        (l.source == i).then_some(l.target)
+                    };
+                    if let Some(p) = neighbour.and_then(|nb| rank_in_other.get(&nb)) {
+                        sum += *p as f64;
+                        count += 1.0;
+                    }
+                }
+                let bary = if count > 0.0 {
+                    sum / count
+                } else {
+                    rank as f64
+                };
+                (bary, rank, i)
+            })
+            .collect();
+        keyed.sort_by(|a, b| {
+            a.0.partial_cmp(&b.0)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then(a.1.cmp(&b.1))
+        });
+        cols[c] = keyed.into_iter().map(|(_, _, i)| i).collect();
+    }
+    cols.to_vec()
+}
+
+/// Ribbon crossings under an ordering: two links between the same pair
+/// of columns cross when their source and target ranks are inverted.
+fn crossings(d: &SankeyDiagram, depth: &[usize], cols: &[Vec<usize>]) -> usize {
+    let mut rank = vec![0usize; depth.len()];
+    for c in cols {
+        for (r, &i) in c.iter().enumerate() {
+            rank[i] = r;
+        }
+    }
+    let links: Vec<_> = d
+        .links
+        .iter()
+        .filter(|l| depth[l.source] < depth[l.target])
+        .collect();
+    let mut count = 0;
+    for (a, la) in links.iter().enumerate() {
+        for lb in &links[a + 1..] {
+            if depth[la.source] != depth[lb.source] || depth[la.target] != depth[lb.target] {
+                continue;
+            }
+            let ds = rank[la.source] as i64 - rank[lb.source] as i64;
+            let dt = rank[la.target] as i64 - rank[lb.target] as i64;
+            if ds * dt < 0 {
+                count += 1;
+            }
+        }
+    }
+    count
+}
+
+/// CIE L*a*b* (D65) of a `#rrggbb` / `#rgb` colour, for [`CLASH_DE`];
+/// `None` for anything else (named colours, `rgb()`, ...).
+fn lab(color: &str) -> Option<[f64; 3]> {
+    let hex = color.strip_prefix('#')?;
+    let d: Vec<u32> = hex.chars().map(|c| c.to_digit(16)).collect::<Option<_>>()?;
+    let rgb = match d.len() {
+        3 => [d[0] * 17, d[1] * 17, d[2] * 17],
+        6 => [d[0] * 16 + d[1], d[2] * 16 + d[3], d[4] * 16 + d[5]],
+        _ => return None,
+    };
+    let [r, g, b] = rgb.map(|c| {
+        let c = f64::from(c) / 255.0;
+        if c <= 0.04045 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
+    });
+    let x = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047;
+    let y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    let z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883;
+    let f = |t: f64| {
+        if t > 216.0 / 24389.0 {
+            t.cbrt()
+        } else {
+            (24389.0 / 27.0 * t + 16.0) / 116.0
+        }
+    };
+    let (fx, fy, fz) = (f(x), f(y), f(z));
+    Some([116.0 * fy - 16.0, 500.0 * (fx - fy), 200.0 * (fy - fz)])
+}
+
+/// CIE76 colour difference; `None` when either colour is not hex.
+fn delta_e(a: &str, b: &str) -> Option<f64> {
+    let (p, q) = (lab(a)?, lab(b)?);
+    Some(((p[0] - q[0]).powi(2) + (p[1] - q[1]).powi(2) + (p[2] - q[2]).powi(2)).sqrt())
+}
+
+/// Palette colour per node. A colour is only ever judged against the
+/// node's NEIGHBOURS — every node it shares a ribbon with (or a flat,
+/// one-colour gradient would result) and the nodes directly above and
+/// below it in its column — and must differ from each by at least
+/// [`CLASH_DE`]. Among the colours that pass, one no other node uses
+/// yet wins, so up to sixteen nodes ([`accent_wide`]) all read apart;
+/// node `i` tries `accent_wide(i)` first, so a diagram without clashes
+/// keeps the plain cycle. Greedy in declaration order, so deterministic.
+/// `nodeColors` overrides count as their neighbours' colours.
+fn node_colors(
+    d: &SankeyDiagram,
+    cols: &[Vec<usize>],
+    custom: &[Option<String>],
+) -> Vec<&'static str> {
+    let n = d.nodes.len();
+    let mut neighbours: Vec<Vec<usize>> = vec![Vec::new(); n];
+    let mut link = |a: usize, b: usize| {
+        if a != b {
+            if !neighbours[a].contains(&b) {
+                neighbours[a].push(b);
+            }
+            if !neighbours[b].contains(&a) {
+                neighbours[b].push(a);
+            }
+        }
+    };
+    for l in &d.links {
+        link(l.source, l.target);
+    }
+    for c in cols {
+        for w in c.windows(2) {
+            link(w[0], w[1]);
+        }
+    }
+    let palette = ACCENTS.len() + ACCENTS_DEEP.len();
+    let mut colors: Vec<Option<&'static str>> = vec![None; n];
+    for i in 0..n {
+        // Colours already fixed around this node: overrides, and the
+        // palette picks of neighbours placed before it.
+        let around: Vec<String> = neighbours[i]
+            .iter()
+            .filter_map(|&j| custom[j].clone().or(colors[j].map(str::to_string)))
+            .collect();
+        // (neighbour's colour, near twin, already used, -ΔE, palette step)
+        type Key = (u8, u8, u8, f64, usize);
+        let mut best: Option<(Key, &'static str)> = None;
+        for k in 0..palette {
+            let c = accent_wide(i + k);
+            let same = around.iter().any(|a| a.eq_ignore_ascii_case(c));
+            let nearest = around
+                .iter()
+                .filter_map(|a| delta_e(a, c))
+                .fold(f64::INFINITY, f64::min);
+            let clash = nearest < CLASH_DE;
+            let used = colors.iter().flatten().any(|u| *u == c);
+            // Lexicographic: never a neighbour's colour, then no near
+            // twin, then unused, then (only among clashes) the most
+            // distinct, then palette order.
+            let key = (
+                u8::from(same),
+                u8::from(clash),
+                u8::from(used),
+                if clash { -nearest } else { 0.0 },
+                k,
+            );
+            let better = match &best {
+                None => true,
+                Some((b, _)) => key.partial_cmp(b) == Some(std::cmp::Ordering::Less),
+            };
+            if better {
+                best = Some((key, c));
+            }
+        }
+        colors[i] = best.map(|(_, c)| c);
+    }
+    colors
+        .into_iter()
+        .map(|c| c.unwrap_or(ACCENTS[0]))
+        .collect()
+}
+
+/// Place every label so none overprints another or sits on another
+/// node. A label starts beside its node's centre, on the right — or on
+/// the left in the last column (mermaid's `outlined` style also puts
+/// labels left of the busiest column on the left) — and, when that
+/// spot is taken, slides along its own node's span in half-line steps,
+/// then tries the other side. Thin nodes, which cannot slide, are
+/// placed first; the first free spot wins, and when none is free the
+/// least-overlapping one does. Nothing is measured against ribbons:
+/// a label on a translucent ribbon reads fine.
+///
+/// The right of the last column is the one place outside the canvas a
+/// label may go (a long sink name that would otherwise run across the
+/// previous column's nodes); the caller widens the canvas to the
+/// returned right edge of such labels (0 when there are none).
+fn place_labels(
+    nodes: &mut [SankeyNodeGlyph],
+    label_w: &[f64],
+    order: &[usize],
+    n_cols: usize,
+    style: SankeyLabelStyle,
+    width: f64,
+    height: f64,
+) -> f64 {
+    type Rect = (f64, f64, f64, f64);
+    let overlap = |a: Rect, b: Rect| -> f64 {
+        let w = (a.2.min(b.2) - a.0.max(b.0)).max(0.0);
+        let h = (a.3.min(b.3) - a.1.max(b.1)).max(0.0);
+        w * h
+    };
+    // The busiest column: `outlined` labels left of it hang left.
+    let central = nodes
+        .iter()
+        .fold((0.0f64, 0usize), |(v, c), nd| {
+            if nd.value > v {
+                (nd.value, nd.column)
+            } else {
+                (v, c)
+            }
+        })
+        .1;
+    let rects: Vec<Rect> = nodes
+        .iter()
+        .map(|nd| (nd.x, nd.y, nd.x + nd.w, nd.y + nd.h))
+        .collect();
+    let mut by_room: Vec<usize> = (0..nodes.len()).collect();
+    by_room.sort_by(|&a, &b| {
+        nodes[a]
+            .h
+            .partial_cmp(&nodes[b].h)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(nodes[a].column.cmp(&nodes[b].column))
+            .then(order[a].cmp(&order[b]))
+            .then(a.cmp(&b))
+    });
+    let mut placed: Vec<Rect> = Vec::with_capacity(nodes.len());
+    let mut outside_right = 0.0f64;
+    for &i in &by_room {
+        let nd = &nodes[i];
+        let last = n_cols > 1 && nd.column == n_cols - 1;
+        let left_first = match style {
+            SankeyLabelStyle::Legacy => last,
+            SankeyLabelStyle::Outlined => last || nd.column < central,
+        };
+        let centre = nd.y + nd.h / 2.0;
+        let (lo, hi) = (nd.y + LABEL_H / 2.0, nd.y + nd.h - LABEL_H / 2.0);
+        let mut ys = vec![centre];
+        let step = LABEL_H / 2.0;
+        let mut k = 1.0;
+        while lo <= hi && (centre - k * step >= lo || centre + k * step <= hi) {
+            for y in [centre - k * step, centre + k * step] {
+                if (lo..=hi).contains(&y) {
+                    ys.push(y);
+                }
+            }
+            k += 1.0;
+        }
+        let mut best: Option<(f64, f64, f64, bool, Rect)> = None;
+        'search: for left in [left_first, !left_first] {
+            for &y in &ys {
+                let (x0, x1) = if left {
+                    (nd.x - LABEL_GAP - label_w[i], nd.x - LABEL_GAP)
+                } else {
+                    let x0 = nd.x + nd.w + LABEL_GAP;
+                    (x0, x0 + label_w[i])
+                };
+                let r: Rect = (x0, y - LABEL_H / 2.0, x1, y + LABEL_H / 2.0);
+                let grown = (
+                    r.0 - LABEL_CLEAR_X,
+                    r.1 - LABEL_CLEAR,
+                    r.2 + LABEL_CLEAR_X,
+                    r.3 + LABEL_CLEAR,
+                );
+                let right_edge = if last && !left { f64::INFINITY } else { width };
+                let outside =
+                    (r.2 - r.0) * (r.3 - r.1) - overlap(r, (0.0, 0.0, right_edge, height));
+                let on_labels: f64 = placed.iter().map(|&p| overlap(grown, p)).sum();
+                let on_nodes: f64 = rects
+                    .iter()
+                    .enumerate()
+                    .filter(|&(j, _)| j != i)
+                    .map(|(_, &q)| overlap(grown, q))
+                    .sum();
+                let cost = 4.0 * (outside + on_labels) + on_nodes;
+                if best.as_ref().map_or(true, |b| cost < b.0) {
+                    best = Some((cost, x0, y, left, r));
+                }
+                if cost == 0.0 {
+                    break 'search;
+                }
+            }
+        }
+        if let Some((_, _, y, left, r)) = best {
+            let nd = &mut nodes[i];
+            nd.label_pos = if left {
+                (nd.x - LABEL_GAP, y)
+            } else {
+                (nd.x + nd.w + LABEL_GAP, y)
+            };
+            nd.label_anchor = if left { "end" } else { "start" };
+            if last && !left {
+                outside_right = outside_right.max(r.2);
+            }
+            placed.push(r);
+        }
+    }
+    outside_right
 }
 
 /// The ribbon outline: two cubic beziers with mirrored control points,
@@ -540,7 +972,12 @@ pub fn to_svg_with(ss: &SankeyScene, opts: &SvgOptions) -> String {
                  x1=\"{:.1}\" x2=\"{:.1}\">\
                  <stop offset=\"0\" stop-color=\"{}\"/>\
                  <stop offset=\"1\" stop-color=\"{}\"/></linearGradient>\n",
-                key, i, l.x0, l.x1, ss.nodes[l.source].color, ss.nodes[l.target].color
+                key,
+                i,
+                l.x0,
+                l.x1,
+                escape(ss.nodes[l.source].fill()),
+                escape(ss.nodes[l.target].fill())
             ));
         }
         s.push_str("</defs>\n");
@@ -550,11 +987,11 @@ pub fn to_svg_with(ss: &SankeyScene, opts: &SvgOptions) -> String {
     for (i, l) in ss.links.iter().enumerate() {
         let fill = match &ss.link_color {
             SankeyLinkColor::Gradient => format!("url(#fmsk-{key}-{i})"),
-            SankeyLinkColor::Source => ss.nodes[l.source].color.to_string(),
-            SankeyLinkColor::Target => ss.nodes[l.target].color.to_string(),
             // Escaped like every other user string here: an
-            // unescaped colour can close the attribute and inject
-            // markup into the SVG.
+            // unescaped colour (`nodeColors`, a fixed `linkColor`) can
+            // close the attribute and inject markup into the SVG.
+            SankeyLinkColor::Source => escape(ss.nodes[l.source].fill()),
+            SankeyLinkColor::Target => escape(ss.nodes[l.target].fill()),
             SankeyLinkColor::Fixed(c) => escape(c),
         };
         s.push_str(&format!(
@@ -575,27 +1012,27 @@ pub fn to_svg_with(ss: &SankeyScene, opts: &SvgOptions) -> String {
             n.y,
             n.w,
             n.h,
-            n.color,
+            escape(n.fill()),
             escape(&n.label)
         ));
-        let text = if ss.show_values {
-            format!(
-                "{} ({})",
-                n.label,
-                format_value(n.value, &ss.prefix, &ss.suffix)
-            )
-        } else {
-            n.label.clone()
-        };
-        s.push_str(&format!(
-            "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"{}\" \
-             fill=\"{}\">{}</text>\n",
-            n.label_pos.0,
-            n.label_pos.1,
-            n.label_anchor,
-            TEXT_COLOR,
-            escape(&text)
-        ));
+    }
+    // Labels last, above every node and ribbon. An `outlined` label is
+    // drawn twice — a white stroked copy, then the text — rather than
+    // with `paint-order`, which older SVG renderers ignore (they would
+    // paint the white stroke OVER the glyphs).
+    for n in &ss.nodes {
+        let at = format!(
+            "x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"{}\"",
+            n.label_pos.0, n.label_pos.1, n.label_anchor
+        );
+        let text = escape(&n.label_text);
+        if ss.label_style == SankeyLabelStyle::Outlined {
+            s.push_str(&format!(
+                "<text {at} fill=\"#ffffff\" stroke=\"#ffffff\" stroke-width=\"4\" \
+                 stroke-linejoin=\"round\" aria-hidden=\"true\">{text}</text>\n"
+            ));
+        }
+        s.push_str(&format!("<text {at} fill=\"{TEXT_COLOR}\">{text}</text>\n"));
     }
 
     s.push_str("</svg>\n");
@@ -741,7 +1178,10 @@ mod tests {
             diagram("---\nconfig:\n  sankey:\n    linkColor: source\n---\nsankey-beta\nA,B,1\n");
         let svg = to_svg(&scene(&d));
         assert!(!svg.contains("linearGradient"), "{svg}");
-        assert!(svg.contains(&format!("fill=\"{}\"", accent(0))), "{svg}");
+        assert!(
+            svg.contains(&format!("fill=\"{}\"", accent_wide(0))),
+            "{svg}"
+        );
     }
 
     #[test]
@@ -937,6 +1377,324 @@ mod tests {
         assert!(!svg.contains("0.30000000000000004"), "{svg}");
         // A whole number still reads as an integer.
         assert!(to_svg(&scene(&diagram("sankey-beta\nA,B,42\n"))).contains("A (42)"));
+    }
+
+    /// The showcase (examples/sankey.mmd) with a header that overrides
+    /// its config: a narrow canvas, long names.
+    fn showcase_with(config: &str, rename: &[(&str, &str)]) -> SankeyScene {
+        let body = include_str!("../examples/sankey.mmd");
+        let body = &body[body.find("sankey-beta").unwrap()..];
+        let mut src = format!("---\nconfig:\n  sankey:\n    suffix: \" TWh\"\n{config}---\n{body}");
+        for (from, to) in rename {
+            src = src.replace(from, to);
+        }
+        scene(&diagram(&src))
+    }
+
+    type Rect = (f64, f64, f64, f64);
+
+    /// A label's box as the label pass measures it.
+    fn label_box(n: &SankeyNodeGlyph) -> Rect {
+        let w = text_width(&n.label_text) * FONT as f64 / TEXT_CALIBRATION;
+        let x0 = if n.label_anchor == "end" {
+            n.label_pos.0 - w
+        } else {
+            n.label_pos.0
+        };
+        let y = n.label_pos.1;
+        (x0, y - LABEL_H / 2.0, x0 + w, y + LABEL_H / 2.0)
+    }
+
+    fn overlaps(a: Rect, b: Rect) -> bool {
+        a.0 < b.2 && b.0 < a.2 && a.1 < b.3 && b.1 < a.3
+    }
+
+    /// Every label clear of every other label (with room to read them
+    /// apart on one baseline), of every other node, and on the canvas.
+    fn assert_labels_clear(ss: &SankeyScene) {
+        for (i, a) in ss.nodes.iter().enumerate() {
+            let ra = label_box(a);
+            assert!(
+                ra.0 >= 0.0 && ra.2 <= ss.width && ra.1 >= 0.0 && ra.3 <= ss.height,
+                "{:?} leaves the canvas: {ra:?} in {}x{}",
+                a.label_text,
+                ss.width,
+                ss.height
+            );
+            let mid = a.y + a.h / 2.0;
+            assert!(
+                (a.label_pos.1 - mid).abs() < 0.01
+                    || (a.label_pos.1 >= a.y && a.label_pos.1 <= a.y + a.h),
+                "{:?} strays off its own node",
+                a.label_text
+            );
+            for (j, b) in ss.nodes.iter().enumerate() {
+                if i == j {
+                    continue;
+                }
+                let grown = (ra.0 - 8.0, ra.1, ra.2 + 8.0, ra.3);
+                assert!(
+                    !overlaps(grown, label_box(b)),
+                    "{:?} runs into {:?}",
+                    a.label_text,
+                    b.label_text
+                );
+                assert!(
+                    !overlaps(ra, (b.x, b.y, b.x + b.w, b.y + b.h)),
+                    "{:?} is drawn over node {}",
+                    a.label_text,
+                    b.label
+                );
+            }
+        }
+    }
+
+    /// Report §3 (sankey): 'Electricity (124 TWh)' printed over
+    /// 'Industry (48 TWh)' at `width: 450`, and a long sink name ran
+    /// across the middle column — labels were never measured.
+    #[test]
+    fn labels_never_overprint_even_when_narrow_or_long() {
+        assert_labels_clear(&showcase_with("", &[]));
+        assert_labels_clear(&showcase_with("    width: 450\n", &[]));
+        let long = showcase_with(
+            "",
+            &[(
+                "Electricity,Industry,",
+                "Electricity,Heavy industry and manufacturing,",
+            )],
+        );
+        assert_labels_clear(&long);
+        // The long sink name hangs off the right instead, and the
+        // canvas grows to hold it.
+        let heavy = node(&long, "Heavy industry and manufacturing");
+        assert_eq!(heavy.label_anchor, "start");
+        assert!(long.width > 600.0);
+        // At the default size, Electricity and Industry no longer share
+        // a baseline (they read as one phrase).
+        let ss = showcase_with("", &[]);
+        let (e, i) = (node(&ss, "Electricity"), node(&ss, "Industry"));
+        assert!(
+            (e.label_pos.1 - i.label_pos.1).abs() >= LABEL_H,
+            "{e:?} / {i:?}"
+        );
+    }
+
+    #[test]
+    fn thin_stacked_nodes_keep_room_for_their_labels() {
+        // Thirty 1px sources: the configured 12px padding is less than a
+        // line of text, so the gap widens instead of the labels piling up.
+        let mut src = String::from("sankey-beta\n");
+        for i in 0..30 {
+            src.push_str(&format!("S{i},Sink,1\n"));
+        }
+        src.push_str("Big,Sink,1000\n");
+        assert_labels_clear(&scene(&diagram(&src)));
+    }
+
+    /// Ribbon crossings in a finished scene, from the drawn ribbons:
+    /// two ribbons between the same columns cross when their ends swap
+    /// vertical order.
+    fn drawn_crossings(ss: &SankeyScene) -> usize {
+        let mut count = 0;
+        for (a, la) in ss.links.iter().enumerate() {
+            for lb in &ss.links[a + 1..] {
+                let cols =
+                    |l: &SankeyLinkGlyph| (ss.nodes[l.source].column, ss.nodes[l.target].column);
+                if cols(la) != cols(lb) || la.source == lb.source || la.target == lb.target {
+                    continue;
+                }
+                if (la.y0 - lb.y0) * (la.y1 - lb.y1) < 0.0 {
+                    count += 1;
+                }
+            }
+        }
+        count
+    }
+
+    /// Report §3 / Q16: forward-only barycentre never reordered the first
+    /// column, leaving Coal→Electricity across Gas→Heating.
+    #[test]
+    fn backward_sweep_removes_the_showcase_crossing() {
+        let ss = showcase_with("", &[]);
+        assert_eq!(drawn_crossings(&ss), 0);
+        // Gas (which feeds Heating, at the top) moved above Coal.
+        assert!(node(&ss, "Gas").y < node(&ss, "Coal").y);
+    }
+
+    #[test]
+    fn extra_sweeps_never_add_a_crossing() {
+        // A spread of small diagrams: the kept ordering is never worse
+        // than the single forward sweep the layout used to stop at.
+        for seed in 0..60u64 {
+            let mut x = seed
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            let mut next = |m: u64| {
+                x = x
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1442695040888963407);
+                (x >> 33) % m
+            };
+            let mut src = String::from(
+                "---\nconfig:\n  sankey:\n    nodeAlignment: left\n---\nsankey-beta\n",
+            );
+            for _ in 0..(6 + next(10)) {
+                let layer = next(3);
+                let (a, b) = (next(4), next(4));
+                src.push_str(&format!(
+                    "L{layer}N{a},L{}N{b},{}\n",
+                    layer + 1,
+                    1 + next(9)
+                ));
+            }
+            let d = diagram(&src);
+            let ss = scene(&d);
+            let depth: Vec<usize> = ss.nodes.iter().map(|n| n.column).collect();
+            let n_cols = depth.iter().max().unwrap() + 1;
+            let mut cols: Vec<Vec<usize>> = vec![Vec::new(); n_cols];
+            for (i, &c) in depth.iter().enumerate() {
+                cols[c].push(i);
+            }
+            let forward_only = barycentre_sweep(&d, &mut cols, true);
+            let mut kept: Vec<Vec<usize>> = vec![Vec::new(); n_cols];
+            let mut by_y: Vec<usize> = (0..ss.nodes.len()).collect();
+            by_y.sort_by(|&a, &b| ss.nodes[a].y.partial_cmp(&ss.nodes[b].y).unwrap());
+            for i in by_y {
+                kept[depth[i]].push(i);
+            }
+            assert!(
+                crossings(&d, &depth, &kept) <= crossings(&d, &depth, &forward_only),
+                "seed {seed}: {src}"
+            );
+        }
+    }
+
+    /// Report §2.11 / Q16: `accent(i % 8)` painted Losses like
+    /// Electricity (a flat green ribbon) and Homes (indigo) right above
+    /// Industry (steel blue).
+    #[test]
+    fn linked_and_stacked_nodes_never_share_a_hue() {
+        let check = |ss: &SankeyScene| {
+            let clash = |a: usize, b: usize| {
+                let (ca, cb) = (ss.nodes[a].fill(), ss.nodes[b].fill());
+                assert_ne!(ca, cb, "{} / {}", ss.nodes[a].label, ss.nodes[b].label);
+                if let Some(de) = delta_e(ca, cb) {
+                    assert!(
+                        de >= CLASH_DE,
+                        "{} {ca} / {} {cb}: ΔE {de:.1}",
+                        ss.nodes[a].label,
+                        ss.nodes[b].label
+                    );
+                }
+            };
+            for l in &ss.links {
+                if l.source != l.target {
+                    clash(l.source, l.target);
+                }
+            }
+            for (a, na) in ss.nodes.iter().enumerate() {
+                // The node directly below in the same column.
+                let below = ss
+                    .nodes
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, nb)| nb.column == na.column && nb.y > na.y)
+                    .min_by(|x, y| x.1.y.partial_cmp(&y.1.y).unwrap());
+                if let Some((b, _)) = below {
+                    clash(a, b);
+                }
+            }
+        };
+        let ss = showcase_with("", &[]);
+        check(&ss);
+        // Eleven nodes, eleven different colours.
+        let mut fills: Vec<&str> = ss.nodes.iter().map(|n| n.fill()).collect();
+        fills.sort_unstable();
+        fills.dedup();
+        assert_eq!(fills.len(), ss.nodes.len());
+        // A dense one: twenty nodes, a hub with eighteen neighbours.
+        let mut src = String::from("sankey-beta\n");
+        for i in 0..9 {
+            src.push_str(&format!("In{i},Hub,{}\nHub,Out{i},{}\n", 1 + i, 9 - i));
+        }
+        check(&scene(&diagram(&src)));
+    }
+
+    #[test]
+    fn node_colors_override_the_palette_and_are_escaped() {
+        let d = diagram(
+            "---\nconfig:\n  sankey:\n    nodeColors:\n      A: \"#33a35c\"\n      \
+             B: 'red\" onload=x'\n---\nsankey-beta\nA,B,1\nA,C,1\n",
+        );
+        let ss = scene(&d);
+        assert_eq!(node(&ss, "A").fill(), "#33a35c");
+        assert_eq!(node(&ss, "A").custom_color.as_deref(), Some("#33a35c"));
+        // C keeps the palette but steers clear of A's custom green.
+        let c = node(&ss, "C");
+        assert!(c.custom_color.is_none());
+        assert!(delta_e(c.fill(), "#33a35c").unwrap() >= CLASH_DE);
+        let svg = to_svg(&ss);
+        assert!(svg.contains("fill=\"#33a35c\""), "{svg}");
+        assert!(
+            svg.contains("stop-color=\"#33a35c\""),
+            "gradients follow: {svg}"
+        );
+        assert!(!svg.contains("\" onload=x"), "{svg}");
+    }
+
+    #[test]
+    fn outlined_labels_get_a_halo_and_follow_mermaid_sides() {
+        let ss = showcase_with("    labelStyle: outlined\n", &[]);
+        let svg = to_svg(&ss);
+        // One halo copy (white stroke) under every label.
+        assert_eq!(
+            svg.matches("stroke=\"#ffffff\" stroke-width=\"4\"").count(),
+            ss.nodes.len()
+        );
+        // Left of the busiest column (Electricity's), a label hangs
+        // left — unless that would leave the canvas, as in column 0.
+        assert_eq!(node(&ss, "Coal").label_anchor, "start");
+        let plain = to_svg(&showcase_with("", &[]));
+        assert!(!plain.contains("stroke-width=\"4\""), "legacy has no halo");
+        assert_labels_clear(&ss);
+    }
+
+    #[test]
+    fn labels_are_drawn_at_mermaids_14px() {
+        let svg = to_svg(&scene(&diagram("sankey-beta\nA,B,1\n")));
+        assert!(svg.contains("font-size=\"14\""), "{svg}");
+    }
+
+    #[test]
+    fn ribbons_stack_by_where_their_other_end_is() {
+        // A→C skips a column. Stacking by column RANK compared C's rank
+        // 0 (column 2) with B's rank 0 (column 1) — a tie, so A→B went on
+        // top although C sits higher than B. By position, the ribbon to
+        // the higher node leaves from higher up and never crosses A→B.
+        let ss = scene(&diagram(
+            "sankey-beta\nA,B,10\nA,C,10\nB,C,50\nB,D,5\nE,B,45\n",
+        ));
+        let (b, c) = (node(&ss, "B"), node(&ss, "C"));
+        assert!(
+            c.y + c.h / 2.0 < b.y + b.h / 2.0,
+            "the case needs C above B"
+        );
+        for (i, _) in ss.nodes.iter().enumerate() {
+            let mut out: Vec<&SankeyLinkGlyph> =
+                ss.links.iter().filter(|l| l.source == i).collect();
+            out.sort_by(|a, b| a.y0.partial_cmp(&b.y0).unwrap());
+            for w in out.windows(2) {
+                let far = |l: &SankeyLinkGlyph| ss.nodes[l.target].y + ss.nodes[l.target].h / 2.0;
+                assert!(far(w[0]) <= far(w[1]), "out of {}", ss.nodes[i].label);
+            }
+            let mut inc: Vec<&SankeyLinkGlyph> =
+                ss.links.iter().filter(|l| l.target == i).collect();
+            inc.sort_by(|a, b| a.y1.partial_cmp(&b.y1).unwrap());
+            for w in inc.windows(2) {
+                let far = |l: &SankeyLinkGlyph| ss.nodes[l.source].y + ss.nodes[l.source].h / 2.0;
+                assert!(far(w[0]) <= far(w[1]), "into {}", ss.nodes[i].label);
+            }
+        }
     }
 
     #[test]

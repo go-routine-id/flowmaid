@@ -22,9 +22,9 @@ use crate::model::{
     EdgeMeta, End, ErDiagram, FrameKind, GitBranch, GitCommit, GitGraph, GitOrientation, Graph,
     Journey, JourneySection, JourneyTask, Key, LinkStyle, LinkTarget, Marker, Member, MindNode,
     MindShape, Mindmap, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation,
-    SankeyAlignment, SankeyConfig, SankeyDiagram, SankeyLink, SankeyLinkColor, SeqHead, SeqItem,
-    SequenceDiagram, Shape, SubEdge, Subgraph, Timeline, TimelineDirection, TimelinePeriod,
-    TimelineSection, Visibility,
+    SankeyAlignment, SankeyConfig, SankeyDiagram, SankeyLabelStyle, SankeyLink, SankeyLinkColor,
+    SeqHead, SeqItem, SequenceDiagram, Shape, SubEdge, Subgraph, Timeline, TimelineDirection,
+    TimelinePeriod, TimelineSection, Visibility,
 };
 use crate::shapedata;
 use std::borrow::Cow;
@@ -5422,25 +5422,69 @@ fn frontmatter_body(source: &str) -> Option<Vec<&str>> {
 }
 
 /// Read `config.sankey.*` out of YAML frontmatter (see
-/// [`frontmatter_config`]).
+/// [`frontmatter_section`]).
 fn sankey_config(source: &str) -> SankeyConfig {
     let mut cfg = SankeyConfig::default();
-    for (k, v) in frontmatter_config(source, "sankey") {
-        apply_sankey_key(&mut cfg, k, v);
+    // Indent of a `nodeColors:` key whose block map follows. Its entries
+    // are node labels, so they must never reach `apply_sankey_key` — a
+    // node called `width` would otherwise resize the canvas.
+    let mut colors_at: Option<usize> = None;
+    for (ind, t) in frontmatter_section(source, "sankey") {
+        if let Some(at) = colors_at {
+            if ind > at {
+                if let Some((k, v)) = yaml_pair(t) {
+                    set_node_color(&mut cfg, k, unquote_yaml(v));
+                }
+                continue;
+            }
+            colors_at = None;
+        }
+        if let Some((k, v)) = yaml_pair(t) {
+            if k == "nodeColors" {
+                let v = v.trim();
+                if v.is_empty() {
+                    colors_at = Some(ind);
+                } else if let Some(map) = v
+                    .strip_prefix('{')
+                    .and_then(|m| m.trim_end().strip_suffix('}'))
+                {
+                    for item in yaml_flow_items(map) {
+                        if let Some((k, v)) = yaml_pair(item) {
+                            set_node_color(&mut cfg, k, unquote_yaml(v));
+                        }
+                    }
+                }
+                continue;
+            }
+            apply_sankey_key(&mut cfg, k, v);
+        }
     }
     cfg
 }
 
 /// The scalar `key: value` pairs (key trimmed, value raw — run it
 /// through [`unquote_yaml`]) of the `config.<section>:` block in YAML
-/// frontmatter, in source order; empty when there is none.
+/// frontmatter, in source order; empty when there is none. Nested
+/// lines are flattened, so callers see every `key: value` under the
+/// section (see [`frontmatter_section`]).
+fn frontmatter_config<'a>(source: &'a str, section: &str) -> Vec<(&'a str, &'a str)> {
+    frontmatter_section(source, section)
+        .into_iter()
+        .filter_map(|(_, t)| t.split_once(':').map(|(k, v)| (k.trim(), v)))
+        .collect()
+}
+
+/// Every line inside the `config.<section>:` block of YAML frontmatter,
+/// as (indent, trimmed text) in source order — blank and `#` comment
+/// lines left out; empty when there is no such block. The indent lets a
+/// caller follow a nested block map (sankey's `nodeColors`).
 ///
 /// Deliberately NOT a YAML parser: it walks indentation for the
-/// `config:` -> `<section>:` path and reads scalar `key: value` pairs
-/// under it. Richer YAML (anchors, flow maps, block scalars) is ignored
-/// rather than guessed at, and callers skip unknown keys mermaid-style
-/// so a file carrying config for other diagrams still renders.
-fn frontmatter_config<'a>(source: &'a str, section: &str) -> Vec<(&'a str, &'a str)> {
+/// `config:` -> `<section>:` path and hands back the lines under it.
+/// Richer YAML (anchors, block scalars) is ignored rather than guessed
+/// at, and callers skip unknown keys mermaid-style so a file carrying
+/// config for other diagrams still renders.
+fn frontmatter_section<'a>(source: &'a str, section: &str) -> Vec<(usize, &'a str)> {
     let mut out = Vec::new();
     let Some(body) = frontmatter_body(source) else {
         return out;
@@ -5463,9 +5507,7 @@ fn frontmatter_config<'a>(source: &'a str, section: &str) -> Vec<(&'a str, &'a s
         let ind = indent_of(line);
         if let Some(inner) = section_at {
             if ind > inner {
-                if let Some((k, v)) = t.split_once(':') {
-                    out.push((k.trim(), v));
-                }
+                out.push((ind, t));
                 continue;
             }
             section_at = None;
@@ -5549,9 +5591,68 @@ fn apply_sankey_key(cfg: &mut SankeyConfig, key: &str, raw: &str) {
                 _ => SankeyAlignment::Justify,
             }
         }
+        "labelStyle" => {
+            cfg.label_style = match v.to_ascii_lowercase().as_str() {
+                "outlined" => SankeyLabelStyle::Outlined,
+                _ => SankeyLabelStyle::Legacy,
+            }
+        }
         // Unknown keys are skipped, so extra mermaid config never breaks
         // a render.
         _ => {}
+    }
+}
+
+/// Split a YAML `key: value` line at the colon that ends the key. A
+/// quoted key (`"Industry, light": "#abc"`) ends at its closing quote,
+/// so a `:` or `,` inside it stays part of the name; the key comes back
+/// unquoted and trimmed, the value raw (callers unquote it).
+fn yaml_pair(t: &str) -> Option<(&str, &str)> {
+    let t = t.trim();
+    if let Some(q) = t.chars().next().filter(|c| *c == '"' || *c == '\'') {
+        let end = t[1..].find(q)? + 1;
+        let rest = t[end + 1..].trim_start().strip_prefix(':')?;
+        return Some((&t[1..end], rest));
+    }
+    let (k, v) = t.split_once(':')?;
+    Some((k.trim(), v))
+}
+
+/// The comma-separated items of a YAML flow map body (`a: 1, "b, c": 2`
+/// without the braces), splitting only on commas outside quotes.
+fn yaml_flow_items(body: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    let mut quote: Option<char> = None;
+    let mut start = 0;
+    for (i, c) in body.char_indices() {
+        match quote {
+            Some(q) if c == q => quote = None,
+            Some(_) => {}
+            None if c == '"' || c == '\'' => quote = Some(c),
+            None if c == ',' => {
+                out.push(body[start..i].trim());
+                start = i + 1;
+            }
+            None => {}
+        }
+    }
+    out.push(body[start..].trim());
+    out.retain(|s| !s.is_empty());
+    out
+}
+
+/// Record one `nodeColors` entry. An empty or `null` colour is skipped
+/// (the node keeps the palette); a repeated label keeps its last colour,
+/// as a YAML loader that tolerates duplicate keys would.
+fn set_node_color(cfg: &mut SankeyConfig, label: &str, color: String) {
+    let color = color.trim().to_string();
+    if label.is_empty() || color.is_empty() || color == "null" || color == "~" {
+        return;
+    }
+    if let Some(slot) = cfg.node_colors.iter_mut().find(|(l, _)| l == label) {
+        slot.1 = color;
+    } else {
+        cfg.node_colors.push((label.to_string(), color));
     }
 }
 
@@ -6041,6 +6142,50 @@ mod tests {
         assert_eq!(d.config.node_width, 4.0);
         // `pie`'s useWidth must not leak into sankey's width.
         assert_eq!(d.config.width, 600.0);
+    }
+
+    #[test]
+    fn sankey_node_colors_read_block_and_flow_maps() {
+        // mermaid 12's `nodeColors` (label -> colour) was ignored.
+        let d = sankey(
+            "---\nconfig:\n  sankey:\n    nodeColors:\n      Coal: \"#333333\"\n      \
+             \"Industry, light\": '#ff8800'\n      width: \"#123456\"\n    nodeWidth: 4\n\
+             ---\nsankey-beta\nCoal,width,1\n",
+        );
+        assert_eq!(
+            d.config.node_colors,
+            [
+                ("Coal".to_string(), "#333333".to_string()),
+                ("Industry, light".to_string(), "#ff8800".to_string()),
+                ("width".to_string(), "#123456".to_string()),
+            ]
+        );
+        // A node NAMED like a config key stays a colour entry, and the
+        // block ends where the indentation returns to sankey's keys.
+        assert_eq!(d.config.width, 600.0);
+        assert_eq!(d.config.node_width, 4.0);
+
+        let d = sankey(
+            "---\nconfig:\n  sankey:\n    nodeColors: { A: red, \"B, c\": \"#00f\", D: null }\n\
+             ---\nsankey-beta\nA,B,1\n",
+        );
+        assert_eq!(
+            d.config.node_colors,
+            [
+                ("A".to_string(), "red".to_string()),
+                ("B, c".to_string(), "#00f".to_string()),
+            ],
+            "a null colour keeps the palette"
+        );
+    }
+
+    #[test]
+    fn sankey_label_style_reads_outlined() {
+        let d =
+            sankey("---\nconfig:\n  sankey:\n    labelStyle: Outlined\n---\nsankey-beta\nA,B,1\n");
+        assert_eq!(d.config.label_style, SankeyLabelStyle::Outlined);
+        let d = sankey("---\nconfig:\n  sankey:\n    labelStyle: fancy\n---\nsankey-beta\nA,B,1\n");
+        assert_eq!(d.config.label_style, SankeyLabelStyle::Legacy);
     }
 
     #[test]

@@ -1432,10 +1432,26 @@ pub enum SankeyAlignment {
     Center,
 }
 
+/// How sankey node labels are drawn (`config.sankey.labelStyle`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SankeyLabelStyle {
+    /// Plain text beside the node — mermaid's default.
+    #[default]
+    Legacy,
+    /// Text over a white halo so it stays readable across ribbons; as
+    /// in mermaid, labels left of the busiest column hang off their
+    /// node's left side.
+    Outlined,
+}
+
 /// The `config.sankey.*` block from YAML frontmatter. Defaults mirror
 /// mermaid's `config.schema.yaml` exactly, so a diagram with no config
 /// renders the way mermaid renders it.
+///
+/// `#[non_exhaustive]`: build one with `SankeyConfig::default()` and
+/// set the fields you need.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct SankeyConfig {
     pub width: f64,
     pub height: f64,
@@ -1448,6 +1464,12 @@ pub struct SankeyConfig {
     pub suffix: String,
     pub node_width: f64,
     pub node_padding: f64,
+    /// `nodeColors`: node label → CSS colour, in source order. A listed
+    /// node is painted in that colour verbatim (escaped in the SVG);
+    /// the rest take the palette.
+    pub node_colors: Vec<(String, String)>,
+    /// `labelStyle`: plain or haloed labels.
+    pub label_style: SankeyLabelStyle,
 }
 
 impl Default for SankeyConfig {
@@ -1462,6 +1484,8 @@ impl Default for SankeyConfig {
             suffix: String::new(),
             node_width: 10.0,
             node_padding: 12.0,
+            node_colors: Vec::new(),
+            label_style: SankeyLabelStyle::Legacy,
         }
     }
 }
