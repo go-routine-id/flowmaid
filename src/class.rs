@@ -264,7 +264,8 @@ fn assemble(d: &ClassDiagram, b: Built, mut scene: Scene, budget: usize) -> Clas
             std::mem::swap(&mut e.ends.start, &mut e.ends.end);
         }
     }
-    orthogonalize(&mut scene);
+    let heads: Vec<f64> = d.relations.iter().map(|r| glyph_size(r.kind).1).collect();
+    orthogonalize(&mut scene, &heads);
     // Rerouting moved labels onto their new lines, where one may now
     // cover another label or sit under a stroke; the glyph ends are
     // still marked, so labels keep off them too.
@@ -341,27 +342,48 @@ const ORTHO_INSET: f64 = 24.0;
 /// and jogs between them; one whose way between is blocked by boxes (a
 /// back-edge bow) runs a lane at the bow's outer extent; an edge
 /// between perpendicular faces turns once (L). Jogs step aside from
-/// runs already placed; a route that would cross a box keeps its
-/// curve. Edges the router routed (axis-aligned waypoints) are kept as
-/// routed; a label moves onto its new line.
-fn orthogonalize(sc: &mut Scene) {
+/// runs already placed; a route that would cross a box, or lie on
+/// another route, keeps its curve. Edges the router routed
+/// (axis-aligned waypoints) are kept as routed; a label moves onto its
+/// new line. `heads[j]` is the half width of edge `j`'s end glyph (at
+/// its end; missing = none), so ends sharing a face keep their glyphs
+/// apart.
+fn orthogonalize(sc: &mut Scene, heads: &[f64]) {
     let laid = sc.edges.clone();
-    let (curves, cramped) = ortho_pass(&sc.nodes, &mut sc.edges, true);
-    if curves > 0 && cramped {
+    let (mut score, mut cramped) = ortho_pass(&sc.nodes, &mut sc.edges, heads, true, false);
+    let mut soft = false;
+    if score.0 > 0 {
+        // Long and routed ends held where they are can leave another
+        // edge no way out: let them spread too when that routes more.
+        let mut alt = laid.clone();
+        let (alt_score, alt_cramped) = ortho_pass(&sc.nodes, &mut alt, heads, true, true);
+        if alt_score < score {
+            (sc.edges, score, cramped, soft) = (alt, alt_score, alt_cramped, true);
+        }
+    }
+    if cramped && score > (0, 0) {
         // Roomy lanes can use up a crowded gap: pack it tight instead
-        // when that leaves fewer edges on their curves.
+        // when that leaves fewer edges on their curves, or as many
+        // with fewer crossings and covered labels.
         let mut tight = laid;
-        if ortho_pass(&sc.nodes, &mut tight, false).0 < curves {
+        if ortho_pass(&sc.nodes, &mut tight, heads, false, soft).0 < score {
             sc.edges = tight;
         }
     }
 }
 
-/// One [`orthogonalize`] pass over `edges` among `nodes`; `room` =
-/// keep [`ORTHO_ROOM`] between parallel runs where a gap allows. Returns
-/// how many free edges kept their curve, and whether any candidate was
+/// One [`orthogonalize`] pass over `edges` among `nodes` (`heads` as
+/// there); `room` = keep [`ORTHO_ROOM`] between parallel runs where a
+/// gap allows; `soft` = [`Hold::Soft`] ends spread like free ones. Returns (how many free edges kept their curve, what the
+/// routes drawn cost apart from cramping) and whether any candidate was
 /// cramped (else a tight pass would choose the same).
-fn ortho_pass(nodes: &[SceneNode], edges: &mut [SceneEdge], room: bool) -> (usize, bool) {
+fn ortho_pass(
+    nodes: &[SceneNode],
+    edges: &mut [SceneEdge],
+    heads: &[f64],
+    room: bool,
+    soft: bool,
+) -> ((usize, usize), bool) {
     let rects: Vec<Rect> = nodes
         .iter()
         .map(|n| {
@@ -391,20 +413,33 @@ fn ortho_pass(nodes: &[SceneNode], edges: &mut [SceneEdge], room: bool) -> (usiz
     };
     let free = |e: &SceneEdge| e.from != e.to && e.meta.curve.is_none() && !routed(e);
     // The edge ends on each face of each box: (edge, at start, place
-    // along the face, free to move). A long edge's ends stay with its
-    // layout channels; a routed edge's with its route.
+    // along the face, free to move). A routed edge's ends stay with its
+    // route; a long edge's move too, its chain jogging into its first
+    // channel.
     let mut faces: BTreeMap<(usize, (i8, i8)), Vec<FaceEnd>> = BTreeMap::new();
     for (j, e) in edges.iter().enumerate() {
         let Some((ia, ib)) = ends_of(e) else { continue };
         let (a, b) = edge_ends(e);
-        let movable = free(e) && e.waypoints.is_empty();
+        let corners = if routed(e) {
+            corners_of(&e.waypoints)
+        } else {
+            Vec::new()
+        };
         for (i, p, start) in [(ia, a, true), (ib, b, false)] {
             let n = face_normal(&nodes[i], p);
             let along = if n.0 == 0.0 { p.0 } else { p.1 };
+            // A routed end moves when its final leg can slide with it.
+            let hold = if free(e) && e.waypoints.is_empty() {
+                Hold::Free
+            } else if free(e) || slides(&corners, start, n) {
+                Hold::Soft
+            } else {
+                Hold::Fixed
+            };
             faces
                 .entry((i, face_key(n)))
                 .or_default()
-                .push((j, start, along, movable));
+                .push((j, start, along, hold));
         }
     }
     // Free ends sharing a face spread evenly over the stretch between
@@ -412,43 +447,140 @@ fn ortho_pass(nodes: &[SceneNode], edges: &mut [SceneEdge], room: bool) -> (usiz
     // them: mermaid's class edges leave a box well inside its
     // corners. An end alone on its face slides later, to line up with
     // its other end.
-    let mut moved: HashMap<(usize, bool), (f64, f64)> = HashMap::new();
-    for (&(i, key), ends) in &faces {
+    let mut moved = spread_faces(&faces, &rects, heads, soft);
+    // A routed edge whose end moved slides its final leg along with it
+    // (the leg before stretches to meet it) — unless a leg would then
+    // cross a box or run along another routed edge: such an edge stays
+    // as routed, and its faces spread again around it.
+    let routed_runs: Vec<(usize, Run)> = edges
+        .iter()
+        .enumerate()
+        .filter(|(_, e)| routed(e))
+        .flat_map(|(j, e)| {
+            corners_of(&e.waypoints)
+                .windows(2)
+                .map(|w| (j, Run::of(w[0], w[1])))
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    let slid = |j: usize, e: &SceneEdge, moved: &HashMap<(usize, bool), (f64, f64)>| {
+        let (ma, mb) = (moved.get(&(j, true)), moved.get(&(j, false)));
+        if !routed(e) || (ma.is_none() && mb.is_none()) {
+            return None;
+        }
+        let (ia, ib) = ends_of(e)?;
+        let mut c = corners_of(&e.waypoints);
+        for (at_start, to) in [(true, ma), (false, mb)] {
+            if let Some(&p) = to {
+                slide(&mut c, at_start, p);
+            }
+        }
+        let n = c.len();
+        let clear = c.windows(2).enumerate().all(|(k, s)| {
+            let off_boxes = rects.iter().enumerate().all(|(b, &r)| {
+                let r = if b == ia || b == ib {
+                    (r.0 + 0.5, r.1 + 0.5, r.2 - 0.5, r.3 - 0.5)
+                } else {
+                    r
+                };
+                !rect_hits_segment(r, s[0], s[1])
+            });
+            // The legs a slide moved: the two at each moved end.
+            let moved_leg = (ma.is_some() && k < 2) || (mb.is_some() && k + 3 > n);
+            let r = Run::of(s[0], s[1]);
+            off_boxes
+                && (!moved_leg
+                    || routed_runs.iter().all(|&(o, q)| {
+                        o == j
+                            || q.vertical != r.vertical
+                            || (q.c - r.c).abs() >= ORTHO_SEP
+                            || q.h <= r.l + 2.0
+                            || r.h <= q.l + 2.0
+                    }))
+        });
+        clear.then_some(c)
+    };
+    let stuck: Vec<usize> = (0..edges.len())
+        .filter(|&j| {
+            let e = &edges[j];
+            routed(e)
+                && (moved.contains_key(&(j, true)) || moved.contains_key(&(j, false)))
+                && slid(j, e, &moved).is_none()
+        })
+        .collect();
+    if !stuck.is_empty() {
+        for end in faces.values_mut().flatten() {
+            if stuck.contains(&end.0) {
+                end.3 = Hold::Fixed;
+            }
+        }
+        moved = spread_faces(&faces, &rects, heads, soft);
+    }
+    for j in 0..edges.len() {
+        let Some(c) = slid(j, &edges[j], &moved) else {
+            continue;
+        };
+        let e = &mut edges[j];
+        let old = edge_ends(e);
+        let (a, b) = (c[0], c[c.len() - 1]);
+        for (k, d) in [
+            (0, (a.0 - old.0 .0, a.1 - old.0 .1)),
+            (2, (b.0 - old.1 .0, b.1 - old.1 .1)),
+        ] {
+            for q in &mut e.bezier[k..k + 2] {
+                *q = (q.0 + d.0, q.1 + d.1);
+            }
+        }
+        e.waypoints = crate::router::smooth(&c, ORTHO_R);
+        let line = edge_polyline(e);
+        if let Some((_, m, _)) = &mut e.label {
+            *m = nearest_on(&line, *m);
+        }
+    }
+    // A routed edge lying along an earlier one (the router can leave
+    // two runs a pixel or two apart) is routed again here, and keeps
+    // the router's route only if that fails.
+    let mut redo = vec![false; edges.len()];
+    let mut runs = Runs::default();
+    for (j, e) in edges.iter().enumerate().filter(|(_, e)| routed(e)) {
+        let mine: Vec<Run> = e
+            .waypoints
+            .windows(2)
+            .map(|w| Run::of(w[0], w[1]))
+            .collect();
+        redo[j] = e.from != e.to
+            && mine.iter().any(|r| {
+                runs.within(r.vertical, r.c - ORTHO_SEP, r.c + ORTHO_SEP)
+                    .iter()
+                    .any(|q| q.l < r.h - 2.0 && r.l + 2.0 < q.h)
+            });
+        if !redo[j] {
+            for r in mine {
+                runs.push(r);
+            }
+        }
+    }
+    // Each end on a shared face reserves its square exit where the
+    // spread put it: until its own edge is drawn (or for good, if that
+    // keeps its curve) no other route may run along it.
+    for (&(_, key), ends) in &faces {
         if ends.len() < 2 {
             continue;
         }
-        let r = rects[i];
-        let (lo, hi) = if key.0 == 0 { (r.0, r.2) } else { (r.1, r.3) };
-        let mut ends = ends.clone();
-        ends.sort_by(|p, q| p.2.total_cmp(&q.2));
-        let mut from = (lo, 0);
-        for k in 0..=ends.len() {
-            let fixed = ends.get(k).map(|e| !e.3);
-            if fixed == Some(false) {
+        let n = (f64::from(key.0), f64::from(key.1));
+        for &(j, start, _, _) in ends {
+            let e = &edges[j];
+            if !free(e) && !redo[j] {
                 continue;
             }
-            // Free ends `from.1 .. k` share the stretch up to here.
-            let to = ends.get(k).map_or(hi, |e| e.2);
-            let group = &ends[from.1..k];
-            let step = (to - from.0) / (group.len() + 1) as f64;
-            if step >= ORTHO_SEP * 2.0 {
-                for (slot, &(j, start, _, _)) in group.iter().enumerate() {
-                    let t = from.0 + (slot + 1) as f64 * step;
-                    let p = if key.0 == 0 {
-                        (t, if key.1 > 0 { r.3 } else { r.1 })
-                    } else {
-                        (if key.0 > 0 { r.2 } else { r.0 }, t)
-                    };
-                    moved.insert((j, start), p);
-                }
-            }
-            from = (to, k + 1);
-        }
-    }
-    let mut runs = Runs::default();
-    for e in edges.iter().filter(|e| routed(e)) {
-        for w in e.waypoints.windows(2) {
-            runs.push(Run::of(w[0], w[1]));
+            let (a, b) = edge_ends(e);
+            let p = moved
+                .get(&(j, start))
+                .copied()
+                .unwrap_or(if start { a } else { b });
+            let mut stub = Run::of(p, (p.0 + n.0 * ORTHO_STUB, p.1 + n.1 * ORTHO_STUB));
+            stub.owner = j;
+            runs.push(stub);
         }
     }
     // Shortest first: short edges have the fewest ways to go, and a
@@ -459,8 +591,12 @@ fn ortho_pass(nodes: &[SceneNode], edges: &mut [SceneEdge], room: bool) -> (usiz
     // free one once handled. Only their labels count against a route —
     // a free edge's label still sits on its old curve and moves onto
     // its new line when that edge's turn comes.
-    let mut settled: Vec<bool> = edges.iter().map(|e| !free(e)).collect();
-    let mut curves = 0;
+    let mut settled: Vec<bool> = edges
+        .iter()
+        .zip(&redo)
+        .map(|(e, &redo)| !free(e) && !redo)
+        .collect();
+    let (mut curves, mut cost) = (0, 0);
     let cramped = Cell::new(false);
     order.sort_by(|&p, &q| {
         let span = |e: &SceneEdge| {
@@ -471,7 +607,7 @@ fn ortho_pass(nodes: &[SceneNode], edges: &mut [SceneEdge], room: bool) -> (usiz
     });
     for j in order {
         let e = &edges[j];
-        if !free(e) {
+        if !free(e) && !redo[j] {
             continue;
         }
         let Some((ia, ib)) = ends_of(e) else { continue };
@@ -503,12 +639,18 @@ fn ortho_pass(nodes: &[SceneNode], edges: &mut [SceneEdge], room: bool) -> (usiz
             labels: &labels,
             ia,
             ib,
+            j,
             runs: &runs,
             room,
             cramped: &cramped,
         };
-        let corners = if e.waypoints.len() >= 2 {
-            ctx.chain(&e.waypoints, na, nb)
+        let corners = if e.waypoints.len() >= 2 && !redo[j] {
+            // From the ends as spread: the chain jogs from a moved end
+            // into its first channel.
+            let mut chain = e.waypoints.clone();
+            let last = chain.len() - 1;
+            (chain[0], chain[last]) = (a, b);
+            ctx.chain(&chain, na, nb)
         } else if na.0 * nb.0 + na.1 * nb.1 < -0.5 {
             ctx.opposite(e, a, b, na, alone)
         } else if (na.0 * nb.0 + na.1 * nb.1).abs() < 0.5 {
@@ -517,9 +659,43 @@ fn ortho_pass(nodes: &[SceneNode], edges: &mut [SceneEdge], room: bool) -> (usiz
             None
         };
         let Some(corners) = corners else {
-            curves += 1;
+            if redo[j] {
+                // The router's route stays: later routes keep off it.
+                for w in edges[j].waypoints.windows(2) {
+                    runs.push(Run::of(w[0], w[1]));
+                }
+            } else {
+                // The curve stays, from its ends as spread (where the
+                // other ends on those faces left it room).
+                let e = &mut edges[j];
+                let (a0, b0) = edge_ends(e);
+                let (da, db) = ((a.0 - a0.0, a.1 - a0.1), (b.0 - b0.0, b.1 - b0.1));
+                for (k, d) in [(0, da), (2, db)] {
+                    for q in &mut e.bezier[k..k + 2] {
+                        *q = (q.0 + d.0, q.1 + d.1);
+                    }
+                }
+                let n = e.waypoints.len();
+                if n >= 2 {
+                    e.waypoints[0] = a;
+                    e.waypoints[n - 1] = b;
+                } else {
+                    // A cubic leaves each face square, along its control
+                    // leg, for about the leg's first third: later routes
+                    // keep off that stretch.
+                    let q = e.bezier;
+                    for (p, c) in [(q[0], q[1]), (q[3], q[2])] {
+                        let r = (p.0 + (c.0 - p.0) / 3.0, p.1 + (c.1 - p.1) / 3.0);
+                        if (p.0 - r.0).abs() < 0.5 || (p.1 - r.1).abs() < 0.5 {
+                            runs.push(Run::of(p, r));
+                        }
+                    }
+                }
+                curves += 1;
+            }
             continue;
         };
+        cost += Ortho { room: false, ..ctx }.cost(&corners).unwrap_or(0);
         let spot = edges[j]
             .label
             .as_ref()
@@ -527,38 +703,391 @@ fn ortho_pass(nodes: &[SceneNode], edges: &mut [SceneEdge], room: bool) -> (usiz
         for w in corners.windows(2) {
             runs.push(Run::of(w[0], w[1]));
         }
-        let (a, b) = (corners[0], corners[corners.len() - 1]);
-        let e = &mut edges[j];
-        if corners.len() == 2 {
-            // Straight: a straight cubic, no waypoints — sampled as
-            // finely as any curve (two bare waypoints would be sampled
-            // as just their ends, which the label stage would read as
-            // one long arrowhead).
-            let at = |t: f64| (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t);
-            e.bezier = [a, at(1.0 / 3.0), at(2.0 / 3.0), b];
-            e.waypoints.clear();
-        } else {
-            // The single-cubic fallback keeps square ends too.
-            let k = ORTHO_STUB;
-            e.bezier = [
-                a,
-                (a.0 + na.0 * k, a.1 + na.1 * k),
-                (b.0 + nb.0 * k, b.1 + nb.1 * k),
-                b,
-            ];
-            e.waypoints = crate::router::smooth(&corners, ORTHO_R);
+        draw_route(&mut edges[j], &corners, (na, nb), spot);
+    }
+    // Last, a line still lying along another (two the router drew, a
+    // slid leg, a curve kept from a spread end) is drawn again against
+    // all the others, and stays as it is if it cannot be.
+    let mut lines: Vec<Vec<Run>> = edges.iter().map(straight_runs).collect();
+    let on = |r: &Run, q: &Run| {
+        q.vertical == r.vertical
+            && (q.c - r.c).abs() < ORTHO_SEP - 0.5
+            && q.l < r.h - 2.0
+            && r.l + 2.0 < q.h
+    };
+    for j in 0..edges.len() {
+        let e = &edges[j];
+        let merged = lines[j].iter().any(|r| {
+            lines
+                .iter()
+                .enumerate()
+                .any(|(k, l)| k != j && l.iter().any(|q| on(r, q)))
+        });
+        if !merged || e.from == e.to || e.meta.curve.is_some() {
+            continue;
         }
-        let line = edge_polyline(e);
-        if let (Some((_, m, _)), Some(spot)) = (&mut e.label, spot) {
-            *m = nearest_on(&line, spot);
+        let Some((ia, ib)) = ends_of(e) else { continue };
+        let mut others = Runs::default();
+        for (k, l) in lines.iter().enumerate() {
+            if k != j {
+                for &q in l {
+                    others.push(q);
+                }
+            }
+        }
+        let labels: Vec<Rect> = edges
+            .iter()
+            .enumerate()
+            .filter(|&(k, _)| k != j)
+            .filter_map(|(_, o)| o.label.as_ref())
+            .map(|(_, m, w)| {
+                (
+                    m.0 - w / 2.0 - 1.0,
+                    m.1 - 11.0,
+                    m.0 + w / 2.0 + 1.0,
+                    m.1 + 11.0,
+                )
+            })
+            .collect();
+        let ctx = Ortho {
+            rects: &rects,
+            labels: &labels,
+            ia,
+            ib,
+            j,
+            runs: &others,
+            room: false,
+            cramped: &cramped,
+        };
+        let (a, b) = edge_ends(e);
+        let (na, nb) = (face_normal(&nodes[ia], a), face_normal(&nodes[ib], b));
+        let alone = (
+            faces[&(ia, face_key(na))].len() == 1,
+            faces[&(ib, face_key(nb))].len() == 1,
+        );
+        let corners = if na.0 * nb.0 + na.1 * nb.1 < -0.5 {
+            ctx.opposite(e, a, b, na, alone)
+        } else if (na.0 * nb.0 + na.1 * nb.1).abs() < 0.5 {
+            ctx.perpendicular(a, b, na, nb)
+        } else {
+            None
+        };
+        if let Some(corners) = corners {
+            let spot = e.label.as_ref().map(|l| ctx.label_spot(&corners, l.2, l.1));
+            draw_route(&mut edges[j], &corners, (na, nb), spot);
+            lines[j] = straight_runs(&edges[j]);
         }
     }
-    (curves, cramped.get())
+    ((curves, cost), cramped.get())
+}
+
+/// Draw `e` along orthogonal route `corners` (its ends square to faces
+/// with outward normals `n`), its label at `spot` brought onto the line.
+fn draw_route(
+    e: &mut SceneEdge,
+    corners: &[(f64, f64)],
+    (na, nb): ((f64, f64), (f64, f64)),
+    spot: Option<(f64, f64)>,
+) {
+    let (a, b) = (corners[0], corners[corners.len() - 1]);
+    if corners.len() == 2 {
+        // Straight: a straight cubic, no waypoints — sampled as finely
+        // as any curve (two bare waypoints would be sampled as just
+        // their ends, which the label stage would read as one long
+        // arrowhead).
+        let at = |t: f64| (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t);
+        e.bezier = [a, at(1.0 / 3.0), at(2.0 / 3.0), b];
+        e.waypoints.clear();
+    } else {
+        // The single-cubic fallback keeps square ends too.
+        let k = ORTHO_STUB;
+        e.bezier = [
+            a,
+            (a.0 + na.0 * k, a.1 + na.1 * k),
+            (b.0 + nb.0 * k, b.1 + nb.1 * k),
+            b,
+        ];
+        e.waypoints = crate::router::smooth(corners, ORTHO_R);
+    }
+    let line = edge_polyline(e);
+    if let (Some((_, m, _)), Some(spot)) = (&mut e.label, spot) {
+        *m = nearest_on(&line, spot);
+    }
+}
+
+/// The straight axis-aligned stretches of `e` as drawn: its route's
+/// legs, the whole of a straight cubic, or a curve's ends as far as it
+/// runs straight out of its faces (within a pixel of the line it
+/// leaves along).
+fn straight_runs(e: &SceneEdge) -> Vec<Run> {
+    let pts = if e.waypoints.is_empty() {
+        let q = e.bezier;
+        let line = [q[1], q[2]].iter().all(|c| {
+            ((q[3].0 - q[0].0) * (c.1 - q[0].1) - (q[3].1 - q[0].1) * (c.0 - q[0].0)).abs() < 1e-6
+        });
+        if !line {
+            let pts = edge_polyline(e);
+            let mut tails = Vec::new();
+            for (p, rest) in [
+                (q[0], pts.iter().collect::<Vec<_>>()),
+                (q[3], pts.iter().rev().collect()),
+            ] {
+                // Along x (a horizontal stretch) or along y.
+                for along_x in [true, false] {
+                    let off = |r: &(f64, f64)| {
+                        if along_x {
+                            (r.1 - p.1).abs()
+                        } else {
+                            (r.0 - p.0).abs()
+                        }
+                    };
+                    let reach = rest.iter().take_while(|r| off(r) < 1.0).last();
+                    if let Some(&&r) = reach {
+                        let r = if along_x { (r.0, p.1) } else { (p.0, r.1) };
+                        if (r.0 - p.0).abs() + (r.1 - p.1).abs() > 4.0 {
+                            tails.push(Run::of(p, r));
+                        }
+                    }
+                }
+            }
+            return tails;
+        }
+        vec![q[0], q[3]]
+    } else {
+        corners_of(&e.waypoints)
+    };
+    pts.windows(2)
+        .filter(|w| (w[0].0 - w[1].0).abs() < 0.5 || (w[0].1 - w[1].1).abs() < 0.5)
+        .map(|w| Run::of(w[0], w[1]))
+        .collect()
 }
 
 /// An edge end on a box face: (edge, at its start, place along the
-/// face, free to move).
-type FaceEnd = (usize, bool, f64, bool);
+/// face, how it may move).
+type FaceEnd = (usize, bool, f64, Hold);
+
+/// How an end may move when the ends on its face spread.
+#[derive(Clone, Copy, PartialEq)]
+enum Hold {
+    /// A free edge's plain curve: moves.
+    Free,
+    /// A long edge's chain end, or a routed end that can slide: moves
+    /// only when, held, the face would crowd glyphs — moving it costs
+    /// its route a jog.
+    Soft,
+    /// Stays.
+    Fixed,
+}
+
+/// The corners of an axis-aligned route `pts` (its points with each
+/// one in line with both neighbours dropped).
+fn corners_of(pts: &[(f64, f64)]) -> Vec<(f64, f64)> {
+    let mut c: Vec<(f64, f64)> = Vec::with_capacity(pts.len());
+    for &p in pts {
+        if c.last()
+            .is_some_and(|q| (q.0 - p.0).abs() < 0.5 && (q.1 - p.1).abs() < 0.5)
+        {
+            continue;
+        }
+        if let [.., u, v] = c[..] {
+            let in_line = |i: usize| {
+                let k = |q: (f64, f64)| if i == 0 { q.0 } else { q.1 };
+                (k(u) - k(v)).abs() < 0.5 && (k(v) - k(p)).abs() < 0.5
+            };
+            if in_line(0) || in_line(1) {
+                c.pop();
+            }
+        }
+        c.push(p);
+    }
+    c
+}
+
+/// Whether the end (`at_start` or last) of a route with corners `c`,
+/// on a face with outward normal `n`, can slide along that face: its
+/// final leg leaves the face square, at least [`ORTHO_STUB`] long, and
+/// turns at a knee, so moving the leg sideways only stretches the leg
+/// before it. (A shorter final leg is a stair step into a channel
+/// right by the face; moving it would leave that channel where the
+/// end was.)
+fn slides(c: &[(f64, f64)], at_start: bool, n: (f64, f64)) -> bool {
+    if c.len() < 3 {
+        return false;
+    }
+    let (end, knee) = if at_start {
+        (c[0], c[1])
+    } else {
+        (c[c.len() - 1], c[c.len() - 2])
+    };
+    // Square to a horizontal face = a vertical leg, and vice versa.
+    let vertical = (end.0 - knee.0).abs() < 0.5;
+    let long = (end.0 - knee.0).abs() + (end.1 - knee.1).abs() >= ORTHO_STUB;
+    vertical == (n.0 == 0.0) && long
+}
+
+/// Move the end (`at_start` or last) of corners `c` ([`slides`]) to
+/// `p`: its final leg moves sideways with it.
+fn slide(c: &mut [(f64, f64)], at_start: bool, p: (f64, f64)) {
+    let n = c.len();
+    let (end, knee) = if at_start { (0, 1) } else { (n - 1, n - 2) };
+    if (c[end].0 - c[knee].0).abs() < 0.5 {
+        c[knee].0 = p.0;
+    } else {
+        c[knee].1 = p.1;
+    }
+    c[end] = p;
+}
+
+/// Clear space kept between the outlines of two end glyphs side by
+/// side on one face.
+const GLYPH_GAP: f64 = 4.0;
+
+/// Length a face needs for ends whose glyphs are `halves` wide (half
+/// widths) to sit apart as [`spread`] places them when crowded: each
+/// outer glyph just inside a corner, neighbours the widest pair's
+/// spacing apart. 0 for fewer than two ends.
+fn face_room(halves: &[f64]) -> f64 {
+    if halves.len() < 2 {
+        return 0.0;
+    }
+    let widest = halves.iter().copied().fold(0.0, f64::max);
+    let step = (2.0 * widest + GLYPH_GAP).max(2.0 * ORTHO_SEP);
+    2.0 * (widest + 2.0) + (halves.len() - 1) as f64 * step
+}
+
+/// Where [`spread`] puts the moving ends of every face with two ends or
+/// more (`faces` as `ortho_pass` collects them, `rects` the boxes,
+/// `heads` the glyph half widths): edge end -> its new place. Soft ends
+/// move only on a face that would crowd without them moving, or
+/// everywhere with `soft`.
+fn spread_faces(
+    faces: &BTreeMap<(usize, (i8, i8)), Vec<FaceEnd>>,
+    rects: &[Rect],
+    heads: &[f64],
+    soft: bool,
+) -> HashMap<(usize, bool), (f64, f64)> {
+    // An end's glyph half width (the glyph sits at an edge's end).
+    let half = |&(j, start, _, _): &FaceEnd| {
+        if start {
+            0.0
+        } else {
+            heads.get(j).copied().unwrap_or(0.0)
+        }
+    };
+    let mut moved = HashMap::new();
+    for (&(i, key), ends) in faces {
+        if ends.len() < 2 {
+            continue;
+        }
+        let r = rects[i];
+        let (lo, hi) = if key.0 == 0 { (r.0, r.2) } else { (r.1, r.3) };
+        let mut ends = ends.clone();
+        ends.sort_by(|p, q| p.2.total_cmp(&q.2));
+        // Places along the face for the ends that move — the soft ones
+        // too when `soft`.
+        let place = |soft: bool| {
+            let mut got: Vec<((usize, bool), f64)> = Vec::new();
+            // (place, index of the next end, glyph half width of the
+            // fixed end there — `None` at a corner).
+            let mut from = (lo, 0, None);
+            for k in 0..=ends.len() {
+                let fixed = ends
+                    .get(k)
+                    .map(|e| !(e.3 == Hold::Free || (soft && e.3 == Hold::Soft)));
+                if fixed == Some(false) {
+                    continue;
+                }
+                // Moving ends `from.1 .. k` share the stretch up to here.
+                let to = ends.get(k).map_or((hi, None), |e| (e.2, Some(half(e))));
+                let group = &ends[from.1..k];
+                let halves: Vec<f64> = group.iter().map(half).collect();
+                if let Some(places) = spread((from.0, from.2), to, &halves) {
+                    for (&(j, start, _, _), t) in group.iter().zip(places) {
+                        got.push(((j, start), t));
+                    }
+                }
+                from = (to.0, k + 1, to.1);
+            }
+            got
+        };
+        // Whether, placed so, two neighbours' glyphs touch or their
+        // lanes lie closer than ORTHO_SEP.
+        let crowded = |got: &[((usize, bool), f64)]| {
+            let mut at: Vec<(f64, f64)> = ends
+                .iter()
+                .map(|e| {
+                    let t = got.iter().find(|g| g.0 == (e.0, e.1)).map_or(e.2, |g| g.1);
+                    (t, half(e))
+                })
+                .collect();
+            at.sort_by(|p, q| p.0.total_cmp(&q.0));
+            at.windows(2).any(|w| {
+                let gap = w[1].0 - w[0].0;
+                gap < ORTHO_SEP || gap < w[0].1 + w[1].1 + GLYPH_GAP
+            })
+        };
+        let mut got = place(soft);
+        if !soft && ends.iter().any(|e| e.3 == Hold::Soft) && crowded(&got) {
+            got = place(true);
+        }
+        for ((j, start), t) in got {
+            let p = if key.0 == 0 {
+                (t, if key.1 > 0 { r.3 } else { r.1 })
+            } else {
+                (if key.0 > 0 { r.2 } else { r.0 }, t)
+            };
+            moved.insert((j, start), p);
+        }
+    }
+    moved
+}
+
+/// Places along a face for free ends whose glyphs are `halves` wide
+/// (half widths, 0 = no glyph), in order, between `lo` and `hi`: each a
+/// place and the half width of the fixed end there, `None` for a
+/// corner. Evenly, as far from the bounds as from each other, when
+/// that clears every glyph (and leaves lanes [`ORTHO_SEP`] apart);
+/// crowded, as far apart as the stretch allows with each glyph kept
+/// inside the corners. `None` leaves the ends where the port stage put
+/// them (nothing reads better there).
+fn spread(
+    (lo, lo_half): (f64, Option<f64>),
+    (hi, hi_half): (f64, Option<f64>),
+    halves: &[f64],
+) -> Option<Vec<f64>> {
+    let k = halves.len();
+    let (first, last) = (*halves.first()?, *halves.last()?);
+    let need = |a: f64, b: f64| (a + b + GLYPH_GAP).max(2.0 * ORTHO_SEP);
+    let mut worst = halves
+        .windows(2)
+        .map(|w| need(w[0], w[1]))
+        .fold(0.0, f64::max);
+    for (bound, h) in [(lo_half, first), (hi_half, last)] {
+        if let Some(b) = bound {
+            worst = worst.max(need(b, h));
+        }
+    }
+    let even = (hi - lo) / (k + 1) as f64;
+    if even >= worst.max(2.0 * ORTHO_SEP) {
+        return Some((1..=k).map(|i| lo + i as f64 * even).collect());
+    }
+    if k < 2 {
+        return None;
+    }
+    // Crowded: the outer ends close to the bounds — a glyph's half
+    // width plus a little inside a corner, a full spacing from a fixed
+    // end — and the rest evenly between.
+    let margin = |bound: Option<f64>, h: f64| bound.map_or(h + 2.0, |b| need(b, h));
+    let (m_lo, m_hi) = (margin(lo_half, first), margin(hi_half, last));
+    let step = (hi - lo - m_lo - m_hi) / (k - 1) as f64;
+    if step >= even && step >= ORTHO_SEP {
+        Some((0..k).map(|i| lo + m_lo + i as f64 * step).collect())
+    } else if even >= ORTHO_SEP {
+        Some((1..=k).map(|i| lo + i as f64 * even).collect())
+    } else {
+        None
+    }
+}
 
 /// One straight stretch of a placed orthogonal route: at `c` on the
 /// fixed axis, from `l` to `h` along the other; `vertical` = runs
@@ -569,6 +1098,10 @@ struct Run {
     l: f64,
     h: f64,
     vertical: bool,
+    /// The edge it belongs to when that edge is still to be drawn (an
+    /// end's reserved exit), else `usize::MAX`: an edge's own runs never
+    /// count against it.
+    owner: usize,
 }
 
 /// What an orthogonal route is checked against: every box (`ia`, `ib`
@@ -579,6 +1112,8 @@ struct Ortho<'a> {
     labels: &'a [Rect],
     ia: usize,
     ib: usize,
+    /// The edge being routed (its own reserved runs are no obstacle).
+    j: usize,
     runs: &'a Runs,
     /// Keep [`ORTHO_ROOM`] between parallel runs where there is room.
     room: bool,
@@ -629,7 +1164,7 @@ impl Ortho<'_> {
         for w in pts.windows(2) {
             let r = Run::of(w[0], w[1]);
             for q in self.runs.within(r.vertical, r.c - near, r.c + near) {
-                if q.l < r.h - 2.0 && r.l + 2.0 < q.h {
+                if q.owner != self.j && q.l < r.h - 2.0 && r.l + 2.0 < q.h {
                     let gap = (q.c - r.c).abs();
                     if gap < ORTHO_SEP {
                         return None;
@@ -641,7 +1176,7 @@ impl Ortho<'_> {
                 }
             }
             for q in self.runs.within(!r.vertical, r.l + 1.0, r.h - 1.0) {
-                if q.l + 1.0 < r.c && r.c < q.h - 1.0 {
+                if q.owner != self.j && q.l + 1.0 < r.c && r.c < q.h - 1.0 {
                     c += ORTHO_CROSSING;
                 }
             }
@@ -1009,6 +1544,7 @@ impl Run {
                 l: a.1.min(b.1),
                 h: a.1.max(b.1),
                 vertical: true,
+                owner: usize::MAX,
             }
         } else {
             Run {
@@ -1016,6 +1552,7 @@ impl Run {
                 l: a.0.min(b.0),
                 h: a.0.max(b.0),
                 vertical: false,
+                owner: usize::MAX,
             }
         }
     }
@@ -1169,10 +1706,38 @@ fn build(d: &ClassDiagram) -> Built {
         });
     }
 
+    // The glyph half widths of the ends each class takes on the face
+    // toward earlier ranks and the one toward later ranks (relations
+    // rank in source order; a note ranks before its class).
+    let mut ends: Vec<[Vec<f64>; 2]> = vec![[Vec::new(), Vec::new()]; n];
+    for r in &d.relations {
+        let (a, b) = r.source_order();
+        if a != b {
+            let h = glyph_size(r.kind).1;
+            let (ha, hb) = if r.head_left { (h, 0.0) } else { (0.0, h) };
+            ends[a][1].push(ha);
+            ends[b][0].push(hb);
+        }
+    }
+    for note in &d.notes {
+        if let Some(ci) = note.class {
+            ends[ci][0].push(0.0);
+        }
+    }
+    let horizontal = matches!(d.direction, Direction::LR | Direction::RL);
     let mut boxes = Vec::with_capacity(n);
     let mut sizes = Vec::with_capacity(n + d.notes.len());
-    for c in &d.classes {
-        let (b, size) = box_of(c);
+    for (c, ends) in d.classes.iter().zip(&ends) {
+        let (b, mut size) = box_of(c);
+        // A face across the flow grows to hold its ends' glyphs apart
+        // (`spread`): a box's width in TB / BT, its height in LR / RL
+        // (the operations compartment runs to the taller bottom).
+        let room = face_room(&ends[0]).max(face_room(&ends[1]));
+        if horizontal {
+            size.1 = size.1.max(room);
+        } else {
+            size.0 = size.0.max(room);
+        }
         boxes.push(b);
         sizes.push(size);
     }
@@ -2552,6 +3117,88 @@ mod tests {
                             "card {b:?} on a head\n{src}"
                         );
                     }
+                }
+            }
+        }
+    }
+
+    /// Verifier finding: ends sharing a face spread only when the even
+    /// step reached 16 px — a triangle's width — and long or routed
+    /// edges' ends never moved, so fan-ins drew glyphs touching or
+    /// overlapping (six onto a 96 px box 14 px apart; x3's RL Vehicle
+    /// five 16.3 px apart; x4's Logger arrows 12 px apart). Ends now
+    /// spread by their glyphs' widths, routed ends slide their final
+    /// leg, and a box whose face must hold more grows along it.
+    #[test]
+    fn end_glyphs_on_one_face_stay_apart() {
+        let fan6 = "classDiagram\nP <|-- A\nP <|-- B\nP <|-- C\nP <|-- D\nP <|-- E\nP <|-- F";
+        let rl_fan = "classDiagram
+    class Vehicle {
+        <<abstract>>
+        +String vin
+        +drive()* void
+    }
+    Vehicle <|-- Car
+    Vehicle <|-- Truck
+    Vehicle <|-- Bike
+    Vehicle <|-- Bus
+    Vehicle <|-- Van
+    Garage \"1\" *-- \"1..*\" Bay : has
+    Garage \"1\" o-- \"*\" Vehicle : stores
+    Owner \"1\" --> \"*\" Vehicle : owns";
+        let logger = "classDiagram
+    Controller --> Service : calls
+    Controller --> Validator : validates
+    Service --> Repository : reads
+    Service --> Cache : caches
+    Service ..> Logger : logs
+    Repository --> Database : queries
+    Cache ..> Logger : logs
+    Repository ..> Logger : logs
+    Validator ..> Logger
+    Controller ..> Logger";
+        let cycle = "classDiagram
+    A \"1\" --> \"0..*\" B : owns
+    B \"1\" --> \"1\" C : uses
+    C ..> A : calls back
+    A <|-- D
+    A <|-- E
+    A <|-- F
+    D o-- E : agg";
+        let mut cases: Vec<String> = Vec::new();
+        for src in [fan6, rl_fan, logger] {
+            cases.extend(["TB", "BT", "LR", "RL"].map(|dir| with_direction(src, dir)));
+        }
+        cases.extend(["TB", "BT"].map(|dir| with_direction(cycle, dir)));
+        for src in &cases {
+            let cs = scene(&cd(src));
+            let boxes: Vec<(String, Rect)> = (0..cs.rels.len())
+                .map(|j| {
+                    let h = rel_head(&cs, j);
+                    let pts: Vec<(f64, f64)> = h
+                        .polygon
+                        .iter()
+                        .chain(h.segments.iter().flatten())
+                        .copied()
+                        .collect();
+                    let bb = pts.iter().fold(
+                        (
+                            f64::INFINITY,
+                            f64::INFINITY,
+                            f64::NEG_INFINITY,
+                            f64::NEG_INFINITY,
+                        ),
+                        |b, p| (b.0.min(p.0), b.1.min(p.1), b.2.max(p.0), b.3.max(p.1)),
+                    );
+                    (cs.scene.edges[j].to.clone(), bb)
+                })
+                .filter(|(_, bb)| bb.0.is_finite())
+                .collect();
+            for (k, (ta, a)) in boxes.iter().enumerate() {
+                for (tb, b) in &boxes[k + 1..] {
+                    // Stroked 1.6 wide: a gap under that and they touch.
+                    let gap = (a.0.max(b.0) - a.2.min(b.2)).max(a.1.max(b.1) - a.3.min(b.3));
+                    assert!(gap >= 1.6, "glyphs on {ta} / {tb} {gap:.1} px apart\n{src}");
                 }
             }
         }
