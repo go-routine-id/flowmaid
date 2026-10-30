@@ -1,14 +1,17 @@
 //! Mindmap rendering, in the Mermaid style: the root sits at the centre
 //! and branches radiate outward, clockwise from 12 o'clock in source
-//! order. Every child hangs off its PARENT on a short spoke of one
-//! length ([`TRUNK`] from the root, [`SPOKE`] below that), and siblings
-//! are swept round their parent's outward direction, each taking the
-//! first direction where its whole subtree clears the siblings already
-//! placed — so leaves cluster round the node they belong to, boxes never
-//! overlap and connectors never cross. Every top-level branch gets a
-//! stable accent that its whole subtree fills, and the seven node shapes
-//! (default / rounded / square / circle / hexagon / bang / cloud) are
-//! drawn for real.
+//! order, sharing the whole circle. Every child hangs off its PARENT on
+//! a spoke, and siblings are swept round their parent's outward
+//! direction, each taking the first direction where its whole subtree
+//! clears the siblings already placed — so leaves cluster round the node
+//! they belong to, boxes never overlap and connectors never cross.
+//! Spokes start at [`TRUNK`] from the root and [`SPOKE`] below it; a
+//! crowded fan lengthens them only as far as it needs, and each child's
+//! own spoke is then shortened as far as it stays clear, so a small
+//! branch sits close in beside a bushy one. Every top-level branch gets
+//! a stable accent that its whole subtree fills, and the seven node
+//! shapes (default / rounded / square / circle / hexagon / bang / cloud)
+//! are drawn for real.
 //!
 //! Like `pie`/`seq` there is nothing auto-routed: [`scene`] computes
 //! every coordinate a painter needs, [`route`] rebuilds the scene from
@@ -42,13 +45,23 @@ pub const FONT: u32 = 14;
 pub const ROOT_FONT: f64 = 18.0;
 /// Font size of the first-level branch labels (semibold).
 pub const BRANCH_FONT: f64 = 15.0;
-/// Visible connector length (border to border) from the root to a
-/// first-level branch.
+/// Shortest visible connector (border to border) from the root to a
+/// first-level branch: the length every trunk has while the branches
+/// fit round the root at it.
 pub const TRUNK: f64 = 46.0;
-/// Visible connector length from any other node to its children.
+/// Shortest visible connector from any other node to its children (as
+/// [`TRUNK`], the length while the children fit at it).
 pub const SPOKE: f64 = 34.0;
 /// Clear space kept between any two node boxes.
 const SEP: f64 = 10.0;
+/// Widest fan (radians) of a first-level node when a crowded root lays
+/// its branches out narrow (see [`fan_centres`]).
+const NARROW_FAN: f64 = 100.0 * PI / 180.0;
+/// Fewest root branches for the narrow layout to be tried.
+const NARROW_FROM: usize = 8;
+/// Longest connector (px) the normal layout of a crowded root may have
+/// before the narrow layout is tried.
+const NARROW_TRUNK: f64 = 4.0 * TRUNK;
 /// Fan (radians) a non-root node first spreads its children over, so
 /// they stay in front of it.
 const MAX_FAN: f64 = 160.0 * PI / 180.0;
@@ -61,9 +74,17 @@ const MAX_FAN_WIDE: f64 = 280.0 * PI / 180.0;
 const FAN_PER_CHILD: f64 = 30.0 * PI / 180.0;
 /// Attempts per fan before it gives up, each with its spokes ×1.25.
 const FAN_GROWTHS: usize = 24;
+/// Spoke searches stop once the gap that fits is within this factor of
+/// one that does not (a few px on a long trunk).
+const GAP_TOLERANCE: f64 = 1.06;
+/// Most bisection steps a spoke search takes.
+const GAP_BISECTIONS: usize = 7;
+/// Factor by which children slide in per round once their fan fits
+/// (see [`Fan::shorten`]).
+const SHORTEN_STEP: f64 = 0.85;
 /// Box-pair tests the fan layout may run before it falls back to the
-/// ring layout — a time guard for very large, bushy maps (ordinary maps
-/// of a hundred nodes use a small fraction of it).
+/// ring layout — a time guard for very large or pathological maps (a
+/// realistic map of a hundred nodes uses about a quarter of it).
 const FAN_WORK: usize = 6_000_000;
 /// Side of an `::icon(…)` glyph box, drawn left of the label.
 pub const ICON: f64 = 14.0;
@@ -347,7 +368,21 @@ const SEG_CLEAR: f64 = 5.0;
 /// `s` passes through (or within [`SEG_CLEAR`] of) one of `sh`'s boxes
 /// moved by `o`?
 fn seg_hits_shape(s: Seg, sh: &Shape, o: (f64, f64)) -> bool {
+    // Most segments tested pass nowhere near the shape (or a given box):
+    // reject those on bounding boxes before clipping.
+    let span = (
+        s.0 .0.min(s.1 .0) - o.0,
+        s.0 .1.min(s.1 .1) - o.1,
+        s.0 .0.max(s.1 .0) - o.0,
+        s.0 .1.max(s.1 .1) - o.1,
+    );
+    if !boxes_near(span, sh.bbox, SEG_CLEAR) {
+        return false;
+    }
     sh.boxes.iter().any(|&b| {
+        if !boxes_near(span, b, SEG_CLEAR) {
+            return false;
+        }
         let b = shift(b, o);
         segment_hits_box(
             s.0,
@@ -362,6 +397,25 @@ fn seg_hits_shape(s: Seg, sh: &Shape, o: (f64, f64)) -> bool {
     })
 }
 
+/// `s` passes through (or near) one of `sh`'s boxes, or crosses one of
+/// its connectors, with `sh` moved by `o`?
+fn spoke_hits(s: Seg, sh: &Shape, o: (f64, f64)) -> bool {
+    if seg_hits_shape(s, sh, o) {
+        return true;
+    }
+    let span = (
+        s.0 .0.min(s.1 .0) - o.0,
+        s.0 .1.min(s.1 .1) - o.1,
+        s.0 .0.max(s.1 .0) - o.0,
+        s.0 .1.max(s.1 .1) - o.1,
+    );
+    boxes_near(span, sh.bbox, 0.0)
+        && sh.segs.iter().any(|&q| {
+            let q = shift_seg(q, o);
+            segments_cross(s.0, s.1, q.0, q.1)
+        })
+}
+
 /// Directions are whole multiples of this many degrees, so a subtree
 /// laid out for one direction is memoised and reused.
 const DEG_STEP: i32 = 3;
@@ -369,6 +423,15 @@ const DEG_STEP: i32 = 3;
 fn rad(deg: i32) -> f64 {
     f64::from(deg) * PI / 180.0
 }
+
+/// Stride (degrees) of a sweep through blocked directions; see
+/// [`Fan::first_clear`].
+const STRIDE: i32 = 3 * DEG_STEP;
+
+/// Depth (px, on both axes) by which a subtree layout turned from
+/// another direction must overlap a sibling before a sweep skips that
+/// direction untested (see [`Fan::surely_blocked`]).
+const TURN_SLACK: f64 = 10.0;
 
 /// Length of the stand-in for a node's own incoming connector: a ray
 /// straight back from it, long enough to reach past its parent, so a
@@ -387,7 +450,10 @@ struct Fan<'a> {
     /// so a subtree's members are one contiguous slice.
     pre: Vec<usize>,
     span: Vec<(usize, usize)>,
-    memo: std::collections::HashMap<(usize, i32), Option<usize>>,
+    /// Per node, per whole-step direction: the subtree layout made for
+    /// it — 0 not tried yet, 1 cannot be laid out, else `entries` index
+    /// + 2 (allocated on a node's first layout).
+    memo: Vec<Vec<u32>>,
     entries: Vec<Entry>,
     /// A leaf's one-box entry (its layout does not depend on direction).
     leaf: Vec<Option<usize>>,
@@ -396,8 +462,24 @@ struct Fan<'a> {
     /// way up from the base length again (a crowded fan needs about the
     /// same room whichever way it faces).
     fitted: Vec<Option<f64>>,
+    /// Longest spoke gap a node's fan has failed at so far, for any
+    /// direction: with [`Fan::fitted`] it brackets the next direction's
+    /// search, which then rarely needs to bisect again.
+    failed: Vec<f64>,
     /// Box-pair tests run so far, against [`FAN_WORK`].
     work: std::cell::Cell<usize>,
+    /// Unit vector of every whole-step direction (sweeps are a hot path).
+    units: Vec<(f64, f64)>,
+    /// Every first-level fan keeps within [`NARROW_FAN`] instead of
+    /// opening up to [`MAX_FAN_WIDE`] (see [`fan_centres`]).
+    narrow: bool,
+    /// How a node's latest fan sat: its first child's direction behind
+    /// the fan's own (`dir` minus it) and the separation it spread its
+    /// children by — the first guess for its next direction.
+    aimed: Vec<Option<(i32, i32)>>,
+    /// The latest subtree layout made for each node: its direction and
+    /// [`Entry`] (see [`Fan::surely_blocked`]).
+    last: Vec<Option<(i32, usize)>>,
 }
 
 impl Fan<'_> {
@@ -426,11 +508,18 @@ impl Fan<'_> {
             size,
             pre,
             span,
-            memo: std::collections::HashMap::new(),
+            memo: vec![Vec::new(); n],
             entries: Vec::new(),
             leaf: vec![None; n],
             fitted: vec![None; n],
+            failed: vec![0.0; n],
             work: std::cell::Cell::new(0),
+            units: (0..360 / DEG_STEP)
+                .map(|k| (rad(k * DEG_STEP).cos(), rad(k * DEG_STEP).sin()))
+                .collect(),
+            last: vec![None; n],
+            aimed: vec![None; n],
+            narrow: false,
         };
         for i in 0..n {
             if d.nodes[i].children.is_empty() {
@@ -447,6 +536,25 @@ impl Fan<'_> {
             }
         }
         Some(fan)
+    }
+
+    /// Unit vector along `deg` degrees.
+    fn unit(&self, deg: i32) -> (f64, f64) {
+        let d = deg.rem_euclid(360);
+        if d % DEG_STEP == 0 {
+            self.units[(d / DEG_STEP) as usize]
+        } else {
+            (rad(d).cos(), rad(d).sin())
+        }
+    }
+
+    /// Widest fan (radians) non-root node `i` may open to.
+    fn widest(&self, i: usize) -> f64 {
+        if self.narrow && self.d.nodes[i].depth == 1 {
+            NARROW_FAN
+        } else {
+            MAX_FAN_WIDE
+        }
     }
 
     fn spent(&self) -> bool {
@@ -469,9 +577,16 @@ impl Fan<'_> {
         if let Some(e) = self.leaf[c] {
             return Some(e);
         }
-        let deg = deg.rem_euclid(360);
-        if let Some(&e) = self.memo.get(&(c, deg)) {
-            return e;
+        // Directions are whole steps; anything else rounds down.
+        let deg = deg.rem_euclid(360).div_euclid(DEG_STEP) * DEG_STEP;
+        let slot = (deg / DEG_STEP) as usize;
+        if self.memo[c].is_empty() {
+            self.memo[c] = vec![0; (360 / DEG_STEP) as usize];
+        }
+        match self.memo[c][slot] {
+            0 => {}
+            1 => return None,
+            e => return Some(e as usize - 2),
         }
         let r = self.fan(c, deg).map(|pos| {
             let base = self.span[c].0 + 1;
@@ -499,15 +614,17 @@ impl Fan<'_> {
             });
             self.entries.len() - 1
         });
-        self.memo.insert((c, deg), r);
+        self.memo[c][slot] = r.map_or(1, |e| e as u32 + 2);
+        if let Some(e) = r {
+            self.last[c] = Some((deg, e));
+        }
         r
     }
 
     /// Child `c` of `i` placed for direction `deg`, spokes `gap` long.
     fn put(&mut self, i: usize, c: usize, deg: i32, gap: f64) -> Option<At> {
         let e = self.layout(c, deg)?;
-        let t = rad(deg);
-        let u = (t.cos(), t.sin());
+        let u = self.unit(deg);
         let r = spoke_len(self.size[i], self.size[c], u, gap);
         Some(At {
             e,
@@ -524,10 +641,13 @@ impl Fan<'_> {
         let spoke_b: Seg = ((0.0, 0.0), b.o);
         if !boxes_near(shift(sa.bbox, a.o), shift(sb.bbox, b.o), SEP + SEG_CLEAR) {
             // A subtree's own connectors run between its boxes' centres,
-            // so inside its hull; only the spokes reach outside it.
-            self.work
-                .set(self.work.get() + sa.boxes.len() + sb.boxes.len());
-            return !seg_hits_shape(spoke_a, sb, b.o) && !seg_hits_shape(spoke_b, sa, a.o);
+            // so inside its hull; only the spokes reach outside it — but
+            // a spoke can still cut through the other hull between its
+            // boxes, across one of its connectors.
+            self.work.set(
+                self.work.get() + sa.boxes.len() + sb.boxes.len() + sa.segs.len() + sb.segs.len(),
+            );
+            return !spoke_hits(spoke_a, sb, b.o) && !spoke_hits(spoke_b, sa, a.o);
         }
         self.work.set(
             self.work.get()
@@ -600,7 +720,7 @@ impl Fan<'_> {
     /// cannot be laid out.
     fn gap_estimate(&mut self, i: usize, dir: i32, kids: &[usize]) -> Option<f64> {
         let root = self.d.nodes[i].parent.is_none();
-        let arc = if root { TAU } else { MAX_FAN_WIDE } * 0.9;
+        let arc = if root { TAU } else { self.widest(i) } * 0.9;
         let mut discs = Vec::with_capacity(kids.len());
         let mut reach = 0.0f64;
         for &c in kids {
@@ -642,8 +762,7 @@ impl Fan<'_> {
     /// the siblings in `placed`? A necessary condition for the whole
     /// subtree to clear them, at the cost of a few box tests.
     fn own_box_clear(&self, i: usize, c: usize, deg: i32, gap: f64, placed: &[(i32, At)]) -> bool {
-        let t = rad(deg);
-        let u = (t.cos(), t.sin());
+        let u = self.unit(deg);
         let r = spoke_len(self.size[i], self.size[c], u, gap);
         let o = (u.0 * r, u.1 * r);
         let own = self.boxed(c, o);
@@ -661,54 +780,337 @@ impl Fan<'_> {
         })
     }
 
+    /// Is child `c` of `i`, for direction `deg`, sure to hit a sibling in
+    /// `placed` — judged without laying its subtree out for `deg`? Its
+    /// latest layout (for another direction) is turned to `deg` box by
+    /// box, and only an overlap deeper than [`TURN_SLACK`] on both axes
+    /// counts: a turned layout is close to, not equal to, the one `deg`
+    /// would get. Laying a subtree out is the sweep's main cost, and
+    /// most directions a sweep steps through are blocked by the sibling
+    /// just placed, so this skips most of them; a direction it lets
+    /// through still gets the exact test.
+    fn surely_blocked(&self, i: usize, c: usize, deg: i32, gap: f64, placed: &[(i32, At)]) -> bool {
+        let slot = (deg.rem_euclid(360) / DEG_STEP) as usize;
+        if placed.is_empty()
+            || self.leaf[c].is_some()
+            || self.memo[c].get(slot).is_some_and(|&m| m != 0)
+        {
+            return false;
+        }
+        let Some((from, e)) = self.last[c] else {
+            return false;
+        };
+        let (cos, sin) = self.unit(deg - from);
+        let u = self.unit(deg);
+        let r = spoke_len(self.size[i], self.size[c], u, gap);
+        let o = (u.0 * r, u.1 * r);
+        let boxes = &self.entries[e].shape.boxes;
+        self.work.set(self.work.get() + boxes.len());
+        let m = TURN_SLACK;
+        let deep =
+            |a: Rect, b: Rect| a.0 + m < b.2 && b.0 + m < a.2 && a.1 + m < b.3 && b.1 + m < a.3;
+        boxes[1..].iter().any(|&b| {
+            let (cx, cy) = ((b.0 + b.2) / 2.0, (b.1 + b.3) / 2.0);
+            let (hw, hh) = ((b.2 - b.0) / 2.0, (b.3 - b.1) / 2.0);
+            let (x, y) = (cx * cos - cy * sin + o.0, cx * sin + cy * cos + o.1);
+            let p = (x - hw, y - hh, x + hw, y + hh);
+            placed.iter().rev().any(|&(_, q)| {
+                let sq = &self.entries[q.e].shape;
+                deep(p, shift(sq.bbox, q.o)) && sq.boxes.iter().any(|&bq| deep(p, shift(bq, q.o)))
+            })
+        })
+    }
+
     /// Sweep `i`'s children round it, clockwise in source order: child
-    /// 0 from `start`, every later one from its predecessor's direction
-    /// plus `extra`, each stepping [`DEG_STEP`] at a time to the first
-    /// direction where its whole subtree stays clear of `i` and of every
-    /// child already placed. `None` once a child would pass `start` plus
-    /// `limit`. Every candidate is tested with the child's exact subtree
-    /// for that direction, so the result is clean by construction.
+    /// `j` first tries direction `first[j]`, or its predecessor's plus
+    /// `extra` (at least one step) when that is later, then steps
+    /// [`DEG_STEP`] at a time to the first direction where its whole
+    /// subtree stays clear of `i` and of every child already placed.
+    /// `None` once a child would pass `first[0]` plus `limit`. Every
+    /// candidate is tested with the child's exact subtree for that
+    /// direction, so the result is clean by construction.
     #[allow(clippy::too_many_arguments)]
     fn sweep(
         &mut self,
         i: usize,
         kids: &[usize],
-        start: i32,
+        first: &[i32],
         extra: i32,
         limit: i32,
         gap: f64,
         inbound: Option<Seg>,
     ) -> Option<Vec<(i32, At)>> {
+        let start = first[0];
         let mut out: Vec<(i32, At)> = Vec::with_capacity(kids.len());
         for (j, &c) in kids.iter().enumerate() {
-            let mut t = if j == 0 { start } else { out[j - 1].0 + extra };
-            loop {
-                if t - start > limit || self.spent() {
+            let from = out
+                .last()
+                .map_or(start, |&(p, _)| first[j].max(p + extra.max(DEG_STEP)));
+            let mut test = |fan: &mut Self, t: i32| {
+                // Cheap necessary tests first: the child's own box and
+                // spoke, then its turned subtree, against the siblings
+                // already placed. Most blocked directions fail here,
+                // before the child's subtree has to be laid out for them.
+                if !fan.own_box_clear(i, c, t, gap, &out) || fan.surely_blocked(i, c, t, gap, &out)
+                {
                     return None;
                 }
-                // Cheap necessary test first: the child's own box and
-                // spoke against the siblings already placed. Most blocked
-                // directions fail here, before the child's subtree has to
-                // be laid out for them.
-                if !self.own_box_clear(i, c, t, gap, &out) {
-                    t += DEG_STEP;
-                    continue;
-                }
-                if let Some(a) = self.put(i, c, t, gap) {
-                    // Newest siblings first: they are the likeliest clash.
-                    let clear = self.clear_of_parent(i, a, inbound)
-                        && (0..out.len())
-                            .rev()
-                            .all(|q| self.siblings_clear(a, out[q].1));
-                    if clear {
-                        out.push((t, a));
-                        break;
-                    }
-                }
-                t += DEG_STEP;
-            }
+                fan.put(i, c, t, gap)
+                    .filter(|&a| fan.fits_among(i, a, &out, usize::MAX, inbound))
+            };
+            let at = self.first_clear(from, start + limit, &mut test)?;
+            out.push(at);
         }
         Some(out)
+    }
+
+    /// The first direction in `from..=to` (whole steps) where `test`
+    /// places a child, found by striding [`STRIDE`] at a time and then
+    /// stepping back through the directions skipped since the last miss:
+    /// blocked directions come in runs, so this tests about a third of
+    /// them. `None` when none fits or the work budget is spent.
+    fn first_clear(
+        &mut self,
+        from: i32,
+        to: i32,
+        test: &mut dyn FnMut(&mut Self, i32) -> Option<At>,
+    ) -> Option<(i32, At)> {
+        let mut missed: Option<i32> = None;
+        let mut t = from;
+        loop {
+            if self.spent() {
+                return None;
+            }
+            let hit = if t > to { None } else { test(self, t) };
+            if hit.is_some() || t > to {
+                if let Some(m) = missed {
+                    let mut s = m + DEG_STEP;
+                    while s < t && s <= to {
+                        if let Some(a) = test(self, s) {
+                            return Some((s, a));
+                        }
+                        s += DEG_STEP;
+                    }
+                }
+                return hit.map(|a| (t, a));
+            }
+            missed = Some(t);
+            t += STRIDE;
+        }
+    }
+
+    /// Does child placement `a` stay clear of `i` (see
+    /// [`Fan::clear_of_parent`]) and of every sibling in `placed` but
+    /// slot `skip`?
+    fn fits_among(
+        &self,
+        i: usize,
+        a: At,
+        placed: &[(i32, At)],
+        skip: usize,
+        inbound: Option<Seg>,
+    ) -> bool {
+        // Newest siblings first: they are the likeliest clash.
+        self.clear_of_parent(i, a, inbound)
+            && (0..placed.len())
+                .rev()
+                .all(|q| q == skip || self.siblings_clear(a, placed[q].1))
+    }
+
+    /// A lone child: along `dir` when it fits there, else the nearest
+    /// direction either side (no sibling to measure a fan against, so no
+    /// tight sweep to run first).
+    fn single(
+        &mut self,
+        i: usize,
+        c: usize,
+        dir: i32,
+        gap: f64,
+        inbound: Option<Seg>,
+    ) -> Option<Vec<(i32, At)>> {
+        let half = (MAX_FAN_WIDE * 90.0 / PI) as i32;
+        let mut s = 0;
+        while s <= half {
+            for t in [dir + s, dir - s] {
+                if self.spent() {
+                    return None;
+                }
+                if let Some(a) = self.put(i, c, t, gap) {
+                    if self.clear_of_parent(i, a, inbound) {
+                        return Some(vec![(t, a)]);
+                    }
+                }
+                if s == 0 {
+                    break;
+                }
+            }
+            s += DEG_STEP;
+        }
+        None
+    }
+
+    /// `i`'s children placed round it with every spoke `gap` long, or
+    /// `None` when they do not fit at that length. A tight sweep (every
+    /// child as close to its predecessor as it can go) measures the arc
+    /// they need. The root then hands the spare arc out evenly round the
+    /// full circle from 12 o'clock, each share ADDED to the separation
+    /// that child needed in the tight sweep, so no sector is left empty.
+    /// Any other node spreads its children up to [`FAN_PER_CHILD`]
+    /// apart, centred on `dir`: a minimum separation, which a child that
+    /// needs more absorbs, so a fan opens no wider than it has to and
+    /// leaves its parent's other children room.
+    fn arrange(
+        &mut self,
+        i: usize,
+        kids: &[usize],
+        dir: i32,
+        gap: f64,
+        inbound: Option<Seg>,
+    ) -> Option<Vec<(i32, At)>> {
+        let root = inbound.is_none();
+        let k = kids.len();
+        if k == 1 {
+            // A root's only branch reads left to right, like the first
+            // of two (which go right and left); any other lone child
+            // carries straight on.
+            let dir = if root { 0 } else { dir };
+            return self.single(i, kids[0], dir, gap, inbound);
+        }
+        let deg = |r: f64| (r * 180.0 / PI).round() as i32;
+        let snap = |d: f64| (d.round() as i32).div_euclid(DEG_STEP) * DEG_STEP;
+        if root {
+            let tight = self.sweep(i, kids, &vec![dir; k], 0, 360 - DEG_STEP, gap, None)?;
+            // Room needed to close the circle: child 0 again, past the
+            // last child, must clear children 1.. .
+            let t0 = tight[0].0;
+            let from = tight[k - 1].0.max(t0 + DEG_STEP);
+            let mut test = |fan: &mut Self, t: i32| {
+                let blocked = !fan.own_box_clear(i, kids[0], t, gap, &tight[1..])
+                    || fan.surely_blocked(i, kids[0], t, gap, &tight[1..]);
+                if blocked {
+                    return None;
+                }
+                fan.put(i, kids[0], t, gap)
+                    .filter(|&a| (1..k).all(|q| fan.siblings_clear(a, tight[q].1)))
+            };
+            let closed = self
+                .first_clear(from, t0 + 360, &mut test)
+                .map(|(t, _)| t - t0);
+            let total = closed?;
+            if total + DEG_STEP * k as i32 > 360 {
+                return None;
+            }
+            // Child 0's subtree starts just clockwise of 12 o'clock,
+            // half a share of the spare arc past it: offset by its own
+            // counter-clockwise half-width.
+            let a0 = tight[0].1;
+            let lo = self.entries[a0.e]
+                .shape
+                .boxes
+                .iter()
+                .map(|&b| shift(b, a0.o))
+                .flat_map(|b| [(b.0, b.1), (b.2, b.1), (b.2, b.3), (b.0, b.3)])
+                .map(|(x, y)| wrap(y.atan2(x) - rad(t0)))
+                .fold(0.0f64, f64::min);
+            // A spread that its re-laid-out subtrees cannot keep is
+            // retried with less of the spare arc, down to none (the
+            // tight sweep turned to 12 o'clock), rather than growing
+            // every spoke for the sake of even angles.
+            for part in [1.0, 0.5, 0.25, 0.0] {
+                let share = part * f64::from(360 - total) / k as f64;
+                let start = -90.0 - lo * 180.0 / PI + share / 2.0;
+                let first: Vec<i32> = tight
+                    .iter()
+                    .enumerate()
+                    .map(|(j, &(t, _))| snap(start + f64::from(t - t0) + share * j as f64))
+                    .collect();
+                let limit = 360 - DEG_STEP - (share / 2.0) as i32;
+                if let Some(out) = self.sweep(i, kids, &first, 0, limit, gap, None) {
+                    return Some(out);
+                }
+            }
+            None
+        } else {
+            let limit = deg(self.widest(i));
+            // This node's fan for a neighbouring direction, turned to
+            // `dir`, is a close guess: try that first, and keep it when
+            // it still points along `dir`. Measuring the fan again with
+            // a tight sweep lays every child's subtree out for
+            // directions the final fan does not use, which on a deep
+            // tree costs more than the rest of the layout.
+            if let Some((lead, extra)) = self.aimed[i] {
+                let from = snap(f64::from(dir - lead));
+                if let Some(out) = self.sweep(i, kids, &vec![from; k], extra, limit, gap, inbound) {
+                    if (self.heading(kids, &out) - f64::from(dir)).abs() <= f64::from(STRIDE) {
+                        return Some(out);
+                    }
+                }
+            }
+            // The tight sweep starts half the widest fan back from `dir`
+            // (never across the band behind `i`, where its connector
+            // arrives) and may use all of it.
+            let from = snap(f64::from(dir) - f64::from(limit) / 2.0);
+            let tight = self.sweep(i, kids, &vec![from; k], 0, limit, gap, inbound)?;
+            // A fan keeps to MAX_FAN when it fits there and opens only as
+            // wide as it must (up to MAX_FAN_WIDE).
+            let span = tight[k - 1].0 - tight[0].0;
+            let arc = span.max(deg(MAX_FAN.min(self.widest(i))));
+            let want = (deg(FAN_PER_CHILD) * (k as i32 - 1)).min(arc);
+            let extra = snap(f64::from((want - span).max(0)) / (k - 1) as f64);
+            let from = self.aim(i, kids, &tight, extra, dir);
+            let (out, extra) = match self.sweep(i, kids, &vec![from; k], extra, limit, gap, inbound)
+            {
+                Some(out) => (out, extra),
+                None => {
+                    // Turning the fan reshaped it; try it tight.
+                    let from = self.aim(i, kids, &tight, 0, dir);
+                    (
+                        self.sweep(i, kids, &vec![from; k], 0, limit, gap, inbound)?,
+                        0,
+                    )
+                }
+            };
+            self.aimed[i] = Some((dir - out[0].0, extra));
+            Some(out)
+        }
+    }
+
+    /// Mean direction of a placed fan's children, weighted by subtree
+    /// size (see [`Fan::aim`]).
+    fn heading(&self, kids: &[usize], out: &[(i32, At)]) -> f64 {
+        let (mut sum, mut weight) = (0.0, 0.0);
+        for (&c, &(t, _)) in kids.iter().zip(out) {
+            let w = (self.span[c].1 - self.span[c].0) as f64;
+            sum += w * f64::from(t);
+            weight += w;
+        }
+        sum / weight
+    }
+
+    /// Where a non-root fan starts so that it points along `dir`: its
+    /// children at the tight sweep's separations (or `extra`, if more),
+    /// turned so their mean direction, weighted by subtree size, is
+    /// `dir` — a balanced fan is centred, while a child carrying most of
+    /// the subtree carries straight on. Always centring would bend a
+    /// long chain or a comb (leaves, then the child that goes on) the
+    /// same way at every level until it curled into itself. The fan is
+    /// kept within [`MAX_FAN_WIDE`] of `dir`.
+    fn aim(&self, i: usize, kids: &[usize], tight: &[(i32, At)], extra: i32, dir: i32) -> i32 {
+        let mut at = 0;
+        let (mut sum, mut weight) = (0.0, 0.0);
+        for (j, &c) in kids.iter().enumerate() {
+            if j > 0 {
+                at += extra.max(tight[j].0 - tight[j - 1].0);
+            }
+            let w = (self.span[c].1 - self.span[c].0) as f64;
+            sum += w * f64::from(at);
+            weight += w;
+        }
+        let half = (self.widest(i) * 90.0 / PI) as i32;
+        let lead = ((sum / weight).round() as i32)
+            .clamp(at - half, half)
+            .max(at / 2 - half);
+        (dir - lead).div_euclid(DEG_STEP) * DEG_STEP
     }
 
     /// Lay out `i`'s descendants round it (at the origin), its own
@@ -717,14 +1119,15 @@ impl Fan<'_> {
     /// relative to `i`, in preorder; `None` when the fan cannot be made
     /// to fit or the work budget is spent.
     ///
-    /// Each child sits on a spoke from `i` (see [`spoke_len`]). A tight
-    /// sweep measures how much arc the children need; the real sweep
-    /// then spreads them (up to [`FAN_PER_CHILD`] between neighbours)
-    /// and centres the fan on `dir`, while the root shares its slack
-    /// out round the full circle from 12 o'clock. A fan keeps within
-    /// [`MAX_FAN`] when it fits there and opens only as wide as it must
-    /// (up to [`MAX_FAN_WIDE`]); one that will not fit even then
-    /// lengthens its spokes ×1.25 and tries again.
+    /// Each child sits on a spoke from `i` (see [`spoke_len`]), arranged
+    /// by [`Fan::arrange`]. The base length ([`TRUNK`] from the root,
+    /// [`SPOKE`] below) is tried first; a fan that does not fit there
+    /// grows its spokes (×1.25, or straight to [`Fan::gap_estimate`])
+    /// until it does, then bisects back down between the last length
+    /// that failed and the first that fitted — so the shared length is
+    /// no longer than the fan needs. Finally every child's own spoke is
+    /// shortened as far as it stays clear (see [`Fan::shorten`]): a
+    /// small branch sits close in even when a bushy sibling needs room.
     fn fan(&mut self, i: usize, dir: i32) -> Option<Vec<(f64, f64)>> {
         let kids = self.d.nodes[i].children.clone();
         let base = self.span[i].0 + 1;
@@ -733,11 +1136,7 @@ impl Fan<'_> {
             return Some(pos);
         }
         let root = self.d.nodes[i].parent.is_none();
-        let k = kids.len() as i32;
-        let deg = |r: f64| (r * 180.0 / PI).round() as i32;
-        let snap = |d: i32| d.div_euclid(DEG_STEP) * DEG_STEP;
-        let mut gap = self.fitted[i].unwrap_or(if root { TRUNK } else { SPOKE });
-        let mut estimated = self.fitted[i].is_some();
+        let floor = if root { TRUNK } else { SPOKE };
         let inbound = (!root).then(|| {
             let back = rad(dir) + PI;
             (
@@ -745,103 +1144,122 @@ impl Fan<'_> {
                 (back.cos() * INBOUND_RAY, back.sin() * INBOUND_RAY),
             )
         });
+        let mut gap = self.fitted[i].unwrap_or(floor);
+        let mut estimated = self.fitted[i].is_some();
+        // The longest gap known not to fit: for this direction once one
+        // fails, until then the longest any direction failed at (or the
+        // base length, untried, when a memoised gap fits first time).
+        let mut failed = self.failed[i].max(floor).min(gap);
+        let mut placed = None;
         for _ in 0..FAN_GROWTHS {
             if self.spent() {
                 return None;
             }
-            // The tight sweep starts half the widest fan back from `dir`
-            // (never across the band behind `i`, where its connector
-            // arrives) and may use all of it.
-            let (tight_start, tight_limit) = if root {
-                (snap(dir), 360 - DEG_STEP)
-            } else {
-                (snap(dir - deg(MAX_FAN_WIDE) / 2), deg(MAX_FAN_WIDE))
-            };
-            let swept = match self.sweep(i, &kids, tight_start, 0, tight_limit, gap, inbound) {
-                None => None,
-                Some(tight) if root => {
-                    // Room needed to close the circle: child 0 again,
-                    // past the last child, must clear children 1.. .
-                    let t0 = tight[0].0;
-                    let mut t = tight[k as usize - 1].0.max(t0 + DEG_STEP);
-                    let mut closed = None;
-                    while t <= t0 + 360 && !self.spent() {
-                        if let Some(a) = self.put(i, kids[0], t, gap) {
-                            if (1..tight.len()).all(|q| self.siblings_clear(a, tight[q].1)) {
-                                closed = Some(t - t0);
-                                break;
-                            }
-                        }
-                        t += DEG_STEP;
-                    }
-                    match closed {
-                        Some(total) if total + DEG_STEP * k <= 360 => {
-                            let extra = snap((360 - total) / k);
-                            // Child 0's subtree starts just clockwise of
-                            // 12 o'clock: offset by its own half-width.
-                            let a0 = tight[0].1;
-                            let lo = self.entries[a0.e]
-                                .shape
-                                .boxes
-                                .iter()
-                                .map(|&b| shift(b, a0.o))
-                                .flat_map(|b| [(b.0, b.1), (b.2, b.1), (b.2, b.3), (b.0, b.3)])
-                                .map(|(x, y)| wrap(y.atan2(x) - rad(t0)))
-                                .fold(0.0f64, f64::min);
-                            let start = snap(-90 - deg(lo) + extra / 2);
-                            self.sweep(
-                                i,
-                                &kids,
-                                start,
-                                extra,
-                                360 - DEG_STEP - extra / 2,
-                                gap,
-                                inbound,
-                            )
-                        }
-                        _ => None,
-                    }
-                }
-                Some(tight) => {
-                    // A fan keeps to MAX_FAN when it fits there and opens
-                    // only as wide as it must (up to MAX_FAN_WIDE).
-                    let span = tight[k as usize - 1].0 - tight[0].0;
-                    let arc = span.max(deg(MAX_FAN));
-                    let want = (deg(FAN_PER_CHILD) * (k - 1)).min(arc);
-                    let extra = if k > 1 {
-                        snap((want - span).max(0) / (k - 1))
-                    } else {
-                        0
-                    };
-                    let width = span + extra * (k - 1);
-                    let limit = deg(MAX_FAN_WIDE);
-                    self.sweep(i, &kids, snap(dir - width / 2), extra, limit, gap, inbound)
-                        .or_else(|| {
-                            // Turning the fan reshaped it; try it tight.
-                            self.sweep(i, &kids, snap(dir - span / 2), 0, limit, gap, inbound)
-                        })
-                }
-            };
-            if let Some(placed) = swept {
-                self.fitted[i] = Some(self.fitted[i].map_or(gap, |g| g.min(gap)));
-                for (&c, &(_, a)) in kids.iter().zip(&placed) {
-                    let at = self.span[c].0 - base;
-                    pos[at] = a.o;
-                    for (t, &q) in self.entries[a.e].pos.iter().enumerate() {
-                        pos[at + 1 + t] = (q.0 + a.o.0, q.1 + a.o.1);
-                    }
-                }
-                return Some(pos);
+            if let Some(p) = self.arrange(i, &kids, dir, gap, inbound) {
+                placed = Some(p);
+                break;
             }
+            failed = gap;
             gap *= 1.25;
             if !estimated {
                 // The base length failed: jump straight to (most of) the
-                // estimate rather than ×1.25 a step at a time.
+                // estimate rather than ×1.25 a step at a time; the
+                // bisection below takes back any overshoot.
                 estimated = true;
                 gap = gap.max(self.gap_estimate(i, dir, &kids)?);
             }
         }
-        None
+        let mut placed = placed?;
+        let mut tries = 0;
+        while gap > failed * GAP_TOLERANCE && tries < GAP_BISECTIONS {
+            tries += 1;
+            let mid = (failed + gap) / 2.0;
+            match self.arrange(i, &kids, dir, mid, inbound) {
+                Some(p) => {
+                    placed = p;
+                    gap = mid;
+                }
+                None => failed = mid,
+            }
+        }
+        if gap > floor {
+            self.shorten(i, &kids, &mut placed, floor, gap, inbound);
+        }
+        self.fitted[i] = Some(self.fitted[i].map_or(gap, |g| g.min(gap)));
+        if failed < gap {
+            self.failed[i] = self.failed[i].max(failed);
+        }
+        for (&c, &(_, a)) in kids.iter().zip(&placed) {
+            let at = self.span[c].0 - base;
+            pos[at] = a.o;
+            for (t, &q) in self.entries[a.e].pos.iter().enumerate() {
+                pos[at + 1 + t] = (q.0 + a.o.0, q.1 + a.o.1);
+            }
+        }
+        Some(pos)
+    }
+
+    /// Give each child of `i` its own spoke. A shared length sized for
+    /// the bushiest child would leave a leaf branch at the end of a long
+    /// empty trunk, so the children slide in along their directions
+    /// together: round after round, each takes a step of
+    /// [`SHORTEN_STEP`] towards `floor` if it stays clear of `i` and of
+    /// its siblings as they now stand, until no child can move; then
+    /// each closes the last step it missed by bisection. Moving together
+    /// (rather than one child all the way at a time) keeps a small
+    /// branch from taking the room next to the parent that its
+    /// neighbours' spokes needed. The result is still clean: every
+    /// accepted position passed the same tests as the sweep.
+    #[allow(clippy::too_many_arguments)]
+    fn shorten(
+        &mut self,
+        i: usize,
+        kids: &[usize],
+        placed: &mut [(i32, At)],
+        floor: f64,
+        gap: f64,
+        inbound: Option<Seg>,
+    ) {
+        let k = kids.len();
+        // Each child's gap now and the shortest it failed at.
+        let mut now = vec![gap; k];
+        let mut missed = vec![floor; k];
+        let fits = |fan: &mut Self, placed: &[(i32, At)], j: usize, g: f64| {
+            let (t, _) = placed[j];
+            fan.put(i, kids[j], t, g)
+                .filter(|&a| fan.fits_among(i, a, placed, j, inbound))
+        };
+        let mut moved = true;
+        while moved && !self.spent() {
+            moved = false;
+            for j in 0..k {
+                if now[j] <= floor {
+                    continue;
+                }
+                let g = (now[j] * SHORTEN_STEP).max(floor);
+                match fits(self, placed, j, g) {
+                    Some(a) => {
+                        placed[j].1 = a;
+                        now[j] = g;
+                        moved = true;
+                    }
+                    None => missed[j] = g,
+                }
+            }
+        }
+        for j in 0..k {
+            let (mut lo, mut hi) = (missed[j], now[j]);
+            while hi > lo * GAP_TOLERANCE && !self.spent() {
+                let mid = (lo + hi) / 2.0;
+                match fits(self, placed, j, mid) {
+                    Some(a) => {
+                        placed[j].1 = a;
+                        hi = mid;
+                    }
+                    None => lo = mid,
+                }
+            }
+        }
     }
 }
 
@@ -849,12 +1267,65 @@ impl Fan<'_> {
 /// `None` when it could not produce a clean layout — see [`scene`].
 fn fan_centres(d: &Mindmap, size: &[(f64, f64)]) -> Option<Vec<(f64, f64)>> {
     let mut fan = Fan::new(d, size)?;
-    let below = fan.fan(0, -90)?;
-    let mut pos = vec![(0.0, 0.0); d.nodes.len()];
-    for (k, &p) in below.iter().enumerate() {
-        pos[fan.pre[1 + k]] = p;
+    let run = |fan: &mut Fan| -> Option<Vec<(f64, f64)>> {
+        let below = fan.fan(0, -90)?;
+        let mut pos = vec![(0.0, 0.0); d.nodes.len()];
+        for (k, &p) in below.iter().enumerate() {
+            pos[fan.pre[1 + k]] = p;
+        }
+        clean(d, size, &pos).then_some(pos)
+    };
+    let wide = run(&mut fan);
+    // A crowded root (many branches with subtrees of their own) needs
+    // long trunks to fit its branches' fans side by side; narrow
+    // first-level fans trade a little length below the branches for
+    // shorter trunks. Keep whichever has the shorter longest connector.
+    let kids = &d.nodes[0].children;
+    let crowded = kids.len() >= NARROW_FROM
+        && kids.iter().any(|&c| !d.nodes[c].children.is_empty())
+        && wide.as_ref().map_or(true, |p| {
+            let (len, at) = longest_connector(d, size, p);
+            len > NARROW_TRUNK && d.nodes[at].depth == 1
+        });
+    if !crowded {
+        return wide;
     }
-    clean(d, size, &pos).then_some(pos)
+    // Only the root's and the first level's layouts change; everything
+    // deeper is laid out as before and stays memoised.
+    for i in std::iter::once(0).chain(kids.iter().copied()) {
+        fan.memo[i].clear();
+        fan.fitted[i] = None;
+        fan.failed[i] = 0.0;
+        fan.aimed[i] = None;
+        fan.last[i] = None;
+    }
+    fan.narrow = true;
+    match (wide, run(&mut fan)) {
+        (Some(w), Some(n)) => {
+            let better = longest_connector(d, size, &n).0 < 0.9 * longest_connector(d, size, &w).0;
+            Some(if better { n } else { w })
+        }
+        (w, n) => w.or(n),
+    }
+}
+
+/// Longest visible connector (border to border) of a layout, and the
+/// node it leads to.
+fn longest_connector(d: &Mindmap, size: &[(f64, f64)], pos: &[(f64, f64)]) -> (f64, usize) {
+    d.nodes
+        .iter()
+        .enumerate()
+        .filter_map(|(i, n)| n.parent.map(|p| (p, i)))
+        .map(|(p, i)| {
+            let (dx, dy) = (pos[i].0 - pos[p].0, pos[i].1 - pos[p].1);
+            let len = dx.hypot(dy).max(1e-9);
+            let u = (dx / len, dy / len);
+            (
+                len - ext(size[p].0, size[p].1, u) - ext(size[i].0, size[i].1, u),
+                i,
+            )
+        })
+        .fold((0.0, 0), |a, b| if b.0 > a.0 { b } else { a })
 }
 
 /// The fan layout's safety net: no two boxes closer than half of
@@ -2290,5 +2761,306 @@ mod tests {
     fn svg_is_deterministic() {
         let m = showcase();
         assert_eq!(to_svg(&scene(&m)), to_svg(&scene(&m)));
+    }
+
+    /// Nine branches of very different sizes: a leaf, a one-leaf and a
+    /// two-leaf branch next to an eight- and a twelve-leaf one, a deep
+    /// chain and long labels.
+    const BUSHY: &str = "mindmap\n  Root\n    Alpha\n      A one\n      A two\n      A three\n      \
+        A four\n      A five\n      A six\n      A seven\n      A eight\n    Beta\n      B one\n        \
+        B one a\n        B one b\n        B one c\n      B two\n        B two a\n        B two b\n      \
+        B three\n    Gamma\n      G one\n      G two\n        G two a\n          G two a i\n          \
+        G two a ii\n            deep 1\n              deep 2\n                deep 3\n      G three\n    \
+        Delta with a rather long branch label here\n      D1 with long text describing things\n      \
+        D2 with even longer text describing more things\n      D3\n    Epsilon\n    Zeta\n      Z1\n      \
+        Z2\n    Eta\n      E1\n    Theta\n      T1\n      T2\n      T3\n      T4\n      T5\n      T6\n      \
+        T7\n      T8\n      T9\n      T10\n      T11\n      T12\n";
+
+    /// `branches` first-level topics of `leaves` leaves each.
+    fn grid(branches: usize, leaves: usize) -> Mindmap {
+        let mut src = String::from("mindmap\n  root((Project))\n");
+        for b in 0..branches {
+            src.push_str(&format!("    Branch {b} topic\n"));
+            for l in 0..leaves {
+                src.push_str(&format!("      Item {b}.{l}\n"));
+            }
+        }
+        mind(&src)
+    }
+
+    /// Widest wedge (degrees) round the root with no node box in it.
+    fn empty_wedge(ms: &MindScene) -> f64 {
+        let (cx, cy) = (ms.nodes[0].cx(), ms.nodes[0].cy());
+        let mut arcs: Vec<(f64, f64)> = Vec::new();
+        for n in &ms.nodes[1..] {
+            let mid = (n.cy() - cy).atan2(n.cx() - cx);
+            let rel = [
+                (n.x, n.y),
+                (n.x + n.w, n.y),
+                (n.x, n.y + n.h),
+                (n.x + n.w, n.y + n.h),
+            ]
+            .map(|(x, y)| wrap((y - cy).atan2(x - cx) - mid));
+            let lo = rel.iter().copied().fold(f64::MAX, f64::min);
+            let hi = rel.iter().copied().fold(f64::MIN, f64::max);
+            let from = (mid + lo).rem_euclid(TAU);
+            // Twice round, so an arc across angle 0 is seen whole.
+            arcs.push((from, from + hi - lo));
+            arcs.push((from + TAU, from + TAU + hi - lo));
+        }
+        arcs.sort_by(|a, b| a.0.total_cmp(&b.0));
+        let (mut widest, mut reach) = (0.0f64, arcs[0].1);
+        for &(lo, hi) in &arcs[1..] {
+            if lo > reach && lo < 2.0 * TAU {
+                widest = widest.max(lo - reach);
+            }
+            reach = reach.max(hi);
+        }
+        widest.to_degrees()
+    }
+
+    /// Visible length of the connector into each node (index-parallel
+    /// with the nodes; the root gets 0).
+    fn spoke_into(m: &Mindmap, ms: &MindScene) -> Vec<f64> {
+        let mut out = vec![0.0; m.nodes.len()];
+        for (i, n) in m.nodes.iter().enumerate() {
+            if let Some(p) = n.parent {
+                let (a, b) = (&ms.nodes[p], &ms.nodes[i]);
+                let (dx, dy) = (b.cx() - a.cx(), b.cy() - a.cy());
+                let len = dx.hypot(dy);
+                let u = (dx / len, dy / len);
+                out[i] = len - ext(a.w, a.h, u) - ext(b.w, b.h, u);
+            }
+        }
+        out
+    }
+
+    /// Review of B6: on ordinary maps the root fan stretched EVERY trunk
+    /// to the one length its bushiest branch needed (365px on this map,
+    /// a leaf-only branch included) and left all the spare arc in one
+    /// empty sector (183° here), the root at a quarter of the width.
+    #[test]
+    fn a_mixed_map_shares_the_circle_and_sizes_each_trunk() {
+        let m = mind(BUSHY);
+        let ms = scene(&m);
+        assert_no_overlap(&ms);
+        assert_no_crossing(&ms);
+        let wedge = empty_wedge(&ms);
+        assert!(
+            wedge < 45.0,
+            "an empty sector of {wedge:.0}° round the root"
+        );
+        let spokes = spoke_into(&m, &ms);
+        let trunk = |name: &str| spokes[m.nodes.iter().position(|n| n.text == name).unwrap()];
+        // Each branch gets its own trunk: the small ones sit closer in
+        // than the bushy ones (they all had 365px).
+        let longest = m.nodes[0]
+            .children
+            .iter()
+            .map(|&c| spokes[c])
+            .fold(0.0, f64::max);
+        assert!(
+            trunk("Epsilon") < 2.0 * TRUNK,
+            "Epsilon: trunk {:.0}",
+            trunk("Epsilon")
+        );
+        for small in ["Eta", "Zeta"] {
+            assert!(
+                trunk(small) < 0.9 * longest,
+                "{small}: trunk {:.0} of {longest:.0}",
+                trunk(small)
+            );
+        }
+        // And the shared length was searched back down, not left at the
+        // first one that fitted.
+        assert!(longest < 260.0, "longest trunk {longest:.0}");
+        let root = &ms.nodes[0];
+        assert!(
+            (0.25..0.75).contains(&(root.cy() / ms.height)),
+            "root at y {:.0}/{:.0}",
+            root.cy(),
+            ms.height
+        );
+    }
+
+    /// The same review on uniform maps: 6-12 branches came out with one
+    /// long trunk each (145-374px) and a 103-145° empty sector.
+    #[test]
+    fn uniform_maps_fill_the_circle_evenly() {
+        for (b, l, longest) in [
+            (5, 4, 2.0 * TRUNK),
+            (8, 4, 220.0),
+            (10, 3, 220.0),
+            (12, 2, 200.0),
+        ] {
+            let m = grid(b, l);
+            let ms = scene(&m);
+            assert_no_overlap(&ms);
+            assert_no_crossing(&ms);
+            let wedge = empty_wedge(&ms);
+            assert!(wedge < 30.0, "{b}x{l}: empty sector {wedge:.0}°");
+            let spokes = spoke_into(&m, &ms);
+            let trunk = m.nodes[0]
+                .children
+                .iter()
+                .map(|&c| spokes[c])
+                .fold(0.0, f64::max);
+            assert!(trunk < longest, "{b}x{l}: longest trunk {trunk:.0}");
+            let root = &ms.nodes[0];
+            assert!(
+                (root.cx() / ms.width - 0.5).abs() < 0.12,
+                "{b}x{l}: root off-centre"
+            );
+            assert!(
+                (root.cy() / ms.height - 0.5).abs() < 0.12,
+                "{b}x{l}: root off-centre"
+            );
+        }
+        // B6's "spokes even" holds while the circle has room: five
+        // branches of four leaves keep every connector within 2× of the
+        // shortest.
+        let spokes = visible_spokes(&scene(&grid(5, 4)));
+        let (lo, hi) = spokes
+            .iter()
+            .fold((f64::MAX, 0.0f64), |(lo, hi), &s| (lo.min(s), hi.max(s)));
+        assert!(hi / lo <= 2.05, "5x4 spokes {lo:.0}..{hi:.0}");
+    }
+
+    /// 24 topics of three leaves each: the old shared trunk was 1058px.
+    /// Branches now alternate in and out and their fans are kept narrow
+    /// when that shortens the longest connector.
+    #[test]
+    fn a_crowded_hub_staggers_its_branches() {
+        let m = grid(24, 3);
+        let sizes: Vec<(f64, f64)> = m.nodes.iter().map(mind_node_size).collect();
+        let pos = fan_centres(&m, &sizes).expect("fell back to rings");
+        let (longest, _) = longest_connector(&m, &sizes, &pos);
+        assert!(longest < 700.0, "longest connector {longest:.0}");
+        let ms = scene(&m);
+        assert_no_overlap(&ms);
+        assert_no_crossing(&ms);
+        assert!(empty_wedge(&ms) < 30.0);
+    }
+
+    /// Review: a chain spent 119-192ms before falling back to rings and
+    /// came out as a 2255x6675 diagonal. A lone child carries straight
+    /// on, and the root's lone branch goes right.
+    #[test]
+    fn a_chain_runs_straight_to_the_right() {
+        let mut src = String::from("mindmap\nroot\n");
+        for k in 1..200 {
+            src.push_str(&format!("{}n{k}\n", " ".repeat(k)));
+        }
+        let m = mind(&src);
+        let sizes: Vec<(f64, f64)> = m.nodes.iter().map(mind_node_size).collect();
+        assert!(fan_centres(&m, &sizes).is_some(), "fell back to rings");
+        let ms = scene(&m);
+        let y = ms.nodes[0].cy();
+        assert!(ms.nodes.iter().all(|n| (n.cy() - y).abs() < 1e-6));
+        assert!(ms.nodes.windows(2).all(|w| w[1].cx() > w[0].cx()));
+    }
+
+    /// A comb (two leaves, then the child that goes on, at every level)
+    /// bent the same way at every level until it curled into itself: at
+    /// 16 levels it fell back to rings after 54ms. A fan now aims its
+    /// heaviest child straight on.
+    #[test]
+    fn a_comb_still_gets_the_fan_layout() {
+        let mut src = String::from("mindmap\nroot\n");
+        for k in 1..16 {
+            let pad = " ".repeat(k);
+            src.push_str(&format!(
+                "{pad}spine {k}\n{pad} leaf {k}.0\n{pad} leaf {k}.1\n"
+            ));
+        }
+        let m = mind(&src);
+        let sizes: Vec<(f64, f64)> = m.nodes.iter().map(mind_node_size).collect();
+        assert!(fan_centres(&m, &sizes).is_some(), "fell back to rings");
+    }
+
+    /// Two subtrees whose boxes are far apart can still collide: a spoke
+    /// cutting through the other's hull, between its boxes, across one
+    /// of its connectors (found on a generated 107-node map, which then
+    /// failed the final check and fell back to rings).
+    #[test]
+    fn a_spoke_may_not_cut_a_far_subtree_between_its_boxes() {
+        let m = mind("mindmap\nR\n  A\n  B\n    B1\n");
+        let sizes: Vec<(f64, f64)> = m.nodes.iter().map(mind_node_size).collect();
+        let mut fan = Fan::new(&m, &sizes).unwrap();
+        let lone = (-10.0, -10.0, 10.0, 10.0);
+        fan.entries.push(Entry {
+            shape: Shape {
+                boxes: vec![lone],
+                segs: Vec::new(),
+                bbox: lone,
+            },
+            pos: Vec::new(),
+        });
+        // B at (100, 0) with B1 200px below it: A's spoke, from the
+        // origin to (200, 100), crosses B's connector at (100, 50),
+        // clear of both boxes.
+        fan.entries.push(Entry {
+            shape: Shape {
+                boxes: vec![lone, (-10.0, 190.0, 10.0, 210.0)],
+                segs: vec![((0.0, 0.0), (0.0, 200.0))],
+                bbox: (-10.0, -10.0, 10.0, 210.0),
+            },
+            pos: vec![(0.0, 200.0)],
+        });
+        let n = fan.entries.len();
+        let a = At {
+            e: n - 2,
+            o: (200.0, 100.0),
+        };
+        let b = At {
+            e: n - 1,
+            o: (100.0, 0.0),
+        };
+        assert!(!fan.siblings_clear(a, b));
+        assert!(!fan.siblings_clear(b, a));
+    }
+
+    /// A spread of realistic maps (4-10 branches, up to seven topics of
+    /// up to five leaves, the odd fourth level) all get the fan layout:
+    /// none fails the final check.
+    #[test]
+    fn realistic_maps_use_the_fan_layout() {
+        let words = [
+            "plan", "design", "research", "budget", "launch", "review", "docs", "sales",
+        ];
+        for seed in 0..12u64 {
+            let mut x = seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1;
+            let mut next = |m: u64| {
+                x ^= x << 13;
+                x ^= x >> 7;
+                x ^= x << 17;
+                x % m
+            };
+            let mut src = String::from("mindmap\n  root((Central idea))\n");
+            let label = |next: &mut dyn FnMut(u64) -> u64| {
+                (0..1 + next(3))
+                    .map(|_| words[next(words.len() as u64) as usize])
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            };
+            for b in 0..4 + next(5) {
+                src.push_str(&format!("    {} {b}\n", label(&mut next)));
+                for _ in 0..1 + next(5) {
+                    src.push_str(&format!("      {}\n", label(&mut next)));
+                    for _ in 0..next(5) {
+                        src.push_str(&format!("        {}\n", label(&mut next)));
+                        if next(8) == 0 {
+                            src.push_str(&format!("          {}\n", label(&mut next)));
+                        }
+                    }
+                }
+            }
+            let m = mind(&src);
+            let sizes: Vec<(f64, f64)> = m.nodes.iter().map(mind_node_size).collect();
+            assert!(
+                fan_centres(&m, &sizes).is_some(),
+                "seed {seed} fell back to rings:\n{src}"
+            );
+        }
     }
 }
