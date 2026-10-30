@@ -122,12 +122,13 @@ pub fn render_gitgraph_with(d: &GitGraph, opts: &SvgOptions) -> String {
 /// Render an architecture-beta diagram (nested groups + services + edges).
 /// Geometry & serialisation live in the `architecture` module.
 pub fn render_architecture(d: &Architecture) -> String {
-    crate::architecture::to_svg(&crate::architecture::scene(d))
+    render_architecture_with(d, &SvgOptions::default())
 }
 
 /// [`render_architecture`] with explicit viewport options.
 pub fn render_architecture_with(d: &Architecture, opts: &SvgOptions) -> String {
-    crate::architecture::to_svg_with(&crate::architecture::scene(d), opts)
+    let a11y = A11y::new(d.acc_title.clone(), d.acc_descr.clone());
+    crate::architecture::to_svg_a11y_with(&crate::architecture::scene(d), &a11y, opts)
 }
 
 /// Render a timeline (period columns on an axis, events stacked beneath,

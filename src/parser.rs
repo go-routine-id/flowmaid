@@ -4908,15 +4908,15 @@ fn parse_commit_kind(s: &str, lineno: usize) -> Result<CommitKind, ParseError> {
 // Architecture diagram (`architecture-beta`)
 // ---------------------------------------------------------------
 
-/// Parse an architecture-beta diagram. Groups and services are declared
-/// with `group` / `service`, and edges connect named port sides
-/// (`svc:L -- R:other`).
+/// Parse an architecture-beta diagram. Groups, services and junctions
+/// are declared with `group` / `service` / `junction`, and edges
+/// connect named port sides (`svc:L -- R:other`, labelled
+/// `svc:L -[label]- R:other`).
 fn parse_architecture(source: &str, header_line: usize) -> Result<Architecture, ParseError> {
     let mut d = Architecture::default();
-    // Accessibility statements parse (so they never misread as
-    // content) but are not stored yet: this model's fields are all
-    // public, so a new field would break struct-literal users.
-    let (source, _acc) = extract_acc(source, header_line, false, AccFlavor::Langium)?;
+    let (source, acc) = extract_acc(source, header_line, false, AccFlavor::Langium)?;
+    d.acc_title = acc.title;
+    d.acc_descr = acc.descr;
     let source: &str = &source;
     let mut group_ids: HashMap<String, usize> = HashMap::new();
     let mut service_ids: HashMap<String, usize> = HashMap::new();
@@ -4958,12 +4958,49 @@ fn parse_architecture(source: &str, header_line: usize) -> Result<Architecture, 
                 title,
                 icon,
                 group: parent,
+                junction: false,
             });
             service_ids.insert(id, idx);
             continue;
         }
 
-        if line.contains("--") {
+        if let Some(rest) = strip_keyword(line, "junction") {
+            let (id, parent) = parse_arch_junction(rest, lineno, &group_ids)?;
+            if service_ids.contains_key(&id) {
+                return Err(err(lineno, format!("duplicate junction id: '{}'", id)));
+            }
+            let idx = d.services.len();
+            d.services.push(ArchService {
+                id: id.clone(),
+                title: String::new(),
+                icon: None,
+                group: parent,
+                junction: true,
+            });
+            service_ids.insert(id, idx);
+            continue;
+        }
+
+        // mermaid's `align row a b …` / `align column a b …` layout
+        // hints: accepted so such diagrams render, not applied — the
+        // port-driven layout already lines up what the edges connect.
+        if let Some(rest) = strip_keyword(line, "align") {
+            let mut words = rest.split_whitespace();
+            let dir_ok = matches!(words.next(), Some("row") | Some("column"));
+            let ids: Vec<&str> = words.collect();
+            if !dir_ok || ids.len() < 2 {
+                return Err(err(
+                    lineno,
+                    "expected `align row|column <id> <id> …`".to_string(),
+                ));
+            }
+            if let Some(missing) = ids.iter().find(|id| !service_ids.contains_key(**id)) {
+                return Err(err(lineno, format!("service '{}' not found", missing)));
+            }
+            continue;
+        }
+
+        if line.contains("--") || line.contains("-[") {
             let e = parse_arch_edge(line, lineno, &service_ids, &group_ids, &d.services)?;
             d.edges.push(e);
             continue;
@@ -4978,8 +5015,9 @@ fn parse_architecture(source: &str, header_line: usize) -> Result<Architecture, 
     Ok(d)
 }
 
-/// Parse `id(icon)[title] in parent`. `icon` is optional; `in parent` is
-/// optional and must name a group already declared.
+/// Parse `id(icon)[title] in parent`. `icon`, `[title]` and
+/// `in parent` are optional (as in mermaid); `parent` must name a group
+/// already declared. A title may be quoted (`["Edge, west"]`).
 fn parse_arch_decl(
     rest: &str,
     lineno: usize,
@@ -5008,38 +5046,77 @@ fn parse_arch_decl(
     } else {
         None
     };
-    if !tail.starts_with('[') {
-        return Err(err(
-            lineno,
-            format!("{} title must be wrapped in […]", kind),
-        ));
+    let title = if tail.starts_with('[') {
+        let close = tail
+            .find(']')
+            .ok_or_else(|| err(lineno, "unclosed title '['".to_string()))?;
+        let t = arch_unquote(&tail[1..close]);
+        tail = &tail[close + 1..];
+        t
+    } else {
+        String::new()
+    };
+    let tail = tail.trim();
+    let parent = arch_parent(tail, lineno, groups)?;
+    Ok((id, icon, title, parent))
+}
+
+/// Parse `id` / `id in parent` after the `junction` keyword.
+fn parse_arch_junction(
+    rest: &str,
+    lineno: usize,
+    groups: &HashMap<String, usize>,
+) -> Result<(String, Option<usize>), ParseError> {
+    let rest = rest.trim();
+    let id_end = rest.find(char::is_whitespace).unwrap_or(rest.len());
+    let id = &rest[..id_end];
+    if id.is_empty() || id.contains(['(', '[', ':', '{']) {
+        return Err(err(lineno, "junction needs a plain id".to_string()));
     }
-    let close = tail
-        .find(']')
-        .ok_or_else(|| err(lineno, "unclosed title '['".to_string()))?;
-    let title = tail[1..close].trim().to_string();
-    tail = tail[close + 1..].trim();
-    let parent = if let Some(pname) = strip_keyword(tail, "in") {
+    let parent = arch_parent(rest[id_end..].trim(), lineno, groups)?;
+    Ok((id.to_string(), parent))
+}
+
+/// The optional `in parent` that closes a declaration; anything else
+/// left over is an error.
+fn arch_parent(
+    tail: &str,
+    lineno: usize,
+    groups: &HashMap<String, usize>,
+) -> Result<Option<usize>, ParseError> {
+    if let Some(pname) = strip_keyword(tail, "in") {
         let pname = pname.trim();
         if pname.is_empty() {
             return Err(err(lineno, "missing parent group name".to_string()));
         }
-        Some(
-            *groups
-                .get(pname)
-                .ok_or_else(|| err(lineno, format!("parent group '{}' not found", pname)))?,
-        )
+        Ok(Some(*groups.get(pname).ok_or_else(|| {
+            err(lineno, format!("parent group '{}' not found", pname))
+        })?))
     } else if !tail.is_empty() {
-        return Err(err(lineno, format!("unexpected trailing text: '{}'", tail)));
+        Err(err(lineno, format!("unexpected trailing text: '{}'", tail)))
     } else {
-        None
-    };
-    Ok((id, icon, title, parent))
+        Ok(None)
+    }
 }
 
-/// Parse an edge such as `svc1:L -- R:svc2`, `a:T --> B:b`, or
-/// `svc1:L <--> R:svc2`. Optional `{group}` qualifiers after a service id
-/// (`svc1{group}:L`) are accepted and validated against the service's parent.
+/// A `[…]` title body: trimmed, with one pair of matching surrounding
+/// quotes removed (mermaid accepts `["…"]` and `['…']`).
+fn arch_unquote(s: &str) -> String {
+    let t = s.trim();
+    let quoted = t.len() >= 2
+        && ((t.starts_with('"') && t.ends_with('"')) || (t.starts_with('\'') && t.ends_with('\'')));
+    if quoted {
+        t[1..t.len() - 1].to_string()
+    } else {
+        t.to_string()
+    }
+}
+
+/// Parse an edge such as `svc1:L -- R:svc2`, `a:T --> B:b`,
+/// `svc1:L <--> R:svc2` or the labelled `a:R -[calls]-> L:b`.
+/// Mermaid's `{group}` modifier after a service id (`svc1{group}:L`)
+/// attaches that end to the service's group frame; flowmaid's named
+/// form `svc1{g}:L` does the same and checks that `svc1` sits in `g`.
 fn parse_arch_edge(
     line: &str,
     lineno: usize,
@@ -5047,11 +5124,27 @@ fn parse_arch_edge(
     groups: &HashMap<String, usize>,
     arch_services: &[ArchService],
 ) -> Result<ArchEdge, ParseError> {
-    let idx = line
-        .find("--")
-        .ok_or_else(|| err(lineno, "edge must contain '--'".to_string()))?;
-    let mut left = line[..idx].trim();
-    let mut right = line[idx + 2..].trim();
+    // The connector: a labelled `-[…]-`, else a plain `--`.
+    let (mut left, mut right, title) = match line.find("-[") {
+        Some(open) => {
+            let close = line[open..]
+                .find("]-")
+                .map(|c| open + c)
+                .ok_or_else(|| err(lineno, "unclosed edge label '-['".to_string()))?;
+            let title = arch_unquote(&line[open + 2..close]);
+            (
+                line[..open].trim(),
+                line[close + 2..].trim(),
+                Some(title).filter(|t| !t.is_empty()),
+            )
+        }
+        None => {
+            let idx = line
+                .find("--")
+                .ok_or_else(|| err(lineno, "edge must contain '--'".to_string()))?;
+            (line[..idx].trim(), line[idx + 2..].trim(), None)
+        }
+    };
 
     let arrow_start = left.ends_with('<');
     if arrow_start {
@@ -5072,8 +5165,10 @@ fn parse_arch_edge(
         .get(&to_id)
         .ok_or_else(|| err(lineno, format!("service '{}' not found", to_id)))?;
 
-    validate_arch_group_qualifier(from, from_group, "from", lineno, groups, arch_services)?;
-    validate_arch_group_qualifier(to, to_group, "to", lineno, groups, arch_services)?;
+    let from_group =
+        validate_arch_group_qualifier(from, from_group, "from", lineno, groups, arch_services)?;
+    let to_group =
+        validate_arch_group_qualifier(to, to_group, "to", lineno, groups, arch_services)?;
 
     Ok(ArchEdge {
         from,
@@ -5082,9 +5177,16 @@ fn parse_arch_edge(
         to_side,
         arrow_start,
         arrow_end,
+        from_group,
+        to_group,
+        title,
     })
 }
 
+/// Check an endpoint's `{…}` qualifier and say whether the end attaches
+/// to the service's group frame. Mermaid's literal `{group}` names the
+/// service's own group (a service outside any group keeps its own
+/// box); any other name must be the group the service sits in.
 fn validate_arch_group_qualifier(
     service_idx: usize,
     qualifier: Option<String>,
@@ -5092,10 +5194,13 @@ fn validate_arch_group_qualifier(
     lineno: usize,
     groups: &HashMap<String, usize>,
     arch_services: &[ArchService],
-) -> Result<(), ParseError> {
+) -> Result<bool, ParseError> {
     let Some(name) = qualifier else {
-        return Ok(());
+        return Ok(false);
     };
+    if name == "group" && !groups.contains_key("group") {
+        return Ok(arch_services[service_idx].group.is_some());
+    }
     let group_idx = *groups.get(&name).ok_or_else(|| {
         err(
             lineno,
@@ -5111,7 +5216,7 @@ fn validate_arch_group_qualifier(
             ),
         ));
     }
-    Ok(())
+    Ok(true)
 }
 
 fn parse_arch_endpoint_left(

@@ -1338,11 +1338,23 @@ impl Default for GitGraph {
 }
 
 /// Architecture diagram (`architecture-beta`).
+///
+/// `#[non_exhaustive]`: build one with `Architecture::default()` and
+/// set the (public) fields.
 #[derive(Debug, Default)]
+#[non_exhaustive]
 pub struct Architecture {
     pub groups: Vec<ArchGroup>,
+    /// Services and junctions, in declaration order; edges index this.
     pub services: Vec<ArchService>,
     pub edges: Vec<ArchEdge>,
+    /// Accessible title from mermaid's `accTitle:` statement — replaces
+    /// the default `<title>` / `aria-label` of the SVG. `None` = absent
+    /// or empty.
+    pub acc_title: Option<String>,
+    /// Accessible description from `accDescr:` or the multi-line
+    /// `accDescr { … }` block — written as the SVG's `<desc>`.
+    pub acc_descr: Option<String>,
 }
 
 /// A container of services.
@@ -1355,16 +1367,26 @@ pub struct ArchGroup {
 }
 
 /// A single service/node inside an architecture diagram.
+/// `#[non_exhaustive]`: the parser builds these; read their fields.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct ArchService {
     pub id: String,
+    /// Label drawn in the box; empty when the source gave no `[title]`.
     pub title: String,
     pub icon: Option<String>,
     pub group: Option<usize>,
+    /// Declared with `junction` rather than `service`: a bare point
+    /// where edges meet, drawn as a dot with no box, icon or title
+    /// (`title` is empty and `icon` is `None`). Every side of a
+    /// junction is its centre.
+    pub junction: bool,
 }
 
 /// One connection between two services via named ports.
+/// `#[non_exhaustive]`: the parser builds these; read their fields.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct ArchEdge {
     pub from: usize,
     pub from_side: ArchSide,
@@ -1374,6 +1396,16 @@ pub struct ArchEdge {
     pub arrow_start: bool,
     /// Arrowhead on the `to` side (pointing toward `to`).
     pub arrow_end: bool,
+    /// Mermaid's `{group}` modifier on the `from` end
+    /// (`a{group}:R -- L:b`): the edge leaves the frame of the group
+    /// `from` sits in, not the service's own box. `false` for a service
+    /// outside any group.
+    pub from_group: bool,
+    /// [`ArchEdge::from_group`] for the `to` end (`… L:b{group}`).
+    pub to_group: bool,
+    /// Edge label from mermaid's `a:R -[label]- L:b` form; `None` = an
+    /// unlabelled `--` edge.
+    pub title: Option<String>,
 }
 
 /// Port side on an architecture service.
