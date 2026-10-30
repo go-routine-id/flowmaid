@@ -13,7 +13,9 @@
 //! are routed orthogonally around every service box, junction and
 //! group title ([`Grid`]), so no line passes behind a box or strikes a
 //! title, and no edge turns on (or runs along) an unrelated one, which
-//! would draw a junction that is not there.
+//! would draw a junction that is not there. Edge label chips go last,
+//! each on (or just beside) a stretch of its own line where it covers no
+//! box, title or other chip ([`place_chips`]).
 //!
 //! Like `pie`/`journey`/`mindmap`/`gitgraph`, the layout is fully
 //! automatic and the result is exposed as a generic [`Scene`] so
@@ -409,22 +411,55 @@ fn build(d: &Architecture) -> (ArchScene, Vec<Vec<Pt>>) {
         .collect();
     plain.extend(frames.iter().copied());
     let mut grid = Grid::new(&obstacles, &plain, &frames, d, &ends);
+    let mut routes: Vec<Vec<Pt>> = d
+        .edges
+        .iter()
+        .zip(&ends)
+        .enumerate()
+        .map(|(k, (e, &(p0, p1)))| grid.route(k, p0, e.from_side, p1, e.to_side))
+        .collect();
+
+    // Label chips go where they cover no box, title, junction or other
+    // chip, and (wherever there is room) no line but their own.
+    let widths: Vec<Option<f64>> = d
+        .edges
+        .iter()
+        .map(|e| e.title.as_deref().map(|t| text_px(t) + LABEL_PAD_W))
+        .collect();
+    let mut blocks: Vec<Rect> = boxes.iter().map(|b| b.grow(CHIP_GAP)).collect();
+    for g in 0..ng {
+        if title_w[g] > 0.0 {
+            blocks.push(title_rect(frames[g], title_x[g], title_w[g]).grow(CHIP_GAP));
+        }
+    }
+    let mut bounds = Rect {
+        x0: 0.0,
+        y0: 0.0,
+        x1: right + PAD,
+        y1: bottom + PAD,
+    };
+    for &p in routes.iter().flatten() {
+        bounds.x0 = bounds.x0.min(p.0 - OUTER);
+        bounds.y0 = bounds.y0.min(p.1 - OUTER);
+        bounds.x1 = bounds.x1.max(p.0 + OUTER);
+        bounds.y1 = bounds.y1.max(p.1 + OUTER);
+    }
+    let field = ChipField::new(&routes, &blocks, &frames, bounds);
+    let chips = place_chips(&field, &widths);
 
     let mut edges: Vec<SceneEdge> = Vec::with_capacity(d.edges.len());
-    let mut routes: Vec<Vec<Pt>> = Vec::with_capacity(d.edges.len());
     let mut arrow_starts: Vec<bool> = Vec::with_capacity(d.edges.len());
     let mut arrow_ends: Vec<bool> = Vec::with_capacity(d.edges.len());
     for (k, (e, &(p0, p1))) in d.edges.iter().zip(&ends).enumerate() {
-        let corners = grid.route(k, p0, e.from_side, p1, e.to_side);
-        let label = e.title.as_ref().map(|text| {
-            let w = text_px(text) + LABEL_PAD_W;
-            (text.clone(), label_spot(&corners, w), w)
-        });
+        let label = match (&e.title, chips[k], widths[k]) {
+            (Some(text), Some(c), Some(w)) => Some((text.clone(), c, w)),
+            _ => None,
+        };
         edges.push(SceneEdge {
             from: d.services[e.from].id.clone(),
             to: d.services[e.to].id.clone(),
             bezier: [p0, p0, p1, p1],
-            waypoints: rounded(&corners),
+            waypoints: rounded(&routes[k]),
             kind: if e.arrow_start || e.arrow_end {
                 crate::model::EdgeKind::Arrow
             } else {
@@ -437,7 +472,6 @@ fn build(d: &Architecture) -> (ArchScene, Vec<Vec<Pt>>) {
         });
         arrow_starts.push(e.arrow_start);
         arrow_ends.push(e.arrow_end);
-        routes.push(corners);
     }
 
     // The canvas keeps PAD around the boxes and frames, and OUTER
@@ -1310,38 +1344,48 @@ fn solve<'a>(
     let na = t.na();
     let ns = d.services.len();
     let items = na + t.root;
-    // Atoms an edge joins, with the widest label among those edges.
-    let mut joins: HashMap<(usize, usize), f64> = HashMap::new();
+    // Atoms an edge joins, with the room (on x, on y) the labels of the
+    // edges between them need: their stubs, plus every chip between the
+    // boxes — side by side along a flat line, stacked along an upright
+    // one — so two labelled edges on one line (a request and its reply)
+    // each get a chip's room, not one between them.
+    let mut chips_between: HashMap<(usize, usize), Vec<f64>> = HashMap::new();
     for e in &d.edges {
         if e.from != e.to && e.from < ns && e.to < ns {
-            let w = e.title.as_deref().map_or(0.0, text_px);
-            let slot = joins
+            let slot = chips_between
                 .entry((e.from.min(e.to), e.from.max(e.to)))
-                .or_insert(0.0);
-            *slot = slot.max(w);
+                .or_default();
+            if let Some(t) = e.title.as_deref() {
+                slot.push(text_px(t) + LABEL_PAD_W);
+            }
         }
     }
-    let link = |p: usize, q: usize| -> Option<f64> {
-        let mut best: Option<f64> = None;
+    let joins: HashMap<(usize, usize), Pt> = chips_between
+        .into_iter()
+        .map(|(pair, ws)| {
+            let n = ws.len() as f64;
+            let room = if ws.is_empty() {
+                (0.0, 0.0)
+            } else {
+                let stubs = 2.0 * STUB + 8.0 + CHIP_APART * (n - 1.0);
+                (ws.iter().sum::<f64>() + stubs, n * LABEL_BOX_H + stubs)
+            };
+            (pair, room)
+        })
+        .collect();
+    let link = |p: usize, q: usize| -> Option<Pt> {
+        let mut best: Option<Pt> = None;
         for &a in &t.under[p] {
             for &b in &t.under[q] {
-                if let Some(&w) = joins.get(&(a.min(b), a.max(b))) {
-                    best = Some(best.map_or(w, |x: f64| x.max(w)));
+                if let Some(&r) = joins.get(&(a.min(b), a.max(b))) {
+                    best = Some(best.map_or(r, |x: Pt| (x.0.max(r.0), x.1.max(r.1))));
                 }
             }
         }
         best
     };
-    // A labelled edge needs its stubs plus the label between the boxes.
-    let label_room = |w: f64, on_x: bool| {
-        if w <= 0.0 {
-            0.0
-        } else if on_x {
-            w + LABEL_PAD_W + 2.0 * STUB + 8.0
-        } else {
-            LABEL_BOX_H + 2.0 * STUB + 8.0
-        }
-    };
+    // What the labels between two atoms need on one axis.
+    let label_room = |r: Pt, on_x: bool| if on_x { r.0 } else { r.1 };
     // The box sides (as DIRS indices) that carry a port, the stub
     // reaching STUB out of it.
     let mut ported = vec![[false; 4]; na];
@@ -1365,10 +1409,10 @@ fn solve<'a>(
         let lw = link(p, q);
         let (far, near) = if on_x { (0, 2) } else { (1, 3) };
         if t.is_group(p) || t.is_group(q) {
-            let room = lw.map_or(0.0, |w| label_room(w, on_x) - 2.0 * GROUP_PAD);
+            let room = lw.map_or(0.0, |r| label_room(r, on_x) - 2.0 * GROUP_PAD);
             GROUP_GAP.max(room)
-        } else if let Some(w) = lw {
-            EDGE_GAP.max(label_room(w, on_x))
+        } else if let Some(r) = lw {
+            EDGE_GAP.max(label_room(r, on_x))
         } else if ported[p][far] && ported[q][near] {
             EDGE_GAP
         } else if on_x {
@@ -1411,20 +1455,23 @@ fn solve<'a>(
         if e.from == e.to || e.from >= ns || e.to >= ns || e.from_side == e.to_side {
             continue;
         }
-        let w = e.title.as_deref().map_or(0.0, text_px);
         let (a, b) = (e.from, e.to);
+        let r = joins
+            .get(&(a.min(b), a.max(b)))
+            .copied()
+            .unwrap_or_default();
         match (e.from_side, horizontal(e.to_side)) {
             (ArchSide::R, true) if cell[a].0 < cell[b].0 => {
-                xpred[b].push((a, EDGE_GAP.max(label_room(w, true))))
+                xpred[b].push((a, EDGE_GAP.max(label_room(r, true))))
             }
             (ArchSide::L, true) if cell[b].0 < cell[a].0 => {
-                xpred[a].push((b, EDGE_GAP.max(label_room(w, true))))
+                xpred[a].push((b, EDGE_GAP.max(label_room(r, true))))
             }
             (ArchSide::B, false) if cell[a].1 < cell[b].1 => {
-                ypred[b].push((a, EDGE_GAP.max(label_room(w, false))))
+                ypred[b].push((a, EDGE_GAP.max(label_room(r, false))))
             }
             (ArchSide::T, false) if cell[b].1 < cell[a].1 => {
-                ypred[a].push((b, EDGE_GAP.max(label_room(w, false))))
+                ypred[a].push((b, EDGE_GAP.max(label_room(r, false))))
             }
             _ => {}
         }
@@ -2216,18 +2263,573 @@ fn rounded(corners: &[Pt]) -> Vec<Pt> {
     out
 }
 
-/// Centre for an edge label of width `w`: the middle of the route's
-/// longest horizontal run that holds it, else of its longest run.
-fn label_spot(corners: &[Pt], w: f64) -> Pt {
-    let mid = |s: &[Pt]| ((s[0].0 + s[1].0) / 2.0, (s[0].1 + s[1].1) / 2.0);
-    let flat = corners
+// ------------------------------------------------------------------
+// Edge label chips
+// ------------------------------------------------------------------
+
+/// Room a label chip keeps from every box, junction dot and group
+/// title.
+const CHIP_GAP: f64 = 3.0;
+/// Room between two label chips: a little of the line shows between
+/// two chips on one line, so they read as two labels, not one.
+const CHIP_APART: f64 = 2.0 * CHIP_GAP;
+/// Room kept between a route's end (its port, and any arrowhead there)
+/// and a chip on the route's first or last leg.
+const CHIP_END: f64 = 14.0;
+/// Room kept between a route's corner and a chip on one of its legs,
+/// so the chip covers neither the rounded bend nor the next leg.
+const CHIP_CORNER: f64 = CORNER_R + 2.0;
+/// How far off its line a chip set beside a leg keeps, and how much
+/// further out each fallback row beside it goes.
+const BESIDE_GAP: f64 = 3.0;
+const BESIDE_STEP: f64 = 14.0;
+/// Rows of fallback spots beside each leg, on each side.
+const BESIDE_ROWS: usize = 3;
+/// Spots tried along one leg, spread end to end (plus its middle).
+const CHIP_SLIDES: usize = 9;
+/// What a chip spot costs. Covering a box, a junction, a title or
+/// another chip is never done while any other spot is free; a line
+/// through the chip (another edge's, or a bend of its own route) is
+/// next worst: the line reads as stopping at the chip. A chip on a
+/// trunk it shares with another edge (a fan-in) labels both, so it
+/// costs (by how much of it lies along the trunk) more than one set
+/// just beside its own stretch of line, and each row further out more
+/// again. The rest only picks the tidiest of the free
+/// spots: the middle of a long leg, flat legs over upright ones, inside
+/// a frame rather than across its side, and on the canvas already
+/// drawn rather than widening it.
+const CHIP_BLOCKED: f64 = 1e6;
+const CHIP_CROSS: f64 = 2_000.0;
+const CHIP_SHARED: f64 = 900.0;
+const CHIP_BESIDE: f64 = 150.0;
+const CHIP_FAR: f64 = 120.0;
+const CHIP_SPILL: f64 = 50.0;
+const CHIP_FRAME: f64 = 25.0;
+const CHIP_UPRIGHT: f64 = 20.0;
+/// Per px a spot sits off the middle of its leg, and per px its leg is
+/// shorter than the route's longest.
+const CHIP_OFF_MID: f64 = 0.25;
+const CHIP_SHORT_LEG: f64 = 0.05;
+
+/// A place a label chip may go: its centre, the leg of its route (by
+/// index of the leg's first corner) it labels, whether it sits on that
+/// leg's line (else beside it), and its price before collisions.
+struct Spot {
+    c: Pt,
+    leg: usize,
+    on: bool,
+    base: f64,
+}
+
+/// The box a chip of width `w` centred on `c` draws.
+fn chip_rect(c: Pt, w: f64) -> Rect {
+    Rect {
+        x0: c.0 - w / 2.0,
+        y0: c.1 - LABEL_BOX_H / 2.0,
+        x1: c.0 + w / 2.0,
+        y1: c.1 + LABEL_BOX_H / 2.0,
+    }
+}
+
+/// Whether two rects share interior.
+fn overlaps(a: &Rect, b: &Rect) -> bool {
+    a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1
+}
+
+/// Whether `a` lies within `b`.
+fn within(a: &Rect, b: &Rect) -> bool {
+    a.x0 >= b.x0 - EPS && a.x1 <= b.x1 + EPS && a.y0 >= b.y0 - EPS && a.y1 <= b.y1 + EPS
+}
+
+/// Whether the segment `p`–`q` passes through the interior of `r`
+/// (Liang–Barsky clipping; a segment along `r`'s outline does not).
+fn seg_hits(p: Pt, q: Pt, r: &Rect) -> bool {
+    let (dx, dy) = (q.0 - p.0, q.1 - p.1);
+    let (mut t0, mut t1) = (0.0f64, 1.0f64);
+    for (pk, qk) in [
+        (-dx, p.0 - r.x0),
+        (dx, r.x1 - p.0),
+        (-dy, p.1 - r.y0),
+        (dy, r.y1 - p.1),
+    ] {
+        if pk.abs() < EPS {
+            if qk <= EPS {
+                return false;
+            }
+        } else if pk < 0.0 {
+            t0 = t0.max(qk / pk);
+        } else {
+            t1 = t1.min(qk / pk);
+        }
+    }
+    t0 < t1
+}
+
+/// Positions to try along a leg for a chip centre between `first` and
+/// `last`: [`CHIP_SLIDES`] spread end to end, and the leg's middle `mid`
+/// (where it falls between them).
+fn slides(first: f64, last: f64, mid: f64) -> Vec<f64> {
+    let mut v = vec![mid.clamp(first, last)];
+    for j in 0..CHIP_SLIDES {
+        let u = first + (last - first) * j as f64 / (CHIP_SLIDES - 1) as f64;
+        if v.iter().all(|&o| (o - u).abs() >= 1.0) {
+            v.push(u);
+        }
+    }
+    v
+}
+
+/// Every spot a chip of width `w` may take on `route`: on each straight
+/// leg that holds it clear of the leg's ends ([`CHIP_END`] at a port,
+/// [`CHIP_CORNER`] at a bend), and in [`BESIDE_ROWS`] rows beside every
+/// leg on both sides.
+fn spots(route: &[Pt], w: f64) -> Vec<Spot> {
+    let n = route.len();
+    let longest = route
         .windows(2)
-        .filter(|s| (s[0].1 - s[1].1).abs() < EPS && dist(s[0], s[1]) >= w + 8.0)
-        .max_by(|a, b| dist(a[0], a[1]).total_cmp(&dist(b[0], b[1])));
-    let any = corners
-        .windows(2)
-        .max_by(|a, b| dist(a[0], a[1]).total_cmp(&dist(b[0], b[1])));
-    flat.or(any).map_or(corners[0], mid)
+        .map(|s| dist(s[0], s[1]))
+        .fold(0.0, f64::max);
+    let inset = |corner: usize| {
+        if corner == 0 || corner + 1 == n {
+            CHIP_END
+        } else {
+            CHIP_CORNER
+        }
+    };
+    let mut out = Vec::new();
+    for (i, s) in route.windows(2).enumerate() {
+        let (a, b) = (s[0], s[1]);
+        let flat = (a.1 - b.1).abs() < EPS;
+        if !flat && (a.0 - b.0).abs() >= EPS {
+            continue;
+        }
+        // Coordinates along the leg (x on a flat leg) and of its line.
+        let (u0, u1, line) = if flat {
+            (a.0, b.0, a.1)
+        } else {
+            (a.1, b.1, a.0)
+        };
+        let (lo, hi) = (u0.min(u1), u0.max(u1));
+        if hi - lo < EPS {
+            continue;
+        }
+        let (in_lo, in_hi) = if u0 <= u1 {
+            (inset(i), inset(i + 1))
+        } else {
+            (inset(i + 1), inset(i))
+        };
+        let (along, across) = if flat {
+            (w, LABEL_BOX_H)
+        } else {
+            (LABEL_BOX_H, w)
+        };
+        let mid = (lo + hi) / 2.0;
+        let pt = |u: f64, off: f64| {
+            if flat {
+                (u, line + off)
+            } else {
+                (line + off, u)
+            }
+        };
+        let shape = (longest - (hi - lo)) * CHIP_SHORT_LEG + if flat { 0.0 } else { CHIP_UPRIGHT };
+        let (first, last) = (lo + in_lo + along / 2.0, hi - in_hi - along / 2.0);
+        if first <= last {
+            for u in slides(first, last, mid) {
+                out.push(Spot {
+                    c: pt(u, 0.0),
+                    leg: i,
+                    on: true,
+                    base: shape + (u - mid).abs() * CHIP_OFF_MID,
+                });
+            }
+        }
+        // Beside the line a chip covers neither the line nor its
+        // arrowhead, so it may run from end to end of the leg (the
+        // boxes and the next legs keep it clear of the port and the
+        // bend); on a leg too short for it, it overhangs one end.
+        let flush = along / 2.0 + CHIP_GAP + 1.0;
+        let (first, last) = (lo + flush, hi - flush);
+        let at = if first <= last {
+            slides(first, last, mid)
+        } else {
+            vec![mid, first, last]
+        };
+        for row in 0..BESIDE_ROWS {
+            let off = across / 2.0 + BESIDE_GAP + row as f64 * BESIDE_STEP;
+            // Above (or right of) the line first: a tie goes there.
+            for (tie, sign) in [(0.0, -1.0), (1.0, 1.0)] {
+                let sign = if flat { sign } else { -sign };
+                for &u in &at {
+                    out.push(Spot {
+                        c: pt(u, sign * off),
+                        leg: i,
+                        on: false,
+                        base: CHIP_BESIDE
+                            + row as f64 * CHIP_FAR
+                            + shape
+                            + (u - mid).abs() * CHIP_OFF_MID
+                            + tie,
+                    });
+                }
+            }
+        }
+    }
+    out
+}
+
+/// Side of a [`Buckets`] cell.
+const BUCKET: f64 = 64.0;
+
+/// Rects filed under the [`BUCKET`]-px cells of a grid that they
+/// touch, so the few near a chip spot are found without testing them
+/// all. Positions off the grid count as its edge cells, which keeps
+/// every overlapping pair in a shared cell.
+struct Buckets {
+    x0: f64,
+    y0: f64,
+    nx: usize,
+    ny: usize,
+    cells: Vec<Vec<u32>>,
+}
+
+impl Buckets {
+    fn new(area: Rect, rects: &[Rect]) -> Buckets {
+        let cells = |len: f64| ((len / BUCKET).ceil() as usize).max(1);
+        let (nx, ny) = (cells(area.x1 - area.x0), cells(area.y1 - area.y0));
+        let mut b = Buckets {
+            x0: area.x0,
+            y0: area.y0,
+            nx,
+            ny,
+            cells: vec![Vec::new(); nx * ny],
+        };
+        for (k, r) in rects.iter().enumerate() {
+            let (i0, i1, j0, j1) = b.span(r);
+            for j in j0..=j1 {
+                for i in i0..=i1 {
+                    b.cells[j * nx + i].push(k as u32);
+                }
+            }
+        }
+        b
+    }
+
+    /// The cells (columns `i0..=i1`, rows `j0..=j1`) that `r` touches.
+    fn span(&self, r: &Rect) -> (usize, usize, usize, usize) {
+        let at =
+            |v: f64, o: f64, n: usize| (((v - o) / BUCKET).floor().max(0.0) as usize).min(n - 1);
+        (
+            at(r.x0, self.x0, self.nx),
+            at(r.x1, self.x0, self.nx),
+            at(r.y0, self.y0, self.ny),
+            at(r.y1, self.y0, self.ny),
+        )
+    }
+
+    /// Into `out`, once each: the rects filed in a cell `r` touches.
+    fn near(&self, r: &Rect, out: &mut Vec<u32>) {
+        out.clear();
+        let (i0, i1, j0, j1) = self.span(r);
+        for j in j0..=j1 {
+            for i in i0..=i1 {
+                out.extend(&self.cells[j * self.nx + i]);
+            }
+        }
+        out.sort_unstable();
+        out.dedup();
+    }
+}
+
+/// What label chips must keep off and should keep within.
+struct ChipField<'a> {
+    /// Every edge's route, as its corner points.
+    routes: &'a [Vec<Pt>],
+    /// Every straight leg of every route: its edge, its index on that
+    /// route, and its ends; filed by its bounding box in `leg_at`.
+    legs: Vec<(usize, usize, Pt, Pt)>,
+    leg_at: Buckets,
+    /// Boxes, junction dots and group titles, grown by [`CHIP_GAP`];
+    /// filed in `block_at`.
+    blocks: &'a [Rect],
+    block_at: Buckets,
+    frames: &'a [Rect],
+    /// The drawing so far: boxes, frames and routes, with margins.
+    bounds: Rect,
+}
+
+impl<'a> ChipField<'a> {
+    fn new(routes: &'a [Vec<Pt>], blocks: &'a [Rect], frames: &'a [Rect], bounds: Rect) -> Self {
+        let legs: Vec<(usize, usize, Pt, Pt)> = routes
+            .iter()
+            .enumerate()
+            .flat_map(|(k, r)| {
+                r.windows(2)
+                    .enumerate()
+                    .map(move |(i, s)| (k, i, s[0], s[1]))
+            })
+            .collect();
+        let boxes: Vec<Rect> = legs
+            .iter()
+            .map(|&(_, _, p, q)| Rect {
+                x0: p.0.min(q.0),
+                y0: p.1.min(q.1),
+                x1: p.0.max(q.0),
+                y1: p.1.max(q.1),
+            })
+            .collect();
+        ChipField {
+            routes,
+            leg_at: Buckets::new(bounds, &boxes),
+            legs,
+            blocks,
+            block_at: Buckets::new(bounds, blocks),
+            frames,
+            bounds,
+        }
+    }
+
+    /// Price of spot `s` for edge `k`'s chip of width `w`, before other
+    /// chips are considered (see [`CHIP_BLOCKED`] and the costs after
+    /// it). `near` is scratch space.
+    fn price(&self, k: usize, s: &Spot, w: f64, near: &mut Vec<u32>) -> f64 {
+        let r = chip_rect(s.c, w);
+        let mut cost = s.base;
+        self.block_at.near(&r, near);
+        if near.iter().any(|&b| overlaps(&r, &self.blocks[b as usize])) {
+            cost += CHIP_BLOCKED;
+        }
+        let route = &self.routes[k];
+        let (a, b) = (route[s.leg], route[s.leg + 1]);
+        let flat = (a.1 - b.1).abs() < EPS;
+        let line = if flat { a.1 } else { a.0 };
+        // The chip's extent along its leg, and how much of that another
+        // edge runs along too.
+        let (lo, hi) = if flat { (r.x0, r.x1) } else { (r.y0, r.y1) };
+        let mut shared = 0.0;
+        // A line that grazes the chip's outline reads as running into it.
+        let hit = r.grow(1.5);
+        // Whatever runs through the chip, or along its leg's line beside
+        // it.
+        let strip = if flat {
+            Rect {
+                x0: lo,
+                y0: line - NEAR,
+                x1: hi,
+                y1: line + NEAR,
+            }
+        } else {
+            Rect {
+                x0: line - NEAR,
+                y0: lo,
+                x1: line + NEAR,
+                y1: hi,
+            }
+        };
+        let span = Rect {
+            x0: hit.x0.min(strip.x0),
+            y0: hit.y0.min(strip.y0),
+            x1: hit.x1.max(strip.x1),
+            y1: hit.y1.max(strip.y1),
+        };
+        self.leg_at.near(&span, near);
+        for &l in near.iter() {
+            let (j, i, p0, p1) = self.legs[l as usize];
+            if j == k && i == s.leg {
+                continue;
+            }
+            if j != k {
+                let along = if flat {
+                    ((p0.1 - p1.1).abs() < EPS && (p0.1 - line).abs() < NEAR)
+                        .then(|| (p0.0.min(p1.0), p0.0.max(p1.0)))
+                } else {
+                    ((p0.0 - p1.0).abs() < EPS && (p0.0 - line).abs() < NEAR)
+                        .then(|| (p0.1.min(p1.1), p0.1.max(p1.1)))
+                };
+                if let Some((q0, q1)) = along {
+                    shared += (hi.min(q1) - lo.max(q0)).max(0.0);
+                    if s.on {
+                        continue;
+                    }
+                }
+            }
+            if seg_hits(p0, p1, &hit) {
+                cost += CHIP_CROSS;
+            }
+        }
+        cost += CHIP_SHARED * (shared / (hi - lo)).min(1.0);
+        for f in self.frames {
+            if overlaps(&r, f) && !within(&r, f) {
+                cost += CHIP_FRAME;
+            }
+        }
+        if !within(&r, &self.bounds) {
+            cost += CHIP_SPILL;
+        }
+        cost
+    }
+}
+
+/// Centre of each edge's label chip, index-parallel with `widths` (a
+/// chip's width, `None` for an unlabelled edge): the cheapest of its
+/// [`spots`] by [`ChipField::price`], never on a chip placed before it.
+/// The edges with the fewest free spots choose first, so a chip with
+/// room to spare does not take the only spot another one had; and a
+/// chip left with nowhere but on another one moves together with that
+/// one ([`Chips::repair`]): two labelled edges on one line between two boxes
+/// each take an end of it, rather than the first one taking its middle.
+fn place_chips(field: &ChipField, widths: &[Option<f64>]) -> Vec<Option<Pt>> {
+    let mut near = Vec::new();
+    let priced: Vec<Vec<(Spot, f64)>> = widths
+        .iter()
+        .enumerate()
+        .map(|(k, w)| match w {
+            Some(w) => spots(&field.routes[k], *w)
+                .into_iter()
+                .map(|s| {
+                    let p = field.price(k, &s, *w, &mut near);
+                    (s, p)
+                })
+                .collect(),
+            None => Vec::new(),
+        })
+        .map(|mut v: Vec<(Spot, f64)>| {
+            // Cheapest first (a tie keeps the order the spots came in).
+            v.sort_by(|a, b| a.1.total_cmp(&b.1));
+            v
+        })
+        .collect();
+    let mut order: Vec<usize> = (0..widths.len()).filter(|&k| widths[k].is_some()).collect();
+    order.sort_by_key(|&k| priced[k].iter().filter(|(_, p)| *p < CHIP_SHARED).count());
+    let mut chips = Chips {
+        priced: &priced,
+        widths,
+        at: vec![None; widths.len()],
+    };
+    for &k in &order {
+        let (c, p) = chips
+            .cheapest(k, &[k])
+            .unwrap_or((field.routes[k][0], CHIP_BLOCKED));
+        chips.at[k] = Some((c, p));
+    }
+    for &k in &order {
+        chips.repair(k);
+    }
+    chips.at.iter().map(|a| a.map(|(c, _)| c)).collect()
+}
+
+/// Label chips being placed: each edge's priced spots (cheapest
+/// first), its chip's width, and where its chip is (with that spot's
+/// price, plus [`CHIP_BLOCKED`] if it lies on another chip).
+struct Chips<'a> {
+    priced: &'a [Vec<(Spot, f64)>],
+    widths: &'a [Option<f64>],
+    at: Vec<Option<(Pt, f64)>>,
+}
+
+/// Cheapest spots of each of two chips that [`Chips::repair`] tries
+/// together.
+const PAIR_TRIES: usize = 40;
+
+impl Chips<'_> {
+    /// The chip of edge `k` centred on `c`, grown by [`CHIP_APART`].
+    fn rect(&self, k: usize, c: Pt) -> Rect {
+        chip_rect(c, self.widths[k].unwrap_or_default()).grow(CHIP_APART)
+    }
+
+    /// Whether a chip of edge `k` on `c` lies on any placed chip but
+    /// those of the edges in `skip`.
+    fn on_chip(&self, k: usize, c: Pt, skip: &[usize]) -> bool {
+        let r = self.rect(k, c);
+        self.at.iter().enumerate().any(|(j, a)| {
+            !skip.contains(&j)
+                && a.is_some_and(|(o, _)| {
+                    overlaps(&r, &chip_rect(o, self.widths[j].unwrap_or_default()))
+                })
+        })
+    }
+
+    /// Edge `k`'s cheapest spot with its price, a spot on a placed chip
+    /// (but those of `skip`) costing [`CHIP_BLOCKED`] more: its first
+    /// spot clear of everything, or else the least bad of them all.
+    fn cheapest(&self, k: usize, skip: &[usize]) -> Option<(Pt, f64)> {
+        let spots = &self.priced[k];
+        let cost = |s: &Spot, p: f64| {
+            p + if self.on_chip(k, s.c, skip) {
+                CHIP_BLOCKED
+            } else {
+                0.0
+            }
+        };
+        let clear = spots
+            .iter()
+            .find(|(s, p)| *p < CHIP_BLOCKED && !self.on_chip(k, s.c, skip))
+            .map(|(s, p)| (s.c, *p));
+        clear.or_else(|| {
+            spots
+                .iter()
+                .map(|(s, p)| (s.c, cost(s, *p)))
+                .min_by(|a, b| a.1.total_cmp(&b.1))
+        })
+    }
+
+    /// If edge `k`'s chip was kept off its cheapest spot by exactly one
+    /// other chip (or could only go on top of it), place the two anew
+    /// together: the cheapest pair of their spots that clear each other
+    /// and every other chip, when that beats where they are.
+    fn repair(&mut self, k: usize) {
+        let Some((_, pk)) = self.at[k] else {
+            return;
+        };
+        let Some(&(Spot { c: ideal, .. }, best)) = self.priced[k].first() else {
+            return;
+        };
+        if pk <= best + EPS {
+            return;
+        }
+        let r = self.rect(k, ideal);
+        let under: Vec<usize> = (0..self.at.len())
+            .filter(|&j| {
+                j != k
+                    && self.at[j].is_some_and(|(o, _)| {
+                        overlaps(&r, &chip_rect(o, self.widths[j].unwrap_or_default()))
+                    })
+            })
+            .collect();
+        let [j] = under[..] else {
+            return;
+        };
+        let Some((_, pj)) = self.at[j] else {
+            return;
+        };
+        let skip = [k, j];
+        let free = |e: usize| {
+            let mut v: Vec<(Pt, f64)> = self.priced[e]
+                .iter()
+                .filter(|(s, p)| *p < CHIP_BLOCKED && !self.on_chip(e, s.c, &skip))
+                .map(|(s, p)| (s.c, *p))
+                .collect();
+            v.sort_by(|a, b| a.1.total_cmp(&b.1));
+            v.truncate(PAIR_TRIES);
+            v
+        };
+        let (fk, fj) = (free(k), free(j));
+        let mut best: Option<(Pt, f64, Pt, f64)> = None;
+        for &(a, qa) in &fk {
+            let ra = self.rect(k, a);
+            for &(b, qb) in &fj {
+                let rb = chip_rect(b, self.widths[j].unwrap_or_default());
+                if !overlaps(&ra, &rb) && best.map_or(true, |(_, x, _, y)| qa + qb < x + y) {
+                    best = Some((a, qa, b, qb));
+                }
+            }
+        }
+        if let Some((a, qa, b, qb)) = best {
+            if qa + qb < pk + pj {
+                self.at[k] = Some((a, qa));
+                self.at[j] = Some((b, qb));
+            }
+        }
+    }
 }
 
 // ------------------------------------------------------------------
@@ -3773,6 +4375,257 @@ mod tests {
         assert!((a.y - b.y).abs() < 0.5 && b.x > a.x);
         let (x, y) = (node(&sc, "x"), node(&sc, "y"));
         assert!(y.x > x.x && y.y > x.y, "x:R -- T:y stays diagonal");
+    }
+
+    /// Labelled diagrams an independent review drew with label chips on
+    /// top of each other: two labelled edges merging into one trunk into
+    /// a port (both chips on the trunk, one hiding the other), a fan-in
+    /// from two clients, and a chip wider than its leg that hid its own
+    /// bends and half of a neighbour's chip.
+    const CHIP_REPROS: &[&str] = &[
+        "architecture-beta
+    group client(internet)[Clients]
+    group api(cloud)[API Layer]
+    group data(database)[Data]
+    service browser(web)[Browser] in client
+    service app(mobile)[Mobile App] in client
+    service gw(api)[Gateway] in api
+    service orders(server)[Orders] in api
+    service users(user)[Users] in api
+    service pg(database)[Postgres] in data
+    service cache(cache)[Redis] in data
+    service bus(queue)[Event Bus] in data
+    browser:R -[REST over https]-> L:gw
+    app:R -[https]-> L:gw
+    gw:R -[route]-> L:orders
+    gw:B -[auth]-> T:users
+    orders:R -[sql]-> L:pg
+    orders:B -[publish]-> T:bus
+    users:R -[lookup]-> L:cache
+    users:R -[read replica]-> L:pg",
+        "architecture-beta
+    service a(server)[Alpha]
+    service b(database)[Beta]
+    service c(disk)[Gamma]
+    service d(internet)[Delta with a fairly long label that must wrap]
+    a:T -[upward label at top]-> B:b
+    a:L -[left side chip label]-> R:c
+    c:T -[x]- B:d
+    b:L -[very long edge label text here]- T:c",
+        "architecture-beta
+    service api(server)[API]
+    service worker(cpu)[Worker]
+    service db(database)[Database]
+    api:R -[reads]-> L:db
+    worker:R -[writes]-> L:db",
+    ];
+
+    /// `src` with a label on every other edge, the labels (short and
+    /// long) taken in turn.
+    fn labelled(src: &str) -> String {
+        let labels = [
+            "calls",
+            "reads config",
+            "publishes order events",
+            "x",
+            "replicates to standby",
+        ];
+        let mut k = 0;
+        src.lines()
+            .map(|l| {
+                let arrow = [" --> ", " -- "].into_iter().find(|a| l.contains(a));
+                let Some(arrow) = arrow else {
+                    return format!("{l}\n");
+                };
+                k += 1;
+                if k % 2 == 1 {
+                    return format!("{l}\n");
+                }
+                let text = labels[(k / 2) % labels.len()];
+                let tip = if arrow == " --> " { "->" } else { "-" };
+                format!("{}\n", l.replacen(arrow, &format!(" -[{text}]{tip} "), 1))
+            })
+            .collect()
+    }
+
+    /// What is wrong with where `src`'s label chips went: a chip on
+    /// another chip, a box or junction, or a group title (`hard`, never
+    /// allowed), or a line through it other than the leg it labels —
+    /// another edge's, or a bend of its own route (`soft`). A chip on a
+    /// trunk its edge shares with others (a fan-in) is not a fault.
+    fn chip_faults(src: &str) -> (Vec<String>, Vec<String>) {
+        let as_ = scene(&arch(src));
+        let sc = &as_.scene;
+        let (mut hard, mut soft) = (Vec::new(), Vec::new());
+        let chips: Vec<(usize, &str, Pt, Rect)> = sc
+            .edges
+            .iter()
+            .enumerate()
+            .filter_map(|(k, e)| {
+                let (text, c, w) = e.label.as_ref()?;
+                Some((k, text.as_str(), *c, chip_rect(*c, *w)))
+            })
+            .collect();
+        for (i, &(_, t, _, r)) in chips.iter().enumerate() {
+            for &(_, u, _, q) in &chips[i + 1..] {
+                if overlaps(&r.grow(CHIP_GAP), &q) {
+                    hard.push(format!("chip '{t}' overlaps (or touches) chip '{u}'"));
+                }
+            }
+            for n in &sc.nodes {
+                if overlaps(&r, &Rect::around(n)) {
+                    hard.push(format!("chip '{t}' covers {}", n.id));
+                }
+            }
+            for (g, c) in sc.clusters.iter().enumerate() {
+                let f = Rect {
+                    x0: c.x,
+                    y0: c.y,
+                    x1: c.x + c.w,
+                    y1: c.y + c.h,
+                };
+                let tr = title_rect(f, as_.title_at[g].0, title_px(&c.title));
+                if !c.title.is_empty() && overlaps(&r, &tr) {
+                    hard.push(format!("chip '{t}' covers title {}", c.title));
+                }
+            }
+        }
+        for &(k, t, c, r) in &chips {
+            // The line a chip sits on: flat through its centre, or upright.
+            let carrier = |a: Pt, b: Pt| {
+                ((a.1 - b.1).abs() < EPS && (a.1 - c.1).abs() < EPS)
+                    || ((a.0 - b.0).abs() < EPS && (a.0 - c.0).abs() < EPS)
+            };
+            for (j, e) in sc.edges.iter().enumerate() {
+                let through = e
+                    .waypoints
+                    .windows(2)
+                    .any(|w| !carrier(w[0], w[1]) && seg_hits(w[0], w[1], &r));
+                if through {
+                    let whose = if j == k {
+                        "its own bend"
+                    } else {
+                        "another edge"
+                    };
+                    soft.push(format!(
+                        "{whose} ({}->{}) runs through chip '{t}'",
+                        e.from, e.to
+                    ));
+                }
+            }
+        }
+        (hard, soft)
+    }
+
+    #[test]
+    fn label_chips_never_cover_each_other_a_box_or_a_title() {
+        // Review: chips went to the middle of the longest flat leg with no
+        // look at anything else, so 'read replica' hid 'sql' on a shared
+        // trunk, 'https' covered the end of 'REST over https', and a chip
+        // wider than its leg hid its own bends and half of the 'x' chip.
+        for src in std::iter::once(CORPUS)
+            .chain(MORE.iter().copied())
+            .chain(REPROS.iter().copied())
+            .chain(CHIP_REPROS.iter().copied())
+        {
+            let (hard, soft) = chip_faults(src);
+            assert!(
+                hard.is_empty() && soft.is_empty(),
+                "{src}\n{hard:?}\n{soft:?}"
+            );
+        }
+        // Each repro edge labels its own line: 'sql' and 'https' (whose
+        // edges merge into a trunk another labelled edge also runs on)
+        // sit by their own stretch of line, not on the trunk.
+        let sc = scene(&arch(CHIP_REPROS[0])).scene;
+        let chip = |text: &str| {
+            sc.edges
+                .iter()
+                .find_map(|e| e.label.as_ref().filter(|l| l.0 == text))
+                .map(|l| chip_rect(l.1, l.2))
+                .unwrap()
+        };
+        let (orders, users) = (node(&sc, "orders"), node(&sc, "users"));
+        let sql = chip("sql");
+        assert!(sql.x0 < orders.x + orders.w / 2.0 + 40.0, "{sql:?}");
+        let replica = chip("read replica");
+        assert!(replica.y0 > users.y - users.h / 2.0, "on users' own leg");
+        let app = node(&sc, "app");
+        let https = chip("https");
+        assert!(
+            https.y1 > app.y - app.h / 2.0,
+            "on app's own leg: {https:?}"
+        );
+        // Random tangles with every other edge labelled: never a chip on
+        // a chip, a box or a title, and lines through chips only where a
+        // dense tangle leaves no free spot by the line.
+        let mut through = 0;
+        let mut chips = 0;
+        for seed in 1..=80u64 {
+            let src = labelled(&tangle(
+                seed,
+                4 + (seed % 9) as usize,
+                (seed % 4) as usize,
+                8,
+            ));
+            let (hard, soft) = chip_faults(&src);
+            assert!(hard.is_empty(), "{src}\n{hard:?}");
+            through += soft.len();
+            chips += src.matches("-[").count();
+        }
+        eprintln!("{through} of {chips}");
+        assert!(chips > 200, "{chips}");
+        assert!(
+            through * 20 <= chips,
+            "{through} of {chips} chips have a line through them"
+        );
+    }
+
+    #[test]
+    fn a_chip_beside_its_line_when_the_line_has_no_room() {
+        // 'x' on c:T -- B:d: all but 30px of its only leg is a trunk shared
+        // with b -> c, and a chip there would label both. It goes beside
+        // its own stretch instead, clear of the trunk.
+        let (as_, routes) = build(&arch(CHIP_REPROS[1]));
+        let e = &as_.scene.edges[2];
+        let (_, c, w) = e.label.clone().unwrap();
+        let r = chip_rect(c, w);
+        let leg = (routes[2][0], routes[2][1]);
+        assert!((leg.0 .0 - leg.1 .0).abs() < EPS, "an upright leg");
+        assert!(r.x1 < leg.0 .0 || r.x0 > leg.0 .0, "beside the line: {r:?}");
+        // Its own stretch: nearer Delta (d, top) than the trunk's join.
+        let d = node(&as_.scene, "d");
+        assert!(r.y0 < d.y + d.h / 2.0 + 30.0, "{r:?}");
+        // The long chip keeps clear of every bend of its own route.
+        let (_, soft) = chip_faults(CHIP_REPROS[1]);
+        assert!(soft.is_empty(), "{soft:?}");
+    }
+
+    #[test]
+    fn chip_geometry_helpers() {
+        let r = Rect {
+            x0: 0.0,
+            y0: 0.0,
+            x1: 10.0,
+            y1: 10.0,
+        };
+        assert!(seg_hits((-5.0, 5.0), (15.0, 5.0), &r));
+        assert!(seg_hits((5.0, 5.0), (5.0, 6.0), &r), "inside");
+        assert!(!seg_hits((-5.0, 0.0), (15.0, 0.0), &r), "along the outline");
+        assert!(!seg_hits((-5.0, 5.0), (-1.0, 5.0), &r), "short of it");
+        assert!(
+            seg_hits((-1.0, 11.0), (11.0, -1.0), &r),
+            "a diagonal through it"
+        );
+        assert!(
+            !seg_hits((8.0, 15.0), (15.0, 8.0), &r),
+            "a diagonal past its corner"
+        );
+        assert!(!seg_hits((10.0, -5.0), (10.0, 15.0), &r));
+        let s = slides(10.0, 90.0, 50.0);
+        assert_eq!(s[0], 50.0, "the middle first");
+        assert!(s.contains(&10.0) && s.contains(&90.0) && s.len() == CHIP_SLIDES);
+        assert_eq!(slides(10.0, 90.0, 200.0)[0], 90.0, "the middle clamped");
     }
 
     #[test]
