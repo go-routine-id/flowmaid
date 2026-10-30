@@ -1205,9 +1205,9 @@ pub enum CommitKind {
     /// Default solid commit.
     #[default]
     Normal,
-    /// Hollow / reversed style.
+    /// A reverted commit: drawn as a disc crossed out with an X.
     Reverse,
-    /// Emphasised / highlighted style.
+    /// Emphasised commit: drawn as a square instead of a disc.
     Highlight,
 }
 
@@ -1240,7 +1240,11 @@ pub struct GitBranch {
     pub parent_commit: Option<usize>,
     /// Index of the latest commit on this branch.
     pub head: Option<usize>,
-    /// Vertical ordering (main = 0, then creation order).
+    /// Lane position, 0 = the first lane (top in LR, left in TB/BT):
+    /// main first, then creation order, unless `branch name order: n`
+    /// moved the lanes (see the gitGraph parser). The renderer ranks
+    /// branches by this value (ties by index), so a hand-built graph
+    /// may use any increasing numbers.
     pub order: usize,
 }
 

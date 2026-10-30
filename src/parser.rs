@@ -40,8 +40,17 @@ fn parse_direction(s: &str, lineno: usize) -> Result<Direction, ParseError> {
     }
 }
 
+/// The orientation a `gitGraph` header names. Mermaid writes it with a
+/// trailing colon (`gitGraph TB:`, and a bare `gitGraph:`); the
+/// colon-less form flowmaid always took stays accepted.
 fn parse_git_orientation(line: &str, lineno: usize) -> Result<GitOrientation, ParseError> {
-    let rest = strip_keyword(line, "gitGraph").unwrap_or(line).trim();
+    const KW: &str = "gitGraph";
+    let rest = match line.get(..KW.len()) {
+        Some(head) if head.eq_ignore_ascii_case(KW) => &line[KW.len()..],
+        _ => line,
+    };
+    let rest = rest.trim();
+    let rest = rest.strip_suffix(':').unwrap_or(rest).trim();
     if rest.is_empty() {
         return Ok(GitOrientation::LR);
     }
@@ -2110,7 +2119,10 @@ fn diagram_type(line: &str) -> Option<&'static str> {
             && line[t.len()..]
                 .chars()
                 .next()
-                .map_or(true, char::is_whitespace)
+                // Mermaid's gitGraph grammar also takes `gitGraph:`.
+                .map_or(true, |c| {
+                    c.is_whitespace() || (*t == "gitGraph" && c == ':')
+                })
     })
 }
 
@@ -4491,8 +4503,17 @@ fn parse_timeline(source: &str, header_line: usize) -> Result<Timeline, ParseErr
 /// `branch` creates a new branch from the current branch's HEAD, and
 /// `checkout`/`switch` moves the active branch. `merge` produces a
 /// merge commit whose second parent is the named branch's HEAD.
+///
+/// `branch name order: n` places the branch's lane the way mermaid
+/// does: lanes sort by `order`, a branch without one sitting after
+/// main (and any `order: 0` branch) and before `order: 1`, branches
+/// that tie keeping creation order. The resulting lane rank is what
+/// each [`GitBranch::order`] holds once parsing is done.
 fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseError> {
     let mut d = GitGraph::default();
+    // The `order:` each branch was declared with, by branch index;
+    // main is mermaid's `mainBranchOrder` (0).
+    let mut declared_order: Vec<Option<usize>> = vec![Some(0)];
     // Accessibility statements parse (so they never misread as
     // content) but are not stored yet: this model's fields are all
     // public, so a new field would break struct-literal users.
@@ -4554,7 +4575,7 @@ fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseErr
         }
 
         if let Some(rest) = strip_keyword(line, "branch") {
-            let name = rest.trim();
+            let (name, order) = parse_git_branch(rest, lineno)?;
             if name.is_empty() {
                 return Err(err(lineno, "branch needs a name".to_string()));
             }
@@ -4563,20 +4584,22 @@ fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseErr
             }
             let from_branch = d.current_branch;
             let from_commit = d.branches[from_branch].head;
-            let order = d.branches.len();
+            let idx = d.branches.len();
             d.branches.push(GitBranch {
                 name: name.to_string(),
                 parent_branch: Some(from_branch),
                 parent_commit: from_commit,
                 head: from_commit,
-                order,
+                // Creation order until the lanes are ranked below.
+                order: idx,
             });
-            d.current_branch = order;
+            declared_order.push(order);
+            d.current_branch = idx;
             continue;
         }
 
         if let Some(rest) = strip_keyword(line, "checkout") {
-            let name = rest.trim();
+            let name = unquote_git_name(rest);
             let idx = d
                 .branches
                 .iter()
@@ -4587,7 +4610,7 @@ fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseErr
         }
 
         if let Some(rest) = strip_keyword(line, "switch") {
-            let name = rest.trim();
+            let name = unquote_git_name(rest);
             let idx = d
                 .branches
                 .iter()
@@ -4598,7 +4621,7 @@ fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseErr
         }
 
         if let Some(rest) = strip_keyword(line, "merge") {
-            // `merge branch [id: "x"] [tag: "y"]`.
+            // `merge branch [id: "x"] [tag: "y"] [type: HIGHLIGHT]`.
             let attrs = parse_git_attrs(rest, lineno, true)?;
             let branch_name = attrs
                 .get("__head")
@@ -4635,6 +4658,13 @@ fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseErr
                 return Err(err(lineno, format!("duplicate commit id: '{}'", id)));
             }
             let tag = attrs.get("tag").cloned();
+            // Mermaid lets a merge carry a commit type too; it decides
+            // the merge commit's glyph like any commit's.
+            let kind = attrs
+                .get("type")
+                .map(|t| parse_commit_kind(t, lineno))
+                .transpose()?
+                .unwrap_or_default();
             let seq = d.commits.len();
             let idx = d.commits.len();
             d.commits.push(GitCommit {
@@ -4643,7 +4673,7 @@ fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseErr
                 parent,
                 second_parent: Some(src_head),
                 tag,
-                kind: CommitKind::Normal,
+                kind,
                 seq,
             });
             d.branches[branch_idx].head = Some(idx);
@@ -4653,7 +4683,55 @@ fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseErr
         return Err(err(lineno, format!("unknown gitGraph command: '{}'", line)));
     }
 
+    // Rank the lanes: by declared order, an undeclared branch between
+    // order 0 and order 1, ties in creation order. (Mermaid keys an
+    // undeclared branch `0.<index>`, which puts the 10th branch level
+    // with the 1st; creation order is what that key means to say.)
+    let mut by_lane: Vec<usize> = (0..d.branches.len()).collect();
+    by_lane.sort_by_key(|&i| match declared_order[i] {
+        Some(n) => (n, 0, i),
+        None => (0, 1, i),
+    });
+    for (lane, i) in by_lane.into_iter().enumerate() {
+        d.branches[i].order = lane;
+    }
+
     Ok(d)
+}
+
+/// `name [order: n]` after `branch`: the name (quotes stripped) and the
+/// declared lane order. A name may hold spaces (flowmaid always took
+/// the whole rest of the line); only a trailing `order: <n>` is split
+/// off.
+fn parse_git_branch(rest: &str, lineno: usize) -> Result<(&str, Option<usize>), ParseError> {
+    let rest = rest.trim();
+    let split = rest
+        .match_indices("order:")
+        .map(|(i, _)| i)
+        .filter(|&i| i > 0 && rest[..i].ends_with(char::is_whitespace))
+        .last();
+    let Some(at) = split else {
+        return Ok((unquote_git_name(rest), None));
+    };
+    let value = rest[at + "order:".len()..].trim();
+    let order = value.parse::<usize>().map_err(|_| {
+        err(
+            lineno,
+            format!(
+                "branch order must be a non-negative integer, got '{}'",
+                value
+            ),
+        )
+    })?;
+    Ok((unquote_git_name(&rest[..at]), Some(order)))
+}
+
+/// A branch reference as mermaid writes it: bare, or in double quotes.
+fn unquote_git_name(s: &str) -> &str {
+    let s = s.trim();
+    s.strip_prefix('"')
+        .and_then(|t| t.strip_suffix('"'))
+        .unwrap_or(s)
 }
 
 /// Parse `key: "value"` attributes for git commands.
@@ -4678,7 +4756,14 @@ fn parse_git_attrs(
     // (branch name for merge/branch/checkout) unless it is itself an
     // attribute key like `id:`.
     let rest: &str = if allow_head {
-        if let Some((first, tail)) = text.split_once(char::is_whitespace) {
+        // A quoted head (`merge "my branch" id: "m"`) may hold spaces.
+        let quoted = text
+            .strip_prefix('"')
+            .and_then(|t| t.find('"').map(|end| (&t[..end], &t[end + 1..])));
+        if let Some((head, tail)) = quoted {
+            out.insert("__head".to_string(), head.to_string());
+            tail.trim_start()
+        } else if let Some((first, tail)) = text.split_once(char::is_whitespace) {
             if is_git_attr_key(first.trim_end_matches(':')) {
                 text
             } else {
@@ -4701,6 +4786,13 @@ fn parse_git_attrs(
         cur.skip_ws();
         if cur.at_end() {
             break;
+        }
+        // Mermaid's `commit "text"`: a bare string is the commit
+        // message, the same as `msg: "text"`.
+        if !allow_head && cur.peek() == Some('"') {
+            let value = parse_git_value(&mut cur, lineno)?;
+            out.insert("msg".to_string(), value);
+            continue;
         }
         let key = cur.take_until(":").ok_or_else(|| {
             err(
@@ -4726,8 +4818,10 @@ fn parse_git_attrs(
     Ok(out)
 }
 
+/// Attribute keys `commit` / `merge` take. `msg` (a commit message) is
+/// read and dropped: mermaid draws no message either.
 fn is_git_attr_key(s: &str) -> bool {
-    matches!(s, "id" | "tag" | "type")
+    matches!(s, "id" | "tag" | "type" | "msg")
 }
 
 fn parse_git_value(cur: &mut Cur<'_>, lineno: usize) -> Result<String, ParseError> {
@@ -7265,6 +7359,104 @@ mod tests {
     fn gitgraph_merge_self_errors() {
         let e = parse_document("gitGraph\ncommit\nmerge main").unwrap_err();
         assert!(e.message.contains("into itself"), "got: {}", e.message);
+    }
+
+    fn gitgraph(src: &str) -> GitGraph {
+        match parse_document(src).unwrap_or_else(|e| panic!("{e}\n--\n{src}")) {
+            Document::GitGraph(g) => g,
+            other => panic!("expected gitGraph, got {:?}", other),
+        }
+    }
+
+    /// Report P1: mermaid's documented `gitGraph TB:` (and `LR:`, `BT:`,
+    /// a bare `gitGraph:`) was "unknown gitGraph orientation: 'TB:'".
+    #[test]
+    fn gitgraph_header_takes_mermaids_colon_forms() {
+        for (header, want) in [
+            ("gitGraph TB:", GitOrientation::TB),
+            ("gitGraph LR:", GitOrientation::LR),
+            ("gitGraph BT:", GitOrientation::BT),
+            ("gitGraph BT :", GitOrientation::BT),
+            ("gitGraph:", GitOrientation::LR),
+            ("gitGraph TB", GitOrientation::TB),
+            ("gitGraph", GitOrientation::LR),
+        ] {
+            let g = gitgraph(&format!("{header}\ncommit"));
+            assert_eq!(g.orientation, want, "{header}");
+        }
+        let e = parse_document("gitGraph XX:\ncommit").unwrap_err();
+        assert!(
+            e.message.contains("unknown gitGraph orientation"),
+            "{}",
+            e.message
+        );
+    }
+
+    /// Report P1: `branch dev order: 2` made a branch literally named
+    /// "dev order: 2". The option now orders the lanes as in mermaid:
+    /// by `order`, an unordered branch after main and before order 1.
+    #[test]
+    fn gitgraph_branch_order_is_an_option_not_part_of_the_name() {
+        let g = gitgraph(
+            "gitGraph\ncommit\nbranch dev order: 3\nbranch feat order: 1\n\
+             branch spike\nbranch \"release x\" order:2\nbranch my feature",
+        );
+        let names: Vec<&str> = g.branches.iter().map(|b| b.name.as_str()).collect();
+        assert_eq!(
+            names,
+            ["main", "dev", "feat", "spike", "release x", "my feature"]
+        );
+        let lane = |n: &str| g.branches.iter().find(|b| b.name == n).unwrap().order;
+        // main, then the unordered (creation order), then by order.
+        assert_eq!(
+            [
+                lane("main"),
+                lane("spike"),
+                lane("my feature"),
+                lane("feat"),
+                lane("release x"),
+                lane("dev")
+            ],
+            [0, 1, 2, 3, 4, 5]
+        );
+        // `checkout` / `merge` find the branch by its bare name.
+        let g = gitgraph("gitGraph\ncommit\nbranch dev order: 1\ncommit\ncheckout main\nmerge dev");
+        assert_eq!(g.commits[2].second_parent, Some(1));
+        let e = parse_document("gitGraph\nbranch dev order: soon").unwrap_err();
+        assert!(e.message.contains("branch order"), "{}", e.message);
+    }
+
+    /// Report P1: `merge x type: HIGHLIGHT` parsed but the type was
+    /// dropped (merges were hard-coded NORMAL).
+    #[test]
+    fn gitgraph_merge_keeps_its_type() {
+        let g = gitgraph(
+            "gitGraph\ncommit\nbranch a\ncommit\nbranch b\ncommit\ncheckout main\n\
+             merge a type: HIGHLIGHT\nmerge b id: \"m\" type: REVERSE tag: \"v1\"",
+        );
+        assert_eq!(g.commits[3].kind, CommitKind::Highlight);
+        assert_eq!(g.commits[4].kind, CommitKind::Reverse);
+        assert_eq!(g.commits[4].id, "m");
+        assert_eq!(g.commits[4].tag.as_deref(), Some("v1"));
+        let e =
+            parse_document("gitGraph\ncommit\nbranch a\ncommit\ncheckout main\nmerge a type: BOLD")
+                .unwrap_err();
+        assert!(e.message.contains("unknown commit type"), "{}", e.message);
+    }
+
+    /// Mermaid takes quoted branch references and commit messages
+    /// (`msg: "…"` or a bare string); both used to be parse errors.
+    #[test]
+    fn gitgraph_quoted_names_and_messages() {
+        let g = gitgraph(
+            "gitGraph\ncommit msg: \"first\" id: \"a\"\ncommit \"second\"\n\
+             branch \"my topic\"\ncheckout \"my topic\"\ncommit\nswitch \"main\"\n\
+             merge \"my topic\" id: \"m\"",
+        );
+        assert_eq!(g.branches[1].name, "my topic");
+        assert_eq!(g.commits[0].id, "a");
+        assert_eq!(g.commits[3].id, "m");
+        assert_eq!(g.commits[3].second_parent, Some(2));
     }
 
     #[test]
