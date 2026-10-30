@@ -2902,35 +2902,27 @@ fn parse_er(source: &str, header_line: usize) -> Result<ErDiagram, ParseError> {
         }
 
         if let Some((ent, _)) = open {
-            if line == "}" {
+            if er_block_line(&mut d, ent, line, lineno)? {
                 open = None;
-                continue;
             }
-            let attr = parse_attr(line, lineno)?;
-            d.entities[ent].attrs.push(attr);
             continue;
         }
 
         if line == "}" {
             return Err(err(lineno, "'}' without an open entity block".to_string()));
         }
-        // Entity block start: `Name {`
-        if let Some(head) = line.strip_suffix('{') {
-            let name = head.trim();
-            if !name.is_empty()
-                && name
-                    .chars()
-                    .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
-            {
-                open = Some((d.ensure_entity(name), lineno));
+        // `direction TB|BT|LR|RL`. Only a lone word after the keyword:
+        // `direction ||--o{ B` relates an entity named `direction`.
+        if let Some(rest) = strip_keyword(line, "direction") {
+            let word = rest.trim();
+            if !word.is_empty() && word.chars().all(|c| c.is_ascii_alphabetic()) {
+                d.direction = parse_direction(word, lineno)?;
                 continue;
             }
-            return Err(err(
-                lineno,
-                format!("invalid entity name before '{{': '{}'", name),
-            ));
         }
-        parse_er_statement(&mut d, line, lineno)?;
+        if let Some(ent) = parse_er_statement(&mut d, line, lineno)? {
+            open = Some((ent, lineno));
+        }
     }
     if let Some((ent, opened)) = open {
         return Err(err(
@@ -2944,15 +2936,59 @@ fn parse_er(source: &str, header_line: usize) -> Result<ErDiagram, ParseError> {
     Ok(d)
 }
 
-/// One top-level ER line: either a bare entity declaration or a
-/// relationship `A <card><line><card> B : "label"`.
-fn parse_er_statement(d: &mut ErDiagram, line: &str, lineno: usize) -> Result<(), ParseError> {
+/// One line of an open entity block (or what follows the `{` of the
+/// line that opened it): attribute rows, then optionally the closing
+/// `}` — mermaid tokenises a block, so `A { int id PK }` fits on one
+/// line and several attributes may share one. Returns whether the
+/// block closed.
+fn er_block_line(
+    d: &mut ErDiagram,
+    ent: usize,
+    line: &str,
+    lineno: usize,
+) -> Result<bool, ParseError> {
+    let (body, closed) = match find_unquoted(line, "}") {
+        Some(p) => {
+            let after = line[p + 1..].trim();
+            if !after.is_empty() {
+                return Err(err(
+                    lineno,
+                    format!("unexpected text after '}}': '{}'", after),
+                ));
+            }
+            (line[..p].trim(), true)
+        }
+        None => (line, false),
+    };
+    if !body.is_empty() {
+        let attrs = parse_attrs(body, lineno)?;
+        d.entities[ent].attrs.extend(attrs);
+    }
+    Ok(closed)
+}
+
+/// One top-level ER line: an entity declaration (`Name`, `Name[Alias]`),
+/// the start of an entity block (`Name [Alias] {`, possibly with rows
+/// and even its `}` on the same line), or a relationship
+/// `A <card><line><card> B : "label"`. Returns the entity whose block
+/// the line left open.
+fn parse_er_statement(
+    d: &mut ErDiagram,
+    line: &str,
+    lineno: usize,
+) -> Result<Option<usize>, ParseError> {
     let mut cur = Cur::new(line);
-    let a = parse_er_name(&mut cur, lineno)?;
+    let (a, alias_a) = parse_er_entity(&mut cur, lineno)?;
     cur.skip_ws();
     if cur.at_end() {
-        d.ensure_entity(&a);
-        return Ok(());
+        er_declare(d, &a, alias_a);
+        return Ok(None);
+    }
+    if cur.eat("{") {
+        let ent = er_declare(d, &a, alias_a);
+        let rest = cur.rest().trim();
+        let closed = !rest.is_empty() && er_block_line(d, ent, rest, lineno)?;
+        return Ok((!closed).then_some(ent));
     }
     let (card_from, identifying, card_to) = parse_rel_op(&mut cur).ok_or_else(|| {
         err(
@@ -2961,7 +2997,7 @@ fn parse_er_statement(d: &mut ErDiagram, line: &str, lineno: usize) -> Result<()
         )
     })?;
     cur.skip_ws();
-    let b = parse_er_name(&mut cur, lineno)?;
+    let (b, alias_b) = parse_er_entity(&mut cur, lineno)?;
     cur.skip_ws();
     let label = if cur.eat(":") {
         let l = cur.rest().trim();
@@ -2978,8 +3014,8 @@ fn parse_er_statement(d: &mut ErDiagram, line: &str, lineno: usize) -> Result<()
             format!("unexpected text after relationship: '{}'", cur.rest()),
         ));
     };
-    let from = d.ensure_entity(&a);
-    let to = d.ensure_entity(&b);
+    let from = er_declare(d, &a, alias_a);
+    let to = er_declare(d, &b, alias_b);
     d.relations.push(Relation {
         from,
         to,
@@ -2988,11 +3024,52 @@ fn parse_er_statement(d: &mut ErDiagram, line: &str, lineno: usize) -> Result<()
         identifying,
         label,
     });
-    Ok(())
+    Ok(None)
+}
+
+/// [`ErDiagram::ensure_entity`] plus an alias. As in mermaid, the first
+/// alias an entity is given sticks.
+fn er_declare(d: &mut ErDiagram, name: &str, alias: Option<String>) -> usize {
+    let i = d.ensure_entity(name);
+    let e = &mut d.entities[i];
+    if e.alias.is_none() {
+        e.alias = alias;
+    }
+    i
+}
+
+/// An entity reference: a name (word characters and `-`, or a
+/// `"quoted name"` as in mermaid) and an optional display alias in
+/// brackets (`p[Person]`, `c["Customer Account"]`). Mermaid accepts the
+/// alias only where an entity is declared; flowmaid also takes it in a
+/// relationship.
+fn parse_er_entity(
+    cur: &mut Cur<'_>,
+    lineno: usize,
+) -> Result<(String, Option<String>), ParseError> {
+    let name = parse_er_name(cur, lineno)?;
+    if !cur.eat("[") {
+        return Ok((name, None));
+    }
+    let raw = cur
+        .take_until("]")
+        .ok_or_else(|| err(lineno, format!("unclosed '[' after entity '{}'", name)))?;
+    let alias = clean_label_1line(&raw);
+    Ok((name, (!alias.is_empty()).then_some(alias)))
 }
 
 fn parse_er_name(cur: &mut Cur<'_>, lineno: usize) -> Result<String, ParseError> {
     cur.skip_ws();
+    if cur.eat("\"") {
+        let name = cur
+            .take_until("\"")
+            .ok_or_else(|| err(lineno, "unclosed quoted entity name".to_string()))?;
+        let name = decode_entities(name.trim());
+        if name.is_empty() {
+            return Err(err(lineno, "empty quoted entity name".to_string()));
+        }
+        return Ok(name);
+    }
     let start = cur.pos;
     while let Some(c) = cur.peek() {
         if c.is_alphanumeric() || c == '_' || c == '-' {
@@ -3010,35 +3087,166 @@ fn parse_er_name(cur: &mut Cur<'_>, lineno: usize) -> Result<String, ParseError>
     Ok(cur.s[start..cur.pos].to_string())
 }
 
-/// Crow's foot relationship operator, e.g. `||--o{` or `}o..o|`.
-/// The token adjacent to each entity is that entity's cardinality.
-fn parse_rel_op(cur: &mut Cur<'_>) -> Option<(Card, bool, Card)> {
-    const LEFT: &[(&str, Card)] = &[
-        ("||", Card::One),
-        ("|o", Card::ZeroOne),
-        ("}o", Card::ZeroMany),
-        ("}|", Card::OneMany),
-    ];
-    const RIGHT: &[(&str, Card)] = &[
-        ("||", Card::One),
-        ("o|", Card::ZeroOne),
-        ("o{", Card::ZeroMany),
-        ("|{", Card::OneMany),
-    ];
+/// Mermaid's cardinality tokens, symbolic and spelled out, in its
+/// lexer's order (the first match wins, so `one or more` is tried
+/// before `one`). Either side takes any of them: the symbols merely
+/// face their entity in the usual spelling (`||--o{`).
+const ER_CARDS: &[(&str, Card)] = &[
+    ("one or zero", Card::ZeroOne),
+    ("one or more", Card::OneMany),
+    ("one or many", Card::OneMany),
+    ("1+", Card::OneMany),
+    ("|o", Card::ZeroOne),
+    ("zero or one", Card::ZeroOne),
+    ("zero or more", Card::ZeroMany),
+    ("zero or many", Card::ZeroMany),
+    ("0+", Card::ZeroMany),
+    ("}o", Card::ZeroMany),
+    ("many(0)", Card::ZeroMany),
+    ("many(1)", Card::OneMany),
+    ("many", Card::ZeroMany),
+    ("}|", Card::OneMany),
+    ("one", Card::One),
+    ("only one", Card::One),
+    ("1", Card::One),
+    ("||", Card::One),
+    ("o|", Card::ZeroOne),
+    ("o{", Card::ZeroMany),
+    ("|{", Card::OneMany),
+];
+
+/// Mermaid's line tokens: `true` = identifying (solid).
+const ER_LINES: &[(&str, bool)] = &[
+    ("..", false),
+    ("--", true),
+    ("to", true),
+    ("optionally to", false),
+    (".-", false),
+    ("-.", false),
+];
+
+/// The first entry of `table` the cursor starts with (letters compared
+/// case-insensitively, as mermaid's lexer does); a token ending in a
+/// letter or digit must not run on into a word (`one` is not `onex`).
+fn er_token<T: Copy>(cur: &mut Cur<'_>, table: &[(&str, T)]) -> Option<T> {
     let rest = cur.rest();
-    let (lt, lc) = LEFT.iter().find(|(t, _)| rest.starts_with(t))?;
-    let after_left = &rest[lt.len()..];
-    let identifying = if after_left.starts_with("--") {
-        true
-    } else if after_left.starts_with("..") {
-        false
-    } else {
-        return None;
+    let (tok, v) = table.iter().find(|(t, _)| {
+        rest.get(..t.len())
+            .is_some_and(|head| head.eq_ignore_ascii_case(t))
+            && (!t.ends_with(|c: char| c.is_ascii_alphanumeric())
+                || !rest[t.len()..].starts_with(|c: char| c.is_alphanumeric() || c == '_'))
+    })?;
+    cur.pos += tok.len();
+    Some(*v)
+}
+
+/// Crow's foot relationship operator: a cardinality, a line and a
+/// cardinality, e.g. `||--o{`, `}o..o|` or `only one to zero or more`.
+/// The token next to each entity is that entity's cardinality.
+fn parse_rel_op(cur: &mut Cur<'_>) -> Option<(Card, bool, Card)> {
+    let at = cur.pos;
+    let parsed = (|| {
+        let from = er_token(cur, ER_CARDS)?;
+        cur.skip_ws();
+        let identifying = er_token(cur, ER_LINES)?;
+        cur.skip_ws();
+        let to = er_token(cur, ER_CARDS)?;
+        Some((from, identifying, to))
+    })();
+    if parsed.is_none() {
+        cur.pos = at;
+    }
+    parsed
+}
+
+/// The attribute rows of one block line. Mermaid tokenises a block, so
+/// a line may hold several rows (`string a string b`): words, key lists
+/// (`PK, FK`) and `"comments"` that end at the next quote. A line
+/// that does not read that way is read as one classic row — whose
+/// comment, holding `"` itself, runs to the LAST quote — and when that
+/// fails too, its error names the culprit (`unknown attribute key`).
+fn parse_attrs(line: &str, lineno: usize) -> Result<Vec<Attr>, ParseError> {
+    attrs_by_tokens(line, lineno).or_else(|_| parse_attr(line, lineno).map(|a| vec![a]))
+}
+
+/// A key word of an attribute row (`PK`, `fk`, …), any case.
+fn er_key(word: &str) -> Option<Key> {
+    match word.to_ascii_uppercase().as_str() {
+        "PK" => Some(Key::Pk),
+        "FK" => Some(Key::Fk),
+        "UK" => Some(Key::Uk),
+        _ => None,
+    }
+}
+
+/// [`parse_attrs`]'s token reading: `type name [key[, key]…] ["comment"]`
+/// repeated.
+fn attrs_by_tokens(line: &str, lineno: usize) -> Result<Vec<Attr>, ParseError> {
+    // (text, quoted)
+    let mut toks: Vec<(String, bool)> = Vec::new();
+    let mut cur = Cur::new(line);
+    loop {
+        cur.skip_ws();
+        if cur.at_end() {
+            break;
+        }
+        if cur.eat("\"") {
+            let c = cur
+                .take_until("\"")
+                .ok_or_else(|| err(lineno, "unclosed attribute comment quote".to_string()))?;
+            toks.push((c, true));
+            continue;
+        }
+        let start = cur.pos;
+        while let Some(c) = cur.peek() {
+            if c.is_whitespace() || c == '"' {
+                break;
+            }
+            cur.bump();
+        }
+        toks.push((line[start..cur.pos].to_string(), false));
+    }
+    let mut out = Vec::new();
+    let mut i = 0;
+    let word = |i: usize, what: String| -> Result<String, ParseError> {
+        match toks.get(i) {
+            Some((w, false)) => Ok(w.clone()),
+            _ => Err(err(lineno, what)),
+        }
     };
-    let after_line = &after_left[2..];
-    let (rt, rc) = RIGHT.iter().find(|(t, _)| after_line.starts_with(t))?;
-    cur.pos += lt.len() + 2 + rt.len();
-    Some((*lc, identifying, *rc))
+    while i < toks.len() {
+        let ty = word(i, "expected an attribute type".to_string())?;
+        let name = word(
+            i + 1,
+            format!("expected an attribute name after type '{}'", ty),
+        )?;
+        i += 2;
+        let mut keys = Vec::new();
+        // `PK,FK`, `PK, FK` and `PK , FK` all list two keys.
+        while let Some((w, false)) = toks.get(i) {
+            let parts: Vec<&str> = w.split(',').filter(|p| !p.is_empty()).collect();
+            let ks: Option<Vec<Key>> = parts.iter().map(|p| er_key(p)).collect();
+            match ks {
+                Some(ks) if !(parts.is_empty() && keys.is_empty()) => keys.extend(ks),
+                _ => break,
+            }
+            i += 1;
+        }
+        let comment = match toks.get(i) {
+            Some((c, true)) => {
+                i += 1;
+                Some(c.clone())
+            }
+            _ => None,
+        };
+        out.push(Attr {
+            ty,
+            name,
+            keys,
+            comment,
+        });
+    }
+    Ok(out)
 }
 
 /// One attribute row: `type name [PK|FK|UK]... ["comment"]`.
@@ -5930,6 +6138,123 @@ mod tests {
         // Bad relationship operator.
         let e = parse_document("erDiagram\nA >>-- B\n").unwrap_err();
         assert_eq!(e.line, 2);
+    }
+
+    /// Report P1: `direction` was a parse error ("unknown relationship
+    /// operator near: 'TB'"), so the hard-coded flow could not be
+    /// changed. Mermaid's default is top to bottom.
+    #[test]
+    fn er_direction_statement_parses() {
+        assert_eq!(er("erDiagram\nA ||--o{ B").direction, Direction::TD);
+        for (src, want) in [
+            ("TB", Direction::TD),
+            ("TD", Direction::TD),
+            ("BT", Direction::BT),
+            ("LR", Direction::LR),
+            ("rl", Direction::RL),
+        ] {
+            let d = er(&format!("erDiagram\n  direction {src}\nA ||--o{{ B"));
+            assert_eq!(d.direction, want, "{src}");
+            assert_eq!(d.relations.len(), 1);
+        }
+        let e = parse_document("erDiagram\ndirection sideways\n").unwrap_err();
+        assert_eq!(e.line, 2);
+        // An entity may still be called `direction`.
+        let d = er("erDiagram\ndirection ||--o{ B\ndirection {\n  int id\n}");
+        assert_eq!(d.entities[0].name, "direction");
+        assert_eq!(d.entities[0].attrs.len(), 1);
+    }
+
+    /// Report P1: `p[Person]` was rejected. Mermaid takes an alias on
+    /// an entity declaration (bare or opening a block); flowmaid also
+    /// takes it in a relationship. The first alias sticks, as in
+    /// mermaid's `addEntity`.
+    #[test]
+    fn er_entity_alias_parses() {
+        let d = er("erDiagram\n\
+                    p[Person] {\n  string name\n}\n\
+                    c[\"Customer Account\"]\n\
+                    o[Order] ||--o{ i[Item] : has\n\
+                    p ||--o{ c : owns\n\
+                    p[Someone else]\n");
+        let alias = |n: &str| {
+            let e = d.entities.iter().find(|e| e.name == n).unwrap();
+            (e.alias.clone(), e.title().to_string())
+        };
+        assert_eq!(alias("p"), (Some("Person".into()), "Person".into()));
+        assert_eq!(alias("c").1, "Customer Account");
+        assert_eq!(alias("o").1, "Order");
+        assert_eq!(alias("i").1, "Item");
+        assert_eq!(d.entities[0].attrs.len(), 1);
+        assert_eq!(d.relations.len(), 2);
+        let e = parse_document("erDiagram\np[Person ||--o{ B\n").unwrap_err();
+        assert_eq!(e.line, 2);
+    }
+
+    #[test]
+    fn er_quoted_entity_names_parse() {
+        let d = er("erDiagram\n\"Customer Account\" ||--o{ ORDER : places\n\
+                    \"Customer Account\" {\n  int id PK\n}\n");
+        assert_eq!(d.entities[0].name, "Customer Account");
+        assert_eq!(d.entities[0].attrs.len(), 1);
+        assert_eq!(d.entities.len(), 2);
+    }
+
+    /// Mermaid tokenises an entity block: rows and the closing brace may
+    /// share a line, several rows may share one, keys are any case.
+    #[test]
+    fn er_block_rows_tokenise_like_mermaid() {
+        let d = er("erDiagram\n\
+                    A { int id PK \"key\" string name }\n\
+                    B {}\n\
+                    C { int id pk, fk\n  string a string b \"c, d\"\n  text t }\n\
+                    A ||--o{ B : has\n");
+        let a = &d.entities[0];
+        assert_eq!(a.attrs.len(), 2);
+        assert_eq!(a.attrs[0].keys, vec![Key::Pk]);
+        assert_eq!(a.attrs[0].comment.as_deref(), Some("key"));
+        assert_eq!(a.attrs[1].name, "name");
+        assert!(d.entities[1].attrs.is_empty());
+        let c = &d.entities[2];
+        let names: Vec<&str> = c.attrs.iter().map(|a| a.name.as_str()).collect();
+        assert_eq!(names, ["id", "a", "b", "t"]);
+        assert_eq!(c.attrs[0].keys, vec![Key::Pk, Key::Fk]);
+        assert_eq!(c.attrs[2].comment.as_deref(), Some("c, d"));
+        assert_eq!(d.relations.len(), 1);
+        // A comment holding quotes still reads as one classic row.
+        let d = er("erDiagram\nT {\n  text a \"say \"hi\" twice\"\n}");
+        assert_eq!(
+            d.entities[0].attrs[0].comment.as_deref(),
+            Some("say \"hi\" twice")
+        );
+        // A bad key is still named.
+        let e = parse_document("erDiagram\nT {\n  int id XX\n}").unwrap_err();
+        assert!(e.message.contains("'XX'"), "{}", e.message);
+        let e = parse_document("erDiagram\nT { int id } extra\n").unwrap_err();
+        assert_eq!(e.line, 2);
+    }
+
+    /// Mermaid's spelled-out cardinalities and lines, and any symbol on
+    /// either side.
+    #[test]
+    fn er_text_cardinalities_parse() {
+        let rel = |op: &str| {
+            let d = er(&format!("erDiagram\nA {op} B : r"));
+            let r = &d.relations[0];
+            (r.card_from, r.identifying, r.card_to)
+        };
+        use Card::*;
+        assert_eq!(rel("only one to zero or more"), (One, true, ZeroMany));
+        assert_eq!(rel("one or more optionally to one"), (OneMany, false, One));
+        assert_eq!(rel("zero or one to many(1)"), (ZeroOne, true, OneMany));
+        assert_eq!(rel("1+ .. 0+"), (OneMany, false, ZeroMany));
+        assert_eq!(rel("1 to many"), (One, true, ZeroMany));
+        assert_eq!(rel("one or zero .- many(0)"), (ZeroOne, false, ZeroMany));
+        assert_eq!(rel("|| -. |{"), (One, false, OneMany));
+        assert_eq!(rel("o|--}o"), (ZeroOne, true, ZeroMany));
+        assert_eq!(rel("ONLY ONE TO ZERO OR MANY"), (One, true, ZeroMany));
+        // A word that only starts like a token is not one.
+        assert!(parse_document("erDiagram\nA oneway to one B").is_err());
     }
 
     #[test]

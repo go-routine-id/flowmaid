@@ -1106,6 +1106,7 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
             kind: e.kind,
             ends: e.ends,
             meta: e.meta.clone(),
+            end_room: (0.0, 0.0),
         });
     }
     // The clusters a stand-in's ends cut back to (its box ends).

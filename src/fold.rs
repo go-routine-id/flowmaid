@@ -420,6 +420,7 @@ fn compose(
                     kind: edge.kind,
                     ends: edge.ends,
                     meta: edge.meta.clone(),
+                    end_room: edge.end_room,
                 });
             }
         }
