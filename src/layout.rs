@@ -15,7 +15,9 @@
 //! l = layer / depth); the renderer maps them to final x,y
 //! according to the diagram direction (TD/LR/BT/RL).
 
+use crate::labels::{FAN_FAR, FAN_SIBLING_GAP, STROKE_PAD};
 use crate::model::{Direction, EdgeKind, Graph, Node, Shape};
+use crate::scene::{port_lean, ARROW_MARKER_PX};
 use std::collections::VecDeque;
 
 /// Position & size of one node in abstract coordinates.
@@ -55,6 +57,13 @@ pub const MIN_W: f64 = 54.0;
 /// the middle; with no text it would only inflate an empty branch point
 /// (80×64.6) and push its outgoing ports apart.
 pub const CHOICE_SIZE: f64 = 28.0;
+
+/// Is a node of this shape and label a compact branch point: an
+/// unlabelled diamond (a state `<<choice>>`, a flowchart `A{ }`), drawn
+/// [`CHOICE_SIZE`] square?
+pub(crate) fn is_branch_point(shape: Shape, label: &str) -> bool {
+    shape == Shape::Diamond && label.trim().is_empty()
+}
 // Mermaid's dagre defaults (nodeSpacing / rankSpacing ≈ 50) — labels
 // no longer ride between ranks (they own dummy slots), so the extra
 // breathing room the old 62/84 reserved is dead space now.
@@ -165,7 +174,122 @@ pub(crate) const LABEL_PAD_W: f64 = 14.0;
 pub(crate) const LABEL_BOX_H: f64 = 20.0;
 /// Room a label kept between adjacent layers leaves to each end node
 /// once its gap had to grow for it.
-const LABEL_CLEAR: f64 = 6.0;
+pub(crate) const LABEL_CLEAR: f64 = 6.0;
+
+/// Room (px) back from the far end of a compact branch point's fan
+/// line that its arrowhead takes from a label: [`ARROW_MARKER_PX`] plus
+/// [`LABEL_CLEAR`], and as much again, since the label stage measures
+/// the head back to the first sample of the drawn curve that far from
+/// its tip.
+const FAN_HEAD_ROOM: f64 = ARROW_MARKER_PX + 2.0 * LABEL_CLEAR;
+
+/// Gap (px, border to border along the flow) between a compact branch
+/// point and the far end of an edge of its fan, for a label reaching
+/// `beyond` past its centre toward that end: the label stage keeps such
+/// a label only past [`FAN_FAR`] of its line (where the fan's branches
+/// have spread apart), clear of the far end's arrowhead
+/// ([`FAN_HEAD_ROOM`]).
+fn fan_gap(beyond: f64) -> f64 {
+    (beyond + FAN_HEAD_ROOM) / (1.0 - FAN_FAR)
+}
+
+/// One line of a compact branch point's fan between two adjacent TD/BT
+/// layers, in breadth: from where it leaves the point to the port at its
+/// far end, with its label's width if it has one.
+#[derive(Clone, Copy)]
+struct FanLine {
+    point: usize,
+    from: f64,
+    to: f64,
+    width: Option<f64>,
+}
+
+/// Breadth of a fan line `share` (0..=1) of the way along the flow: the
+/// scene draws a line between adjacent layers as an S (both control
+/// points half-way along the flow), whose depth runs `1.5t - 1.5t^2 +
+/// t^3` and breadth `3t^2 - 2t^3` of the way.
+fn fan_line_at(line: &FanLine, share: f64) -> f64 {
+    let share = share.clamp(0.0, 1.0);
+    let (mut lo, mut hi) = (0.0f64, 1.0f64);
+    for _ in 0..32 {
+        let t = (lo + hi) / 2.0;
+        if 1.5 * t - 1.5 * t * t + t * t * t < share {
+            lo = t;
+        } else {
+            hi = t;
+        }
+    }
+    line.from + (line.to - line.from) * (3.0 * hi * hi - 2.0 * hi * hi * hi)
+}
+
+/// Most a gap grows (px, past the least it needs anyway) to stack the
+/// labels of a compact branch point's fan.
+const FAN_GAP_MAX: f64 = 4.0 * GAP_L;
+
+/// Least gap (px, at least `need`) between two TD/BT layers that lets
+/// the label stage stack the labels of the compact branch points' fans
+/// `lines` between them, as it does (`labels::stack_fans`): per point, in
+/// breadth order, each label takes the first row (one label box plus
+/// [`LABEL_CLEAR`] apart, back from [`FAN_HEAD_ROOM`]) past [`FAN_FAR`]
+/// where it lies [`FAN_SIBLING_GAP`] clear of the point's labels in that
+/// row and clear of the point's other lines. A gap no growth makes room
+/// in stays `need`.
+fn fan_rows_gap(lines: &[FanLine], need: f64) -> f64 {
+    if lines.iter().all(|l| l.width.is_none()) {
+        return need;
+    }
+    let pitch = LABEL_BOX_H + LABEL_CLEAR;
+    let fits = |gap: f64| {
+        let mut points: Vec<usize> = lines.iter().map(|l| l.point).collect();
+        points.sort_unstable();
+        points.dedup();
+        points.into_iter().all(|p| {
+            let mut fan: Vec<&FanLine> = lines.iter().filter(|l| l.point == p).collect();
+            fan.sort_by(|a, b| a.to.total_cmp(&b.to));
+            // Per row: the label spans placed in it.
+            let mut rows: Vec<Vec<(f64, f64)>> = Vec::new();
+            fan.iter().all(|l| {
+                let Some(w) = l.width else { return true };
+                (0..)
+                    .map_while(|r: usize| {
+                        let depth = FAN_HEAD_ROOM + LABEL_BOX_H / 2.0 + r as f64 * pitch;
+                        let share = 1.0 - depth / gap;
+                        (share >= FAN_FAR).then_some((r, share))
+                    })
+                    .any(|(r, share)| {
+                        let b = fan_line_at(l, share);
+                        let (x0, x1) = (b - w / 2.0, b + w / 2.0);
+                        // The other lines where the box's near edge lies,
+                        // closest to it there.
+                        let near = share - LABEL_BOX_H / 2.0 / gap;
+                        let clear = fan.iter().filter(|o| !std::ptr::eq(**o, *l)).all(|o| {
+                            let ob = fan_line_at(o, near);
+                            ob < x0 - STROKE_PAD - LABEL_CLEAR || ob > x1 + STROKE_PAD + LABEL_CLEAR
+                        });
+                        if rows.len() <= r {
+                            rows.resize(r + 1, Vec::new());
+                        }
+                        let free = rows[r]
+                            .iter()
+                            .all(|&(a, z)| z + FAN_SIBLING_GAP <= x0 || x1 + FAN_SIBLING_GAP <= a);
+                        if clear && free {
+                            rows[r].push((x0, x1));
+                        }
+                        clear && free
+                    })
+            })
+        })
+    };
+    let least = need.max(fan_gap(LABEL_BOX_H / 2.0));
+    let mut gap = least;
+    while gap <= least + FAN_GAP_MAX {
+        if fits(gap) {
+            return gap;
+        }
+        gap += LABEL_CLEAR / 2.0;
+    }
+    need
+}
 
 /// Line height for multi-line labels (`<br/>` → newline).
 pub const LINE_H: f64 = 17.0;
@@ -442,7 +566,7 @@ pub fn intrinsic_size_with(node: &Node, measure: impl Fn(&str) -> f64) -> (f64, 
         Shape::Cylinder => ((tw + 2.0 * PAD_X).max(MIN_W), base_h + 16.0),
         // A diamond with nothing to say is a branch point (a state
         // `<<choice>>`, or a flowchart `A{ }`): compact, mermaid-style.
-        Shape::Diamond if node.label.trim().is_empty() => (CHOICE_SIZE, CHOICE_SIZE),
+        Shape::Diamond if is_branch_point(node.shape, &node.label) => (CHOICE_SIZE, CHOICE_SIZE),
         // Diamonds need extra room so the text fits in the middle.
         Shape::Diamond => (((tw + 24.0) * 1.6).max(80.0), base_h * 1.7),
         Shape::Circle => {
@@ -1878,22 +2002,57 @@ fn place(
     // An edge between ADJACENT layers has no dummy to reserve its
     // label a slot: the label sits mid-gap, between the two borders.
     // Per upper layer: (lower end, upper end, label extent along the
-    // layer axis, end room) for each labelled such edge — in LR/RL that
-    // extent is the label's width, which easily outgrows GAP_L. The end
-    // room (`Edge::end_room`, both ends summed: ER crow's feet) is gap
-    // the label may not take, so an edge carrying any also gets an
-    // entry without a label (extent 0): its glyphs must fit facing
-    // each other.
-    let mut short_labels: Vec<Vec<(usize, usize, f64, f64)>> = vec![Vec::new(); nlayers];
+    // layer axis, end room, whether a compact branch point's fan holds
+    // it) for each labelled such edge — in LR/RL that extent is the
+    // label's width, which easily outgrows GAP_L. The end room
+    // (`Edge::end_room`, both ends summed: ER crow's feet) is gap the
+    // label may not take, so an edge carrying any also gets an entry
+    // without a label (extent 0): its glyphs must fit facing each other.
+    type ShortLabel = (usize, usize, f64, f64, bool);
+    let mut short_labels: Vec<Vec<ShortLabel>> = vec![Vec::new(); nlayers];
     // Per upper layer: (breadth centre, breadth extent, layer extent,
     // end room).
     let mut short_across: Vec<Vec<(f64, f64, f64, f64)>> = vec![Vec::new(); nlayers];
+    // Per upper layer: the lines of compact branch points' fans
+    // (exactly one end such a point, as the label stage tells them)
+    // between it and the layer before, labelled or not (see `FanLine`).
+    let mut fan_lines: Vec<Vec<FanLine>> = vec![Vec::new(); nlayers];
+    let branch = |v: usize| is_branch_point(g.nodes[v].shape, &g.nodes[v].label);
     for (ei, e) in g.edges.iter().enumerate() {
-        let room = e.end_room.0 + e.end_room.1;
-        if e.label.is_none() && room <= 0.0 {
+        if e.from == e.to || back[ei] || matches!(e.kind, EdgeKind::Invisible) {
             continue;
         }
-        if e.from == e.to || back[ei] || matches!(e.kind, EdgeKind::Invisible) {
+        let fan = match (branch(e.from), branch(e.to)) {
+            (true, false) => Some((e.from, e.to)),
+            (false, true) => Some((e.to, e.from)),
+            _ => None,
+        };
+        let short = alayer[e.from].abs_diff(alayer[e.to]) == 1;
+        if let (Some((p, far)), true, false) = (fan, short, horizontal) {
+            // Near its far end a fan's line runs at that end's port,
+            // leaning toward the point on a box (see `scene::anchor`).
+            let lean = match g.nodes[far].shape {
+                Shape::Diamond
+                | Shape::Circle
+                | Shape::DoubleCircle
+                | Shape::StateStart
+                | Shape::StateEnd
+                | Shape::ForkBar => 0.0,
+                shape => port_lean(shape, (absize[far], alsize[far]), bpos[p] - bpos[far], 0.0),
+            };
+            // It leaves the small diamond's border on the way to the far
+            // end's centre: about a quarter of the diamond off its centre
+            // for a slanted line.
+            let toward = bpos[far] - bpos[p];
+            fan_lines[alayer[e.from].max(alayer[e.to])].push(FanLine {
+                point: p,
+                from: bpos[p] + toward.clamp(-CHOICE_SIZE / 4.0, CHOICE_SIZE / 4.0),
+                to: bpos[far] + lean,
+                width: e.label.as_ref().map(|l| text_width(l) + LABEL_PAD_W),
+            });
+        }
+        let room = e.end_room.0 + e.end_room.1;
+        if e.label.is_none() && room <= 0.0 {
             continue;
         }
         let (lo, hi) = if alayer[e.from] < alayer[e.to] {
@@ -1905,7 +2064,7 @@ fn place(
             continue;
         }
         let Some(lbl) = &e.label else {
-            short_labels[alayer[hi]].push((lo, hi, 0.0, room));
+            short_labels[alayer[hi]].push((lo, hi, 0.0, room, false));
             continue;
         };
         let w = text_width(lbl) + LABEL_PAD_W;
@@ -1914,7 +2073,7 @@ fn place(
         } else {
             (LABEL_BOX_H, w)
         };
-        short_labels[alayer[hi]].push((lo, hi, ext, room));
+        short_labels[alayer[hi]].push((lo, hi, ext, room, fan.is_some()));
         // In LR/RL a row along the layer axis costs a label's whole
         // width, and the scene never uses it: colliding labels there
         // slide apart ACROSS the flow (they are only LABEL_BOX_H tall),
@@ -1955,6 +2114,8 @@ fn place(
                 + room
                 + 2.0 * LABEL_CLEAR * (rows.len() + 1) as f64
         })
+        .zip(&fan_lines)
+        .map(|(need, lines)| fan_rows_gap(lines, need))
         .collect();
     let mut prev_lh = 0.0;
     for li in 0..nlayers {
@@ -1976,7 +2137,7 @@ fn place(
         // a label on the border line would hide it. End room counts as
         // part of the ends: the label (or, without one, the other
         // end's glyph) clears it by LABEL_CLEAR too.
-        for &(s, t, ext, room) in &short_labels[li] {
+        for &(s, t, ext, room, fan) in &short_labels[li] {
             let lo_side = if reach[s].1 > 0.0 {
                 reach_of(li - 1, 1)
             } else {
@@ -1991,6 +2152,9 @@ fn place(
             let at = cursor + lh / 2.0;
             if at - ends < ext + room {
                 cursor = cursor.max(ends + room + ext + 2.0 * LABEL_CLEAR - lh / 2.0);
+            }
+            if fan && at - ends < fan_gap(ext / 2.0) {
+                cursor = cursor.max(ends + fan_gap(ext / 2.0) - lh / 2.0);
             }
         }
         if li > 0 && gap_need[li] > 0.0 {
@@ -3359,6 +3523,53 @@ mod tests {
         assert_eq!(wrap_text("x\ny", 1.0, 1.0), "x\ny");
         let at_13 = wrap_text(s, 80.0, 13.0 / TEXT_CALIBRATION);
         assert!(at_13.lines().count() <= w.lines().count());
+    }
+
+    #[test]
+    fn compact_choice_fans_get_room_for_their_label_rows() {
+        // The S between adjacent layers: from `from` to `to`, half-way
+        // across at half depth.
+        let line = |to: f64, width: Option<f64>| FanLine {
+            point: 0,
+            from: 0.0,
+            to,
+            width,
+        };
+        let l = line(100.0, None);
+        assert!(fan_line_at(&l, 0.0).abs() < 1e-6);
+        assert!((fan_line_at(&l, 0.5) - 50.0).abs() < 1e-6);
+        assert!((fan_line_at(&l, 1.0) - 100.0).abs() < 1e-6);
+        // Unlabelled lines ask nothing.
+        assert_eq!(fan_rows_gap(&[l], 50.0), 50.0);
+        // Labels whose far ends lie wide apart share row 0, just past
+        // FAN_FAR; close ones need a second row, a deeper gap.
+        let one = fan_rows_gap(&[line(-150.0, Some(120.0)), line(150.0, Some(120.0))], 0.0);
+        assert_eq!(one, fan_gap(LABEL_BOX_H / 2.0));
+        let two = fan_rows_gap(&[line(-60.0, Some(120.0)), line(60.0, Some(120.0))], 0.0);
+        assert!(two > one + LABEL_BOX_H, "{two} vs {one}");
+        // A gap that is roomy already stays as it is.
+        assert_eq!(fan_rows_gap(&[line(-150.0, Some(120.0))], 400.0), 400.0);
+        // Laid out: the 4-way choice of wide labels gets its rows; the
+        // same fan out of a labelled diamond (no fan) keeps the old gap.
+        let src = |c: &str| {
+            format!(
+                "flowchart TD\nc{c} -->|priority customer| E[Express]\n\
+                 c -->|regular customer| S[Standard]\nc -->|payment pending| H[Hold]\n\
+                 c -->|fraud suspected| K[Cancel]"
+            )
+        };
+        let gap = |c: &str| {
+            let g = crate::parser::parse(&src(c)).unwrap();
+            let sc = crate::scene::scene(&g);
+            let (c, e) = (&sc.nodes[0], &sc.nodes[g.node_index("E").unwrap()]);
+            (e.y - e.h / 2.0) - (c.y + c.h / 2.0)
+        };
+        assert!(
+            gap("{ }") > gap("{ok?}"),
+            "{} vs {}",
+            gap("{ }"),
+            gap("{ok?}")
+        );
     }
 
     #[test]
