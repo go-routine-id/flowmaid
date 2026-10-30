@@ -887,7 +887,7 @@ fn place_labels(
             }
             k += 1.0;
         }
-        let mut best: Option<(f64, f64, f64, bool, Rect)> = None;
+        let mut best: Option<(f64, f64, bool, Rect)> = None;
         'search: for left in [left_first, !left_first] {
             for &y in &ys {
                 let (x0, x1) = if left {
@@ -915,14 +915,14 @@ fn place_labels(
                     .sum();
                 let cost = 4.0 * (outside + on_labels) + on_nodes;
                 if best.as_ref().map_or(true, |b| cost < b.0) {
-                    best = Some((cost, x0, y, left, r));
+                    best = Some((cost, y, left, r));
                 }
                 if cost == 0.0 {
                     break 'search;
                 }
             }
         }
-        if let Some((_, _, y, left, r)) = best {
+        if let Some((_, y, left, r)) = best {
             let nd = &mut nodes[i];
             nd.label_pos = if left {
                 (nd.x - LABEL_GAP, y)
