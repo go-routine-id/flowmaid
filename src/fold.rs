@@ -131,6 +131,8 @@ pub fn scene_compact(g: &Graph, opts: &CompactOptions) -> CompactScene {
 /// Compact layout with caller-provided node sizes (the
 /// [`crate::scene::scene_sized`] counterpart).
 pub fn scene_compact_sized(g: &Graph, sizes: &[(f64, f64)], opts: &CompactOptions) -> CompactScene {
+    // The fork/join bars' fitted sizes, as `scene_sized` draws them.
+    let sizes = &crate::scene::fit_bars(g, sizes)[..];
     let base = scene_sized(g, sizes);
     let horizontal = matches!(g.direction, Direction::LR | Direction::RL);
     let flow_extent = if horizontal { base.width } else { base.height };

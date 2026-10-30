@@ -47,7 +47,9 @@ pub enum Shape {
     /// stateDiagram `[*]` as a transition target — the final
     /// pseudostate (ring with a filled core).
     StateEnd,
-    /// stateDiagram `<<fork>>` / `<<join>>` — a thin filled bar.
+    /// stateDiagram `<<fork>>` / `<<join>>` — a thin filled bar, laid
+    /// across the flow and stretched to span its branches by the scene
+    /// builders.
     ForkBar,
 }
 
