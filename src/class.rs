@@ -771,6 +771,11 @@ fn nest_group(
         if lo > hi + 1e-9 {
             return None;
         }
+        // Within that tolerance `lo` may still pass `hi` by a rounding
+        // error (the two come from sums taken in different orders), and
+        // `f64::clamp` panics on such a range: the jog then has the one
+        // place `lo`.
+        let hi = hi.max(lo);
         let ctx = Ortho {
             rects,
             labels: &labels,
@@ -785,6 +790,12 @@ fn nest_group(
             .into_iter()
             .map(|p| f_pt(p, z.flip))
             .collect();
+        // The route as an earlier group left it: a lane route's other
+        // jog may sit in that group, and its corners must still hold
+        // this jog's.
+        if z.k + 1 >= q.len() {
+            return None;
+        }
         let span = (z.u.min(z.l), z.u.max(z.l));
         let want = if pack { lo } else { z.mid.clamp(lo, hi) };
         let mut ys = ctx.jog_places(want, (lo, hi), span, z.flip);
@@ -1187,6 +1198,12 @@ fn ortho_pass(
         .collect();
     let (mut curves, mut cost) = (0, 0);
     let cramped = Cell::new(false);
+    // Whether an end on box `i`'s face with outward normal `n` is the
+    // only end there. Ends are looked up by the face their point is
+    // nearest; one that no longer finds the face it was collected on (a
+    // point on a corner, which two faces tie for) is alone on its face.
+    let alone_on =
+        |i: usize, n: (f64, f64)| faces.get(&(i, face_key(n))).map_or(true, |f| f.len() == 1);
     order.sort_by(|&p, &q| {
         let span = |e: &SceneEdge| {
             let (a, b) = (e.bezier[0], e.bezier[3]);
@@ -1202,10 +1219,7 @@ fn ortho_pass(
         let Some((ia, ib)) = ends_of(e) else { continue };
         let (a, b) = edge_ends(e);
         let (na, nb) = (face_normal(&nodes[ia], a), face_normal(&nodes[ib], b));
-        let alone = (
-            faces[&(ia, face_key(na))].len() == 1,
-            faces[&(ib, face_key(nb))].len() == 1,
-        );
+        let alone = (alone_on(ia, na), alone_on(ib, nb));
         let a = moved.get(&(j, true)).copied().unwrap_or(a);
         let b = moved.get(&(j, false)).copied().unwrap_or(b);
         let labels: Vec<Rect> = edges
@@ -1350,10 +1364,7 @@ fn ortho_pass(
         };
         let (a, b) = edge_ends(e);
         let (na, nb) = (face_normal(&nodes[ia], a), face_normal(&nodes[ib], b));
-        let alone = (
-            faces[&(ia, face_key(na))].len() == 1,
-            faces[&(ib, face_key(nb))].len() == 1,
-        );
+        let alone = (alone_on(ia, na), alone_on(ib, nb));
         let corners = if na.0 * nb.0 + na.1 * nb.1 < -0.5 {
             ctx.opposite(e, a, b, na, alone)
         } else if (na.0 * nb.0 + na.1 * nb.1).abs() < 0.5 {
@@ -4768,5 +4779,206 @@ mod tests {
             fit_top_left(&sc.scene),
             std::borrow::Cow::Borrowed(_)
         ));
+    }
+
+    /// The verifier's inheritance fan of eight subclasses with a note on
+    /// the parent: in LR / RL two of its jogs' bounds came out a
+    /// rounding error apart in the wrong order, and `nest_group`'s
+    /// `f64::clamp` panicked ('min > max') on the static render.
+    const FAN8_NOTE: &str = "classDiagram
+    class Shape {
+      +area() double
+    }
+    Shape <|-- Circle
+    Shape <|-- Square
+    Shape <|-- Triangle
+    Shape <|-- Hexagon
+    Shape <|-- Pentagon
+    Shape <|-- Octagon
+    Shape <|-- Ellipse
+    Shape <|-- Star
+    note for Shape \"Base of every shape\"";
+
+    /// Ten labelled subclasses and a note (`v1_fan10_labels`): the
+    /// same panic, LR and RL.
+    const FAN10_LABELS: &str = "classDiagram
+    class Shape {
+      <<abstract>>
+      +area() double
+    }
+    Shape <|-- Circle : is a
+    Shape <|-- Square : is a
+    Shape <|-- Triangle : is a
+    Shape <|-- Hexagon : is a
+    Shape <|-- Pentagon : is a
+    Shape <|-- Octagon : is a
+    Shape <|-- Ellipse : is a
+    Shape <|-- Star : is a
+    Shape <|-- Rhombus : is a
+    Shape <|-- Trapezoid : is a
+    note for Shape \"Base of every shape\"";
+
+    /// Five plain services into one logger (`f7_three_plain`): dragging
+    /// Logger straight up hit the same panic through `route`.
+    const FAN_IN_PLAIN: &str = "classDiagram
+    class Logger {
+      +log(msg) void
+    }
+    ServiceA --> Logger
+    ServiceB --> Logger
+    ServiceC --> Logger
+    ServiceD --> Logger
+    ServiceE --> Logger";
+
+    /// Three self-relations on a class with close siblings
+    /// (`w3_loops_three_sib`).
+    const LOOPS_SIBLINGS: &str = "classDiagram
+    class Employee {
+      +String name
+    }
+    Org <|-- Employee
+    Org <|-- Team
+    Org <|-- Office
+    Employee \"1\" o-- \"*\" Employee : manages
+    Employee --> Employee : mentors
+    Employee ..> Employee : reviews";
+
+    /// `src` laid out in direction `dir` (any `direction` line it has
+    /// replaced).
+    fn in_direction(src: &str, dir: &str) -> String {
+        let mut out = String::new();
+        for l in src.lines() {
+            if !l.trim_start().starts_with("direction ") {
+                out.push_str(l);
+                out.push('\n');
+            }
+            if l.trim() == "classDiagram" {
+                out.push_str(&format!("direction {dir}\n"));
+            }
+        }
+        out
+    }
+
+    /// Everything a host paints from `cs` is finite, and the SVG holds
+    /// no NaN or infinity.
+    fn assert_finite(cs: &ClassScene, what: &str) {
+        let ok = |p: (f64, f64)| p.0.is_finite() && p.1.is_finite();
+        let sc = &cs.scene;
+        assert!(sc.width.is_finite() && sc.height.is_finite(), "{what}");
+        for n in &sc.nodes {
+            assert!(ok((n.x, n.y)) && ok((n.w, n.h)), "{what}: node {}", n.id);
+        }
+        for (j, e) in sc.edges.iter().enumerate() {
+            assert!(e.bezier.iter().all(|&p| ok(p)), "{what}: edge {j} curve");
+            assert!(e.waypoints.iter().all(|&p| ok(p)), "{what}: edge {j} route");
+            assert!(
+                e.label.as_ref().map_or(true, |l| ok(l.1)),
+                "{what}: label {j}"
+            );
+        }
+        for j in 0..cs.rels.len() {
+            assert!(
+                rel_head(cs, j).polygon.iter().all(|&p| ok(p)),
+                "{what}: head {j}"
+            );
+        }
+        for spots in card_spots(cs) {
+            assert!(spots.iter().flatten().all(|&p| ok(p)), "{what}: cards");
+        }
+        let svg = to_svg(cs);
+        assert!(!svg.contains("NaN") && !svg.contains("inf"), "{what}");
+    }
+
+    /// Final verifier round, BLOCKING: the fans above panicked in
+    /// `nest_group` on the static render (LR / RL), so `render_svg`
+    /// panicked and the CLI exited 101 with no output.
+    #[test]
+    fn wide_fans_with_a_note_render_in_every_direction() {
+        for src in [FAN8_NOTE, FAN10_LABELS] {
+            for dir in ["TB", "BT", "LR", "RL"] {
+                let src = in_direction(src, dir);
+                let svg = crate::render_svg(&src).unwrap();
+                assert!(svg.ends_with("</svg>\n"), "{dir}");
+                assert_finite(&scene(&cd(&src)), dir);
+            }
+        }
+    }
+
+    /// Final verifier round, BLOCKING: dragging Logger straight up by
+    /// 90-150 px (from its laid-out centre, RL or LR) panicked in
+    /// `nest_group` through `route` — a host crashed mid-drag.
+    #[test]
+    fn dragging_a_fan_in_target_never_panics() {
+        for dir in ["RL", "LR"] {
+            let d = cd(&in_direction(FAN_IN_PLAIN, dir));
+            let laid: Vec<(f64, f64)> = scene(&d).scene.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let logger = d.class_index("Logger").unwrap();
+            for dy in (0..=200).step_by(2) {
+                let mut c = laid.clone();
+                c[logger].1 -= f64::from(dy);
+                assert_finite(&route(&d, &c), &format!("{dir} up {dy}"));
+            }
+        }
+    }
+
+    /// A drag sweep over every class input the tests hold, in all four
+    /// directions: random but deterministic (a fixed xorshift seed)
+    /// moves of the kinds a drag produces — a class dropped on another
+    /// (coincident), onto part of one (overlapping), past the canvas
+    /// origin (negative coordinates), the whole diagram jostled, two
+    /// classes swapped, one moved far. No route may panic, and
+    /// everything drawn stays finite. Laid out, every one renders too.
+    #[test]
+    fn drag_sweeps_never_panic_and_stay_finite() {
+        let srcs = [
+            include_str!("../examples/class.mmd"),
+            ZOO,
+            SHOP,
+            FAN_IN_CARDS,
+            FAN_IN_LABELS,
+            FAN8_NOTE,
+            FAN10_LABELS,
+            FAN_IN_PLAIN,
+            LOOPS_SIBLINGS,
+        ];
+        let mut seed: u64 = 0x9e37_79b9_7f4a_7c15;
+        let mut rnd = move || {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            (seed % 10_000) as f64 / 10_000.0
+        };
+        for src in srcs {
+            for dir in ["TB", "BT", "LR", "RL"] {
+                let d = cd(&in_direction(src, dir));
+                let laid = scene(&d);
+                assert_finite(&laid, dir);
+                let base: Vec<(f64, f64)> = laid.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
+                let n = base.len();
+                let mut pick = || (rnd() * n as f64) as usize % n;
+                let mut moves: Vec<Vec<(f64, f64)>> = Vec::new();
+                for k in 0..24 {
+                    let mut c = base.clone();
+                    let (i, j) = (pick(), pick());
+                    match k % 6 {
+                        0 => c[i] = c[j],
+                        1 => c[i] = (c[j].0 + 15.0 * (k % 4) as f64, c[j].1 - 9.0),
+                        2 => c[i] = (-40.0 - 13.0 * k as f64, -25.0 - 7.0 * k as f64),
+                        3 => c.iter_mut().enumerate().for_each(|(m, p)| {
+                            p.0 += 31.0 * ((m * 7 + k) % 5) as f64 - 62.0;
+                            p.1 += 23.0 * ((m * 3 + k) % 5) as f64 - 46.0;
+                        }),
+                        4 => c.swap(i, j),
+                        _ => c[i] = (c[i].0 + 37.0 * k as f64 - 400.0, c[i].1 - 29.0 * k as f64),
+                    }
+                    moves.push(c);
+                }
+                // The classes alone (notes placed beside them).
+                moves.push(base[..d.classes.len()].to_vec());
+                for (k, c) in moves.iter().enumerate() {
+                    assert_finite(&route(&d, c), &format!("{dir} move {k}"));
+                }
+            }
+        }
     }
 }

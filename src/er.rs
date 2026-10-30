@@ -847,7 +847,9 @@ fn free_stretch_spots(e: &SceneEdge, reach: (f64, f64), w: f64) -> Vec<(f64, f64
     let pts = edge_polyline(e);
     let walk = Walk::new(&pts);
     let total = walk.len();
-    let at = |t: f64| walk.at(t.clamp(0.0, total));
+    // Not `clamp`: that panics when a NaN centre from a host makes
+    // `total` NaN.
+    let at = |t: f64| walk.at(t.max(0.0).min(total));
     let (lo, hi) = (reach.0, total - reach.1);
     let mid = if lo <= hi {
         (lo + hi) / 2.0
