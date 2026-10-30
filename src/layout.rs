@@ -515,7 +515,12 @@ fn layout_core(
     );
     let groups: Vec<RankGroup> = rank_only.to_vec();
     let rk = rank(g, &groups);
-    let layer = rk.layer.clone();
+    let mut layer = rk.layer.clone();
+    if g.tight_sources {
+        if let Some(tight) = tighten_sources(g, &groups, &rk, &layer) {
+            layer = tight;
+        }
+    }
     // The search judges candidates on drawn crossings and hits; a graph
     // past the budget skips it and never pays for those measures.
     let search = within_search_budget(g);
@@ -701,10 +706,11 @@ fn narrow(g: &Graph, sizes: &[(f64, f64)], node_cluster: Option<&[Vec<usize>]>, 
     }
     // 3. Leaf staggering (graphviz `unflatten -l`): half the leaves of
     // the broadest layer step one layer out, so a fan of 12 boxes
-    // becomes two offset rows.
+    // becomes two offset rows — unless the graph keeps its leaves
+    // flat (`Graph::flat_leaves`).
     let mut tried: Vec<usize> = Vec::new();
     for _ in 0..STAGGER_MAX_ROUNDS {
-        if !ribbon(&st.best) {
+        if g.flat_leaves || !ribbon(&st.best) {
             break;
         }
         let Some((li, props)) = stagger_proposals(
