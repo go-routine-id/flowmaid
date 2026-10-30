@@ -9,9 +9,11 @@
 //! edge, and `scene_sized` produces the final geometry. Relationships
 //! rank in SOURCE order — the left operand of `Animal <|-- Dog` leads
 //! — as mermaid ranks them, so parents, interfaces and wholes sit
-//! above their children in a top-down diagram. Each note is one more
-//! node, after the classes, linked to its class by one more edge,
-//! after the relationships.
+//! above their children in a top-down diagram; as dagre does, a source
+//! ranks just above its nearest target and a hierarchy's children stay
+//! in one row. Each note is one more node, after the classes, linked to
+//! its class by one more edge, after the relationships (so it ranks
+//! just above its class).
 //!
 //! Interactive apps use the same API shape as `scene`/`er`: [`scene`]
 //! for automatic layout, [`route`] to follow dragged class positions,
@@ -22,8 +24,9 @@
 use std::cell::Cell;
 use std::collections::{BTreeMap, HashMap};
 
+use crate::edgepass::{refit, Mode};
 use crate::labels::{avoid_label_overlaps, LABEL_ROUTE_WORK, LABEL_STATIC_WORK};
-use crate::layout::{text_width, LINE_H};
+use crate::layout::{text_width, GAP_L, LINE_H};
 use crate::model::{
     generics_to_angles, Class, ClassDiagram, Direction, EdgeEnds, EdgeKind, Graph, Marker, Member,
     RelKind, Shape,
@@ -172,7 +175,7 @@ pub struct Head {
 pub fn scene(d: &ClassDiagram) -> ClassScene {
     let b = build(d);
     let sc = scene_sized(&b.g, &b.sizes);
-    assemble(d, b, sc, LABEL_STATIC_WORK)
+    assemble(d, b, sc, Mode::Static)
 }
 
 /// Re-route relationships for custom class positions (drags).
@@ -198,7 +201,7 @@ pub fn route(d: &ClassDiagram, centers: &[(f64, f64)]) -> ClassScene {
         all.extend(note_fallback(d, centers, &b.sizes));
     }
     let sc = route_sized(&b.g, &all, &b.sizes);
-    assemble(d, b, sc, LABEL_ROUTE_WORK)
+    assemble(d, b, sc, Mode::Routed)
 }
 
 /// Note centres for a [`route`] call that passed class centres only:
@@ -256,9 +259,11 @@ fn note_fallback(
 /// back to their semantic direction (`from` → `to`, glyph at the end),
 /// are redrawn orthogonal ([`orthogonalize`]) with their labels moved
 /// off whatever the new lines brought them onto, and take the line
-/// style hosts read (`Dotted` = dashed, else `Open`). `budget` is the
-/// label stage's work budget (static scene or drag).
-fn assemble(d: &ClassDiagram, b: Built, mut scene: Scene, budget: usize) -> ClassScene {
+/// style hosts read (`Dotted` = dashed, else `Open`). `mode` tells an
+/// automatic layout from a drag (the label stage's work budget, and
+/// whether the canvas may shift to hold self-loops moved to a box's
+/// other side).
+fn assemble(d: &ClassDiagram, b: Built, mut scene: Scene, mode: Mode) -> ClassScene {
     // The synthetic graph is built strictly in class / note / relation
     // / connector order, so indexes align 1:1 — load-bearing for every
     // consumer.
@@ -270,12 +275,34 @@ fn assemble(d: &ClassDiagram, b: Built, mut scene: Scene, budget: usize) -> Clas
             std::mem::swap(&mut e.ends.start, &mut e.ends.end);
         }
     }
-    let heads: Vec<f64> = d.relations.iter().map(|r| glyph_size(r.kind).1).collect();
-    orthogonalize(&mut scene, &heads);
+    part_self_loops(&mut scene);
+    let decos: Vec<[EndDeco; 2]> = d
+        .relations
+        .iter()
+        .map(|r| {
+            let card = |c: &Option<String>| c.as_deref().map(|t| (card_w(t), CARD_H));
+            [
+                EndDeco {
+                    half: 0.0,
+                    card: card(&r.from_card),
+                },
+                EndDeco {
+                    half: glyph_size(r.kind).1,
+                    card: card(&r.to_card),
+                },
+            ]
+        })
+        .collect();
+    orthogonalize(&mut scene, &decos);
     // Rerouting moved labels onto their new lines, where one may now
     // cover another label or sit under a stroke; the glyph ends are
     // still marked, so labels keep off them too.
+    let budget = match mode {
+        Mode::Static => LABEL_STATIC_WORK,
+        Mode::Routed => LABEL_ROUTE_WORK,
+    };
     avoid_label_overlaps(&scene.nodes, &scene.clusters, &mut scene.edges, budget);
+    refit(&mut scene, mode);
     for (e, r) in scene.edges.iter_mut().zip(&d.relations) {
         e.kind = if r.dashed {
             EdgeKind::Dotted
@@ -298,6 +325,82 @@ fn assemble(d: &ClassDiagram, b: Built, mut scene: Scene, budget: usize) -> Clas
         boxes: b.boxes,
         rels,
         notes: b.notes,
+    }
+}
+
+/// How far a self-loop's two ends sit either side of its place on the
+/// face, and how far its curve reaches out (its controls' offset along
+/// the face is [`LOOP_LIFT`]) — the layout's loop.
+const LOOP_HALF: f64 = 8.0;
+const LOOP_REACH: f64 = 48.0;
+const LOOP_LIFT: f64 = 28.0;
+/// How much each loop nested round another on one face widens its ends,
+/// its reach and its lift: its ends stay clear of the inner loop's
+/// glyph, and its curve clear of the inner curve.
+const LOOP_NEST: (f64, f64, f64) = (12.0, 28.0, 16.0);
+
+/// Draw the self-loops of a class that has more than one apart. The
+/// layout stacks a node's loops on one side, each starting where the
+/// one before ends, so two loops wind round each other and an end glyph
+/// can land on the other loop's end (both glyphs on one point when the
+/// source order turns one loop round). Here they alternate between that
+/// side and the opposite one, and loops sharing a side nest, the outer
+/// one's ends past the inner one's, their glyphs at opposite ends. The
+/// labels of a side sit past its outermost loop, side by side along the
+/// face.
+fn part_self_loops(sc: &mut Scene) {
+    let idx = node_index(sc);
+    let mut loops: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
+    for (j, e) in sc.edges.iter().enumerate() {
+        if e.from == e.to && e.meta.curve.is_none() {
+            if let Some(&i) = idx.get(e.from.as_str()) {
+                loops.entry(i).or_default().push(j);
+            }
+        }
+    }
+    for (i, js) in loops {
+        if js.len() < 2 {
+            continue;
+        }
+        let n = sc.nodes[i].clone();
+        let side = face_normal(&n, sc.edges[js[0]].bezier[0]);
+        for (k, &j) in js.iter().enumerate() {
+            let out = if k % 2 == 0 { side } else { (-side.0, -side.1) };
+            let t = (-out.1, out.0);
+            let face = (n.x + out.0 * n.w / 2.0, n.y + out.1 * n.h / 2.0);
+            let at = |along: f64, off: f64| {
+                (
+                    face.0 + t.0 * along + out.0 * off,
+                    face.1 + t.1 * along + out.1 * off,
+                )
+            };
+            let q = (k / 2) as f64;
+            let half = LOOP_HALF + q * LOOP_NEST.0;
+            let reach = LOOP_REACH + q * LOOP_NEST.1;
+            let lift = LOOP_LIFT + q * LOOP_NEST.2;
+            // The glyph (at the curve's end) alternates between the
+            // ends of loops nested on one side.
+            let s = if k / 2 % 2 == 0 { 1.0 } else { -1.0 };
+            let e = &mut sc.edges[j];
+            e.bezier = [
+                at(-half * s, 0.0),
+                at(-lift * s, reach),
+                at(lift * s, reach),
+                at(half * s, 0.0),
+            ];
+            e.waypoints.clear();
+            if let Some((_, m, w)) = &mut e.label {
+                // Past the outermost loop on the side (a cubic's apex
+                // reaches 3/4 of its controls' offset), the labels of
+                // nested loops side by side along the face.
+                let on_side = (js.len() + 1 - k % 2) / 2;
+                let outer = LOOP_REACH + (on_side - 1) as f64 * LOOP_NEST.1;
+                let chip = (*w / 2.0) * out.0.abs() + 11.0 * out.1.abs();
+                let wide = 22.0 * out.0.abs() + *w * out.1.abs() + 4.0;
+                let along = (q - (on_side - 1) as f64 / 2.0) * wide;
+                *m = at(along, 0.75 * outer + 6.0 + chip);
+            }
+        }
     }
 }
 
@@ -348,21 +451,23 @@ const ORTHO_INSET: f64 = 24.0;
 /// and jogs between them; one whose way between is blocked by boxes (a
 /// back-edge bow) runs a lane at the bow's outer extent; an edge
 /// between perpendicular faces turns once (L). Jogs step aside from
-/// runs already placed; a route that would cross a box, or lie on
-/// another route, keeps its curve. Edges the router routed
-/// (axis-aligned waypoints) are kept as routed; a label moves onto its
-/// new line. `heads[j]` is the half width of edge `j`'s end glyph (at
-/// its end; missing = none), so ends sharing a face keep their glyphs
-/// apart.
-fn orthogonalize(sc: &mut Scene, heads: &[f64]) {
+/// runs already placed, then restack in nesting order
+/// ([`nest_jogs`]); a route that would cross a box, or lie on another
+/// route, keeps its curve. Edges the router routed
+/// (axis-aligned waypoints) are kept as routed, unless they lie along
+/// another or enter their glyph on a short leg; a label moves onto its
+/// new line. `decos[j]` is what edge `j` holds at its start and its end
+/// (missing = nothing), so ends sharing a face keep their glyphs and
+/// cardinalities apart.
+fn orthogonalize(sc: &mut Scene, decos: &[[EndDeco; 2]]) {
     let laid = sc.edges.clone();
-    let (mut score, mut cramped) = ortho_pass(&sc.nodes, &mut sc.edges, heads, true, false);
+    let (mut score, mut cramped) = ortho_pass(&sc.nodes, &mut sc.edges, decos, true, false);
     let mut soft = false;
     if score.0 > 0 {
         // Long and routed ends held where they are can leave another
         // edge no way out: let them spread too when that routes more.
         let mut alt = laid.clone();
-        let (alt_score, alt_cramped) = ortho_pass(&sc.nodes, &mut alt, heads, true, true);
+        let (alt_score, alt_cramped) = ortho_pass(&sc.nodes, &mut alt, decos, true, true);
         if alt_score < score {
             (sc.edges, score, cramped, soft) = (alt, alt_score, alt_cramped, true);
         }
@@ -372,13 +477,482 @@ fn orthogonalize(sc: &mut Scene, heads: &[f64]) {
         // when that leaves fewer edges on their curves, or as many
         // with fewer crossings and covered labels.
         let mut tight = laid;
-        if ortho_pass(&sc.nodes, &mut tight, heads, false, soft).0 < score {
+        if ortho_pass(&sc.nodes, &mut tight, decos, false, soft).0 < score {
             sc.edges = tight;
+        }
+    }
+    nest_jogs(&sc.nodes, &mut sc.edges);
+}
+
+/// One jog of an orthogonal route — the leg across the flow between a
+/// leg coming down from above and one going on below — in the frame
+/// [`Ortho::opposite`] works in (`flip` swaps x / y, so the jog runs
+/// along x): route `j`'s corners `k` and `k + 1`, at `y`; the leg above
+/// at `u` reaches up to `top`, the one below at `l` down to `bot`.
+/// A Z route across one gap has one jog, a lane round boxes two.
+struct Zig {
+    j: usize,
+    k: usize,
+    flip: bool,
+    top: f64,
+    bot: f64,
+    u: f64,
+    l: f64,
+    y: f64,
+    /// Least and most `y` leaves the legs: a route's end leg at least
+    /// [`ORTHO_STUB`] long, any other [`ORTHO_SEP`].
+    lo: f64,
+    hi: f64,
+    /// Where the jog would best sit: mid gap for a Z, else where it is.
+    mid: f64,
+}
+
+impl Zig {
+    /// Whether `x` lies inside this jog's span (clear of its ends).
+    fn spans(&self, x: f64) -> bool {
+        self.u.min(self.l) + 1.0 < x && x < self.u.max(self.l) - 1.0
+    }
+
+    /// Whether `o` must jog farther down the gap than this one for the
+    /// two not to cross: `o`'s lower leg drops inside this jog's span,
+    /// or this one's upper leg inside `o`'s.
+    fn over(&self, o: &Zig) -> bool {
+        self.spans(o.l) || o.spans(self.u)
+    }
+
+    /// How many times this jog crosses `o`'s legs.
+    fn crosses(&self, o: &Zig) -> usize {
+        usize::from(self.spans(o.u) && o.top + 1.0 < self.y && self.y < o.y - 1.0)
+            + usize::from(self.spans(o.l) && o.y + 1.0 < self.y && self.y < o.bot - 1.0)
+    }
+
+    /// Whether the two routes cross the same gap (and so may cross).
+    fn shares(&self, o: &Zig) -> bool {
+        self.flip == o.flip && self.j != o.j && self.lo < o.hi && o.lo < self.hi
+    }
+}
+
+/// Stack the jogs that share a gap in nesting order, as channel routing
+/// does. Routes are drawn one at a time, the shortest first and each
+/// nearest mid gap, so an inner route of a fan takes the middle and an
+/// outer one — which must jog nearer the face the fan converges on —
+/// finds no lane left on that side and crosses the inner one twice
+/// (fan-ins of six subclasses, or of labelled relations whose chips
+/// push the inner jogs aside). Here each group of Z routes tied by such
+/// an order, with two of them crossing, is drawn again in that order
+/// ([`nest_group`]). The group keeps the new routes only when the whole
+/// drawing then costs less (crossings, lines merged, label chips
+/// struck) than before.
+fn nest_jogs(nodes: &[SceneNode], edges: &mut [SceneEdge]) {
+    let idx: HashMap<&str, usize> = nodes
+        .iter()
+        .enumerate()
+        .map(|(i, n)| (n.id.as_str(), i))
+        .collect();
+    let mut zigs: Vec<Zig> = Vec::new();
+    for (j, e) in edges.iter().enumerate() {
+        if e.from == e.to || e.meta.curve.is_some() || e.waypoints.is_empty() {
+            continue;
+        }
+        let c = corners_of(&e.waypoints);
+        let n = c.len();
+        if n < 4 || !idx.contains_key(e.from.as_str()) || !idx.contains_key(e.to.as_str()) {
+            continue;
+        }
+        // The frame in which the route's first leg runs along y.
+        let flip = (c[0].1 - c[1].1).abs() < 0.5;
+        let q: Vec<(f64, f64)> = c.iter().map(|&p| f_pt(p, flip)).collect();
+        if !q.windows(2).enumerate().all(|(i, w)| {
+            let along = if i % 2 == 0 {
+                (w[0].0, w[1].0)
+            } else {
+                (w[0].1, w[1].1)
+            };
+            (along.0 - along.1).abs() < 0.5
+        }) {
+            continue;
+        }
+        for k in (1..n - 2).step_by(2) {
+            let y = q[k].1;
+            let ((top, u, top_end), (bot, l, bot_end)) = if q[k - 1].1 < q[k + 2].1 {
+                (
+                    (q[k - 1].1, q[k].0, k == 1),
+                    (q[k + 2].1, q[k + 1].0, k + 2 == n - 1),
+                )
+            } else {
+                (
+                    (q[k + 2].1, q[k + 1].0, k + 2 == n - 1),
+                    (q[k - 1].1, q[k].0, k == 1),
+                )
+            };
+            if !(top < y && y < bot) {
+                continue; // both legs on one side: the turn of a lane
+            }
+            let leg = |end: bool| if end { ORTHO_STUB } else { ORTHO_SEP };
+            zigs.push(Zig {
+                j,
+                k,
+                flip,
+                top,
+                bot,
+                u,
+                l,
+                y,
+                lo: top + leg(top_end),
+                hi: bot - leg(bot_end),
+                mid: if n == 4 { (top + bot) / 2.0 } else { y },
+            });
+        }
+    }
+    let n = zigs.len();
+    if n < 2 {
+        return;
+    }
+    // above[a][b]: route a must jog above route b (not both ways: then
+    // they cross once whichever way, and no order helps).
+    let above: Vec<Vec<bool>> = (0..n)
+        .map(|a| {
+            (0..n)
+                .map(|b| {
+                    let (p, q) = (&zigs[a], &zigs[b]);
+                    a != b && p.shares(q) && p.over(q) && !q.over(p)
+                })
+                .collect()
+        })
+        .collect();
+    fn root(g: &mut [usize], mut i: usize) -> usize {
+        while g[i] != i {
+            g[i] = g[g[i]];
+            i = g[i];
+        }
+        i
+    }
+    let mut group: Vec<usize> = (0..n).collect();
+    let mut tangled = vec![false; n];
+    for a in 0..n {
+        for b in a + 1..n {
+            if above[a][b] || above[b][a] {
+                let (ra, rb) = (root(&mut group, a), root(&mut group, b));
+                group[ra] = rb;
+                if zigs[a].crosses(&zigs[b]) + zigs[b].crosses(&zigs[a]) > 0 {
+                    tangled[a] = true;
+                }
+            }
+        }
+    }
+    let rects: Vec<Rect> = nodes.iter().map(node_rect).collect();
+    let mut done = vec![false; n];
+    for start in 0..n {
+        let r = root(&mut group, start);
+        if done[r] {
+            continue;
+        }
+        done[r] = true;
+        let members: Vec<usize> = (0..n).filter(|&k| root(&mut group, k) == r).collect();
+        // A group holding two jogs of one route is left as it is (a
+        // route is drawn again whole, one jog at a time).
+        let mut routes: Vec<usize> = members.iter().map(|&k| zigs[k].j).collect();
+        routes.sort_unstable();
+        routes.dedup();
+        if !members.iter().any(|&k| tangled[k]) || routes.len() < members.len() {
+            continue;
+        }
+        // Topological order of `above`, the jog highest now first of
+        // those free to go.
+        let mut order: Vec<usize> = Vec::with_capacity(members.len());
+        let mut left = members.clone();
+        while !left.is_empty() {
+            let free = left
+                .iter()
+                .copied()
+                .filter(|&b| !left.iter().any(|&a| above[a][b]))
+                .min_by(|&a, &b| zigs[a].y.total_cmp(&zigs[b].y));
+            let Some(next) = free else { break };
+            order.push(next);
+            left.retain(|&k| k != next);
+        }
+        if !left.is_empty() {
+            continue; // a cycle: no order clears every pair
+        }
+        let g = Group {
+            zigs: &zigs,
+            above: &above,
+            order: &order,
+        };
+        let before = drawing_cost(&rects, &idx, edges);
+        let mut best: Option<(usize, Vec<SceneEdge>)> = None;
+        for (respect, step, pack) in [
+            (true, ORTHO_ROOM, false),
+            (true, ORTHO_SEP, false),
+            (true, ORTHO_SEP, true),
+            (false, ORTHO_ROOM, false),
+            (false, ORTHO_SEP, false),
+            (false, ORTHO_SEP, true),
+        ] {
+            let Some(trial) = nest_group(nodes, &rects, &idx, edges, &g, (respect, step, pack))
+            else {
+                continue;
+            };
+            let c = drawing_cost(&rects, &idx, &trial);
+            if c < best.as_ref().map_or(before, |b| b.0) {
+                best = Some((c, trial));
+            }
+        }
+        if let Some((_, trial)) = best {
+            edges.clone_from_slice(&trial);
         }
     }
 }
 
-/// One [`orthogonalize`] pass over `edges` among `nodes` (`heads` as
+/// A group of tied jogs (one per route) for [`nest_group`]: `order`
+/// (indexes into `zigs`) lists them so that each comes after every jog
+/// `above[a][b]` says must run above it.
+struct Group<'a> {
+    zigs: &'a [Zig],
+    above: &'a [Vec<bool>],
+    order: &'a [usize],
+}
+
+/// `edges` with the jogs of group `g` drawn again in its order: each
+/// the nearest its best place it can (or, with `pack`, the highest), `step`
+/// or more below the jogs it must clear and leaving `step` above each
+/// place a jog still to come below it can take, its label moved onto
+/// its new line. With `respect`, the
+/// jogs keep off the other edges' labels; without, they may run through
+/// them, and each label struck is moved along its own line to where it
+/// is clear (a chip on a straight edge beside a fan's inner leg, which
+/// no nesting clears). `None` when a jog finds no place.
+fn nest_group(
+    nodes: &[SceneNode],
+    rects: &[Rect],
+    idx: &HashMap<&str, usize>,
+    edges: &[SceneEdge],
+    g: &Group,
+    (respect, step, pack): (bool, f64, bool),
+) -> Option<Vec<SceneEdge>> {
+    let ours: Vec<usize> = g.order.iter().map(|&a| g.zigs[a].j).collect();
+    // The lowest each jog may go and still leave the jogs below it room.
+    let mut cap: HashMap<usize, f64> = HashMap::new();
+    for &a in g.order.iter().rev() {
+        let below = cap
+            .iter()
+            .filter(|&(&b, _)| g.above[a][b])
+            .map(|(_, &c)| c - step)
+            .fold(g.zigs[a].hi, f64::min);
+        cap.insert(a, below);
+    }
+    let mut runs = Runs::default();
+    let mut labels: Vec<Rect> = Vec::new();
+    for (k, e) in edges.iter().enumerate() {
+        if !ours.contains(&k) {
+            for q in straight_runs(e) {
+                runs.push(q);
+            }
+            if respect {
+                labels.extend(label_chip(e));
+            }
+        }
+    }
+    let cramped = Cell::new(false);
+    let mut trial: Vec<SceneEdge> = edges.to_vec();
+    // The jog each route of the group takes, as placed.
+    let mut jog: HashMap<usize, f64> = HashMap::new();
+    for &a in g.order {
+        let z = &g.zigs[a];
+        let e = &edges[z.j];
+        let (ia, ib) = (idx[e.from.as_str()], idx[e.to.as_str()]);
+        let mut lo = z.lo;
+        for (&p, &y) in &jog {
+            if g.above[p][a] {
+                lo = lo.max(y + step);
+            }
+        }
+        let hi = cap[&a];
+        if lo > hi + 1e-9 {
+            return None;
+        }
+        let ctx = Ortho {
+            rects,
+            labels: &labels,
+            ia,
+            ib,
+            j: z.j,
+            runs: &runs,
+            room: true,
+            cramped: &cramped,
+        };
+        let q: Vec<(f64, f64)> = corners_of(&e.waypoints)
+            .into_iter()
+            .map(|p| f_pt(p, z.flip))
+            .collect();
+        let span = (z.u.min(z.l), z.u.max(z.l));
+        let want = if pack { lo } else { z.mid.clamp(lo, hi) };
+        let mut ys = ctx.jog_places(want, (lo, hi), span, z.flip);
+        ys.extend([lo, hi]);
+        let back = |y: f64| {
+            let mut q = q.clone();
+            (q[z.k].1, q[z.k + 1].1) = (y, y);
+            q.into_iter().map(|p| f_pt(p, z.flip)).collect::<Vec<_>>()
+        };
+        let (_, pts) = ctx.best(ys.into_iter().map(back))?;
+        let spot = e.label.as_ref().map(|l| ctx.label_spot(&pts, l.2, l.1));
+        for w in pts.windows(2) {
+            runs.push(Run::of(w[0], w[1]));
+        }
+        let n = (
+            face_normal(&nodes[ia], pts[0]),
+            face_normal(&nodes[ib], pts[pts.len() - 1]),
+        );
+        draw_route(&mut trial[z.j], &pts, n, spot);
+        labels.extend(label_chip(&trial[z.j]));
+        jog.insert(a, f_pt(pts[z.k], z.flip).1);
+    }
+    // Move each label a jog drawn after it strikes along its own line:
+    // the group's own (a jog placed later can pass under an earlier
+    // one's label), and without `respect` the others' too.
+    let others_too = (0..trial.len()).filter(|k| !respect && !ours.contains(k));
+    for k in ours.iter().copied().chain(others_too) {
+        let (Some(chip), Some(pts)) = (label_chip(&trial[k]), ortho_corners(&trial[k])) else {
+            continue;
+        };
+        let struck = ours.iter().any(|&j| {
+            j != k
+                && straight_runs(&trial[j]).iter().any(|q| {
+                    let (a, b) = q.ends();
+                    rect_hits_segment(chip, a, b)
+                })
+        });
+        if !struck {
+            continue;
+        }
+        let mut others = Runs::default();
+        let mut chips = Vec::new();
+        for (i, o) in trial.iter().enumerate() {
+            if i != k {
+                for q in straight_runs(o) {
+                    others.push(q);
+                }
+                chips.extend(label_chip(o));
+            }
+        }
+        let e = &trial[k];
+        let ctx = Ortho {
+            rects,
+            labels: &chips,
+            ia: idx.get(e.from.as_str()).copied().unwrap_or(usize::MAX),
+            ib: idx.get(e.to.as_str()).copied().unwrap_or(usize::MAX),
+            j: k,
+            runs: &others,
+            room: false,
+            cramped: &cramped,
+        };
+        let Some((_, m, w)) = &e.label else { continue };
+        let spot = ctx.label_spot(&pts, *w, *m);
+        let line = edge_polyline(e);
+        if let Some((_, m, _)) = &mut trial[k].label {
+            *m = nearest_on(&line, spot);
+        }
+    }
+    Some(trial)
+}
+
+/// What the whole drawing costs ([`Ortho::cost`] of every orthogonal
+/// line among all the others, their labels included; a line through a
+/// box or along another counts as four labels struck), to compare two
+/// versions of it.
+fn drawing_cost(rects: &[Rect], idx: &HashMap<&str, usize>, edges: &[SceneEdge]) -> usize {
+    // Every line's runs, owned by their edge so its own never count.
+    let mut runs = Runs::default();
+    for (j, e) in edges.iter().enumerate() {
+        for mut q in straight_runs(e) {
+            q.owner = j;
+            runs.push(q);
+        }
+    }
+    let chips: Vec<Option<Rect>> = edges.iter().map(label_chip).collect();
+    let cramped = Cell::new(false);
+    let mut total = 0;
+    for (j, e) in edges.iter().enumerate() {
+        let Some(pts) = ortho_corners(e) else {
+            continue;
+        };
+        let labels: Vec<Rect> = chips
+            .iter()
+            .enumerate()
+            .filter(|&(k, _)| k != j)
+            .filter_map(|(_, c)| *c)
+            .collect();
+        let ctx = Ortho {
+            rects,
+            labels: &labels,
+            ia: idx.get(e.from.as_str()).copied().unwrap_or(usize::MAX),
+            ib: idx.get(e.to.as_str()).copied().unwrap_or(usize::MAX),
+            j,
+            runs: &runs,
+            room: false,
+            cramped: &cramped,
+        };
+        total += ctx.cost(&pts).unwrap_or(4 * ORTHO_UNDER_LABEL);
+    }
+    total
+}
+
+/// The corners of `e` as drawn when it is orthogonal: its route's, or
+/// the two ends of a straight axis-aligned cubic; `None` for a curve
+/// or a self-loop.
+fn ortho_corners(e: &SceneEdge) -> Option<Vec<(f64, f64)>> {
+    if e.from == e.to || e.meta.curve.is_some() {
+        return None;
+    }
+    let pts = if e.waypoints.is_empty() {
+        let q = e.bezier;
+        let line = [q[1], q[2]].iter().all(|c| {
+            ((q[3].0 - q[0].0) * (c.1 - q[0].1) - (q[3].1 - q[0].1) * (c.0 - q[0].0)).abs() < 1e-6
+        });
+        if !line {
+            return None;
+        }
+        vec![q[0], q[3]]
+    } else {
+        corners_of(&e.waypoints)
+    };
+    pts.windows(2)
+        .all(|w| (w[0].0 - w[1].0).abs() < 0.5 || (w[0].1 - w[1].1).abs() < 0.5)
+        .then_some(pts)
+}
+
+/// The box a label chip covers, as routes keep off it.
+fn label_chip(e: &SceneEdge) -> Option<Rect> {
+    e.label.as_ref().map(|(_, m, w)| {
+        (
+            m.0 - w / 2.0 - 1.0,
+            m.1 - 11.0,
+            m.0 + w / 2.0 + 1.0,
+            m.1 + 11.0,
+        )
+    })
+}
+
+/// A node's box.
+fn node_rect(n: &SceneNode) -> Rect {
+    (
+        n.x - n.w / 2.0,
+        n.y - n.h / 2.0,
+        n.x + n.w / 2.0,
+        n.y + n.h / 2.0,
+    )
+}
+
+/// `p` with x / y swapped when `flip`.
+fn f_pt(p: (f64, f64), flip: bool) -> (f64, f64) {
+    if flip {
+        (p.1, p.0)
+    } else {
+        p
+    }
+}
+
+/// One [`orthogonalize`] pass over `edges` among `nodes` (`decos` as
 /// there); `room` = keep [`ORTHO_ROOM`] between parallel runs where a
 /// gap allows; `soft` = [`Hold::Soft`] ends spread like free ones. Returns (how many free edges kept their curve, what the
 /// routes drawn cost apart from cramping) and whether any candidate was
@@ -386,7 +960,7 @@ fn orthogonalize(sc: &mut Scene, heads: &[f64]) {
 fn ortho_pass(
     nodes: &[SceneNode],
     edges: &mut [SceneEdge],
-    heads: &[f64],
+    decos: &[[EndDeco; 2]],
     room: bool,
     soft: bool,
 ) -> ((usize, usize), bool) {
@@ -453,7 +1027,7 @@ fn ortho_pass(
     // them: mermaid's class edges leave a box well inside its
     // corners. An end alone on its face slides later, to line up with
     // its other end.
-    let mut moved = spread_faces(&faces, &rects, heads, soft);
+    let mut moved = spread_faces(&faces, &rects, decos, soft);
     // A routed edge whose end moved slides its final leg along with it
     // (the leg before stretches to meet it) — unless a leg would then
     // cross a box or run along another routed edge: such an edge stays
@@ -520,7 +1094,7 @@ fn ortho_pass(
                 end.3 = Hold::Fixed;
             }
         }
-        moved = spread_faces(&faces, &rects, heads, soft);
+        moved = spread_faces(&faces, &rects, decos, soft);
     }
     for j in 0..edges.len() {
         let Some(c) = slid(j, &edges[j], &moved) else {
@@ -544,8 +1118,11 @@ fn ortho_pass(
         }
     }
     // A routed edge lying along an earlier one (the router can leave
-    // two runs a pixel or two apart) is routed again here, and keeps
-    // the router's route only if that fails.
+    // two runs a pixel or two apart), or entering its glyph end on a leg
+    // shorter than ORTHO_STUB (the router's stub is about the glyph's
+    // length, so the corner sits under the glyph and tilts it), is
+    // routed again here, and keeps the router's route only if that
+    // fails.
     let mut redo = vec![false; edges.len()];
     let mut runs = Runs::default();
     for (j, e) in edges.iter().enumerate().filter(|(_, e)| routed(e)) {
@@ -554,12 +1131,18 @@ fn ortho_pass(
             .windows(2)
             .map(|w| Run::of(w[0], w[1]))
             .collect();
+        let c = corners_of(&e.waypoints);
+        let stubby = c.len() >= 3 && decos.get(j).is_some_and(|d| d[1].half > 0.0) && {
+            let (p, q) = (c[c.len() - 1], c[c.len() - 2]);
+            (p.0 - q.0).abs() + (p.1 - q.1).abs() < ORTHO_STUB
+        };
         redo[j] = e.from != e.to
-            && mine.iter().any(|r| {
-                runs.within(r.vertical, r.c - ORTHO_SEP, r.c + ORTHO_SEP)
-                    .iter()
-                    .any(|q| q.l < r.h - 2.0 && r.l + 2.0 < q.h)
-            });
+            && (stubby
+                || mine.iter().any(|r| {
+                    runs.within(r.vertical, r.c - ORTHO_SEP, r.c + ORTHO_SEP)
+                        .iter()
+                        .any(|q| q.l < r.h - 2.0 && r.l + 2.0 < q.h)
+                }));
         if !redo[j] {
             for r in mine {
                 runs.push(r);
@@ -948,37 +1531,90 @@ fn slide(c: &mut [(f64, f64)], at_start: bool, p: (f64, f64)) {
 /// side on one face.
 const GLYPH_GAP: f64 = 4.0;
 
-/// Length a face needs for ends whose glyphs are `halves` wide (half
-/// widths) to sit apart as [`spread`] places them when crowded: each
-/// outer glyph just inside a corner, neighbours the widest pair's
-/// spacing apart. 0 for fewer than two ends.
-fn face_room(halves: &[f64]) -> f64 {
-    if halves.len() < 2 {
+/// What an edge end holds beside its line: its glyph's half width (0 =
+/// none) and its cardinality's size, if it has one.
+#[derive(Clone, Copy, Default)]
+struct EndDeco {
+    half: f64,
+    card: Option<(f64, f64)>,
+}
+
+/// The room an end keeps along its face toward the face's low corner
+/// (`lo`) and its high one (`hi`), and its glyph's half width.
+#[derive(Clone, Copy)]
+struct Room {
+    lo: f64,
+    hi: f64,
+    half: f64,
+}
+
+/// Room a cardinality takes along a face beside its end's glyph (`half`
+/// its half width): as [`place_cards`] puts it, [`CARD_CLEAR`] and a
+/// pixel past the glyph, `along` long (its extent along the face) — and
+/// past it as much again as the glyph takes, so the card sits nearer
+/// its own end than its neighbour's.
+fn card_room(along: f64, half: f64) -> f64 {
+    1.0 + CARD_CLEAR + along + half
+}
+
+/// The rooms of the `k` ends on a face, `decos` theirs in order along
+/// it (`horizontal` = the face runs along x): each glyph's half width
+/// to both sides, and the cardinality's room to the side
+/// [`place_cards`] puts it — toward the end's own corner, the middle end
+/// of an odd count along the face's tangent (`t_up` = that runs toward
+/// the high corner).
+fn face_rooms(decos: &[EndDeco], horizontal: bool, t_up: bool) -> Vec<Room> {
+    let k = decos.len();
+    decos
+        .iter()
+        .enumerate()
+        .map(|(i, d)| {
+            let card = d.card.map_or(0.0, |(w, h)| {
+                card_room(if horizontal { w } else { h }, d.half)
+            });
+            let low = 2 * i + 1 < k || (2 * i + 1 == k && !t_up);
+            Room {
+                lo: d.half + if low { card } else { 0.0 },
+                hi: d.half + if low { 0.0 } else { card },
+                half: d.half,
+            }
+        })
+        .collect()
+}
+
+/// Length a face needs for ends holding `ends` — (glyph half width,
+/// cardinality room) each, in no known order — to sit apart as
+/// [`spread`] places them when crowded: each outer glyph just inside a
+/// corner, neighbours the widest pair's spacing apart plus the
+/// cardinalities between them. The two outermost ends put theirs past
+/// the corners; which ends those are is not known yet, so the two
+/// smallest are taken. 0 for fewer than two ends.
+fn face_room(ends: &[(f64, f64)]) -> f64 {
+    if ends.len() < 2 {
         return 0.0;
     }
-    let widest = halves.iter().copied().fold(0.0, f64::max);
+    let widest = ends.iter().map(|e| e.0).fold(0.0, f64::max);
     let step = (2.0 * widest + GLYPH_GAP).max(2.0 * ORTHO_SEP);
-    2.0 * (widest + 2.0) + (halves.len() - 1) as f64 * step
+    let mut cards: Vec<f64> = ends.iter().map(|e| e.1).collect();
+    cards.sort_by(f64::total_cmp);
+    2.0 * (widest + 2.0) + (ends.len() - 1) as f64 * step + cards[2..].iter().sum::<f64>()
 }
 
 /// Where [`spread`] puts the moving ends of every face with two ends or
 /// more (`faces` as `ortho_pass` collects them, `rects` the boxes,
-/// `heads` the glyph half widths): edge end -> its new place. Soft ends
-/// move only on a face that would crowd without them moving, or
-/// everywhere with `soft`.
+/// `decos` what each edge holds at its ends): edge end -> its new place.
+/// Soft ends move only on a face that would crowd without them moving,
+/// or everywhere with `soft`.
 fn spread_faces(
     faces: &BTreeMap<(usize, (i8, i8)), Vec<FaceEnd>>,
     rects: &[Rect],
-    heads: &[f64],
+    decos: &[[EndDeco; 2]],
     soft: bool,
 ) -> HashMap<(usize, bool), (f64, f64)> {
-    // An end's glyph half width (the glyph sits at an edge's end).
-    let half = |&(j, start, _, _): &FaceEnd| {
-        if start {
-            0.0
-        } else {
-            heads.get(j).copied().unwrap_or(0.0)
-        }
+    let deco = |&(j, start, _, _): &FaceEnd| {
+        decos
+            .get(j)
+            .map_or(EndDeco::default(), |d| d[usize::from(!start)])
     };
     let mut moved = HashMap::new();
     for (&(i, key), ends) in faces {
@@ -989,12 +1625,15 @@ fn spread_faces(
         let (lo, hi) = if key.0 == 0 { (r.0, r.2) } else { (r.1, r.3) };
         let mut ends = ends.clone();
         ends.sort_by(|p, q| p.2.total_cmp(&q.2));
+        let t_up = -f64::from(key.1) + f64::from(key.0) > 0.0;
+        let decs: Vec<EndDeco> = ends.iter().map(deco).collect();
+        let rooms = face_rooms(&decs, key.0 == 0, t_up);
         // Places along the face for the ends that move — the soft ones
         // too when `soft`.
         let place = |soft: bool| {
             let mut got: Vec<((usize, bool), f64)> = Vec::new();
-            // (place, index of the next end, glyph half width of the
-            // fixed end there — `None` at a corner).
+            // (place, index of the next end, room toward the group of
+            // the fixed end there — `None` at a corner).
             let mut from = (lo, 0, None);
             for k in 0..=ends.len() {
                 let fixed = ends
@@ -1004,32 +1643,32 @@ fn spread_faces(
                     continue;
                 }
                 // Moving ends `from.1 .. k` share the stretch up to here.
-                let to = ends.get(k).map_or((hi, None), |e| (e.2, Some(half(e))));
+                let to = ends.get(k).map_or((hi, None), |e| (e.2, Some(rooms[k].lo)));
                 let group = &ends[from.1..k];
-                let halves: Vec<f64> = group.iter().map(half).collect();
-                if let Some(places) = spread((from.0, from.2), to, &halves) {
+                if let Some(places) = spread((from.0, from.2), to, &rooms[from.1..k]) {
                     for (&(j, start, _, _), t) in group.iter().zip(places) {
                         got.push(((j, start), t));
                     }
                 }
-                from = (to.0, k + 1, to.1);
+                from = (to.0, k + 1, rooms.get(k).map(|r| r.hi));
             }
             got
         };
-        // Whether, placed so, two neighbours' glyphs touch or their
-        // lanes lie closer than ORTHO_SEP.
+        // Whether, placed so, two neighbours' glyphs or cardinalities
+        // touch or their lanes lie closer than ORTHO_SEP.
         let crowded = |got: &[((usize, bool), f64)]| {
-            let mut at: Vec<(f64, f64)> = ends
+            let mut at: Vec<(f64, Room)> = ends
                 .iter()
-                .map(|e| {
+                .zip(&rooms)
+                .map(|(e, &r)| {
                     let t = got.iter().find(|g| g.0 == (e.0, e.1)).map_or(e.2, |g| g.1);
-                    (t, half(e))
+                    (t, r)
                 })
                 .collect();
             at.sort_by(|p, q| p.0.total_cmp(&q.0));
             at.windows(2).any(|w| {
                 let gap = w[1].0 - w[0].0;
-                gap < ORTHO_SEP || gap < w[0].1 + w[1].1 + GLYPH_GAP
+                gap < ORTHO_SEP || gap < w[0].1.hi + w[1].1.lo + GLYPH_GAP
             })
         };
         let mut got = place(soft);
@@ -1048,29 +1687,28 @@ fn spread_faces(
     moved
 }
 
-/// Places along a face for free ends whose glyphs are `halves` wide
-/// (half widths, 0 = no glyph), in order, between `lo` and `hi`: each a
-/// place and the half width of the fixed end there, `None` for a
-/// corner. Evenly, as far from the bounds as from each other, when
-/// that clears every glyph (and leaves lanes [`ORTHO_SEP`] apart);
-/// crowded, as far apart as the stretch allows with each glyph kept
-/// inside the corners. `None` leaves the ends where the port stage put
-/// them (nothing reads better there).
+/// Places along a face for free ends keeping `rooms` (in order) between
+/// `lo` and `hi`: each bound a place and the room the fixed end there
+/// keeps toward these ends, `None` for a corner. Evenly, as far from the
+/// bounds as from each other, when that clears every glyph and
+/// cardinality (and leaves lanes [`ORTHO_SEP`] apart); crowded, each
+/// outer glyph just inside its corner and neighbours as far apart as
+/// their rooms need, the slack shared out evenly (or, short of room,
+/// as far apart as the stretch allows). `None` leaves the ends where
+/// the port stage put them (nothing reads better there).
 fn spread(
-    (lo, lo_half): (f64, Option<f64>),
-    (hi, hi_half): (f64, Option<f64>),
-    halves: &[f64],
+    (lo, lo_room): (f64, Option<f64>),
+    (hi, hi_room): (f64, Option<f64>),
+    rooms: &[Room],
 ) -> Option<Vec<f64>> {
-    let k = halves.len();
-    let (first, last) = (*halves.first()?, *halves.last()?);
+    let k = rooms.len();
+    let (first, last) = (*rooms.first()?, *rooms.last()?);
     let need = |a: f64, b: f64| (a + b + GLYPH_GAP).max(2.0 * ORTHO_SEP);
-    let mut worst = halves
-        .windows(2)
-        .map(|w| need(w[0], w[1]))
-        .fold(0.0, f64::max);
-    for (bound, h) in [(lo_half, first), (hi_half, last)] {
+    let needs: Vec<f64> = rooms.windows(2).map(|w| need(w[0].hi, w[1].lo)).collect();
+    let mut worst = needs.iter().copied().fold(0.0, f64::max);
+    for (bound, own) in [(lo_room, first.lo), (hi_room, last.hi)] {
         if let Some(b) = bound {
-            worst = worst.max(need(b, h));
+            worst = worst.max(need(b, own));
         }
     }
     let even = (hi - lo) / (k + 1) as f64;
@@ -1082,10 +1720,26 @@ fn spread(
     }
     // Crowded: the outer ends close to the bounds — a glyph's half
     // width plus a little inside a corner, a full spacing from a fixed
-    // end — and the rest evenly between.
-    let margin = |bound: Option<f64>, h: f64| bound.map_or(h + 2.0, |b| need(b, h));
-    let (m_lo, m_hi) = (margin(lo_half, first), margin(hi_half, last));
-    let step = (hi - lo - m_lo - m_hi) / (k - 1) as f64;
+    // end — and the rest as their rooms need, or evenly between.
+    let margin =
+        |bound: Option<f64>, own: f64, half: f64| bound.map_or(half + 2.0, |b| need(b, own));
+    let (m_lo, m_hi) = (
+        margin(lo_room, first.lo, first.half),
+        margin(hi_room, last.hi, last.half),
+    );
+    let avail = hi - lo - m_lo - m_hi;
+    let slack = avail - needs.iter().sum::<f64>();
+    if slack >= 0.0 {
+        let add = slack / (k - 1) as f64;
+        let mut t = lo + m_lo;
+        let mut out = vec![t];
+        for n in needs {
+            t += n + add;
+            out.push(t);
+        }
+        return Some(out);
+    }
+    let step = avail / (k - 1) as f64;
     if step >= even && step >= ORTHO_SEP {
         Some((0..k).map(|i| lo + m_lo + i as f64 * step).collect())
     } else if even >= ORTHO_SEP {
@@ -1542,6 +2196,15 @@ impl Runs {
 }
 
 impl Run {
+    /// Its two ends.
+    fn ends(&self) -> ((f64, f64), (f64, f64)) {
+        if self.vertical {
+            ((self.c, self.l), (self.c, self.h))
+        } else {
+            ((self.l, self.c), (self.h, self.c))
+        }
+    }
+
     /// The run from `a` to `b` (an axis-aligned stretch).
     fn of(a: (f64, f64), b: (f64, f64)) -> Run {
         if (a.0 - b.0).abs() < 0.5 {
@@ -1625,6 +2288,8 @@ struct Built {
 fn build(d: &ClassDiagram) -> Built {
     let mut g = Graph::default();
     g.direction = d.direction;
+    g.flat_leaves = true;
+    g.tight_sources = true;
     let annotated = d
         .relations
         .iter()
@@ -1712,25 +2377,40 @@ fn build(d: &ClassDiagram) -> Built {
         });
     }
 
-    // The glyph half widths of the ends each class takes on the face
-    // toward earlier ranks and the one toward later ranks (relations
-    // rank in source order; a note ranks before its class).
-    let mut ends: Vec<[Vec<f64>; 2]> = vec![[Vec::new(), Vec::new()]; n];
+    // The (glyph half width, cardinality room) of the ends each class
+    // takes on the face toward earlier ranks and the one toward later
+    // ranks (relations rank in source order; a note ranks before its
+    // class).
+    let horizontal = matches!(d.direction, Direction::LR | Direction::RL);
+    let room = |c: &Option<String>, half: f64| {
+        c.as_deref().map_or(0.0, |t| {
+            card_room(if horizontal { CARD_H } else { card_w(t) }, half)
+        })
+    };
+    let mut ends: Vec<[Vec<(f64, f64)>; 2]> = vec![[Vec::new(), Vec::new()]; n];
     for r in &d.relations {
         let (a, b) = r.source_order();
         if a != b {
             let h = glyph_size(r.kind).1;
-            let (ha, hb) = if r.head_left { (h, 0.0) } else { (0.0, h) };
-            ends[a][1].push(ha);
-            ends[b][0].push(hb);
+            let (from, to) = ((0.0, room(&r.from_card, 0.0)), (h, room(&r.to_card, h)));
+            let (ea, eb) = if r.head_left { (to, from) } else { (from, to) };
+            ends[a][1].push(ea);
+            ends[b][0].push(eb);
         }
     }
     for note in &d.notes {
         if let Some(ci) = note.class {
-            ends[ci][0].push(0.0);
+            ends[ci][0].push((0.0, 0.0));
         }
     }
-    let horizontal = matches!(d.direction, Direction::LR | Direction::RL);
+    // A fan's jogs nest across the gap beside its hub (`nest_jogs`), a
+    // lane for each pair of ends past the middle one: the gap grows to
+    // hold them ORTHO_ROOM apart.
+    let widest = ends.iter().flatten().map(Vec::len).max().unwrap_or(0);
+    let nested = 2.0 * ORTHO_STUB + (widest.div_ceil(2).saturating_sub(1)) as f64 * ORTHO_ROOM;
+    if nested > g.rank_gap.unwrap_or(GAP_L) {
+        g.rank_gap = Some(nested);
+    }
     let mut boxes = Vec::with_capacity(n);
     let mut sizes = Vec::with_capacity(n + d.notes.len());
     for (c, ends) in d.classes.iter().zip(&ends) {
@@ -2258,12 +2938,13 @@ fn rects_meet(a: Rect, b: Rect) -> bool {
 
 /// Place each cardinality beside its end: just outside the face, past
 /// the side of the glyph, on the side the line leaves away from (or
-/// toward the nearer corner for a line leaving straight). A spot that
-/// would touch any stroke, glyph, box, label or earlier cardinality
-/// gives way to the other side, then to spots farther along the line,
-/// then farther out across it; failing all, the spot with the fewest
-/// collisions stands — covering a box, label or card counts
-/// [`CARD_HIDDEN`] times a stroke, a glyph twice.
+/// toward the nearer corner for a line leaving straight — the side
+/// [`face_rooms`] keeps room on). A spot that would touch any stroke,
+/// glyph, box, label or earlier cardinality gives way to the next
+/// nearest the end: the other side, farther along the line, farther out
+/// across it; failing all, the spot with the fewest collisions stands —
+/// covering a box, label or card counts [`CARD_HIDDEN`] times a stroke,
+/// a glyph twice.
 fn place_cards(sc: &Scene, rels: &[RelStyle], heads: &[Head]) -> Vec<[Option<(f64, f64)>; 2]> {
     let idx = node_index(sc);
     // Every drawn line with its bounding box, so a spot far from a
@@ -2348,22 +3029,29 @@ fn place_cards(sc: &Scene, rels: &[RelStyle], heads: &[Head]) -> Vec<[Option<(f6
             };
             // (weighted collisions, centre, box) of the best spot so far.
             let mut best: Option<(usize, (f64, f64), Rect)> = None;
-            // Beside the line first; then farther out across it (past
-            // a label chip sitting on the line near the end).
-            'search: for (extra, depth, side) in
-                [0.0, CARD_FAR, 2.0 * CARD_FAR].into_iter().flat_map(|x| {
+            // Beside the line, past the glyph (within its length) or
+            // the stroke, at a few depths along it and farther out
+            // across it (past a label chip on the line near the end):
+            // the spots nearest the end first, the first side first.
+            let mut spots: Vec<(f64, f64)> = [0.0, CARD_FAR, 2.0 * CARD_FAR]
+                .into_iter()
+                .flat_map(|x| {
                     [0.0, 10.0, 20.0, 34.0]
                         .into_iter()
                         .flat_map(move |d| [(x, d, first), (x, d, -first)])
                 })
-            {
-                let dn = 2.0 + depth + ext_n / 2.0;
-                // Where the line is at that depth, then past the
-                // glyph (within its length) or the stroke.
-                let line_t = ut / un * dn;
-                let half = if dn - ext_n / 2.0 < glen { ghalf } else { 0.0 };
-                let dt = line_t + side * (half + CARD_CLEAR + 1.0 + extra + ext_t / 2.0);
-                let c = (tip.0 + n.0 * dn + t.0 * dt, tip.1 + n.1 * dn + t.1 * dt);
+                .map(|(extra, depth, side)| {
+                    let dn = 2.0 + depth + ext_n / 2.0;
+                    // Where the line is at that depth.
+                    let line_t = ut / un * dn;
+                    let half = if dn - ext_n / 2.0 < glen { ghalf } else { 0.0 };
+                    let dt = line_t + side * (half + CARD_CLEAR + 1.0 + extra + ext_t / 2.0);
+                    (tip.0 + n.0 * dn + t.0 * dt, tip.1 + n.1 * dn + t.1 * dt)
+                })
+                .collect();
+            let far = |c: &(f64, f64)| (c.0 - tip.0).hypot(c.1 - tip.1);
+            spots.sort_by(|a, b| far(a).total_cmp(&far(b)));
+            'search: for c in spots {
                 let r = (c.0 - w / 2.0, c.1 - h / 2.0, c.0 + w / 2.0, c.1 + h / 2.0);
                 let grown = (
                     r.0 - CARD_CLEAR,
@@ -2625,8 +3313,9 @@ mod tests {
     }
 
     /// Report P1: `direction` and `note` lines were parsed and thrown
-    /// away. Both are kept now (a `note for` names its class, which it
-    /// creates like a relation would).
+    /// away. Both are kept now: a `note for` attaches to its class
+    /// (declared before or after the note), and one for a class the
+    /// diagram never declares stays free — it creates no class.
     #[test]
     fn direction_and_note_lines_parse() {
         let d = cd("classDiagram\ndirection LR\nnote for A \"hi\"\nnote \"x\"\nA <|-- B");
@@ -3625,46 +4314,55 @@ mod tests {
     /// orthogonalizer took a merged run when it was the cheapest, and
     /// priced lanes against labels still on their old curves. A merged
     /// run is now refused, labels count once their edge is final, and
-    /// jogs sharing a gap stack in nesting order.
+    /// jogs sharing a gap stack in nesting order — in every direction
+    /// (r3: `writes` and `lives at` still crossed twice in LR / RL).
     #[test]
     fn routes_never_merge_and_fans_nest_without_crossings() {
         let d = cd(SHOP);
+        for dir in ["TB", "BT", "LR", "RL"] {
+            let d = cd(&with_direction(SHOP, dir));
+            let cs = scene(&d);
+            let (merged, crossing) = merged_and_crossing(&cs);
+            assert!(merged.is_empty(), "{dir}: merged runs: {merged:?}");
+            let user = d.class_index("User").unwrap();
+            let fan: Vec<usize> = d
+                .relations
+                .iter()
+                .enumerate()
+                .filter(|(_, r)| r.from == user || r.to == user)
+                .map(|(j, _)| j)
+                .collect();
+            assert_eq!(fan.len(), 6);
+            for &(i, j) in &crossing {
+                assert!(
+                    !(fan.contains(&i) && fan.contains(&j)),
+                    "{dir}: User's edges {i} and {j} cross"
+                );
+            }
+            // Every one of them is orthogonal (none fell back to a curve).
+            for &j in &fan {
+                let e = &cs.scene.edges[j];
+                let pts = if e.waypoints.is_empty() {
+                    vec![e.bezier[0], e.bezier[3]]
+                } else {
+                    e.waypoints.clone()
+                };
+                let (a, b) = (pts[0], pts[pts.len() - 1]);
+                assert!(
+                    (a.0 - b.0).abs() < 0.5 || (a.1 - b.1).abs() < 0.5 || !e.waypoints.is_empty(),
+                    "{dir}: {}->{} kept its curve",
+                    e.from,
+                    e.to
+                );
+            }
+        }
         let cs = scene(&d);
-        let (merged, crossing) = merged_and_crossing(&cs);
-        assert!(merged.is_empty(), "merged runs: {merged:?}");
-        let user = d.class_index("User").unwrap();
-        let fan: Vec<usize> = d
-            .relations
-            .iter()
-            .enumerate()
-            .filter(|(_, r)| r.from == user || r.to == user)
-            .map(|(j, _)| j)
-            .collect();
-        assert_eq!(fan.len(), 6);
-        for &(i, j) in &crossing {
-            assert!(
-                !(fan.contains(&i) && fan.contains(&j)),
-                "User's edges {i} and {j} cross"
-            );
-        }
-        // Every one of them is orthogonal (none fell back to a curve).
-        for &j in &fan {
-            let e = &cs.scene.edges[j];
-            let pts = if e.waypoints.is_empty() {
-                vec![e.bezier[0], e.bezier[3]]
-            } else {
-                e.waypoints.clone()
-            };
-            let (a, b) = (pts[0], pts[pts.len() - 1]);
-            assert!(
-                (a.0 - b.0).abs() < 0.5 || !e.waypoints.is_empty(),
-                "{}->{} kept its curve",
-                e.from,
-                e.to
-            );
-        }
         // Dragged: swapping two classes, or one far off, merges nothing,
-        // and the swap's row of boxes is gone round, not through.
+        // and a box in a rerouted edge's way is gone round, not through
+        // — save a box pushed flush against an end box (the swap lands
+        // User, wider than Admin's slot, flush with Guest): no square
+        // exit fits between the two, so a line from that face crosses it
+        // whatever the route.
         let laid: Vec<(f64, f64)> = cs.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
         let n = d.classes.len();
         let mut swapped = laid[..n].to_vec();
@@ -3675,24 +4373,369 @@ mod tests {
             let cs = route(&d, &centers);
             let (merged, _) = merged_and_crossing(&cs);
             assert!(merged.is_empty(), "drag {k}: merged runs: {merged:?}");
-            if k == 0 {
-                for e in &cs.scene.edges {
-                    let line = edge_polyline(e);
-                    for b in &cs.scene.nodes {
-                        if b.id == e.from || b.id == e.to {
-                            continue;
-                        }
-                        let r = rect(b);
-                        let r = (r.0 + 1.0, r.1 + 1.0, r.2 - 1.0, r.3 - 1.0);
+            for e in &cs.scene.edges {
+                let line = edge_polyline(e);
+                let ends: Vec<Rect> = cs
+                    .scene
+                    .nodes
+                    .iter()
+                    .filter(|b| b.id == e.from || b.id == e.to)
+                    .map(rect)
+                    .collect();
+                let flush = |b: Rect| {
+                    let g = ORTHO_STUB;
+                    ends.iter()
+                        .any(|&r| rects_meet((r.0 - g, r.1 - g, r.2 + g, r.3 + g), b))
+                };
+                if cs
+                    .scene
+                    .nodes
+                    .iter()
+                    .any(|b| b.id != e.from && b.id != e.to && flush(rect(b)))
+                {
+                    continue;
+                }
+                for b in &cs.scene.nodes {
+                    if b.id == e.from || b.id == e.to {
+                        continue;
+                    }
+                    let r = rect(b);
+                    let r = (r.0 + 1.0, r.1 + 1.0, r.2 - 1.0, r.3 - 1.0);
+                    assert!(
+                        !line.windows(2).any(|s| rect_hits_segment(r, s[0], s[1])),
+                        "drag {k}: {}->{} through {}",
+                        e.from,
+                        e.to,
+                        b.id
+                    );
+                }
+            }
+        }
+    }
+
+    /// Five services into one Logger, each end with a cardinality
+    /// (verifier r3 repro f4).
+    const FAN_IN_CARDS: &str = "classDiagram
+    class Logger {
+      +log(msg) void
+      +warn(msg) void
+      +error(msg) void
+    }
+    ServiceA \"a1\" --> \"A2\" Logger
+    ServiceB \"b1\" --> \"B2\" Logger
+    ServiceC \"c1\" ..> \"C2\" Logger
+    ServiceD \"d1\" o-- \"D2\" Logger
+    ServiceE \"e1\" *-- \"E2\" Logger
+    Logger <|-- FileLogger
+    Logger \"L1\" --> \"S2\" Sink";
+
+    /// Distance between two points.
+    fn dist(a: (f64, f64), b: (f64, f64)) -> f64 {
+        (a.0 - b.0).hypot(a.1 - b.1)
+    }
+
+    /// Verifier repro (r3, f4 and its LR twin): the ends on Logger's
+    /// face spread by their glyphs alone, 22 px apart, so a card beside
+    /// its glyph lay on the next relation's line ('C2' struck by
+    /// ServiceD's) and read as that line's. Ends sharing a face now keep
+    /// room for each card on the side it takes, and cards try the spots
+    /// nearest their end first: each clears every line and sits nearer
+    /// its own end than any other.
+    #[test]
+    fn crowded_fan_in_cards_clear_the_other_lines() {
+        for dir in ["TB", "BT", "LR", "RL"] {
+            let cs = scene(&cd(&with_direction(FAN_IN_CARDS, dir)));
+            let ends: Vec<[(f64, f64); 2]> = cs
+                .scene
+                .edges
+                .iter()
+                .take(cs.rels.len())
+                .map(|e| {
+                    let p = edge_polyline(e);
+                    [p[0], p[p.len() - 1]]
+                })
+                .collect();
+            for (j, (rel, spots)) in cs.rels.iter().zip(card_spots(&cs)).enumerate() {
+                for (slot, text) in [(0, &rel.from_card), (1, &rel.to_card)] {
+                    let (Some(t), Some(c)) = (text, spots[slot]) else {
+                        continue;
+                    };
+                    let w = card_w(t);
+                    let b = (
+                        c.0 - w / 2.0,
+                        c.1 - CARD_H / 2.0,
+                        c.0 + w / 2.0,
+                        c.1 + CARD_H / 2.0,
+                    );
+                    for e in &cs.scene.edges {
+                        let line = edge_polyline(e);
                         assert!(
-                            !line.windows(2).any(|s| rect_hits_segment(r, s[0], s[1])),
-                            "{}->{} through {}",
+                            !line.windows(2).any(|s| rect_hits_segment(b, s[0], s[1])),
+                            "{dir}: '{t}' on {}->{}",
                             e.from,
-                            e.to,
-                            b.id
+                            e.to
                         );
                     }
+                    let own = dist(c, ends[j][slot]);
+                    for (k, other) in ends.iter().enumerate() {
+                        for (kk, &p) in other.iter().enumerate() {
+                            if (k, kk) != (j, slot) {
+                                assert!(
+                                    own <= dist(c, p) + 6.0,
+                                    "{dir}: '{t}' {own:.0} px from its end, {:.0} from \
+                                     edge {k}'s",
+                                    dist(c, p)
+                                );
+                            }
+                        }
+                    }
                 }
+            }
+        }
+    }
+
+    /// Five labelled relations into one Logger (verifier r3 repro f5).
+    const FAN_IN_LABELS: &str = "classDiagram
+    class Logger {
+      +log(msg) void
+      +warn(msg) void
+      +error(msg) void
+    }
+    ServiceA --> Logger : logs to
+    ServiceB --> Logger : logs to
+    ServiceC ..> Logger : uses
+    ServiceD o-- Logger : shares
+    ServiceE *-- Logger : owns
+    Logger <|-- FileLogger : is a
+    Logger --> Sink : writes";
+
+    /// Verifier repros (r3): a fan's jogs were drawn one at a time, the
+    /// shortest first and each nearest mid gap, so the inner ones took
+    /// the middle and an outer one crossed its neighbour twice: five
+    /// labelled relations into Logger (the chips pushed the inner jogs
+    /// down) crossed 4 times; six subclasses, staggered into two rows
+    /// whose legs interleaved on the parent's face, 5 times; eight 3
+    /// times, two of them entering the parent's sides; a cycle's lane
+    /// crossed the next jog in its gap twice. Mermaid draws none of
+    /// these. Jogs tied by a nesting order are now drawn again in that
+    /// order, a class diagram's leaves stay in one row, and the rank gap
+    /// holds a wide fan's nested jogs.
+    #[test]
+    fn fans_nest_without_crossings() {
+        let fan = |k: usize| {
+            (0..k).fold(String::from("classDiagram\n"), |s, i| {
+                s + &format!("P <|-- C{i}\n")
+            })
+        };
+        let cycle = "classDiagram
+    direction BT
+    A \"1\" --> \"*\" B : makes
+    B \"1\" --> \"*\" C : feeds
+    C \"1\" --> \"1\" A : returns to
+    C ..> D : depends
+    D --|> A : is an
+    B <|-- E
+    B <|-- F
+    E o-- F : peers";
+        for src in [
+            fan(6),
+            fan(8),
+            FAN_IN_LABELS.to_string(),
+            FAN_IN_CARDS.to_string(),
+        ] {
+            for dir in ["TB", "BT", "LR", "RL"] {
+                let cs = scene(&cd(&with_direction(&src, dir)));
+                let (merged, crossing) = merged_and_crossing(&cs);
+                assert!(merged.is_empty(), "{dir}: merged {merged:?}\n{src}");
+                assert!(crossing.is_empty(), "{dir}: crossing {crossing:?}\n{src}");
+            }
+        }
+        // The cycle's `returns to` (C -> A) must get past B's column,
+        // crossing a line above B and one below it (or the two into B):
+        // no more — it used to cross `feeds` twice as well.
+        let cs = scene(&cd(cycle));
+        let (_, crossing) = merged_and_crossing(&cs);
+        assert!(crossing.len() <= 2, "{crossing:?}");
+        // Eight subclasses: one row, every end on the parent's face.
+        let cs = scene(&cd(&fan(8)));
+        let p = rect(node(&cs, "P"));
+        for k in 0..8 {
+            let c = node(&cs, &format!("C{k}"));
+            assert!((c.y - node(&cs, "C0").y).abs() < 0.5, "C{k} off the row");
+            let (_, end) = edge_ends(&cs.scene.edges[k]);
+            assert!((end.1 - p.3).abs() < 0.5, "C{k} enters P at {end:?}");
+        }
+    }
+
+    /// Segments `a`-`b` and `c`-`d` cross properly.
+    fn segments_cross(a: (f64, f64), b: (f64, f64), c: (f64, f64), d: (f64, f64)) -> bool {
+        let side = |o: (f64, f64), p: (f64, f64), q: (f64, f64)| {
+            (p.0 - o.0) * (q.1 - o.1) - (p.1 - o.1) * (q.0 - o.0)
+        };
+        side(c, d, a) * side(c, d, b) < 0.0 && side(a, b, c) * side(a, b, d) < 0.0
+    }
+
+    /// The box round a glyph.
+    fn head_box(h: &Head) -> Rect {
+        let pts: Vec<(f64, f64)> = h
+            .polygon
+            .iter()
+            .copied()
+            .chain(h.segments.iter().flatten().copied())
+            .collect();
+        pts.iter().fold(
+            (
+                f64::INFINITY,
+                f64::INFINITY,
+                f64::NEG_INFINITY,
+                f64::NEG_INFINITY,
+            ),
+            |b, p| (b.0.min(p.0), b.1.min(p.1), b.2.max(p.0), b.3.max(p.1)),
+        )
+    }
+
+    /// Verifier repro (r3, s5 — a regression from 0.32): the layout
+    /// stacks a class's self-loops on one side, each starting where the
+    /// one before ends, and the source order turned `o--`'s loop round,
+    /// so its diamond and the other loop's arrowhead met on one point
+    /// (in LR the two loops wound round each other). Loops now
+    /// alternate sides and nest where they share one: no two cross, and
+    /// no two glyphs touch, with two loops or four, in every direction.
+    #[test]
+    fn self_loops_keep_their_glyphs_apart() {
+        let two = "classDiagram\nclass Employee\nEmployee --> Employee : mentors\n\
+                   Employee o-- Employee : manages";
+        let four = "classDiagram
+    class Employee {
+      +String name
+      +String title
+      +manage() void
+    }
+    Employee \"1\" o-- \"*\" Employee : manages
+    Employee --> Employee : mentors
+    Employee <|-- Employee : refines
+    Employee ..> Employee : calls
+    Department \"1\" *-- \"*\" Employee : staff";
+        for src in [two, four] {
+            for dir in ["TB", "BT", "LR", "RL"] {
+                let cs = scene(&cd(&with_direction(src, dir)));
+                let loops: Vec<usize> = (0..cs.rels.len())
+                    .filter(|&j| cs.scene.edges[j].from == cs.scene.edges[j].to)
+                    .collect();
+                for (i, &a) in loops.iter().enumerate() {
+                    for &b in &loops[i + 1..] {
+                        let (ha, hb) = (head_box(&rel_head(&cs, a)), head_box(&rel_head(&cs, b)));
+                        assert!(!rects_meet(ha, hb), "{dir}: glyphs of {a} and {b} touch");
+                        let (pa, pb) = (
+                            edge_polyline(&cs.scene.edges[a]),
+                            edge_polyline(&cs.scene.edges[b]),
+                        );
+                        for s in pa.windows(2) {
+                            for t in pb.windows(2) {
+                                assert!(
+                                    !segments_cross(s[0], s[1], t[0], t[1]),
+                                    "{dir}: loops {a} and {b} cross"
+                                );
+                            }
+                        }
+                    }
+                }
+                // Their cardinalities sit by their ends.
+                for (j, spots) in card_spots(&cs).iter().enumerate() {
+                    let p = edge_polyline(&cs.scene.edges[j]);
+                    for (slot, end) in [(0, p[0]), (1, p[p.len() - 1])] {
+                        if let Some(c) = spots[slot] {
+                            assert!(dist(c, end) < 40.0, "{dir}: card of {j} far from its end");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Verifier finding (r3): every attached note sat on the first rank
+    /// — longest-path layering parks every source there — its dotted
+    /// connector running 300-400 px to its class. Sources now rank one
+    /// layer above their nearest target, as dagre ranks them: a note
+    /// sits just above its class, and a class pointing at one deep in
+    /// the diagram (SHOP's Supplier) sits next to it.
+    #[test]
+    fn notes_and_sources_sit_next_to_their_class() {
+        let src = "classDiagram
+    note for Later \"attached to a class declared after me\"
+    class Later {
+      +int x
+      +run() void
+    }
+    class Other
+    Later <|-- Other : extends
+    note for Other \"child note<br/>two lines\"";
+        let cs = scene(&cd(src));
+        for (k, nb) in cs.notes.iter().enumerate() {
+            let note = &cs.scene.nodes[cs.boxes.len() + k];
+            let class = &cs.scene.nodes[nb.class.unwrap()];
+            let gap = (class.y - class.h / 2.0) - (note.y + note.h / 2.0);
+            assert!(
+                (0.0..120.0).contains(&gap),
+                "note {k} {gap:.0} px above its class"
+            );
+            assert!(
+                (note.x - class.x).abs() < (note.w + class.w) / 2.0 + 40.0,
+                "note {k} off to the side"
+            );
+        }
+        let cs = scene(&cd(SHOP));
+        let (supplier, product) = (rect(node(&cs, "Supplier")), rect(node(&cs, "Product")));
+        let gap = product.1 - supplier.3;
+        assert!(
+            (0.0..120.0).contains(&gap),
+            "Supplier {gap:.0} px above Product"
+        );
+    }
+
+    /// Verifier finding (r3, x4 in LR): a routed edge kept the router's
+    /// 14.5 px final stub, about a triangle's length, so the corner sat
+    /// under the triangle and tilted it. A routed edge entering its glyph
+    /// end on a leg shorter than ORTHO_STUB is routed again.
+    #[test]
+    fn glyph_ends_enter_on_a_full_stub() {
+        let x4 = "classDiagram
+    class Service {
+        <<service>>
+        +handle(Request req) Response
+    }
+    Controller --> Service : calls
+    Controller --> Validator : validates
+    Service --> Repository : reads
+    Service --> Cache : caches
+    Service ..> Logger : logs
+    Repository --> Database : queries
+    Cache ..> Logger : logs
+    Repository ..> Logger : logs
+    Database \"1\" *-- \"*\" Table : contains
+    Table \"1\" *-- \"*\" Column : has
+    Column \"*\" --> \"1\" Type : typed
+    Validator ..> Logger
+    Controller ..> Logger
+    Service \"1\" --> \"*\" Event : emits
+    Event <|-- Created
+    Event <|-- Deleted
+    Event <|-- Updated";
+        for dir in ["TB", "BT", "LR", "RL"] {
+            let cs = scene(&cd(&with_direction(x4, dir)));
+            for (j, rel) in cs.rels.iter().enumerate() {
+                let c = corners_of(&cs.scene.edges[j].waypoints);
+                let ortho = c
+                    .windows(2)
+                    .all(|w| (w[0].0 - w[1].0).abs() < 0.5 || (w[0].1 - w[1].1).abs() < 0.5);
+                if rel.kind == RelKind::Link || c.len() < 3 || !ortho {
+                    continue;
+                }
+                let leg = dist(c[c.len() - 1], c[c.len() - 2]);
+                assert!(
+                    leg >= ORTHO_STUB - 0.5,
+                    "{dir}: edge {j} enters its glyph on {leg:.1} px"
+                );
             }
         }
     }
