@@ -58,6 +58,10 @@ pub const MIN_W: f64 = 54.0;
 /// the middle; with no text it would only inflate an empty branch point
 /// (80×64.6) and push its outgoing ports apart.
 pub const CHOICE_SIZE: f64 = 28.0;
+/// Intrinsic (width, height) of a fork/join bar, before
+/// `scene::fit_bars` lays it across the flow and stretches it over its
+/// branches.
+pub(crate) const BAR_SIZE: (f64, f64) = (60.0, 8.0);
 
 /// Is a node of this shape and label a compact branch point: an
 /// unlabelled diamond (a state `<<choice>>`, a flowchart `A{ }`), drawn
@@ -624,7 +628,7 @@ pub fn intrinsic_size_with(node: &Node, measure: impl Fn(&str) -> f64) -> (f64, 
         // stateDiagram pseudostates: fixed size, no label.
         Shape::StateStart => (14.0, 14.0),
         Shape::StateEnd => (18.0, 18.0),
-        Shape::ForkBar => (60.0, 8.0),
+        Shape::ForkBar => BAR_SIZE,
     }
 }
 

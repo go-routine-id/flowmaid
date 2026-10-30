@@ -13,7 +13,7 @@
 
 use crate::layout::{
     intrinsic_size, layout_clustered_ranked, layout_sized, line_count, text_width, title_extra,
-    LayoutResult, Placed, RankGroup, FRAME_GAP, GAP_B, LABEL_BOX_H, LINE_H, TITLE_LINE_H,
+    LayoutResult, Placed, RankGroup, BAR_SIZE, FRAME_GAP, GAP_B, LABEL_BOX_H, LINE_H, TITLE_LINE_H,
     TITLE_SCALE,
 };
 use crate::model::{
@@ -3350,18 +3350,32 @@ const BAR_OVERHANG: f64 = 16.0;
 /// straight onto its state (see [`anchor`]) instead of S-bending off a
 /// 60px bar. The reach is estimated before layout ([`bar_half`]), so the
 /// static and the interactive builders fit the same sizes and a drag
-/// never resizes a bar. Other sizes pass through untouched (borrowed
-/// when there is no bar).
+/// never resizes a bar; fitting fitted sizes again changes nothing.
+/// Other sizes pass through untouched (borrowed when there is no bar).
 pub(crate) fn fit_bars<'a>(g: &Graph, sizes: &'a [(f64, f64)]) -> Cow<'a, [(f64, f64)]> {
     if !g.nodes.iter().any(|n| n.shape == Shape::ForkBar) {
         return Cow::Borrowed(sizes);
     }
     let across = matches!(g.direction, Direction::LR | Direction::RL);
-    let breadth = |v: usize| if across { sizes[v].1 } else { sizes[v].0 };
-    // Per bar and side (in, out): the breadths of the states it joins,
-    // composite ones (frames) included.
-    let mut fan: HashMap<usize, [Vec<f64>; 2]> = HashMap::new();
-    let ends = g
+    let is_bar = |v: usize| g.nodes[v].shape == Shape::ForkBar;
+    // A state's breadth across the flow (a bar inside a composite counts
+    // at an unfitted bar's length, see below).
+    let breadth = |v: usize| match (is_bar(v), across) {
+        (true, _) => BAR_SIZE.0,
+        (false, true) => sizes[v].1,
+        (false, false) => sizes[v].0,
+    };
+    let end_breadth = |end: End| match end {
+        End::Node(v) => breadth(v),
+        End::Sub(si) => frame_breadth(g, si, &breadth),
+    };
+    let bar = |end: End| match end {
+        End::Node(v) if is_bar(v) => Some(v),
+        _ => None,
+    };
+    // Every (from, to) a bar may span: the states it joins, composite
+    // ones (frames) included.
+    let ends: Vec<(End, End)> = g
         .edges
         .iter()
         .filter(|e| bar_counts(g, e))
@@ -3371,23 +3385,8 @@ pub(crate) fn fit_bars<'a>(g: &Graph, sizes: &'a [(f64, f64)]) -> Cow<'a, [(f64,
                 .iter()
                 .filter(|e| e.from != e.to && e.kind != EdgeKind::Invisible)
                 .map(|e| (e.from, e.to)),
-        );
-    let end_breadth = |end: End| match end {
-        End::Node(v) => breadth(v),
-        End::Sub(si) => frame_breadth(g, si, &breadth),
-    };
-    let bar = |end: End| match end {
-        End::Node(v) if g.nodes[v].shape == Shape::ForkBar => Some(v),
-        _ => None,
-    };
-    for (from, to) in ends {
-        if let Some(v) = bar(to) {
-            fan.entry(v).or_default()[0].push(end_breadth(from));
-        }
-        if let Some(v) = bar(from) {
-            fan.entry(v).or_default()[1].push(end_breadth(to));
-        }
-    }
+        )
+        .collect();
     // A bar with a note card beside it: its link leaves past the
     // branches, a port's room beyond the outermost one at either end
     // (the layout leaves the card beside the branches, see
@@ -3404,27 +3403,58 @@ pub(crate) fn fit_bars<'a>(g: &Graph, sizes: &'a [(f64, f64)]) -> Cow<'a, [(f64,
             (true, false) => Some(e.to),
             _ => None,
         })
-        .filter(|&v| g.nodes[v].shape == Shape::ForkBar)
+        .filter(|&v| is_bar(v))
         .collect();
-    let mut out = sizes.to_vec();
-    for (v, n) in g.nodes.iter().enumerate() {
-        if n.shape != Shape::ForkBar {
-            continue;
+    // Per bar: the length (0 with no fan) that reaches every branch on
+    // its busier side (in, out), `b(branch, bar)` the branch's breadth.
+    let reach = |b: &dyn Fn(End, usize) -> f64| -> HashMap<usize, f64> {
+        let mut fan: HashMap<usize, [Vec<f64>; 2]> = HashMap::new();
+        for &(from, to) in &ends {
+            if let Some(v) = bar(to) {
+                fan.entry(v).or_default()[0].push(b(from, v));
+            }
+            if let Some(v) = bar(from) {
+                fan.entry(v).or_default()[1].push(b(to, v));
+            }
         }
+        fan.into_iter()
+            .map(|(v, mut sides)| {
+                let half = sides.iter_mut().map(|b| bar_half(b)).fold(0.0, f64::max);
+                let card = if noted.contains(&v) {
+                    crate::ports::PORT_SPACING
+                } else {
+                    0.0
+                };
+                let len = if half > 0.0 {
+                    2.0 * (half + BAR_OVERHANG + card)
+                } else {
+                    0.0
+                };
+                (v, len)
+            })
+            .collect()
+    };
+    // A bar branching to another bar (`f --> j`, nested forks) cannot
+    // read the far bar's fitted length: the two would feed each other,
+    // each refit stretching both, and fitting fitted sizes again
+    // (`fold::scene_compact_sized`, a host handing `route_sized` the
+    // sizes it drew) must change nothing. So every length here comes
+    // from the states alone: a far bar counts at an unfitted bar's
+    // length, then, when it lies right beside the bar (nested forks), at
+    // the fit that gives it. When another path joins the two (a fork
+    // straight to its join), the edge spans layers: the layer beside the
+    // bar holds its lane, not the far bar.
+    let first = reach(&|end, _| end_breadth(end));
+    let lengths = reach(&|end, near| match bar(end) {
+        Some(far) if beside(g, near, far) => {
+            first.get(&far).copied().unwrap_or(0.0).max(BAR_SIZE.0)
+        }
+        _ => end_breadth(end),
+    });
+    let mut out = sizes.to_vec();
+    for v in (0..g.nodes.len()).filter(|&v| is_bar(v)) {
         let (w, h) = sizes[v];
-        let half = fan.get_mut(&v).map_or(0.0, |sides| {
-            sides.iter_mut().map(|b| bar_half(b)).fold(0.0, f64::max)
-        });
-        let card = if noted.contains(&v) {
-            crate::ports::PORT_SPACING
-        } else {
-            0.0
-        };
-        let len = if half > 0.0 {
-            w.max(h).max(2.0 * (half + BAR_OVERHANG + card))
-        } else {
-            w.max(h)
-        };
+        let len = w.max(h).max(lengths.get(&v).copied().unwrap_or(0.0));
         out[v] = if across {
             (w.min(h), len)
         } else {
@@ -3474,6 +3504,39 @@ fn frame_breadth(g: &Graph, si: usize, breadth: &dyn Fn(usize) -> f64) -> f64 {
         .chain(nested)
         .fold(0.0, f64::max)
         + 2.0 * SUB_PAD
+}
+
+/// Whether nodes `a` and `b` (an edge joins them) lie in neighbouring
+/// layers as far as the graph tells before layout: no other path of
+/// [`bar_counts`] edges leads from one to the other (which would push
+/// the far one a layer further, its edge a long one).
+fn beside(g: &Graph, a: usize, b: usize) -> bool {
+    let detour = |from: usize, to: usize| {
+        let mut seen = vec![false; g.nodes.len()];
+        seen[from] = true;
+        let mut stack: Vec<usize> = g
+            .edges
+            .iter()
+            .filter(|e| e.from == from && e.to != to && bar_counts(g, e))
+            .map(|e| e.to)
+            .collect();
+        while let Some(v) = stack.pop() {
+            if v == to {
+                return true;
+            }
+            if std::mem::replace(&mut seen[v], true) {
+                continue;
+            }
+            stack.extend(
+                g.edges
+                    .iter()
+                    .filter(|e| e.from == v && bar_counts(g, e))
+                    .map(|e| e.to),
+            );
+        }
+        false
+    };
+    !detour(a, b) && !detour(b, a)
 }
 
 /// Whether an edge counts towards a fork/join bar's branches: drawn,
@@ -5929,6 +5992,72 @@ mod tests {
         let g = parse("flowchart TD\nA --> B").unwrap();
         let sizes: Vec<(f64, f64)> = g.nodes.iter().map(intrinsic_size).collect();
         assert!(matches!(fit_bars(&g, &sizes), Cow::Borrowed(_)));
+    }
+
+    #[test]
+    fn bars_branching_to_bars_fit_the_same_every_time() {
+        let state = |src: &str| match crate::parser::parse_document(src).unwrap() {
+            crate::model::Document::State(g) => g,
+            other => panic!("not a state diagram: {other:?}"),
+        };
+        // A fork straight to its join (an empty branch), across both
+        // flows, and nested forks: a bar is a branch of another bar.
+        let fork_join = "state f <<fork>>\nstate j <<join>>\n[*] --> f\nf --> A\nf --> B\n\
+                         f --> j\nA --> j\nB --> j\nj --> End\nEnd --> [*]";
+        let nested = "state f1 <<fork>>\nstate f2 <<fork>>\n[*] --> f1\nf1 --> f2\nf1 --> Z\n\
+                      f2 --> X\nf2 --> Y";
+        for src in [
+            format!("stateDiagram-v2\n{fork_join}"),
+            format!("stateDiagram-v2\ndirection LR\n{fork_join}"),
+            format!("stateDiagram-v2\n{nested}"),
+        ] {
+            let g = state(&src);
+            let intrinsic: Vec<(f64, f64)> = g.nodes.iter().map(intrinsic_size).collect();
+            let once = fit_bars(&g, &intrinsic).into_owned();
+            assert_eq!(fit_bars(&g, &once).as_ref(), &once[..], "{src}");
+            let s = scene(&g);
+            let centres: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let drawn: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.w, n.h)).collect();
+            // The compact builder fits, then draws through `scene_sized`
+            // (fitting again); skipped, it is the ordinary scene.
+            let c = crate::fold::scene_compact(&g, &crate::fold::CompactOptions::for_extent(1e5));
+            assert!(c.skipped.is_some(), "{src}");
+            let compact: Vec<(f64, f64)> = c.scene.nodes.iter().map(|n| (n.w, n.h)).collect();
+            assert_eq!(compact, drawn, "{src}");
+            let same_edges = c
+                .scene
+                .edges
+                .iter()
+                .zip(&s.edges)
+                .all(|(a, b)| a.bezier == b.bezier);
+            assert!(same_edges, "{src}");
+            // A host routing with the sizes it drew, or with intrinsic
+            // ones, gets the drawn bars back.
+            for r in [route_sized(&g, &centres, &drawn), route(&g, &centres)] {
+                let sized: Vec<(f64, f64)> = r.nodes.iter().map(|n| (n.w, n.h)).collect();
+                assert_eq!(sized, drawn, "{src}");
+            }
+            // Each bar still spans its own branches.
+            for (v, n) in g.nodes.iter().enumerate() {
+                if n.shape == Shape::ForkBar {
+                    assert!(drawn[v].0.max(drawn[v].1) > BAR_SIZE.0, "{src}: {}", n.id);
+                }
+            }
+        }
+        // A fork right above another (nested) reaches that fork's
+        // middle: the far bar counts at its own fit, so both branches
+        // drop straight; a fork straight to its join counts as a lane.
+        let g = state(&format!("stateDiagram-v2\n{nested}"));
+        let s = scene(&g);
+        for e in s.edges.iter().filter(|e| e.from == "f1") {
+            assert!((e.bezier[0].0 - e.bezier[3].0).abs() < 0.5, "{e:?}");
+        }
+        let g = state(&format!("stateDiagram-v2\n{fork_join}"));
+        let (f, j) = (g.node_index("f").unwrap(), g.node_index("j").unwrap());
+        assert!(!beside(&g, f, j));
+        let g = state(&format!("stateDiagram-v2\n{nested}"));
+        let (f1, f2) = (g.node_index("f1").unwrap(), g.node_index("f2").unwrap());
+        assert!(beside(&g, f1, f2));
     }
 
     #[test]
