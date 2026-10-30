@@ -37,7 +37,7 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 - [x] `<br/>` multi-line labels *(v0.7.0)*
 - [x] Markdown strings ``"`**bold** _italic_`"`` in node, edge and subgraph labels — real newlines, automatic word wrap for node labels at mermaid 11's 200px width
 - [x] `style` / `classDef` / `class` / `:::` custom colors *(v0.4.0)*
-- [x] Semantic color theme (shape-based) + stable accent palette shared by ER / class / sequence / pie
+- [x] Semantic color theme (shape-based) + stable accent palette shared by ER / class / sequence / pie, with text on accent fills picked for WCAG AA contrast (`style::text_on`)
 - [x] Interactive scene API — drag nodes, edges re-route live; stable node/edge identity (`SceneNode.id`, `SceneEdge.from`/`to`) and local drag re-routing (`scene`, `route`, `route_partial`, `box_edge_bezier`) *(v0.18.0)*
 - [x] Hit-testing / picking — `Scene::{hit_test, node_at, edge_at, cluster_at, hits_in_rect, nearest_node}`, shape-precise, pick-matches-render; completes pick → drag → route for editors *(v0.19.0)*
 - [x] Graph → mermaid serializer — `to_mermaid(g)`, the inverse of `parse`: lossless editor round-trip via mermaid entity codes (`#quot;`, `#124;`), valid standard mermaid out; completes pick → drag → route → **persist** *(v0.20.0)*

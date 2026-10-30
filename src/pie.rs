@@ -248,8 +248,9 @@ pub fn to_svg_with(ps: &PieScene, opts: &SvgOptions) -> String {
         }
     }
 
-    // Percentage labels at the slice mid-angle, inside the wedge.
-    for sl in &ps.slices {
+    // Percentage labels at the slice mid-angle, inside the wedge, in
+    // white or dark ink by contrast with that wedge's accent.
+    for (i, sl) in ps.slices.iter().enumerate() {
         if sl.frac < MIN_LABEL_FRAC {
             continue;
         }
@@ -257,9 +258,10 @@ pub fn to_svg_with(ps: &PieScene, opts: &SvgOptions) -> String {
         let p = polar(ps.cx, ps.cy, ps.r * LABEL_R, mid);
         s.push_str(&format!(
             "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"middle\" \
-             font-weight=\"bold\" fill=\"#ffffff\">{:.0}%</text>\n",
+             font-weight=\"bold\" fill=\"{}\">{:.0}%</text>\n",
             p.0,
             p.1,
+            crate::style::text_on(crate::style::accent(i)),
             sl.frac * 100.0
         ));
     }
@@ -574,5 +576,26 @@ mod tests {
             !svg.contains("fill=\"none\""),
             "must not be the empty outline"
         );
+    }
+
+    /// Report Q5 / pie white-label-low-contrast: every percentage was
+    /// hard-coded white, failing WCAG AA on most wedges.
+    #[test]
+    fn percentage_labels_read_on_every_wedge() {
+        // Eight distinct percentages so each label is findable.
+        let vals = [18, 17, 16, 14, 12, 10, 8, 5];
+        let src: String = vals
+            .iter()
+            .enumerate()
+            .map(|(i, v)| format!("\"s{i}\" : {v}\n"))
+            .collect();
+        let ps = scene(&pie(&format!("pie\n{src}")));
+        let svg = to_svg(&ps);
+        for (i, sl) in ps.slices.iter().enumerate() {
+            let label = format!("{:.0}%", sl.frac * 100.0);
+            let accent = crate::style::accent(i);
+            let ink = crate::style::assert_text_reads(&svg, &label, accent);
+            assert_eq!(ink, crate::style::text_on(accent), "{label}");
+        }
     }
 }

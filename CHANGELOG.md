@@ -22,6 +22,14 @@ zero. Needs a **minor** bump: `AdvanceScene` gains a public field.
   anchor (`a@out`), a sub-element (`a.cpu`), or both (`a.cpu@pin1`), in
   the text DSL and in JSON. Sub-elements are first-class: they have ids,
   rects, anchors, and can be edge endpoints.
+- **Contrast helpers in `style`** so hosts can match the SVG writers:
+  `relative_luminance`, `contrast_ratio`, `text_on(fill)` (white where it
+  reaches WCAG AA 4.5:1, else the new `DARK_INK`), `MIN_TEXT_CONTRAST`,
+  `ACCENT_INKS` / `accent_ink(i)` (each accent darkened just enough to
+  read as text on white), a sixteen-colour `accent_wide(i)` cycle
+  (`ACCENTS` then the new `ACCENTS_DEEP`) for diagrams with more than
+  eight items, and a `NOTE_STYLE` card colour outside the accent palette.
+  `ACCENTS` and `accent()` are unchanged.
 
 ### Changed
 
@@ -42,6 +50,15 @@ zero. Needs a **minor** bump: `AdvanceScene` gains a public field.
 - Parallel edges were drawn on top of each other, and five or more
   parallel ported edges could be drawn through the node between them.
 - A route could step out and come straight back along the same line.
+- **Low-contrast white text on accent fills.** Class and ER headers,
+  sequence participant boxes, journey and timeline section bands, pie
+  percentages and mindmap branches wrote white on every accent, below
+  WCAG AA on six of the eight (amber 2.6:1, green 3.2:1, rose 4.1:1).
+  The text now takes white or a navy near-black by contrast with its
+  fill, so every label reaches 4.5:1; indigo and violet keep white.
+  Gitgraph lane names and tags, and sequence actor names, written in the
+  raw accent on white, use the accent darkened as needed. Only text
+  colours change: no geometry, and flowchart output is byte-identical.
 
 ## [0.32.0] - 2026-10-28
 

@@ -227,11 +227,14 @@ pub(crate) fn to_svg_a11y_with(es: &ErScene, a11y: &A11y, opts: &SvgOptions) -> 
              fill=\"{}\"/>\n",
             x0, y0, n.w, HEADER_H, accent
         ));
+        // Header text takes white or dark ink by contrast with the
+        // accent band (white failed AA on six of the eight accents).
         s.push_str(&format!(
             "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"middle\" \
-             font-weight=\"bold\" fill=\"#ffffff\">{}</text>\n",
+             font-weight=\"bold\" fill=\"{}\">{}</text>\n",
             n.x,
             y0 + HEADER_H / 2.0,
+            crate::style::text_on(accent),
             escape(&table.name)
         ));
         for (r, row) in table.rows.iter().enumerate() {
@@ -491,5 +494,24 @@ mod tests {
             fit_top_left(&sc.scene),
             std::borrow::Cow::Borrowed(_)
         ));
+    }
+
+    /// Report Q5: entity headers hard-coded white text on their accent,
+    /// below WCAG AA on six of the eight (amber 2.6:1, green 3.2:1).
+    #[test]
+    fn header_text_reads_on_every_accent() {
+        let names: Vec<String> = (0..crate::style::ACCENTS.len())
+            .map(|i| format!("ENT{i}"))
+            .collect();
+        let src: String = names
+            .iter()
+            .map(|n| format!("{n} {{\n  int id\n}}\n"))
+            .collect();
+        let svg = crate::render_svg(&format!("erDiagram\n{src}")).unwrap();
+        for (i, n) in names.iter().enumerate() {
+            let accent = crate::style::accent(i);
+            let ink = crate::style::assert_text_reads(&svg, n, accent);
+            assert_eq!(ink, crate::style::text_on(accent), "{n}");
+        }
     }
 }

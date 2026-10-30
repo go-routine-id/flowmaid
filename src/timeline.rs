@@ -296,11 +296,13 @@ pub fn to_svg_with(ts: &TimelineScene, opts: &SvgOptions) -> String {
                  fill=\"{}\"/>\n",
                 sec.x, sec.y, sec.w, SECTION_H, sec.color
             ));
+            // White or dark ink by contrast with the band's accent.
             s.push_str(&format!(
                 "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"middle\" \
-                 font-weight=\"bold\" fill=\"#ffffff\">{}</text>\n",
+                 font-weight=\"bold\" fill=\"{}\">{}</text>\n",
                 sec.x + sec.w / 2.0,
                 sec.y + SECTION_H / 2.0,
+                crate::style::text_on(sec.color),
                 escape(&sec.name)
             ));
         }
@@ -454,5 +456,22 @@ mod tests {
         );
         assert!(svg.contains(">2002<"), "period label still drawn");
         assert!(svg.contains(">LinkedIn<"), "event still drawn");
+    }
+
+    /// Report Q5: section band labels hard-coded white on the band's
+    /// accent (green 3.2:1, amber 2.6:1).
+    #[test]
+    fn section_labels_read_on_every_accent() {
+        let n = crate::style::ACCENTS.len();
+        let mut src = String::from("timeline\n");
+        for i in 0..n {
+            src.push_str(&format!("section Sec{i}\n  {} : ev{i}\n", 2000 + i));
+        }
+        let svg = crate::render_svg(&src).unwrap();
+        for i in 0..n {
+            let accent = crate::style::accent(i);
+            let ink = crate::style::assert_text_reads(&svg, &format!("Sec{i}"), accent);
+            assert_eq!(ink, crate::style::text_on(accent));
+        }
     }
 }

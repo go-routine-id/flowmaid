@@ -254,11 +254,13 @@ pub fn to_svg_with(js: &JourneyScene, opts: &SvgOptions) -> String {
             b.x, b.y, b.w, b.h, b.color
         ));
         if !b.name.is_empty() {
+            // White or dark ink by contrast with the band's accent.
             s.push_str(&format!(
                 "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"middle\" \
-                 font-weight=\"bold\" fill=\"#ffffff\">{}</text>\n",
+                 font-weight=\"bold\" fill=\"{}\">{}</text>\n",
                 b.x + b.w / 2.0,
                 b.y + b.h / 2.0,
+                crate::style::text_on(b.color),
                 escape(&b.name)
             ));
         }
@@ -458,5 +460,22 @@ mod tests {
         assert!(svg.contains(">Pack<"), "task label");
         assert!(svg.contains("<path"), "mouth curve");
         assert!(svg.contains(score_color(4)), "score-4 face color");
+    }
+
+    /// Report Q5: section band labels hard-coded white on the band's
+    /// accent (green 3.2:1, amber 2.6:1).
+    #[test]
+    fn section_labels_read_on_every_accent() {
+        let n = crate::style::ACCENTS.len();
+        let mut src = String::from("journey\ntitle T\n");
+        for i in 0..n {
+            src.push_str(&format!("section Sec{i}\n  Task{i}: 3: Me\n"));
+        }
+        let svg = crate::render_svg(&src).unwrap();
+        for i in 0..n {
+            let accent = crate::style::accent(i);
+            let ink = crate::style::assert_text_reads(&svg, &format!("Sec{i}"), accent);
+            assert_eq!(ink, crate::style::text_on(accent));
+        }
     }
 }

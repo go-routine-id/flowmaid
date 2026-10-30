@@ -12,7 +12,7 @@ use crate::model::{CommitKind, GitGraph, GitOrientation, Shape};
 use crate::scene::{
     escape, svg_open, Scene, SceneEdge, SceneNode, SvgOptions, EDGE_COLOR, TEXT_COLOR,
 };
-use crate::style::accent;
+use crate::style::{accent, accent_ink};
 
 /// Canvas margin.
 pub const PAD: f64 = 30.0;
@@ -138,7 +138,12 @@ pub fn scene(d: &GitGraph) -> GitScene {
                 baseline: "middle",
                 font_size: FONT,
                 font_weight: Some("bold"),
-                color: color.stroke,
+                // The branch colour, darkened as needed to read on
+                // white; a highlight commit's tag stays in ink.
+                color: match c.kind {
+                    CommitKind::Highlight => TEXT_COLOR,
+                    CommitKind::Normal | CommitKind::Reverse => accent_ink(c.branch),
+                },
             });
         }
     }
@@ -208,7 +213,8 @@ pub fn scene(d: &GitGraph) -> GitScene {
         }
     }
 
-    // Branch name labels.
+    // Branch name labels, in the lane's accent darkened as needed to
+    // read on the white canvas (amber / green names were 2.6-3.2:1).
     for b in &d.branches {
         branch_labels.push(match d.orientation {
             GitOrientation::LR => GitLabel {
@@ -219,7 +225,7 @@ pub fn scene(d: &GitGraph) -> GitScene {
                 baseline: "middle",
                 font_size: FONT,
                 font_weight: Some("bold"),
-                color: accent(b.order),
+                color: accent_ink(b.order),
             },
             GitOrientation::TB => GitLabel {
                 x: branch_pos(b.order),
@@ -229,7 +235,7 @@ pub fn scene(d: &GitGraph) -> GitScene {
                 baseline: "middle",
                 font_size: FONT,
                 font_weight: Some("bold"),
-                color: accent(b.order),
+                color: accent_ink(b.order),
             },
             GitOrientation::BT => GitLabel {
                 x: branch_pos(b.order),
@@ -239,7 +245,7 @@ pub fn scene(d: &GitGraph) -> GitScene {
                 baseline: "middle",
                 font_size: FONT,
                 font_weight: Some("bold"),
-                color: accent(b.order),
+                color: accent_ink(b.order),
             },
         });
     }
@@ -518,5 +524,33 @@ mod tests {
             "a commit colour escaped its attribute:\n{svg}"
         );
         assert!(svg.contains("&quot;"), "{svg}");
+    }
+
+    /// Report Q5: lane names (and tags) were written in the raw accent
+    /// on the white canvas — amber 2.6:1, green 3.2:1.
+    #[test]
+    fn lane_names_and_tags_read_on_white() {
+        let n = crate::style::ACCENTS.len();
+        let mut src = String::from("gitGraph\ncommit id: \"c0\" tag: \"t0\"\n");
+        for i in 1..n {
+            src.push_str(&format!(
+                "branch lane{i}\ncheckout lane{i}\ncommit id: \"c{i}\" tag: \"t{i}\"\n"
+            ));
+        }
+        let gs = scene(&git(&src));
+        let svg = to_svg(&gs);
+        for i in 0..n {
+            let lane = if i == 0 {
+                "main".to_string()
+            } else {
+                format!("lane{i}")
+            };
+            let ink = crate::style::assert_text_reads(&svg, &lane, "#ffffff");
+            assert_eq!(ink, crate::style::accent_ink(i), "{lane}");
+            let ink = crate::style::assert_text_reads(&svg, &format!("t{i}"), "#ffffff");
+            assert_eq!(ink, crate::style::accent_ink(i), "tag t{i}");
+        }
+        // The commit dots keep the full-strength accent.
+        assert!(svg.contains(&format!("fill=\"{}\"", crate::style::accent(2))));
     }
 }

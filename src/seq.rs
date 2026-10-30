@@ -649,13 +649,16 @@ pub(crate) fn to_svg_a11y_with(sc: &SeqScene, a11y: &A11y, opts: &SvgOptions) ->
         }
     }
     // Participant boxes last (crisp over the lifeline tops). Actors
-    // get an outlined box, participants a filled one.
+    // get an outlined box, participants a filled one. Text keeps
+    // ≥ 4.5:1 either way: an actor's name is its accent darkened as
+    // needed for the white box, a participant's is white or dark ink
+    // by contrast with its fill.
     for (i, b) in sc.boxes.iter().enumerate() {
         let accent = crate::style::accent(i);
         let (fill, stroke, text_fill) = if b.actor {
-            ("#ffffff", accent, accent)
+            ("#ffffff", accent, crate::style::accent_ink(i))
         } else {
-            (accent, accent, "#ffffff")
+            (accent, accent, crate::style::text_on(accent))
         };
         s.push_str(&format!(
             "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" rx=\"4\" \
@@ -1216,5 +1219,33 @@ mod tests {
         let sc = scene(&SequenceDiagram::default());
         assert!(sc.width > 0.0 && sc.height > 0.0);
         assert!(to_svg(&sc).ends_with("</svg>\n"));
+    }
+
+    /// Report Q5: participant boxes hard-coded white text on their
+    /// accent fill, and actor boxes wrote the raw accent on white —
+    /// both below WCAG AA for most accents.
+    #[test]
+    fn participant_and_actor_labels_read_on_every_accent() {
+        let n = crate::style::ACCENTS.len();
+        // Every accent once as a filled participant, and once as an
+        // outlined actor (index + n wraps to the same accent).
+        let mut src = String::from("sequenceDiagram\n");
+        for i in 0..2 * n {
+            let kind = if i < n { "participant" } else { "actor" };
+            src.push_str(&format!("{kind} P{i}\n"));
+        }
+        src.push_str("P0->>P1: hi\n");
+        let svg = crate::render_svg(&src).unwrap();
+        for i in 0..2 * n {
+            let label = format!("P{i}");
+            if i < n {
+                let accent = crate::style::accent(i);
+                let ink = crate::style::assert_text_reads(&svg, &label, accent);
+                assert_eq!(ink, crate::style::text_on(accent), "{label}");
+            } else {
+                let ink = crate::style::assert_text_reads(&svg, &label, "#ffffff");
+                assert_eq!(ink, crate::style::accent_ink(i), "{label}");
+            }
+        }
     }
 }

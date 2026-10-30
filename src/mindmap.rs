@@ -37,8 +37,6 @@ pub const FONT: u32 = 14;
 /// Root fill (neutral grey) + its dark text.
 const ROOT_FILL: &str = "#c9cfe0";
 const ROOT_TEXT: &str = TEXT_COLOR;
-/// Branch nodes fill with their accent and use white text.
-const BRANCH_TEXT: &str = "#ffffff";
 
 /// One laid-out mindmap node. `(x, y)` is the top-left; the label is
 /// drawn centred. Colors are `#rrggbb` so painters match the SVG.
@@ -233,13 +231,13 @@ pub fn route(d: &Mindmap, pos: &[(f64, f64)]) -> MindScene {
     let mut nodes = Vec::with_capacity(d.nodes.len());
     for (i, n) in d.nodes.iter().enumerate() {
         let (w2, h2) = node_size(&n.text, n.shape);
+        // Branch nodes fill with their accent; their text is white or
+        // dark ink by contrast with it (white alone failed AA on most).
         let (fill, text_color) = if n.depth == 0 {
             (ROOT_FILL, ROOT_TEXT)
         } else {
-            (
-                branch_color(branch_order[n.branch.unwrap_or(i)]),
-                BRANCH_TEXT,
-            )
+            let fill = branch_color(branch_order[n.branch.unwrap_or(i)]);
+            (fill, crate::style::text_on(fill))
         };
         nodes.push(MindNodeBox {
             x: pos[i].0 - w2 / 2.0,
@@ -577,5 +575,28 @@ mod tests {
         assert!(perimeter(cloud).unwrap().len() >= 12);
         // A plain rounded node has no polygon perimeter.
         assert!(perimeter(&ms.nodes[0]).is_none());
+    }
+
+    /// Report Q5: branch nodes hard-coded white text on their accent
+    /// (amber 2.6:1, green 3.2:1); the scene's per-node `text_color`
+    /// (what host painters use) must agree with the SVG.
+    #[test]
+    fn branch_text_reads_on_every_accent() {
+        let n = crate::style::ACCENTS.len();
+        let mut src = String::from("mindmap\nroot((R))\n");
+        for i in 0..n {
+            src.push_str(&format!("  Br{i}\n    Leaf{i}\n"));
+        }
+        let ms = scene(&mind(&src));
+        let svg = to_svg(&ms);
+        for i in 0..n {
+            let accent = crate::style::accent(i);
+            for label in [format!("Br{i}"), format!("Leaf{i}")] {
+                let ink = crate::style::assert_text_reads(&svg, &label, accent);
+                assert_eq!(ink, crate::style::text_on(accent), "{label}");
+                let node = ms.nodes.iter().find(|b| b.text == label).unwrap();
+                assert_eq!((node.fill, node.text_color), (accent, ink));
+            }
+        }
     }
 }
