@@ -162,7 +162,8 @@ fn main() {
             eprintln!("empty diagram: no entities defined");
             process::exit(1);
         }
-        Document::Class(d) if d.classes.is_empty() => {
+        // A notes-only class diagram draws its notes, as mermaid does.
+        Document::Class(d) if d.classes.is_empty() && d.notes.is_empty() => {
             eprintln!("empty diagram: no classes defined");
             process::exit(1);
         }

@@ -123,11 +123,17 @@ pub struct NoteBox {
 /// Geometry + drawing data for a whole class diagram. `scene` holds
 /// class boxes and relationship curves (dashed via `EdgeKind::Dotted`
 /// for realization / dependency); `boxes[i]` describes
-/// `scene.nodes[i]`; `rels[j]` mirrors `scene.edges[j]`'s UML style
-/// and cardinalities. Notes follow: `notes[k]` describes
-/// `scene.nodes[boxes.len() + k]`, and each attached note's dotted
-/// connector (`EdgeKind::DottedOpen`) follows the relationships in
-/// `scene.edges`.
+/// `scene.nodes[i]` for `i < boxes.len()`; `rels[j]` mirrors
+/// `scene.edges[j]`'s UML style and cardinalities for `j < rels.len()`.
+/// Notes follow: `notes[k]` describes `scene.nodes[boxes.len() + k]`,
+/// and each attached note's dotted connector (`EdgeKind::DottedOpen`,
+/// see [`NoteBox::edge`]) follows the relationships in `scene.edges`.
+///
+/// So with notes, `scene.nodes` / `scene.edges` hold more entries than
+/// `boxes` / `rels`: index those only below their length (or zip them
+/// with the scene's lists). A host that paints no notes can clear
+/// [`ClassDiagram::notes`] before [`scene`] / [`route`] to get one box
+/// per node and one style per edge, as before notes were drawn.
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct ClassScene {
@@ -2634,14 +2640,40 @@ mod tests {
         );
         assert_eq!((d.notes[1].text.as_str(), d.notes[1].class), ("x", None));
         // `\n` and `<br/>` break note lines, as in mermaid's own docs.
-        let d = cd("classDiagram\nnote for Duck \"can fly\\ncan swim<br/>can dive\"");
+        let d = cd("classDiagram\nnote for Duck \"can fly\\ncan swim<br/>can dive\"\nclass Duck");
         assert_eq!(d.notes[0].text, "can fly\ncan swim\ncan dive");
-        for bad in ["note for \"x\"", "note", "direction XY"] {
+        assert_eq!(d.notes[0].class, Some(0), "declared after its note");
+        // As in mermaid: a note without text, or `note for` without a
+        // class name, is an error (both used to be skipped silently).
+        for bad in ["note for \"x\"", "note"] {
             assert!(
                 parse_document(&format!("classDiagram\n{bad}\nA <|-- B")).is_err(),
                 "{bad}"
             );
         }
+        // Also as in mermaid: an unknown direction is ignored, and a
+        // note for a class the diagram never declares stays free (it
+        // does not create that class).
+        let d = cd("classDiagram\ndirection XY\nnote for Ghost \"boo\"\nA <|-- B");
+        assert_eq!(d.direction, Direction::TD);
+        assert_eq!(d.classes.len(), 2);
+        assert_eq!(d.notes[0].class, None);
+    }
+
+    /// A diagram of notes alone draws them (mermaid does); the CLI used
+    /// to stop with "no classes defined".
+    #[test]
+    fn notes_alone_draw() {
+        let d = cd("classDiagram\nnote \"just a note\"\nnote \"and another\"");
+        assert!(d.classes.is_empty());
+        let cs = scene(&d);
+        assert_eq!((cs.scene.nodes.len(), cs.boxes.len()), (2, 0));
+        let svg = to_svg(&cs);
+        assert!(svg.contains(">just a note<") && svg.contains(">and another<"));
+        crate::scene::assert_drawn_inside_canvas(&svg);
+        let laid: Vec<(f64, f64)> = cs.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
+        assert!(to_svg(&route(&d, &laid)).contains(">just a note<"));
+        assert!(to_svg(&route(&d, &[])).contains(">and another<"));
     }
 
     #[test]
