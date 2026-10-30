@@ -21,6 +21,7 @@
 
 use std::collections::{BTreeMap, HashMap};
 
+use crate::labels::{avoid_label_overlaps, LABEL_ROUTE_WORK, LABEL_STATIC_WORK};
 use crate::layout::{text_width, LINE_H};
 use crate::model::{
     generics_to_angles, Class, ClassDiagram, Direction, EdgeEnds, EdgeKind, Graph, Marker, Member,
@@ -164,7 +165,7 @@ pub struct Head {
 pub fn scene(d: &ClassDiagram) -> ClassScene {
     let b = build(d);
     let sc = scene_sized(&b.g, &b.sizes);
-    assemble(d, b, sc)
+    assemble(d, b, sc, LABEL_STATIC_WORK)
 }
 
 /// Re-route relationships for custom class positions (drags).
@@ -190,7 +191,7 @@ pub fn route(d: &ClassDiagram, centers: &[(f64, f64)]) -> ClassScene {
         all.extend(note_fallback(d, centers, &b.sizes));
     }
     let sc = route_sized(&b.g, &all, &b.sizes);
-    assemble(d, b, sc)
+    assemble(d, b, sc, LABEL_ROUTE_WORK)
 }
 
 /// Note centres for a [`route`] call that passed class centres only:
@@ -245,9 +246,12 @@ fn note_fallback(
 }
 
 /// Turn the layout scene into the class scene: relationship edges go
-/// back to their semantic direction (`from` → `to`, glyph at the end)
-/// and to the line style hosts read (`Dotted` = dashed, else `Open`).
-fn assemble(d: &ClassDiagram, b: Built, mut scene: Scene) -> ClassScene {
+/// back to their semantic direction (`from` → `to`, glyph at the end),
+/// are redrawn orthogonal ([`orthogonalize`]) with their labels moved
+/// off whatever the new lines brought them onto, and take the line
+/// style hosts read (`Dotted` = dashed, else `Open`). `budget` is the
+/// label stage's work budget (static scene or drag).
+fn assemble(d: &ClassDiagram, b: Built, mut scene: Scene, budget: usize) -> ClassScene {
     // The synthetic graph is built strictly in class / note / relation
     // / connector order, so indexes align 1:1 — load-bearing for every
     // consumer.
@@ -256,7 +260,15 @@ fn assemble(d: &ClassDiagram, b: Built, mut scene: Scene) -> ClassScene {
     for (e, r) in scene.edges.iter_mut().zip(&d.relations) {
         if r.head_left {
             reverse_edge(e);
+            std::mem::swap(&mut e.ends.start, &mut e.ends.end);
         }
+    }
+    orthogonalize(&mut scene);
+    // Rerouting moved labels onto their new lines, where one may now
+    // cover another label or sit under a stroke; the glyph ends are
+    // still marked, so labels keep off them too.
+    avoid_label_overlaps(&scene.nodes, &scene.clusters, &mut scene.edges, budget);
+    for (e, r) in scene.edges.iter_mut().zip(&d.relations) {
         e.kind = if r.dashed {
             EdgeKind::Dotted
         } else {
@@ -264,7 +276,6 @@ fn assemble(d: &ClassDiagram, b: Built, mut scene: Scene) -> ClassScene {
         };
         e.ends = EdgeEnds::default();
     }
-    orthogonalize(&mut scene);
     let rels = d
         .relations
         .iter()
@@ -475,15 +486,25 @@ fn orthogonalize(sc: &mut Scene) {
         runs.extend(corners.windows(2).map(|w| Run::of(w[0], w[1])));
         let (a, b) = (corners[0], corners[corners.len() - 1]);
         let e = &mut sc.edges[j];
-        // The single-cubic fallback keeps square ends too.
-        let k = ORTHO_STUB;
-        e.bezier = [
-            a,
-            (a.0 + na.0 * k, a.1 + na.1 * k),
-            (b.0 + nb.0 * k, b.1 + nb.1 * k),
-            b,
-        ];
-        e.waypoints = crate::router::smooth(&corners, ORTHO_R);
+        if corners.len() == 2 {
+            // Straight: a straight cubic, no waypoints — sampled as
+            // finely as any curve (two bare waypoints would be sampled
+            // as just their ends, which the label stage would read as
+            // one long arrowhead).
+            let at = |t: f64| (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t);
+            e.bezier = [a, at(1.0 / 3.0), at(2.0 / 3.0), b];
+            e.waypoints.clear();
+        } else {
+            // The single-cubic fallback keeps square ends too.
+            let k = ORTHO_STUB;
+            e.bezier = [
+                a,
+                (a.0 + na.0 * k, a.1 + na.1 * k),
+                (b.0 + nb.0 * k, b.1 + nb.1 * k),
+                b,
+            ];
+            e.waypoints = crate::router::smooth(&corners, ORTHO_R);
+        }
         let line = edge_polyline(e);
         if let Some((_, m, _)) = &mut e.label {
             *m = nearest_on(&line, *m);
@@ -2085,40 +2106,66 @@ mod tests {
     /// routed channel. Every label sits on the line as drawn.
     #[test]
     fn labels_sit_on_their_drawn_line() {
-        for src in [ZOO, include_str!("../examples/class.mmd")] {
+        // Three edges between one pair: rerouting brings their labels
+        // together, and they must still not cover each other.
+        let parallel = "classDiagram\nA --> B : one\nA ..> B : two\nB --> A : back\n\
+                        A \"1\" *-- \"many\" C\nC o-- D";
+        for (src, on_line) in [
+            (ZOO, true),
+            (include_str!("../examples/class.mmd"), true),
+            (parallel, false),
+        ] {
             let cs = scene(&cd(src));
+            let mut boxes: Vec<(String, Rect)> = Vec::new();
             for e in &cs.scene.edges {
-                let Some((text, m, _)) = &e.label else {
+                let Some((text, m, w)) = &e.label else {
                     continue;
                 };
-                let on = nearest_on(&edge_polyline(e), *m);
+                let line = edge_polyline(e);
+                let on = nearest_on(&line, *m);
                 let off = (on.0 - m.0).hypot(on.1 - m.1);
-                assert!(off < 1.5, "{text}: {off:.1}px off its line");
+                // On its line, or — crowded — just beside it, as the
+                // label stage places any label it must move.
+                let reach = if on_line {
+                    1.5
+                } else {
+                    w / 2.0 + crate::labels::LABEL_DRIFT_MAX
+                };
+                assert!(off < reach, "{text}: {off:.1}px off its line");
+                let r = (m.0 - w / 2.0, m.1 - 10.0, m.0 + w / 2.0, m.1 + 10.0);
+                boxes.push((text.clone(), r));
+            }
+            for (k, (a, ra)) in boxes.iter().enumerate() {
+                for (b, rb) in &boxes[k + 1..] {
+                    assert!(!rects_meet(*ra, *rb), "labels {a} and {b} overlap");
+                }
             }
         }
     }
 
-    /// Report "inconsistent curves" / "corner ports": mermaid draws
-    /// class edges orthogonal with rounded corners, ends well inside
-    /// the faces and square to them. The showcase's every relation
-    /// is axis-aligned stretches now, entering its glyph's box
-    /// straight on, at least ORTHO_INSET from a corner.
     #[test]
     fn showcase_edges_are_orthogonal_and_square_to_their_faces() {
         let cs = scene(&cd(include_str!("../examples/class.mmd")));
         for e in &cs.scene.edges {
-            assert!(e.waypoints.len() >= 2, "{}->{}", e.from, e.to);
-            for w in e.waypoints.windows(2) {
+            // A straight one is a straight cubic; the rest are routes.
+            let pts = if e.waypoints.is_empty() {
+                let q = e.bezier;
+                for c in [q[1], q[2]] {
+                    let cross =
+                        (q[3].0 - q[0].0) * (c.1 - q[0].1) - (q[3].1 - q[0].1) * (c.0 - q[0].0);
+                    assert!(cross.abs() < 1e-6, "{}->{}: {q:?}", e.from, e.to);
+                }
+                vec![q[0], q[3]]
+            } else {
+                e.waypoints.clone()
+            };
+            for w in pts.windows(2) {
                 let (dx, dy) = ((w[0].0 - w[1].0).abs(), (w[0].1 - w[1].1).abs());
                 assert!(dx < 0.5 || dy < 0.5, "{}->{}: {w:?}", e.from, e.to);
             }
             for (id, p, q) in [
-                (&e.from, e.waypoints[0], e.waypoints[1]),
-                (
-                    &e.to,
-                    e.waypoints[e.waypoints.len() - 1],
-                    e.waypoints[e.waypoints.len() - 2],
-                ),
+                (&e.from, pts[0], pts[1]),
+                (&e.to, pts[pts.len() - 1], pts[pts.len() - 2]),
             ] {
                 let n = node(&cs, id);
                 let nv = face_normal(n, p);
