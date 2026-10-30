@@ -705,7 +705,8 @@ pub struct ClassDiagram {
     pub classes: Vec<Class>,
     pub relations: Vec<ClassRel>,
     /// Layout direction from mermaid's `direction TB|BT|LR|RL` line
-    /// (default top-down). Relations rank in SOURCE order along it:
+    /// (default top-down; an unknown one is ignored, as in mermaid).
+    /// Relations rank in SOURCE order along it:
     /// the left operand of `A <|-- B` sits before (above, in TB) the
     /// right one, so parents and wholes lead, as in UML and mermaid.
     pub direction: Direction,
@@ -832,7 +833,8 @@ pub struct ClassNote {
     /// Note text; `\n` and `<br/>` in the source are line breaks.
     pub text: String,
     /// Index into [`ClassDiagram::classes`] for `note for Class`;
-    /// `None` = a free-standing note.
+    /// `None` = a free-standing note (also `note for` a class the
+    /// diagram never declares: the note does not create it).
     pub class: Option<usize>,
 }
 
