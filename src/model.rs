@@ -324,6 +324,11 @@ pub struct Edge {
     pub ends: EdgeEnds,
     /// Mermaid edge id + metadata (`A e1@--> B`, `e1@{ curve: … }`).
     pub meta: EdgeMeta,
+    /// Length (px, along the edge) that end glyphs drawn by a renderer
+    /// of its own occupy at the `(from, to)` ends — ER crow's feet. The
+    /// layout spaces two adjacent layers so the glyphs, and the edge's
+    /// label between them, all fit. `(0.0, 0.0)` (the default) = none.
+    pub end_room: (f64, f64),
 }
 
 /// A `subgraph ... end` block: a titled cluster of nodes, possibly
@@ -652,6 +657,7 @@ impl Graph {
             kind,
             ends,
             meta: EdgeMeta::default(),
+            end_room: (0.0, 0.0),
         });
     }
 
@@ -793,7 +799,7 @@ pub enum RelKind {
 
 /// Sequence diagram (`sequenceDiagram` header). Items keep source
 /// order — the layout is one row per item, top-down.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SequenceDiagram {
     pub participants: Vec<Participant>,
     pub items: Vec<SeqItem>,
@@ -806,7 +812,32 @@ pub struct SequenceDiagram {
     /// Accessible description from `accDescr:` or the multi-line
     /// `accDescr { … }` block — written as the SVG's `<desc>`.
     pub acc_descr: Option<String>,
+    /// Repeat the participant boxes below the lifelines, as mermaid's
+    /// `mirrorActors` does (on by default there and here). Read from
+    /// frontmatter `config.sequence.mirrorActors`.
+    pub mirror_actors: bool,
+    /// Size each `loop` / `opt` / `alt` / `par` frame to the lifelines
+    /// (and notes) it covers, as mermaid does, instead of flowmaid's
+    /// default full-width aligned bands. Off by default; read from
+    /// frontmatter `config.sequence.scopedFrames` (a flowmaid key that
+    /// mermaid ignores — its frames are always scoped).
+    pub scoped_frames: bool,
     index: HashMap<String, usize>,
+}
+
+impl Default for SequenceDiagram {
+    fn default() -> Self {
+        SequenceDiagram {
+            participants: Vec::new(),
+            items: Vec::new(),
+            autonumber: false,
+            acc_title: None,
+            acc_descr: None,
+            mirror_actors: true,
+            scoped_frames: false,
+            index: HashMap::new(),
+        }
+    }
 }
 
 impl SequenceDiagram {
@@ -838,8 +869,8 @@ impl SequenceDiagram {
 pub struct Participant {
     pub id: String,
     pub label: String,
-    /// Declared with `actor` — drawn as an outlined box instead of
-    /// the filled participant box.
+    /// Declared with `actor` — drawn as a stick figure with its name
+    /// below instead of the filled participant box.
     pub actor: bool,
 }
 
@@ -928,6 +959,9 @@ impl FrameKind {
 pub struct ErDiagram {
     pub entities: Vec<Entity>,
     pub relations: Vec<Relation>,
+    /// Flow direction from a `direction TB|BT|LR|RL` statement. The
+    /// default is top-to-bottom ([`Direction::TD`]), as in mermaid.
+    pub direction: Direction,
     /// Accessible title from mermaid's `accTitle:` statement — replaces
     /// the default `<title>` / `aria-label` of the SVG. `None` = absent
     /// or empty.
@@ -948,6 +982,7 @@ impl ErDiagram {
             let i = self.entities.len();
             self.entities.push(Entity {
                 name: name.to_string(),
+                alias: None,
                 attrs: Vec::new(),
             });
             self.index.insert(name.to_string(), i);
@@ -956,11 +991,26 @@ impl ErDiagram {
     }
 }
 
-/// A database entity, rendered as a table.
+/// A database entity, rendered as a table. `#[non_exhaustive]`: build
+/// one with [`ErDiagram::ensure_entity`].
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct Entity {
+    /// The entity's id: what relationships name it by.
     pub name: String,
+    /// Display name from mermaid's alias syntax (`p[Person]`,
+    /// `c["Customer Account"]`): drawn in place of `name`. `None` =
+    /// draw `name`.
+    pub alias: Option<String>,
     pub attrs: Vec<Attr>,
+}
+
+impl Entity {
+    /// The text a table header shows: the alias when given, else the
+    /// name.
+    pub fn title(&self) -> &str {
+        self.alias.as_deref().unwrap_or(&self.name)
+    }
 }
 
 /// One attribute row inside an entity block:
@@ -1020,13 +1070,23 @@ pub enum Card {
 
 /// Pie chart (`pie` header). Slices keep source order; a duplicate
 /// label keeps one slice whose value is the LAST one written.
+/// `#[non_exhaustive]`: build one with `PieChart::default()` and set
+/// the (public) fields.
 #[derive(Debug, Default)]
+#[non_exhaustive]
 pub struct PieChart {
     /// `pie title …` or a standalone `title …` line.
     pub title: Option<String>,
     /// `pie showData` — legend entries carry the raw value.
     pub show_data: bool,
     pub slices: Vec<PieSlice>,
+    /// Accessible title from mermaid's `accTitle:` statement — replaces
+    /// the default `<title>` / `aria-label` of the SVG. `None` = absent
+    /// or empty.
+    pub acc_title: Option<String>,
+    /// Accessible description from `accDescr:` or the multi-line
+    /// `accDescr { … }` block — written as the SVG's `<desc>`.
+    pub acc_descr: Option<String>,
 }
 
 /// One pie data row: `"Quoted Label" : value` (non-negative).
@@ -1045,10 +1105,58 @@ pub struct Mindmap {
     pub nodes: Vec<MindNode>,
 }
 
+impl Mindmap {
+    /// Append a node under `parent` and return its index, filling in
+    /// what the parser derives from indentation: `depth`, `branch` and
+    /// the parent's `children`. `None` adds the root; once there is
+    /// one, `None` hangs the node off the root, as the parser does with
+    /// a stray shallow line, so `nodes[0]` stays the only root. The
+    /// node starts without icon, classes or style — set them on
+    /// `nodes[i]` afterwards.
+    ///
+    /// # Panics
+    /// If `parent` is not an index into [`Mindmap::nodes`].
+    pub fn add_node(
+        &mut self,
+        parent: Option<usize>,
+        text: impl Into<String>,
+        shape: MindShape,
+    ) -> usize {
+        let idx = self.nodes.len();
+        let parent = parent.or(if idx > 0 { Some(0) } else { None });
+        // A node's colored branch is its depth-1 ancestor; the root
+        // has none. depth-1 nodes seed their own branch.
+        let (depth, branch) = match parent {
+            None => (0, None),
+            Some(p) if self.nodes[p].depth == 0 => (1, Some(idx)),
+            Some(p) => (self.nodes[p].depth + 1, self.nodes[p].branch),
+        };
+        self.nodes.push(MindNode {
+            text: text.into(),
+            shape,
+            parent,
+            children: Vec::new(),
+            depth,
+            branch,
+            icon: None,
+            classes: Vec::new(),
+            style: NodeStyle::default(),
+        });
+        if let Some(p) = parent {
+            self.nodes[p].children.push(idx);
+        }
+        idx
+    }
+}
+
 /// One mindmap node. `text` may contain `\n` (from `<br/>`) for a
 /// multi-line label. `branch` is the index of the depth-1 ancestor
 /// this node descends from (its colored branch); `None` for the root.
+///
+/// `#[non_exhaustive]`: build one with [`Mindmap::add_node`] (the
+/// parser uses it too) and set the (public) fields.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct MindNode {
     pub text: String,
     pub shape: MindShape,
@@ -1056,17 +1164,39 @@ pub struct MindNode {
     pub children: Vec<usize>,
     pub depth: usize,
     pub branch: Option<usize>,
+    /// The `::icon(…)` line under the node, verbatim (`fa fa-book`,
+    /// `mdi mdi-skull`); `None` without one.
+    pub icon: Option<String>,
+    /// CSS classes from `:::a b` lines under the node, in order. The SVG
+    /// carries them as a `class` attribute (mermaid leaves styling them
+    /// to the page), and any matching mindmap `classDef` is folded into
+    /// [`MindNode::style`].
+    pub classes: Vec<String>,
+    /// Colours from the `classDef`s of [`MindNode::classes`] (later
+    /// classes win); empty `NodeStyle` = the branch colours.
+    pub style: NodeStyle,
 }
 
 /// A user-journey diagram (`journey` header): an ordered list of
 /// sections, each holding scored tasks. `actors` is the de-duplicated
 /// set of every participant, in first-appearance order — its index is
 /// the stable color key for the legend and per-task dots.
+///
+/// `#[non_exhaustive]`: build one with `Journey::default()` and set the
+/// (public) fields.
 #[derive(Debug, Default)]
+#[non_exhaustive]
 pub struct Journey {
     pub title: Option<String>,
     pub sections: Vec<JourneySection>,
     pub actors: Vec<String>,
+    /// Accessible title from mermaid's `accTitle:` statement — replaces
+    /// the default `<title>` / `aria-label` of the SVG. `None` = absent
+    /// or empty.
+    pub acc_title: Option<String>,
+    /// Accessible description from `accDescr:` or the multi-line
+    /// `accDescr { … }` block — written as the SVG's `<desc>`.
+    pub acc_descr: Option<String>,
 }
 
 /// A named group of consecutive tasks (`section X`). Tasks before the
@@ -1079,19 +1209,58 @@ pub struct JourneySection {
 
 /// One step: `Task name: score: Actor1, Actor2`. `score` is clamped to
 /// 1..=5 (satisfaction); `actors` are indices into [`Journey::actors`].
+/// `#[non_exhaustive]`: build one with [`JourneyTask::new`] (the parser
+/// uses it too) and set the (public) fields.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct JourneyTask {
     pub name: String,
+    /// The score rounded to a whole 1..=5 step (face colour and mouth).
     pub score: u8,
     pub actors: Vec<usize>,
+    /// The score as written, clamped to 1..=5 but not rounded: mermaid
+    /// reads it with `Number()`, so `3.5` is a valid score and sits
+    /// halfway between 3 and 4 on the satisfaction curve.
+    pub exact_score: f64,
 }
 
-/// Timeline diagram (`timeline` header).
+impl JourneyTask {
+    /// A task scored `score`, clamped to 1..=5 into
+    /// [`JourneyTask::exact_score`] and rounded into
+    /// [`JourneyTask::score`], exactly as the parser reads a score. A
+    /// NaN (which the parser rejects) counts as the neutral 3.
+    /// `actors` are indices into [`Journey::actors`].
+    pub fn new(name: impl Into<String>, score: f64, actors: Vec<usize>) -> Self {
+        let exact_score = if score.is_nan() {
+            3.0
+        } else {
+            score.clamp(1.0, 5.0)
+        };
+        JourneyTask {
+            name: name.into(),
+            // `as` is exact here: the value is a whole number in 1..=5.
+            score: exact_score.round() as u8,
+            actors,
+            exact_score,
+        }
+    }
+}
+
+/// Timeline diagram (`timeline` header). `#[non_exhaustive]`: build
+/// one with `Timeline::default()` and set the (public) fields.
 #[derive(Debug, Default)]
+#[non_exhaustive]
 pub struct Timeline {
     pub title: Option<String>,
     pub direction: TimelineDirection,
     pub sections: Vec<TimelineSection>,
+    /// Accessible title from mermaid's `accTitle:` statement — replaces
+    /// the default `<title>` / `aria-label` of the SVG. `None` = absent
+    /// or empty.
+    pub acc_title: Option<String>,
+    /// Accessible description from `accDescr:` or the multi-line
+    /// `accDescr { … }` block — written as the SVG's `<desc>`.
+    pub acc_descr: Option<String>,
 }
 
 /// Timeline layout orientation.
@@ -1120,20 +1289,28 @@ pub struct TimelinePeriod {
 }
 
 /// Node outline in a mindmap, from the wrapper around its text.
+///
+/// `#[non_exhaustive]`: match it with a `_` arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[non_exhaustive]
 pub enum MindShape {
-    /// `id(text)` or no wrapper — the default.
+    /// No wrapper — mermaid's default node: a box with softly rounded
+    /// top corners and a darker underline along its flat bottom.
     #[default]
+    Default,
+    /// `id(text)` — a pill (fully rounded ends).
     Rounded,
-    /// `id[text]`.
+    /// `id[text]` — sharp corners.
     Square,
-    /// `id((text))`.
+    /// `id((text))` — a true circle (width = height).
     Circle,
     /// `id{{text}}`.
     Hexagon,
-    /// `id))text((` — a "bang"/explosion; approximated as a bold pill.
+    /// `id))text((` — a "bang": a starburst of evenly spaced spikes of
+    /// one depth around an ellipse that holds the label.
     Bang,
-    /// `id)text(` — a cloud; approximated as an ellipse.
+    /// `id)text(` — a cloud: round overlapping lobes around an ellipse
+    /// that holds the label.
     Cloud,
 }
 
@@ -1155,9 +1332,9 @@ pub enum CommitKind {
     /// Default solid commit.
     #[default]
     Normal,
-    /// Hollow / reversed style.
+    /// A reverted commit: drawn as a disc crossed out with an X.
     Reverse,
-    /// Emphasised / highlighted style.
+    /// Emphasised commit: drawn as a square instead of a disc.
     Highlight,
 }
 
@@ -1190,7 +1367,11 @@ pub struct GitBranch {
     pub parent_commit: Option<usize>,
     /// Index of the latest commit on this branch.
     pub head: Option<usize>,
-    /// Vertical ordering (main = 0, then creation order).
+    /// Lane position, 0 = the first lane (top in LR, left in TB/BT):
+    /// main first, then creation order, unless `branch name order: n`
+    /// moved the lanes (see the gitGraph parser). The renderer ranks
+    /// branches by this value (ties by index), so a hand-built graph
+    /// may use any increasing numbers.
     pub order: usize,
 }
 
@@ -1225,11 +1406,23 @@ impl Default for GitGraph {
 }
 
 /// Architecture diagram (`architecture-beta`).
+///
+/// `#[non_exhaustive]`: build one with `Architecture::default()` and
+/// set the (public) fields.
 #[derive(Debug, Default)]
+#[non_exhaustive]
 pub struct Architecture {
     pub groups: Vec<ArchGroup>,
+    /// Services and junctions, in declaration order; edges index this.
     pub services: Vec<ArchService>,
     pub edges: Vec<ArchEdge>,
+    /// Accessible title from mermaid's `accTitle:` statement — replaces
+    /// the default `<title>` / `aria-label` of the SVG. `None` = absent
+    /// or empty.
+    pub acc_title: Option<String>,
+    /// Accessible description from `accDescr:` or the multi-line
+    /// `accDescr { … }` block — written as the SVG's `<desc>`.
+    pub acc_descr: Option<String>,
 }
 
 /// A container of services.
@@ -1242,16 +1435,43 @@ pub struct ArchGroup {
 }
 
 /// A single service/node inside an architecture diagram.
+/// `#[non_exhaustive]`: build one with [`ArchService::new`] and set the
+/// (public) fields.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct ArchService {
     pub id: String,
+    /// Label drawn in the box; empty when the source gave no `[title]`.
     pub title: String,
     pub icon: Option<String>,
     pub group: Option<usize>,
+    /// Declared with `junction` rather than `service`: a bare point
+    /// where edges meet, drawn as a dot with no box, icon or title
+    /// (`title` is empty and `icon` is `None`). Every side of a
+    /// junction is its centre.
+    pub junction: bool,
+}
+
+impl ArchService {
+    /// A service `id` labelled `title` (may be empty), outside every
+    /// group, without an icon. For a junction set
+    /// [`ArchService::junction`] and leave `title` empty.
+    pub fn new(id: impl Into<String>, title: impl Into<String>) -> Self {
+        ArchService {
+            id: id.into(),
+            title: title.into(),
+            icon: None,
+            group: None,
+            junction: false,
+        }
+    }
 }
 
 /// One connection between two services via named ports.
+/// `#[non_exhaustive]`: build one with [`ArchEdge::new`] and set the
+/// (public) fields.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct ArchEdge {
     pub from: usize,
     pub from_side: ArchSide,
@@ -1261,6 +1481,35 @@ pub struct ArchEdge {
     pub arrow_start: bool,
     /// Arrowhead on the `to` side (pointing toward `to`).
     pub arrow_end: bool,
+    /// Mermaid's `{group}` modifier on the `from` end
+    /// (`a{group}:R -- L:b`): the edge leaves the frame of the group
+    /// `from` sits in, not the service's own box. `false` for a service
+    /// outside any group.
+    pub from_group: bool,
+    /// [`ArchEdge::from_group`] for the `to` end (`… L:b{group}`).
+    pub to_group: bool,
+    /// Edge label from mermaid's `a:R -[label]- L:b` form; `None` = an
+    /// unlabelled `--` edge.
+    pub title: Option<String>,
+}
+
+impl ArchEdge {
+    /// A plain `from:from_side -- to_side:to` edge (indices into
+    /// [`Architecture::services`]): no arrowheads, no `{group}`
+    /// modifier, no label.
+    pub fn new(from: usize, from_side: ArchSide, to: usize, to_side: ArchSide) -> Self {
+        ArchEdge {
+            from,
+            from_side,
+            to,
+            to_side,
+            arrow_start: false,
+            arrow_end: false,
+            from_group: false,
+            to_group: false,
+            title: None,
+        }
+    }
 }
 
 /// Port side on an architecture service.
@@ -1341,10 +1590,26 @@ pub enum SankeyAlignment {
     Center,
 }
 
+/// How sankey node labels are drawn (`config.sankey.labelStyle`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SankeyLabelStyle {
+    /// Plain text beside the node — mermaid's default.
+    #[default]
+    Legacy,
+    /// Text over a white halo so it stays readable across ribbons; as
+    /// in mermaid, labels left of the busiest column hang off their
+    /// node's left side.
+    Outlined,
+}
+
 /// The `config.sankey.*` block from YAML frontmatter. Defaults mirror
 /// mermaid's `config.schema.yaml` exactly, so a diagram with no config
 /// renders the way mermaid renders it.
+///
+/// `#[non_exhaustive]`: build one with `SankeyConfig::default()` and
+/// set the fields you need.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct SankeyConfig {
     pub width: f64,
     pub height: f64,
@@ -1357,6 +1622,12 @@ pub struct SankeyConfig {
     pub suffix: String,
     pub node_width: f64,
     pub node_padding: f64,
+    /// `nodeColors`: node label → CSS colour, in source order. A listed
+    /// node is painted in that colour verbatim (escaped in the SVG);
+    /// the rest take the palette.
+    pub node_colors: Vec<(String, String)>,
+    /// `labelStyle`: plain or haloed labels.
+    pub label_style: SankeyLabelStyle,
 }
 
 impl Default for SankeyConfig {
@@ -1371,6 +1642,8 @@ impl Default for SankeyConfig {
             suffix: String::new(),
             node_width: 10.0,
             node_padding: 12.0,
+            node_colors: Vec::new(),
+            label_style: SankeyLabelStyle::Legacy,
         }
     }
 }

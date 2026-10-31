@@ -20,9 +20,9 @@ use crate::model::{
     ArchEdge, ArchGroup, ArchService, ArchSide, Architecture, Attr, Card, Class, ClassDiagram,
     ClassRel, CommitKind, Direction, Document, EdgeAnimation, EdgeCurve, EdgeEnds, EdgeKind,
     EdgeMeta, End, ErDiagram, FrameKind, GitBranch, GitCommit, GitGraph, GitOrientation, Graph,
-    Journey, JourneySection, JourneyTask, Key, LinkStyle, LinkTarget, Marker, Member, MindNode,
-    MindShape, Mindmap, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation,
-    SankeyAlignment, SankeyConfig, SankeyDiagram, SankeyLink, SankeyLinkColor, SeqHead, SeqItem,
+    Journey, JourneySection, JourneyTask, Key, LinkStyle, LinkTarget, Marker, Member, MindShape,
+    Mindmap, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation, SankeyAlignment,
+    SankeyConfig, SankeyDiagram, SankeyLabelStyle, SankeyLink, SankeyLinkColor, SeqHead, SeqItem,
     SequenceDiagram, Shape, SubEdge, Subgraph, Timeline, TimelineDirection, TimelinePeriod,
     TimelineSection, Visibility,
 };
@@ -40,8 +40,17 @@ fn parse_direction(s: &str, lineno: usize) -> Result<Direction, ParseError> {
     }
 }
 
+/// The orientation a `gitGraph` header names. Mermaid writes it with a
+/// trailing colon (`gitGraph TB:`, and a bare `gitGraph:`); the
+/// colon-less form flowmaid always took stays accepted.
 fn parse_git_orientation(line: &str, lineno: usize) -> Result<GitOrientation, ParseError> {
-    let rest = strip_keyword(line, "gitGraph").unwrap_or(line).trim();
+    const KW: &str = "gitGraph";
+    let rest = match line.get(..KW.len()) {
+        Some(head) if head.eq_ignore_ascii_case(KW) => &line[KW.len()..],
+        _ => line,
+    };
+    let rest = rest.trim();
+    let rest = rest.strip_suffix(':').unwrap_or(rest).trim();
     if rest.is_empty() {
         return Ok(GitOrientation::LR);
     }
@@ -1535,7 +1544,11 @@ pub fn parse_document(source: &str) -> Result<Document, ParseError> {
         return match diagram_type(line) {
             Some("erDiagram") => parse_er(source, i + 1).map(Document::Er),
             Some("classDiagram") => parse_class(source, i + 1).map(Document::Class),
-            Some("sequenceDiagram") => parse_sequence(source, i + 1).map(Document::Sequence),
+            // Config is read from the ORIGINAL source (see sankey below).
+            Some("sequenceDiagram") => parse_sequence(source, i + 1).map(|mut d| {
+                apply_sequence_config(&mut d, raw_source);
+                Document::Sequence(d)
+            }),
             Some("pie") => parse_pie(source, i + 1).map(Document::Pie),
             Some("stateDiagram-v2") | Some("stateDiagram") => {
                 parse_state(source, i + 1).map(Document::State)
@@ -2106,7 +2119,10 @@ fn diagram_type(line: &str) -> Option<&'static str> {
             && line[t.len()..]
                 .chars()
                 .next()
-                .map_or(true, char::is_whitespace)
+                // Mermaid's gitGraph grammar also takes `gitGraph:`.
+                .map_or(true, |c| {
+                    c.is_whitespace() || (*t == "gitGraph" && c == ':')
+                })
     })
 }
 
@@ -2902,35 +2918,27 @@ fn parse_er(source: &str, header_line: usize) -> Result<ErDiagram, ParseError> {
         }
 
         if let Some((ent, _)) = open {
-            if line == "}" {
+            if er_block_line(&mut d, ent, line, lineno)? {
                 open = None;
-                continue;
             }
-            let attr = parse_attr(line, lineno)?;
-            d.entities[ent].attrs.push(attr);
             continue;
         }
 
         if line == "}" {
             return Err(err(lineno, "'}' without an open entity block".to_string()));
         }
-        // Entity block start: `Name {`
-        if let Some(head) = line.strip_suffix('{') {
-            let name = head.trim();
-            if !name.is_empty()
-                && name
-                    .chars()
-                    .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
-            {
-                open = Some((d.ensure_entity(name), lineno));
+        // `direction TB|BT|LR|RL`. Only a lone word after the keyword:
+        // `direction ||--o{ B` relates an entity named `direction`.
+        if let Some(rest) = strip_keyword(line, "direction") {
+            let word = rest.trim();
+            if !word.is_empty() && word.chars().all(|c| c.is_ascii_alphabetic()) {
+                d.direction = parse_direction(word, lineno)?;
                 continue;
             }
-            return Err(err(
-                lineno,
-                format!("invalid entity name before '{{': '{}'", name),
-            ));
         }
-        parse_er_statement(&mut d, line, lineno)?;
+        if let Some(ent) = parse_er_statement(&mut d, line, lineno)? {
+            open = Some((ent, lineno));
+        }
     }
     if let Some((ent, opened)) = open {
         return Err(err(
@@ -2944,15 +2952,59 @@ fn parse_er(source: &str, header_line: usize) -> Result<ErDiagram, ParseError> {
     Ok(d)
 }
 
-/// One top-level ER line: either a bare entity declaration or a
-/// relationship `A <card><line><card> B : "label"`.
-fn parse_er_statement(d: &mut ErDiagram, line: &str, lineno: usize) -> Result<(), ParseError> {
+/// One line of an open entity block (or what follows the `{` of the
+/// line that opened it): attribute rows, then optionally the closing
+/// `}` — mermaid tokenises a block, so `A { int id PK }` fits on one
+/// line and several attributes may share one. Returns whether the
+/// block closed.
+fn er_block_line(
+    d: &mut ErDiagram,
+    ent: usize,
+    line: &str,
+    lineno: usize,
+) -> Result<bool, ParseError> {
+    let (body, closed) = match find_unquoted(line, "}") {
+        Some(p) => {
+            let after = line[p + 1..].trim();
+            if !after.is_empty() {
+                return Err(err(
+                    lineno,
+                    format!("unexpected text after '}}': '{}'", after),
+                ));
+            }
+            (line[..p].trim(), true)
+        }
+        None => (line, false),
+    };
+    if !body.is_empty() {
+        let attrs = parse_attrs(body, lineno)?;
+        d.entities[ent].attrs.extend(attrs);
+    }
+    Ok(closed)
+}
+
+/// One top-level ER line: an entity declaration (`Name`, `Name[Alias]`),
+/// the start of an entity block (`Name [Alias] {`, possibly with rows
+/// and even its `}` on the same line), or a relationship
+/// `A <card><line><card> B : "label"`. Returns the entity whose block
+/// the line left open.
+fn parse_er_statement(
+    d: &mut ErDiagram,
+    line: &str,
+    lineno: usize,
+) -> Result<Option<usize>, ParseError> {
     let mut cur = Cur::new(line);
-    let a = parse_er_name(&mut cur, lineno)?;
+    let (a, alias_a) = parse_er_entity(&mut cur, lineno)?;
     cur.skip_ws();
     if cur.at_end() {
-        d.ensure_entity(&a);
-        return Ok(());
+        er_declare(d, &a, alias_a);
+        return Ok(None);
+    }
+    if cur.eat("{") {
+        let ent = er_declare(d, &a, alias_a);
+        let rest = cur.rest().trim();
+        let closed = !rest.is_empty() && er_block_line(d, ent, rest, lineno)?;
+        return Ok((!closed).then_some(ent));
     }
     let (card_from, identifying, card_to) = parse_rel_op(&mut cur).ok_or_else(|| {
         err(
@@ -2961,7 +3013,7 @@ fn parse_er_statement(d: &mut ErDiagram, line: &str, lineno: usize) -> Result<()
         )
     })?;
     cur.skip_ws();
-    let b = parse_er_name(&mut cur, lineno)?;
+    let (b, alias_b) = parse_er_entity(&mut cur, lineno)?;
     cur.skip_ws();
     let label = if cur.eat(":") {
         let l = cur.rest().trim();
@@ -2978,8 +3030,8 @@ fn parse_er_statement(d: &mut ErDiagram, line: &str, lineno: usize) -> Result<()
             format!("unexpected text after relationship: '{}'", cur.rest()),
         ));
     };
-    let from = d.ensure_entity(&a);
-    let to = d.ensure_entity(&b);
+    let from = er_declare(d, &a, alias_a);
+    let to = er_declare(d, &b, alias_b);
     d.relations.push(Relation {
         from,
         to,
@@ -2988,11 +3040,52 @@ fn parse_er_statement(d: &mut ErDiagram, line: &str, lineno: usize) -> Result<()
         identifying,
         label,
     });
-    Ok(())
+    Ok(None)
+}
+
+/// [`ErDiagram::ensure_entity`] plus an alias. As in mermaid, the first
+/// alias an entity is given sticks.
+fn er_declare(d: &mut ErDiagram, name: &str, alias: Option<String>) -> usize {
+    let i = d.ensure_entity(name);
+    let e = &mut d.entities[i];
+    if e.alias.is_none() {
+        e.alias = alias;
+    }
+    i
+}
+
+/// An entity reference: a name (word characters and `-`, or a
+/// `"quoted name"` as in mermaid) and an optional display alias in
+/// brackets (`p[Person]`, `c["Customer Account"]`). Mermaid accepts the
+/// alias only where an entity is declared; flowmaid also takes it in a
+/// relationship.
+fn parse_er_entity(
+    cur: &mut Cur<'_>,
+    lineno: usize,
+) -> Result<(String, Option<String>), ParseError> {
+    let name = parse_er_name(cur, lineno)?;
+    if !cur.eat("[") {
+        return Ok((name, None));
+    }
+    let raw = cur
+        .take_until("]")
+        .ok_or_else(|| err(lineno, format!("unclosed '[' after entity '{}'", name)))?;
+    let alias = clean_label_1line(&raw);
+    Ok((name, (!alias.is_empty()).then_some(alias)))
 }
 
 fn parse_er_name(cur: &mut Cur<'_>, lineno: usize) -> Result<String, ParseError> {
     cur.skip_ws();
+    if cur.eat("\"") {
+        let name = cur
+            .take_until("\"")
+            .ok_or_else(|| err(lineno, "unclosed quoted entity name".to_string()))?;
+        let name = decode_entities(name.trim());
+        if name.is_empty() {
+            return Err(err(lineno, "empty quoted entity name".to_string()));
+        }
+        return Ok(name);
+    }
     let start = cur.pos;
     while let Some(c) = cur.peek() {
         if c.is_alphanumeric() || c == '_' || c == '-' {
@@ -3010,35 +3103,166 @@ fn parse_er_name(cur: &mut Cur<'_>, lineno: usize) -> Result<String, ParseError>
     Ok(cur.s[start..cur.pos].to_string())
 }
 
-/// Crow's foot relationship operator, e.g. `||--o{` or `}o..o|`.
-/// The token adjacent to each entity is that entity's cardinality.
-fn parse_rel_op(cur: &mut Cur<'_>) -> Option<(Card, bool, Card)> {
-    const LEFT: &[(&str, Card)] = &[
-        ("||", Card::One),
-        ("|o", Card::ZeroOne),
-        ("}o", Card::ZeroMany),
-        ("}|", Card::OneMany),
-    ];
-    const RIGHT: &[(&str, Card)] = &[
-        ("||", Card::One),
-        ("o|", Card::ZeroOne),
-        ("o{", Card::ZeroMany),
-        ("|{", Card::OneMany),
-    ];
+/// Mermaid's cardinality tokens, symbolic and spelled out, in its
+/// lexer's order (the first match wins, so `one or more` is tried
+/// before `one`). Either side takes any of them: the symbols merely
+/// face their entity in the usual spelling (`||--o{`).
+const ER_CARDS: &[(&str, Card)] = &[
+    ("one or zero", Card::ZeroOne),
+    ("one or more", Card::OneMany),
+    ("one or many", Card::OneMany),
+    ("1+", Card::OneMany),
+    ("|o", Card::ZeroOne),
+    ("zero or one", Card::ZeroOne),
+    ("zero or more", Card::ZeroMany),
+    ("zero or many", Card::ZeroMany),
+    ("0+", Card::ZeroMany),
+    ("}o", Card::ZeroMany),
+    ("many(0)", Card::ZeroMany),
+    ("many(1)", Card::OneMany),
+    ("many", Card::ZeroMany),
+    ("}|", Card::OneMany),
+    ("one", Card::One),
+    ("only one", Card::One),
+    ("1", Card::One),
+    ("||", Card::One),
+    ("o|", Card::ZeroOne),
+    ("o{", Card::ZeroMany),
+    ("|{", Card::OneMany),
+];
+
+/// Mermaid's line tokens: `true` = identifying (solid).
+const ER_LINES: &[(&str, bool)] = &[
+    ("..", false),
+    ("--", true),
+    ("to", true),
+    ("optionally to", false),
+    (".-", false),
+    ("-.", false),
+];
+
+/// The first entry of `table` the cursor starts with (letters compared
+/// case-insensitively, as mermaid's lexer does); a token ending in a
+/// letter or digit must not run on into a word (`one` is not `onex`).
+fn er_token<T: Copy>(cur: &mut Cur<'_>, table: &[(&str, T)]) -> Option<T> {
     let rest = cur.rest();
-    let (lt, lc) = LEFT.iter().find(|(t, _)| rest.starts_with(t))?;
-    let after_left = &rest[lt.len()..];
-    let identifying = if after_left.starts_with("--") {
-        true
-    } else if after_left.starts_with("..") {
-        false
-    } else {
-        return None;
+    let (tok, v) = table.iter().find(|(t, _)| {
+        rest.get(..t.len())
+            .is_some_and(|head| head.eq_ignore_ascii_case(t))
+            && (!t.ends_with(|c: char| c.is_ascii_alphanumeric())
+                || !rest[t.len()..].starts_with(|c: char| c.is_alphanumeric() || c == '_'))
+    })?;
+    cur.pos += tok.len();
+    Some(*v)
+}
+
+/// Crow's foot relationship operator: a cardinality, a line and a
+/// cardinality, e.g. `||--o{`, `}o..o|` or `only one to zero or more`.
+/// The token next to each entity is that entity's cardinality.
+fn parse_rel_op(cur: &mut Cur<'_>) -> Option<(Card, bool, Card)> {
+    let at = cur.pos;
+    let parsed = (|| {
+        let from = er_token(cur, ER_CARDS)?;
+        cur.skip_ws();
+        let identifying = er_token(cur, ER_LINES)?;
+        cur.skip_ws();
+        let to = er_token(cur, ER_CARDS)?;
+        Some((from, identifying, to))
+    })();
+    if parsed.is_none() {
+        cur.pos = at;
+    }
+    parsed
+}
+
+/// The attribute rows of one block line. Mermaid tokenises a block, so
+/// a line may hold several rows (`string a string b`): words, key lists
+/// (`PK, FK`) and `"comments"` that end at the next quote. A line
+/// that does not read that way is read as one classic row — whose
+/// comment, holding `"` itself, runs to the LAST quote — and when that
+/// fails too, its error names the culprit (`unknown attribute key`).
+fn parse_attrs(line: &str, lineno: usize) -> Result<Vec<Attr>, ParseError> {
+    attrs_by_tokens(line, lineno).or_else(|_| parse_attr(line, lineno).map(|a| vec![a]))
+}
+
+/// A key word of an attribute row (`PK`, `fk`, …), any case.
+fn er_key(word: &str) -> Option<Key> {
+    match word.to_ascii_uppercase().as_str() {
+        "PK" => Some(Key::Pk),
+        "FK" => Some(Key::Fk),
+        "UK" => Some(Key::Uk),
+        _ => None,
+    }
+}
+
+/// [`parse_attrs`]'s token reading: `type name [key[, key]…] ["comment"]`
+/// repeated.
+fn attrs_by_tokens(line: &str, lineno: usize) -> Result<Vec<Attr>, ParseError> {
+    // (text, quoted)
+    let mut toks: Vec<(String, bool)> = Vec::new();
+    let mut cur = Cur::new(line);
+    loop {
+        cur.skip_ws();
+        if cur.at_end() {
+            break;
+        }
+        if cur.eat("\"") {
+            let c = cur
+                .take_until("\"")
+                .ok_or_else(|| err(lineno, "unclosed attribute comment quote".to_string()))?;
+            toks.push((c, true));
+            continue;
+        }
+        let start = cur.pos;
+        while let Some(c) = cur.peek() {
+            if c.is_whitespace() || c == '"' {
+                break;
+            }
+            cur.bump();
+        }
+        toks.push((line[start..cur.pos].to_string(), false));
+    }
+    let mut out = Vec::new();
+    let mut i = 0;
+    let word = |i: usize, what: String| -> Result<String, ParseError> {
+        match toks.get(i) {
+            Some((w, false)) => Ok(w.clone()),
+            _ => Err(err(lineno, what)),
+        }
     };
-    let after_line = &after_left[2..];
-    let (rt, rc) = RIGHT.iter().find(|(t, _)| after_line.starts_with(t))?;
-    cur.pos += lt.len() + 2 + rt.len();
-    Some((*lc, identifying, *rc))
+    while i < toks.len() {
+        let ty = word(i, "expected an attribute type".to_string())?;
+        let name = word(
+            i + 1,
+            format!("expected an attribute name after type '{}'", ty),
+        )?;
+        i += 2;
+        let mut keys = Vec::new();
+        // `PK,FK`, `PK, FK` and `PK , FK` all list two keys.
+        while let Some((w, false)) = toks.get(i) {
+            let parts: Vec<&str> = w.split(',').filter(|p| !p.is_empty()).collect();
+            let ks: Option<Vec<Key>> = parts.iter().map(|p| er_key(p)).collect();
+            match ks {
+                Some(ks) if !(parts.is_empty() && keys.is_empty()) => keys.extend(ks),
+                _ => break,
+            }
+            i += 1;
+        }
+        let comment = match toks.get(i) {
+            Some((c, true)) => {
+                i += 1;
+                Some(c.clone())
+            }
+            _ => None,
+        };
+        out.push(Attr {
+            ty,
+            name,
+            keys,
+            comment,
+        });
+    }
+    Ok(out)
 }
 
 /// One attribute row: `type name [PK|FK|UK]... ["comment"]`.
@@ -3339,6 +3563,21 @@ fn split_card_end(s: &str, card_after: bool) -> (&str, Option<String>) {
 // ---------------------------------------------------------------
 // Sequence diagram (`sequenceDiagram`)
 // ---------------------------------------------------------------
+
+/// Apply `config.sequence.*` from YAML frontmatter (see
+/// [`frontmatter_config`]): mermaid's `mirrorActors`, plus flowmaid's
+/// `scopedFrames`. A value that is not a YAML boolean keeps the
+/// default; unknown keys (mermaid has many) are skipped.
+fn apply_sequence_config(d: &mut SequenceDiagram, source: &str) {
+    for (k, v) in frontmatter_config(source, "sequence") {
+        let v = unquote_yaml(v);
+        match k {
+            "mirrorActors" => d.mirror_actors = yaml_bool(&v, d.mirror_actors),
+            "scopedFrames" => d.scoped_frames = yaml_bool(&v, d.scoped_frames),
+            _ => {}
+        }
+    }
+}
 
 /// Parse a `sequenceDiagram` body. `header_line` is the 1-indexed
 /// line of the header; everything up to and including it is skipped.
@@ -3782,11 +4021,10 @@ fn parse_seq_message(
 /// value wins, matching `Graph::ensure_node`'s latest-wins rule.
 fn parse_pie(source: &str, header_line: usize) -> Result<PieChart, ParseError> {
     let mut d = PieChart::default();
-    // Accessibility statements parse (so they never misread as
-    // content) but are not stored yet: this model's fields are all
-    // public, so a new field would break struct-literal users.
-    let (source, _acc) = extract_acc(source, header_line, false, AccFlavor::Langium)?;
+    let (source, acc) = extract_acc(source, header_line, false, AccFlavor::Langium)?;
     let source: &str = &source;
+    d.acc_title = acc.title;
+    d.acc_descr = acc.descr;
 
     // Header forms: `pie`, `pie showData`, `pie title T`,
     // `pie showData title T` (title consumes the rest of the line).
@@ -3880,11 +4118,16 @@ fn parse_pie_row(line: &str, lineno: usize) -> Result<(String, f64), ParseError>
 /// shallower line. Node text may be wrapped to pick a shape
 /// (`[..]` square, `(..)` rounded, `((..))` circle, `{{..}}` hexagon,
 /// `))..((` bang, `)..(` cloud); an optional leading id is dropped.
-/// `::icon(..)` and `:::class` decoration lines are ignored.
+/// A `::icon(..)` line and a `:::a b` class line decorate the node
+/// above them, as in mermaid. `classDef name fill:..,color:..` lines
+/// (a flowmaid extension — mermaid's mindmap leaves classes to page
+/// CSS) colour the nodes carrying that class.
 fn parse_mindmap(source: &str, header_line: usize) -> Result<Mindmap, ParseError> {
     let mut d = Mindmap::default();
     // Stack of open ancestors as (indent, node index), shallow -> deep.
     let mut stack: Vec<(usize, usize)> = Vec::new();
+    // classDefs may follow their use, as in flowcharts: resolved at the end.
+    let mut class_defs: HashMap<String, NodeStyle> = HashMap::new();
 
     for (i, raw) in source.lines().enumerate() {
         let lineno = i + 1;
@@ -3895,10 +4138,35 @@ fn parse_mindmap(source: &str, header_line: usize) -> Result<Mindmap, ParseError
         if trimmed.is_empty() || trimmed.starts_with("%%") {
             continue;
         }
-        // Decoration lines attach to the previous node — we don't draw
-        // icons/classes, so skip them without creating a node.
-        if trimmed.starts_with("::icon(") || trimmed.starts_with(":::") {
+        // Decoration lines attach to the previous node, whatever their
+        // indentation (mermaid's `decorateNode`); before any node there
+        // is nothing to decorate.
+        if let Some(rest) = trimmed.strip_prefix("::icon(") {
+            // The icon runs to the first `)`, like mermaid's lexer.
+            let icon = rest.split(')').next().unwrap_or("").trim();
+            if let (Some(last), false) = (d.nodes.last_mut(), icon.is_empty()) {
+                last.icon = Some(icon.to_string());
+            }
             continue;
+        }
+        if let Some(rest) = trimmed.strip_prefix(":::") {
+            if let Some(last) = d.nodes.last_mut() {
+                last.classes
+                    .extend(rest.split_whitespace().map(str::to_string));
+            }
+            continue;
+        }
+        // `classDef name props` — only when the props parse, so a node
+        // whose text merely starts with the word stays a node.
+        if let Some(rest) = strip_keyword(trimmed, "classDef") {
+            if let Some((names, props)) = rest.trim().split_once(char::is_whitespace) {
+                if let Ok(st) = parse_props(props.trim(), lineno) {
+                    for name in names.split(',').filter(|n| !n.is_empty()) {
+                        class_defs.insert(name.to_string(), st.clone());
+                    }
+                    continue;
+                }
+            }
         }
 
         let indent = mind_indent(raw);
@@ -3919,7 +4187,6 @@ fn parse_mindmap(source: &str, header_line: usize) -> Result<Mindmap, ParseError
             parent = Some(0);
         }
 
-        let idx = d.nodes.len();
         let depth = parent.map_or(0, |p| d.nodes[p].depth + 1);
         if depth >= MAX_NEST_DEPTH {
             return Err(err(
@@ -3927,24 +4194,7 @@ fn parse_mindmap(source: &str, header_line: usize) -> Result<Mindmap, ParseError
                 format!("mindmap nesting too deep (max {MAX_NEST_DEPTH} levels)"),
             ));
         }
-        // A node's colored branch is its depth-1 ancestor; the root
-        // has none. depth-1 nodes seed their own branch.
-        let branch = match depth {
-            0 => None,
-            1 => Some(idx),
-            _ => d.nodes[parent.unwrap()].branch,
-        };
-        d.nodes.push(MindNode {
-            text,
-            shape,
-            parent,
-            children: Vec::new(),
-            depth,
-            branch,
-        });
-        if let Some(p) = parent {
-            d.nodes[p].children.push(idx);
-        }
+        let idx = d.add_node(parent, text, shape);
         stack.push((indent, idx));
     }
 
@@ -3953,6 +4203,13 @@ fn parse_mindmap(source: &str, header_line: usize) -> Result<Mindmap, ParseError
             header_line,
             "mindmap has no nodes (expected an indented tree under the header)".to_string(),
         ));
+    }
+    for n in &mut d.nodes {
+        for c in &n.classes {
+            if let Some(st) = class_defs.get(c) {
+                n.style.apply_over(st);
+            }
+        }
     }
     Ok(d)
 }
@@ -3995,7 +4252,7 @@ fn parse_mind_node(t: &str) -> (String, MindShape) {
             }
         }
     }
-    (mind_br(t), MindShape::Rounded)
+    (mind_br(t), MindShape::Default)
 }
 
 /// Normalise a mindmap label: `<br>` / `<br/>` / `<br />` -> newline,
@@ -4022,11 +4279,10 @@ fn mind_br(s: &str) -> String {
 /// before the first `section` go into a leading unnamed section.
 fn parse_journey(source: &str, header_line: usize) -> Result<Journey, ParseError> {
     let mut d = Journey::default();
-    // Accessibility statements parse (so they never misread as
-    // content) but are not stored yet: this model's fields are all
-    // public, so a new field would break struct-literal users.
-    let (source, _acc) = extract_acc(source, header_line, false, AccFlavor::Jison)?;
+    let (source, acc) = extract_acc(source, header_line, false, AccFlavor::Jison)?;
     let source: &str = &source;
+    d.acc_title = acc.title;
+    d.acc_descr = acc.descr;
     // Ensure there is always a current section to push tasks into.
     let ensure_section = |d: &mut Journey| {
         if d.sections.is_empty() {
@@ -4078,10 +4334,15 @@ fn parse_journey(source: &str, header_line: usize) -> Result<Journey, ParseError
         if name.is_empty() {
             return Err(err(lineno, "journey task needs a name".to_string()));
         }
-        let score: u8 = score_str
-            .parse()
-            .map_err(|_| err(lineno, format!("invalid journey score: '{}'", score_str)))?;
-        let score = score.clamp(1, 5);
+        // Mermaid reads the score with `Number()`, so `3.5` and `-1`
+        // are scores too; `JourneyTask::new` clamps them to the 1..=5
+        // scale the faces draw (a NaN has no place on it and stays an
+        // error).
+        let score: f64 = score_str
+            .parse::<f64>()
+            .ok()
+            .filter(|v| !v.is_nan())
+            .ok_or_else(|| err(lineno, format!("invalid journey score: '{}'", score_str)))?;
         // Resolve actors to stable indices (dedup, first-appearance order).
         let mut actor_ids = Vec::new();
         for a in actors_str.split(',') {
@@ -4098,11 +4359,11 @@ fn parse_journey(source: &str, header_line: usize) -> Result<Journey, ParseError
             }
         }
         ensure_section(&mut d);
-        d.sections.last_mut().unwrap().tasks.push(JourneyTask {
-            name: name.to_string(),
-            score,
-            actors: actor_ids,
-        });
+        d.sections
+            .last_mut()
+            .unwrap()
+            .tasks
+            .push(JourneyTask::new(name, score, actor_ids));
     }
     Ok(d)
 }
@@ -4175,11 +4436,10 @@ fn split_timeline_events(rest: &str) -> Vec<String> {
 /// `%%` are comments; `<br>` variants become line breaks later at render.
 fn parse_timeline(source: &str, header_line: usize) -> Result<Timeline, ParseError> {
     let mut d = Timeline::default();
-    // Accessibility statements parse (so they never misread as
-    // content) but are not stored yet: this model's fields are all
-    // public, so a new field would break struct-literal users.
-    let (source, _acc) = extract_acc(source, header_line, false, AccFlavor::Jison)?;
+    let (source, acc) = extract_acc(source, header_line, false, AccFlavor::Jison)?;
     let source: &str = &source;
+    d.acc_title = acc.title;
+    d.acc_descr = acc.descr;
     if let Some(header) = source.lines().nth(header_line.saturating_sub(1)) {
         d.direction = parse_timeline_direction(header);
     }
@@ -4264,8 +4524,17 @@ fn parse_timeline(source: &str, header_line: usize) -> Result<Timeline, ParseErr
 /// `branch` creates a new branch from the current branch's HEAD, and
 /// `checkout`/`switch` moves the active branch. `merge` produces a
 /// merge commit whose second parent is the named branch's HEAD.
+///
+/// `branch name order: n` places the branch's lane the way mermaid
+/// does: lanes sort by `order`, a branch without one sitting after
+/// main (and any `order: 0` branch) and before `order: 1`, branches
+/// that tie keeping creation order. The resulting lane rank is what
+/// each [`GitBranch::order`] holds once parsing is done.
 fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseError> {
     let mut d = GitGraph::default();
+    // The `order:` each branch was declared with, by branch index;
+    // main is mermaid's `mainBranchOrder` (0).
+    let mut declared_order: Vec<Option<usize>> = vec![Some(0)];
     // Accessibility statements parse (so they never misread as
     // content) but are not stored yet: this model's fields are all
     // public, so a new field would break struct-literal users.
@@ -4327,7 +4596,7 @@ fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseErr
         }
 
         if let Some(rest) = strip_keyword(line, "branch") {
-            let name = rest.trim();
+            let (name, order) = parse_git_branch(rest, lineno)?;
             if name.is_empty() {
                 return Err(err(lineno, "branch needs a name".to_string()));
             }
@@ -4336,20 +4605,22 @@ fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseErr
             }
             let from_branch = d.current_branch;
             let from_commit = d.branches[from_branch].head;
-            let order = d.branches.len();
+            let idx = d.branches.len();
             d.branches.push(GitBranch {
                 name: name.to_string(),
                 parent_branch: Some(from_branch),
                 parent_commit: from_commit,
                 head: from_commit,
-                order,
+                // Creation order until the lanes are ranked below.
+                order: idx,
             });
-            d.current_branch = order;
+            declared_order.push(order);
+            d.current_branch = idx;
             continue;
         }
 
         if let Some(rest) = strip_keyword(line, "checkout") {
-            let name = rest.trim();
+            let name = unquote_git_name(rest);
             let idx = d
                 .branches
                 .iter()
@@ -4360,7 +4631,7 @@ fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseErr
         }
 
         if let Some(rest) = strip_keyword(line, "switch") {
-            let name = rest.trim();
+            let name = unquote_git_name(rest);
             let idx = d
                 .branches
                 .iter()
@@ -4371,7 +4642,7 @@ fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseErr
         }
 
         if let Some(rest) = strip_keyword(line, "merge") {
-            // `merge branch [id: "x"] [tag: "y"]`.
+            // `merge branch [id: "x"] [tag: "y"] [type: HIGHLIGHT]`.
             let attrs = parse_git_attrs(rest, lineno, true)?;
             let branch_name = attrs
                 .get("__head")
@@ -4408,6 +4679,13 @@ fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseErr
                 return Err(err(lineno, format!("duplicate commit id: '{}'", id)));
             }
             let tag = attrs.get("tag").cloned();
+            // Mermaid lets a merge carry a commit type too; it decides
+            // the merge commit's glyph like any commit's.
+            let kind = attrs
+                .get("type")
+                .map(|t| parse_commit_kind(t, lineno))
+                .transpose()?
+                .unwrap_or_default();
             let seq = d.commits.len();
             let idx = d.commits.len();
             d.commits.push(GitCommit {
@@ -4416,7 +4694,7 @@ fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseErr
                 parent,
                 second_parent: Some(src_head),
                 tag,
-                kind: CommitKind::Normal,
+                kind,
                 seq,
             });
             d.branches[branch_idx].head = Some(idx);
@@ -4426,7 +4704,55 @@ fn parse_gitgraph(source: &str, header_line: usize) -> Result<GitGraph, ParseErr
         return Err(err(lineno, format!("unknown gitGraph command: '{}'", line)));
     }
 
+    // Rank the lanes: by declared order, an undeclared branch between
+    // order 0 and order 1, ties in creation order. (Mermaid keys an
+    // undeclared branch `0.<index>`, which puts the 10th branch level
+    // with the 1st; creation order is what that key means to say.)
+    let mut by_lane: Vec<usize> = (0..d.branches.len()).collect();
+    by_lane.sort_by_key(|&i| match declared_order[i] {
+        Some(n) => (n, 0, i),
+        None => (0, 1, i),
+    });
+    for (lane, i) in by_lane.into_iter().enumerate() {
+        d.branches[i].order = lane;
+    }
+
     Ok(d)
+}
+
+/// `name [order: n]` after `branch`: the name (quotes stripped) and the
+/// declared lane order. A name may hold spaces (flowmaid always took
+/// the whole rest of the line); only a trailing `order: <n>` is split
+/// off.
+fn parse_git_branch(rest: &str, lineno: usize) -> Result<(&str, Option<usize>), ParseError> {
+    let rest = rest.trim();
+    let split = rest
+        .match_indices("order:")
+        .map(|(i, _)| i)
+        .filter(|&i| i > 0 && rest[..i].ends_with(char::is_whitespace))
+        .last();
+    let Some(at) = split else {
+        return Ok((unquote_git_name(rest), None));
+    };
+    let value = rest[at + "order:".len()..].trim();
+    let order = value.parse::<usize>().map_err(|_| {
+        err(
+            lineno,
+            format!(
+                "branch order must be a non-negative integer, got '{}'",
+                value
+            ),
+        )
+    })?;
+    Ok((unquote_git_name(&rest[..at]), Some(order)))
+}
+
+/// A branch reference as mermaid writes it: bare, or in double quotes.
+fn unquote_git_name(s: &str) -> &str {
+    let s = s.trim();
+    s.strip_prefix('"')
+        .and_then(|t| t.strip_suffix('"'))
+        .unwrap_or(s)
 }
 
 /// Parse `key: "value"` attributes for git commands.
@@ -4451,7 +4777,14 @@ fn parse_git_attrs(
     // (branch name for merge/branch/checkout) unless it is itself an
     // attribute key like `id:`.
     let rest: &str = if allow_head {
-        if let Some((first, tail)) = text.split_once(char::is_whitespace) {
+        // A quoted head (`merge "my branch" id: "m"`) may hold spaces.
+        let quoted = text
+            .strip_prefix('"')
+            .and_then(|t| t.find('"').map(|end| (&t[..end], &t[end + 1..])));
+        if let Some((head, tail)) = quoted {
+            out.insert("__head".to_string(), head.to_string());
+            tail.trim_start()
+        } else if let Some((first, tail)) = text.split_once(char::is_whitespace) {
             if is_git_attr_key(first.trim_end_matches(':')) {
                 text
             } else {
@@ -4474,6 +4807,13 @@ fn parse_git_attrs(
         cur.skip_ws();
         if cur.at_end() {
             break;
+        }
+        // Mermaid's `commit "text"`: a bare string is the commit
+        // message, the same as `msg: "text"`.
+        if !allow_head && cur.peek() == Some('"') {
+            let value = parse_git_value(&mut cur, lineno)?;
+            out.insert("msg".to_string(), value);
+            continue;
         }
         let key = cur.take_until(":").ok_or_else(|| {
             err(
@@ -4499,8 +4839,10 @@ fn parse_git_attrs(
     Ok(out)
 }
 
+/// Attribute keys `commit` / `merge` take. `msg` (a commit message) is
+/// read and dropped: mermaid draws no message either.
 fn is_git_attr_key(s: &str) -> bool {
-    matches!(s, "id" | "tag" | "type")
+    matches!(s, "id" | "tag" | "type" | "msg")
 }
 
 fn parse_git_value(cur: &mut Cur<'_>, lineno: usize) -> Result<String, ParseError> {
@@ -4542,15 +4884,15 @@ fn parse_commit_kind(s: &str, lineno: usize) -> Result<CommitKind, ParseError> {
 // Architecture diagram (`architecture-beta`)
 // ---------------------------------------------------------------
 
-/// Parse an architecture-beta diagram. Groups and services are declared
-/// with `group` / `service`, and edges connect named port sides
-/// (`svc:L -- R:other`).
+/// Parse an architecture-beta diagram. Groups, services and junctions
+/// are declared with `group` / `service` / `junction`, and edges
+/// connect named port sides (`svc:L -- R:other`, labelled
+/// `svc:L -[label]- R:other`).
 fn parse_architecture(source: &str, header_line: usize) -> Result<Architecture, ParseError> {
     let mut d = Architecture::default();
-    // Accessibility statements parse (so they never misread as
-    // content) but are not stored yet: this model's fields are all
-    // public, so a new field would break struct-literal users.
-    let (source, _acc) = extract_acc(source, header_line, false, AccFlavor::Langium)?;
+    let (source, acc) = extract_acc(source, header_line, false, AccFlavor::Langium)?;
+    d.acc_title = acc.title;
+    d.acc_descr = acc.descr;
     let source: &str = &source;
     let mut group_ids: HashMap<String, usize> = HashMap::new();
     let mut service_ids: HashMap<String, usize> = HashMap::new();
@@ -4592,12 +4934,49 @@ fn parse_architecture(source: &str, header_line: usize) -> Result<Architecture, 
                 title,
                 icon,
                 group: parent,
+                junction: false,
             });
             service_ids.insert(id, idx);
             continue;
         }
 
-        if line.contains("--") {
+        if let Some(rest) = strip_keyword(line, "junction") {
+            let (id, parent) = parse_arch_junction(rest, lineno, &group_ids)?;
+            if service_ids.contains_key(&id) {
+                return Err(err(lineno, format!("duplicate junction id: '{}'", id)));
+            }
+            let idx = d.services.len();
+            d.services.push(ArchService {
+                id: id.clone(),
+                title: String::new(),
+                icon: None,
+                group: parent,
+                junction: true,
+            });
+            service_ids.insert(id, idx);
+            continue;
+        }
+
+        // mermaid's `align row a b …` / `align column a b …` layout
+        // hints: accepted so such diagrams render, not applied — the
+        // port-driven layout already lines up what the edges connect.
+        if let Some(rest) = strip_keyword(line, "align") {
+            let mut words = rest.split_whitespace();
+            let dir_ok = matches!(words.next(), Some("row") | Some("column"));
+            let ids: Vec<&str> = words.collect();
+            if !dir_ok || ids.len() < 2 {
+                return Err(err(
+                    lineno,
+                    "expected `align row|column <id> <id> …`".to_string(),
+                ));
+            }
+            if let Some(missing) = ids.iter().find(|id| !service_ids.contains_key(**id)) {
+                return Err(err(lineno, format!("service '{}' not found", missing)));
+            }
+            continue;
+        }
+
+        if line.contains("--") || line.contains("-[") {
             let e = parse_arch_edge(line, lineno, &service_ids, &group_ids, &d.services)?;
             d.edges.push(e);
             continue;
@@ -4612,8 +4991,9 @@ fn parse_architecture(source: &str, header_line: usize) -> Result<Architecture, 
     Ok(d)
 }
 
-/// Parse `id(icon)[title] in parent`. `icon` is optional; `in parent` is
-/// optional and must name a group already declared.
+/// Parse `id(icon)[title] in parent`. `icon`, `[title]` and
+/// `in parent` are optional (as in mermaid); `parent` must name a group
+/// already declared. A title may be quoted (`["Edge, west"]`).
 fn parse_arch_decl(
     rest: &str,
     lineno: usize,
@@ -4642,38 +5022,77 @@ fn parse_arch_decl(
     } else {
         None
     };
-    if !tail.starts_with('[') {
-        return Err(err(
-            lineno,
-            format!("{} title must be wrapped in […]", kind),
-        ));
+    let title = if tail.starts_with('[') {
+        let close = tail
+            .find(']')
+            .ok_or_else(|| err(lineno, "unclosed title '['".to_string()))?;
+        let t = arch_unquote(&tail[1..close]);
+        tail = &tail[close + 1..];
+        t
+    } else {
+        String::new()
+    };
+    let tail = tail.trim();
+    let parent = arch_parent(tail, lineno, groups)?;
+    Ok((id, icon, title, parent))
+}
+
+/// Parse `id` / `id in parent` after the `junction` keyword.
+fn parse_arch_junction(
+    rest: &str,
+    lineno: usize,
+    groups: &HashMap<String, usize>,
+) -> Result<(String, Option<usize>), ParseError> {
+    let rest = rest.trim();
+    let id_end = rest.find(char::is_whitespace).unwrap_or(rest.len());
+    let id = &rest[..id_end];
+    if id.is_empty() || id.contains(['(', '[', ':', '{']) {
+        return Err(err(lineno, "junction needs a plain id".to_string()));
     }
-    let close = tail
-        .find(']')
-        .ok_or_else(|| err(lineno, "unclosed title '['".to_string()))?;
-    let title = tail[1..close].trim().to_string();
-    tail = tail[close + 1..].trim();
-    let parent = if let Some(pname) = strip_keyword(tail, "in") {
+    let parent = arch_parent(rest[id_end..].trim(), lineno, groups)?;
+    Ok((id.to_string(), parent))
+}
+
+/// The optional `in parent` that closes a declaration; anything else
+/// left over is an error.
+fn arch_parent(
+    tail: &str,
+    lineno: usize,
+    groups: &HashMap<String, usize>,
+) -> Result<Option<usize>, ParseError> {
+    if let Some(pname) = strip_keyword(tail, "in") {
         let pname = pname.trim();
         if pname.is_empty() {
             return Err(err(lineno, "missing parent group name".to_string()));
         }
-        Some(
-            *groups
-                .get(pname)
-                .ok_or_else(|| err(lineno, format!("parent group '{}' not found", pname)))?,
-        )
+        Ok(Some(*groups.get(pname).ok_or_else(|| {
+            err(lineno, format!("parent group '{}' not found", pname))
+        })?))
     } else if !tail.is_empty() {
-        return Err(err(lineno, format!("unexpected trailing text: '{}'", tail)));
+        Err(err(lineno, format!("unexpected trailing text: '{}'", tail)))
     } else {
-        None
-    };
-    Ok((id, icon, title, parent))
+        Ok(None)
+    }
 }
 
-/// Parse an edge such as `svc1:L -- R:svc2`, `a:T --> B:b`, or
-/// `svc1:L <--> R:svc2`. Optional `{group}` qualifiers after a service id
-/// (`svc1{group}:L`) are accepted and validated against the service's parent.
+/// A `[…]` title body: trimmed, with one pair of matching surrounding
+/// quotes removed (mermaid accepts `["…"]` and `['…']`).
+fn arch_unquote(s: &str) -> String {
+    let t = s.trim();
+    let quoted = t.len() >= 2
+        && ((t.starts_with('"') && t.ends_with('"')) || (t.starts_with('\'') && t.ends_with('\'')));
+    if quoted {
+        t[1..t.len() - 1].to_string()
+    } else {
+        t.to_string()
+    }
+}
+
+/// Parse an edge such as `svc1:L -- R:svc2`, `a:T --> B:b`,
+/// `svc1:L <--> R:svc2` or the labelled `a:R -[calls]-> L:b`.
+/// Mermaid's `{group}` modifier after a service id (`svc1{group}:L`)
+/// attaches that end to the service's group frame; flowmaid's named
+/// form `svc1{g}:L` does the same and checks that `svc1` sits in `g`.
 fn parse_arch_edge(
     line: &str,
     lineno: usize,
@@ -4681,11 +5100,27 @@ fn parse_arch_edge(
     groups: &HashMap<String, usize>,
     arch_services: &[ArchService],
 ) -> Result<ArchEdge, ParseError> {
-    let idx = line
-        .find("--")
-        .ok_or_else(|| err(lineno, "edge must contain '--'".to_string()))?;
-    let mut left = line[..idx].trim();
-    let mut right = line[idx + 2..].trim();
+    // The connector: a labelled `-[…]-`, else a plain `--`.
+    let (mut left, mut right, title) = match line.find("-[") {
+        Some(open) => {
+            let close = line[open..]
+                .find("]-")
+                .map(|c| open + c)
+                .ok_or_else(|| err(lineno, "unclosed edge label '-['".to_string()))?;
+            let title = arch_unquote(&line[open + 2..close]);
+            (
+                line[..open].trim(),
+                line[close + 2..].trim(),
+                Some(title).filter(|t| !t.is_empty()),
+            )
+        }
+        None => {
+            let idx = line
+                .find("--")
+                .ok_or_else(|| err(lineno, "edge must contain '--'".to_string()))?;
+            (line[..idx].trim(), line[idx + 2..].trim(), None)
+        }
+    };
 
     let arrow_start = left.ends_with('<');
     if arrow_start {
@@ -4706,8 +5141,10 @@ fn parse_arch_edge(
         .get(&to_id)
         .ok_or_else(|| err(lineno, format!("service '{}' not found", to_id)))?;
 
-    validate_arch_group_qualifier(from, from_group, "from", lineno, groups, arch_services)?;
-    validate_arch_group_qualifier(to, to_group, "to", lineno, groups, arch_services)?;
+    let from_group =
+        validate_arch_group_qualifier(from, from_group, "from", lineno, groups, arch_services)?;
+    let to_group =
+        validate_arch_group_qualifier(to, to_group, "to", lineno, groups, arch_services)?;
 
     Ok(ArchEdge {
         from,
@@ -4716,9 +5153,16 @@ fn parse_arch_edge(
         to_side,
         arrow_start,
         arrow_end,
+        from_group,
+        to_group,
+        title,
     })
 }
 
+/// Check an endpoint's `{…}` qualifier and say whether the end attaches
+/// to the service's group frame. Mermaid's literal `{group}` names the
+/// service's own group (a service outside any group keeps its own
+/// box); any other name must be the group the service sits in.
 fn validate_arch_group_qualifier(
     service_idx: usize,
     qualifier: Option<String>,
@@ -4726,10 +5170,13 @@ fn validate_arch_group_qualifier(
     lineno: usize,
     groups: &HashMap<String, usize>,
     arch_services: &[ArchService],
-) -> Result<(), ParseError> {
+) -> Result<bool, ParseError> {
     let Some(name) = qualifier else {
-        return Ok(());
+        return Ok(false);
     };
+    if name == "group" && !groups.contains_key("group") {
+        return Ok(arch_services[service_idx].group.is_some());
+    }
     let group_idx = *groups.get(&name).ok_or_else(|| {
         err(
             lineno,
@@ -4745,7 +5192,7 @@ fn validate_arch_group_qualifier(
             ),
         ));
     }
-    Ok(())
+    Ok(true)
 }
 
 fn parse_arch_endpoint_left(
@@ -5095,48 +5542,102 @@ fn frontmatter_body(source: &str) -> Option<Vec<&str>> {
     Some(source.lines().take(close).skip(1).collect())
 }
 
-/// Read `config.sankey.*` out of YAML frontmatter.
-///
-/// Deliberately NOT a YAML parser: it walks indentation for the
-/// `config:` -> `sankey:` path and reads scalar `key: value` pairs under
-/// it. Richer YAML (anchors, flow maps, block scalars) is ignored rather
-/// than guessed at, and unknown keys are skipped mermaid-style so a file
-/// carrying config for other diagrams still renders.
+/// Read `config.sankey.*` out of YAML frontmatter (see
+/// [`frontmatter_section`]).
 fn sankey_config(source: &str) -> SankeyConfig {
     let mut cfg = SankeyConfig::default();
+    // Indent of a `nodeColors:` key whose block map follows. Its entries
+    // are node labels, so they must never reach `apply_sankey_key` — a
+    // node called `width` would otherwise resize the canvas.
+    let mut colors_at: Option<usize> = None;
+    for (ind, t) in frontmatter_section(source, "sankey") {
+        if let Some(at) = colors_at {
+            if ind > at {
+                if let Some((k, v)) = yaml_pair(t) {
+                    set_node_color(&mut cfg, k, unquote_yaml(v));
+                }
+                continue;
+            }
+            colors_at = None;
+        }
+        if let Some((k, v)) = yaml_pair(t) {
+            if k == "nodeColors" {
+                let v = v.trim();
+                if v.is_empty() {
+                    colors_at = Some(ind);
+                } else if let Some(map) = v
+                    .strip_prefix('{')
+                    .and_then(|m| m.trim_end().strip_suffix('}'))
+                {
+                    for item in yaml_flow_items(map) {
+                        if let Some((k, v)) = yaml_pair(item) {
+                            set_node_color(&mut cfg, k, unquote_yaml(v));
+                        }
+                    }
+                }
+                continue;
+            }
+            apply_sankey_key(&mut cfg, k, v);
+        }
+    }
+    cfg
+}
+
+/// The scalar `key: value` pairs (key trimmed, value raw — run it
+/// through [`unquote_yaml`]) of the `config.<section>:` block in YAML
+/// frontmatter, in source order; empty when there is none. Nested
+/// lines are flattened, so callers see every `key: value` under the
+/// section (see [`frontmatter_section`]).
+fn frontmatter_config<'a>(source: &'a str, section: &str) -> Vec<(&'a str, &'a str)> {
+    frontmatter_section(source, section)
+        .into_iter()
+        .filter_map(|(_, t)| t.split_once(':').map(|(k, v)| (k.trim(), v)))
+        .collect()
+}
+
+/// Every line inside the `config.<section>:` block of YAML frontmatter,
+/// as (indent, trimmed text) in source order — blank and `#` comment
+/// lines left out; empty when there is no such block. The indent lets a
+/// caller follow a nested block map (sankey's `nodeColors`).
+///
+/// Deliberately NOT a YAML parser: it walks indentation for the
+/// `config:` -> `<section>:` path and hands back the lines under it.
+/// Richer YAML (anchors, block scalars) is ignored rather than guessed
+/// at, and callers skip unknown keys mermaid-style so a file carrying
+/// config for other diagrams still renders.
+fn frontmatter_section<'a>(source: &'a str, section: &str) -> Vec<(usize, &'a str)> {
+    let mut out = Vec::new();
     let Some(body) = frontmatter_body(source) else {
-        return cfg;
+        return out;
     };
     let indent_of = |l: &str| l.len() - l.trim_start().len();
-    // Indent of `config:` / `sankey:` once seen. A line at or left of a
-    // recorded indent has closed that block.
+    // Indent of `config:` / `<section>:` once seen. A line at or left
+    // of a recorded indent has closed that block.
     let mut config_at: Option<usize> = None;
     // Indent shared by `config:`'s DIRECT children, learnt from the
     // first one seen. Without it a `sankey:` nested under some other
     // namespace (`config.themeVariables.sankey`) would reconfigure the
     // diagram.
     let mut child_at: Option<usize> = None;
-    let mut sankey_at: Option<usize> = None;
+    let mut section_at: Option<usize> = None;
     for line in body {
         let t = line.trim();
         if t.is_empty() || t.starts_with('#') {
             continue;
         }
         let ind = indent_of(line);
-        if let Some(inner) = sankey_at {
+        if let Some(inner) = section_at {
             if ind > inner {
-                if let Some((k, v)) = t.split_once(':') {
-                    apply_sankey_key(&mut cfg, k.trim(), v);
-                }
+                out.push((ind, t));
                 continue;
             }
-            sankey_at = None;
+            section_at = None;
         }
         if let Some(outer) = config_at {
             if ind > outer {
                 let direct = *child_at.get_or_insert(ind);
-                if ind == direct && t == "sankey:" {
-                    sankey_at = Some(ind);
+                if ind == direct && t.strip_suffix(':') == Some(section) {
+                    section_at = Some(ind);
                 }
                 continue;
             }
@@ -5147,7 +5648,7 @@ fn sankey_config(source: &str) -> SankeyConfig {
             config_at = Some(ind);
         }
     }
-    cfg
+    out
 }
 
 /// Apply one `config.sankey.<key>: <value>` pair. A value that does not
@@ -5211,9 +5712,68 @@ fn apply_sankey_key(cfg: &mut SankeyConfig, key: &str, raw: &str) {
                 _ => SankeyAlignment::Justify,
             }
         }
+        "labelStyle" => {
+            cfg.label_style = match v.to_ascii_lowercase().as_str() {
+                "outlined" => SankeyLabelStyle::Outlined,
+                _ => SankeyLabelStyle::Legacy,
+            }
+        }
         // Unknown keys are skipped, so extra mermaid config never breaks
         // a render.
         _ => {}
+    }
+}
+
+/// Split a YAML `key: value` line at the colon that ends the key. A
+/// quoted key (`"Industry, light": "#abc"`) ends at its closing quote,
+/// so a `:` or `,` inside it stays part of the name; the key comes back
+/// unquoted and trimmed, the value raw (callers unquote it).
+fn yaml_pair(t: &str) -> Option<(&str, &str)> {
+    let t = t.trim();
+    if let Some(q) = t.chars().next().filter(|c| *c == '"' || *c == '\'') {
+        let end = t[1..].find(q)? + 1;
+        let rest = t[end + 1..].trim_start().strip_prefix(':')?;
+        return Some((&t[1..end], rest));
+    }
+    let (k, v) = t.split_once(':')?;
+    Some((k.trim(), v))
+}
+
+/// The comma-separated items of a YAML flow map body (`a: 1, "b, c": 2`
+/// without the braces), splitting only on commas outside quotes.
+fn yaml_flow_items(body: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    let mut quote: Option<char> = None;
+    let mut start = 0;
+    for (i, c) in body.char_indices() {
+        match quote {
+            Some(q) if c == q => quote = None,
+            Some(_) => {}
+            None if c == '"' || c == '\'' => quote = Some(c),
+            None if c == ',' => {
+                out.push(body[start..i].trim());
+                start = i + 1;
+            }
+            None => {}
+        }
+    }
+    out.push(body[start..].trim());
+    out.retain(|s| !s.is_empty());
+    out
+}
+
+/// Record one `nodeColors` entry. An empty or `null` colour is skipped
+/// (the node keeps the palette); a repeated label keeps its last colour,
+/// as a YAML loader that tolerates duplicate keys would.
+fn set_node_color(cfg: &mut SankeyConfig, label: &str, color: String) {
+    let color = color.trim().to_string();
+    if label.is_empty() || color.is_empty() || color == "null" || color == "~" {
+        return;
+    }
+    if let Some(slot) = cfg.node_colors.iter_mut().find(|(l, _)| l == label) {
+        slot.1 = color;
+    } else {
+        cfg.node_colors.push((label.to_string(), color));
     }
 }
 
@@ -5706,6 +6266,50 @@ mod tests {
     }
 
     #[test]
+    fn sankey_node_colors_read_block_and_flow_maps() {
+        // mermaid 12's `nodeColors` (label -> colour) was ignored.
+        let d = sankey(
+            "---\nconfig:\n  sankey:\n    nodeColors:\n      Coal: \"#333333\"\n      \
+             \"Industry, light\": '#ff8800'\n      width: \"#123456\"\n    nodeWidth: 4\n\
+             ---\nsankey-beta\nCoal,width,1\n",
+        );
+        assert_eq!(
+            d.config.node_colors,
+            [
+                ("Coal".to_string(), "#333333".to_string()),
+                ("Industry, light".to_string(), "#ff8800".to_string()),
+                ("width".to_string(), "#123456".to_string()),
+            ]
+        );
+        // A node NAMED like a config key stays a colour entry, and the
+        // block ends where the indentation returns to sankey's keys.
+        assert_eq!(d.config.width, 600.0);
+        assert_eq!(d.config.node_width, 4.0);
+
+        let d = sankey(
+            "---\nconfig:\n  sankey:\n    nodeColors: { A: red, \"B, c\": \"#00f\", D: null }\n\
+             ---\nsankey-beta\nA,B,1\n",
+        );
+        assert_eq!(
+            d.config.node_colors,
+            [
+                ("A".to_string(), "red".to_string()),
+                ("B, c".to_string(), "#00f".to_string()),
+            ],
+            "a null colour keeps the palette"
+        );
+    }
+
+    #[test]
+    fn sankey_label_style_reads_outlined() {
+        let d =
+            sankey("---\nconfig:\n  sankey:\n    labelStyle: Outlined\n---\nsankey-beta\nA,B,1\n");
+        assert_eq!(d.config.label_style, SankeyLabelStyle::Outlined);
+        let d = sankey("---\nconfig:\n  sankey:\n    labelStyle: fancy\n---\nsankey-beta\nA,B,1\n");
+        assert_eq!(d.config.label_style, SankeyLabelStyle::Legacy);
+    }
+
+    #[test]
     fn sankey_config_survives_a_bad_value() {
         // Config is decoration: a junk number keeps the default rather
         // than failing the whole diagram.
@@ -5930,6 +6534,123 @@ mod tests {
         // Bad relationship operator.
         let e = parse_document("erDiagram\nA >>-- B\n").unwrap_err();
         assert_eq!(e.line, 2);
+    }
+
+    /// Report P1: `direction` was a parse error ("unknown relationship
+    /// operator near: 'TB'"), so the hard-coded flow could not be
+    /// changed. Mermaid's default is top to bottom.
+    #[test]
+    fn er_direction_statement_parses() {
+        assert_eq!(er("erDiagram\nA ||--o{ B").direction, Direction::TD);
+        for (src, want) in [
+            ("TB", Direction::TD),
+            ("TD", Direction::TD),
+            ("BT", Direction::BT),
+            ("LR", Direction::LR),
+            ("rl", Direction::RL),
+        ] {
+            let d = er(&format!("erDiagram\n  direction {src}\nA ||--o{{ B"));
+            assert_eq!(d.direction, want, "{src}");
+            assert_eq!(d.relations.len(), 1);
+        }
+        let e = parse_document("erDiagram\ndirection sideways\n").unwrap_err();
+        assert_eq!(e.line, 2);
+        // An entity may still be called `direction`.
+        let d = er("erDiagram\ndirection ||--o{ B\ndirection {\n  int id\n}");
+        assert_eq!(d.entities[0].name, "direction");
+        assert_eq!(d.entities[0].attrs.len(), 1);
+    }
+
+    /// Report P1: `p[Person]` was rejected. Mermaid takes an alias on
+    /// an entity declaration (bare or opening a block); flowmaid also
+    /// takes it in a relationship. The first alias sticks, as in
+    /// mermaid's `addEntity`.
+    #[test]
+    fn er_entity_alias_parses() {
+        let d = er("erDiagram\n\
+                    p[Person] {\n  string name\n}\n\
+                    c[\"Customer Account\"]\n\
+                    o[Order] ||--o{ i[Item] : has\n\
+                    p ||--o{ c : owns\n\
+                    p[Someone else]\n");
+        let alias = |n: &str| {
+            let e = d.entities.iter().find(|e| e.name == n).unwrap();
+            (e.alias.clone(), e.title().to_string())
+        };
+        assert_eq!(alias("p"), (Some("Person".into()), "Person".into()));
+        assert_eq!(alias("c").1, "Customer Account");
+        assert_eq!(alias("o").1, "Order");
+        assert_eq!(alias("i").1, "Item");
+        assert_eq!(d.entities[0].attrs.len(), 1);
+        assert_eq!(d.relations.len(), 2);
+        let e = parse_document("erDiagram\np[Person ||--o{ B\n").unwrap_err();
+        assert_eq!(e.line, 2);
+    }
+
+    #[test]
+    fn er_quoted_entity_names_parse() {
+        let d = er("erDiagram\n\"Customer Account\" ||--o{ ORDER : places\n\
+                    \"Customer Account\" {\n  int id PK\n}\n");
+        assert_eq!(d.entities[0].name, "Customer Account");
+        assert_eq!(d.entities[0].attrs.len(), 1);
+        assert_eq!(d.entities.len(), 2);
+    }
+
+    /// Mermaid tokenises an entity block: rows and the closing brace may
+    /// share a line, several rows may share one, keys are any case.
+    #[test]
+    fn er_block_rows_tokenise_like_mermaid() {
+        let d = er("erDiagram\n\
+                    A { int id PK \"key\" string name }\n\
+                    B {}\n\
+                    C { int id pk, fk\n  string a string b \"c, d\"\n  text t }\n\
+                    A ||--o{ B : has\n");
+        let a = &d.entities[0];
+        assert_eq!(a.attrs.len(), 2);
+        assert_eq!(a.attrs[0].keys, vec![Key::Pk]);
+        assert_eq!(a.attrs[0].comment.as_deref(), Some("key"));
+        assert_eq!(a.attrs[1].name, "name");
+        assert!(d.entities[1].attrs.is_empty());
+        let c = &d.entities[2];
+        let names: Vec<&str> = c.attrs.iter().map(|a| a.name.as_str()).collect();
+        assert_eq!(names, ["id", "a", "b", "t"]);
+        assert_eq!(c.attrs[0].keys, vec![Key::Pk, Key::Fk]);
+        assert_eq!(c.attrs[2].comment.as_deref(), Some("c, d"));
+        assert_eq!(d.relations.len(), 1);
+        // A comment holding quotes still reads as one classic row.
+        let d = er("erDiagram\nT {\n  text a \"say \"hi\" twice\"\n}");
+        assert_eq!(
+            d.entities[0].attrs[0].comment.as_deref(),
+            Some("say \"hi\" twice")
+        );
+        // A bad key is still named.
+        let e = parse_document("erDiagram\nT {\n  int id XX\n}").unwrap_err();
+        assert!(e.message.contains("'XX'"), "{}", e.message);
+        let e = parse_document("erDiagram\nT { int id } extra\n").unwrap_err();
+        assert_eq!(e.line, 2);
+    }
+
+    /// Mermaid's spelled-out cardinalities and lines, and any symbol on
+    /// either side.
+    #[test]
+    fn er_text_cardinalities_parse() {
+        let rel = |op: &str| {
+            let d = er(&format!("erDiagram\nA {op} B : r"));
+            let r = &d.relations[0];
+            (r.card_from, r.identifying, r.card_to)
+        };
+        use Card::*;
+        assert_eq!(rel("only one to zero or more"), (One, true, ZeroMany));
+        assert_eq!(rel("one or more optionally to one"), (OneMany, false, One));
+        assert_eq!(rel("zero or one to many(1)"), (ZeroOne, true, OneMany));
+        assert_eq!(rel("1+ .. 0+"), (OneMany, false, ZeroMany));
+        assert_eq!(rel("1 to many"), (One, true, ZeroMany));
+        assert_eq!(rel("one or zero .- many(0)"), (ZeroOne, false, ZeroMany));
+        assert_eq!(rel("|| -. |{"), (One, false, OneMany));
+        assert_eq!(rel("o|--}o"), (ZeroOne, true, ZeroMany));
+        assert_eq!(rel("ONLY ONE TO ZERO OR MANY"), (One, true, ZeroMany));
+        // A word that only starts like a token is not one.
+        assert!(parse_document("erDiagram\nA oneway to one B").is_err());
     }
 
     #[test]
@@ -6909,6 +7630,104 @@ mod tests {
     fn gitgraph_merge_self_errors() {
         let e = parse_document("gitGraph\ncommit\nmerge main").unwrap_err();
         assert!(e.message.contains("into itself"), "got: {}", e.message);
+    }
+
+    fn gitgraph(src: &str) -> GitGraph {
+        match parse_document(src).unwrap_or_else(|e| panic!("{e}\n--\n{src}")) {
+            Document::GitGraph(g) => g,
+            other => panic!("expected gitGraph, got {:?}", other),
+        }
+    }
+
+    /// Report P1: mermaid's documented `gitGraph TB:` (and `LR:`, `BT:`,
+    /// a bare `gitGraph:`) was "unknown gitGraph orientation: 'TB:'".
+    #[test]
+    fn gitgraph_header_takes_mermaids_colon_forms() {
+        for (header, want) in [
+            ("gitGraph TB:", GitOrientation::TB),
+            ("gitGraph LR:", GitOrientation::LR),
+            ("gitGraph BT:", GitOrientation::BT),
+            ("gitGraph BT :", GitOrientation::BT),
+            ("gitGraph:", GitOrientation::LR),
+            ("gitGraph TB", GitOrientation::TB),
+            ("gitGraph", GitOrientation::LR),
+        ] {
+            let g = gitgraph(&format!("{header}\ncommit"));
+            assert_eq!(g.orientation, want, "{header}");
+        }
+        let e = parse_document("gitGraph XX:\ncommit").unwrap_err();
+        assert!(
+            e.message.contains("unknown gitGraph orientation"),
+            "{}",
+            e.message
+        );
+    }
+
+    /// Report P1: `branch dev order: 2` made a branch literally named
+    /// "dev order: 2". The option now orders the lanes as in mermaid:
+    /// by `order`, an unordered branch after main and before order 1.
+    #[test]
+    fn gitgraph_branch_order_is_an_option_not_part_of_the_name() {
+        let g = gitgraph(
+            "gitGraph\ncommit\nbranch dev order: 3\nbranch feat order: 1\n\
+             branch spike\nbranch \"release x\" order:2\nbranch my feature",
+        );
+        let names: Vec<&str> = g.branches.iter().map(|b| b.name.as_str()).collect();
+        assert_eq!(
+            names,
+            ["main", "dev", "feat", "spike", "release x", "my feature"]
+        );
+        let lane = |n: &str| g.branches.iter().find(|b| b.name == n).unwrap().order;
+        // main, then the unordered (creation order), then by order.
+        assert_eq!(
+            [
+                lane("main"),
+                lane("spike"),
+                lane("my feature"),
+                lane("feat"),
+                lane("release x"),
+                lane("dev")
+            ],
+            [0, 1, 2, 3, 4, 5]
+        );
+        // `checkout` / `merge` find the branch by its bare name.
+        let g = gitgraph("gitGraph\ncommit\nbranch dev order: 1\ncommit\ncheckout main\nmerge dev");
+        assert_eq!(g.commits[2].second_parent, Some(1));
+        let e = parse_document("gitGraph\nbranch dev order: soon").unwrap_err();
+        assert!(e.message.contains("branch order"), "{}", e.message);
+    }
+
+    /// Report P1: `merge x type: HIGHLIGHT` parsed but the type was
+    /// dropped (merges were hard-coded NORMAL).
+    #[test]
+    fn gitgraph_merge_keeps_its_type() {
+        let g = gitgraph(
+            "gitGraph\ncommit\nbranch a\ncommit\nbranch b\ncommit\ncheckout main\n\
+             merge a type: HIGHLIGHT\nmerge b id: \"m\" type: REVERSE tag: \"v1\"",
+        );
+        assert_eq!(g.commits[3].kind, CommitKind::Highlight);
+        assert_eq!(g.commits[4].kind, CommitKind::Reverse);
+        assert_eq!(g.commits[4].id, "m");
+        assert_eq!(g.commits[4].tag.as_deref(), Some("v1"));
+        let e =
+            parse_document("gitGraph\ncommit\nbranch a\ncommit\ncheckout main\nmerge a type: BOLD")
+                .unwrap_err();
+        assert!(e.message.contains("unknown commit type"), "{}", e.message);
+    }
+
+    /// Mermaid takes quoted branch references and commit messages
+    /// (`msg: "…"` or a bare string); both used to be parse errors.
+    #[test]
+    fn gitgraph_quoted_names_and_messages() {
+        let g = gitgraph(
+            "gitGraph\ncommit msg: \"first\" id: \"a\"\ncommit \"second\"\n\
+             branch \"my topic\"\ncheckout \"my topic\"\ncommit\nswitch \"main\"\n\
+             merge \"my topic\" id: \"m\"",
+        );
+        assert_eq!(g.branches[1].name, "my topic");
+        assert_eq!(g.commits[0].id, "a");
+        assert_eq!(g.commits[3].id, "m");
+        assert_eq!(g.commits[3].second_parent, Some(2));
     }
 
     #[test]

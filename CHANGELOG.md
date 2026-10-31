@@ -7,10 +7,17 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.33.0] - 2026-10-31
+
 Advance mode's edge router was rewritten over three phases. Together they
 make "no line through a box" a property of the search rather than a case
 to detect, and take crossings on the measured scenarios from seven to
-zero. Needs a **minor** bump: `AdvanceScene` gains a public field.
+zero. ER, sequence, gitGraph, pie, journey, timeline, sankey, mindmap and
+architecture diagrams were reworked to read at least as well as mermaid's,
+keeping flowmaid's interactive scene API, portable SVG and compact size.
+Flowchart output is byte-identical. Minor, not patch: `AdvanceScene` and
+several diagram structs gain public fields (see **Breaking** under Changed).
+Class and state diagram work lands in a later release.
 
 ### Added
 
@@ -22,6 +29,149 @@ zero. Needs a **minor** bump: `AdvanceScene` gains a public field.
   anchor (`a@out`), a sub-element (`a.cpu`), or both (`a.cpu@pin1`), in
   the text DSL and in JSON. Sub-elements are first-class: they have ids,
   rects, anchors, and can be edge endpoints.
+- **Contrast helpers in `style`** so hosts can match the SVG writers:
+  `relative_luminance`, `contrast_ratio`, `text_on(fill)` (white where it
+  reaches WCAG AA 4.5:1, else the new `DARK_INK`), `MIN_TEXT_CONTRAST`,
+  `ACCENT_INKS` / `accent_ink(i)` (each accent darkened just enough to
+  read as text on white), a sixteen-colour `accent_wide(i)` cycle
+  (`ACCENTS` then the new `ACCENTS_DEEP`) for diagrams with more than
+  eight items, and a `NOTE_STYLE` card colour outside the accent palette.
+  `ACCENTS` and `accent()` are unchanged.
+- **ER attribute comments are drawn**, in a fourth column (type | name |
+  keys | comment, the comment muted and italic), instead of being silently
+  dropped: the comparison fixture lost all 33. A comment wider than
+  `er::COMMENT_MAX_W` (280px) is cut with an ellipsis and keeps its whole
+  text as the row's tooltip (`<title>`). For GUI painters, `er::ErRow` gains
+  `comment` / `comment_full`, and `er::ErTable` gains `title`, `name_col_w`,
+  `keys_col_w` and `comment_col_w` plus `name_x()`, `keys_end_x(w)` and
+  `comment_x()`, so they lay rows out exactly as the SVG does. A table
+  without comments keeps its keys against the right border, as before.
+- **ER `direction TB|BT|LR|RL`**, previously a parse error (`unknown
+  relationship operator near: 'TB'`): new field `model::ErDiagram::direction`.
+- **ER entity aliases.** `p[Person]` and `c["Customer Account"]` work on a
+  declaration or a block opening, as in mermaid, and flowmaid also accepts
+  them in a relationship. The header shows the alias while `SceneNode.id` /
+  `ErTable.name` stay the entity name. New: `model::Entity::alias` and
+  `Entity::title()`. As in mermaid, the first alias given sticks.
+- **More of mermaid's ER syntax parses:** `"quoted entity names"`; a block
+  on one line (`A { int id PK "key" string name }`, `B {}`); several
+  attributes on one line; key lists in any case (`pk, fk`); the spelled-out
+  cardinalities and line types (`only one to zero or more`, `one or more
+  optionally to one`, `1+`, `0+`, `many(0)`, `many(1)`, `.-`, `-.`); and any
+  cardinality symbol on either side of the line.
+- **`er::end_glyphs(edge, cards)`** returns the crow's feet `to_svg` draws for
+  a relationship, laid along its drawn curve (rerouted relationships
+  included), so GUI painters match the SVG.
+- **`model::Edge::end_room`**: how much line, at each end, glyphs drawn
+  outside the flowchart writer take. The layout spaces two adjacent layers
+  so both glyphs and the label fit between them. Non-breaking: `Edge` is
+  `#[non_exhaustive]`. Flowcharts leave it at zero, and their output is
+  byte-identical.
+- **Sequence participants are repeated below the lifelines**, as in mermaid
+  (`mirrorActors`, on by default). Each lifeline ends on its footer box. Turn
+  it off with frontmatter `config: sequence: mirrorActors: false`. New:
+  `seq::SeqScene::footer` (index-aligned with `boxes`) and
+  `model::SequenceDiagram::mirror_actors`.
+- **Sequence actors are UML stick figures** with their name below, at the top
+  and at the bottom. Before, an actor was a pale outlined box shaped like a
+  participant. GUI painters get the same geometry from
+  `seq::actor_figure(&PartBox)`, which returns a `seq::ActorFigure`. An actor's
+  `PartBox` is the slot for the figure and its name, `seq::ACTOR_H` (48px)
+  tall. Participant boxes stay `BOX_H` and are top-aligned with it.
+- **Scoped sequence frames, as an option.** With frontmatter
+  `config: sequence: scopedFrames: true`, each `loop` / `opt` / `alt` / `par`
+  frame spans only the lifelines and notes it covers, as in mermaid. This is a
+  flowmaid key, and mermaid ignores it. Aligned full-width bands stay the
+  default. New: `model::SequenceDiagram::scoped_frames`.
+- **More of mermaid's gitGraph syntax parses:** the documented header forms
+  `gitGraph TB:` / `gitGraph LR:` / `gitGraph BT:` and a bare `gitGraph:`
+  (previously "unknown gitGraph orientation: 'TB:'"); `branch name order: n`;
+  `merge name type: NORMAL|REVERSE|HIGHLIGHT`; quoted branch references
+  (`branch "my topic"`, `checkout "my topic"`, `merge "my topic" id: "m"`);
+  and commit messages (`commit msg: "…"` or `commit "…"`), read and not drawn,
+  as in mermaid.
+- **`gitgraph::REVERSE_MARK`**: the label a REVERSE commit's scene node
+  carries, so a host that draws node labels shows the commit crossed out.
+- **`accTitle` / `accDescr` in pie, journey and timeline** now become the
+  SVG's accessible name and `<desc>` (they were parsed and dropped, and the
+  name was always "Pie chart" / "User journey" / "Timeline"). Without an
+  `accTitle` the diagram's own `title` is the accessible name. New fields:
+  `PieChart`, `Journey` and `Timeline` `::acc_title` / `::acc_descr`.
+- **Pie labels down to 1%, as in mermaid** (slices under 4% used to get
+  none). A label sits inside its wedge when its text box fits there, tested
+  against both radial edges and the rim; a slice too thin for that gets its
+  label just outside the rim on a short leader line, and neighbouring
+  outside labels are pushed apart, away from the pie. The label geometry is
+  in the scene for hosts: `PieScene::labels` (`pie::PieLabel`: text,
+  anchor, inside/outside, leader). New: `pie::slice_color`,
+  `pie::LABEL_R_MAX`, `pie::SEPARATOR_W`, `pie::LEADER_OUT`,
+  `pie::OUTSIDE_ROW_H`.
+- **Journey faces trace the satisfaction curve.** Each face (with its dots
+  and label) sits `journey::SCORE_STEP` lower per point below 5, so the path
+  linking the faces rises and falls with the score instead of being a flat
+  line. Actor dots and faces carry native tooltips (`<title>Me</title>`,
+  `<title>Make tea: 5</title>`). New: `TaskGlyph::{label, actor_ids,
+  exact_score}`, `journey::{section_color, actor_color, SECTION_FILLS,
+  SECTION_GAP, SCORE_STEP, LABEL_WRAP_W}`.
+- **Journey scores like `3.5` or `-1` parse**, as mermaid's `Number()` reads
+  them (they were a parse error). The score is clamped to 1..=5; `3.5` sits
+  halfway between 3 and 4. New: `JourneyTask::exact_score` (`score` stays
+  the rounded whole step).
+- **Long journey task names and timeline periods/events wrap** (at 150px and
+  160px) instead of widening their column without bound. New:
+  `timeline::WRAP_W`, `PeriodGlyph::line_segments`.
+- **Sankey `nodeColors` and `labelStyle`** (mermaid 12 config). A
+  `config.sankey.nodeColors` map (block or `{ … }` flow form, quoted
+  labels allowed) paints the named nodes in that colour verbatim (escaped),
+  and the palette keeps the nodes around it clear of that colour — hex, CSS
+  named colours (`steelblue`) and `rgb()` alike;
+  `labelStyle: outlined` draws every label over a white halo and, as in
+  mermaid, hangs labels left of the busiest column on their node's left.
+  New: `SankeyConfig::{node_colors, label_style}`, `model::SankeyLabelStyle`,
+  `SankeyNodeGlyph::{custom_color, label_text, label_lines, fill()}`,
+  `SankeyScene::label_style`, `sankey::LABEL_H`.
+- **Mindmap `::icon(…)` and `:::class` lines are kept** (they were
+  dropped silently). An icon draws as a small built-in line glyph left of
+  the label (book, file, code, cog, user, home, star, heart, check, bolt,
+  cloud, database, globe, search, mail, lock — matched by name, so
+  `fa fa-book`, `mdi mdi-cog` work; anything else gets a neutral sparkle),
+  with the icon name as its tooltip; no icon font is needed. Classes go
+  into the SVG as a `class` attribute, as in mermaid, so page CSS can style
+  the node, and — a flowmaid extension — `classDef name fill:…,stroke:…,
+  stroke-width:…,color:…` lines in the mindmap colour the nodes carrying
+  that class (text still picks a readable ink when only `fill` is given,
+  whether it is hex, a CSS colour name or `rgb()`).
+  New: `MindNode::{icon, classes, style}`, `MindNodeBox::{font_size,
+  font_weight, icon, classes, style, paint(), ink()}`,
+  `mindmap::{icon_strokes, label_centre, underline, ICON}`.
+- **More of mermaid's architecture-beta syntax parses.** `junction id` /
+  `junction id in group` (a bare point where edges meet, drawn as a dot);
+  the `{group}` edge modifier (`a{group}:R --> L:b{group}`), which attaches
+  that end to the service's group frame, as in mermaid; labelled edges
+  (`a:R -[calls]-> L:b`, drawn with flowmaid's white label chip); optional
+  `[title]`s (`service db(database)`), quoted titles (`["Edge, west"]`);
+  iconify-style icon names (`mdi:database`); and `align row|column …` lines,
+  accepted and not applied. All of these used to be parse errors.
+- **`accTitle` / `accDescr` are drawn for architecture diagrams**: the title
+  replaces the SVG's `<title>` / `aria-label`, the description becomes a
+  `<desc>`. New fields `Architecture::{acc_title, acc_descr}`.
+- New model fields: `ArchService::junction`, `ArchEdge::{from_group,
+  to_group, title}`.
+- `ArchScene::title_at`: where each group title is drawn (left end and centre
+  line), index-parallel with `scene.clusters`, so a host paints titles where
+  the routes avoid them.
+- **Constructors for the model structs that became `#[non_exhaustive]`**, so
+  downstream code can still build diagrams by hand (see **Breaking** under
+  Changed):
+  - `Mindmap::add_node(parent, text, shape)` fills in `depth`, `branch` and
+    the parent's `children` the way the parser does, which now uses it too.
+  - `JourneyTask::new(name, score, actors)` clamps and rounds the score
+    exactly as the parser does (which now uses it too). A NaN counts as 3.
+  - `ArchService::new(id, title)` and
+    `ArchEdge::new(from, from_side, to, to_side)`.
+
+  `tests/model_build.rs` builds each of these models from outside the crate
+  and checks that it renders byte-identically to the source it mirrors.
 
 ### Changed
 
@@ -32,6 +182,324 @@ zero. Needs a **minor** bump: `AdvanceScene` gains a public field.
   the edges involved in a crossing back out of the lattice and routes
   them against all the others while the price of a crossing escalates.
 - The canvas now grows to contain routes that leave the lanes.
+- **ER diagrams flow top to bottom by default, as in mermaid.** The flow was
+  hard-coded left to right, which stacked every unconnected table in one
+  tall column: the comparison fixture went from a 602×950 portrait with an
+  empty right two-thirds to a landscape layout arranged like mermaid's.
+  `direction LR` restores the old flow.
+- **Crow's feet are easier to read.** They follow the drawn curve, with each
+  bar square to the stroke where it crosses it. Along the line they are
+  longer (bars 6px apart, a 15px fork, a r=5 circle), but they stay 12px
+  across, so the glyphs of two relationships on neighbouring ports never
+  merge. They are now painted over the tables, so the border no longer
+  covers prong tips that end on it.
+- **A relationship that closes a cycle is drawn as a plain line.** It used to
+  be laid out as a flowchart back-edge bow, which came in nearly along the
+  border and crushed its crow's foot. Each scene edge still runs from its
+  relationship's `from` entity to its `to` entity.
+- **Entity headers:** the accent band is square where it meets the body (no
+  more white notches at the join), and the table outline is drawn on top of
+  it.
+- **Sequence messages meet activation bars at the bar's edge.** Heads used to
+  run 4px into the bar, and lines started from its middle. With nested bars, a
+  message on the left meets the outer bar and a message on the right meets the
+  innermost one. A self-message loops out from the bar's right edge.
+- **Sequence notes are a pale yellow card** (`style::NOTE_STYLE`), as in
+  mermaid. They used to be the same amber as the third participant's header
+  and activation bars, so a note looked like it belonged to that participant.
+- **Frame conditions line up.** An `else` / `and` condition now sits in the
+  same left-aligned column as the frame's first condition, next to the chip,
+  with the same spacing. It used to be centred. Each condition label has a
+  white card behind it, so lifelines no longer run through the text.
+  Dividers are drawn as heavy as the frame border (1.2px). Activation bars are
+  painted over the dividers and over the label cards and keyword chips, and the
+  label text is painted over the bars, so an open bar stays one unbroken bar
+  where it passes under a frame or `else` / `and` label.
+- **Tighter column spacing next to a self-message.** A self-message's label
+  used to keep half of the next participant's header box clear, even though
+  that box is not on the message's row. It now only clears the next lifeline,
+  allowing for an activation bar there, so that gap is no longer much wider
+  than the others.
+- **gitGraph looks like a git graph, not a draft.** Every line is drawn in
+  the colour of the lane it runs along, 5px wide with round caps (it was a
+  2px navy thread for every edge). Forks and merges are rounded elbows, as in
+  mermaid: a fork drops straight from its parent and runs along the new
+  branch, and a merge runs along its branch and climbs straight into the merge
+  commit. The old curves hugged the source lane and arrived on a 38-72° slant.
+  When a commit sits on the stretch the elbow would run along (main merged
+  into a branch that has committed since), the elbow takes the other lane
+  instead of running through that commit. Two legs that leave one commit on
+  the same side run side by side instead of on top of each other, so a merge
+  in and a fork out of the same commit stay distinct.
+- **Commit glyphs:** a merge commit is a ring around a light core, REVERSE a
+  filled disc crossed out with an X, HIGHLIGHT a square outlined in ink. As in
+  mermaid, the commit type decides the glyph before merge-ness does. For
+  generic `Scene` painters the glyph is the node shape: `DoubleCircle` for a
+  merge, a square `Rect` for HIGHLIGHT, and a `Circle` labelled
+  `REVERSE_MARK` for REVERSE.
+- **Labels never sit on a line.** A commit id or tag that its own commit's leg
+  would cross steps aside of it, and ids are drawn over a white halo. In LR,
+  ids are measured: each column sits just far enough right that no id, tag or
+  leg reaches into the one before it (`COMMIT_DX` is now the 50px minimum
+  instead of a fixed 90px). Short ids pack tighter than before, and long ids
+  no longer run together. In TB/BT, commit ids sit left of their commit and
+  tags right of it (it used to be the other way round), and each lane sits far
+  enough over to fit the ids beside it. The canvas is fitted around everything
+  drawn (`PAD` 24px), so a long last id or a TB tag is never clipped.
+- **Tags are luggage labels** (12px text in the lane's ink on a white pill
+  with a hole). They used to be bold 13px text, styled exactly like the branch
+  names. **Branch names sit on pills in the lane's colour**, with white or dark
+  text, whichever reads on the pill. A dashed guide runs along every lane.
+- **`GitBranch::order` is the lane rank** after `order:` options are applied
+  (it was always the creation index). The renderer ranks branches by it, ties
+  by index, so a hand-built graph may use any increasing numbers. Colours
+  follow the lane.
+- Scene edges carry their colour and width in `meta.style`, and an elbow
+  carries its corner as both `bezier` control points plus a dense rounded
+  `waypoints` polyline that a host's spline reproduces. Merge edges are now
+  `EdgeKind::Open`: the scene said `Arrow` but the SVG never drew an
+  arrowhead, and mermaid draws none. Commit dots are r=11 (was 12).
+- **Pie:** radius 110 → 130, labels start at 0.72 r (was 0.62 r), so "5%"
+  and "4%" in the showcase sit inside their wedges with room to spare
+  instead of reading as "5%4%". Percentages round halves up like mermaid's
+  `toFixed(0)` (1:7 prints 13% / 88%, not 12% / 88%). The legend is
+  measured at the 13px it is drawn at (the right margin was 34px, now
+  `PAD`) and the title as 16px bold; a chart narrower than its title is
+  centred under it. Slices cycle sixteen colours (`style::accent_wide`), so
+  a ninth slice no longer repeats the first; the first eight are unchanged.
+  The white separators are drawn once per boundary, narrower next to a
+  sliver, so a 0.35% slice shows as a slice rather than a seam.
+- **Journey:** section bands are pale fills (each accent mixed 74% toward
+  white) with the name in dark ink, and actors use their own colours, which
+  skip green, amber and coral, so a band or an actor dot never reads as a
+  score. Neighbouring bands keep an 8px gutter (their rounded corners used
+  to notch each other). Columns widen to fit a section's bold name and a
+  task's row of actor dots (12 actors overflowed). Long titles are measured
+  as 17px bold, and the actor legend is truly centred (it sat ~9px left).
+  Task dots and legend dots share one size (5px). A frown no longer rises
+  into the eyes.
+- **Timeline:** the dashed task line is drawn only in the gaps between
+  events, so it never strikes through event text, and the tick is drawn
+  over it (with a white ring, radius 4.5). Period labels are bold. The axis
+  is darker and 2px (`timeline::AXIS_COLOR` is now `#8a90a8`, 3.2:1 on
+  white; the task lines keep the pale colour as the new
+  `timeline::TASK_LINE_COLOR`). Periods before the first `section` keep
+  neutral ticks (`timeline::UNNAMED_COLOR`) and named sections take the
+  palette from its start. A section name wider than its columns widens
+  them; long titles are measured as 17px bold and the content is centred
+  under them; the title keeps a `timeline::TITLE_GAP` above the first band.
+- **Mindmap layout: children hang off their parent** (report B6). Every
+  depth used to sit on a fixed ring round the root (`RING` 172): a sparse
+  909×773 canvas with 9% ink and leaf spokes from 55 to 223px. Each child
+  now sits on a spoke from its parent, and siblings are swept round it
+  clockwise in source order, each taking the first direction where its
+  whole subtree stays clear (boxes 10px apart, no connector through a box
+  or across another). Spokes start at `mindmap::TRUNK` (46px, border to
+  border) from the root and `mindmap::SPOKE` (34px) below; a fan that does
+  not fit lengthens its spokes only as far as it needs (searched back down
+  after the first length that fits), then each child's own spoke is
+  shortened as far as it stays clear, so a leaf branch sits close in beside
+  a bushy one. The root hands its spare arc out evenly round the circle, so
+  no sector is left empty: on 50 test maps the widest empty wedge round the
+  root is under 65° (mostly under 15°), where a shared trunk left 100–157°.
+  Other fans keep within 160° of the outward direction when they fit (up to
+  280° when crowded) and aim their heaviest child straight on, so a chain
+  runs straight; a root's only branch goes right. A crowded root (eight or
+  more branches) also tries narrow first-level fans and keeps them when that
+  shortens the longest connector. The showcase is 790×443 (node boxes
+  cover 25% of it) with every spoke 34–54px; maps of 30–200 nodes need half
+  the ring layout's canvas area or less. Boxes never overlap, connectors
+  never cross and none runs through a box. The search has a work budget
+  that grows with the map — random maps of 25–220 nodes and three to five
+  levels lay out in 1–140 ms using at most 36% of theirs — so only a map
+  that needs more (a full 511-node binary tree; a few thousand nodes
+  against the cap of about a second's work) or that has more than 120
+  branches on the root falls back to the ring layout, which is sparse but
+  now just as clean (see Fixed). `route()` (drag) is unchanged.
+- **Mindmap shapes.** `((circle))` is a true circle round its label (was a
+  1.6:1 ellipse) and is drawn as `<circle>`. A node without a wrapper is
+  now its own shape, `MindShape::Default` — mermaid's default node: rounded
+  top corners, a flat bottom with a darker underline — instead of the same
+  pill as `(rounded)`; `(rounded)` is a full pill and `[square]` has sharp
+  corners. The cloud is made of round overlapping lobes (it was a jagged
+  polygon that read as a second explosion); the bang's spikes are one depth
+  all round a stadium that holds the label (they were 4× longer at the
+  sides than on top). Both are sized round their label instead of by fixed
+  multipliers. New: `mindmap::{BANG_SPIKE, CLOUD_LOBE, UNDERLINE_H,
+  UNDERLINE_SHADE}`.
+- **Mindmap hierarchy reads at a glance.** The root is filled with a deep
+  indigo ink (`mindmap::ROOT_FILL` `#2f3768`, white bold 18px label)
+  instead of a pale `#c9cfe0` that receded behind its own branches;
+  first-level labels are 15px semibold, the rest 14px; connectors taper
+  9 → 4.5 → 2.25 → 2px (were 4.5/3.5/2.5); horizontal padding 16px (was
+  12). New: `mindmap::{ROOT_FONT, BRANCH_FONT}`.
+- **Sankey colours never clash with a neighbour.** Nodes used to take
+  `accent(i % 8)`, so Losses was painted like Electricity (a flat green
+  ribbon between them) and Homes (indigo) sat on Industry (steel blue). Each
+  node now gets a colour from the sixteen-colour `style::accent_wide` cycle
+  that differs (CIE76 ΔE ≥ 35) from every node it shares a ribbon with and
+  from the nodes directly above and below it, preferring one no other node
+  uses; a diagram without clashes keeps the plain cycle.
+- **Sankey labels are measured and kept off each other and the nodes.**
+  At `width: 450`, "Electricity (124 TWh)" used to print over "Industry
+  (48 TWh)", and a long sink name ran across the middle column. A label now
+  slides along its own node's span (half-line steps), then tries the other
+  side, until it clears every other label (with room to read two labels on
+  one baseline apart) and every other node. Only when no clean spot is left
+  inside may a first-column label hang off the left edge or a last-column
+  label off the right. The canvas keeps its configured `width` whenever it
+  can: the columns first draw in from the margins (to half their span, and
+  only as long as no label gets crowded), then labels that still do not fit
+  or still crowd wrap at spaces onto more lines (the value kept whole,
+  `SankeyNodeGlyph::label_lines`, drawn as `<tspan>`s); only what is left
+  over widens the canvas at that edge. Labels between columns cannot hang
+  anywhere, so while one still prints on another label or a node (long
+  names at a narrow `width`), the columns spread apart in steps of 1.2×,
+  the long names still wrapped at the configured width's share, so the
+  canvas grows only as far as that needs. A four-column, 17-node diagram
+  at `width: 350` comes out 491px wide with every label clear; on 40
+  random diagrams of three to five columns with long names at widths
+  250–600, every label is clear. Stacked nodes too thin for a line of text
+  get a wider gap. Labels are drawn at mermaid's 14px (was 13) and after
+  all nodes.
+- **Sankey crossings: a backward sweep.** The barycentre ordering only ever
+  swept left to right, so the first column kept declaration order and the
+  showcase kept one avoidable crossing (Coal→Electricity over Gas→Heating).
+  Forward and backward sweeps now alternate and the ordering with the fewest
+  crossings is kept — the first forward sweep's unless a later one strictly
+  beats it, so the extra sweeps never add a crossing. The showcase now has
+  none.
+- **Sankey ribbons stack by position.** A ribbon that skips a column was
+  stacked by comparing column ranks across different columns; ribbons now
+  leave a node in the vertical order of their targets and enter it in the
+  order of their sources.
+- **architecture-beta lays services out by their ports, like mermaid.**
+  `a:R -- L:b` puts `b` right of `a`, `a:B -- T:b` below it, a mixed pair
+  such as `a:R -- T:b` diagonally; services feeding one port stack in a
+  column in declaration order. Groups stay contiguous: no frame overlaps
+  another or covers a service that is not its own. Unconnected groups and
+  services are packed in rows of about √n instead of one long strip. On the
+  comparison diagram Redis now sits right under Business Logic, Web and Mobile
+  share a column, and the canvas is 882×488 (1.8:1) instead of a 1276×192
+  strip (6.6:1). The old grid followed declaration order and ignored ports.
+- **Edges leave and enter along their port normals and are routed around
+  every service box, junction and group title**, orthogonally with rounded
+  corners. Edges that share a port merge into one trunk in the gap between
+  frames; other edges pay to cross each other, and an edge never turns on,
+  runs along (or a hair beside) or passes through the stub of an unrelated
+  edge, or runs through a junction's dot — each would draw a junction that is
+  not there. Routes keep off frame outlines, and a few outer channels give
+  edges going round the drawing room to stay apart. Edges are drawn after the
+  boxes, so nothing can hide under a fill. Scene edges carry the routed path
+  as densely sampled, corner-rounded `waypoints`, so a host splining through
+  them (and `Scene::hit_test` / `edge_at`) follows the drawn line.
+- **Service boxes:** labels are 14px (was 13px) and wrap inside the 150px box
+  instead of overflowing it, over balanced lines; a single word too long to
+  break widens its box. Icons are 24px (was 16px), and icon plus label are one
+  block centred in the box (it sat 8px high, and the label 2px left of centre
+  because of a trailing newline). Boxes take the accent colour of their
+  top-level group instead of one colour per declaration index. Two services an
+  edge joins sit 56px apart (was 28px for all siblings), so arrows keep a shaft.
+- **Icons:** every glyph whose default presentation is text (☁ ✉ ⚙ 🗄 🖥 🛢)
+  carries VARIATION SELECTOR-16, so all icons render in colour (some were drawn
+  monochrome). `database` is an oil drum (was a file cabinet), `server` the
+  rack-like cabinet (was a desktop monitor), `cpu` a gear (was a brain); new
+  names: `desktop`, `firewall`, `container`/`docker`/`package`,
+  `settings`/`config`/`gear`, `monitoring`/`metrics`, `log`/`logs`,
+  `alert`/`bell`/`notification`, `api`/`plug`.
+- flowmaid's own named qualifier `a{g}:R` now means the same as `{group}`
+  (the edge attaches to group `g`'s frame) and still checks that `a` is in `g`.
+- **Group titles move off an edge that rises through them.** When an edge
+  enters (or leaves) the top port of a service right under its group's title,
+  the title starts just right of the edge's line and the frame widens to hold
+  it, so the edge runs straight instead of striking the title or wiggling
+  round it. Titles are measured wide (bold text, colour emoji at 1.3em) and
+  edges keep 8px from either end.
+- Groups linked to several other groups keep their own grid: each group is laid
+  out by its own edges from one anchor, and another group's services no longer
+  push its cells around (they used to come out tangled in larger diagrams).
+  Two boxes that face each other with a port each keep an edge's gap even when
+  no edge joins them, so their stubs never meet and read as a link.
+- Routing large architecture diagrams is much faster: the lattice is built per
+  clearance instead of per point × clearance, and once a diagram's searches have
+  done a lot of work, later ones weight their estimate. A 200-service random
+  tangle takes ~1.4 s instead of ~20 s, a 120-service grid ~4 ms instead of
+  ~60 ms; ordinary diagrams route exactly as before the budget.
+- **Breaking** (needs a **minor** bump). Nothing public is removed or
+  renamed, and every function keeps its signature. What breaks, and how to
+  migrate:
+  - **Model structs gain fields and become `#[non_exhaustive]`:**
+    `model::Entity`, `PieChart`, `Journey`, `JourneyTask`, `Timeline`,
+    `MindNode`, `Architecture`, `ArchService`, `ArchEdge` and
+    `SankeyConfig`. Outside the crate a struct literal (with or without
+    `..Default::default()`) and a pattern without `..` no longer compile.
+    Start from `Default` and assign the fields for `PieChart`, `Journey`,
+    `Timeline`, `Architecture` and `SankeyConfig`; get an `Entity` from
+    `ErDiagram::ensure_entity`; use the new constructors for the rest:
+    `Mindmap::add_node`, `JourneyTask::new`, `ArchService::new` and
+    `ArchEdge::new` (see Added). `ErDiagram` (new field `direction`) and
+    `SequenceDiagram` (new fields `mirror_actors`, `scoped_frames`) gain
+    fields too, but they already had a private field, so this changes
+    nothing for them. `Edge::end_room` is non-breaking because `Edge` was
+    already `#[non_exhaustive]`.
+  - **Scene structs gain fields and become `#[non_exhaustive]`:**
+    `er::ErRow`, `er::ErTable`, `seq::SeqScene`, `pie::PieScene`,
+    `journey::TaskGlyph`, `timeline::PeriodGlyph`, `sankey::SankeyNodeGlyph`,
+    `sankey::SankeyScene`, `mindmap::MindNodeBox` and
+    `architecture::ArchScene`. They come from each module's `scene()` (or
+    `route()`). Reading and assigning their fields still works. To change
+    one, clone it and assign: struct update syntax
+    (`ArchScene { scene, ..old }`) is refused for these types.
+    `SeqScene::default()` still exists.
+  - **`MindShape`** gains a `Default` variant and becomes
+    `#[non_exhaustive]`, so a `match` needs a `_` arm. `Default` is now
+    `MindShape::default()`, and the parser gives it to a node without a
+    wrapper (it used to give `Rounded`), so code that tested for
+    `Rounded` to find such nodes should test for `Default`. `Rounded`
+    (`id(text)`) still draws a pill.
+  - **Defaults of hand-built models now match the parser.**
+    `SequenceDiagram::default()` has `mirror_actors: true`, so a hand-built
+    diagram gains the footer row of participant boxes; set it to `false`
+    to drop that row. `ErDiagram::default()` now flows top to bottom
+    (`direction` is `Direction::TD`) where ER used to be hard-coded left to
+    right; set `direction = Direction::LR` for the old flow.
+  - **Scene semantics:** in a gitGraph scene, merge edges are
+    `EdgeKind::Open` (they were `Arrow`), and every edge carries its lane
+    colour and width in `meta.style`. Commit nodes used to all be `Circle`.
+    Now a merge is a `DoubleCircle`, a HIGHLIGHT commit a square `Rect`, and
+    a REVERSE commit a `Circle` labelled `REVERSE_MARK`. The renderer now
+    ranks lanes by `GitBranch::order` (see Changed). Pie slice `i` takes
+    `pie::slice_color(i)`, which is `accent(i)` only for the first eight
+    slices.
+  - **Public constants with a new value or meaning.** They still compile,
+    but code that lays things out from them gets new numbers. Each one whose
+    meaning changed says what it was in 0.32 in its doc comment:
+    - `architecture`: `CHILD_GAP_X` / `CHILD_GAP_Y` are 32 (were 28) and
+      now only separate children that no edge joins. Two children an edge
+      joins sit at least 56px apart. `GROUP_GAP` (50) now separates a group's frame
+      from any sibling, nested groups included, where it used to apply
+      only between top-level groups. `SERVICE_W` × `SERVICE_H`
+      (150 × 70) is now the smallest box, not the fixed size. `FONT` is
+      14 (was 13) and `ICON_FONT` is 24 (was 16).
+    - `gitgraph`: `PAD` is 24 (was 30), the margin round the drawn
+      content. `COMMIT_DX` is 50 (was 90) and is now the minimum column
+      pitch: LR columns move right as their labels need. `BRANCH_DY` (70)
+      is now the minimum lane pitch in TB/BT. `BRANCH_LABEL_W` (70) is now
+      the minimum width of the LR name column, and TB/BT no longer
+      reserve it. `R` is 11 (was 12).
+    - `journey`: `DOT_R` is 5 (was 4) and now sizes the legend dots too.
+      `DOTS_H` is 20 (was 16).
+    - `mindmap`: `PAD_X` is 16 (was 12) and `PAD_Y` is 8 (was 7). `RING`
+      (172) is now only the least ring spacing of the fallback layout.
+      `FONT` (14) no longer applies to the root or the first level, which
+      use `ROOT_FONT` and `BRANCH_FONT`.
+    - `pie`: `RADIUS` is 130 (was 110). `LABEL_R` is 0.72 (was 0.62) and
+      is now where a label starts: it may slide out to `LABEL_R_MAX`, or
+      outside the rim. `MIN_LABEL_FRAC` is 0.01 (was 0.04).
+    - `sankey`: `FONT` is 14 (was 13).
+    - `timeline`: `AXIS_COLOR` is `#8a90a8` (was `#c2c8dc`) and now
+      colours only the axis. The task lines keep the old colour as
+      `TASK_LINE_COLOR`. `TICK_R` is 4.5 (was 3).
 
 ### Fixed
 
@@ -42,6 +510,80 @@ zero. Needs a **minor** bump: `AdvanceScene` gains a public field.
 - Parallel edges were drawn on top of each other, and five or more
   parallel ported edges could be drawn through the node between them.
 - A route could step out and come straight back along the same line.
+- **Low-contrast white text on accent fills.** Class and ER headers,
+  sequence participant boxes, journey and timeline section bands, pie
+  percentages and mindmap branches wrote white on every accent, below
+  WCAG AA on six of the eight (amber 2.6:1, green 3.2:1, rose 4.1:1).
+  The text now takes white or a navy near-black by contrast with its
+  fill, so every label reaches 4.5:1; indigo and violet keep white.
+  Gitgraph lane names and tags, and sequence actor names, written in the
+  raw accent on white, use the accent darkened as needed. Only text
+  colours change: no geometry, and flowchart output is byte-identical.
+- **ER relationship labels no longer cover the crow's feet.** The label pill
+  sat on the line's midpoint and was painted last. On the fixture it hid the
+  zero circle, so `o{` read as `|{`; on a line widened only enough for its
+  label, it hid both ends. A label now sits in the stretch the glyphs leave
+  free, or beside the line when there is none, and the layout reserves that
+  stretch.
+- **Rerouted ER relationships follow their route.** A relationship rerouted
+  around a table used to be drawn as its straight chord, through the boxes,
+  with zero-size glyphs.
+- **An explicit `activate` / `deactivate` bar starts and ends at its
+  message**, as the `+` / `-` shorthand always did. It used to start and end
+  14px late, one partial row after the message it belongs to.
+- **Sequence frames contain their notes.** A `Note right of` the last
+  participant, or `left of` the first, inside an `alt` / `opt` / `loop` hung
+  half outside the frame, and the border cut through it. Frames (and nested
+  frames, inset) now widen together to contain their notes, self-message labels
+  and condition labels.
+- **A headless dashed message reaches its lifeline.** The dash pattern now
+  ends with ink at both ends (`stroke-dashoffset`). Before, a `-->` could stop
+  in a 4px gap short of its target.
+- **A REVERSE commit no longer reads as a merge.** It was drawn as a white
+  hollow ring, which is mermaid's merge marker (report P0 #15).
+- **Merge curves no longer strike commit ids.** "merge-hotfix" was crossed out
+  mid-word on the comparison fixture.
+- **`branch dev order: 2`** created a branch literally named "dev order: 2".
+- **`merge x type: HIGHLIGHT`** parsed, but the type was dropped.
+- **TB/BT tags on the first lane** hung off the left edge of the canvas, and
+  LR tags sat about 2px from its top.
+- **A branch name longer than about 9 characters** ran into the first commit
+  column. The name column now widens to fit the name.
+- **The mindmap ring layout no longer overlaps boxes or runs connectors
+  through them.** It put depth `k` on a ring `k · RING` (172px) out and
+  spread each family over its parent's whole wedge, so big boxes on
+  neighbouring rings overlapped and a connector to a child far round its
+  ring cut back across others: on 60 random maps of 25–220 nodes it
+  overlapped boxes on 54. Each ring now sits far enough out that its boxes
+  clear the ring inside it, every box keeps to its own wedge, a family sits
+  packed round its parent, and wherever a connector still bends back
+  towards the root or passes through a sibling the gap out to that ring is
+  widened until none does. Sparse, but clean on any tree; it is now only
+  the fallback of the fan layout (see Changed).
+- **architecture: an edge no longer passes behind or through a service box**
+  (report P0 #12). On the comparison diagram `web -- api` ran behind Mobile
+  App, so it read Web–Mobile–API, and `svc -- cache` ran through PostgreSQL,
+  so Redis looked unconnected. Reordering the source drew a different false
+  link.
+- **architecture: services outside every group** were all drawn on top of
+  each other at the canvas origin; they are laid out like any other service.
+- architecture: a route over the top row (or left column) and its label chip
+  could reach past the canvas edge and be cut off; the drawing now moves down
+  or right to keep a margin round every route and chip.
+- **architecture: edge label chips no longer cover each other, a service box,
+  a junction or a group title.** Each chip is placed after every route is
+  known. It slides along each leg of its edge's route. It prefers a stretch
+  of line its edge does not share with another edge, and keeps clear of its
+  own route's bends. When no stretch has room, it sits just beside its own
+  line. Two labelled edges between the same two services (a request and its
+  reply on one line) each get a chip's room in the layout, and their chips
+  are placed together. Previously a chip went to the middle of the route's
+  longest flat leg without checking anything else. On a labelled shop
+  diagram, 'read replica' hid 'sql' on the trunk into Postgres and 'https'
+  covered 'REST over https'. A chip wider than its leg hid the route's
+  corners. Across 800 random diagrams there were 64 chip-on-chip overlaps,
+  59 chips on a box and 160 chips on an unrelated edge. Now there are 0, 0
+  and 13; the 13 are in dense tangles where no free spot touches the line.
 
 ## [0.32.0] - 2026-10-28
 

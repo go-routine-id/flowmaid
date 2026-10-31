@@ -63,12 +63,13 @@ pub fn render_class_with(d: &ClassDiagram, opts: &SvgOptions) -> String {
 /// Render a pie chart (proportional slices + legend). Geometry &
 /// serialisation live in the `pie` module.
 pub fn render_pie(d: &PieChart) -> String {
-    crate::pie::to_svg(&crate::pie::scene(d))
+    render_pie_with(d, &SvgOptions::default())
 }
 
 /// [`render_pie`] with explicit viewport options.
 pub fn render_pie_with(d: &PieChart, opts: &SvgOptions) -> String {
-    crate::pie::to_svg_with(&crate::pie::scene(d), opts)
+    let a11y = A11y::new(d.acc_title.clone(), d.acc_descr.clone());
+    crate::pie::to_svg_a11y_with(&crate::pie::scene(d), &a11y, opts)
 }
 
 /// Render a sequence diagram (lifelines + linear message rows).
@@ -83,8 +84,9 @@ pub fn render_seq_with(d: &SequenceDiagram, opts: &SvgOptions) -> String {
     crate::seq::to_svg_a11y_with(&crate::seq::scene(d), &a11y, opts)
 }
 
-/// Render a mindmap (left-to-right tidy tree with colored branches).
-/// Geometry & serialisation live in the `mindmap` module.
+/// Render a mindmap (radial: the root at the centre, children fanned
+/// round their parents, colored branches). Geometry & serialisation
+/// live in the `mindmap` module.
 pub fn render_mindmap(d: &Mindmap) -> String {
     crate::mindmap::to_svg(&crate::mindmap::scene(d))
 }
@@ -97,12 +99,13 @@ pub fn render_mindmap_with(d: &Mindmap, opts: &SvgOptions) -> String {
 /// Render a user-journey (horizontal band of score-colored faces).
 /// Geometry & serialisation live in the `journey` module.
 pub fn render_journey(d: &Journey) -> String {
-    crate::journey::to_svg(&crate::journey::scene(d))
+    render_journey_with(d, &SvgOptions::default())
 }
 
 /// [`render_journey`] with explicit viewport options.
 pub fn render_journey_with(d: &Journey, opts: &SvgOptions) -> String {
-    crate::journey::to_svg_with(&crate::journey::scene(d), opts)
+    let a11y = A11y::new(d.acc_title.clone(), d.acc_descr.clone());
+    crate::journey::to_svg_a11y_with(&crate::journey::scene(d), &a11y, opts)
 }
 
 /// Render a git graph (branch lanes + commit circles + merge curves).
@@ -119,24 +122,26 @@ pub fn render_gitgraph_with(d: &GitGraph, opts: &SvgOptions) -> String {
 /// Render an architecture-beta diagram (nested groups + services + edges).
 /// Geometry & serialisation live in the `architecture` module.
 pub fn render_architecture(d: &Architecture) -> String {
-    crate::architecture::to_svg(&crate::architecture::scene(d))
+    render_architecture_with(d, &SvgOptions::default())
 }
 
 /// [`render_architecture`] with explicit viewport options.
 pub fn render_architecture_with(d: &Architecture, opts: &SvgOptions) -> String {
-    crate::architecture::to_svg_with(&crate::architecture::scene(d), opts)
+    let a11y = A11y::new(d.acc_title.clone(), d.acc_descr.clone());
+    crate::architecture::to_svg_a11y_with(&crate::architecture::scene(d), &a11y, opts)
 }
 
 /// Render a timeline (period columns on an axis, events stacked beneath,
 /// colored section bands). Geometry & serialisation live in the
 /// `timeline` module.
 pub fn render_timeline(d: &Timeline) -> String {
-    crate::timeline::to_svg(&crate::timeline::scene(d))
+    render_timeline_with(d, &SvgOptions::default())
 }
 
 /// [`render_timeline`] with explicit viewport options.
 pub fn render_timeline_with(d: &Timeline, opts: &SvgOptions) -> String {
-    crate::timeline::to_svg_with(&crate::timeline::scene(d), opts)
+    let a11y = A11y::new(d.acc_title.clone(), d.acc_descr.clone());
+    crate::timeline::to_svg_a11y_with(&crate::timeline::scene(d), &a11y, opts)
 }
 
 /// Render a sankey diagram (nodes in columns, flows as ribbons whose

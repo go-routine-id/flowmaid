@@ -337,6 +337,39 @@ pub fn line_count(s: &str) -> usize {
     s.split('\n').count().max(1)
 }
 
+/// Greedy word wrap of `s` to lines at most `max_w` px wide, where a
+/// line measures `text_width(line) * scale` (pass `size /
+/// TEXT_CALIBRATION` for text drawn at another size). Existing `\n`
+/// breaks stay; a single word wider than `max_w` keeps a line to
+/// itself, unsplit, as mermaid's wrapped labels do. Runs of spaces at
+/// a break are dropped. For the fixed-column diagrams (journey tasks,
+/// timeline periods and events) whose text would otherwise widen its
+/// column without bound.
+pub(crate) fn wrap_text(s: &str, max_w: f64, scale: f64) -> String {
+    let mut out: Vec<String> = Vec::new();
+    for line in s.split('\n') {
+        if text_width(line) * scale <= max_w {
+            out.push(line.to_string());
+            continue;
+        }
+        let mut cur = String::new();
+        for word in line.split(' ').filter(|w| !w.is_empty()) {
+            if cur.is_empty() {
+                cur.push_str(word);
+                continue;
+            }
+            let cand = format!("{cur} {word}");
+            if text_width(&cand) * scale > max_w {
+                out.push(std::mem::replace(&mut cur, word.to_string()));
+            } else {
+                cur = cand;
+            }
+        }
+        out.push(cur);
+    }
+    out.join("\n")
+}
+
 /// Width of a single line (Helvetica at [`TEXT_CALIBRATION`] px)
 /// per character class.
 /// Without real font metrics this stays approximate, but it is far
@@ -1811,13 +1844,21 @@ fn place(
     // An edge between ADJACENT layers has no dummy to reserve its
     // label a slot: the label sits mid-gap, between the two borders.
     // Per upper layer: (lower end, upper end, label extent along the
-    // layer axis) for each labelled such edge — in LR/RL that extent
-    // is the label's width, which easily outgrows GAP_L.
-    let mut short_labels: Vec<Vec<(usize, usize, f64)>> = vec![Vec::new(); nlayers];
-    // Per upper layer: (breadth centre, breadth extent, layer extent).
-    let mut short_across: Vec<Vec<(f64, f64, f64)>> = vec![Vec::new(); nlayers];
+    // layer axis, end room) for each labelled such edge — in LR/RL that
+    // extent is the label's width, which easily outgrows GAP_L. The end
+    // room (`Edge::end_room`, both ends summed: ER crow's feet) is gap
+    // the label may not take, so an edge carrying any also gets an
+    // entry without a label (extent 0): its glyphs must fit facing
+    // each other.
+    let mut short_labels: Vec<Vec<(usize, usize, f64, f64)>> = vec![Vec::new(); nlayers];
+    // Per upper layer: (breadth centre, breadth extent, layer extent,
+    // end room).
+    let mut short_across: Vec<Vec<(f64, f64, f64, f64)>> = vec![Vec::new(); nlayers];
     for (ei, e) in g.edges.iter().enumerate() {
-        let Some(lbl) = &e.label else { continue };
+        let room = e.end_room.0 + e.end_room.1;
+        if e.label.is_none() && room <= 0.0 {
+            continue;
+        }
         if e.from == e.to || back[ei] || matches!(e.kind, EdgeKind::Invisible) {
             continue;
         }
@@ -1829,19 +1870,23 @@ fn place(
         if alayer[hi] != alayer[lo] + 1 {
             continue;
         }
+        let Some(lbl) = &e.label else {
+            short_labels[alayer[hi]].push((lo, hi, 0.0, room));
+            continue;
+        };
         let w = text_width(lbl) + LABEL_PAD_W;
         let (ext, across) = if horizontal {
             (w, LABEL_BOX_H)
         } else {
             (LABEL_BOX_H, w)
         };
-        short_labels[alayer[hi]].push((lo, hi, ext));
+        short_labels[alayer[hi]].push((lo, hi, ext, room));
         // In LR/RL a row along the layer axis costs a label's whole
         // width, and the scene never uses it: colliding labels there
         // slide apart ACROSS the flow (they are only LABEL_BOX_H tall),
         // so each gap just has to fit its widest label (above).
         if !horizontal {
-            short_across[alayer[hi]].push(((bpos[lo] + bpos[hi]) / 2.0, across, ext));
+            short_across[alayer[hi]].push(((bpos[lo] + bpos[hi]) / 2.0, across, ext, room));
         }
     }
     // TD/BT labels sharing one gap that would overlap side by side need
@@ -1858,7 +1903,7 @@ fn place(
             spans.sort_by(|a, b| (a.0 - a.1 / 2.0).total_cmp(&(b.0 - b.1 / 2.0)));
             // Per row: (right end so far, largest extent along l).
             let mut rows: Vec<(f64, f64)> = Vec::new();
-            for &(mid, across, ext) in spans.iter() {
+            for &(mid, across, ext, _) in spans.iter() {
                 let left = mid - across / 2.0;
                 match rows.iter_mut().find(|r| r.0 + LABEL_CLEAR <= left) {
                     Some(r) => *r = (mid + across / 2.0, r.1.max(ext)),
@@ -1869,8 +1914,11 @@ fn place(
                 return 0.0;
             }
             let tallest = rows.iter().map(|r| r.1).fold(0.0, f64::max);
+            // The rows stack between the end glyphs, never over them.
+            let room = spans.iter().map(|s| s.3).fold(0.0, f64::max);
             rows.iter().map(|r| r.1).sum::<f64>()
                 + tallest
+                + room
                 + 2.0 * LABEL_CLEAR * (rows.len() + 1) as f64
         })
         .collect();
@@ -1891,8 +1939,10 @@ fn place(
         // the gap — and the whole layout — exactly as it was. An end
         // whose frame closes / opens on its layer is reached past that
         // frame's border (the layer's farthest one), not its own box:
-        // a label on the border line would hide it.
-        for &(s, t, ext) in &short_labels[li] {
+        // a label on the border line would hide it. End room counts as
+        // part of the ends: the label (or, without one, the other
+        // end's glyph) clears it by LABEL_CLEAR too.
+        for &(s, t, ext, room) in &short_labels[li] {
             let lo_side = if reach[s].1 > 0.0 {
                 reach_of(li - 1, 1)
             } else {
@@ -1905,8 +1955,8 @@ fn place(
             };
             let ends = lcoord[li - 1] + (lo_side + hi_side);
             let at = cursor + lh / 2.0;
-            if at - ends < ext {
-                cursor = cursor.max(ends + ext + 2.0 * LABEL_CLEAR - lh / 2.0);
+            if at - ends < ext + room {
+                cursor = cursor.max(ends + room + ext + 2.0 * LABEL_CLEAR - lh / 2.0);
             }
         }
         if li > 0 && gap_need[li] > 0.0 {
@@ -3203,6 +3253,79 @@ fn arrange(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `Edge::end_room` (ER crow's feet) widens a gap between adjacent
+    /// layers by just enough for the room, the label and LABEL_CLEAR
+    /// either side — and an edge without room or label leaves the gap
+    /// exactly as it was.
+    #[test]
+    fn end_room_widens_an_adjacent_gap_for_glyphs_and_label() {
+        let gap = |room: (f64, f64), label: Option<&str>, dir: Direction| {
+            let mut g = Graph::default();
+            g.direction = dir;
+            let a = g.ensure_node("A", None, None);
+            let b = g.ensure_node("B", None, None);
+            g.add_edge(a, b, label.map(str::to_string), EdgeKind::Open);
+            g.edges[0].end_room = room;
+            let sizes = [(80.0, 40.0), (80.0, 40.0)];
+            let lo = layout_sized(&g, &sizes);
+            let (pa, pb) = (&lo.nodes[0], &lo.nodes[1]);
+            (pb.l - pb.lsize / 2.0) - (pa.l + pa.lsize / 2.0)
+        };
+        for dir in [Direction::TD, Direction::LR] {
+            assert_eq!(gap((0.0, 0.0), None, dir), GAP_L, "{dir:?}");
+            // Room that fits GAP_L changes nothing.
+            assert_eq!(gap((10.0, 10.0), None, dir), GAP_L, "{dir:?}");
+            // Glyphs too long to face each other in GAP_L.
+            let g = gap((40.0, 30.0), None, dir);
+            assert!(
+                (g - (70.0 + 2.0 * LABEL_CLEAR)).abs() < 1e-9,
+                "{dir:?}: {g}"
+            );
+        }
+        // A label between the glyphs: along LR it takes its width.
+        let w = text_width("a long relationship role") + LABEL_PAD_W;
+        let g = gap(
+            (30.0, 20.0),
+            Some("a long relationship role"),
+            Direction::LR,
+        );
+        assert!((g - (50.0 + w + 2.0 * LABEL_CLEAR)).abs() < 1e-9, "{g}");
+        // Down the page, its height.
+        let g = gap((30.0, 25.0), Some("role"), Direction::TD);
+        assert!(
+            (g - (55.0 + LABEL_BOX_H + 2.0 * LABEL_CLEAR)).abs() < 1e-9,
+            "{g}"
+        );
+    }
+
+    #[test]
+    fn wrap_text_is_greedy_keeps_breaks_and_never_splits_words() {
+        // Fits: untouched (including inner runs of spaces).
+        assert_eq!(wrap_text("short  text", 200.0, 1.0), "short  text");
+        let s = "one two three four five six seven eight nine ten";
+        let w = wrap_text(s, 80.0, 1.0);
+        assert!(w.lines().count() > 1);
+        assert_eq!(w.replace('\n', " "), s, "words kept in order");
+        for line in w.lines() {
+            assert!(text_width(line) <= 80.0, "{line:?} too wide");
+        }
+        // Greedy: no line could take the next line's first word.
+        let lines: Vec<&str> = w.lines().collect();
+        for pair in lines.windows(2) {
+            let next = pair[1].split(' ').next().unwrap();
+            assert!(text_width(&format!("{} {next}", pair[0])) > 80.0);
+        }
+        // An over-long word keeps a line to itself, unsplit.
+        assert_eq!(
+            wrap_text("a Pneumonoultramicroscopic b", 40.0, 1.0),
+            "a\nPneumonoultramicroscopic\nb"
+        );
+        // Existing breaks stay; the scale measures at another size.
+        assert_eq!(wrap_text("x\ny", 1.0, 1.0), "x\ny");
+        let at_13 = wrap_text(s, 80.0, 13.0 / TEXT_CALIBRATION);
+        assert!(at_13.lines().count() <= w.lines().count());
+    }
 
     #[test]
     fn segment_box_test_is_open_and_exact() {
