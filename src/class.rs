@@ -2788,6 +2788,20 @@ fn nearest_on(pts: &[(f64, f64)], p: (f64, f64)) -> (f64, f64) {
     best.1
 }
 
+/// Layout-graph id for note `k`: `note-k`, with a `'` added until no
+/// node of `g` has it yet. Flowmaid's parser accepts a class named
+/// `note-0` (mermaid reserves `note`), and `Graph::ensure_node` merges
+/// by id, so a plain `note-k` would fold the note into that class and
+/// leave one size too many for the layout (a panic in `scene_sized` /
+/// `route_sized`).
+fn note_id(g: &Graph, k: usize) -> String {
+    let mut id = format!("note-{k}");
+    while g.node_index(&id).is_some() {
+        id.push('\'');
+    }
+    id
+}
+
 /// The synthetic layout graph plus drawing data.
 struct Built {
     g: Graph,
@@ -2804,10 +2818,10 @@ struct Built {
 /// INVARIANT: `g.nodes[i]` corresponds to `d.classes[i]`, then
 /// `g.nodes[classes + k]` to `d.notes[k]`; `g.edges[j]` to
 /// `d.relations[j]`, then one connector per attached note — class
-/// names are unique (`ensure_class` dedupes), note ids cannot collide
-/// with them (`-` is no class-name character), `ensure_node` appends
-/// in call order, and edges are added in relation order. `assemble`
-/// asserts the counts.
+/// names are unique (`ensure_class` dedupes), a note's id is made
+/// unique against them (`note_id`), `ensure_node` appends in call
+/// order, and edges are added in relation order. `assemble` asserts
+/// the counts.
 fn build(d: &ClassDiagram) -> Built {
     let mut g = Graph::default();
     g.direction = d.direction;
@@ -2844,11 +2858,8 @@ fn build(d: &ClassDiagram) -> Built {
     }
     let n = d.classes.len();
     for (k, note) in d.notes.iter().enumerate() {
-        g.ensure_node(
-            &format!("note-{k}"),
-            Some(note.text.clone()),
-            Some(Shape::Rect),
-        );
+        let i = g.ensure_node(&note_id(&g, k), Some(note.text.clone()), Some(Shape::Rect));
+        debug_assert_eq!(i, n + k, "note {k} merged into another node");
     }
     for r in &d.relations {
         // Laid out in SOURCE order (mermaid's id1 → id2), so the left
@@ -5397,6 +5408,44 @@ mod tests {
             (0.0..120.0).contains(&gap),
             "Supplier {gap:.0} px above Product"
         );
+    }
+
+    /// Verifier finding (r6, BLOCKING): a class named `note-<k>` (the
+    /// parser accepts it, though mermaid reserves `note`) took note k's
+    /// layout id, so the note folded into the class and `scene_sized` /
+    /// `route_sized` panicked on one size too many — through
+    /// `render_svg`, `scene` and `route`. Each note is its own node now,
+    /// after the classes, whatever the classes are called.
+    #[test]
+    fn a_class_named_like_a_note_id_keeps_its_note() {
+        for src in [
+            "classDiagram\nclass note-0\nnote \"hello\"",
+            "classDiagram\nclass Order\nclass note-1\nnote for Order \"first\"\nnote \"second\"",
+            "classDiagram\n<<interface>> note-0\nnote \"x\"",
+            "classDiagram\nclass A, note-0\nnote \"x\"",
+            "classDiagram\nclass note-0~T~\nnote \"x\"",
+            "classDiagram\nclass note-0\nclass note-0'\nclass note-1\nA <|-- B\nnote \"a\"\nnote for A \"b\"",
+        ] {
+            let svg = crate::render_svg(src).unwrap_or_else(|e| panic!("{e:?}\n{src}"));
+            assert!(svg.contains("</svg>"), "{src}");
+            let d = cd(src);
+            let cs = scene(&d);
+            let n = cs.boxes.len();
+            assert_eq!(n, d.classes.len(), "{src}");
+            assert_eq!(cs.scene.nodes.len(), n + d.notes.len(), "{src}");
+            for (k, note) in d.notes.iter().enumerate() {
+                let node = &cs.scene.nodes[n + k];
+                assert_eq!(node.label, note.text, "note {k}\n{src}");
+                assert!(d.classes.iter().all(|c| c.name != node.id), "{src}");
+            }
+            let all: Vec<(f64, f64)> = cs.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
+            for centers in [&all[..], &all[..n]] {
+                let r = route(&d, centers);
+                assert_eq!(r.scene.nodes.len(), cs.scene.nodes.len(), "{src}");
+                assert_eq!(r.scene.edges.len(), cs.scene.edges.len(), "{src}");
+                to_svg(&r);
+            }
+        }
     }
 
     /// Verifier finding (r3, x4 in LR): a routed edge kept the router's
