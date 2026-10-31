@@ -110,6 +110,14 @@ const FAN_WORK_MIN: usize = 6_000_000;
 /// of work. A map of a couple of thousand nodes may run out of it (and
 /// take the ring layout) rather than keep its reader waiting.
 const FAN_WORK_MAX: usize = 1_000_000_000;
+/// Deepest tree (levels below the root) the fan layout takes on; a
+/// deeper one takes the ring layout. The fan lays a subtree out through
+/// its children's, a few stack frames per level, so a hand-built chain
+/// thousands deep overflowed the stack before the work budget stopped
+/// it. A 2 MiB thread (a test thread's) holds about 390 levels in a debug
+/// build, a 1 MiB one (a wasm module's) 400 to 800 in a release build:
+/// this leaves half of either spare. No map a person reads goes near.
+const FAN_MAX_DEPTH: usize = 200;
 /// Side of an `::icon(…)` glyph box, drawn left of the label.
 pub const ICON: f64 = 14.0;
 /// Gap between an icon glyph and the label text.
@@ -550,6 +558,15 @@ impl Fan<'_> {
         let (pre, span) = preorder(d);
         if pre.len() != n {
             return None;
+        }
+        // Levels from the parent links (not `MindNode::depth`, which a
+        // hand-built map may leave unset), parents first in preorder.
+        let mut level = vec![0usize; n];
+        for &i in pre.iter().skip(1) {
+            level[i] = d.nodes[i].parent.map_or(0, |p| level[p] + 1);
+            if level[i] > FAN_MAX_DEPTH {
+                return None;
+            }
         }
         let mut fan = Fan {
             d,
@@ -3273,6 +3290,15 @@ mod tests {
         let m = mind(&src);
         let sizes: Vec<(f64, f64)> = m.nodes.iter().map(mind_node_size).collect();
         assert!(fan_centres(&m, &sizes).is_some(), "fell back to rings");
+    }
+
+    /// The fan layout copes with an empty map on its own: the levels
+    /// loop skips the root without slicing past an empty preorder
+    /// (`scene` returns early first, but `Fan::new` may not rely on it).
+    #[test]
+    fn the_fan_takes_an_empty_map() {
+        let m = Mindmap::default();
+        assert!(Fan::new(&m, &[]).is_some());
     }
 
     /// Two subtrees whose boxes are far apart can still collide: a spoke

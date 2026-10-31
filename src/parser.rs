@@ -18,13 +18,13 @@
 use crate::markdown;
 use crate::model::{
     ArchEdge, ArchGroup, ArchService, ArchSide, Architecture, Attr, Card, Class, ClassDiagram,
-    ClassRel, CommitKind, Direction, Document, EdgeAnimation, EdgeCurve, EdgeEnds, EdgeKind,
-    EdgeMeta, End, ErDiagram, FrameKind, GitBranch, GitCommit, GitGraph, GitOrientation, Graph,
-    Journey, JourneySection, JourneyTask, Key, LinkStyle, LinkTarget, Marker, Member, MindShape,
-    Mindmap, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation, SankeyAlignment,
-    SankeyConfig, SankeyDiagram, SankeyLabelStyle, SankeyLink, SankeyLinkColor, SeqHead, SeqItem,
-    SequenceDiagram, Shape, SubEdge, Subgraph, Timeline, TimelineDirection, TimelinePeriod,
-    TimelineSection, Visibility,
+    ClassNote, ClassRel, CommitKind, Direction, Document, EdgeAnimation, EdgeCurve, EdgeEnds,
+    EdgeKind, EdgeMeta, End, ErDiagram, FrameKind, GitBranch, GitCommit, GitGraph, GitOrientation,
+    Graph, Journey, JourneySection, JourneyTask, Key, LinkStyle, LinkTarget, Marker, Member,
+    MindShape, Mindmap, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation,
+    SankeyAlignment, SankeyConfig, SankeyDiagram, SankeyLabelStyle, SankeyLink, SankeyLinkColor,
+    SeqHead, SeqItem, SequenceDiagram, Shape, SubEdge, Subgraph, Timeline, TimelineDirection,
+    TimelinePeriod, TimelineSection, Visibility,
 };
 use crate::shapedata;
 use std::borrow::Cow;
@@ -3331,6 +3331,9 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
     d.acc_descr = acc.descr;
     // (class index, line where its `{` opened) for a good diagnostic.
     let mut open: Option<(usize, usize)> = None;
+    // `note for Name` notes by index, resolved once every class is
+    // known (the class may be declared after the note).
+    let mut note_for: Vec<(usize, String)> = Vec::new();
     for (i, raw) in source.lines().enumerate() {
         let lineno = i + 1;
         if lineno <= header_line {
@@ -3349,9 +3352,11 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
         if let Some((ci, _)) = open {
             if line == "}" {
                 open = None;
-            } else if !line.starts_with("<<") {
-                // Skip `<<interface>>` / `<<abstract>>` stereotypes
-                // (not yet rendered) rather than treat them as fields.
+            } else if let Some(a) = annotation_of(line) {
+                // `<<interface>>` / `<<abstract>>` inside the block is
+                // the class's stereotype, never a field.
+                d.classes[ci].annotations.push(a.to_string());
+            } else {
                 add_class_member(&mut d.classes[ci], line);
             }
             continue;
@@ -3360,19 +3365,48 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
             let rest = rest.trim();
             // `class Name {` opens a block; `class Name` just declares.
             if let Some(name) = rest.strip_suffix('{') {
-                let ci = d.ensure_class(name.trim());
+                let ci = ensure_generic_class(&mut d, name.trim());
                 open = Some((ci, lineno));
             } else {
-                // `class A, B, C` declares several at once (Mermaid).
-                for name in rest.split(',').map(str::trim).filter(|n| !n.is_empty()) {
-                    d.ensure_class(name);
+                // `class A, B, C` declares several at once (Mermaid); a
+                // comma inside a generic (`class Map~K, V~`) is not a
+                // separator.
+                let mut depth_odd = false;
+                let names = rest.split(|c: char| {
+                    if c == '~' {
+                        depth_odd = !depth_odd;
+                    }
+                    c == ',' && !depth_odd
+                });
+                for name in names.map(str::trim).filter(|n| !n.is_empty()) {
+                    ensure_generic_class(&mut d, name);
                 }
             }
             continue;
         }
-        // Ignore directives we don't render yet (`direction LR`,
-        // `note ...`) instead of mis-reading them as relations.
-        if strip_keyword(line, "direction").is_some() || strip_keyword(line, "note").is_some() {
+        // `<<interface>> Name` on its own line annotates that class.
+        if let Some(a) = line.strip_prefix("<<").and_then(|r| r.split_once(">>")) {
+            let (a, name) = (a.0.trim(), a.1.trim());
+            if !a.is_empty() && !name.is_empty() {
+                let ci = ensure_generic_class(&mut d, name);
+                d.classes[ci].annotations.push(a.to_string());
+                continue;
+            }
+        }
+        if let Some(rest) = strip_keyword(line, "direction") {
+            // An unknown direction is ignored, as mermaid ignores it
+            // (and as flowmaid did before it read the line at all).
+            if let Ok(dir) = parse_direction(rest, lineno) {
+                d.direction = dir;
+            }
+            continue;
+        }
+        if let Some(rest) = strip_keyword(line, "note") {
+            let (note, class) = parse_class_note(rest.trim(), lineno)?;
+            if let Some(name) = class {
+                note_for.push((d.notes.len(), name));
+            }
+            d.notes.push(note);
             continue;
         }
         // Classify by the part BEFORE the first unquoted colon: if it
@@ -3386,8 +3420,8 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
             if let Some(c) = colon {
                 let name = line[..c].trim();
                 let member = line[c + 1..].trim();
-                if is_class_ident(name) && !member.is_empty() {
-                    let ci = d.ensure_class(name);
+                if is_class_ident(split_generic(name).0) && !member.is_empty() {
+                    let ci = ensure_generic_class(&mut d, name);
                     add_class_member(&mut d.classes[ci], member);
                     continue;
                 }
@@ -3404,11 +3438,75 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
             ),
         ));
     }
+    // A note for a class the diagram never declares stays free, as
+    // mermaid draws it: it does not create the class.
+    for (k, name) in note_for {
+        d.notes[k].class = d.class_index(split_generic(&name).0);
+    }
     Ok(d)
 }
 
 fn is_class_ident(s: &str) -> bool {
     !s.is_empty() && s.chars().all(|c| c.is_alphanumeric() || c == '_')
+}
+
+/// `Box~T~` → (`Box`, `Some("T")`): mermaid's generic class name. The
+/// id is the part before the first `~`, so `class Box~T~` and a later
+/// `Box : +size() int` are one class, not two. A name without a
+/// closed `~…~` suffix is returned whole.
+fn split_generic(name: &str) -> (&str, Option<&str>) {
+    match name.find('~') {
+        Some(i) if i > 0 && name.len() > i + 2 && name.ends_with('~') => {
+            (&name[..i], Some(&name[i + 1..name.len() - 1]))
+        }
+        _ => (name, None),
+    }
+}
+
+/// [`ClassDiagram::ensure_class`] for a possibly generic name
+/// (`Box~T~`); the first spelling that names the generic sets it.
+fn ensure_generic_class(d: &mut ClassDiagram, name: &str) -> usize {
+    let (id, generic) = split_generic(name);
+    let ci = d.ensure_class(id);
+    if let (Some(t), None) = (generic, &d.classes[ci].generic) {
+        d.classes[ci].generic = Some(t.to_string());
+    }
+    ci
+}
+
+/// The stereotype of a `<<interface>>` member line, without guillemets.
+fn annotation_of(line: &str) -> Option<&str> {
+    let a = line.strip_prefix("<<")?.strip_suffix(">>")?.trim();
+    (!a.is_empty()).then_some(a)
+}
+
+/// `note "text"` or `note for Class "text"` (the part after `note`):
+/// the note (still free) and, for `note for`, the class name it names
+/// (resolved by [`parse_class`] once the whole diagram is read). The
+/// text may be quoted; `\n` and `<br/>` break lines, as mermaid's own
+/// class notes do. A note without text, or `note for` without a class
+/// name, is an error, as in mermaid.
+fn parse_class_note(rest: &str, lineno: usize) -> Result<(ClassNote, Option<String>), ParseError> {
+    let (class, text) = match strip_keyword(rest, "for") {
+        Some(r) => {
+            let r = r.trim();
+            let end = r.find(char::is_whitespace).unwrap_or(r.len());
+            let name = &r[..end];
+            if !is_class_ident(split_generic(name).0) {
+                return Err(err(
+                    lineno,
+                    format!("'note for' needs a class name, got '{name}'"),
+                ));
+            }
+            (Some(name.to_string()), r[end..].trim())
+        }
+        None => (None, rest),
+    };
+    if text.is_empty() {
+        return Err(err(lineno, "note text is empty".to_string()));
+    }
+    let text = clean_label(&text.replace("\\n", "<br/>"));
+    Ok((ClassNote::new(text, None), class))
 }
 
 /// First byte index of `needle` in `s` that lies outside any `"..."`
@@ -3515,29 +3613,28 @@ fn parse_class_relation(d: &mut ClassDiagram, line: &str, lineno: usize) -> Resu
     // Strip optional cardinality quotes from the inner edges.
     let (left_name, left_card) = split_card_end(left, true);
     let (right_name, right_card) = split_card_end(right, false);
-    if !is_class_ident(left_name) || !is_class_ident(right_name) {
+    if !is_class_ident(split_generic(left_name).0) || !is_class_ident(split_generic(right_name).0) {
         return Err(err(
             lineno,
             format!("class relation needs two class names, got '{left_name}' / '{right_name}'"),
         ));
     }
-    let li = d.ensure_class(left_name);
-    let ri = d.ensure_class(right_name);
-    // Normalise so the decorated end is `to`.
+    let li = ensure_generic_class(d, left_name);
+    let ri = ensure_generic_class(d, right_name);
+    // Normalise so the decorated end is `to`; `head_left` keeps the
+    // source order, which the layout ranks by.
     let (from, to, from_card, to_card) = if head_left {
         (ri, li, right_card, left_card)
     } else {
         (li, ri, left_card, right_card)
     };
-    d.relations.push(ClassRel {
-        from,
-        to,
-        kind,
-        dashed,
-        from_card,
-        to_card,
-        label,
-    });
+    let mut rel = ClassRel::new(from, to, kind);
+    rel.dashed = dashed;
+    rel.from_card = from_card;
+    rel.to_card = to_card;
+    rel.label = label;
+    rel.head_left = head_left;
+    d.relations.push(rel);
     Ok(())
 }
 
@@ -5295,7 +5392,9 @@ fn parse_state(source: &str, header_line: usize) -> Result<Graph, ParseError> {
 
     // Open composite blocks: (subgraph index, opening line).
     let mut stack: Vec<(usize, usize)> = Vec::new();
-    let mut note_block = false;
+    // A block note being read: where it attaches, and its lines so far.
+    // `None` inside the block = a note form we keep skipping.
+    let mut note_block: Option<Option<(StateNote, Vec<String>)>> = None;
     for (i, raw) in source.lines().enumerate() {
         let lineno = i + 1;
         if lineno <= header_line {
@@ -5309,9 +5408,13 @@ fn parse_state(source: &str, header_line: usize) -> Result<Graph, ParseError> {
         if line.is_empty() {
             continue;
         }
-        if note_block {
+        if let Some(open) = note_block.as_mut() {
             if line.eq_ignore_ascii_case("end note") {
-                note_block = false;
+                if let Some((at, lines)) = note_block.take().flatten() {
+                    state_note(&mut g, &stack, &sub_ids, at, &lines.join("\n"));
+                }
+            } else if let Some((_, lines)) = open {
+                lines.push(note_text(line));
             }
             continue;
         }
@@ -5329,12 +5432,27 @@ fn parse_state(source: &str, header_line: usize) -> Result<Graph, ParseError> {
             }
             continue;
         }
-        // Notes are accepted and skipped (not rendered yet):
-        // `note left of X : text` is one line; without a ':' it is a
-        // block that runs until `end note`.
+        // Notes, mermaid-style: a yellow card joined to its state by a
+        // dotted line. `note left of X : text` is one line; without a
+        // ':' the text runs on the next lines until `end note`.
+        // `note "text" as N` is a free-standing card named N. Any other
+        // note form is skipped as before (a block one to `end note`).
         if let Some(rest) = strip_keyword(line, "note") {
-            if !rest.contains(':') {
-                note_block = true;
+            let rest = rest.trim();
+            if let Some((text, id)) = floating_note(rest) {
+                let idx = state_node(&mut g, &stack, id, Some(text), Some(Shape::Rect));
+                g.nodes[idx].style = note_style();
+                continue;
+            }
+            let (head, text) = match rest.split_once(':') {
+                Some((h, t)) => (h, Some(t)),
+                None => (rest, None),
+            };
+            let at = state_note_head(head);
+            match (at, text) {
+                (Some(at), Some(t)) => state_note(&mut g, &stack, &sub_ids, at, &note_text(t)),
+                (at, None) => note_block = Some(at.map(|a| (a, Vec::new()))),
+                (None, Some(_)) => {}
             }
             continue;
         }
@@ -5420,7 +5538,128 @@ fn parse_state(source: &str, header_line: usize) -> Result<Graph, ParseError> {
             ),
         ));
     }
+    // A block note left open runs to the end of the source: draw what
+    // it swallowed, so the missing `end note` shows instead of the rest
+    // of the diagram vanishing.
+    if let Some(Some((at, lines))) = note_block {
+        state_note(&mut g, &stack, &sub_ids, at, &lines.join("\n"));
+    }
     Ok(g)
+}
+
+/// Where a `note left of X` / `note right of X` attaches: X (a state or
+/// a composite id) and whether the card goes before it along the flow.
+struct StateNote {
+    target: String,
+    before: bool,
+}
+
+/// The head of a positioned note (`left of X`, `right of X`, before any
+/// `:`), or `None` for any other form.
+fn state_note_head(head: &str) -> Option<StateNote> {
+    let (before, rest) = if let Some(r) = strip_keyword(head.trim(), "left") {
+        (true, r)
+    } else {
+        (false, strip_keyword(head.trim(), "right")?)
+    };
+    let target = strip_keyword(rest.trim(), "of")?.trim();
+    is_class_ident(target).then(|| StateNote {
+        target: target.to_string(),
+        before,
+    })
+}
+
+/// `"text" as N` after `note`: the card's text and its id.
+fn floating_note(rest: &str) -> Option<(String, &str)> {
+    let body = rest.strip_prefix('"')?;
+    let close = body.find('"')?;
+    let id = strip_keyword(body[close + 1..].trim(), "as")?.trim();
+    is_class_ident(id).then(|| (note_text(&body[..close]), id))
+}
+
+/// Note text: cleaned like a label, `<br/>` breaks kept as lines, each
+/// line trimmed (`a <br/> b` is "a" over "b").
+fn note_text(s: &str) -> String {
+    clean_label(s)
+        .split('\n')
+        .map(str::trim)
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// An id for a new note card the graph does not hold yet (`__start_*`
+/// style); should the source name it later, [`state_node`] moves the
+/// card on.
+fn fresh_note_id(g: &Graph) -> String {
+    let mut k = g.nodes.len();
+    while g.node_index(&format!("__note_{k}")).is_some() {
+        k += 1;
+    }
+    format!("__note_{k}")
+}
+
+/// A note card's colours ([`crate::style::NOTE_STYLE`]).
+fn note_style() -> NodeStyle {
+    let crate::style::ShapeStyle { fill, stroke } = crate::style::NOTE_STYLE;
+    NodeStyle {
+        fill: Some(fill.to_string()),
+        stroke: Some(stroke.to_string()),
+        ..NodeStyle::default()
+    }
+}
+
+/// Add a note card with `text` and the dotted line joining it to its
+/// state, mermaid-style: a node of its own (so it is laid out, routed,
+/// picked and dragged like any box) in the state's own box, linked by a
+/// `DottedOpen` edge that runs from the state to a `right of` card (one
+/// layer after it) and from a `left of` card to the state (one layer
+/// before it, see [`Graph::lead_nodes`]). A note on a composite links
+/// to its frame and sits in the composite's parent box.
+fn state_note(
+    g: &mut Graph,
+    stack: &[(usize, usize)],
+    sub_ids: &HashMap<String, usize>,
+    at: StateNote,
+    text: &str,
+) {
+    let target = match sub_ids.get(&at.target) {
+        Some(&si) => End::Sub(si),
+        None => End::Node(state_node(g, stack, &at.target, None, None)),
+    };
+    // The box the card joins: the state's own, or the composite's
+    // parent (the open block when the composite is not declared yet).
+    let owner = match target {
+        End::Node(v) => g.subgraphs.iter().position(|s| s.nodes.contains(&v)),
+        End::Sub(si) => match g.subgraphs.get(si) {
+            Some(s) => s.parent,
+            None => stack.last().map(|&(s, _)| s),
+        },
+    };
+    let note = g.ensure_node(&fresh_note_id(g), Some(text.to_string()), Some(Shape::Rect));
+    g.nodes[note].style = note_style();
+    if let Some(si) = owner {
+        g.subgraphs[si].nodes.push(note);
+    }
+    if at.before {
+        g.lead_nodes.push(note);
+    }
+    let card = End::Node(note);
+    let (from, to) = if at.before {
+        (card, target)
+    } else {
+        (target, card)
+    };
+    match (from, to) {
+        (End::Node(a), End::Node(b)) => g.add_edge(a, b, None, EdgeKind::DottedOpen),
+        (from, to) => g.sub_edges.push(SubEdge {
+            from,
+            to,
+            label: None,
+            kind: EdgeKind::DottedOpen,
+            ends: EdgeEnds::default(),
+            meta: EdgeMeta::default(),
+        }),
+    }
 }
 
 /// Head of a `state` declaration (everything after the keyword,
@@ -5473,6 +5712,15 @@ fn state_node(
     label: Option<String>,
     shape: Option<Shape>,
 ) -> usize {
+    // A state the source names like a card made earlier is a state of
+    // its own: the card moves to a fresh id first.
+    if let Some(card) = g.node_index(id).filter(|&i| {
+        let n = &g.nodes[i];
+        crate::style::is_note_card(&n.id, n.shape, &n.style)
+    }) {
+        let fresh = fresh_note_id(g);
+        g.rename_node(card, fresh);
+    }
     let is_new = g.node_index(id).is_none();
     let idx = g.ensure_node(
         id,
@@ -7339,13 +7587,105 @@ mod tests {
     }
 
     #[test]
-    fn state_notes_are_skipped_and_v1_header_works() {
+    fn state_notes_become_cards_and_v1_header_works() {
         let g = state(
-            "stateDiagram\nA --> B\nnote right of A : hi\n\
-             note left of B\nmulti\nline\nend note\nB --> A",
+            "stateDiagram\nA --> B\nnote right of A : hi <br/> there\n\
+             note left of B\nmulti\n  line\nEND NOTE\nB --> A",
         );
+        // Two states, two note cards; two transitions, two note links.
+        assert_eq!(g.nodes.len(), 4);
+        assert_eq!(g.edges.len(), 4);
+        let card = |text: &str| {
+            let v = g.nodes.iter().position(|n| n.label == text).unwrap();
+            let n = &g.nodes[v];
+            assert!(n.id.starts_with("__note_"), "{}", n.id);
+            assert_eq!(n.shape, Shape::Rect);
+            let note = crate::style::NOTE_STYLE;
+            assert_eq!(n.style.fill.as_deref(), Some(note.fill));
+            assert_eq!(n.style.stroke.as_deref(), Some(note.stroke));
+            v
+        };
+        let (a, b) = (g.node_index("A").unwrap(), g.node_index("B").unwrap());
+        let link = |from: usize, to: usize| {
+            let e = g.edges.iter().find(|e| e.from == from && e.to == to);
+            let e = e.expect("a note link");
+            assert_eq!((e.kind, e.label.as_deref()), (EdgeKind::DottedOpen, None));
+        };
+        // `right of`: the state links to its card (after it on the flow);
+        // `left of`: the card links to the state (before it).
+        let hi = card("hi\nthere");
+        link(a, hi);
+        let multi = card("multi\nline");
+        link(multi, b);
+        assert_eq!(g.lead_nodes, vec![multi]);
+    }
+
+    #[test]
+    fn state_notes_join_their_states_box() {
+        let g = state(
+            "stateDiagram-v2\nstate Outer {\nX --> Y\nnote right of X : in\n}\n\
+             note left of Y : from outside\nnote right of Outer : on the box\n\
+             state Later {\nZ --> W\n}\nnote left of Later : ahead",
+        );
+        let at = |text: &str| g.nodes.iter().position(|n| n.label == text).unwrap();
+        // A note on a member sits in the member's box, wherever the
+        // note line is.
+        let members = &g.subgraphs[0].nodes;
+        assert!(members.contains(&at("in")) && members.contains(&at("from outside")));
+        // A note on a composite links to its frame from the parent box.
+        let boxed = at("on the box");
+        assert!(g.subgraphs.iter().all(|s| !s.nodes.contains(&boxed)));
+        let sub = |v: usize| {
+            g.sub_edges
+                .iter()
+                .find(|e| e.from == End::Node(v) || e.to == End::Node(v))
+                .expect("a note link to a frame")
+        };
+        let e = sub(boxed);
+        assert_eq!((e.from, e.to), (End::Sub(0), End::Node(boxed)));
+        assert_eq!(e.kind, EdgeKind::DottedOpen);
+        let ahead = at("ahead");
+        let e = sub(ahead);
+        assert_eq!((e.from, e.to), (End::Node(ahead), End::Sub(1)));
+        assert!(g.lead_nodes.contains(&ahead));
+    }
+
+    #[test]
+    fn state_note_forms_mermaid_ignores_stay_harmless() {
+        // A floating note used to open a block that swallowed the rest
+        // of the diagram; it is now a free card named by its alias.
+        let g = state("stateDiagram-v2\nnote \"free text\" as N1\nA --> B\nN1 --> A");
+        let n1 = &g.nodes[g.node_index("N1").unwrap()];
+        assert_eq!((n1.label.as_str(), n1.shape), ("free text", Shape::Rect));
+        assert!(n1.style.fill.is_some());
+        assert_eq!(g.edges.len(), 2, "the lines after it still parse");
+        // Note forms with no state to attach to are skipped as before,
+        // a block one up to its `end note`.
+        let g =
+            state("stateDiagram-v2\nnote over A : x\nnote over A\nA --> Gone\nend note\nA --> B");
         assert_eq!(g.nodes.len(), 2);
-        assert_eq!(g.edges.len(), 2);
+        assert_eq!(g.edges.len(), 1);
+        // A block note never closed keeps what it swallowed, visibly.
+        let g = state("stateDiagram-v2\nA --> B\nnote right of B\nB --> C");
+        assert!(g.nodes.iter().any(|n| n.label == "B --> C"));
+        assert!(g.node_index("C").is_none());
+        // Card ids never collide with a state the source already named.
+        let g = state("stateDiagram-v2\n__note_1 --> X\nnote right of X : n");
+        assert_eq!(g.nodes.len(), 3);
+        assert_eq!(g.nodes[g.node_index("__note_1").unwrap()].label, "__note_1");
+        // ... nor one it names after the card took that id: the card moves.
+        let g = state("stateDiagram-v2\nX --> Y\nnote right of X : n\nY --> __note_2");
+        assert_eq!(g.nodes.len(), 4, "X, Y, the card and the state __note_2");
+        let named = &g.nodes[g.node_index("__note_2").unwrap()];
+        assert_eq!(
+            (named.label.as_str(), named.shape),
+            ("__note_2", Shape::Rounded)
+        );
+        let card = g.nodes.iter().position(|n| n.label == "n").unwrap();
+        assert!(g.nodes[card].id.starts_with("__note_") && g.nodes[card].id != "__note_2");
+        assert_eq!(g.node_index(&g.nodes[card].id), Some(card));
+        let y = g.node_index("Y").unwrap();
+        assert!(g.edges.iter().any(|e| e.from == y && e.to != card));
     }
 
     #[test]

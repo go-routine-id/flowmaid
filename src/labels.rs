@@ -30,14 +30,16 @@
 //! first, and a few rounds let a label take a spot another one left.
 
 use crate::edgepass::Ctx;
-use crate::layout::{text_width, title_extra, LABEL_BOX_H, LINE_H, TITLE_SCALE};
+use crate::layout::{
+    is_branch_point, text_width, title_extra, LABEL_BOX_H, LABEL_CLEAR, LINE_H, TITLE_SCALE,
+};
 use crate::model::{EdgeKind, Graph};
 use crate::scene::{
     basis_sample, edge_drawn, edge_polyline, fit_cluster_title, shift_scene, Bbox, Scene,
     SceneCluster, SceneEdge, SceneNode, ARROW_MARKER_PX, MARGIN,
 };
 use std::cell::{Cell, OnceCell, RefCell};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::hash::{BuildHasherDefault, Hasher};
 
 /// How far a routed edge's label may sit from the curve actually drawn
@@ -77,7 +79,7 @@ const TOUCH_EPS: f64 = 0.5;
 pub(crate) const FRAME_BORDER_BAND: f64 = 1.0;
 /// Margin (px) around another edge's stroke inside which a label counts
 /// as lying on it — the stroke half-width plus a little air.
-const STROKE_PAD: f64 = 3.0;
+pub(crate) const STROKE_PAD: f64 = 3.0;
 /// The preferred label spot (fraction of the drawn curve's length):
 /// its middle. Spots farther along the curve rank lower only among
 /// spots that are equally clear.
@@ -86,13 +88,26 @@ const LABEL_PREFER: f64 = 0.5;
 /// other end): the middle of the half away from it (mirrored for an
 /// edge entering one).
 const LABEL_HUB_PREFER: f64 = 0.75;
+/// Least share of its line's length, counted from a compact branch
+/// point (see [`is_branch_point`]), at which a label of the point's fan
+/// keeps its spot: a little past the middle, so a label still at the
+/// builder's midpoint slot (or nudged off it by the port stage) is
+/// stacked afresh (see [`stack_fans`]).
+pub(crate) const FAN_FAR: f64 = 0.55;
+/// Least room (px) across the flow between two labels of one compact
+/// branch point's fan side by side in a row: closer, two pills read as
+/// one phrase ("invalid valid").
+pub(crate) const FAN_SIBLING_GAP: f64 = 20.0;
+/// How far (px) a fan label's centre may lie off its own line before it
+/// is stacked afresh: rounding only.
+const FAN_ON_LINE: f64 = 0.5;
 /// Clear air (px) between a label set beside its line and that line's
 /// centre beyond the box's own half-extent: half an arrowhead plus
 /// [`LABEL_GAP`], so the box clears both the stroke and the head.
-const LABEL_SIDE_AIR: f64 = ARROW_MARKER_PX / 2.0 + LABEL_GAP;
+pub(crate) const LABEL_SIDE_AIR: f64 = ARROW_MARKER_PX / 2.0 + LABEL_GAP;
 /// How far (px) a box stepped half off its line still reaches over the
 /// line's centre: it covers its own stroke, so it plainly sits on it.
-const LABEL_STRADDLE: f64 = 1.0;
+pub(crate) const LABEL_STRADDLE: f64 = 1.0;
 /// Farthest (px) a label's centre may sit beside its line: twice the
 /// reach of a box set one text line past a flat line, so a wide label
 /// can also step beside a steep line. The box itself still keeps within
@@ -1356,6 +1371,20 @@ impl Track {
             .map_or(self.spots[0], |&(_, k)| self.spots[k])
     }
 
+    /// Share of the curve's length (from its start) at which its spot
+    /// nearest `p` lies.
+    fn share_at(&self, p: (f64, f64)) -> f64 {
+        let total = self.arc.last().copied().unwrap_or(0.0);
+        if total <= f64::EPSILON {
+            return LABEL_PREFER;
+        }
+        let d2 = |k: usize| (self.spots[k].0 - p.0).powi(2) + (self.spots[k].1 - p.1).powi(2);
+        let k = (0..self.spots.len())
+            .min_by(|&a, &b| d2(a).total_cmp(&d2(b)))
+            .unwrap_or(0);
+        self.arc[k] / total
+    }
+
     /// Is `scan` spot `i` open of the fixed obstacles (asked once)?
     fn is_open(&self, i: usize, w: f64, field: &Field) -> bool {
         let c = &self.open[i];
@@ -1495,6 +1524,127 @@ fn place(
         strokes_matter: !matches!(pass, Pass::All),
     };
 
+    // Fan-outs: how many drawn edges end on each endpoint.
+    let mut degree: BTreeMap<&str, usize> = BTreeMap::new();
+    for (e, l) in edges.iter().zip(&lines) {
+        if l.is_some() && e.from != e.to {
+            *degree.entry(e.from.as_str()).or_default() += 1;
+            *degree.entry(e.to.as_str()).or_default() += 1;
+        }
+    }
+    // A compact branch point's fan (a state `<<choice>>`; an edge with
+    // exactly one end such a point, as `layout` sizes their gaps): its
+    // edges leave the small diamond within a few px of each other, so in
+    // the near half of their lines a label sits between, or on, its
+    // siblings' strokes and reads as theirs. Its labels belong to the
+    // far part, where the branches have spread apart (see `FAN_FAR`).
+    // Per edge: `Some(true)` when its source is the point, `Some(false)`
+    // when its target is.
+    let branch: BTreeSet<&str> = nodes
+        .iter()
+        .filter(|n| is_branch_point(n.shape, &n.label))
+        .map(|n| n.id.as_str())
+        .collect();
+    let fan: Vec<Option<bool>> = edges
+        .iter()
+        .map(|e| {
+            if !e.waypoints.is_empty() {
+                // A long edge's label keeps the slot its layout dummy
+                // reserved mid-channel.
+                return None;
+            }
+            match (
+                branch.contains(e.from.as_str()),
+                branch.contains(e.to.as_str()),
+            ) {
+                (true, false) => Some(true),
+                (false, true) => Some(false),
+                _ => None,
+            }
+        })
+        .collect();
+    // (preferred spot, fan-out of a hub end or 0) per edge.
+    let hub: Vec<(f64, usize)> = edges
+        .iter()
+        .zip(&fan)
+        .map(|(e, &fan)| {
+            let df = degree.get(e.from.as_str()).copied().unwrap_or(0);
+            let dt = degree.get(e.to.as_str()).copied().unwrap_or(0);
+            // A hub end piles every label of its fan near it: prefer
+            // the middle of the half away from the busier end — away
+            // from a compact branch point whatever the counts.
+            if fan == Some(true) || fan.is_none() && e.from != e.to && df > 1 && df > dt {
+                (LABEL_HUB_PREFER, df)
+            } else if fan == Some(false) || fan.is_none() && e.from != e.to && dt > 1 && dt > df {
+                (1.0 - LABEL_HUB_PREFER, dt)
+            } else {
+                (LABEL_PREFER, 0)
+            }
+        })
+        .collect();
+
+    let n = edges.len();
+    let mut tracks: Vec<Option<Track>> = (0..n).map(|_| None).collect();
+    // A fan label left in the near half of its line (the builder's
+    // midpoint slot, say) is stacked into the far part first; one that
+    // finds no spot there is re-placed below like a detached one.
+    let near_hub = |tracks: &mut [Option<Track>], ei: usize, at: Pt, w: f64| {
+        let (Some(from_point), Some(pts)) = (fan[ei], &lines[ei]) else {
+            return false;
+        };
+        let track = tracks[ei].get_or_insert_with(|| Track::new(pts, hub[ei].0, w, &field));
+        let f = track.share_at(at);
+        (if from_point { f } else { 1.0 - f }) < FAN_FAR
+    };
+    // So is one a stage left off its line (the port stage moves a
+    // single curve's label by the mean of its end moves: right for the
+    // midpoint only) and, in the final pass, one another stroke now
+    // runs through. A fan is stacked as a whole: its rows are one
+    // packing.
+    let mut restack: BTreeSet<String> = BTreeSet::new();
+    for ei in 0..n {
+        let (Some((_, at, w)), Some(from_point), Some(pts)) =
+            (&edges[ei].label, fan[ei], &lines[ei])
+        else {
+            continue;
+        };
+        let point = if from_point {
+            &edges[ei].from
+        } else {
+            &edges[ei].to
+        };
+        if restack.contains(point) {
+            continue;
+        }
+        let r = label_rect(*at, *w);
+        if rect_line_dist((at.0, at.1, at.0, at.1), pts) > FAN_ON_LINE
+            || field.strokes_matter && field.strokes().count(r, ei, 0) > 0
+            || near_hub(&mut tracks, ei, *at, *w)
+        {
+            restack.insert(point.clone());
+        }
+    }
+    let lift: Vec<bool> = (0..n)
+        .map(|ei| {
+            let (Some(from_point), Some(_), Some(pts)) = (fan[ei], &edges[ei].label, &lines[ei])
+            else {
+                return false;
+            };
+            let e = &edges[ei];
+            let up = restack.contains(if from_point { &e.from } else { &e.to });
+            if up {
+                let w = e.label.as_ref().map_or(0.0, |l| l.2);
+                tracks[ei].get_or_insert_with(|| Track::new(pts, hub[ei].0, w, &field));
+            }
+            up
+        })
+        .collect();
+    let mut moved = stack_fans(&field, nodes, edges, &lines, &fan, &lift, &tracks);
+    let mut stacked = vec![false; n];
+    for &ei in &moved {
+        stacked[ei] = true;
+    }
+
     // Every label is an obstacle at its current spot from the start, so
     // an early label never slides onto a later one's slot.
     let mut placed = LabelGrid::new(
@@ -1508,35 +1658,6 @@ fn place(
             .collect(),
     );
 
-    // Fan-outs: how many drawn edges end on each endpoint.
-    let mut degree: BTreeMap<&str, usize> = BTreeMap::new();
-    for (e, l) in edges.iter().zip(&lines) {
-        if l.is_some() && e.from != e.to {
-            *degree.entry(e.from.as_str()).or_default() += 1;
-            *degree.entry(e.to.as_str()).or_default() += 1;
-        }
-    }
-    // (preferred spot, fan-out of a hub end or 0) per edge.
-    let hub: Vec<(f64, usize)> = edges
-        .iter()
-        .map(|e| {
-            let df = degree.get(e.from.as_str()).copied().unwrap_or(0);
-            let dt = degree.get(e.to.as_str()).copied().unwrap_or(0);
-            // A hub end piles every label of its fan near it: prefer
-            // the middle of the half away from the busier end.
-            if e.from != e.to && df > 1 && df > dt {
-                (LABEL_HUB_PREFER, df)
-            } else if e.from != e.to && dt > 1 && dt > df {
-                (1.0 - LABEL_HUB_PREFER, dt)
-            } else {
-                (LABEL_PREFER, 0)
-            }
-        })
-        .collect();
-
-    let n = edges.len();
-    let mut tracks: Vec<Option<Track>> = (0..n).map(|_| None).collect();
-    let mut moved = Vec::new();
     // Labels already searched, and the boxes labels left or took in the
     // last round (by mover): a searched label is tried again only when
     // one of those lies within its reach.
@@ -1584,10 +1705,15 @@ fn place(
             let own = rect_line_dist(r, pts);
             let self_loop = edges[ei].from == edges[ei].to;
             let detached = own > LABEL_DRIFT_MAX && !self_loop;
+            // A fan label of a compact branch point left in the near
+            // half of its line is re-placed like a detached one, from
+            // its preferred spot in the far half.
+            let near_hub = !stacked[ei] && near_hub(&mut tracks, ei, *at, *w);
             // A changed edge's old spot competes as is while it still
             // lies on the new line; off it (or detached), it stays only
-            // when no spot is any better.
-            let off_line = detached || (changed && own > 0.0);
+            // when no spot is any better. A fan label just stacked beside
+            // its line (no row on it was free) was set there on purpose.
+            let off_line = detached || near_hub || (changed && own > 0.0 && !stacked[ei]);
             // A clean label on its line is perfect where it is. The
             // builders' pass does not mind strokes (see `Pass::All`).
             let clean = match pass {
@@ -1657,6 +1783,347 @@ fn place(
     moved.sort_unstable();
     moved.dedup();
     moved
+}
+
+/// Part of a fan line walked from its far end: (spot, depth back along
+/// the flow).
+type Walk = Vec<(Pt, f64)>;
+
+/// Stacks the labels of the compact branch points' fans flagged in
+/// `lift` (a fan is flagged whole) in rows across the far half of their
+/// lines, the way the layout packs them: it sizes the gap for rows past
+/// [`FAN_FAR`] (see `layout::fan_rows_gap`), and the rest of the half
+/// absorbs its estimate's error (a label stacked short of FAN_FAR is
+/// stacked afresh by each later pass, to the same spot while nothing
+/// near it moved). Row 0 lies as near the far ends as every label of
+/// the point can sit (clear of the arrowheads), each further row a
+/// label box plus the layout's row room (`LABEL_CLEAR`) back along the
+/// flow. A label's candidates are the rows where its spot on its own
+/// line is open of the fixed obstacles, clear of every other label and
+/// crossed by no other stroke; [`fan_rows`] picks one per label, in
+/// reading order across the flow, siblings side by side
+/// [`FAN_SIBLING_GAP`] apart. A label with no pick keeps its spot (the
+/// caller re-places it). `tracks` holds every flagged label's track.
+/// Returns the edges whose label moved.
+fn stack_fans(
+    field: &Field,
+    nodes: &[SceneNode],
+    edges: &mut [SceneEdge],
+    lines: &[Option<Vec<Pt>>],
+    fan: &[Option<bool>],
+    lift: &[bool],
+    tracks: &[Option<Track>],
+) -> Vec<usize> {
+    let mut moved = Vec::new();
+    if !lift.contains(&true) {
+        return moved;
+    }
+    // Every other label is an obstacle where it is.
+    let mut placed = LabelGrid::new(
+        edges
+            .iter()
+            .zip(lines)
+            .zip(lift)
+            .map(|((e, l), &up)| {
+                l.as_ref().filter(|_| !up)?;
+                e.label.as_ref().map(|(_, c, w)| label_rect(*c, *w))
+            })
+            .collect(),
+    );
+    // Every labelled fan line per branch point, with its far end.
+    let mut groups: BTreeMap<String, Vec<(usize, Pt)>> = BTreeMap::new();
+    for (ei, e) in edges.iter().enumerate() {
+        let (Some(from_point), Some(pts), Some(_)) = (fan[ei], &lines[ei], &e.label) else {
+            continue;
+        };
+        let (point, far) = if from_point {
+            (&e.from, pts.last())
+        } else {
+            (&e.to, pts.first())
+        };
+        if let Some(&far) = far {
+            groups.entry(point.clone()).or_default().push((ei, far));
+        }
+    }
+    for (point, mut group) in groups {
+        // A fan is stacked as a whole (the caller flags it so).
+        if !group.iter().any(|&(ei, _)| lift[ei]) {
+            continue;
+        }
+        // The flow: the axis nearest the way from the point's centre to
+        // the middle of the far ends (down when they coincide).
+        let k = group.len() as f64;
+        let mid = group
+            .iter()
+            .fold((0.0, 0.0), |m, &(_, f)| (m.0 + f.0 / k, m.1 + f.1 / k));
+        let c = nodes
+            .iter()
+            .find(|n| n.id == point)
+            .map_or(mid, |n| (n.x, n.y));
+        let (dx, dy) = (mid.0 - c.0, mid.1 - c.1);
+        let (ux, uy): (f64, f64) = if dx.abs() > dy.abs() {
+            (dx.signum(), 0.0)
+        } else if dy < 0.0 {
+            (0.0, -1.0)
+        } else {
+            (0.0, 1.0)
+        };
+        // Reading order across it: left to right in TB/BT, top to
+        // bottom in LR/RL.
+        let across = |p: Pt| p.0 * uy.abs() + p.1 * ux.abs();
+        group.sort_by(|a, b| across(a.1).total_cmp(&across(b.1)).then(a.0.cmp(&b.0)));
+        // Per label: the far half of its line walked from its far end,
+        // as (spot, depth back along the flow from the farthest end, so
+        // rows are level across the fan even when its far ends are not).
+        let reach = group
+            .iter()
+            .map(|&(_, f)| f.0 * ux + f.1 * uy)
+            .fold(f64::NEG_INFINITY, f64::max);
+        let mut walks: Vec<(usize, f64, Walk)> = Vec::new();
+        for &(ei, _) in &group {
+            let (Some(track), Some(from_point), Some((_, _, w))) =
+                (&tracks[ei], fan[ei], &edges[ei].label)
+            else {
+                continue;
+            };
+            let total = track.arc.last().copied().unwrap_or(0.0);
+            if total <= f64::EPSILON {
+                continue;
+            }
+            let share = |k: usize| {
+                let f = track.arc[k] / total;
+                if from_point {
+                    f
+                } else {
+                    1.0 - f
+                }
+            };
+            let ks: Vec<usize> = if from_point {
+                (0..track.spots.len()).rev().collect()
+            } else {
+                (0..track.spots.len()).collect()
+            };
+            let walk = ks
+                .into_iter()
+                .take_while(|&k| share(k) >= LABEL_PREFER)
+                .map(|k| {
+                    let p = track.spots[k];
+                    (p, reach - (p.0 * ux + p.1 * uy))
+                })
+                .collect();
+            walks.push((ei, *w, walk));
+        }
+        // Row 0: the deepest spot open on every line of the fan; rows
+        // one box (the deepest any label reaches along the flow) apart,
+        // deeper ones too where a line reaches past row 0 (its far end
+        // dragged away, say).
+        let open_at = |w: f64, walk: &[(Pt, f64)]| {
+            walk.iter()
+                .find(|(p, _)| field.open(label_rect(*p, w)))
+                .map(|&(_, d)| d)
+        };
+        let opens: Vec<Option<f64>> = walks.iter().map(|(_, w, walk)| open_at(*w, walk)).collect();
+        let Some(row0) = opens
+            .iter()
+            .try_fold(f64::NEG_INFINITY, |m, d| d.map(|d| m.max(d)))
+        else {
+            continue;
+        };
+        let pitch = walks
+            .iter()
+            .map(|&(_, w, _)| w * ux.abs() + LABEL_BOX_H * uy.abs())
+            .fold(0.0, f64::max)
+            + LABEL_CLEAR;
+        // Each label's candidate spots: the rows its line reaches,
+        // nearest its far end first, that are open of the fixed
+        // obstacles, clear of every other label (its siblings aside) and
+        // crossed by no other stroke.
+        let free = |ei: usize, r: Rect| {
+            field.open(r) && placed.clear(ei, r, LABEL_KEEP) && field.strokes().count(r, ei, 0) == 0
+        };
+        // Per label: the spots of the rows its line reaches.
+        let rows: Vec<(usize, f64, Vec<Pt>)> = walks
+            .iter()
+            .zip(&opens)
+            .map(|((ei, w, walk), open)| {
+                let first = -((row0 - open.unwrap_or(row0)) / pitch).floor() as i64;
+                // The spot at `depth` on the walk, between its samples.
+                let at_depth = |depth: f64| {
+                    walk.windows(2).find_map(|s| {
+                        let ((p, dp), (q, dq)) = (s[0], s[1]);
+                        (dp <= depth && depth <= dq && dq > dp).then(|| {
+                            let t = (depth - dp) / (dq - dp);
+                            (p.0 + (q.0 - p.0) * t, p.1 + (q.1 - p.1) * t)
+                        })
+                    })
+                };
+                let spots = (first..)
+                    .map(|r| at_depth(row0 + r as f64 * pitch))
+                    .take_while(Option::is_some)
+                    .flatten()
+                    .collect();
+                (*ei, *w, spots)
+            })
+            .collect();
+        // A label's spots just beside its line in those rows, away from
+        // the nearer sibling first: LABEL_SIDE_AIR off, else half off
+        // (covering its own stroke only), while no other line is nearer.
+        let beside = |&(ei, w, ref rows): &(usize, f64, Vec<Pt>)| -> Vec<Pt> {
+            let mine = group
+                .iter()
+                .find(|g| g.0 == ei)
+                .map_or(0.0, |g| across(g.1));
+            let toward = group
+                .iter()
+                .filter(|g| g.0 != ei)
+                .map(|g| across(g.1) - mine)
+                .min_by(|a, b| a.abs().total_cmp(&b.abs()))
+                .unwrap_or(0.0);
+            let side = if toward > 0.0 { -1.0 } else { 1.0 };
+            let half = (w * uy.abs() + LABEL_BOX_H * ux.abs()) / 2.0;
+            let offs = [half + LABEL_SIDE_AIR, half - LABEL_STRADDLE];
+            rows.iter()
+                .flat_map(|&p| {
+                    [side, -side].into_iter().flat_map(move |s| {
+                        offs.map(|o| (p.0 + s * o * uy.abs(), p.1 + s * o * ux.abs()))
+                    })
+                })
+                .filter(|&q| {
+                    let r = label_rect(q, w);
+                    free(ei, r) && field.reads_own(r, ei)
+                })
+                .collect()
+        };
+        // Each label's candidates: the rows where its spot on its line
+        // is open of the fixed obstacles, clear of every other label
+        // (its siblings aside) and crossed by no other stroke. With none
+        // (a sibling runs within a box of it all the way: two
+        // transitions to one state, their lines PARALLEL_GAP apart), its
+        // spots beside it.
+        let mut lined = Vec::with_capacity(rows.len());
+        let mut cands: Vec<(usize, f64, Vec<Pt>)> = rows
+            .iter()
+            .map(|row @ &(ei, w, ref spots)| {
+                let on: Vec<Pt> = spots
+                    .iter()
+                    .copied()
+                    .filter(|&p| free(ei, label_rect(p, w)))
+                    .collect();
+                lined.push(!on.is_empty());
+                (ei, w, if on.is_empty() { beside(row) } else { on })
+            })
+            .collect();
+        if field.spent(&placed) {
+            return moved;
+        }
+        // Siblings side by side keep FAN_SIBLING_GAP across the flow
+        // (LABEL_KEEP along it, between rows).
+        let (gx, gy) = (
+            FAN_SIBLING_GAP * uy.abs() + LABEL_KEEP * ux.abs(),
+            FAN_SIBLING_GAP * ux.abs() + LABEL_KEEP * uy.abs(),
+        );
+        let apart =
+            |a: Rect, b: Rect| covered((a.0 - gx, a.1 - gy, a.2 + gx, a.3 + gy), 0.0, &[b]) == 0.0;
+        let picks = match fan_rows(&cands, &apart) {
+            Some(picks) => picks,
+            // No assignment keeps every label on its line: the rows are
+            // too few for them (the point dragged toward its far ends,
+            // say). Then any label may sit beside its line as well, after
+            // its spots on it.
+            None => {
+                for ((c, r), &lined) in cands.iter_mut().zip(&rows).zip(&lined) {
+                    if lined {
+                        c.2.extend(beside(r));
+                    }
+                }
+                fan_rows(&cands, &apart).unwrap_or_else(|| fan_first_fits(&cands, &apart))
+            }
+        };
+        for ((ei, w, _), pick) in cands.iter().zip(picks) {
+            let Some(p) = pick else { continue };
+            if let Some((_, m, _)) = &mut edges[*ei].label {
+                *m = p;
+            }
+            placed.set(*ei, label_rect(p, *w));
+            moved.push(*ei);
+        }
+    }
+    moved
+}
+
+/// Most candidate spots [`fan_rows`] tries before it settles for first
+/// fits: a fan has a handful of labels and rows, so a real one needs a
+/// few dozen at most.
+const FAN_SEARCH: usize = 4096;
+
+/// One spot per fan label from its candidates `cands` (edge, width,
+/// spots in preference order), siblings pairwise `apart`: the first such
+/// assignment in order (each label's spots tried in turn, depth first),
+/// a label without candidates left out (`None` = keep its spot). `None`
+/// with no full assignment, or past [`FAN_SEARCH`] steps.
+fn fan_rows(
+    cands: &[(usize, f64, Vec<Pt>)],
+    apart: &dyn Fn(Rect, Rect) -> bool,
+) -> Option<Vec<Option<Pt>>> {
+    fn search(
+        cands: &[(usize, f64, Vec<Pt>)],
+        apart: &dyn Fn(Rect, Rect) -> bool,
+        picks: &mut Vec<Option<Pt>>,
+        steps: &mut usize,
+    ) -> bool {
+        let Some((_, w, spots)) = cands.get(picks.len()) else {
+            return true;
+        };
+        if spots.is_empty() {
+            picks.push(None);
+            if search(cands, apart, picks, steps) {
+                return true;
+            }
+            picks.pop();
+            return false;
+        }
+        for &p in spots {
+            *steps += 1;
+            if *steps > FAN_SEARCH {
+                return false;
+            }
+            let r = label_rect(p, *w);
+            let free = picks
+                .iter()
+                .zip(cands)
+                .all(|(q, c)| q.map_or(true, |q| apart(r, label_rect(q, c.1))));
+            if free {
+                picks.push(Some(p));
+                if search(cands, apart, picks, steps) {
+                    return true;
+                }
+                picks.pop();
+            }
+        }
+        false
+    }
+    let mut picks = Vec::with_capacity(cands.len());
+    search(cands, apart, &mut picks, &mut 0).then_some(picks)
+}
+
+/// [`fan_rows`]' fallback: each label takes its first spot apart from
+/// those taken before it (`None` = keep its spot).
+fn fan_first_fits(
+    cands: &[(usize, f64, Vec<Pt>)],
+    apart: &dyn Fn(Rect, Rect) -> bool,
+) -> Vec<Option<Pt>> {
+    let mut taken: Vec<Rect> = Vec::new();
+    cands
+        .iter()
+        .map(|(_, w, spots)| {
+            let p = spots.iter().copied().find(|&p| {
+                let r = label_rect(p, *w);
+                taken.iter().all(|&t| apart(r, t))
+            })?;
+            taken.push(label_rect(p, *w));
+            Some(p)
+        })
+        .collect()
 }
 
 /// The best spot for label `ei` (`w` wide, now at `at`) of edge `e`,
@@ -2097,6 +2564,396 @@ mod tests {
         let r = arrow_box((0.0, 100.0), pts.iter().rev().copied()).unwrap();
         assert!((r.3 - 100.0).abs() < 1e-9 && (r.1 - 50.0).abs() < 1e-9);
         assert!((r.2 - r.0 - ARROW_MARKER_PX).abs() < 1e-9);
+    }
+
+    /// Checks every label of a compact branch point's fan in `sc` (the
+    /// point named `point`, flowing along y when `tb`, else along x):
+    /// in the far half of its own line, crossed by no other stroke, and
+    /// FAN_SIBLING_GAP clear across the flow of any sibling beside it.
+    fn assert_fan_labels_read_as_their_own(sc: &Scene, point: &str, tb: bool, what: &str) {
+        let lines: Vec<_> = sc.edges.iter().map(|e| Some(edge_polyline(e))).collect();
+        let strokes = StrokeGrid::new(&lines);
+        let mut boxes: Vec<(String, Rect)> = Vec::new();
+        for (ei, e) in sc.edges.iter().enumerate() {
+            let Some((text, c, w)) = &e.label else {
+                continue;
+            };
+            if e.from != point {
+                continue;
+            }
+            let r = label_rect(*c, *w);
+            assert_eq!(
+                strokes.count(r, ei, usize::MAX),
+                0,
+                "{what}: '{text}' lies on another line"
+            );
+            // Share of its own line (from the point) at its spot.
+            let pts = densify(lines[ei].as_ref().unwrap());
+            let mut arc = vec![0.0];
+            for k in 1..pts.len() {
+                let d = (pts[k].0 - pts[k - 1].0).hypot(pts[k].1 - pts[k - 1].1);
+                arc.push(arc[k - 1] + d);
+            }
+            let d2 = |k: usize| (pts[k].0 - c.0).powi(2) + (pts[k].1 - c.1).powi(2);
+            let k = (0..pts.len())
+                .min_by(|&a, &b| d2(a).total_cmp(&d2(b)))
+                .unwrap();
+            let on = rect_line_dist((c.0, c.1, c.0, c.1), lines[ei].as_ref().unwrap());
+            assert!(on < 0.5, "{what}: '{text}' {on:.1}px off its line");
+            let share = arc[k] / arc[pts.len() - 1];
+            assert!(share >= 0.5, "{what}: '{text}' at {share:.2} of its line");
+            boxes.push((text.clone(), r));
+        }
+        assert!(boxes.len() >= 2, "{what}: a labelled fan");
+        for (i, (ta, a)) in boxes.iter().enumerate() {
+            for (tb_, b) in &boxes[i + 1..] {
+                let (along, across) = if tb {
+                    (a.1 < b.3 && b.1 < a.3, (b.0 - a.2).max(a.0 - b.2))
+                } else {
+                    (a.0 < b.2 && b.0 < a.2, (b.1 - a.3).max(a.1 - b.3))
+                };
+                assert!(
+                    !along || across >= FAN_SIBLING_GAP - 0.01,
+                    "{what}: '{ta}' and '{tb_}' {across:.1}px apart side by side"
+                );
+                assert_eq!(covered(*a, 0.0, &[*b]), 0.0, "{what}: '{ta}' on '{tb_}'");
+            }
+        }
+    }
+
+    #[test]
+    fn choice_fan_labels_stack_clear_of_their_siblings_lines() {
+        // A <<choice>> is a 28px diamond: its branches leave it a few px
+        // apart, so near it any label sits on a sibling's line (the
+        // 3-way fan used to put 'if n >= 0' on the Zero edge). Each
+        // label is stacked in rows across the far half of its own line,
+        // in the static scene, after a full reroute and after a drag.
+        let cases = [
+            (
+                "stateDiagram-v2\nstate c <<choice>>\n[*] --> P\nP --> c\n\
+                 c --> False: if n < 0\nc --> True : if n >= 0\nc --> Zero : if n == 0",
+                true,
+            ),
+            (
+                "stateDiagram-v2\nstate c <<choice>>\n[*] --> P\nP --> c\n\
+                 c --> False: if n < 0\nc --> True : if n >= 0",
+                true,
+            ),
+            (
+                "stateDiagram-v2\nstate c <<choice>>\n[*] --> Order\nOrder --> c\n\
+                 c --> Express : priority customer\nc --> Standard : regular customer\n\
+                 c --> Hold : payment pending\nc --> Cancel : fraud suspected",
+                true,
+            ),
+            (
+                "stateDiagram-v2\ndirection LR\nstate c <<choice>>\n[*] --> Order\n\
+                 Order --> c\nc --> A : one\nc --> B : two\nc --> C : three",
+                false,
+            ),
+        ];
+        for (src, tb) in cases {
+            let crate::model::Document::State(g) = crate::parser::parse_document(src).unwrap()
+            else {
+                panic!("a state diagram");
+            };
+            let sc = crate::scene::scene(&g);
+            assert_fan_labels_read_as_their_own(&sc, "c", tb, &format!("scene {src}"));
+            let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let routed = crate::scene::route(&g, &at);
+            assert_fan_labels_read_as_their_own(&routed, "c", tb, &format!("route {src}"));
+            // Drag the first branch's target further out along the flow.
+            let target = g
+                .edges
+                .iter()
+                .find(|e| g.nodes[e.from].id == "c")
+                .unwrap()
+                .to;
+            let mut moved = at.clone();
+            if tb {
+                moved[target].1 += 40.0;
+            } else {
+                moved[target].0 += 40.0;
+            }
+            let dragged = crate::scene::route_partial(&g, &moved, &sc, &at);
+            assert_fan_labels_read_as_their_own(&dragged, "c", tb, &format!("drag {src}"));
+        }
+    }
+
+    /// Every label of `point`'s fan in `sc` reads as its own: crossed by
+    /// no other edge's stroke, its own line the nearest (on it or just
+    /// beside it), and FAN_SIBLING_GAP clear across the flow of any
+    /// sibling beside it. Returns each label's signed offset across the
+    /// flow from its own line's far end (`tb`: x, else y), by text.
+    fn assert_fan_labels_clear(
+        sc: &Scene,
+        point: &str,
+        tb: bool,
+        what: &str,
+    ) -> Vec<(String, f64)> {
+        assert_fan_labels_clear_but(sc, point, tb, what, &[], FAN_SIBLING_GAP)
+    }
+
+    /// [`assert_fan_labels_clear`] for every label but those in `skip`,
+    /// siblings beside each other `gap` clear.
+    fn assert_fan_labels_clear_but(
+        sc: &Scene,
+        point: &str,
+        tb: bool,
+        what: &str,
+        skip: &[&str],
+        gap: f64,
+    ) -> Vec<(String, f64)> {
+        let lines: Vec<_> = sc.edges.iter().map(|e| Some(edge_polyline(e))).collect();
+        let strokes = StrokeGrid::new(&lines);
+        let mut boxes: Vec<(String, Rect)> = Vec::new();
+        let mut sides = Vec::new();
+        for (ei, e) in sc.edges.iter().enumerate() {
+            let Some((text, c, w)) = &e.label else {
+                continue;
+            };
+            if e.from != point || skip.contains(&text.as_str()) {
+                continue;
+            }
+            let r = label_rect(*c, *w);
+            assert_eq!(
+                strokes.count(r, ei, usize::MAX),
+                0,
+                "{what}: '{text}' lies on another line"
+            );
+            let (own2, other2) = strokes.dists2(r, ei, LABEL_DRIFT_MAX);
+            assert!(
+                own2 < LABEL_DRIFT_MAX * LABEL_DRIFT_MAX && other2 >= own2,
+                "{what}: '{text}' reads as another line's ({own2:.0} vs {other2:.0})"
+            );
+            let far = *lines[ei].as_ref().unwrap().last().unwrap();
+            sides.push((text.clone(), if tb { c.0 - far.0 } else { c.1 - far.1 }));
+            boxes.push((text.clone(), r));
+        }
+        assert!(boxes.len() >= 2, "{what}: a labelled fan");
+        for (i, (ta, a)) in boxes.iter().enumerate() {
+            for (tb_, b) in &boxes[i + 1..] {
+                let (along, across) = if tb {
+                    (a.1 < b.3 && b.1 < a.3, (b.0 - a.2).max(a.0 - b.2))
+                } else {
+                    (a.0 < b.2 && b.0 < a.2, (b.1 - a.3).max(a.1 - b.3))
+                };
+                // As `stack_fans` keeps it: boxes that overlap by less
+                // than TOUCH_EPS only touch.
+                assert!(
+                    !along || across >= gap - TOUCH_EPS,
+                    "{what}: '{ta}' and '{tb_}' {across:.1}px apart side by side"
+                );
+            }
+        }
+        sides
+    }
+
+    #[test]
+    fn choice_twins_label_beside_their_lines_wide_fans_spread() {
+        let state = |src: &str| match crate::parser::parse_document(src).unwrap() {
+            crate::model::Document::State(g) => g,
+            other => panic!("not a state diagram: {other:?}"),
+        };
+        // Two transitions from a choice to one state run PARALLEL_GAP
+        // apart all the way: no row on either line is clear of the
+        // other, so each label steps beside its own line, outward ('one'
+        // used to sit on the line, 'two' over both strokes).
+        let g = state(
+            "stateDiagram-v2\nstate c <<choice>>\n[*] --> A\nA --> c\n\
+             c --> B : one\nc --> B : two\nc --> C : three",
+        );
+        let sc = crate::scene::scene(&g);
+        let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let routed = crate::scene::route(&g, &at);
+        let mut moved = at.clone();
+        moved[g.node_index("C").unwrap()].1 += 30.0;
+        let dragged = crate::scene::route_partial(&g, &moved, &sc, &at);
+        for (what, s) in [("scene", &sc), ("route", &routed), ("drag", &dragged)] {
+            let sides = assert_fan_labels_clear(s, "c", true, what);
+            let side = |t: &str| sides.iter().find(|s| s.0 == t).unwrap().1;
+            assert!(side("one") < 0.0 && side("two") > 0.0, "{what}: {sides:?}");
+        }
+        // Labels wider than the room between their targets: no row can
+        // keep one clear of its neighbours' lines, so the targets spread
+        // and each label sits on its own line, mermaid-like.
+        let wide = "stateDiagram-v2\nstate c <<choice>>\n[*] --> A\nA --> c\n\
+                    c --> B : this is a very long label for the first branch\n\
+                    c --> C : and an equally long label for branch two\n\
+                    c --> D : third one is also quite long indeed";
+        let g = state(wide);
+        let sc = crate::scene::scene(&g);
+        let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        assert_fan_labels_read_as_their_own(&sc, "c", true, "wide scene");
+        let routed = crate::scene::route(&g, &at);
+        assert_fan_labels_read_as_their_own(&routed, "c", true, "wide route");
+        // A choice dragged toward its far ends leaves too few rows for
+        // its labels on their lines: they step beside them instead of
+        // crowding a sibling or its line.
+        let g = state(
+            "stateDiagram-v2\nstate c <<choice>>\n[*] --> P\nP --> c\n\
+             c --> False: if n < 0\nc --> True : if n >= 0\nc --> Zero : if n == 0",
+        );
+        let sc = crate::scene::scene(&g);
+        let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let mut moved = at.clone();
+        moved[g.node_index("c").unwrap()].1 += 50.0;
+        let routed = crate::scene::route(&g, &moved);
+        assert_fan_labels_clear(&routed, "c", true, "dragged choice, route");
+        let partial = crate::scene::route_partial(&g, &moved, &sc, &at);
+        assert_fan_labels_clear(&partial, "c", true, "dragged choice, route_partial");
+    }
+
+    #[test]
+    fn choice_twin_labels_keep_beside_their_own_lines_among_more_siblings() {
+        let state = |src: &str| match crate::parser::parse_document(src).unwrap() {
+            crate::model::Document::State(g) => g,
+            other => panic!("not a state diagram: {other:?}"),
+        };
+        // Two transitions to B beside two more siblings, in every
+        // direction. 'medium' used to sit on the 'low' line: spaced in
+        // the order they head, the twins' ends at B swapped, the lines
+        // crossed, the router rerouted 'medium' into B's side, and no
+        // spot was left on or beside it. Now their ends keep the order
+        // they are drawn in (neither is rerouted), B is spaced for a
+        // label either side, and each twin's label sits beside its own
+        // line, outward: in the static scene, after a full reroute and
+        // while the choice is dragged.
+        let mix = "state c <<choice>>\n[*] --> P\nP --> c\n\
+                   c --> B : low\nc --> B : medium\nc --> C : high\nc --> D : critical";
+        let lr = "state c <<choice>>\n[*] --> P\nP --> c\n\
+                  c --> B : yes\nc --> B : maybe\nc --> C : no";
+        let three = "state c <<choice>>\n[*] --> P\nP --> c\n\
+                     c --> B : one\nc --> B : two\nc --> B : three";
+        // (diagram, direction, the outer twins, labels not checked,
+        // whether to drag the choice too).
+        let cases = [
+            (mix, "TB", ("low", "medium"), &[][..], true),
+            (mix, "BT", ("low", "medium"), &[], true),
+            (mix, "LR", ("low", "medium"), &[], true),
+            (mix, "RL", ("low", "medium"), &[], true),
+            // Small enough that a dragged choice leaves 'maybe' no spot
+            // clear of 'no'.
+            (lr, "LR", ("yes", "maybe"), &[], false),
+            // Three lines to one state: the middle one's label has a
+            // twin on either side, so no spot is clear of them; the
+            // outer two sit beside their lines.
+            (three, "TB", ("one", "three"), &["two"], true),
+            (three, "LR", ("one", "three"), &["two"], true),
+        ];
+        for (body, dir, (a, b), skip, drag) in cases {
+            let g = state(&format!("stateDiagram-v2\ndirection {dir}\n{body}"));
+            let tb = matches!(dir, "TB" | "BT");
+            let sc = crate::scene::scene(&g);
+            let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let routed = crate::scene::route(&g, &at);
+            let ci = g.node_index("c").unwrap();
+            let mut scenes = vec![(format!("{dir} scene"), sc.clone())];
+            scenes.push((format!("{dir} route"), routed));
+            // The choice dragged across the flow both ways and, down or
+            // up the page, 25px toward its targets. (Across LR/RL a gap
+            // only just fits its widest label, so a drag toward the
+            // targets leaves no row; the labels then take the general
+            // placer's best spots.)
+            let (across, toward) = match dir {
+                "TB" => ((1.0, 0.0), (0.0, 1.0)),
+                "BT" => ((1.0, 0.0), (0.0, -1.0)),
+                _ => ((0.0, 1.0), (0.0, 0.0)),
+            };
+            for (k, by) in [(-30.0, 0.0), (30.0, 0.0), (0.0, 25.0)] {
+                if !drag || by > 0.0 && !tb {
+                    continue;
+                }
+                let (dx, dy) = (across.0 * k + toward.0 * by, across.1 * k + toward.1 * by);
+                let mut moved = at.clone();
+                moved[ci].0 += dx;
+                moved[ci].1 += dy;
+                let dragged = crate::scene::route_partial(&g, &moved, &sc, &at);
+                scenes.push((format!("{dir} drag ({dx},{dy})"), dragged));
+            }
+            for (k, (what, s)) in scenes.iter().enumerate() {
+                let what = format!("{what}: {body}");
+                // A drag that leaves the fan too little room for rows
+                // hands its labels to the general placer, which keeps
+                // them apart but not FAN_SIBLING_GAP apart.
+                let gap = if k < 2 { FAN_SIBLING_GAP } else { 0.0 };
+                assert_fan_labels_clear_but(s, "c", tb, &what, skip, gap);
+                // Per twin: its far end, and its label's offset from the
+                // nearest point of its line, across the flow.
+                let twin = |t: &str| {
+                    let e = s
+                        .edges
+                        .iter()
+                        .find(|e| e.label.as_ref().is_some_and(|l| l.0 == t));
+                    let e = e.unwrap();
+                    let c = e.label.as_ref().unwrap().1;
+                    let pts = densify(&edge_polyline(e));
+                    let d2 = |p: &Pt| (p.0 - c.0).powi(2) + (p.1 - c.1).powi(2);
+                    let near = *pts.iter().min_by(|p, q| d2(p).total_cmp(&d2(q))).unwrap();
+                    let far = *pts.last().unwrap();
+                    if tb {
+                        (far.0, c.0 - near.0)
+                    } else {
+                        (far.1, c.1 - near.1)
+                    }
+                };
+                // Each sits on its line or beside it away from its twin,
+                // never toward it.
+                let ((fa, sa), (fb, sb)) = (twin(a), twin(b));
+                let out = (fa - fb).signum();
+                assert!(
+                    sa * out > -1.0 && sb * out < 1.0,
+                    "{what}: '{a}' ({sa:.1}) or '{b}' ({sb:.1}) toward its twin"
+                );
+                // The static scene and a full reroute draw the twins as
+                // the builder does: neither detours round the other.
+                if k < 2 {
+                    for e in s.edges.iter().filter(|e| e.from == "c" && e.to == "B") {
+                        assert!(e.waypoints.is_empty(), "{what}: a twin was rerouted");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_fan_label_at_its_midpoint_slot_is_stacked_afresh() {
+        // The builders' midpoint slot lies short of FAN_FAR; once
+        // stacked, a label stays put on a further pass.
+        let src = "stateDiagram-v2\nstate c <<choice>>\n[*] --> c\nc --> A : yes\nc --> B : no";
+        let crate::model::Document::State(g) = crate::parser::parse_document(src).unwrap() else {
+            panic!("a state diagram");
+        };
+        let mut sc = crate::scene::scene(&g);
+        let before: Vec<_> = sc.edges.iter().map(|e| e.label.clone()).collect();
+        let none = vec![false; sc.edges.len()];
+        place(
+            &sc.nodes,
+            &sc.clusters,
+            &mut sc.edges,
+            Pass::Changed(&none),
+            LABEL_STATIC_WORK,
+        );
+        let after: Vec<_> = sc.edges.iter().map(|e| e.label.clone()).collect();
+        assert_eq!(before, after, "a stacked fan label keeps its spot");
+        // Put one back on its midpoint: the next pass stacks it again.
+        let ei = sc.edges.iter().position(|e| e.label.is_some()).unwrap();
+        let b = sc.edges[ei].bezier;
+        let mid = (
+            (b[0].0 + 3.0 * b[1].0 + 3.0 * b[2].0 + b[3].0) / 8.0,
+            (b[0].1 + 3.0 * b[1].1 + 3.0 * b[2].1 + b[3].1) / 8.0,
+        );
+        if let Some((_, m, _)) = &mut sc.edges[ei].label {
+            *m = mid;
+        }
+        let moved = place(
+            &sc.nodes,
+            &sc.clusters,
+            &mut sc.edges,
+            Pass::Changed(&none),
+            LABEL_STATIC_WORK,
+        );
+        assert!(moved.contains(&ei));
+        assert_eq!(sc.edges[ei].label, before[ei], "back to its row");
     }
 
     #[test]

@@ -13,12 +13,14 @@
 
 use crate::layout::{
     intrinsic_size, layout_clustered_ranked, layout_sized, line_count, text_width, title_extra,
-    LayoutResult, Placed, RankGroup, FRAME_GAP, LABEL_BOX_H, LINE_H, TITLE_LINE_H, TITLE_SCALE,
+    LayoutResult, Placed, RankGroup, BAR_SIZE, FRAME_GAP, GAP_B, LABEL_BOX_H, LINE_H, TITLE_LINE_H,
+    TITLE_SCALE,
 };
 use crate::model::{
     Direction, Edge, EdgeAnimation, EdgeCurve, EdgeEnds, EdgeKind, EdgeMeta, End, Graph, Marker,
     NodeLink, NodeStyle, Shape, SubEdge,
 };
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 // Edge-label placement lives in `labels`; these keep the call sites
@@ -497,9 +499,6 @@ pub(crate) fn edge_path_d(e: &SceneEdge, t: impl Fn((f64, f64)) -> (f64, f64)) -
 /// ends (where "toward the adjacent control point" has no direction at
 /// all and the glyph collapses to a zero-size polygon). `toward ==
 /// tip` only for a curve of zero length.
-// The class / ER painters adopt this (with `edge_path_d`) in their own
-// work packages; until then only the tests call it.
-#[cfg_attr(not(test), allow(dead_code))]
 pub(crate) fn edge_end_chord(
     e: &SceneEdge,
     at_start: bool,
@@ -759,13 +758,16 @@ pub fn scene(g: &Graph) -> Scene {
 
 /// Same as [`scene`] but with caller-provided node sizes — for
 /// nodes whose size doesn't come from the label (ER entity tables,
-/// icon nodes, ...).
+/// icon nodes, ...). A fork/join bar's size is fitted to its branches
+/// (laid across the flow and spanning them, see [`fit_bars`]); every
+/// other size is used as given.
 pub fn scene_sized(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
     assert_eq!(
         sizes.len(),
         g.nodes.len(),
         "number of sizes must match number of nodes"
     );
+    let sizes = &fit_bars(g, sizes)[..];
     let mut sc = if g.subgraphs.is_empty() {
         scene_flat(g, sizes)
     } else {
@@ -777,7 +779,7 @@ pub fn scene_sized(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
 
 /// The classic single-level pipeline (no subgraphs).
 fn scene_flat(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
-    let mut sc = scene_from_layout(g, sizes, layout_sized(g, sizes), None);
+    let mut sc = scene_from_layout(g, sizes, layout_sized(g, sizes), None, g.edges.len());
     let moved = avoid_label_overlaps(&sc.nodes, &[], &mut sc.edges, LABEL_STATIC_WORK);
     fit_moved_labels(&mut sc, &moved);
     sc
@@ -839,12 +841,15 @@ fn layer_extents(lo: &LayoutResult, keep: impl Fn(usize) -> bool) -> Vec<(f64, f
 /// what it actually passes: members of the innermost box holding both
 /// its ends (anything outside sits beyond that box's walls) that reach
 /// into the band between its ends — so it stays beside them instead of
-/// looping round the whole diagram.
+/// looping round the whole diagram. Only the first `real` of `g.edges`
+/// are drawn as themselves (the rest are `scene_clustered`'s stand-ins,
+/// see [`edge_chords`]).
 fn scene_from_layout(
     g: &Graph,
     sizes: &[(f64, f64)],
     lo: LayoutResult,
     node_cluster: Option<&[Vec<usize>]>,
+    real: usize,
 ) -> Scene {
     // Breadth extents per layer, used by back-edges to route
     // themselves around every node on the layers they pass.
@@ -852,10 +857,22 @@ fn scene_from_layout(
 
     // Edge geometry (abstract coordinates) with parallel-edge separation.
     let offs = parallel_offsets(g);
+    let bars = bar_degrees(g);
+    // Only a state note card's link needs them (see `note_elbow`).
+    let chords = if g
+        .nodes
+        .iter()
+        .any(|n| crate::style::is_note_card(&n.id, n.shape, &n.style))
+    {
+        edge_chords(g, &lo.nodes, real)
+    } else {
+        Vec::new()
+    };
     let mut abs_edges: Vec<AbsEdge> = Vec::with_capacity(g.edges.len());
     for (ei, (e, off)) in g.edges.iter().zip(offs).enumerate() {
         let a = &lo.nodes[e.from];
         let b = &lo.nodes[e.to];
+        let lone = lone_ends(g, &bars, e);
         let shared: Vec<usize> = node_cluster.map_or_else(Vec::new, |nc| {
             nc[e.from]
                 .iter()
@@ -878,10 +895,33 @@ fn scene_from_layout(
                 off,
                 ext,
                 lbl_w,
+                lone,
             )
         };
-        let pts = match node_cluster {
-            Some(nc) if b.layer < a.layer => {
+        let card = |v: usize| {
+            let n = &g.nodes[v];
+            crate::style::is_note_card(&n.id, n.shape, &n.style)
+        };
+        let elbow = if lo.edge_paths[ei].is_empty() && (card(e.from) || card(e.to)) {
+            note_elbow(
+                a,
+                b,
+                g.nodes[e.from].shape,
+                g.nodes[e.to].shape,
+                (card(e.from), card(e.to)),
+                lo.nodes
+                    .iter()
+                    .enumerate()
+                    .filter(|&(v, _)| v != e.from && v != e.to)
+                    .map(|(_, p)| p),
+                chords.iter().copied(),
+            )
+        } else {
+            None
+        };
+        let pts = match (elbow, node_cluster) {
+            (Some(pts), _) => pts,
+            (None, Some(nc)) if b.layer < a.layer => {
                 // The bow runs between the target's bottom and the
                 // source's top: only nodes reaching into that band are
                 // in its way (all of an in-between layer, but on the end
@@ -931,14 +971,12 @@ fn scene_from_layout(
         } else {
             let chain = &lo.edge_paths[ei];
             let a_bottom = b.layer > a.layer; // exit side of the source
-            let p0 = anchor(a, g.nodes[e.from].shape, chain[0], off, a_bottom);
-            let p3 = anchor(
-                b,
-                g.nodes[e.to].shape,
-                *chain.last().unwrap(),
-                off,
-                !a_bottom,
-            );
+            let (c0, c1) = (chain[0], *chain.last().unwrap());
+            // A bar side holding only this edge meets it at its middle.
+            let c0 = if lone.0 { (a.b, c0.1) } else { c0 };
+            let c1 = if lone.1 { (b.b, c1.1) } else { c1 };
+            let p0 = anchor(a, g.nodes[e.from].shape, c0, off, a_bottom);
+            let p3 = anchor(b, g.nodes[e.to].shape, c1, off, !a_bottom);
             let mut v = Vec::with_capacity(chain.len() + 2);
             v.push(p0);
             v.extend(chain.iter().copied());
@@ -1131,7 +1169,7 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
             .collect()
     };
     let (lo, groups) = layout_clustered_ranked(&ga, sizes, &node_cluster, &rank_only);
-    let mut sc = scene_from_layout(&ga, sizes, lo, Some(&node_cluster));
+    let mut sc = scene_from_layout(&ga, sizes, lo, Some(&node_cluster), ne);
     let horizontal = matches!(g.direction, Direction::LR | Direction::RL);
 
     // Wrap boxes around the laid-out members, then widen each box to
@@ -1358,7 +1396,7 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
                             else {
                                 continue;
                             };
-                            free_edge(&pa, &pb, sa, sb, false, 0.0, Some(g.direction))
+                            free_edge(&pa, &pb, sa, sb, false, 0.0, Some(g.direction), NO_LONE)
                         }
                     };
                     (pts, Vec::new())
@@ -1845,7 +1883,8 @@ pub fn route(g: &Graph, centers: &[(f64, f64)]) -> Scene {
     route_sized(g, centers, &sizes)
 }
 
-/// Same as [`route`] but with caller-provided node sizes.
+/// Same as [`route`] but with caller-provided node sizes (a fork/join
+/// bar's fitted as [`scene_sized`] fits it).
 pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> Scene {
     assert_eq!(
         centers.len(),
@@ -1857,6 +1896,7 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
         g.nodes.len(),
         "number of sizes must match number of nodes"
     );
+    let sizes = &fit_bars(g, sizes)[..];
     let mut sc = route_built(g, centers, sizes, true);
     crate::edgepass::finish(g, &mut sc, crate::edgepass::Mode::Routed);
     sc
@@ -1930,19 +1970,56 @@ fn route_built(
     };
 
     let offs = parallel_offsets(g);
+    let bars = bar_degrees(g);
     let mut edges = Vec::with_capacity(g.edges.len());
+    // State note cards' links elbow round as the static layout draws
+    // them (see `note_elbow`), judged in flow coordinates.
+    let card = |v: usize| {
+        let n = &g.nodes[v];
+        crate::style::is_note_card(&n.id, n.shape, &n.style)
+    };
+    let flow: Vec<Placed> = if (0..g.nodes.len()).any(card) {
+        placed.iter().map(|p| flow_placed(g.direction, p)).collect()
+    } else {
+        Vec::new()
+    };
+    let chords = if flow.is_empty() {
+        Vec::new()
+    } else {
+        edge_chords(g, &flow, g.edges.len())
+    };
     for (e, off) in g.edges.iter().zip(offs) {
         let a = &placed[e.from];
         let b = &placed[e.to];
-        let pts = free_edge(
-            a,
-            b,
-            g.nodes[e.from].shape,
-            g.nodes[e.to].shape,
-            e.from == e.to,
-            off,
-            Some(g.direction),
-        );
+        let elbow = if !flow.is_empty() && e.from != e.to && (card(e.from) || card(e.to)) {
+            note_elbow(
+                &flow[e.from],
+                &flow[e.to],
+                g.nodes[e.from].shape,
+                g.nodes[e.to].shape,
+                (card(e.from), card(e.to)),
+                flow.iter()
+                    .enumerate()
+                    .filter(|&(v, _)| v != e.from && v != e.to)
+                    .map(|(_, p)| p),
+                chords.iter().copied(),
+            )
+            .map(|pts| pts.map(|p| from_flow(g.direction, p)))
+        } else {
+            None
+        };
+        let pts = elbow.unwrap_or_else(|| {
+            free_edge(
+                a,
+                b,
+                g.nodes[e.from].shape,
+                g.nodes[e.to].shape,
+                e.from == e.to,
+                off,
+                Some(g.direction),
+                lone_ends(g, &bars, e),
+            )
+        });
         let wps = if e.from != e.to && top_of(e.from) != top_of(e.to) {
             // Parallel edges between one pair get the same channel: each
             // runs `off` across the flow from it, so they never coincide.
@@ -2051,7 +2128,7 @@ fn route_built(
             let (pts, own_mid) = match own {
                 Some((pts, mid)) => (pts, Some(mid)),
                 None => (
-                    free_edge(&pa, &pb, sa, sb, false, off, Some(g.direction)),
+                    free_edge(&pa, &pb, sa, sb, false, off, Some(g.direction), NO_LONE),
                     None,
                 ),
             };
@@ -2160,6 +2237,7 @@ pub fn route_partial(
         return base.clone();
     }
     let sizes: Vec<(f64, f64)> = g.nodes.iter().map(intrinsic_size).collect();
+    let sizes = fit_bars(g, &sizes);
     // No builder label pass: a redrawn edge's label starts at its spot
     // on the new line and the label stage moves it only if it covers
     // something. route() slides every label first so the router can
@@ -2463,6 +2541,7 @@ pub fn box_edge_bezier(
         self_loop,
         offset,
         None,
+        NO_LONE,
     )
 }
 
@@ -2854,16 +2933,18 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
     let height = (maxy - miny) + 2.0 * MARGIN;
     let t = |p: (f64, f64)| (p.0 + tx, p.1 + ty);
 
-    // Endpoint display name: pseudostates announce "start"/"end", not
-    // their parser-synthesized `__start_*`/`__end_*` ids (#16). Keyed
-    // on Shape (not the id prefix) so a user node literally named
+    // Endpoint display name: pseudostates announce "start"/"end", and a
+    // state note card "note", not their parser-synthesized `__start_*` /
+    // `__end_*` / `__note_*` ids (#16). Keyed on Shape (and a card's
+    // colours, not the id prefix alone) so a user node literally named
     // "__start_x" is unaffected. BTreeMap keeps it zero-dep + ordered.
-    let shape_of: std::collections::BTreeMap<&str, Shape> =
-        sc.nodes.iter().map(|n| (n.id.as_str(), n.shape)).collect();
+    let node_of: std::collections::BTreeMap<&str, &SceneNode> =
+        sc.nodes.iter().map(|n| (n.id.as_str(), n)).collect();
     let display = |id: &str| -> String {
-        match shape_of.get(id) {
-            Some(Shape::StateStart) => "start".to_string(),
-            Some(Shape::StateEnd) => "end".to_string(),
+        match node_of.get(id) {
+            Some(n) if n.shape == Shape::StateStart => "start".to_string(),
+            Some(n) if n.shape == Shape::StateEnd => "end".to_string(),
+            Some(n) if is_note_card(n) => "note".to_string(),
             _ => id.to_string(),
         }
     };
@@ -2995,9 +3076,11 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
         let (cx, cy) = t((n.x, n.y));
         let (w, h) = (n.w, n.h);
         // Group per node so the <title> (a11y + hover tooltip) covers
-        // shape AND label together (issue #16). An unlabelled node
-        // (pseudostate / choice / fork) uses a shape-derived name, and
-        // never emits an empty `<title>` (a11y anti-pattern).
+        // shape AND label together (issue #16). An unlabelled start/end
+        // pseudostate announces its role (its id is synthesized); an
+        // unlabelled choice or fork/join bar its own id (`decide`,
+        // `forked`), the name the edge titles use for it too. Never an
+        // empty `<title>` (a11y anti-pattern).
         let node_title = {
             let lbl = plain_text(&n.label);
             if !lbl.is_empty() {
@@ -3006,7 +3089,7 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
                 match n.shape {
                     Shape::StateStart => "start".to_string(),
                     Shape::StateEnd => "end".to_string(),
-                    Shape::ForkBar => "fork/join".to_string(),
+                    Shape::Diamond | Shape::ForkBar => n.id.clone(),
                     _ => String::new(),
                 }
             }
@@ -3323,13 +3406,306 @@ fn sub_parallel_offsets(g: &Graph) -> Vec<f64> {
         .collect()
 }
 
+/// How far (px) a fork/join bar reaches past the outermost branch it
+/// spans ([`fit_bars`]): more than [`crate::ports::PORT_INSET`], so the
+/// port right over the outermost branch still lies on the usable span.
+const BAR_OVERHANG: f64 = 16.0;
+
+/// Node sizes with every fork/join bar fitted to its branches: laid
+/// across the flow (upright in `LR`/`RL`, mermaid-style) and long enough
+/// to reach every state on its busier side, so each branch drops
+/// straight onto its state (see [`anchor`]) instead of S-bending off a
+/// 60px bar. The reach is estimated before layout ([`bar_half`]), so the
+/// static and the interactive builders fit the same sizes and a drag
+/// never resizes a bar; fitting fitted sizes again changes nothing.
+/// Other sizes pass through untouched (borrowed when there is no bar).
+pub(crate) fn fit_bars<'a>(g: &Graph, sizes: &'a [(f64, f64)]) -> Cow<'a, [(f64, f64)]> {
+    if !g.nodes.iter().any(|n| n.shape == Shape::ForkBar) {
+        return Cow::Borrowed(sizes);
+    }
+    let across = matches!(g.direction, Direction::LR | Direction::RL);
+    let is_bar = |v: usize| g.nodes[v].shape == Shape::ForkBar;
+    // A state's breadth across the flow (a bar inside a composite counts
+    // at an unfitted bar's length, see below).
+    let breadth = |v: usize| match (is_bar(v), across) {
+        (true, _) => BAR_SIZE.0,
+        (false, true) => sizes[v].1,
+        (false, false) => sizes[v].0,
+    };
+    let end_breadth = |end: End| match end {
+        End::Node(v) => breadth(v),
+        End::Sub(si) => frame_breadth(g, si, &breadth),
+    };
+    let bar = |end: End| match end {
+        End::Node(v) if is_bar(v) => Some(v),
+        _ => None,
+    };
+    // Every (from, to) a bar may span: the states it joins, composite
+    // ones (frames) included.
+    let ends: Vec<(End, End)> = g
+        .edges
+        .iter()
+        .filter(|e| bar_counts(g, e))
+        .map(|e| (End::Node(e.from), End::Node(e.to)))
+        .chain(
+            g.sub_edges
+                .iter()
+                .filter(|e| e.from != e.to && e.kind != EdgeKind::Invisible)
+                .map(|e| (e.from, e.to)),
+        )
+        .collect();
+    // A bar with a note card beside it: its link leaves past the
+    // branches, a port's room beyond the outermost one at either end
+    // (the layout leaves the card beside the branches, see
+    // `layout::unlink_bar_cards`).
+    let card = |v: usize| {
+        let n = &g.nodes[v];
+        crate::style::is_note_card(&n.id, n.shape, &n.style)
+    };
+    let noted: Vec<usize> = g
+        .edges
+        .iter()
+        .filter_map(|e| match (card(e.from), card(e.to)) {
+            (false, true) => Some(e.from),
+            (true, false) => Some(e.to),
+            _ => None,
+        })
+        .filter(|&v| is_bar(v))
+        .collect();
+    // Per bar: the length (0 with no fan) that reaches every branch on
+    // its busier side (in, out), `b(branch, bar)` the branch's breadth.
+    let reach = |b: &dyn Fn(End, usize) -> f64| -> HashMap<usize, f64> {
+        let mut fan: HashMap<usize, [Vec<f64>; 2]> = HashMap::new();
+        for &(from, to) in &ends {
+            if let Some(v) = bar(to) {
+                fan.entry(v).or_default()[0].push(b(from, v));
+            }
+            if let Some(v) = bar(from) {
+                fan.entry(v).or_default()[1].push(b(to, v));
+            }
+        }
+        fan.into_iter()
+            .map(|(v, mut sides)| {
+                let half = sides.iter_mut().map(|b| bar_half(b)).fold(0.0, f64::max);
+                let card = if noted.contains(&v) {
+                    crate::ports::PORT_SPACING
+                } else {
+                    0.0
+                };
+                let len = if half > 0.0 {
+                    2.0 * (half + BAR_OVERHANG + card)
+                } else {
+                    0.0
+                };
+                (v, len)
+            })
+            .collect()
+    };
+    // A bar branching to another bar (`f --> j`, nested forks) cannot
+    // read the far bar's fitted length: the two would feed each other,
+    // each refit stretching both, and fitting fitted sizes again
+    // (`fold::scene_compact_sized`, a host handing `route_sized` the
+    // sizes it drew) must change nothing. So every length here comes
+    // from the states alone: a far bar counts at an unfitted bar's
+    // length, then, when it lies right beside the bar (nested forks), at
+    // the fit that gives it. When another path joins the two (a fork
+    // straight to its join), the edge spans layers: the layer beside the
+    // bar holds its lane, not the far bar.
+    let first = reach(&|end, _| end_breadth(end));
+    let lengths = reach(&|end, near| match bar(end) {
+        Some(far) if beside(g, near, far) => {
+            first.get(&far).copied().unwrap_or(0.0).max(BAR_SIZE.0)
+        }
+        _ => end_breadth(end),
+    });
+    let mut out = sizes.to_vec();
+    for v in (0..g.nodes.len()).filter(|&v| is_bar(v)) {
+        let (w, h) = sizes[v];
+        let len = w.max(h).max(lengths.get(&v).copied().unwrap_or(0.0));
+        out[v] = if across {
+            (w.min(h), len)
+        } else {
+            (len, w.min(h))
+        };
+    }
+    Cow::Owned(out)
+}
+
+/// How far from its centre a bar must reach to meet the centres of the
+/// states it fans out to (breadths `b`; 0 for fewer than two), laid side
+/// by side a node gap apart in an order the layout picks. An even fan
+/// centres the bar between its middle two: half the widest span, with
+/// the two narrowest states at the ends. An odd one aligns the bar with
+/// its middle state: the farthest reach puts the `k / 2 + 1` broadest on
+/// one side, the two narrowest of those at the middle and the end.
+fn bar_half(b: &mut [f64]) -> f64 {
+    let k = b.len();
+    if k < 2 {
+        return 0.0;
+    }
+    b.sort_by(|x, y| y.total_cmp(x));
+    let ends = |top: &[f64]| (top[top.len() - 1] + top[top.len() - 2]) / 2.0;
+    if k % 2 == 0 {
+        (b.iter().sum::<f64>() - ends(b) + (k - 1) as f64 * GAP_B) / 2.0
+    } else {
+        let top = &b[..=k / 2];
+        top.iter().sum::<f64>() - ends(top) + (k / 2) as f64 * GAP_B
+    }
+}
+
+/// Breadth of composite state (frame) `si` before layout, its members'
+/// breadths `breadth`: its broadest member (a nested frame estimated
+/// alike) plus the frame's pad each side, since a frame lays out its
+/// members along the diagram's own flow.
+fn frame_breadth(g: &Graph, si: usize, breadth: &dyn Fn(usize) -> f64) -> f64 {
+    let nested = g
+        .subgraphs
+        .iter()
+        .enumerate()
+        .filter(|&(ci, c)| c.parent == Some(si) && ci != si)
+        .map(|(ci, _)| frame_breadth(g, ci, breadth));
+    g.subgraphs[si]
+        .nodes
+        .iter()
+        .map(|&v| breadth(v))
+        .chain(nested)
+        .fold(0.0, f64::max)
+        + 2.0 * SUB_PAD
+}
+
+/// Whether nodes `a` and `b` (an edge joins them) lie in neighbouring
+/// layers as far as the graph tells before layout: no other path of
+/// [`bar_counts`] edges leads from one to the other (which would push
+/// the far one a layer further, its edge a long one).
+fn beside(g: &Graph, a: usize, b: usize) -> bool {
+    let detour = |from: usize, to: usize| {
+        let mut seen = vec![false; g.nodes.len()];
+        seen[from] = true;
+        let mut stack: Vec<usize> = g
+            .edges
+            .iter()
+            .filter(|e| e.from == from && e.to != to && bar_counts(g, e))
+            .map(|e| e.to)
+            .collect();
+        while let Some(v) = stack.pop() {
+            if v == to {
+                return true;
+            }
+            if std::mem::replace(&mut seen[v], true) {
+                continue;
+            }
+            stack.extend(
+                g.edges
+                    .iter()
+                    .filter(|e| e.from == v && bar_counts(g, e))
+                    .map(|e| e.to),
+            );
+        }
+        false
+    };
+    !detour(a, b) && !detour(b, a)
+}
+
+/// Whether an edge counts towards a fork/join bar's branches: drawn,
+/// joining two nodes, and not a note card's link (a note beside a bar
+/// is no branch of it).
+fn bar_counts(g: &Graph, e: &Edge) -> bool {
+    let card = |v: usize| {
+        let n = &g.nodes[v];
+        crate::style::is_note_card(&n.id, n.shape, &n.style)
+    };
+    e.from != e.to && e.kind != EdgeKind::Invisible && !card(e.from) && !card(e.to)
+}
+
+/// Per node: the (incoming, outgoing) edges it has, when the graph has
+/// a fork/join bar (else empty) — what [`lone_ends`] reads.
+fn bar_degrees(g: &Graph) -> Vec<(usize, usize)> {
+    if !g.nodes.iter().any(|n| n.shape == Shape::ForkBar) {
+        return Vec::new();
+    }
+    let mut deg = vec![(0, 0); g.nodes.len()];
+    for e in g.edges.iter().filter(|e| bar_counts(g, e)) {
+        deg[e.from].1 += 1;
+        deg[e.to].0 += 1;
+    }
+    for e in &g.sub_edges {
+        if let End::Node(v) = e.from {
+            deg[v].1 += 1;
+        }
+        if let End::Node(v) = e.to {
+            deg[v].0 += 1;
+        }
+    }
+    deg
+}
+
+/// No end of the edge is a bar side's only edge.
+const NO_LONE: (bool, bool) = (false, false);
+
+/// For edge `e`: is its start the only edge leaving a fork/join bar,
+/// and is its end the only edge entering one? Such a side (a fork's
+/// way in, a join's way out) meets its edge at the bar's middle.
+fn lone_ends(g: &Graph, deg: &[(usize, usize)], e: &Edge) -> (bool, bool) {
+    // A note card's link is no branch: it meets the bar where the card
+    // lies, past the branches.
+    if !bar_counts(g, e) {
+        return NO_LONE;
+    }
+    let bar = |v: usize| g.nodes[v].shape == Shape::ForkBar;
+    let one = |v: usize, out: bool| {
+        deg.get(v)
+            .is_some_and(|d| (if out { d.1 } else { d.0 }) == 1)
+    };
+    (
+        bar(e.from) && one(e.from, true),
+        bar(e.to) && one(e.to, false),
+    )
+}
+
+/// Half the stretch of a fork/join bar its branches may meet it on.
+fn bar_reach(p: &Placed) -> f64 {
+    (p.bsize / 2.0 - crate::ports::PORT_INSET).max(0.0)
+}
+
+/// The breadth coordinate the end at `me` aims its port at (the
+/// `other` of [`anchor`]): the far end's port when that is a fork/join
+/// bar — which meets each branch right where the branch lies — else the
+/// far node's centre. A bar end alone on its side (`me_lone`) aims at
+/// its own middle, and an edge into such a side at that middle too.
+fn toward(me: (&Placed, Shape, bool), far: (&Placed, Shape, bool)) -> f64 {
+    let ((p, shape, lone), (q, far_shape, far_lone)) = (me, far);
+    if shape == Shape::ForkBar && lone {
+        p.b
+    } else if far_shape == Shape::ForkBar && !far_lone {
+        let r = bar_reach(q);
+        p.b.max(q.b - r).min(q.b + r)
+    } else {
+        q.b
+    }
+}
+
+/// How far (along the flow-facing side, from the centre) a boxy end's
+/// port leans toward the other end, `toward` (its breadth less this
+/// box's centre) away: 0.35 of the way, shifted by the parallel-edge
+/// offset `off`, kept on the straight part of the side (`size` is the
+/// box's (breadth, layer) size). See [`anchor`].
+pub(crate) fn port_lean(shape: Shape, size: (f64, f64), toward: f64, off: f64) -> f64 {
+    let flat = match shape {
+        Shape::Stadium => size.0 / 2.0 - size.1 / 2.0 - 4.0,
+        _ => size.0 / 2.0 - 12.0,
+    }
+    .max(0.0);
+    (toward * 0.35 + off).clamp(-flat, flat)
+}
+
 /// Edge exit/entry point on a node's border.
 ///
 /// For boxy shapes, points are spread along the top/bottom side
 /// towards the opposite node (instead of piling up at the centre);
 /// stadiums are constrained to their flat section so anchors don't
 /// float on the rounded caps. Circles/diamonds use exact border
-/// intersection.
+/// intersection. A fork/join bar meets the edge right where `other`
+/// lies (clamped to the bar), so a branch drops straight down to it.
 pub(crate) fn anchor(
     p: &Placed,
     shape: Shape,
@@ -3343,13 +3719,18 @@ pub(crate) fn anchor(
         | Shape::DoubleCircle
         | Shape::StateStart
         | Shape::StateEnd => border(p, shape, (other.0 + off * 4.0, other.1)),
+        Shape::ForkBar => {
+            let r = bar_reach(p);
+            let l = if bottom {
+                p.l + p.lsize / 2.0
+            } else {
+                p.l - p.lsize / 2.0
+            };
+            // `max`/`min`, not `clamp`: a NaN centre must not panic.
+            ((other.0 + off).max(p.b - r).min(p.b + r), l)
+        }
         _ => {
-            let flat = match shape {
-                Shape::Stadium => p.bsize / 2.0 - p.lsize / 2.0 - 4.0,
-                _ => p.bsize / 2.0 - 12.0,
-            }
-            .max(0.0);
-            let bias = ((other.0 - p.b) * 0.35 + off).clamp(-flat, flat);
+            let bias = port_lean(shape, (p.bsize, p.lsize), other.0 - p.b, off);
             let l = if bottom {
                 p.l + p.lsize / 2.0
             } else {
@@ -3372,6 +3753,7 @@ fn edge_points(
     off: f64,
     lay_ext: &[(f64, f64)],
     label_w: f64,
+    lone: (bool, bool),
 ) -> [(f64, f64); 4] {
     if self_loop {
         return loop_points(a, off);
@@ -3379,8 +3761,9 @@ fn edge_points(
 
     if b.layer != a.layer {
         let down = b.layer > a.layer;
-        let p0 = anchor(a, sa, (b.b, b.l), off, down);
-        let p3 = anchor(b, sb, (a.b, a.l), off, !down);
+        let (ea, eb) = ((a, sa, lone.0), (b, sb, lone.1));
+        let p0 = anchor(a, sa, (toward(ea, eb), b.l), off, down);
+        let p3 = anchor(b, sb, (toward(eb, ea), a.l), off, !down);
 
         if down {
             let dl = ((p3.1 - p0.1) * 0.5).max(20.0);
@@ -3597,6 +3980,7 @@ fn free_edge(
     self_loop: bool,
     off: f64,
     dir: Option<Direction>,
+    lone: (bool, bool),
 ) -> [(f64, f64); 4] {
     if self_loop {
         return loop_points(a, off);
@@ -3610,16 +3994,19 @@ fn free_edge(
     }
     let fwd_gap = (fb.l - fb.lsize / 2.0) - (fa.l + fa.lsize / 2.0);
     let back_gap = (fa.l - fa.lsize / 2.0) - (fb.l + fb.lsize / 2.0);
+    // Where each end aims, as the static layout aims it (`edge_points`).
+    let (ea, eb) = ((&fa, sa, lone.0), (&fb, sb, lone.1));
+    let (ta, tb) = (toward(ea, eb), toward(eb, ea));
     let pts = if fwd_gap >= FLOW_MIN_GAP {
-        let p0 = anchor(&fa, sa, (fb.b, fb.l), off, true);
-        let p3 = anchor(&fb, sb, (fa.b, fa.l), off, false);
+        let p0 = anchor(&fa, sa, (ta, fb.l), off, true);
+        let p3 = anchor(&fb, sb, (tb, fa.l), off, false);
         let dl = tangent(p3.1 - p0.1);
         [p0, (p0.0, p0.1 + dl), (p3.0, p3.1 - dl), p3]
     } else if back_gap >= FLOW_MIN_GAP {
         // Out of the source's flow-in side, into the target's flow-out
         // side, bowing past the wider box on the side the source lies.
-        let p0 = anchor(&fa, sa, (fb.b, fb.l), off, false);
-        let p3 = anchor(&fb, sb, (fa.b, fa.l), off, true);
+        let p0 = anchor(&fa, sa, (ta, fb.l), off, false);
+        let p3 = anchor(&fb, sb, (tb, fa.l), off, true);
         let lead = BACK_LEAD.min(0.5 * (p0.1 - p3.1).max(0.0));
         let right = fa.b >= fb.b;
         let bt = if right {
@@ -3779,6 +4166,232 @@ fn border(p: &Placed, shape: Shape, toward: (f64, f64)) -> (f64, f64) {
         }
     };
     (p.b + dx * t, p.l + dy * t)
+}
+
+/// A segment between two points, (from, to).
+type Chord = ((f64, f64), (f64, f64));
+
+/// The rough courses [`note_elbow`] keeps its elbow off, in flow
+/// coordinates (`at`, index-parallel with `g.nodes`): for each of the
+/// first `real` edges the segment between its ends' centres, then for
+/// each sub-edge its drawn course — the segment between its ends cut
+/// off where it meets a box end's frame (aimed at the centre of the
+/// box's members, see [`frame_entry`]), or for a member drawn to its own
+/// box the stub along the flow to the members' nearer flow side (see
+/// [`own_box_stub`]).
+/// Edges past `real` are `scene_clustered`'s stand-ins, never drawn as
+/// such: their sub-edges' courses stand for them, so the static layout
+/// and [`route`] judge an elbow against the same lines from the same
+/// centres. Left out: self-loops, invisible links, and any link touching
+/// a note card — two cards beside one state elbow out side by side, and
+/// one's chord (straight across to its card) would strike the other's
+/// elbow although the drawn links never cross.
+fn edge_chords(g: &Graph, at: &[Placed], real: usize) -> Vec<Chord> {
+    let card = |v: usize| {
+        let n = &g.nodes[v];
+        crate::style::is_note_card(&n.id, n.shape, &n.style)
+    };
+    let centre = |v: usize| (at[v].b, at[v].l);
+    let mut out: Vec<Chord> = g.edges[..real]
+        .iter()
+        .filter(|e| {
+            e.from != e.to && !matches!(e.kind, EdgeKind::Invisible) && !card(e.from) && !card(e.to)
+        })
+        .map(|e| (centre(e.from), centre(e.to)))
+        .collect();
+    if g.sub_edges.is_empty() {
+        return out;
+    }
+    let node_cluster = node_cluster_paths(g);
+    // Flow-coordinate bbox (b0, b1, l0, l1) of a box's members, nested
+    // boxes' included.
+    let members = |si: usize| {
+        (0..g.nodes.len())
+            .filter(|&v| node_cluster[v].contains(&si))
+            .fold(None, |acc: Option<(f64, f64, f64, f64)>, v| {
+                let p = &at[v];
+                let r = (
+                    p.b - p.bsize / 2.0,
+                    p.b + p.bsize / 2.0,
+                    p.l - p.lsize / 2.0,
+                    p.l + p.lsize / 2.0,
+                );
+                Some(acc.map_or(r, |a| {
+                    (a.0.min(r.0), a.1.max(r.1), a.2.min(r.2), a.3.max(r.3))
+                }))
+            })
+    };
+    for e in &g.sub_edges {
+        let ends = [e.from, e.to];
+        if matches!(e.kind, EdgeKind::Invisible)
+            || ends
+                .iter()
+                .any(|&end| matches!(end, End::Node(v) if card(v)))
+        {
+            continue;
+        }
+        let chord = match (e.from, e.to) {
+            (End::Node(v), End::Sub(si)) | (End::Sub(si), End::Node(v))
+                if node_cluster[v].contains(&si) =>
+            {
+                members(si).map(|(_, _, l0, l1)| {
+                    let (b, l) = centre(v);
+                    (centre(v), (b, if l - l0 < l1 - l { l0 } else { l1 }))
+                })
+            }
+            _ => {
+                let point = |end: End| match end {
+                    End::Node(v) => Some(centre(v)),
+                    End::Sub(si) => {
+                        members(si).map(|(b0, b1, l0, l1)| ((b0 + b1) / 2.0, (l0 + l1) / 2.0))
+                    }
+                };
+                // The drawn edge stops at a box end's frame: past it the
+                // line to the members' centre is no course at all, and
+                // would refuse elbows inside the box nothing crosses.
+                // The frame here is the members' bbox grown by `SUB_PAD`
+                // (as boxes re-wrap round dragged members), the same in
+                // the static layout and in `route`.
+                let clip = |from: (f64, f64), end: End, to: (f64, f64)| match end {
+                    End::Sub(si) => members(si).map_or(to, |(b0, b1, l0, l1)| {
+                        frame_entry(
+                            from,
+                            to,
+                            (b0 - SUB_PAD, b1 + SUB_PAD, l0 - SUB_PAD, l1 + SUB_PAD),
+                        )
+                    }),
+                    End::Node(_) => to,
+                };
+                point(e.from)
+                    .zip(point(e.to))
+                    .map(|(a, b)| (clip(b, e.from, a), clip(a, e.to, b)))
+            }
+        };
+        out.extend(chord);
+    }
+    out
+}
+
+/// Where the segment `from` → `to` first enters the box `(b0, b1, l0,
+/// l1)`: `to` itself when `from` already lies inside the box or the
+/// segment misses it.
+fn frame_entry(
+    from: (f64, f64),
+    to: (f64, f64),
+    (b0, b1, l0, l1): (f64, f64, f64, f64),
+) -> (f64, f64) {
+    let d = (to.0 - from.0, to.1 - from.1);
+    let (mut t_in, mut t_out) = (0.0_f64, 1.0_f64);
+    for (p, dp, lo, hi) in [(from.0, d.0, b0, b1), (from.1, d.1, l0, l1)] {
+        if dp.abs() < 1e-9 {
+            if p < lo || p > hi {
+                return to;
+            }
+            continue;
+        }
+        let (ta, tb) = ((lo - p) / dp, (hi - p) / dp);
+        t_in = t_in.max(ta.min(tb));
+        t_out = t_out.min(ta.max(tb));
+    }
+    if t_in <= 0.0 || t_in > t_out {
+        return to;
+    }
+    (from.0 + d.0 * t_in, from.1 + d.1 * t_in)
+}
+
+/// A state `note` card (see [`crate::style::is_note_card`]).
+fn is_note_card(n: &SceneNode) -> bool {
+    crate::style::is_note_card(&n.id, n.shape, &n.style)
+}
+
+/// A state note card's link (`card`: which end is the card, see
+/// [`crate::style::is_note_card`]) when the card lies wholly to one side
+/// of its state across the flow and apart from it along the flow: out of
+/// the state's breadth side facing the card, round into the card's flow
+/// side facing the state. Aimed from the state's flow side, the link
+/// would cross the channel the state's own transitions and their labels
+/// use (in `LR`, a `note right of` card below the next state). `None`
+/// for any other edge, for a state with no flat side (a `<<choice>>`'s
+/// cards would share its corner; a fork/join bar's card sits past its
+/// branches), when another box (`others`, the two ends left out) stands
+/// within [`crate::clearance::NODE_SEP`] of the elbow, or when another
+/// edge (`chords`, see [`edge_chords`]) crosses it: the elbow runs
+/// round the outside of the state's own fan, so a transition out
+/// between the card and the state (in `LR`, to a state below the card)
+/// would be crossed. Flow coordinates.
+fn note_elbow<'a>(
+    a: &Placed,
+    b: &Placed,
+    sa: Shape,
+    sb: Shape,
+    card: (bool, bool),
+    others: impl IntoIterator<Item = &'a Placed>,
+    chords: impl IntoIterator<Item = Chord>,
+) -> Option<[(f64, f64); 4]> {
+    let (s, c, shape, flip) = match card {
+        (false, true) => (a, b, sa, false),
+        (true, false) => (b, a, sb, true),
+        _ => return None,
+    };
+    let apart = |d: f64, x: f64, y: f64| d.abs() > (x + y) / 2.0;
+    let flat = !matches!(
+        shape,
+        Shape::Diamond
+            | Shape::Circle
+            | Shape::DoubleCircle
+            | Shape::StateStart
+            | Shape::StateEnd
+            | Shape::ForkBar
+    );
+    if !flat || !apart(c.b - s.b, c.bsize, s.bsize) || !apart(c.l - s.l, c.lsize, s.lsize) {
+        return None;
+    }
+    let p0 = side_point(s, shape, (c.b - s.b).signum(), s.l);
+    let p3 = (c.b, c.l - (c.l - s.l).signum() * c.lsize / 2.0);
+    let corner = (c.b, s.l);
+    // The elbow's two legs: across the flow at the state's layer, then
+    // along it at the card's breadth.
+    let span = |u: f64, v: f64| (u.min(v), u.max(v));
+    let legs = [
+        (span(p0.0, corner.0), span(s.l, s.l)),
+        (span(c.b, c.b), span(s.l, p3.1)),
+    ];
+    let pad = crate::clearance::NODE_SEP;
+    let blocked = others.into_iter().any(|o| {
+        let (b0, b1) = (o.b - o.bsize / 2.0 - pad, o.b + o.bsize / 2.0 + pad);
+        let (l0, l1) = (o.l - o.lsize / 2.0 - pad, o.l + o.lsize / 2.0 + pad);
+        legs.iter()
+            .any(|&((x0, x1), (y0, y1))| x0 < b1 && b0 < x1 + 1e-9 && y0 < l1 && l0 < y1 + 1e-9)
+    });
+    // Whether segments p–q and u–v properly cross.
+    let cross = |p: (f64, f64), q: (f64, f64), u: (f64, f64), v: (f64, f64)| {
+        let side = |a: (f64, f64), b: (f64, f64), c: (f64, f64)| {
+            (b.0 - a.0) * (c.1 - a.1) - (b.1 - a.1) * (c.0 - a.0)
+        };
+        side(p, q, u) * side(p, q, v) < 0.0 && side(u, v, p) * side(u, v, q) < 0.0
+    };
+    let elbow = [((p0.0, s.l), corner), (corner, (c.b, p3.1))];
+    if blocked
+        || chords
+            .into_iter()
+            .any(|(u, v)| elbow.iter().any(|&(p, q)| cross(p, q, u, v)))
+    {
+        return None;
+    }
+    // Control points KAPPA of the way to the corner: a quarter-ellipse.
+    const KAPPA: f64 = 0.552;
+    let toward = |p: (f64, f64)| {
+        (
+            p.0 + KAPPA * (corner.0 - p.0),
+            p.1 + KAPPA * (corner.1 - p.1),
+        )
+    };
+    let run = [p0, toward(p0), toward(p3), p3];
+    Some(if flip {
+        [run[3], run[2], run[1], run[0]]
+    } else {
+        run
+    })
 }
 
 /// Midpoint of a cubic bezier (t = 0.5), used to place labels.
@@ -5489,6 +6102,380 @@ mod tests {
         assert!(y("Done") > c.y + c.h, "Done below the composite");
     }
 
+    /// Fork/join bars span their branches, which then drop straight
+    /// onto their states (no S-bends off a 60px bar); the bar's single
+    /// way in (fork) or out (join) meets it at its middle. The static
+    /// layout and the interactive builders agree on all of it.
+    #[test]
+    fn composite_branches_and_bar_notes_size_the_bar() {
+        let state = |src: &str| match crate::parser::parse_document(src).unwrap() {
+            crate::model::Document::State(g) => g,
+            _ => unreachable!(),
+        };
+        // Where an edge is drawn from and to.
+        let ends = |e: &SceneEdge| match (e.waypoints.first(), e.waypoints.last()) {
+            (Some(&a), Some(&b)) => (a, b),
+            _ => (e.bezier[0], e.bezier[3]),
+        };
+        // A composite state is a branch too: the bars span the frame, so
+        // its branches drop straight like the others (fit_bars counts
+        // sub-edges, sizing the frame from its members).
+        let g = state(
+            "stateDiagram-v2\nstate f <<fork>>\nstate j <<join>>\n[*] --> f\n\
+             f --> Work\nf --> Audit\nstate Work {\n[*] --> step1\nstep1 --> step2\n\
+             step2 --> [*]\n}\nWork --> j\nAudit --> j\nj --> Done\nf --> Log : side\n\
+             Log --> Done",
+        );
+        let sc = scene(&g);
+        let branches: Vec<&SceneEdge> = sc
+            .edges
+            .iter()
+            .filter(|e| (e.from == "f" && e.to != "f") || (e.to == "j" && e.from != "j"))
+            .collect();
+        assert_eq!(
+            branches.len(),
+            5,
+            "fork: Work, Audit, Log; join: Work, Audit"
+        );
+        for e in branches {
+            // Within a px: a frame's port sits under its box's centre, a
+            // hair off its members'.
+            let (p0, p3) = ends(e);
+            assert!((p0.0 - p3.0).abs() < 1.0, "{} -> {} bends", e.from, e.to);
+        }
+        // A note beside a bar is no branch: the bar spans its branches
+        // (and a port's room for the note's link), the card sits beside
+        // them, the branches drop straight, a lone way in or out meets
+        // the bar's middle and the link leaves past the branches.
+        let plain = "stateDiagram-v2\nstate forked <<fork>>\nstate joined <<join>>\n\
+                     [*] --> forked\nforked --> A\nforked --> B\nA --> joined\n\
+                     B --> joined\njoined --> Done";
+        let noted =
+            format!("{plain}\nnote right of forked : starts both\nnote right of joined : waits");
+        let base = scene(&state(plain));
+        let g = state(&noted);
+        let sc = scene(&g);
+        let centres: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        for (s, why) in [(&sc, "scene"), (&route(&g, &centres), "route")] {
+            let at = |id: &str| &s.nodes[g.node_index(id).unwrap()];
+            for bar in ["forked", "joined"] {
+                let b = at(bar);
+                assert_eq!(
+                    b.w,
+                    base.nodes[g.node_index(bar).unwrap()].w + 2.0 * crate::ports::PORT_SPACING,
+                    "{why}: {bar} spans its branches, not the card"
+                );
+                let link = s
+                    .edges
+                    .iter()
+                    .find(|e| e.from == bar && e.to.starts_with("__note_"));
+                let (p0, _) = ends(link.expect("the note link"));
+                let outer = at("B").x.max(at("A").x);
+                assert!(p0.0 > outer + 1.0, "{why}: {bar}'s note link past B");
+            }
+            for e in s.edges.iter().take(g.edges.len()) {
+                let (p0, p3) = ends(e);
+                if ["A", "B"].contains(&e.to.as_str()) || e.to == "joined" {
+                    assert!(
+                        (p0.0 - p3.0).abs() < 0.5,
+                        "{why}: {} -> {} bends",
+                        e.from,
+                        e.to
+                    );
+                }
+                if e.from == "joined" && e.to == "Done" {
+                    assert!((p0.0 - at("joined").x).abs() < 0.5, "{why}: way out");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn fork_join_branches_drop_straight_and_drags_agree() {
+        let state = |src: &str| match crate::parser::parse_document(src).unwrap() {
+            crate::model::Document::State(g) => g,
+            _ => unreachable!(),
+        };
+        let g = state(include_str!("../examples/state.mmd"));
+        let ix = |id: &str| g.node_index(id).unwrap();
+        let (fork, join) = (ix("forked"), ix("joined"));
+        // Branch edges: straight (start and end on one x). The lone
+        // in/out edge: at the bar's middle.
+        let check = |s: &Scene, why: &str| {
+            for e in s.edges.iter().take(g.edges.len()) {
+                let (from, to) = (ix(&e.from), ix(&e.to));
+                let (p0, p3) = (e.bezier[0], e.bezier[3]);
+                if from == fork || to == join {
+                    assert!((p0.0 - p3.0).abs() < 0.5, "{why}: {e:?} bends");
+                }
+                if to == fork {
+                    assert!((p3.0 - s.nodes[fork].x).abs() < 0.5, "{why}: fork way in");
+                }
+                if from == join {
+                    assert!((p0.0 - s.nodes[join].x).abs() < 0.5, "{why}: join way out");
+                }
+            }
+            // The bar reaches past its outermost branch.
+            let reach = (s.nodes[ix("Notify")].x - s.nodes[ix("Persist")].x).abs() / 2.0;
+            assert!(s.nodes[fork].w / 2.0 >= reach + BAR_OVERHANG - 0.5, "{why}");
+        };
+        let sc = scene(&g);
+        check(&sc, "scene");
+        let centres: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let rt = route(&g, &centres);
+        check(&rt, "route");
+        for (a, b) in sc.nodes.iter().zip(&rt.nodes) {
+            assert_eq!((a.w, a.h), (b.w, b.h), "{}: drag keeps the size", a.id);
+        }
+        // Drag a branch sideways (still under the bar): its branch
+        // follows it straight down, in a full and a partial reroute.
+        let mut moved = centres.clone();
+        moved[ix("Persist")].0 += 6.0;
+        for s in [route(&g, &moved), route_partial(&g, &moved, &sc, &centres)] {
+            assert_eq!(s.nodes[fork].w, sc.nodes[fork].w);
+            let e = s
+                .edges
+                .iter()
+                .find(|e| e.from == "forked" && e.to == "Persist");
+            let e = e.unwrap();
+            assert!(
+                (e.bezier[0].0 - moved[ix("Persist")].0).abs() < 0.5,
+                "{e:?}"
+            );
+            assert!(
+                (e.bezier[3].0 - moved[ix("Persist")].0).abs() < 0.5,
+                "{e:?}"
+            );
+        }
+        // Across an `LR` flow the bar stands upright.
+        let g = state("stateDiagram-v2\ndirection LR\nstate f <<fork>>\nA --> f\nf --> B\nf --> C");
+        let s = scene(&g);
+        let bar = &s.nodes[g.node_index("f").unwrap()];
+        assert!(bar.h > 2.0 * bar.w, "upright: {}x{}", bar.w, bar.h);
+        for e in s.edges.iter().filter(|e| e.from == "f") {
+            assert!((e.bezier[0].1 - e.bezier[3].1).abs() < 0.5, "{e:?}");
+        }
+    }
+
+    #[test]
+    fn bar_reach_covers_any_branch_order() {
+        // Two branches: the bar sits between them, half the span.
+        assert_eq!(bar_half(&mut [60.0, 80.0]), (70.0 + GAP_B) / 2.0);
+        // Three: aligned with the middle one, the farthest reach puts
+        // the two broadest on one side.
+        let three = bar_half(&mut [190.0, 66.0, 56.0]);
+        assert_eq!(three, (190.0 + 66.0) / 2.0 + GAP_B);
+        assert_eq!(bar_half(&mut [40.0]), 0.0);
+        // A bar with no fan keeps its intrinsic size; fitting is
+        // idempotent (the static and route builders both fit).
+        let g = parse("flowchart TD\nA@{ shape: fork } --> B").unwrap();
+        let sizes: Vec<(f64, f64)> = g.nodes.iter().map(intrinsic_size).collect();
+        assert_eq!(fit_bars(&g, &sizes)[0], (60.0, 8.0));
+        let g = parse("flowchart TD\nA@{ shape: fork } --> B & C & D").unwrap();
+        let sizes: Vec<(f64, f64)> = g.nodes.iter().map(intrinsic_size).collect();
+        let once = fit_bars(&g, &sizes).into_owned();
+        assert!(once[0].0 > 60.0);
+        assert_eq!(fit_bars(&g, &once).as_ref(), &once[..]);
+        // No bar: the caller's sizes come back borrowed.
+        let g = parse("flowchart TD\nA --> B").unwrap();
+        let sizes: Vec<(f64, f64)> = g.nodes.iter().map(intrinsic_size).collect();
+        assert!(matches!(fit_bars(&g, &sizes), Cow::Borrowed(_)));
+    }
+
+    #[test]
+    fn a_note_card_beside_its_state_links_from_the_facing_side() {
+        let state = |src: &str| match crate::parser::parse_document(src).unwrap() {
+            crate::model::Document::State(g) => g,
+            other => panic!("not a state diagram: {other:?}"),
+        };
+        // LR: `note right of Draft` lands a layer on, below Review,
+        // wholly past Draft across the flow. Its link used to leave
+        // Draft's flow side and run under the 'changes' label between
+        // Draft and Review; it now leaves Draft's bottom and rounds
+        // into the card's left side.
+        let g = state(
+            "stateDiagram-v2\ndirection LR\n[*] --> Draft\nDraft --> Review : submit\n\
+             Review --> Draft : changes\nReview --> Published : approve\n\
+             note right of Draft : author edits here\nPublished --> [*]",
+        );
+        let link = |sc: &Scene| {
+            let ei = sc
+                .edges
+                .iter()
+                .position(|e| {
+                    e.from == "Draft" && sc.nodes.iter().any(|n| n.id == e.to && is_note_card(n))
+                })
+                .expect("Draft's note link");
+            let e = &sc.edges[ei];
+            let node = |id: &str| sc.nodes.iter().find(|n| n.id == id).unwrap().clone();
+            (ei, e.clone(), node("Draft"), node(&e.to))
+        };
+        let s = scene(&g);
+        let centres: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+        for (what, sc) in [("scene", s.clone()), ("route", route(&g, &centres))] {
+            let (ei, e, draft, card) = link(&sc);
+            let (p0, p3) = (e.bezier[0], e.bezier[3]);
+            assert!(
+                (p0.1 - (draft.y + draft.h / 2.0)).abs() < 0.5
+                    && (p0.0 - draft.x).abs() < draft.w / 2.0,
+                "{what}: leaves Draft's bottom: {e:?}"
+            );
+            assert!(
+                (p3.0 - (card.x - card.w / 2.0)).abs() < 0.5,
+                "{what}: enters the card's left side: {e:?}"
+            );
+            let line = edge_polyline(&e);
+            for (oj, o) in sc.edges.iter().enumerate() {
+                let Some((text, c, w)) = &o.label else {
+                    continue;
+                };
+                let r = (c.0 - w / 2.0, c.1 - 10.0, c.0 + w / 2.0, c.1 + 10.0);
+                let hit = line
+                    .iter()
+                    .any(|p| p.0 > r.0 && p.0 < r.2 && p.1 > r.1 && p.1 < r.3);
+                assert!(oj == ei || !hit, "{what}: the link runs under '{text}'");
+            }
+        }
+        // A card level with its state (overlapping it across the flow)
+        // keeps the ordinary link, off Draft's flow side.
+        let (_, _, draft, card) = link(&s);
+        let mut moved = centres.clone();
+        let ci = g.node_index(&card.id).unwrap();
+        moved[ci].1 = draft.y;
+        let r = route(&g, &moved);
+        let (_, e, draft, _) = link(&r);
+        assert!(
+            (e.bezier[0].0 - (draft.x + draft.w / 2.0)).abs() < 0.5,
+            "flow side: {e:?}"
+        );
+        // `note right of S` lands past S's own fan, a transition from S
+        // running to a state beyond the card: the elbow would cross it,
+        // so the link keeps the ordinary course and crosses no line.
+        let g = state(
+            "stateDiagram-v2\ndirection LR\n[*] --> S\nS --> T1\nS --> T2\nS --> T3\n\
+             T1 --> S : back\nnote right of S : busy state\nnote left of T2 : t2 note",
+        );
+        let s = scene(&g);
+        let centres: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let cross = |p: (f64, f64), q: (f64, f64), u: (f64, f64), v: (f64, f64)| {
+            let side = |a: (f64, f64), b: (f64, f64), c: (f64, f64)| {
+                (b.0 - a.0) * (c.1 - a.1) - (b.1 - a.1) * (c.0 - a.0)
+            };
+            side(p, q, u) * side(p, q, v) < 0.0 && side(u, v, p) * side(u, v, q) < 0.0
+        };
+        // Dragging the card a little re-routes its link through the
+        // same rule; it still keeps clear.
+        let mut dragged = centres.clone();
+        let ci = (0..g.nodes.len())
+            .find(|&v| is_note_card(&s.nodes[v]) && s.nodes[v].label == "busy state")
+            .unwrap();
+        dragged[ci].0 += 10.0;
+        for (what, sc) in [
+            ("scene", s.clone()),
+            ("route", route(&g, &centres)),
+            ("route_partial", route_partial(&g, &dragged, &s, &centres)),
+        ] {
+            let ei = sc
+                .edges
+                .iter()
+                .position(|e| {
+                    e.from == "S" && sc.nodes.iter().any(|n| n.id == e.to && is_note_card(n))
+                })
+                .expect("S's note link");
+            let line = edge_polyline(&sc.edges[ei]);
+            for (oj, o) in sc.edges.iter().enumerate() {
+                let other = edge_polyline(o);
+                let hit = oj != ei
+                    && line
+                        .windows(2)
+                        .any(|a| other.windows(2).any(|b| cross(a[0], a[1], b[0], b[1])));
+                assert!(!hit, "{what}: the link crosses {} -> {}", o.from, o.to);
+            }
+        }
+        // A <<choice>> has no flat side: its cards' links stay as they were.
+        let g = state(
+            "stateDiagram-v2\nstate c <<choice>>\n[*] --> A\nA --> c\nc --> B : yes\n\
+             c --> C : no\nnote right of c : decide here",
+        );
+        let s = scene(&g);
+        let ci = g.node_index("c").unwrap();
+        let (c, n) = (&s.nodes[ci], g.edges.len());
+        let e = s.edges[..n]
+            .iter()
+            .find(|e| e.from == "c" && e.label.is_none())
+            .unwrap();
+        assert!(
+            e.bezier[0].1 > c.y + 0.5,
+            "off the choice's lower half: {e:?}"
+        );
+    }
+
+    #[test]
+    fn bars_branching_to_bars_fit_the_same_every_time() {
+        let state = |src: &str| match crate::parser::parse_document(src).unwrap() {
+            crate::model::Document::State(g) => g,
+            other => panic!("not a state diagram: {other:?}"),
+        };
+        // A fork straight to its join (an empty branch), across both
+        // flows, and nested forks: a bar is a branch of another bar.
+        let fork_join = "state f <<fork>>\nstate j <<join>>\n[*] --> f\nf --> A\nf --> B\n\
+                         f --> j\nA --> j\nB --> j\nj --> End\nEnd --> [*]";
+        let nested = "state f1 <<fork>>\nstate f2 <<fork>>\n[*] --> f1\nf1 --> f2\nf1 --> Z\n\
+                      f2 --> X\nf2 --> Y";
+        for src in [
+            format!("stateDiagram-v2\n{fork_join}"),
+            format!("stateDiagram-v2\ndirection LR\n{fork_join}"),
+            format!("stateDiagram-v2\n{nested}"),
+        ] {
+            let g = state(&src);
+            let intrinsic: Vec<(f64, f64)> = g.nodes.iter().map(intrinsic_size).collect();
+            let once = fit_bars(&g, &intrinsic).into_owned();
+            assert_eq!(fit_bars(&g, &once).as_ref(), &once[..], "{src}");
+            let s = scene(&g);
+            let centres: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let drawn: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.w, n.h)).collect();
+            // The compact builder fits, then draws through `scene_sized`
+            // (fitting again); skipped, it is the ordinary scene.
+            let c = crate::fold::scene_compact(&g, &crate::fold::CompactOptions::for_extent(1e5));
+            assert!(c.skipped.is_some(), "{src}");
+            let compact: Vec<(f64, f64)> = c.scene.nodes.iter().map(|n| (n.w, n.h)).collect();
+            assert_eq!(compact, drawn, "{src}");
+            let same_edges = c
+                .scene
+                .edges
+                .iter()
+                .zip(&s.edges)
+                .all(|(a, b)| a.bezier == b.bezier);
+            assert!(same_edges, "{src}");
+            // A host routing with the sizes it drew, or with intrinsic
+            // ones, gets the drawn bars back.
+            for r in [route_sized(&g, &centres, &drawn), route(&g, &centres)] {
+                let sized: Vec<(f64, f64)> = r.nodes.iter().map(|n| (n.w, n.h)).collect();
+                assert_eq!(sized, drawn, "{src}");
+            }
+            // Each bar still spans its own branches.
+            for (v, n) in g.nodes.iter().enumerate() {
+                if n.shape == Shape::ForkBar {
+                    assert!(drawn[v].0.max(drawn[v].1) > BAR_SIZE.0, "{src}: {}", n.id);
+                }
+            }
+        }
+        // A fork right above another (nested) reaches that fork's
+        // middle: the far bar counts at its own fit, so both branches
+        // drop straight; a fork straight to its join counts as a lane.
+        let g = state(&format!("stateDiagram-v2\n{nested}"));
+        let s = scene(&g);
+        for e in s.edges.iter().filter(|e| e.from == "f1") {
+            assert!((e.bezier[0].0 - e.bezier[3].0).abs() < 0.5, "{e:?}");
+        }
+        let g = state(&format!("stateDiagram-v2\n{fork_join}"));
+        let (f, j) = (g.node_index("f").unwrap(), g.node_index("j").unwrap());
+        assert!(!beside(&g, f, j));
+        let g = state(&format!("stateDiagram-v2\n{nested}"));
+        let (f1, f2) = (g.node_index("f1").unwrap(), g.node_index("f2").unwrap());
+        assert!(beside(&g, f1, f2));
+    }
+
     #[test]
     fn edgeless_members_pack_into_a_grid_not_one_row() {
         let members: String = (0..9).map(|i| format!("  m{i}[\"note {i}\"]\n")).collect();
@@ -6749,5 +7736,206 @@ mod tests {
         let (a, b) = (&long.nodes[0], &long.nodes[1]);
         assert!(m.0 - w / 2.0 >= a.x + a.w / 2.0);
         assert!(m.0 + w / 2.0 <= b.x - b.w / 2.0);
+    }
+
+    /// Composite-and-note state diagrams for
+    /// [`note_links_match_between_scene_and_route`]: the verifiers'
+    /// repros plus ones generated from a fixed seed.
+    fn composite_note_sources() -> Vec<String> {
+        let mut out: Vec<String> = [
+            "stateDiagram-v2\ndirection LR\n[*] --> Outer\nstate Outer {\n  direction TB\n  \
+             [*] --> I1\n  state c <<choice>>\n  I1 --> c\n  c --> I2 : ok\n  c --> I3 : fail\n  \
+             c --> I2 : retry\n  note right of I1 : inner note\n  state Deep {\n    \
+             [*] --> D1\n    D1 --> D2\n    note left of D2 : deep note\n  }\n  I3 --> Deep\n}\n\
+             Outer --> Done\nnote right of Outer : outer note\nnote left of Done : done note\n\
+             Done --> [*]",
+            "stateDiagram-v2\ndirection LR\n[*] --> S0\nstate C0 {\n  [*] --> C0i0\n  \
+             C0i0 --> C0i1\n  C0i0 --> C0i2\n  C0i0 --> C0i3\n  note right of C0i0 : n62\n  \
+             note left of C0i3 : n68\n}\nS0 --> C0\nC0 --> T0\nS0 --> T1\n\
+             note right of S0 : m14\nnote right of T1 : m82\nnote right of T1 : m39\n\
+             T1 --> S0 : back",
+            "stateDiagram-v2\ndirection LR\n[*] --> A\nA --> B : go\nA --> C : stop\n\
+             note right of A : first note\nnote right of A : second note",
+            "stateDiagram-v2\ndirection LR\n[*] --> A\nA --> B : go\nB --> A : back\n\
+             note right of A : first note\nnote right of A : second note",
+            "stateDiagram-v2\ndirection LR\n[*] --> A\nA --> B : go\nB --> A : back\n\
+             note left of B : first note\nnote left of B : second note",
+            "stateDiagram-v2\n[*] --> A\nA --> B\nA --> B\nA --> B : one\nA --> B : one\n\
+             B --> A\nB --> A : back\nnote right of A : dup\nnote right of A : dup again",
+            "stateDiagram-v2\ndirection LR\n[*] --> S0\nstate C0 {\n  [*] --> C0i0\n  \
+             C0i0 --> C0i1 : e1\n  state C0ch <<choice>>\n  C0i0 --> C0ch\n  \
+             C0ch --> C0i1 : y\n  C0ch --> C0i1 : n\n  note left of C0i0 : n924\n  \
+             note left of C0i1 : n552\n  note right of C0i1 : n118\n}\nstate C1 {\n  \
+             [*] --> C1i0\n  state C1ch <<choice>>\n  C1i0 --> C1ch\n  C1ch --> C1i0 : y\n  \
+             C1ch --> C1i0 : n\n  note right of C1i0 : n856\n}\nS0 --> C0\nS0 --> C1 : go2\n\
+             S0 --> S0 : back\nC0 --> C0 : self\nnote left of C1 : m383\nnote left of C1 : m445\n\
+             note right of S0 : m343",
+        ]
+        .map(String::from)
+        .to_vec();
+        let mut seed: u64 = 0x5eed_f10e;
+        let mut rnd = |n: u64| {
+            seed = seed
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            (seed >> 33) % n
+        };
+        for _ in 0..60 {
+            let mut src = String::from("stateDiagram-v2\n");
+            if rnd(2) == 0 {
+                src.push_str("direction LR\n");
+            }
+            let mut outer: Vec<String> = Vec::new();
+            src.push_str("[*] --> S0\n");
+            outer.push("S0".into());
+            for c in 0..1 + rnd(2) {
+                let inner: Vec<String> = (0..2 + rnd(3)).map(|i| format!("C{c}i{i}")).collect();
+                src.push_str(&format!("state C{c} {{\n  [*] --> {}\n", inner[0]));
+                for i in 1..inner.len() {
+                    let from = &inner[rnd(i as u64) as usize];
+                    src.push_str(&format!("  {from} --> {}\n", inner[i]));
+                }
+                for _ in 0..rnd(3) {
+                    let side = ["left", "right"][rnd(2) as usize];
+                    let at = &inner[rnd(inner.len() as u64) as usize];
+                    src.push_str(&format!("  note {side} of {at} : n{}\n", rnd(100)));
+                }
+                src.push_str("}\n");
+                outer.push(format!("C{c}"));
+            }
+            for t in 0..1 + rnd(3) {
+                outer.push(format!("T{t}"));
+            }
+            for k in 1..outer.len() {
+                let from = &outer[rnd(k as u64) as usize];
+                src.push_str(&format!("{from} --> {}\n", outer[k]));
+            }
+            for _ in 0..1 + rnd(3) {
+                let side = ["left", "right"][rnd(2) as usize];
+                let at = &outer[rnd(outer.len() as u64) as usize];
+                src.push_str(&format!("note {side} of {at} : m{}\n", rnd(100)));
+            }
+            if rnd(2) == 0 {
+                let (a, b) = (rnd(outer.len() as u64), rnd(outer.len() as u64));
+                src.push_str(&format!(
+                    "{} --> {} : back\n",
+                    outer[a.max(b) as usize],
+                    outer[a.min(b) as usize]
+                ));
+            }
+            out.push(src);
+        }
+        out
+    }
+
+    /// Whether `e` is drawn as [`note_elbow`]'s quarter-ellipse: one
+    /// control point straight across from one end, the other straight
+    /// along from the other (a plain curve leaves both ends along the
+    /// same axis). The ends may have been spread apart since, so the
+    /// controls' distances are not checked.
+    fn elbow_of(e: &SceneEdge) -> bool {
+        let [p0, c1, c2, p3] = e.bezier;
+        let near = |a: f64, b: f64| (a - b).abs() < 1e-6;
+        e.waypoints.is_empty()
+            && !near(p0.0, p3.0)
+            && !near(p0.1, p3.1)
+            && ((near(c1.0, p0.0) && !near(c1.1, p0.1) && near(c2.1, p3.1) && !near(c2.0, p3.0))
+                || (near(c1.1, p0.1) && !near(c1.0, p0.0) && near(c2.0, p3.0) && !near(c2.1, p3.1)))
+    }
+
+    #[test]
+    fn note_links_match_between_scene_and_route() {
+        // The static layout once judged a note link's elbow against the
+        // chords of `scene_clustered`'s never-drawn stand-ins while
+        // `route` used the real edges only: the link jumped (60-80px) to
+        // another course on a composite diagram's first drag. Both now
+        // judge it against the same lines from the same centres.
+        let mut elbows = 0;
+        for src in composite_note_sources() {
+            let g = match crate::parser::parse_document(&src).unwrap() {
+                crate::model::Document::State(g) => g,
+                other => panic!("not a state diagram: {other:?}"),
+            };
+            let s = scene(&g);
+            let centres: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let r = route(&g, &centres);
+            for (ei, e) in g.edges.iter().enumerate() {
+                if !(is_note_card(&s.nodes[e.from]) || is_note_card(&s.nodes[e.to])) {
+                    continue;
+                }
+                let (a, b) = (&s.edges[ei], &r.edges[ei]);
+                assert_eq!(
+                    elbow_of(a),
+                    elbow_of(b),
+                    "{} -> {}: {:?} vs {:?}\n{src}",
+                    a.from,
+                    a.to,
+                    a.bezier,
+                    b.bezier
+                );
+                if elbow_of(a) {
+                    elbows += 1;
+                    for (p, q) in a.bezier.iter().zip(&b.bezier) {
+                        assert!(
+                            (p.0 - q.0).abs() < 1e-6 && (p.1 - q.1).abs() < 1e-6,
+                            "{} -> {}: {:?} vs {:?}\n{src}",
+                            a.from,
+                            a.to,
+                            a.bezier,
+                            b.bezier
+                        );
+                    }
+                }
+            }
+        }
+        // 67 elbows; 56 while a sub-edge's course ran on past its box's
+        // frame to the members' centre.
+        assert!(
+            elbows >= 64,
+            "only {elbows} elbows: the sources lost their point"
+        );
+        // A sub-edge's course stops at its box's frame: run on to the
+        // centre of the box's members, it once refused elbows inside the
+        // box that no drawn line crosses ('inner note' in the nested
+        // composite, `C1i0`'s card under its choice loop).
+        for (k, state, text) in [(0, "I1", "inner note"), (6, "C1i0", "n856")] {
+            let src = &composite_note_sources()[k];
+            let g = match crate::parser::parse_document(src).unwrap() {
+                crate::model::Document::State(g) => g,
+                other => panic!("not a state diagram: {other:?}"),
+            };
+            let (s, ei) = (
+                scene(&g),
+                (0..g.edges.len()).find(|&ei| {
+                    let e = &g.edges[ei];
+                    [(e.from, e.to), (e.to, e.from)]
+                        .iter()
+                        .any(|&(a, b)| g.nodes[a].id == state && g.nodes[b].label == text)
+                }),
+            );
+            let ei = ei.unwrap_or_else(|| panic!("no {state} - {text} link\n{src}"));
+            let centres: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let r = route(&g, &centres);
+            assert!(
+                elbow_of(&s.edges[ei]) && elbow_of(&r.edges[ei]),
+                "{state} - {text}: {:?} vs {:?}\n{src}",
+                s.edges[ei].bezier,
+                r.edges[ei].bezier
+            );
+        }
+        // Two cards right of one state: the second's link no longer
+        // blocks the first's elbow (it used to keep the plain course).
+        let src = &composite_note_sources()[2];
+        let g = match crate::parser::parse_document(src).unwrap() {
+            crate::model::Document::State(g) => g,
+            other => panic!("not a state diagram: {other:?}"),
+        };
+        let s = scene(&g);
+        let links: Vec<&SceneEdge> = s.edges[..g.edges.len()]
+            .iter()
+            .filter(|e| e.from == "A" && s.nodes.iter().any(|n| n.id == e.to && is_note_card(n)))
+            .collect();
+        assert_eq!(links.len(), 2, "{src}");
+        assert!(links.iter().all(|e| elbow_of(e)), "{links:?}");
     }
 }

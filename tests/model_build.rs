@@ -10,10 +10,11 @@
 //! module's `scene()`; hosts read (and may mutate) their fields.
 
 use flowmaid::model::{
-    ArchEdge, ArchGroup, ArchService, ArchSide, Architecture, Attr, Card, Direction, Document,
-    ErDiagram, Journey, JourneySection, JourneyTask, Key, MindShape, Mindmap, NodeStyle, PieChart,
-    PieSlice, Relation, SankeyConfig, SankeyDiagram, SankeyLabelStyle, SankeyLink, SeqHead,
-    SeqItem, SequenceDiagram, Timeline, TimelinePeriod, TimelineSection,
+    ArchEdge, ArchGroup, ArchService, ArchSide, Architecture, Attr, Card, ClassDiagram, ClassNote,
+    ClassRel, Direction, Document, ErDiagram, Journey, JourneySection, JourneyTask, Key, MindShape,
+    Mindmap, NodeStyle, PieChart, PieSlice, RelKind, Relation, SankeyConfig, SankeyDiagram,
+    SankeyLabelStyle, SankeyLink, SeqHead, SeqItem, SequenceDiagram, Timeline, TimelinePeriod,
+    TimelineSection,
 };
 use flowmaid::parser::parse_document;
 use flowmaid::render;
@@ -366,4 +367,49 @@ fn sequence_default_mirrors_actors_like_the_parser() {
 
     d.mirror_actors = false;
     assert!(flowmaid::seq::scene(&d).footer.is_empty());
+}
+
+#[test]
+fn class_diagram_is_built_with_ensure_class_and_constructors() {
+    let src = "classDiagram\n\
+               direction LR\n\
+               Dog --|> Animal : is\n\
+               note for Dog \"barks<br/>loud\"\n\
+               note \"free note\"\n";
+    let Document::Class(parsed) = parse(src) else {
+        panic!("not a class diagram")
+    };
+
+    let mut d = ClassDiagram::default();
+    d.direction = Direction::LR;
+    let dog = d.ensure_class("Dog");
+    let animal = d.ensure_class("Animal");
+    let mut rel = ClassRel::new(dog, animal, RelKind::Inheritance);
+    rel.label = Some("is".to_string());
+    d.relations.push(rel);
+    // `ClassNote` is `#[non_exhaustive]`: built through its constructor,
+    // its text already folded (`<br/>` is a `\n`).
+    d.notes.push(ClassNote::new("barks\nloud", Some(dog)));
+    d.notes.push(ClassNote::new("free note", None));
+    assert_eq!(render::render_class(&d), render::render_class(&parsed));
+}
+
+#[test]
+fn a_hand_built_mindmap_of_any_depth_renders() {
+    // The fan layout recursed a few frames per level: a chain some
+    // thousands deep overflowed the stack. It now leaves maps deeper
+    // than it takes on to the ring layout. On a spawned thread with the
+    // default stack (as a test thread has, and less than a main thread).
+    let svg = std::thread::spawn(|| {
+        let mut d = Mindmap::default();
+        let mut at = d.add_node(None, "root", MindShape::Default);
+        for k in 0..20_000 {
+            at = d.add_node(Some(at), format!("n{k}"), MindShape::Default);
+        }
+        assert_eq!(d.nodes[at].depth, 20_000);
+        render::render_mindmap(&d)
+    })
+    .join()
+    .expect("renders without overflowing the stack");
+    assert!(svg.starts_with("<svg") && svg.contains(">n19999<"));
 }

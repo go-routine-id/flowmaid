@@ -90,3 +90,11 @@ fn flowmaid_lib_default(args: &[&str], src: &str) -> String {
     }
     flowmaid::render_svg(src).unwrap()
 }
+
+/// A class diagram of notes alone renders its notes (mermaid does);
+/// the CLI used to stop with "empty diagram: no classes defined".
+#[test]
+fn class_diagram_of_notes_alone_renders() {
+    let svg = run(&[], "classDiagram\nnote \"just a note\"");
+    assert!(svg.contains(">just a note</text>"), "{svg}");
+}
