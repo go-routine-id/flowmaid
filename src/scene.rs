@@ -855,6 +855,16 @@ fn scene_from_layout(
     // Edge geometry (abstract coordinates) with parallel-edge separation.
     let offs = parallel_offsets(g);
     let bars = bar_degrees(g);
+    // Only a state note card's link needs them (see `note_elbow`).
+    let chords = if g
+        .nodes
+        .iter()
+        .any(|n| crate::style::is_note_card(&n.id, n.shape, &n.style))
+    {
+        edge_chords(g, |v| (lo.nodes[v].b, lo.nodes[v].l))
+    } else {
+        Vec::new()
+    };
     let mut abs_edges: Vec<AbsEdge> = Vec::with_capacity(g.edges.len());
     for (ei, (e, off)) in g.edges.iter().zip(offs).enumerate() {
         let a = &lo.nodes[e.from];
@@ -901,6 +911,11 @@ fn scene_from_layout(
                     .enumerate()
                     .filter(|&(v, _)| v != e.from && v != e.to)
                     .map(|(_, p)| p),
+                chords
+                    .iter()
+                    .enumerate()
+                    .filter(|&(j, _)| j != ei)
+                    .filter_map(|(_, c)| *c),
             )
         } else {
             None
@@ -1969,7 +1984,12 @@ fn route_built(
     } else {
         Vec::new()
     };
-    for (e, off) in g.edges.iter().zip(offs) {
+    let chords = if flow.is_empty() {
+        Vec::new()
+    } else {
+        edge_chords(g, |v| (flow[v].b, flow[v].l))
+    };
+    for (ei, (e, off)) in g.edges.iter().zip(offs).enumerate() {
         let a = &placed[e.from];
         let b = &placed[e.to];
         let elbow = if !flow.is_empty() && e.from != e.to && (card(e.from) || card(e.to)) {
@@ -1983,6 +2003,11 @@ fn route_built(
                     .enumerate()
                     .filter(|&(v, _)| v != e.from && v != e.to)
                     .map(|(_, p)| p),
+                chords
+                    .iter()
+                    .enumerate()
+                    .filter(|&(j, _)| j != ei)
+                    .filter_map(|(_, c)| *c),
             )
             .map(|pts| pts.map(|p| from_flow(g.direction, p)))
         } else {
@@ -4148,6 +4173,22 @@ fn border(p: &Placed, shape: Shape, toward: (f64, f64)) -> (f64, f64) {
     (p.b + dx * t, p.l + dy * t)
 }
 
+/// A segment between two points, (from, to).
+type Chord = ((f64, f64), (f64, f64));
+
+/// Per edge: the segment between its ends' centres (`at`, in flow
+/// coordinates), the rough course [`note_elbow`] keeps its elbow off;
+/// `None` for a self-loop or an invisible link.
+fn edge_chords(g: &Graph, at: impl Fn(usize) -> (f64, f64)) -> Vec<Option<Chord>> {
+    g.edges
+        .iter()
+        .map(|e| {
+            (e.from != e.to && !matches!(e.kind, EdgeKind::Invisible))
+                .then(|| (at(e.from), at(e.to)))
+        })
+        .collect()
+}
+
 /// A state `note` card (see [`crate::style::is_note_card`]).
 fn is_note_card(n: &SceneNode) -> bool {
     crate::style::is_note_card(&n.id, n.shape, &n.style)
@@ -4162,9 +4203,12 @@ fn is_note_card(n: &SceneNode) -> bool {
 /// use (in `LR`, a `note right of` card below the next state). `None`
 /// for any other edge, for a state with no flat side (a `<<choice>>`'s
 /// cards would share its corner; a fork/join bar's card sits past its
-/// branches), or when another box (`others`, the two ends left out)
-/// stands within [`crate::clearance::NODE_SEP`] of the elbow. Flow
-/// coordinates.
+/// branches), when another box (`others`, the two ends left out) stands
+/// within [`crate::clearance::NODE_SEP`] of the elbow, or when another
+/// edge (`chords`, see [`edge_chords`]) crosses it: the elbow runs
+/// round the outside of the state's own fan, so a transition out
+/// between the card and the state (in `LR`, to a state below the card)
+/// would be crossed. Flow coordinates.
 fn note_elbow<'a>(
     a: &Placed,
     b: &Placed,
@@ -4172,6 +4216,7 @@ fn note_elbow<'a>(
     sb: Shape,
     card: (bool, bool),
     others: impl IntoIterator<Item = &'a Placed>,
+    chords: impl IntoIterator<Item = Chord>,
 ) -> Option<[(f64, f64); 4]> {
     let (s, c, shape, flip) = match card {
         (false, true) => (a, b, sa, false),
@@ -4208,7 +4253,19 @@ fn note_elbow<'a>(
         legs.iter()
             .any(|&((x0, x1), (y0, y1))| x0 < b1 && b0 < x1 + 1e-9 && y0 < l1 && l0 < y1 + 1e-9)
     });
-    if blocked {
+    // Whether segments p–q and u–v properly cross.
+    let cross = |p: (f64, f64), q: (f64, f64), u: (f64, f64), v: (f64, f64)| {
+        let side = |a: (f64, f64), b: (f64, f64), c: (f64, f64)| {
+            (b.0 - a.0) * (c.1 - a.1) - (b.1 - a.1) * (c.0 - a.0)
+        };
+        side(p, q, u) * side(p, q, v) < 0.0 && side(u, v, p) * side(u, v, q) < 0.0
+    };
+    let elbow = [((p0.0, s.l), corner), (corner, (c.b, p3.1))];
+    if blocked
+        || chords
+            .into_iter()
+            .any(|(u, v)| elbow.iter().any(|&(p, q)| cross(p, q, u, v)))
+    {
         return None;
     }
     // Control points KAPPA of the way to the corner: a quarter-ellipse.
@@ -6181,6 +6238,50 @@ mod tests {
             (e.bezier[0].0 - (draft.x + draft.w / 2.0)).abs() < 0.5,
             "flow side: {e:?}"
         );
+        // `note right of S` lands past S's own fan, a transition from S
+        // running to a state beyond the card: the elbow would cross it,
+        // so the link keeps the ordinary course and crosses no line.
+        let g = state(
+            "stateDiagram-v2\ndirection LR\n[*] --> S\nS --> T1\nS --> T2\nS --> T3\n\
+             T1 --> S : back\nnote right of S : busy state\nnote left of T2 : t2 note",
+        );
+        let s = scene(&g);
+        let centres: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let cross = |p: (f64, f64), q: (f64, f64), u: (f64, f64), v: (f64, f64)| {
+            let side = |a: (f64, f64), b: (f64, f64), c: (f64, f64)| {
+                (b.0 - a.0) * (c.1 - a.1) - (b.1 - a.1) * (c.0 - a.0)
+            };
+            side(p, q, u) * side(p, q, v) < 0.0 && side(u, v, p) * side(u, v, q) < 0.0
+        };
+        // Dragging the card a little re-routes its link through the
+        // same rule; it still keeps clear.
+        let mut dragged = centres.clone();
+        let ci = (0..g.nodes.len())
+            .find(|&v| is_note_card(&s.nodes[v]) && s.nodes[v].label == "busy state")
+            .unwrap();
+        dragged[ci].0 += 10.0;
+        for (what, sc) in [
+            ("scene", s.clone()),
+            ("route", route(&g, &centres)),
+            ("route_partial", route_partial(&g, &dragged, &s, &centres)),
+        ] {
+            let ei = sc
+                .edges
+                .iter()
+                .position(|e| {
+                    e.from == "S" && sc.nodes.iter().any(|n| n.id == e.to && is_note_card(n))
+                })
+                .expect("S's note link");
+            let line = edge_polyline(&sc.edges[ei]);
+            for (oj, o) in sc.edges.iter().enumerate() {
+                let other = edge_polyline(o);
+                let hit = oj != ei
+                    && line
+                        .windows(2)
+                        .any(|a| other.windows(2).any(|b| cross(a[0], a[1], b[0], b[1])));
+                assert!(!hit, "{what}: the link crosses {} -> {}", o.from, o.to);
+            }
+        }
         // A <<choice>> has no flat side: its cards' links stay as they were.
         let g = state(
             "stateDiagram-v2\nstate c <<choice>>\n[*] --> A\nA --> c\nc --> B : yes\n\
