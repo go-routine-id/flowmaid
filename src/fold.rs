@@ -483,6 +483,7 @@ fn compose(
                     ends: e.ends,
                     meta: e.meta.clone(),
                     label: None,
+                    paint_width: None,
                 };
             }
             let gutter = band_of(e.from).min(band_of(e.to));
@@ -585,6 +586,7 @@ fn fold_connector(
         ends: e.ends,
         meta: e.meta.clone(),
         label,
+        paint_width: None,
     }
 }
 

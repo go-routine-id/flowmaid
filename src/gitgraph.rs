@@ -802,6 +802,7 @@ pub fn scene(d: &GitGraph) -> GitScene {
                 ends: Default::default(),
                 meta,
                 label: None,
+                paint_width: None,
             }
         })
         .collect();

@@ -2990,6 +2990,7 @@ mod tests {
             ends: Default::default(),
             meta: Default::default(),
             label,
+            paint_width: None,
         }
     }
 
@@ -3302,6 +3303,7 @@ mod tests {
             ends: Default::default(),
             meta: Default::default(),
             label: None,
+            paint_width: None,
         }
     }
 

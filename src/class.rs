@@ -32,9 +32,9 @@ use crate::model::{
     RelKind, Shape,
 };
 use crate::scene::{
-    edge_end_chord, edge_path_d, edge_polyline, escape, fit_top_left, route_sized, sample_cubic,
-    scene_sized, svg_label_box, svg_open_a11y, svg_text_multiline, A11y, Scene, SceneEdge,
-    SceneNode, SvgOptions, EDGE_COLOR, TEXT_COLOR,
+    edge_end_chord, edge_path_d, edge_polyline, edge_stroke_width, escape, fit_top_left,
+    route_sized, sample_cubic, scene_sized, svg_label_box, svg_open_a11y, svg_text_multiline, A11y,
+    Scene, SceneEdge, SceneNode, SvgOptions, EDGE_COLOR, TEXT_COLOR,
 };
 
 /// Name-compartment height in pixels (without stereotype lines).
@@ -53,6 +53,10 @@ pub const EMPTY_H: f64 = 12.0;
 pub const COMP_PAD: f64 = 4.0;
 /// Padding around the text of a note card.
 const NOTE_PAD: f64 = 10.0;
+/// Stroke width of relationship lines (and their glyphs' outlines).
+const REL_W: f64 = 1.6;
+/// Stroke width of the dashed links from notes to their classes.
+const NOTE_LINK_W: f64 = 1.2;
 /// Gap between ranks when any relationship carries a label or a
 /// cardinality: a short edge then holds a label, two cardinalities,
 /// an end glyph and the jog of its route, which the flowchart's 60 px
@@ -315,6 +319,15 @@ fn assemble(d: &ClassDiagram, b: Built, mut scene: Scene, mode: Mode) -> ClassSc
             EdgeKind::Open
         };
         e.ends = EdgeEnds::default();
+    }
+    // The widths `to_svg` strokes, kept on the edges so picking
+    // (`Scene::edge_at` / `hits_in_rect`) covers the very same pixels.
+    for (j, e) in scene.edges.iter_mut().enumerate() {
+        e.paint_width = Some(if j < d.relations.len() {
+            REL_W
+        } else {
+            NOTE_LINK_W
+        });
     }
     let rels = d
         .relations
@@ -3162,18 +3175,19 @@ pub(crate) fn to_svg_a11y_with(cs: &ClassScene, a11y: &A11y, opts: &SvgOptions) 
     // drawn as routed (a rerouted edge follows its waypoints around
     // the boxes, never straight through them).
     for (j, e) in sc.edges.iter().enumerate() {
-        let (dash, width) = if j >= cs.rels.len() {
-            (" stroke-dasharray=\"2 3\"", "1.2")
+        let dash = if j >= cs.rels.len() {
+            " stroke-dasharray=\"2 3\""
         } else if matches!(e.kind, EdgeKind::Dotted) {
-            (" stroke-dasharray=\"6 4\"", "1.6")
+            " stroke-dasharray=\"6 4\""
         } else {
-            ("", "1.6")
+            ""
         };
+        // REL_W / NOTE_LINK_W, as `assemble` set them for picking.
         s.push_str(&format!(
             "<path d=\"{}\" fill=\"none\" stroke=\"{}\" stroke-width=\"{}\"{}/>\n",
             edge_path_d(e, |p| p),
             EDGE_COLOR,
-            width,
+            edge_stroke_width(e),
             dash
         ));
     }

@@ -110,6 +110,12 @@ pub struct SceneEdge {
     pub meta: EdgeMeta,
     /// (text, box centre, box width) when the edge has a label.
     pub label: Option<(String, (f64, f64), f64)>,
+    /// The stroke width this edge is painted at when its scene's own
+    /// painter does not follow the flowchart rule (the class painter's
+    /// relationship and note-link widths, the ER painter's line);
+    /// `None` = the flowchart rule. Set by those scene builders and read
+    /// through [`edge_stroke_width`] by the painter and by picking alike.
+    pub(crate) paint_width: Option<f64>,
 }
 
 /// A rendered `subgraph` box. `(x, y)` is the TOP-LEFT corner
@@ -219,7 +225,7 @@ impl Scene {
             // farther than the best pick so far are never flattened.
             let half = edge_stroke_width(e) / 2.0;
             let reach = best.map_or(tol, |(_, bd)| bd.min(tol)) + half;
-            let d = (edge_distance(e, x, y, reach) - half).max(0.0);
+            let d = (edge_distance(e, (x, y), reach) - half).max(0.0);
             // `<=` so a later-drawn edge wins a distance tie, matching
             // node_at's topmost-wins z-order.
             if d <= tol && best.map_or(true, |(_, bd)| d <= bd) {
@@ -252,7 +258,10 @@ impl Scene {
 
     /// Every element intersecting the (unordered) rectangle — for
     /// rubber-band / marquee multi-select. Returns nodes, then edges,
-    /// then clusters, each in index order.
+    /// then clusters, each in index order. An edge counts once its
+    /// painted STROKE touches the rectangle — measured on the drawn
+    /// curve widened by half its stroke width, as [`edge_at`] measures
+    /// it — and exactly the edges `edge_at` can pick are selectable.
     pub fn hits_in_rect(&self, x0: f64, y0: f64, x1: f64, y1: f64) -> Vec<Hit> {
         let (rx0, rx1) = (x0.min(x1), x0.max(x1));
         let (ry0, ry1) = (y0.min(y1), y0.max(y1));
@@ -274,12 +283,17 @@ impl Scene {
             if !edge_drawn(e) {
                 continue; // the same edges edge_at can pick
             }
-            // Segment-vs-rect, not vertex-in-rect: an edge that crosses
-            // the marquee between two far-apart samples must still count.
-            if edge_polyline(e)
-                .windows(2)
-                .any(|w| seg_aabb(w[0], w[1], rx0, ry0, rx1, ry1))
-            {
+            // The painted curve itself, not a sampling of it (which cuts
+            // inside a bend by more than half a stroke): within half the
+            // stroke width of the rectangle, the stroke reaches into it.
+            let half = edge_stroke_width(e) / 2.0;
+            let marquee = PickRect {
+                x0: rx0,
+                y0: ry0,
+                x1: rx1,
+                y1: ry1,
+            };
+            if edge_distance(e, marquee, half) <= half {
                 out.push(Hit::Edge(i));
             }
         }
@@ -328,9 +342,65 @@ fn node_contains(n: &SceneNode, x: f64, y: f64) -> bool {
     }
 }
 
-/// Distance from `(x, y)` to the centre line of the curve an edge is
-/// DRAWN as — the very commands [`edge_path_d`] emits — or infinity
-/// when no part of it comes within `reach`. Measured on the curve
+/// What [`edge_distance`] measures an edge's curve to: the pointer of
+/// [`Scene::edge_at`] (a point) or the marquee of [`Scene::hits_in_rect`]
+/// ([`PickRect`]). Each answers the two questions the curve walk asks.
+trait PickTarget: Copy {
+    /// Distance from the target to the segment `a`–`b`.
+    fn seg_dist(self, a: (f64, f64), b: (f64, f64)) -> f64;
+    /// Distance from the target to the box `[x0, x1] × [y0, y1]`.
+    fn box_gap(self, x0: f64, y0: f64, x1: f64, y1: f64) -> f64;
+}
+
+impl PickTarget for (f64, f64) {
+    fn seg_dist(self, a: (f64, f64), b: (f64, f64)) -> f64 {
+        point_seg_dist(self.0, self.1, a, b)
+    }
+    fn box_gap(self, x0: f64, y0: f64, x1: f64, y1: f64) -> f64 {
+        (x0 - self.0)
+            .max(self.0 - x1)
+            .max(0.0)
+            .hypot((y0 - self.1).max(self.1 - y1).max(0.0))
+    }
+}
+
+/// An axis-aligned rectangle (`x0 <= x1`, `y0 <= y1`) as a pick target.
+#[derive(Clone, Copy)]
+struct PickRect {
+    x0: f64,
+    y0: f64,
+    x1: f64,
+    y1: f64,
+}
+
+impl PickTarget for PickRect {
+    fn seg_dist(self, a: (f64, f64), b: (f64, f64)) -> f64 {
+        if seg_aabb(a, b, self.x0, self.y0, self.x1, self.y1) {
+            return 0.0;
+        }
+        // Apart, the nearest pair has an end of the segment or a corner
+        // of the rectangle in it.
+        let corner = |x: f64, y: f64| point_seg_dist(x, y, a, b);
+        let end = |p: (f64, f64)| p.box_gap(self.x0, self.y0, self.x1, self.y1);
+        end(a)
+            .min(end(b))
+            .min(corner(self.x0, self.y0))
+            .min(corner(self.x1, self.y0))
+            .min(corner(self.x0, self.y1))
+            .min(corner(self.x1, self.y1))
+    }
+    fn box_gap(self, x0: f64, y0: f64, x1: f64, y1: f64) -> f64 {
+        (x0 - self.x1)
+            .max(self.x0 - x1)
+            .max(0.0)
+            .hypot((y0 - self.y1).max(self.y0 - y1).max(0.0))
+    }
+}
+
+/// Distance from `target` (a point or a rectangle) to the centre line
+/// of the curve an edge is DRAWN as — the very commands
+/// [`edge_path_d`] emits — or infinity when no part of it comes within
+/// `reach`. Measured on the curve
 /// itself, not on [`edge_polyline`]: that fixed sampling (a few points
 /// per spline span) cuts inside a long gentle bend by up to a couple of
 /// units, more than half a stroke, so a pick on the painted line could
@@ -338,17 +408,21 @@ fn node_contains(n: &SceneNode, x: f64, y: f64) -> bool {
 /// passes there. Each cubic is first rejected by its control-point box
 /// (the curve never leaves it), so the far-away parts of every edge cost
 /// one box test per pointer move and only the spans under the pointer
-/// are flattened.
-fn edge_distance(e: &SceneEdge, x: f64, y: f64, reach: f64) -> f64 {
+/// are flattened. Once a part touches the target (distance 0) nothing
+/// nearer can follow, and the rest of the walk is skipped.
+fn edge_distance<T: PickTarget>(e: &SceneEdge, target: T, reach: f64) -> f64 {
     let mut best = f64::INFINITY;
     let mut probe = |seg_start: (f64, f64), seg: Seg| {
+        if best <= 0.0 {
+            return;
+        }
         let lim = best.min(reach);
         let d = match seg {
-            Seg::L(p) => point_seg_dist(x, y, seg_start, p),
+            Seg::L(p) => target.seg_dist(seg_start, p),
             // A quadratic is the cubic with its control points 2/3 of
             // the way toward the shared one.
             Seg::Q(c, p) => cubic_dist(
-                (x, y),
+                target,
                 &[
                     seg_start,
                     lerp(seg_start, c, 2.0 / 3.0),
@@ -358,7 +432,7 @@ fn edge_distance(e: &SceneEdge, x: f64, y: f64, reach: f64) -> f64 {
                 lim,
                 0,
             ),
-            Seg::C(c1, c2, p) => cubic_dist((x, y), &[seg_start, c1, c2, p], lim, 0),
+            Seg::C(c1, c2, p) => cubic_dist(target, &[seg_start, c1, c2, p], lim, 0),
         };
         best = best.min(d);
     };
@@ -404,10 +478,11 @@ fn lerp(a: (f64, f64), b: (f64, f64), t: f64) -> (f64, f64) {
     (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t)
 }
 
-/// Distance from `p` to the cubic `b`, or infinity when its control-point
-/// box is farther than `lim`: halve the curve until each piece is flat
-/// to within [`PICK_FLATNESS`] of its chord, then measure to the chord.
-fn cubic_dist(p: (f64, f64), b: &[(f64, f64); 4], lim: f64, depth: u32) -> f64 {
+/// Distance from `p` (a point or a rectangle) to the cubic `b`, or
+/// infinity when its control-point box is farther than `lim`: halve the
+/// curve until each piece is flat to within [`PICK_FLATNESS`] of its
+/// chord, then measure to the chord.
+fn cubic_dist<T: PickTarget>(p: T, b: &[(f64, f64); 4], lim: f64, depth: u32) -> f64 {
     /// How far a flattened piece may bow off the chord it is measured
     /// by — well under the default stroke's half width.
     const PICK_FLATNESS: f64 = 0.05;
@@ -415,17 +490,13 @@ fn cubic_dist(p: (f64, f64), b: &[(f64, f64); 4], lim: f64, depth: u32) -> f64 {
     for q in &b[1..] {
         (x0, y0, x1, y1) = (x0.min(q.0), y0.min(q.1), x1.max(q.0), y1.max(q.1));
     }
-    let gap = (x0 - p.0)
-        .max(p.0 - x1)
-        .max(0.0)
-        .hypot((y0 - p.1).max(p.1 - y1).max(0.0));
-    if gap > lim {
+    if p.box_gap(x0, y0, x1, y1) > lim {
         return f64::INFINITY;
     }
     let bow =
         point_seg_dist(b[1].0, b[1].1, b[0], b[3]).max(point_seg_dist(b[2].0, b[2].1, b[0], b[3]));
     if bow <= PICK_FLATNESS || depth >= 16 {
-        return point_seg_dist(p.0, p.1, b[0], b[3]);
+        return p.seg_dist(b[0], b[3]);
     }
     // de Casteljau split at t = 1/2.
     let ab = lerp(b[0], b[1], 0.5);
@@ -435,6 +506,9 @@ fn cubic_dist(p: (f64, f64), b: &[(f64, f64); 4], lim: f64, depth: u32) -> f64 {
     let bcd = lerp(bc, cd, 0.5);
     let mid = lerp(abc, bcd, 0.5);
     let left = cubic_dist(p, &[b[0], ab, abc, mid], lim, depth + 1);
+    if left <= 0.0 {
+        return left; // touching: the other half cannot come nearer
+    }
     left.min(cubic_dist(
         p,
         &[mid, bcd, cd, b[3]],
@@ -878,14 +952,16 @@ pub fn scene(g: &Graph) -> Scene {
 /// nodes whose size doesn't come from the label (ER entity tables,
 /// icon nodes, ...). A fork/join bar's size is fitted to its branches
 /// (laid across the flow and spanning them, see [`fit_bars`]); every
-/// other size is used as given.
+/// other valid size is used as given, and a negative or non-finite
+/// width or height counts as 0, as in [`route_sized`].
 pub fn scene_sized(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
     assert_eq!(
         sizes.len(),
         g.nodes.len(),
         "number of sizes must match number of nodes"
     );
-    let sizes = &fit_bars(g, sizes)[..];
+    let sizes = sane_sizes(sizes);
+    let sizes = &fit_bars(g, &sizes)[..];
     let mut sc = if g.subgraphs.is_empty() {
         scene_flat(g, sizes)
     } else {
@@ -1208,6 +1284,7 @@ fn scene_from_layout(
             ends: e.ends,
             meta: e.meta.clone(),
             label: e.label.clone().zip(label).map(|(t, (m, w))| (t, tf(m), w)),
+            paint_width: None,
         })
         .collect();
 
@@ -1486,6 +1563,7 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
                         .label
                         .as_ref()
                         .map(|l| (l.clone(), mid, text_width(l) + 14.0)),
+                    paint_width: None,
                 });
                 continue;
             }
@@ -1537,6 +1615,7 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
                 ends: e.ends,
                 meta: e.meta.clone(),
                 label,
+                paint_width: None,
             });
         }
     }
@@ -2003,6 +2082,14 @@ pub fn route(g: &Graph, centers: &[(f64, f64)]) -> Scene {
 
 /// Same as [`route`] but with caller-provided node sizes (a fork/join
 /// bar's fitted as [`scene_sized`] fits it).
+///
+/// A size need not be valid: a host may not know one yet, or hold a
+/// collapsed node. A negative or non-finite (NaN, infinite) width or
+/// height counts as 0, and a box 0 wide and 0 high is a POINT node:
+/// its edges meet at its centre (with one zero side it is a line, met
+/// where it lies). Nodes may also share a centre. For finite centres
+/// the returned geometry (every bezier point, waypoint and label spot)
+/// is finite whatever the sizes; valid sizes are used exactly as given.
 pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> Scene {
     assert_eq!(
         centers.len(),
@@ -2014,7 +2101,8 @@ pub fn route_sized(g: &Graph, centers: &[(f64, f64)], sizes: &[(f64, f64)]) -> S
         g.nodes.len(),
         "number of sizes must match number of nodes"
     );
-    let sizes = &fit_bars(g, sizes)[..];
+    let sizes = sane_sizes(sizes);
+    let sizes = &fit_bars(g, &sizes)[..];
     let mut sc = route_built(g, centers, sizes, true);
     crate::edgepass::finish(g, &mut sc, crate::edgepass::Mode::Routed);
     sc
@@ -2173,6 +2261,7 @@ fn route_built(
             ends: e.ends,
             meta: e.meta.clone(),
             label,
+            paint_width: None,
         });
     }
 
@@ -2266,6 +2355,7 @@ fn route_built(
                 ends: e.ends,
                 meta: e.meta.clone(),
                 label,
+                paint_width: None,
             });
         }
     }
@@ -2635,7 +2725,10 @@ fn route_clusters(g: &Graph, nodes: &[SceneNode]) -> Vec<SceneCluster> {
 /// `offset` separates parallel edges between the same pair (pass 0
 /// when unused); `self_loop` draws the loop stub instead (`a` is
 /// used, `b` ignored). Returns `[start, control1, control2, end]`
-/// in the same coordinate space as the inputs.
+/// in the same coordinate space as the inputs. Sizes follow
+/// [`route_sized`]: a negative or non-finite side counts as 0, a
+/// zero-size box is a point the curve meets at its centre, and finite
+/// centres (coincident ones too) give a finite curve.
 pub fn box_edge_bezier(
     a_center: (f64, f64),
     a_size: (f64, f64),
@@ -2644,6 +2737,7 @@ pub fn box_edge_bezier(
     offset: f64,
     self_loop: bool,
 ) -> [(f64, f64); 4] {
+    let sizes = sane_sizes(&[a_size, b_size]).into_owned();
     let make = |c: (f64, f64), s: (f64, f64)| Placed {
         b: c.0,
         l: c.1,
@@ -2651,6 +2745,7 @@ pub fn box_edge_bezier(
         lsize: s.1,
         layer: 0,
     };
+    let (a_size, b_size) = (sizes[0], sizes[1]);
     free_edge(
         &make(a_center, a_size),
         &make(b_center, b_size),
@@ -2848,11 +2943,16 @@ pub(crate) fn edge_drawn(e: &SceneEdge) -> bool {
     !matches!(e.kind, EdgeKind::Invisible) || e.meta.style.stroke_width.is_some_and(|w| w > 0.0)
 }
 
-/// Stroke width `to_svg` paints edge `e` with: the kind's width, unless
-/// a `linkStyle` sets one. One rule for the painter, the crossing
-/// casing and [`Scene::edge_at`], so a pick covers exactly the pixels
-/// the stroke does.
+/// Stroke width edge `e` is painted with: the kind's width, unless a
+/// `linkStyle` sets one — or, in an ER or class scene, the width its own
+/// painter strokes ([`SceneEdge::paint_width`]). One rule for the
+/// painters, the crossing casing, [`Scene::edge_at`] and
+/// [`Scene::hits_in_rect`], so a pick covers exactly the pixels the
+/// stroke does.
 pub(crate) fn edge_stroke_width(e: &SceneEdge) -> f64 {
+    if let Some(w) = e.paint_width {
+        return w;
+    }
     let base = match e.kind {
         EdgeKind::Thick | EdgeKind::ThickOpen => EDGE_WIDTH_THICK,
         _ => EDGE_WIDTH,
@@ -3537,6 +3637,20 @@ fn sub_parallel_offsets(g: &Graph) -> Vec<f64> {
 /// spans ([`fit_bars`]): more than [`crate::ports::PORT_INSET`], so the
 /// port right over the outermost branch still lies on the usable span.
 const BAR_OVERHANG: f64 = 16.0;
+
+/// Host-given node sizes made usable: a negative or non-finite (NaN,
+/// infinite) width or height becomes 0 — a point or line node whose
+/// edges meet at its centre, see [`route_sized`] — so no box arithmetic
+/// downstream meets a NaN. Valid sizes pass through untouched (borrowed
+/// when all are valid).
+pub(crate) fn sane_sizes(sizes: &[(f64, f64)]) -> Cow<'_, [(f64, f64)]> {
+    let ok = |v: f64| v.is_finite() && v >= 0.0;
+    if sizes.iter().all(|&(w, h)| ok(w) && ok(h)) {
+        return Cow::Borrowed(sizes);
+    }
+    let fix = |v: f64| if ok(v) { v } else { 0.0 };
+    Cow::Owned(sizes.iter().map(|&(w, h)| (fix(w), fix(h))).collect())
+}
 
 /// Node sizes with every fork/join bar fitted to its branches: laid
 /// across the flow (upright in `LR`/`RL`, mermaid-style) and long enough
@@ -4275,8 +4389,10 @@ fn border(p: &Placed, shape: Shape, toward: (f64, f64)) -> (f64, f64) {
         Shape::Circle | Shape::DoubleCircle | Shape::StateStart | Shape::StateEnd => {
             hw / (dx * dx + dy * dy).sqrt()
         }
-        // Diamond: |x/hw| + |y/hh| = 1
-        Shape::Diamond => 1.0 / (dx.abs() / hw + dy.abs() / hh),
+        // Diamond: |x/hw| + |y/hh| = 1. One with a zero side is the
+        // same line (or point) as a zero-sided box, which the
+        // rectangle arm below meets without dividing 0 by 0.
+        Shape::Diamond if hw > 0.0 && hh > 0.0 => 1.0 / (dx.abs() / hw + dy.abs() / hh),
         // Other shapes are approximated as rectangles.
         _ => {
             let tx = if dx.abs() > 1e-6 {
@@ -5186,6 +5302,7 @@ mod tests {
             ends: EdgeEnds::default(),
             meta: EdgeMeta::default(),
             label: None,
+            paint_width: None,
         }
     }
 
@@ -8284,5 +8401,344 @@ mod tests {
             .collect();
         assert_eq!(links.len(), 2, "{src}");
         assert!(links.iter().all(|e| elbow_of(e)), "{links:?}");
+    }
+
+    /// The `.mmd` fixtures every scene-wide test walks.
+    fn fixture_files() -> Vec<std::path::PathBuf> {
+        let root = env!("CARGO_MANIFEST_DIR");
+        let mut files: Vec<std::path::PathBuf> = ["tests/fixtures/quality", "examples"]
+            .iter()
+            .flat_map(|d| std::fs::read_dir(format!("{root}/{d}")).unwrap())
+            .map(|f| f.unwrap().path())
+            .filter(|p| p.extension().is_some_and(|x| x == "mmd"))
+            .collect();
+        files.sort();
+        files
+    }
+
+    /// Why `sc`'s edge geometry is unusable — a non-finite bezier
+    /// point, waypoint, label spot or label width, or a non-finite
+    /// number written into `svg` — or `None` when all of it is finite.
+    fn non_finite(sc: &Scene, svg: &str) -> Option<String> {
+        let ok = |p: &(f64, f64)| p.0.is_finite() && p.1.is_finite();
+        for (i, e) in sc.edges.iter().enumerate() {
+            let label_ok = e
+                .label
+                .as_ref()
+                .map_or(true, |(_, m, w)| ok(m) && w.is_finite());
+            if !(e.bezier.iter().all(ok) && e.waypoints.iter().all(ok) && label_ok) {
+                return Some(format!("edge {i} {}->{}: {e:?}", e.from, e.to));
+            }
+        }
+        // Rust writes NaN and the infinities as `NaN` / `inf` / `-inf`.
+        svg.split(|c: char| !(c.is_ascii_alphanumeric() || c == '.' || c == '-'))
+            .find(|t| t.parse::<f64>().is_ok_and(|v| !v.is_finite()))
+            .map(|t| format!("svg writes {t:?}"))
+    }
+
+    #[test]
+    fn routing_stays_finite_for_any_node_sizes_and_coincident_centres() {
+        // A host may pass sizes it does not know yet (0 × 0), a
+        // collapsed node, or bad input (negative, NaN, infinite), and
+        // may drop nodes onto one another. Every public routing entry
+        // point must still hand back finite geometry: a zero-size box
+        // is a point its edges meet at its centre (a 0 × 0 diamond
+        // used to divide 0 by 0 on the way to its border).
+        let mut graphs = 0;
+        for f in &fixture_files() {
+            let src = std::fs::read_to_string(f).unwrap();
+            use crate::model::Document;
+            let check = |what: &str, sc: &Scene, svg: &str| {
+                if let Some(why) = non_finite(sc, svg) {
+                    panic!("{f:?} {what}: {why}");
+                }
+            };
+            match crate::parser::parse_document(&src) {
+                Ok(Document::Flowchart(g) | Document::State(g)) => {
+                    graphs += 1;
+                    let base = scene(&g);
+                    let at: Vec<(f64, f64)> = base.nodes.iter().map(|n| (n.x, n.y)).collect();
+                    let own: Vec<(f64, f64)> = base.nodes.iter().map(|n| (n.w, n.h)).collect();
+                    let n = at.len();
+                    let size_sets: [(&str, Vec<(f64, f64)>); 5] = [
+                        ("all zero", vec![(0.0, 0.0); n]),
+                        (
+                            "some zero",
+                            (0..n)
+                                .map(|i| match i % 3 {
+                                    0 => (0.0, 0.0),
+                                    1 => (own[i].0, 0.0),
+                                    _ => own[i],
+                                })
+                                .collect(),
+                        ),
+                        ("negative", own.iter().map(|&(w, h)| (-w, -h)).collect()),
+                        (
+                            "non-finite",
+                            (0..n)
+                                .map(|i| match i % 3 {
+                                    0 => (f64::NAN, f64::NAN),
+                                    1 => (f64::INFINITY, own[i].1),
+                                    _ => (own[i].0, f64::NEG_INFINITY),
+                                })
+                                .collect(),
+                        ),
+                        ("huge", vec![(1e6, 1e6); n]),
+                    ];
+                    for (name, sizes) in &size_sets {
+                        let sc = route_sized(&g, &at, sizes);
+                        check(&format!("route_sized {name}"), &sc, &to_svg(&sc));
+                    }
+                    // The static layout cleans sizes the same way.
+                    for (name, sizes) in [&size_sets[0], &size_sets[3]] {
+                        let sc = scene_sized(&g, sizes);
+                        check(&format!("scene_sized {name}"), &sc, &to_svg(&sc));
+                    }
+                    // Every second node dropped onto its predecessor, with
+                    // and without sizes; then everything on one point.
+                    let pairs: Vec<(f64, f64)> = (0..n).map(|i| at[i - i % 2]).collect();
+                    let sc = route_sized(&g, &pairs, &size_sets[0].1);
+                    check("coincident pairs, zero sizes", &sc, &to_svg(&sc));
+                    let one = vec![(40.0, 40.0); n];
+                    let sc = route(&g, &one);
+                    check("route, all on one point", &sc, &to_svg(&sc));
+                    let sc = route_partial(&g, &pairs, &base, &at);
+                    check("route_partial, coincident pairs", &sc, &to_svg(&sc));
+                }
+                Ok(Document::Er(d)) => {
+                    graphs += 1;
+                    let n = d.entities.len();
+                    let es = crate::er::route(&d, &vec![(40.0, 40.0); n]);
+                    check(
+                        "er::route, all on one point",
+                        &es.scene,
+                        &crate::er::to_svg(&es),
+                    );
+                }
+                Ok(Document::Class(d)) => {
+                    graphs += 1;
+                    let n = d.classes.len() + d.notes.len();
+                    let cs = crate::class::route(&d, &vec![(40.0, 40.0); n]);
+                    check(
+                        "class::route, all on one point",
+                        &cs.scene,
+                        &crate::class::to_svg(&cs),
+                    );
+                }
+                _ => {}
+            }
+        }
+        assert!(graphs >= 15, "only {graphs} graphs checked");
+        // The per-edge helper too, for every pairing of size kinds and
+        // for coincident centres.
+        let sizes = [
+            (0.0, 0.0),
+            (0.0, 30.0),
+            (-5.0, 20.0),
+            (f64::NAN, f64::INFINITY),
+            (80.0, 40.0),
+        ];
+        for &a in &sizes {
+            for &b in &sizes {
+                for (bc, self_loop) in [
+                    ((0.0, 0.0), false),
+                    ((0.0, 90.0), false),
+                    ((0.0, 0.0), true),
+                ] {
+                    let c = box_edge_bezier((0.0, 0.0), a, bc, b, 6.0, self_loop);
+                    assert!(
+                        c.iter().all(|p| p.0.is_finite() && p.1.is_finite()),
+                        "{a:?} {b:?} {bc:?} {self_loop}: {c:?}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn valid_sizes_route_exactly_as_before() {
+        // Sizes are only cleaned when invalid: valid ones (zero
+        // included) are used exactly as given, so a host passing the
+        // intrinsic sizes gets the very scene `route` draws.
+        let g = parse("flowchart TD\nA{ok?} -->|yes| B\nA --> C((c))\nB --> D[(db)]").unwrap();
+        let s = scene(&g);
+        let at: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let own: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.w, n.h)).collect();
+        assert_eq!(to_svg(&route_sized(&g, &at, &own)), to_svg(&route(&g, &at)));
+        assert!(matches!(sane_sizes(&own), Cow::Borrowed(_)));
+        let bad = [(f64::NAN, 3.0), (-1.0, f64::INFINITY), (0.0, 2.0)];
+        assert_eq!(&*sane_sizes(&bad), &[(0.0, 3.0), (0.0, 0.0), (0.0, 2.0)]);
+        // A zero-size diamond is a point: its edges meet at its centre.
+        let mut sizes = own.clone();
+        sizes[0] = (0.0, 0.0);
+        let sc = route_sized(&g, &at, &sizes);
+        for e in sc.edges.iter().filter(|e| e.from == "A") {
+            assert!(
+                (e.bezier[0].0 - at[0].0).hypot(e.bezier[0].1 - at[0].1) < 1e-9,
+                "{e:?}"
+            );
+        }
+    }
+
+    /// A marquee probe beside a painted curve: the square of half side
+    /// `h` whose nearest side faces `p` from `dist` away along the unit
+    /// normal `n` (so the square is within `dist + h` of `p` and no
+    /// nearer than `dist`).
+    fn square_beside(p: (f64, f64), n: (f64, f64), dist: f64, h: f64) -> [f64; 4] {
+        let c = (
+            p.0 + n.0 * (dist + h * (n.0.abs() + n.1.abs())),
+            p.1 + n.1 * (dist + h * (n.0.abs() + n.1.abs())),
+        );
+        [c.0 - h, c.1 - h, c.0 + h, c.1 + h]
+    }
+
+    #[test]
+    fn marquee_selects_an_edge_once_its_painted_stroke_touches() {
+        // hits_in_rect used to test the rectangle against edge_polyline,
+        // the sampled centre line: a marquee that covered only the
+        // stroke beside it missed, and on a long gentle bend the chords
+        // cut up to ~2 units inside the drawn curve. Now it measures
+        // the painted curve, widened by half its stroke width. For every
+        // painted edge of curvy fixtures, a small square just inside the
+        // stroke (on either side of the line) selects it, and one a unit
+        // clear of the whole stroke does not.
+        let root = env!("CARGO_MANIFEST_DIR");
+        let mut sources: Vec<String> = ["dense-td", "bench-75", "back-edge"]
+            .iter()
+            .map(|f| {
+                std::fs::read_to_string(format!("{root}/tests/fixtures/quality/{f}.mmd")).unwrap()
+            })
+            .collect();
+        sources.push(
+            "flowchart LR\nA --> B\nA e1@--> C\nB ==> D\nC -.-> D\nD --> A\n\
+             e1@{ curve: natural }\nlinkStyle 4 stroke-width:6px"
+                .to_string(),
+        );
+        let (mut touched, mut cleared, mut chord_misses) = (0, 0, 0);
+        for src in &sources {
+            let g = parse(src).unwrap();
+            let s = scene(&g);
+            for (i, e) in s.edges.iter().enumerate() {
+                if !edge_drawn(e) {
+                    continue;
+                }
+                let half = edge_stroke_width(e) / 2.0;
+                // The curve as painted: the path `d` itself, densely
+                // sampled (written to 0.1, so up to ~0.07 off).
+                let pts = path_d_points(&edge_path_d(e, |p| p), 0.5);
+                let gap = |r: &[f64; 4]| {
+                    pts.iter()
+                        .map(|&p| PickTarget::box_gap(p, r[0], r[1], r[2], r[3]))
+                        .fold(f64::INFINITY, f64::min)
+                };
+                let chord = edge_polyline(e);
+                for k in (2..pts.len().saturating_sub(2)).step_by(7) {
+                    let (a, b) = (pts[k - 2], pts[k + 2]);
+                    let len = (b.0 - a.0).hypot(b.1 - a.1);
+                    if len < 1e-6 {
+                        continue;
+                    }
+                    for side in [1.0, -1.0] {
+                        let n = (-(b.1 - a.1) / len * side, (b.0 - a.0) / len * side);
+                        // 0.15 inside the stroke's edge (past the SVG
+                        // rounding), a 0.1 square.
+                        let r = square_beside(pts[k], n, half - 0.15, 0.05);
+                        let hits = s.hits_in_rect(r[0], r[1], r[2], r[3]);
+                        assert!(
+                            hits.contains(&Hit::Edge(i)),
+                            "{src}\nedge {i}: square {r:?} touching its stroke missed"
+                        );
+                        touched += 1;
+                        if !chord
+                            .windows(2)
+                            .any(|w| seg_aabb(w[0], w[1], r[0], r[1], r[2], r[3]))
+                        {
+                            chord_misses += 1; // what the old test answered
+                        }
+                        // A unit square a unit clear of the stroke: only
+                        // where no other part of the curve comes nearer.
+                        let r = square_beside(pts[k], n, half + 1.0, 0.5);
+                        if gap(&r) - half < 1.0 - 0.1 {
+                            continue;
+                        }
+                        let hits = s.hits_in_rect(r[2], r[3], r[0], r[1]); // unordered
+                        assert!(
+                            !hits.contains(&Hit::Edge(i)),
+                            "{src}\nedge {i}: square {r:?} clear of its stroke selected it"
+                        );
+                        cleared += 1;
+                    }
+                }
+            }
+        }
+        assert!(
+            touched > 500 && cleared > 500,
+            "{touched} / {cleared} probes"
+        );
+        assert!(chord_misses * 2 > touched, "{chord_misses} of {touched}");
+    }
+
+    #[test]
+    fn er_and_class_edges_are_picked_at_the_width_they_are_painted() {
+        // The class painter strokes relationships 1.6 wide and note
+        // links 1.2, the ER painter its lines LINE_W wide; picking used
+        // to assume the flowchart's 1.7 for all of them. The painted
+        // `stroke-width` and the picked one are now one value.
+        let src = "classDiagram\nAnimal <|-- Duck\nAnimal ..> Food\nnote for Duck \"quacks\"";
+        let d = match crate::parser::parse_document(src).unwrap() {
+            crate::model::Document::Class(d) => d,
+            _ => unreachable!(),
+        };
+        let cs = crate::class::scene(&d);
+        let svg = crate::class::to_svg(&cs);
+        let fitted = fit_top_left(&cs.scene);
+        let mut widths = Vec::new();
+        for (j, e) in fitted.edges.iter().enumerate() {
+            let w = edge_stroke_width(e);
+            let painted = format!(
+                "<path d=\"{}\" fill=\"none\" stroke=\"{EDGE_COLOR}\" stroke-width=\"{w}\"",
+                edge_path_d(e, |p| p)
+            );
+            assert!(
+                svg.contains(&painted),
+                "edge {j} not painted {w} wide:\n{svg}"
+            );
+            widths.push(w);
+        }
+        assert_eq!(widths, [1.6, 1.6, 1.2]);
+        // Just inside the note link's 1.2 stroke picks it at zero
+        // tolerance; just outside (still inside a 1.7 one) does not.
+        let s = &cs.scene;
+        let link = s.edges.len() - 1;
+        let pts = edge_polyline(&s.edges[link]);
+        let k = pts.len() / 2;
+        let (a, b) = (pts[k - 1], pts[k + 1]);
+        let len = (b.0 - a.0).hypot(b.1 - a.1);
+        let n = (-(b.1 - a.1) / len, (b.0 - a.0) / len);
+        let at = |off: f64| (pts[k].0 + n.0 * off, pts[k].1 + n.1 * off);
+        let inside = at(0.55);
+        assert_eq!(s.edge_at(inside.0, inside.1, 0.0), Some(link));
+        let outside = at(0.7);
+        assert_eq!(s.edge_at(outside.0, outside.1, 0.0), None);
+        let r = square_beside(pts[k], n, 0.7, 0.05);
+        assert!(!s
+            .hits_in_rect(r[0], r[1], r[2], r[3])
+            .contains(&Hit::Edge(link)));
+        // ER: every relationship line is picked LINE_W wide, as painted.
+        let src = "erDiagram\nCUSTOMER ||--o{ ORDER : places\nORDER }|..|{ ITEM : has";
+        let d = match crate::parser::parse_document(src).unwrap() {
+            crate::model::Document::Er(d) => d,
+            _ => unreachable!(),
+        };
+        let es = crate::er::scene(&d);
+        let svg = crate::er::to_svg(&es);
+        for e in &fit_top_left(&es.scene).edges {
+            let w = edge_stroke_width(e);
+            assert_eq!(w, 1.7);
+            assert!(svg.contains(&format!(
+                "{}\" fill=\"none\" stroke=\"{EDGE_COLOR}\" stroke-width=\"{w}\"",
+                edge_path_d(e, |p| p)
+            )));
+        }
     }
 }

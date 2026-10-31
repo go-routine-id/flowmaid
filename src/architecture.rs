@@ -477,6 +477,7 @@ fn build(d: &Architecture) -> (ArchScene, Vec<Vec<Pt>>) {
             ends: Default::default(),
             meta: Default::default(),
             label,
+            paint_width: None,
         });
         arrow_starts.push(e.arrow_start);
         arrow_ends.push(e.arrow_end);

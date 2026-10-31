@@ -232,6 +232,28 @@ Minor, not patch: several class structs gain public fields (see
   the name. A marker letter glued to a name no longer hides the operator:
   `A--oC` links `A` to `oC` (it was a parse error) and `my_o--B` links
   `my_o` (it was the class `my_` aggregating `B`), as mermaid reads them.
+- **Routing never returns NaN for odd node sizes.** `scene::route_sized`
+  (and `scene_sized`, `box_edge_bezier`, and so `er::route` / `class::route`)
+  wrote NaN bezier points and label spots when a host passed a 0 × 0 size:
+  a zero-size diamond divided 0 by 0 on the way to its border. Host sizes
+  now have documented semantics: a negative or non-finite (NaN, infinite)
+  width or height counts as 0, and a 0 × 0 box is a point node whose edges
+  meet at its centre. For finite centres — coincident ones included — every
+  bezier point, waypoint and label spot is finite and the SVG writes no
+  `NaN`/`inf`. Valid sizes are used exactly as before; rendering is
+  unchanged.
+- **Marquee selection measures the painted stroke.** `Scene::hits_in_rect`
+  tested the rectangle against a sampling of each edge's centre line, so a
+  marquee covering only the stroke beside the line missed it, and on a long
+  bend the samples cut up to ~2px inside the drawn curve. An edge is now
+  selected once its painted stroke (the curve `to_svg` draws, widened by
+  half its stroke width) touches the rectangle, as `edge_at` measures it;
+  a full-canvas marquee is also about 4x faster on large diagrams.
+- **ER and class edges are picked at the width they are painted.** Picking
+  assumed the flowchart's 1.7px stroke for every scene, while the class
+  painter strokes relationships 1.6px and note links 1.2px wide. The width
+  each ER/class edge is painted with now travels on the scene edge and is
+  read by the painter and by `edge_at` / `hits_in_rect` alike.
 - **Edge picking covers exactly the painted stroke.** `Scene::edge_at` (and
   so `hit_test`, also for ER and class scenes) measured to a fixed sampling
   of the drawn curve, a few points per spline span, which cuts inside a
