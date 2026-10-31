@@ -779,7 +779,7 @@ pub fn scene_sized(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
 
 /// The classic single-level pipeline (no subgraphs).
 fn scene_flat(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
-    let mut sc = scene_from_layout(g, sizes, layout_sized(g, sizes), None);
+    let mut sc = scene_from_layout(g, sizes, layout_sized(g, sizes), None, g.edges.len());
     let moved = avoid_label_overlaps(&sc.nodes, &[], &mut sc.edges, LABEL_STATIC_WORK);
     fit_moved_labels(&mut sc, &moved);
     sc
@@ -841,12 +841,15 @@ fn layer_extents(lo: &LayoutResult, keep: impl Fn(usize) -> bool) -> Vec<(f64, f
 /// what it actually passes: members of the innermost box holding both
 /// its ends (anything outside sits beyond that box's walls) that reach
 /// into the band between its ends — so it stays beside them instead of
-/// looping round the whole diagram.
+/// looping round the whole diagram. Only the first `real` of `g.edges`
+/// are drawn as themselves (the rest are `scene_clustered`'s stand-ins,
+/// see [`edge_chords`]).
 fn scene_from_layout(
     g: &Graph,
     sizes: &[(f64, f64)],
     lo: LayoutResult,
     node_cluster: Option<&[Vec<usize>]>,
+    real: usize,
 ) -> Scene {
     // Breadth extents per layer, used by back-edges to route
     // themselves around every node on the layers they pass.
@@ -861,7 +864,7 @@ fn scene_from_layout(
         .iter()
         .any(|n| crate::style::is_note_card(&n.id, n.shape, &n.style))
     {
-        edge_chords(g, |v| (lo.nodes[v].b, lo.nodes[v].l))
+        edge_chords(g, &lo.nodes, real)
     } else {
         Vec::new()
     };
@@ -911,11 +914,7 @@ fn scene_from_layout(
                     .enumerate()
                     .filter(|&(v, _)| v != e.from && v != e.to)
                     .map(|(_, p)| p),
-                chords
-                    .iter()
-                    .enumerate()
-                    .filter(|&(j, _)| j != ei)
-                    .filter_map(|(_, c)| *c),
+                chords.iter().copied(),
             )
         } else {
             None
@@ -1170,7 +1169,7 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
             .collect()
     };
     let (lo, groups) = layout_clustered_ranked(&ga, sizes, &node_cluster, &rank_only);
-    let mut sc = scene_from_layout(&ga, sizes, lo, Some(&node_cluster));
+    let mut sc = scene_from_layout(&ga, sizes, lo, Some(&node_cluster), ne);
     let horizontal = matches!(g.direction, Direction::LR | Direction::RL);
 
     // Wrap boxes around the laid-out members, then widen each box to
@@ -1987,9 +1986,9 @@ fn route_built(
     let chords = if flow.is_empty() {
         Vec::new()
     } else {
-        edge_chords(g, |v| (flow[v].b, flow[v].l))
+        edge_chords(g, &flow, g.edges.len())
     };
-    for (ei, (e, off)) in g.edges.iter().zip(offs).enumerate() {
+    for (e, off) in g.edges.iter().zip(offs) {
         let a = &placed[e.from];
         let b = &placed[e.to];
         let elbow = if !flow.is_empty() && e.from != e.to && (card(e.from) || card(e.to)) {
@@ -2003,11 +2002,7 @@ fn route_built(
                     .enumerate()
                     .filter(|&(v, _)| v != e.from && v != e.to)
                     .map(|(_, p)| p),
-                chords
-                    .iter()
-                    .enumerate()
-                    .filter(|&(j, _)| j != ei)
-                    .filter_map(|(_, c)| *c),
+                chords.iter().copied(),
             )
             .map(|pts| pts.map(|p| from_flow(g.direction, p)))
         } else {
@@ -4176,17 +4171,85 @@ fn border(p: &Placed, shape: Shape, toward: (f64, f64)) -> (f64, f64) {
 /// A segment between two points, (from, to).
 type Chord = ((f64, f64), (f64, f64));
 
-/// Per edge: the segment between its ends' centres (`at`, in flow
-/// coordinates), the rough course [`note_elbow`] keeps its elbow off;
-/// `None` for a self-loop or an invisible link.
-fn edge_chords(g: &Graph, at: impl Fn(usize) -> (f64, f64)) -> Vec<Option<Chord>> {
-    g.edges
+/// The rough courses [`note_elbow`] keeps its elbow off, in flow
+/// coordinates (`at`, index-parallel with `g.nodes`): for each of the
+/// first `real` edges the segment between its ends' centres, then for
+/// each sub-edge the segment between its ends — a box end at the centre
+/// of its members, or for a member drawn to its own box the stub along
+/// the flow to the members' nearer flow side (see [`own_box_stub`]).
+/// Edges past `real` are `scene_clustered`'s stand-ins, never drawn as
+/// such: their sub-edges' courses stand for them, so the static layout
+/// and [`route`] judge an elbow against the same lines from the same
+/// centres. Left out: self-loops, invisible links, and any link touching
+/// a note card — two cards beside one state elbow out side by side, and
+/// one's chord (straight across to its card) would strike the other's
+/// elbow although the drawn links never cross.
+fn edge_chords(g: &Graph, at: &[Placed], real: usize) -> Vec<Chord> {
+    let card = |v: usize| {
+        let n = &g.nodes[v];
+        crate::style::is_note_card(&n.id, n.shape, &n.style)
+    };
+    let centre = |v: usize| (at[v].b, at[v].l);
+    let mut out: Vec<Chord> = g.edges[..real]
         .iter()
-        .map(|e| {
-            (e.from != e.to && !matches!(e.kind, EdgeKind::Invisible))
-                .then(|| (at(e.from), at(e.to)))
+        .filter(|e| {
+            e.from != e.to && !matches!(e.kind, EdgeKind::Invisible) && !card(e.from) && !card(e.to)
         })
-        .collect()
+        .map(|e| (centre(e.from), centre(e.to)))
+        .collect();
+    if g.sub_edges.is_empty() {
+        return out;
+    }
+    let node_cluster = node_cluster_paths(g);
+    // Flow-coordinate bbox (b0, b1, l0, l1) of a box's members, nested
+    // boxes' included.
+    let members = |si: usize| {
+        (0..g.nodes.len())
+            .filter(|&v| node_cluster[v].contains(&si))
+            .fold(None, |acc: Option<(f64, f64, f64, f64)>, v| {
+                let p = &at[v];
+                let r = (
+                    p.b - p.bsize / 2.0,
+                    p.b + p.bsize / 2.0,
+                    p.l - p.lsize / 2.0,
+                    p.l + p.lsize / 2.0,
+                );
+                Some(acc.map_or(r, |a| {
+                    (a.0.min(r.0), a.1.max(r.1), a.2.min(r.2), a.3.max(r.3))
+                }))
+            })
+    };
+    for e in &g.sub_edges {
+        let ends = [e.from, e.to];
+        if matches!(e.kind, EdgeKind::Invisible)
+            || ends
+                .iter()
+                .any(|&end| matches!(end, End::Node(v) if card(v)))
+        {
+            continue;
+        }
+        let chord = match (e.from, e.to) {
+            (End::Node(v), End::Sub(si)) | (End::Sub(si), End::Node(v))
+                if node_cluster[v].contains(&si) =>
+            {
+                members(si).map(|(_, _, l0, l1)| {
+                    let (b, l) = centre(v);
+                    (centre(v), (b, if l - l0 < l1 - l { l0 } else { l1 }))
+                })
+            }
+            _ => {
+                let point = |end: End| match end {
+                    End::Node(v) => Some(centre(v)),
+                    End::Sub(si) => {
+                        members(si).map(|(b0, b1, l0, l1)| ((b0 + b1) / 2.0, (l0 + l1) / 2.0))
+                    }
+                };
+                point(e.from).zip(point(e.to))
+            }
+        };
+        out.extend(chord);
+    }
+    out
 }
 
 /// A state `note` card (see [`crate::style::is_note_card`]).
@@ -7626,5 +7689,167 @@ mod tests {
         let (a, b) = (&long.nodes[0], &long.nodes[1]);
         assert!(m.0 - w / 2.0 >= a.x + a.w / 2.0);
         assert!(m.0 + w / 2.0 <= b.x - b.w / 2.0);
+    }
+
+    /// Composite-and-note state diagrams for
+    /// [`note_links_match_between_scene_and_route`]: the verifiers'
+    /// repros plus ones generated from a fixed seed.
+    fn composite_note_sources() -> Vec<String> {
+        let mut out: Vec<String> = [
+            "stateDiagram-v2\ndirection LR\n[*] --> Outer\nstate Outer {\n  direction TB\n  \
+             [*] --> I1\n  state c <<choice>>\n  I1 --> c\n  c --> I2 : ok\n  c --> I3 : fail\n  \
+             c --> I2 : retry\n  note right of I1 : inner note\n  state Deep {\n    \
+             [*] --> D1\n    D1 --> D2\n    note left of D2 : deep note\n  }\n  I3 --> Deep\n}\n\
+             Outer --> Done\nnote right of Outer : outer note\nnote left of Done : done note\n\
+             Done --> [*]",
+            "stateDiagram-v2\ndirection LR\n[*] --> S0\nstate C0 {\n  [*] --> C0i0\n  \
+             C0i0 --> C0i1\n  C0i0 --> C0i2\n  C0i0 --> C0i3\n  note right of C0i0 : n62\n  \
+             note left of C0i3 : n68\n}\nS0 --> C0\nC0 --> T0\nS0 --> T1\n\
+             note right of S0 : m14\nnote right of T1 : m82\nnote right of T1 : m39\n\
+             T1 --> S0 : back",
+            "stateDiagram-v2\ndirection LR\n[*] --> A\nA --> B : go\nA --> C : stop\n\
+             note right of A : first note\nnote right of A : second note",
+            "stateDiagram-v2\ndirection LR\n[*] --> A\nA --> B : go\nB --> A : back\n\
+             note right of A : first note\nnote right of A : second note",
+            "stateDiagram-v2\ndirection LR\n[*] --> A\nA --> B : go\nB --> A : back\n\
+             note left of B : first note\nnote left of B : second note",
+            "stateDiagram-v2\n[*] --> A\nA --> B\nA --> B\nA --> B : one\nA --> B : one\n\
+             B --> A\nB --> A : back\nnote right of A : dup\nnote right of A : dup again",
+        ]
+        .map(String::from)
+        .to_vec();
+        let mut seed: u64 = 0x5eed_f10e;
+        let mut rnd = |n: u64| {
+            seed = seed
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            (seed >> 33) % n
+        };
+        for _ in 0..60 {
+            let mut src = String::from("stateDiagram-v2\n");
+            if rnd(2) == 0 {
+                src.push_str("direction LR\n");
+            }
+            let mut outer: Vec<String> = Vec::new();
+            src.push_str("[*] --> S0\n");
+            outer.push("S0".into());
+            for c in 0..1 + rnd(2) {
+                let inner: Vec<String> = (0..2 + rnd(3)).map(|i| format!("C{c}i{i}")).collect();
+                src.push_str(&format!("state C{c} {{\n  [*] --> {}\n", inner[0]));
+                for i in 1..inner.len() {
+                    let from = &inner[rnd(i as u64) as usize];
+                    src.push_str(&format!("  {from} --> {}\n", inner[i]));
+                }
+                for _ in 0..rnd(3) {
+                    let side = ["left", "right"][rnd(2) as usize];
+                    let at = &inner[rnd(inner.len() as u64) as usize];
+                    src.push_str(&format!("  note {side} of {at} : n{}\n", rnd(100)));
+                }
+                src.push_str("}\n");
+                outer.push(format!("C{c}"));
+            }
+            for t in 0..1 + rnd(3) {
+                outer.push(format!("T{t}"));
+            }
+            for k in 1..outer.len() {
+                let from = &outer[rnd(k as u64) as usize];
+                src.push_str(&format!("{from} --> {}\n", outer[k]));
+            }
+            for _ in 0..1 + rnd(3) {
+                let side = ["left", "right"][rnd(2) as usize];
+                let at = &outer[rnd(outer.len() as u64) as usize];
+                src.push_str(&format!("note {side} of {at} : m{}\n", rnd(100)));
+            }
+            if rnd(2) == 0 {
+                let (a, b) = (rnd(outer.len() as u64), rnd(outer.len() as u64));
+                src.push_str(&format!(
+                    "{} --> {} : back\n",
+                    outer[a.max(b) as usize],
+                    outer[a.min(b) as usize]
+                ));
+            }
+            out.push(src);
+        }
+        out
+    }
+
+    /// Whether `e` is drawn as [`note_elbow`]'s quarter-ellipse: one
+    /// control point straight across from one end, the other straight
+    /// along from the other (a plain curve leaves both ends along the
+    /// same axis). The ends may have been spread apart since, so the
+    /// controls' distances are not checked.
+    fn elbow_of(e: &SceneEdge) -> bool {
+        let [p0, c1, c2, p3] = e.bezier;
+        let near = |a: f64, b: f64| (a - b).abs() < 1e-6;
+        e.waypoints.is_empty()
+            && !near(p0.0, p3.0)
+            && !near(p0.1, p3.1)
+            && ((near(c1.0, p0.0) && !near(c1.1, p0.1) && near(c2.1, p3.1) && !near(c2.0, p3.0))
+                || (near(c1.1, p0.1) && !near(c1.0, p0.0) && near(c2.0, p3.0) && !near(c2.1, p3.1)))
+    }
+
+    #[test]
+    fn note_links_match_between_scene_and_route() {
+        // The static layout once judged a note link's elbow against the
+        // chords of `scene_clustered`'s never-drawn stand-ins while
+        // `route` used the real edges only: the link jumped (60-80px) to
+        // another course on a composite diagram's first drag. Both now
+        // judge it against the same lines from the same centres.
+        let mut elbows = 0;
+        for src in composite_note_sources() {
+            let g = match crate::parser::parse_document(&src).unwrap() {
+                crate::model::Document::State(g) => g,
+                other => panic!("not a state diagram: {other:?}"),
+            };
+            let s = scene(&g);
+            let centres: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let r = route(&g, &centres);
+            for (ei, e) in g.edges.iter().enumerate() {
+                if !(is_note_card(&s.nodes[e.from]) || is_note_card(&s.nodes[e.to])) {
+                    continue;
+                }
+                let (a, b) = (&s.edges[ei], &r.edges[ei]);
+                assert_eq!(
+                    elbow_of(a),
+                    elbow_of(b),
+                    "{} -> {}: {:?} vs {:?}\n{src}",
+                    a.from,
+                    a.to,
+                    a.bezier,
+                    b.bezier
+                );
+                if elbow_of(a) {
+                    elbows += 1;
+                    for (p, q) in a.bezier.iter().zip(&b.bezier) {
+                        assert!(
+                            (p.0 - q.0).abs() < 1e-6 && (p.1 - q.1).abs() < 1e-6,
+                            "{} -> {}: {:?} vs {:?}\n{src}",
+                            a.from,
+                            a.to,
+                            a.bezier,
+                            b.bezier
+                        );
+                    }
+                }
+            }
+        }
+        assert!(
+            elbows >= 20,
+            "only {elbows} elbows: the sources lost their point"
+        );
+        // Two cards right of one state: the second's link no longer
+        // blocks the first's elbow (it used to keep the plain course).
+        let src = &composite_note_sources()[2];
+        let g = match crate::parser::parse_document(src).unwrap() {
+            crate::model::Document::State(g) => g,
+            other => panic!("not a state diagram: {other:?}"),
+        };
+        let s = scene(&g);
+        let links: Vec<&SceneEdge> = s.edges[..g.edges.len()]
+            .iter()
+            .filter(|e| e.from == "A" && s.nodes.iter().any(|n| n.id == e.to && is_note_card(n)))
+            .collect();
+        assert_eq!(links.len(), 2, "{src}");
+        assert!(links.iter().all(|e| elbow_of(e)), "{links:?}");
     }
 }

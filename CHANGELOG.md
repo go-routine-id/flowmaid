@@ -233,6 +233,15 @@ Minor, not patch: several class structs gain public fields (see
   later line vanished. It is now a free-standing note card named `N`.
   mermaid drops it entirely. A block note with no `end note` shows the
   lines it swallowed, so the mistake can be seen.
+- **A state note's link no longer jumps on the first drag.** In a diagram
+  with composite states, the static layout judged whether the link could
+  elbow round from the state's facing side against the courses of edges it
+  never draws (the stand-ins that lay out transitions to a composite),
+  while `route` and `route_partial` used the drawn transitions only, so the
+  first drag moved the link 60–80px onto another course. Both now test the
+  elbow against the same courses: the drawn transitions, plus each
+  transition to or from a composite. Two notes beside one state no longer
+  block each other's elbow either, so both links now leave the facing side.
 
 ## [0.33.0] - 2026-10-31
 
