@@ -25,8 +25,8 @@ use std::cell::Cell;
 use std::collections::{BTreeMap, HashMap};
 
 use crate::edgepass::{refit, Mode};
-use crate::labels::{avoid_label_overlaps, LABEL_ROUTE_WORK, LABEL_STATIC_WORK};
-use crate::layout::{text_width, GAP_L, LINE_H};
+use crate::labels::{avoid_label_overlaps, LABEL_GAP, LABEL_ROUTE_WORK, LABEL_STATIC_WORK};
+use crate::layout::{text_width, GAP_L, LABEL_BOX_H, LINE_H};
 use crate::model::{
     generics_to_angles, Class, ClassDiagram, Direction, EdgeEnds, EdgeKind, Graph, Marker, Member,
     RelKind, Shape,
@@ -275,7 +275,12 @@ fn assemble(d: &ClassDiagram, b: Built, mut scene: Scene, mode: Mode) -> ClassSc
             std::mem::swap(&mut e.ends.start, &mut e.ends.end);
         }
     }
-    part_self_loops(&mut scene);
+    let carded: Vec<bool> = d
+        .relations
+        .iter()
+        .map(|r| r.from_card.is_some() || r.to_card.is_some())
+        .collect();
+    part_self_loops(&mut scene, &carded);
     let decos: Vec<[EndDeco; 2]> = d
         .relations
         .iter()
@@ -347,13 +352,15 @@ const LOOP_NEST: (f64, f64, f64) = (12.0, 28.0, 16.0);
 /// the loop's apex, where on a small box the chip hides most of the
 /// loop. Here the loops alternate between that side and the opposite
 /// one, and loops sharing a side nest, the outer one's ends past the
-/// inner one's, their glyphs at opposite ends. The labels of a side
-/// sit past its outermost loop, side by side along the face. A side
-/// whose loops would run into another box (a sibling close beside the
-/// class) or over another edge's end gives them to a clear face
-/// ([`loop_faces`]). A class's only loop keeps the layout's curve
-/// while it stays on the layout's side.
-fn part_self_loops(sc: &mut Scene) {
+/// inner one's, their glyphs at opposite ends. Loops whose edge has a
+/// cardinality (`carded[j]`) nest outside the rest, so each card sits
+/// beside its own end instead of out past the outer loops, next to
+/// theirs. The labels of a side sit past its outermost loop, side by
+/// side along the face. A side whose loops would run into another box
+/// (a sibling close beside the class) or over another edge's end gives
+/// them to a clear face ([`loop_faces`]). A class's only loop keeps the
+/// layout's curve while it stays on the layout's side.
+fn part_self_loops(sc: &mut Scene, carded: &[bool]) {
     let idx = node_index(sc);
     let mut loops: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
     for (j, e) in sc.edges.iter().enumerate() {
@@ -399,7 +406,10 @@ fn part_self_loops(sc: &mut Scene) {
             .collect();
         let faces = loop_faces(&n, &outs, &ends, &widths, &others);
         for (f, &out) in outs.iter().enumerate() {
-            let on: Vec<usize> = (0..js.len()).filter(|&k| faces[k] == f).collect();
+            let mut on: Vec<usize> = (0..js.len()).filter(|&k| faces[k] == f).collect();
+            // Innermost first: the loops without cardinalities, then
+            // those with, each in source order.
+            on.sort_by_key(|&k| carded.get(js[k]).copied().unwrap_or(false));
             let labels: Vec<Option<f64>> = on.iter().map(|&k| widths[k]).collect();
             for (&k, (curve, spot)) in on.iter().zip(face_loops(&n, out, &labels)) {
                 let e = &mut sc.edges[js[k]];
@@ -417,6 +427,13 @@ fn part_self_loops(sc: &mut Scene) {
 
 /// How far a self-loop's region keeps from another box.
 const LOOP_CLEAR: f64 = 4.0;
+/// Air between two loop labels in a row past their loops: more than
+/// the label stage keeps between labels ([`LABEL_GAP`] plus its overlap
+/// tolerance), so it leaves the row as drawn. Closer, it would take
+/// the pair for crowded and could move one onto the loops, where an
+/// inner loop's apex leaves a spot clear of boxes and labels (the
+/// stage does not mind strokes there).
+const LOOP_LABEL_GAP: f64 = LABEL_GAP + 2.0;
 
 /// A self-loop as [`face_loops`] draws it: its curve, and its label's
 /// centre when it has a label.
@@ -438,7 +455,7 @@ fn face_loops(n: &SceneNode, out: (f64, f64), labels: &[Option<f64>]) -> Vec<Sel
     let on_side = labels.len();
     // Each label's room along the face, and where the row of them
     // (centred on the face) puts each one's centre.
-    let wide = |w: f64| 22.0 * out.0.abs() + w * out.1.abs() + 4.0;
+    let wide = |w: f64| LABEL_BOX_H * out.0.abs() + w * out.1.abs() + LOOP_LABEL_GAP;
     let row: f64 = labels.iter().flatten().map(|&w| wide(w)).sum();
     let mut next = -row / 2.0;
     labels
@@ -5239,6 +5256,78 @@ mod tests {
                         if let Some(c) = spots[slot] {
                             assert!(dist(c, end) < 40.0, "{dir}: card of {j} far from its end");
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Verifier finding (r6, `w3_loops_three_sib` TB / BT): with three
+    /// loops nested on one face, the innermost one ('manages', the only
+    /// one with cardinalities) had its cards pushed out past both outer
+    /// loops, the '1' about 18 px from the dashed 'reviews' loop's end,
+    /// reading as that loop's. Carded loops nest outermost now, so each
+    /// card sits by its own end, nearer it than any other loop's end.
+    /// And a row of loop labels keeps more than the label stage's gap
+    /// between chips: closer, the stage took the pair for crowded and
+    /// moved one onto the loops (`a14` LR: 'four' over its loop).
+    #[test]
+    fn loop_cards_sit_by_their_own_end_and_labels_off_the_loops() {
+        let w3 = "classDiagram
+    class Employee {
+      +String name
+    }
+    Org <|-- Employee
+    Org <|-- Team
+    Org <|-- Office
+    Employee \"1\" o-- \"*\" Employee : manages
+    Employee --> Employee : mentors
+    Employee ..> Employee : reviews";
+        let a14 = "classDiagram
+    A \"1\" --> \"*\" A : one
+    A \"0..1\" o-- \"many\" A : two
+    A *-- A
+    A ..> A : four
+    A <|-- B
+    A <|-- C";
+        for src in [w3, a14] {
+            for dir in ["TB", "BT", "LR", "RL"] {
+                let cs = scene(&cd(&with_direction(src, dir)));
+                let loops: Vec<usize> = (0..cs.rels.len())
+                    .filter(|&j| cs.scene.edges[j].from == cs.scene.edges[j].to)
+                    .collect();
+                let ends: Vec<(usize, (f64, f64))> = loops
+                    .iter()
+                    .flat_map(|&j| {
+                        let p = edge_polyline(&cs.scene.edges[j]);
+                        [(j, p[0]), (j, p[p.len() - 1])]
+                    })
+                    .collect();
+                for (j, spots) in card_spots(&cs).iter().enumerate() {
+                    let p = edge_polyline(&cs.scene.edges[j]);
+                    for (slot, end) in [(0, p[0]), (1, p[p.len() - 1])] {
+                        let Some(c) = spots[slot] else { continue };
+                        let own = dist(c, end);
+                        assert!(own < 40.0, "{dir}: card of {j} {own:.0} px from its end");
+                        for &(k, e) in ends.iter().filter(|&&(k, _)| k != j) {
+                            assert!(
+                                own < dist(c, e),
+                                "{dir}: card of {j} nearer loop {k}'s end\n{src}"
+                            );
+                        }
+                    }
+                }
+                for &j in &loops {
+                    let Some((text, m, w)) = &cs.scene.edges[j].label else {
+                        continue;
+                    };
+                    let chip = (m.0 - w / 2.0, m.1 - 10.0, m.0 + w / 2.0, m.1 + 10.0);
+                    for &k in &loops {
+                        let p = edge_polyline(&cs.scene.edges[k]);
+                        assert!(
+                            !p.windows(2).any(|s| rect_hits_segment(chip, s[0], s[1])),
+                            "{dir}: label '{text}' on loop {k}\n{src}"
+                        );
                     }
                 }
             }
