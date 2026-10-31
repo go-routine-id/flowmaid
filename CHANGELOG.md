@@ -68,6 +68,21 @@ Minor, not patch: several class structs gain public fields (see
   In a diagram where a transition ends on a composite's frame, the static
   scene and `route` can still choose differently for a card, so its link
   can change shape at the first drag.
+- **Two-way class relations and lollipop interfaces**, which were parse
+  errors. A glyph on both ends of a relation draws one at each end
+  (`Animal <|--|> Zebra`, `A *--* B`, `A o--o B`, `A <--> B`, `A <..> B`,
+  `A <|..|> B`, mixed ends such as `A *--> B`); `bar ()-- foo` and
+  `foo --() bar` draw the interface `bar` as its name alone, with a small
+  circle where its line meets it. As in mermaid 12.2.0, each lollipop line
+  makes its own interface (separate from a class of the same name), a
+  lollipop facing another glyph (`A ()--* B`) joins two classes, and both
+  kinds rank in source order, the left operand first. Any end glyph also
+  goes on a dotted line now (`A *.. B`, `A ..o B` were parse errors).
+  Cardinalities, labels, `route` and dragging work as on any relation. New:
+  `ClassRel::from_kind` and `RelStyle::from_kind` (the `from` end's glyph),
+  `RelKind::Lollipop`, `Class::lollipop` with `ClassDiagram::add_lollipop`,
+  `ClassBox::lollipop`, `Head::circle` and `class::rel_tail(cs, j)` (the
+  `from` glyph as drawn, like `rel_head`).
 - **`layout::CHOICE_SIZE`** (28px), the side of an unlabelled diamond,
   public like `BASE_H` / `MIN_W` so embedders can reproduce node sizes.
 - **Per-file benchmark.** `cargo run --release --example bench -- files
@@ -218,6 +233,17 @@ Minor, not patch: several class structs gain public fields (see
     stereotype lines; `ClassBox::header_h()` adds `ANNOTATION_H` per line.
     A member compartment is `class::compartment_h(rows)` tall, `rows ×
     ROW_H` plus `COMP_PAD` above and below.
+  - **Two-way relations and lollipops:** `model::RelKind` gains the
+    variant `Lollipop`, so an exhaustive `match` on it needs an arm (or
+    `_`). `class::RelStyle` gains `from_kind` and becomes
+    `#[non_exhaustive]` (it comes from `class::scene()` / `class::route()`;
+    read its fields). `class::Head` gains `circle`: a struct literal must
+    name it or end in `..Default::default()`, and a painter should draw it
+    (a hollow circle) or lollipops show no glyph. A painter that draws only
+    `rel_head` misses the second glyph of a two-way relation: draw
+    `class::rel_tail` too. A lollipop interface is a class
+    (`Class::lollipop`, `ClassBox::lollipop`) whose box is not drawn, only
+    its name; a host that paints every `ClassBox` as a box should skip it.
 
 ### Fixed
 

@@ -102,6 +102,10 @@ pub struct ClassBox {
     pub annotations: Vec<String>,
     pub fields: Vec<ClassRow>,
     pub methods: Vec<ClassRow>,
+    /// A lollipop interface ([`crate::model::Class::lollipop`]): only
+    /// `name` is drawn, centred in the node's rect, and no box — the
+    /// rect is the text's room, its relation's circle just outside it.
+    pub lollipop: bool,
 }
 
 impl ClassBox {
@@ -151,20 +155,25 @@ pub struct ClassScene {
 }
 
 /// End style + cardinalities for one relationship, aligned with a
-/// scene edge. The glyph always sits at the `to` end — the end of
+/// scene edge. The glyph (`kind`) sits at the `to` end — the end of
 /// the edge's curve (the parser normalises relations so the decorated
 /// side is `to`; the layout ranks them in source order and the scene
-/// edge is turned back to `from` → `to` after).
+/// edge is turned back to `from` → `to` after). A two-way relation
+/// also has one at the start of the curve: `from_kind`.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct RelStyle {
     pub kind: RelKind,
     pub from_card: Option<String>,
     pub to_card: Option<String>,
+    /// The glyph at the `from` end of a two-way relation
+    /// ([`crate::model::ClassRel::from_kind`]); [`rel_tail`] places it.
+    pub from_kind: Option<RelKind>,
 }
 
 /// The end glyph for one relationship: a closed polygon (triangle or
-/// diamond) and/or open-arrow segments. Same geometry feeds both the
-/// SVG writer and GUI painters.
+/// diamond), open-arrow segments or a lollipop circle. Same geometry
+/// feeds both the SVG writer and GUI painters.
 #[derive(Debug, Clone, Default)]
 pub struct Head {
     /// Closed polygon (triangle or diamond); empty when none.
@@ -173,6 +182,9 @@ pub struct Head {
     pub filled: bool,
     /// Open-arrow segments (association / dependency).
     pub segments: Vec<[(f64, f64); 2]>,
+    /// A hollow white circle as `(centre, radius)`, touching the class
+    /// border (the lollipop, [`RelKind::Lollipop`]); `None` when none.
+    pub circle: Option<((f64, f64), f64)>,
 }
 
 /// Automatic layout for a class diagram.
@@ -292,7 +304,7 @@ fn assemble(d: &ClassDiagram, b: Built, mut scene: Scene, mode: Mode) -> ClassSc
             let card = |c: &Option<String>| c.as_deref().map(|t| (card_w(t), CARD_H));
             [
                 EndDeco {
-                    half: 0.0,
+                    half: r.from_kind.map_or(0.0, |k| glyph_size(k).1),
                     card: card(&r.from_card),
                 },
                 EndDeco {
@@ -336,6 +348,7 @@ fn assemble(d: &ClassDiagram, b: Built, mut scene: Scene, mode: Mode) -> ClassSc
             kind: r.kind,
             from_card: r.from_card.clone(),
             to_card: r.to_card.clone(),
+            from_kind: r.from_kind,
         })
         .collect();
     ClassScene {
@@ -2875,6 +2888,18 @@ fn nearest_on(pts: &[(f64, f64)], p: (f64, f64)) -> (f64, f64) {
 /// by id, so a plain `note-k` would fold the note into that class and
 /// leave one size too many for the layout (a panic in `scene_sized` /
 /// `route_sized`).
+/// The layout node id of lollipop interface `i` (class index):
+/// `interface-<i>`, made unique against every class name and node so
+/// far — a lollipop is outside the class index and may share its name
+/// with a class, so its name cannot be its id.
+fn lollipop_id(d: &ClassDiagram, g: &Graph, i: usize) -> String {
+    let mut id = format!("interface-{i}");
+    while d.class_index(&id).is_some() || g.node_index(&id).is_some() {
+        id.push('\'');
+    }
+    id
+}
+
 fn note_id(g: &Graph, k: usize) -> String {
     let mut id = format!("note-{k}");
     while g.node_index(&id).is_some() {
@@ -2929,13 +2954,20 @@ fn build(d: &ClassDiagram) -> Built {
             .map(|r| {
                 glyph_size(r.kind)
                     .0
+                    .max(r.from_kind.map_or(0.0, |k| glyph_size(k).0))
                     .max(card(&r.to_card))
                     .max(card(&r.from_card))
             })
             .collect();
     }
-    for c in &d.classes {
-        g.ensure_node(&c.name, Some(c.display_name()), Some(Shape::Rect));
+    for (i, c) in d.classes.iter().enumerate() {
+        let id = if c.lollipop {
+            lollipop_id(d, &g, i)
+        } else {
+            c.name.clone()
+        };
+        let at = g.ensure_node(&id, Some(c.display_name()), Some(Shape::Rect));
+        debug_assert_eq!(at, i, "class {i} merged into another node");
     }
     let n = d.classes.len();
     for (k, note) in d.notes.iter().enumerate() {
@@ -2949,23 +2981,25 @@ fn build(d: &ClassDiagram) -> Built {
         // arrowhead); `assemble` restores the scene edge's
         // direction and style.
         let (a, b) = r.source_order();
-        let glyph = match r.kind {
+        let glyph = |k: RelKind| match k {
             RelKind::Inheritance
             | RelKind::Realization
             | RelKind::Composition
-            | RelKind::Aggregation => Some(Marker::Circle),
+            | RelKind::Aggregation
+            | RelKind::Lollipop => Some(Marker::Circle),
             RelKind::Association | RelKind::Dependency => Some(Marker::Arrow),
             RelKind::Link => None,
         };
+        // A two-way relation is in source order, its `from` glyph first.
         let ends = if r.head_left {
             EdgeEnds {
-                start: glyph,
+                start: glyph(r.kind),
                 end: None,
             }
         } else {
             EdgeEnds {
-                start: None,
-                end: glyph,
+                start: r.from_kind.and_then(glyph),
+                end: glyph(r.kind),
             }
         };
         let kind = if r.dashed {
@@ -3007,7 +3041,8 @@ fn build(d: &ClassDiagram) -> Built {
         let (a, b) = r.source_order();
         if a != b {
             let h = glyph_size(r.kind).1;
-            let (from, to) = ((0.0, room(&r.from_card, 0.0)), (h, room(&r.to_card, h)));
+            let fh = r.from_kind.map_or(0.0, |k| glyph_size(k).1);
+            let (from, to) = ((fh, room(&r.from_card, fh)), (h, room(&r.to_card, h)));
             let (ea, eb) = if r.head_left { (to, from) } else { (from, to) };
             ends[a][1].push(ea);
             ends[b][0].push(eb);
@@ -3055,6 +3090,23 @@ fn build(d: &ClassDiagram) -> Built {
 }
 
 fn box_of(c: &Class) -> (ClassBox, (f64, f64)) {
+    if c.lollipop {
+        // Just the name: its own width and a line's height, padded
+        // so the circle outside the rect clears the text.
+        let name = c.display_name();
+        let size = (
+            text_width(&name) + 2.0 * LOLLIPOP_PAD,
+            LINE_H + 2.0 * LOLLIPOP_PAD,
+        );
+        let b = ClassBox {
+            name,
+            annotations: Vec::new(),
+            fields: Vec::new(),
+            methods: Vec::new(),
+            lollipop: true,
+        };
+        return (b, size);
+    }
     let fields: Vec<ClassRow> = c.fields.iter().map(|m| row_of(m, false)).collect();
     let methods: Vec<ClassRow> = c.methods.iter().map(|m| row_of(m, true)).collect();
     let annotations: Vec<String> = c.annotations.iter().map(|a| format!("«{a}»")).collect();
@@ -3074,6 +3126,7 @@ fn box_of(c: &Class) -> (ClassBox, (f64, f64)) {
         annotations,
         fields,
         methods,
+        lollipop: false,
     };
     let h = b.header_h() + compartment_h(b.fields.len()) + compartment_h(b.methods.len());
     (b, (w, h))
@@ -3192,9 +3245,24 @@ pub(crate) fn to_svg_a11y_with(cs: &ClassScene, a11y: &A11y, opts: &SvgOptions) 
         ));
     }
 
-    // Class boxes — each gets a stable accent color.
-    for (i, (n, b)) in sc.nodes.iter().zip(&cs.boxes).enumerate() {
-        write_box(&mut s, n, b, crate::style::accent(i));
+    // Class boxes — each gets a stable accent color, counted over the
+    // boxes alone (a lollipop takes none, so adding one recolours no
+    // class) — and lollipop interfaces' names.
+    let mut accent = 0;
+    for (n, b) in sc.nodes.iter().zip(&cs.boxes) {
+        if b.lollipop {
+            s.push_str(&format!(
+                "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"middle\" \
+                 fill=\"{}\">{}</text>\n",
+                n.x,
+                n.y,
+                TEXT_COLOR,
+                escape(&b.name)
+            ));
+        } else {
+            write_box(&mut s, n, b, crate::style::accent(accent));
+            accent += 1;
+        }
     }
     // Note cards.
     let note = crate::style::NOTE_STYLE;
@@ -3371,6 +3439,13 @@ fn write_head(s: &mut String, h: &Head) {
             a.0, a.1, b.0, b.1, EDGE_COLOR
         ));
     }
+    if let Some((c, r)) = h.circle {
+        s.push_str(&format!(
+            "<circle cx=\"{:.1}\" cy=\"{:.1}\" r=\"{:.1}\" fill=\"#ffffff\" stroke=\"{}\" \
+             stroke-width=\"1.6\"/>\n",
+            c.0, c.1, r, EDGE_COLOR
+        ));
+    }
 }
 
 fn card_text(s: &mut String, at: (f64, f64), text: &str, cw: f64, ch: f64) {
@@ -3410,9 +3485,15 @@ fn glyph_size(kind: RelKind) -> (f64, f64) {
         RelKind::Inheritance | RelKind::Realization => (14.0, 8.0),
         RelKind::Composition | RelKind::Aggregation => (18.0, 6.5),
         RelKind::Association | RelKind::Dependency => (12.0, 7.0),
+        RelKind::Lollipop => (2.0 * LOLLIPOP_R, LOLLIPOP_R),
         RelKind::Link => (0.0, 0.0),
     }
 }
+
+/// Radius of a lollipop's circle ([`RelKind::Lollipop`]).
+const LOLLIPOP_R: f64 = 6.0;
+/// Room around a lollipop interface's name, inside its node's rect.
+const LOLLIPOP_PAD: f64 = 6.0;
 
 /// Index of the scene node with `id`.
 fn node_index(sc: &Scene) -> HashMap<&str, usize> {
@@ -3487,24 +3568,48 @@ fn end_axis(
 /// edge, never lying inside the box when a curve grazes its face.
 pub fn rel_head(cs: &ClassScene, j: usize) -> Head {
     let idx = node_index(&cs.scene);
+    end_head(&cs.scene, &idx, &cs.scene.edges[j], cs.rels[j].kind, false)
+}
+
+/// The glyph at the `from` end of relationship `j` of `cs` when it is
+/// two-way ([`RelStyle::from_kind`]), exactly as [`to_svg`] draws it:
+/// as [`rel_head`] places the `to` one, at the start of the drawn
+/// curve on the `from` class. `None` for a one-ended relationship.
+pub fn rel_tail(cs: &ClassScene, j: usize) -> Option<Head> {
+    let idx = node_index(&cs.scene);
     let e = &cs.scene.edges[j];
-    let kind = cs.rels[j].kind;
-    let node = idx.get(e.to.as_str()).map(|&i| &cs.scene.nodes[i]);
-    let (tip, u) = end_axis(e, false, glyph_size(kind).0, node);
+    cs.rels[j]
+        .from_kind
+        .map(|k| end_head(&cs.scene, &idx, e, k, true))
+}
+
+/// The `kind` glyph at one end of `e` (its start when `at_start`),
+/// pointing along the drawn curve's last stretch there.
+fn end_head(
+    sc: &Scene,
+    idx: &HashMap<&str, usize>,
+    e: &SceneEdge,
+    kind: RelKind,
+    at_start: bool,
+) -> Head {
+    let id = if at_start { &e.from } else { &e.to };
+    let node = idx.get(id.as_str()).map(|&i| &sc.nodes[i]);
+    let (tip, u) = end_axis(e, at_start, glyph_size(kind).0, node);
     head(tip, (tip.0 + u.0, tip.1 + u.1), kind)
 }
 
+/// Every end glyph of `rels` on `sc`: each relationship's `to` glyph,
+/// after its `from` one when it is two-way.
 fn heads_of(sc: &Scene, rels: &[RelStyle]) -> Vec<Head> {
     let idx = node_index(sc);
-    sc.edges
-        .iter()
-        .zip(rels)
-        .map(|(e, rel)| {
-            let node = idx.get(e.to.as_str()).map(|&i| &sc.nodes[i]);
-            let (tip, u) = end_axis(e, false, glyph_size(rel.kind).0, node);
-            head(tip, (tip.0 + u.0, tip.1 + u.1), rel.kind)
-        })
-        .collect()
+    let mut out = Vec::with_capacity(rels.len());
+    for (e, rel) in sc.edges.iter().zip(rels) {
+        if let Some(k) = rel.from_kind {
+            out.push(end_head(sc, &idx, e, k, true));
+        }
+        out.push(end_head(sc, &idx, e, rel.kind, false));
+    }
+    out
 }
 
 /// Centres of the cardinalities of every relationship of `cs` as
@@ -3608,6 +3713,17 @@ fn place_cards(sc: &Scene, rels: &[RelStyle], heads: &[Head]) -> Vec<[Option<(f6
             glyph_segs.push((h.polygon[i], h.polygon[(i + 1) % k]));
         }
         glyph_segs.extend(h.segments.iter().map(|s| (s[0], s[1])));
+        // A circle as the square around it: a card clear of that is
+        // clear of the circle.
+        if let Some(((x, y), r)) = h.circle {
+            let c = [
+                (x - r, y - r),
+                (x + r, y - r),
+                (x + r, y + r),
+                (x - r, y + r),
+            ];
+            glyph_segs.extend((0..4).map(|i| (c[i], c[(i + 1) % 4])));
+        }
     }
     let mut placed: Vec<Rect> = Vec::new();
     let mut out = vec![[None, None]; rels.len()];
@@ -3617,7 +3733,7 @@ fn place_cards(sc: &Scene, rels: &[RelStyle], heads: &[Head]) -> Vec<[Option<(f6
             let id = if at_start { &e.from } else { &e.to };
             let node = idx.get(id.as_str()).map(|&i| &sc.nodes[i]);
             let (glen, ghalf) = if at_start {
-                (0.0, 0.0)
+                rel.from_kind.map_or((0.0, 0.0), glyph_size)
             } else {
                 glyph_size(rel.kind)
             };
@@ -3723,20 +3839,23 @@ pub fn head(e: (f64, f64), c: (f64, f64), kind: RelKind) -> Head {
         // Hollow triangle at the parent — inheritance & realization.
         RelKind::Inheritance | RelKind::Realization => Head {
             polygon: vec![e, p(14.0, -8.0), p(14.0, 8.0)],
-            filled: false,
-            segments: vec![],
+            ..Head::default()
         },
         // Diamond at the aggregate / composite.
         RelKind::Composition | RelKind::Aggregation => Head {
             polygon: vec![e, p(9.0, -6.5), p(18.0, 0.0), p(9.0, 6.5)],
             filled: matches!(kind, RelKind::Composition),
-            segments: vec![],
+            ..Head::default()
         },
         // Open V arrow — association & dependency.
         RelKind::Association | RelKind::Dependency => Head {
-            polygon: vec![],
-            filled: false,
             segments: vec![[p(12.0, -7.0), e], [p(12.0, 7.0), e]],
+            ..Head::default()
+        },
+        // Lollipop: a circle touching the border.
+        RelKind::Lollipop => Head {
+            circle: Some((p(LOLLIPOP_R, 0.0), LOLLIPOP_R)),
+            ..Head::default()
         },
         // Plain link — no glyph.
         RelKind::Link => Head::default(),
@@ -5976,10 +6095,13 @@ mod tests {
             );
         }
         for j in 0..cs.rels.len() {
-            assert!(
-                rel_head(cs, j).polygon.iter().all(|&p| ok(p)),
-                "{what}: head {j}"
-            );
+            for h in std::iter::once(rel_head(cs, j)).chain(rel_tail(cs, j)) {
+                assert!(h.polygon.iter().all(|&p| ok(p)), "{what}: head {j}");
+                assert!(
+                    h.circle.map_or(true, |(c, r)| ok(c) && r.is_finite()),
+                    "{what}: circle {j}"
+                );
+            }
         }
         for spots in card_spots(cs) {
             assert!(spots.iter().flatten().all(|&p| ok(p)), "{what}: cards");
@@ -6039,6 +6161,7 @@ mod tests {
             FAN10_LABELS,
             FAN_IN_PLAIN,
             LOOPS_SIBLINGS,
+            TWO_WAY,
         ];
         let mut seed: u64 = 0x9e37_79b9_7f4a_7c15;
         let mut rnd = move || {
@@ -6077,6 +6200,222 @@ mod tests {
                 for (k, c) in moves.iter().enumerate() {
                     assert_finite(&route(&d, c), &format!("{dir} move {k}"));
                 }
+            }
+        }
+    }
+
+    /// Every two-way and lollipop spelling mermaid 12.2.0 draws, with
+    /// cardinalities, labels, a dotted lollipop, a lollipop sharing a
+    /// class's name, lollipops against another glyph and a two-way
+    /// self-relation.
+    const TWO_WAY: &str = "classDiagram
+    Animal <|--|> Zebra
+    Zebra *--* Stripe
+    Zebra o--o Herd
+    Herd <--> Keeper : feeds
+    Keeper <..> Zoo
+    Zoo <|..|> Place
+    Zoo \"1\" *--> \"many\" Animal : houses
+    Herd o..|> Group
+    IFeed ()-- Keeper
+    Zoo --() IVisit
+    ITrack ().. Stripe
+    Herd ()-- Zoo : joins
+    Keeper ()--* Zoo
+    Keeper <--> Keeper";
+
+    /// Mermaid's two-way relations (`A <|--|> B`, docs "Two-way
+    /// relations") were parse errors: any end glyph on either side of
+    /// `--` / `..`, the left one kept as `from_kind`, in source order.
+    #[test]
+    fn two_way_relations_parse() {
+        use RelKind::*;
+        for (line, l, r, dashed) in [
+            ("Animal <|--|> Zebra", Inheritance, Inheritance, false),
+            ("Animal *--* Zebra", Composition, Composition, false),
+            ("Animal o--o Zebra", Aggregation, Aggregation, false),
+            ("Animal <--> Zebra", Association, Association, false),
+            ("Animal <..> Zebra", Dependency, Dependency, true),
+            ("Animal <|..|> Zebra", Realization, Realization, true),
+            ("Animal *--> Zebra", Composition, Association, false),
+            ("Animal o..|> Zebra", Aggregation, Realization, true),
+            ("Animal <--* Zebra", Association, Composition, false),
+            ("Animal *--o Zebra", Composition, Aggregation, false),
+            ("Animal ()--* Zebra", Lollipop, Composition, false),
+            ("Animal ()--() Zebra", Lollipop, Lollipop, false),
+            ("Animal<|--|>Zebra", Inheritance, Inheritance, false),
+        ] {
+            let d = cd(&format!("classDiagram\n{line}"));
+            assert_eq!(d.classes.len(), 2, "{line}: both ends are classes");
+            assert!(d.classes.iter().all(|c| !c.lollipop), "{line}");
+            let rel = &d.relations[0];
+            let names = (&d.classes[rel.from].name, &d.classes[rel.to].name);
+            assert_eq!(names, (&"Animal".into(), &"Zebra".into()), "{line}");
+            assert_eq!((rel.from_kind, rel.kind), (Some(l), r), "{line}");
+            assert_eq!((rel.dashed, rel.head_left), (dashed, false), "{line}");
+        }
+        // Cardinalities and a label read as on a one-ended relation.
+        let d = cd("classDiagram\nG \"1\" <--> \"many\" H : link");
+        let rel = &d.relations[0];
+        assert_eq!(rel.from_card.as_deref(), Some("1"));
+        assert_eq!(rel.to_card.as_deref(), Some("many"));
+        assert_eq!(rel.label.as_deref(), Some("link"));
+        // Hyphenated and backtick names keep working beside the glyphs.
+        let d = cd("classDiagram\n`Foo Bar` <|--|> my-class\nA-o--o-B\nX-Y*--*Z-W");
+        let ends: Vec<(&str, &str)> = d
+            .relations
+            .iter()
+            .map(|r| {
+                (
+                    d.classes[r.from].name.as_str(),
+                    d.classes[r.to].name.as_str(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            ends,
+            [("Foo Bar", "my-class"), ("A-", "-B"), ("X-Y", "Z-W")]
+        );
+        // A glyph on a dotted line that had no spelling before.
+        let d = cd("classDiagram\nWhole *.. Part\nA ..o B");
+        let r0 = &d.relations[0];
+        assert_eq!(
+            (r0.kind, r0.dashed, r0.head_left),
+            (Composition, true, true)
+        );
+        assert_eq!(d.classes[r0.to].name, "Whole");
+        assert_eq!(d.relations[1].kind, Aggregation);
+        assert_eq!(d.relations[1].from_kind, None);
+        // A marker glued to a name is still part of it.
+        let d = cd("classDiagram\nA--oC\nFoo-- B");
+        assert!(d
+            .relations
+            .iter()
+            .all(|r| r.kind == Link && r.from_kind.is_none()));
+        assert_eq!(d.classes[d.relations[0].to].name, "oC");
+    }
+
+    /// Mermaid's lollipop interfaces (`bar ()-- foo`, `foo --() bar`)
+    /// were parse errors. Against a plain end the `()` operand is an
+    /// interface — a new node per relation, outside the class index —
+    /// and the circle sits at its end; source order ranks it.
+    #[test]
+    fn lollipop_interfaces_parse() {
+        let d = cd("classDiagram\n\
+            bar ()-- foo\n\
+            foo --() baz\n\
+            bar ()-- qux\n\
+            P ().. Q : uses\n\
+            class bar");
+        let names: Vec<(&str, bool)> = d
+            .classes
+            .iter()
+            .map(|c| (c.name.as_str(), c.lollipop))
+            .collect();
+        assert_eq!(
+            names,
+            [
+                ("foo", false),
+                ("bar", true),
+                ("baz", true),
+                ("qux", false),
+                ("bar", true),
+                ("Q", false),
+                ("P", true),
+                ("bar", false),
+            ]
+        );
+        assert_eq!(d.class_index("bar"), Some(7), "the class, not a lollipop");
+        let rels: Vec<(usize, usize, bool)> = d
+            .relations
+            .iter()
+            .map(|r| {
+                assert_eq!((r.kind, r.from_kind), (RelKind::Lollipop, None));
+                (r.from, r.to, r.head_left)
+            })
+            .collect();
+        assert_eq!(
+            rels,
+            [(0, 1, true), (0, 2, false), (3, 4, true), (5, 6, true)]
+        );
+        assert_eq!(d.relations[0].source_order(), (1, 0), "interface first");
+        assert!(d.relations[3].dashed);
+        assert_eq!(d.relations[3].label.as_deref(), Some("uses"));
+        // A lollipop's layout id never takes a class's name.
+        let d = cd("classDiagram\nbar ()-- foo\nclass interface-1\nclass bar");
+        let cs = scene(&d);
+        let ids: Vec<&str> = cs.scene.nodes.iter().map(|n| n.id.as_str()).collect();
+        assert_eq!(ids, ["foo", "interface-1'", "interface-1", "bar"]);
+    }
+
+    /// Glyphs of two-way and lollipop relations, laid out and dragged:
+    /// one at EACH end, its tip on that end's class border, never
+    /// inside any box nor under a label chip; a lollipop's circle
+    /// touches its interface's rect from outside; the SVG paints the
+    /// glyphs after the boxes, and a lollipop as its name alone.
+    #[test]
+    fn two_way_and_lollipop_glyphs_at_both_ends() {
+        for dir in ["TB", "LR", "BT", "RL"] {
+            let d = cd(&with_direction(TWO_WAY, dir));
+            let laid = scene(&d);
+            let mut moved: Vec<(f64, f64)> = laid.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
+            // Zoo (a hub of both kinds) dragged clear of every box.
+            let zoo = d.class_index("Zoo").unwrap();
+            moved[zoo].0 = laid.scene.width + 160.0;
+            moved[zoo].1 += 40.0;
+            for (cs, what) in [(laid, "laid"), (route(&d, &moved), "dragged")] {
+                let what = format!("{dir} {what}");
+                let rects: Vec<Rect> = cs.scene.nodes.iter().map(rect).collect();
+                let chips: Vec<Rect> = cs.scene.edges.iter().filter_map(label_chip).collect();
+                let inside = |r: Rect, p: (f64, f64)| {
+                    r.0 + 1.0 < p.0 && p.0 < r.2 - 1.0 && r.1 + 1.0 < p.1 && p.1 < r.3 - 1.0
+                };
+                let mut circles = 0;
+                for (j, rel) in d.relations.iter().enumerate() {
+                    let e = &cs.scene.edges[j];
+                    let tail = rel_tail(&cs, j);
+                    assert_eq!(tail.is_some(), rel.from_kind.is_some(), "{what} {j}");
+                    let mut ends = vec![(rel_head(&cs, j), rel.to, false)];
+                    ends.extend(tail.map(|h| (h, rel.from, true)));
+                    for (h, ci, at_start) in ends {
+                        let (tip, _) = edge_end_chord(e, at_start, 1.0);
+                        let r = rects[ci];
+                        let on_border = (tip.0 - r.0).abs().min((tip.0 - r.2).abs()) < 0.5
+                            && (r.1 - 0.5..=r.3 + 0.5).contains(&tip.1)
+                            || (tip.1 - r.1).abs().min((tip.1 - r.3).abs()) < 0.5
+                                && (r.0 - 0.5..=r.2 + 0.5).contains(&tip.0);
+                        assert!(on_border, "{what} {j}: tip {tip:?} off {r:?}");
+                        let mut pts = h.polygon.clone();
+                        pts.extend(h.segments.iter().flatten());
+                        if let Some((c, rad)) = h.circle {
+                            circles += 1;
+                            let gap = (c.0 - tip.0).hypot(c.1 - tip.1);
+                            assert!((gap - rad).abs() < 1e-6, "{what} {j}: circle off its tip");
+                            pts.extend([(c.0, c.1 - rad), (c.0, c.1 + rad)]);
+                            pts.extend([(c.0 - rad, c.1), (c.0 + rad, c.1), c]);
+                        }
+                        assert!(!pts.is_empty(), "{what} {j}: no glyph");
+                        for p in pts {
+                            for (k, &r) in rects.iter().enumerate() {
+                                assert!(!inside(r, p), "{what} {j}: glyph in box {k}: {p:?}");
+                            }
+                            if what.ends_with("laid") {
+                                for &c in &chips {
+                                    assert!(!inside(c, p), "{what} {j}: glyph under chip");
+                                }
+                            }
+                        }
+                    }
+                }
+                let svg = to_svg(&cs);
+                assert_eq!(svg.matches("<circle").count(), circles, "{what}");
+                let boxes = d.classes.iter().filter(|c| !c.lollipop).count();
+                let borders = svg.matches("rx=\"4\" fill=\"none\" stroke=").count();
+                assert_eq!(borders, boxes, "{what}: a lollipop has no box");
+                assert!(svg.contains(">IFeed</text>") && svg.contains(">IVisit</text>"));
+                let last_box = svg.rfind("rx=\"4\" fill=\"none\" stroke=").unwrap();
+                assert!(svg.find("<polygon").unwrap() > last_box, "{what}");
+                assert!(svg.find("<circle").unwrap() > last_box, "{what}");
             }
         }
     }

@@ -3593,11 +3593,24 @@ fn find_class_unquoted(s: &str, needle: &str) -> Option<usize> {
     None
 }
 
+/// A relation operator located by [`find_class_op`]: its byte span in
+/// the line, the glyph written at each end of its line (`None` = a
+/// plain end) and whether the line is dotted (`..`).
+struct ClassOp {
+    pos: usize,
+    len: usize,
+    left: Option<RelKind>,
+    right: Option<RelKind>,
+    dashed: bool,
+}
+
 /// Locate the relation operator in `rel`: the earliest position
-/// outside any quoted cardinality or backtick name where a
-/// [`CLASS_OPS`] operator matches (longest wins, since the table is
-/// ordered longest-first). Returns `(byte position, op, kind, dashed,
-/// head_at_left)`.
+/// outside any quoted cardinality or backtick name where an operator
+/// starts — a line (`--` solid, `..` dotted) with an optional end glyph
+/// glued to either side ([`CLASS_LEFT_ENDS`] / [`CLASS_RIGHT_ENDS`],
+/// longest first). Either end may carry any glyph, as in mermaid's
+/// grammar (`relationType? lineType relationType?`): `A <|--|> B`,
+/// `A *--> B`, `A o.. B`, `bar ()-- foo`.
 ///
 /// Scanning from the left, `A-B --> C-D` finds `-->` (a lone hyphen
 /// is no operator), while `A--B` finds `--` and `A-- -B` links `A` to
@@ -3607,8 +3620,19 @@ fn find_class_unquoted(s: &str, needle: &str) -> Option<usize> {
 /// counts at an operand boundary — never inside a name like `Foo` or
 /// `my_o`. A hyphen is a boundary: mermaid reads `A-o--B` as `A-`
 /// aggregating `B`.
-fn find_class_op(rel: &str) -> Option<(usize, &'static str, RelKind, bool, bool)> {
+fn find_class_op(rel: &str) -> Option<ClassOp> {
     let word = |c: char| c.is_alphanumeric() || c == '_';
+    let line_at = |j: usize| match rel.get(j..j + 2) {
+        Some("--") => Some(false),
+        Some("..") => Some(true),
+        _ => None,
+    };
+    // A triangle / arrow on a dotted line is a realization / dependency.
+    let styled = |k: RelKind, dashed: bool| match (k, dashed) {
+        (RelKind::Inheritance, true) => RelKind::Realization,
+        (RelKind::Association, true) => RelKind::Dependency,
+        _ => k,
+    };
     let mut open: Option<char> = None;
     let mut prev: Option<char> = None;
     for (i, c) in rel.char_indices() {
@@ -3617,15 +3641,29 @@ fn find_class_op(rel: &str) -> Option<(usize, &'static str, RelKind, bool, bool)
             Some(_) => {}
             None if c == '"' || c == '`' => open = Some(c),
             None => {
-                // The longest operator whose markers sit at boundaries:
-                // `A--oC` is a link to `oC`, as in mermaid.
-                let hit = CLASS_OPS.iter().find(|&&(op, ..)| {
-                    rel[i..].starts_with(op)
-                        && (!op.starts_with('o') || !prev.is_some_and(word))
-                        && (!op.ends_with('o') || !rel[i + op.len()..].starts_with(word))
+                let left = CLASS_LEFT_ENDS.iter().find(|&&(g, _)| {
+                    rel[i..].starts_with(g)
+                        && (g != "o" || !prev.is_some_and(word))
+                        && line_at(i + g.len()).is_some()
                 });
-                if let Some(&(op, k, dash, hl)) = hit {
-                    return Some((i, op, k, dash, hl));
+                let (left, at) = match left {
+                    Some(&(g, k)) => (Some(k), i + g.len()),
+                    None => (None, i),
+                };
+                if let Some(dashed) = line_at(at) {
+                    let after = at + 2;
+                    // `A--oC` is a link to `oC`, as in mermaid.
+                    let right = CLASS_RIGHT_ENDS.iter().find(|&&(g, _)| {
+                        rel[after..].starts_with(g)
+                            && (g != "o" || !rel[after + 1..].starts_with(word))
+                    });
+                    return Some(ClassOp {
+                        pos: i,
+                        len: after + right.map_or(0, |(g, _)| g.len()) - i,
+                        left: left.map(|k| styled(k, dashed)),
+                        right: right.map(|&(_, k)| styled(k, dashed)),
+                        dashed,
+                    });
                 }
             }
         }
@@ -3656,23 +3694,26 @@ fn add_class_member(c: &mut Class, s: &str) {
     }
 }
 
-/// Relation operators, longest first. Each maps to
-/// (kind, dashed, head_at_left).
-const CLASS_OPS: &[(&str, RelKind, bool, bool)] = &[
-    ("<|--", RelKind::Inheritance, false, true),
-    ("--|>", RelKind::Inheritance, false, false),
-    ("<|..", RelKind::Realization, true, true),
-    ("..|>", RelKind::Realization, true, false),
-    ("*--", RelKind::Composition, false, true),
-    ("--*", RelKind::Composition, false, false),
-    ("o--", RelKind::Aggregation, false, true),
-    ("--o", RelKind::Aggregation, false, false),
-    ("-->", RelKind::Association, false, false),
-    ("<--", RelKind::Association, false, true),
-    ("..>", RelKind::Dependency, true, false),
-    ("<..", RelKind::Dependency, true, true),
-    ("--", RelKind::Link, false, false),
-    ("..", RelKind::Link, true, false),
+/// End glyphs written left of a relation's line (`<|--`, `*--`,
+/// `()--`), longest first, with the kind they draw on a solid line
+/// (a dotted one turns a triangle into a realization and an arrow into
+/// a dependency).
+const CLASS_LEFT_ENDS: &[(&str, RelKind)] = &[
+    ("<|", RelKind::Inheritance),
+    ("()", RelKind::Lollipop),
+    ("<", RelKind::Association),
+    ("*", RelKind::Composition),
+    ("o", RelKind::Aggregation),
+];
+
+/// End glyphs written right of a relation's line (`--|>`, `--*`,
+/// `--()`), as [`CLASS_LEFT_ENDS`].
+const CLASS_RIGHT_ENDS: &[(&str, RelKind)] = &[
+    ("|>", RelKind::Inheritance),
+    ("()", RelKind::Lollipop),
+    (">", RelKind::Association),
+    ("*", RelKind::Composition),
+    ("o", RelKind::Aggregation),
 ];
 
 /// `ClassA "card" <op> "card" ClassB : label`.
@@ -3688,10 +3729,10 @@ fn parse_class_relation(d: &mut ClassDiagram, line: &str, lineno: usize) -> Resu
     };
     // Locate the operator: earliest position outside quotes, longest
     // match, honouring operand boundaries.
-    let (opos, op, kind, dashed, head_left) = find_class_op(rel)
+    let op = find_class_op(rel)
         .ok_or_else(|| err(lineno, format!("unknown class relation near: '{}'", rel)))?;
-    let left = rel[..opos].trim();
-    let right = rel[opos + op.len()..].trim();
+    let left = rel[..op.pos].trim();
+    let right = rel[op.pos + op.len..].trim();
     // Strip optional cardinality quotes from the inner edges.
     let (left_name, left_card) = split_card_end(left, true);
     let (right_name, right_card) = split_card_end(right, false);
@@ -3702,23 +3743,51 @@ fn parse_class_relation(d: &mut ClassDiagram, line: &str, lineno: usize) -> Resu
             format!("class relation needs two class names, got '{left_name}' / '{right_name}'"),
         ));
     };
-    let li = ensure_generic_class(d, lid, lgen);
-    let ri = ensure_generic_class(d, rid, rgen);
+    // A lollipop facing a plain end makes its operand an interface:
+    // a new one per relation, as mermaid adds an `interfaceN` node
+    // (after the class it hangs on). Facing another glyph
+    // (`A ()--> B`), both operands stay classes, as in mermaid.
+    let lollipop = |g: Option<RelKind>| g == Some(RelKind::Lollipop);
+    let (li, ri) = if lollipop(op.left) && op.right.is_none() {
+        let ri = ensure_generic_class(d, rid, rgen);
+        (add_lollipop(d, lid, lgen), ri)
+    } else if lollipop(op.right) && op.left.is_none() {
+        let li = ensure_generic_class(d, lid, lgen);
+        (li, add_lollipop(d, rid, rgen))
+    } else {
+        let li = ensure_generic_class(d, lid, lgen);
+        (li, ensure_generic_class(d, rid, rgen))
+    };
     // Normalise so the decorated end is `to`; `head_left` keeps the
-    // source order, which the layout ranks by.
+    // source order, which the layout ranks by. A two-way relation
+    // stays in source order with its left glyph as `from_kind`.
+    let (head_left, kind, from_kind) = match (op.left, op.right) {
+        (Some(l), Some(r)) => (false, r, Some(l)),
+        (Some(l), None) => (true, l, None),
+        (None, r) => (false, r.unwrap_or(RelKind::Link), None),
+    };
     let (from, to, from_card, to_card) = if head_left {
         (ri, li, right_card, left_card)
     } else {
         (li, ri, left_card, right_card)
     };
     let mut rel = ClassRel::new(from, to, kind);
-    rel.dashed = dashed;
+    rel.dashed = op.dashed;
     rel.from_card = from_card;
     rel.to_card = to_card;
     rel.label = label;
     rel.head_left = head_left;
+    rel.from_kind = from_kind;
     d.relations.push(rel);
     Ok(())
+}
+
+/// [`ClassDiagram::add_lollipop`] for a lollipop operand as written
+/// (see [`class_name`]): a generic one shows its parameter too.
+fn add_lollipop(d: &mut ClassDiagram, id: &str, generic: Option<&str>) -> usize {
+    let i = d.add_lollipop(id);
+    d.classes[i].generic = generic.map(str::to_string);
+    i
 }
 
 /// Split a `Name "card"` (card on the operator side) into
