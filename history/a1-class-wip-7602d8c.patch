@@ -1,0 +1,1606 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 4004116..47227c8 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -7,17 +7,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
+ 
+ ## [Unreleased]
+ 
+-## [0.33.0] - 2026-10-31
+-
+ Advance mode's edge router was rewritten over three phases. Together they
+ make "no line through a box" a property of the search rather than a case
+ to detect, and take crossings on the measured scenarios from seven to
+ zero. ER, sequence, gitGraph, pie, journey, timeline, sankey, mindmap and
+ architecture diagrams were reworked to read at least as well as mermaid's,
+ keeping flowmaid's interactive scene API, portable SVG and compact size.
+-Flowchart output is byte-identical. Minor, not patch: `AdvanceScene` and
+-several diagram structs gain public fields (see **Breaking** under Changed).
+-Class and state diagram work lands in a later release.
++Flowchart output is byte-identical. Needs a **minor** bump: `AdvanceScene`
++and several diagram structs gain public fields (see **Breaking** under
++Changed).
+ 
+ ### Added
+ 
+@@ -143,7 +141,7 @@ Class and state diagram work lands in a later release.
+   whether it is hex, a CSS colour name or `rgb()`).
+   New: `MindNode::{icon, classes, style}`, `MindNodeBox::{font_size,
+   font_weight, icon, classes, style, paint(), ink()}`,
+-  `mindmap::{icon_strokes, label_centre, underline, ICON}`.
++  `mindmap::{icon_strokes, label_centre, underline}`.
+ - **More of mermaid's architecture-beta syntax parses.** `junction id` /
+   `junction id in group` (a bare point where edges meet, drawn as a dot);
+   the `{group}` edge modifier (`a{group}:R --> L:b{group}`), which attaches
+@@ -160,18 +158,6 @@ Class and state diagram work lands in a later release.
+ - `ArchScene::title_at`: where each group title is drawn (left end and centre
+   line), index-parallel with `scene.clusters`, so a host paints titles where
+   the routes avoid them.
+-- **Constructors for the model structs that became `#[non_exhaustive]`**, so
+-  downstream code can still build diagrams by hand (see **Breaking** under
+-  Changed):
+-  - `Mindmap::add_node(parent, text, shape)` fills in `depth`, `branch` and
+-    the parent's `children` the way the parser does, which now uses it too.
+-  - `JourneyTask::new(name, score, actors)` clamps and rounds the score
+-    exactly as the parser does (which now uses it too). A NaN counts as 3.
+-  - `ArchService::new(id, title)` and
+-    `ArchEdge::new(from, from_side, to, to_side)`.
+-
+-  `tests/model_build.rs` builds each of these models from outside the crate
+-  and checks that it renders byte-identically to the source it mirrors.
+ 
+ ### Changed
+ 
+@@ -425,81 +411,18 @@ Class and state diagram work lands in a later release.
+   done a lot of work, later ones weight their estimate. A 200-service random
+   tangle takes ~1.4 s instead of ~20 s, a 120-service grid ~4 ms instead of
+   ~60 ms; ordinary diagrams route exactly as before the budget.
+-- **Breaking** (needs a **minor** bump). Nothing public is removed or
+-  renamed, and every function keeps its signature. What breaks, and how to
+-  migrate:
+-  - **Model structs gain fields and become `#[non_exhaustive]`:**
+-    `model::Entity`, `PieChart`, `Journey`, `JourneyTask`, `Timeline`,
+-    `MindNode`, `Architecture`, `ArchService`, `ArchEdge` and
+-    `SankeyConfig`. Outside the crate a struct literal (with or without
+-    `..Default::default()`) and a pattern without `..` no longer compile.
+-    Start from `Default` and assign the fields for `PieChart`, `Journey`,
+-    `Timeline`, `Architecture` and `SankeyConfig`; get an `Entity` from
+-    `ErDiagram::ensure_entity`; use the new constructors for the rest:
+-    `Mindmap::add_node`, `JourneyTask::new`, `ArchService::new` and
+-    `ArchEdge::new` (see Added). `ErDiagram` (new field `direction`) and
+-    `SequenceDiagram` (new fields `mirror_actors`, `scoped_frames`) gain
+-    fields too, but they already had a private field, so this changes
+-    nothing for them. `Edge::end_room` is non-breaking because `Edge` was
+-    already `#[non_exhaustive]`.
+-  - **Scene structs gain fields and become `#[non_exhaustive]`:**
+-    `er::ErRow`, `er::ErTable`, `seq::SeqScene`, `pie::PieScene`,
+-    `journey::TaskGlyph`, `timeline::PeriodGlyph`, `sankey::SankeyNodeGlyph`,
+-    `sankey::SankeyScene`, `mindmap::MindNodeBox` and
+-    `architecture::ArchScene`. They come from each module's `scene()` (or
+-    `route()`). Reading and assigning their fields still works. To change
+-    one, clone it and assign: struct update syntax
+-    (`ArchScene { scene, ..old }`) is refused for these types.
+-    `SeqScene::default()` still exists.
+-  - **`MindShape`** gains a `Default` variant and becomes
+-    `#[non_exhaustive]`, so a `match` needs a `_` arm. `Default` is now
+-    `MindShape::default()`, and the parser gives it to a node without a
+-    wrapper (it used to give `Rounded`), so code that tested for
+-    `Rounded` to find such nodes should test for `Default`. `Rounded`
+-    (`id(text)`) still draws a pill.
+-  - **Defaults of hand-built models now match the parser.**
+-    `SequenceDiagram::default()` has `mirror_actors: true`, so a hand-built
+-    diagram gains the footer row of participant boxes; set it to `false`
+-    to drop that row. `ErDiagram::default()` now flows top to bottom
+-    (`direction` is `Direction::TD`) where ER used to be hard-coded left to
+-    right; set `direction = Direction::LR` for the old flow.
+-  - **Scene semantics:** in a gitGraph scene, merge edges are
+-    `EdgeKind::Open` (they were `Arrow`), and every edge carries its lane
+-    colour and width in `meta.style`. Commit nodes used to all be `Circle`.
+-    Now a merge is a `DoubleCircle`, a HIGHLIGHT commit a square `Rect`, and
+-    a REVERSE commit a `Circle` labelled `REVERSE_MARK`. The renderer now
+-    ranks lanes by `GitBranch::order` (see Changed). Pie slice `i` takes
+-    `pie::slice_color(i)`, which is `accent(i)` only for the first eight
+-    slices.
+-  - **Public constants with a new value or meaning.** They still compile,
+-    but code that lays things out from them gets new numbers. Each one whose
+-    meaning changed says what it was in 0.32 in its doc comment:
+-    - `architecture`: `CHILD_GAP_X` / `CHILD_GAP_Y` are 32 (were 28) and
+-      now only separate children that no edge joins. Two children an edge
+-      joins sit at least 56px apart. `GROUP_GAP` (50) now separates a group's frame
+-      from any sibling, nested groups included, where it used to apply
+-      only between top-level groups. `SERVICE_W` × `SERVICE_H`
+-      (150 × 70) is now the smallest box, not the fixed size. `FONT` is
+-      14 (was 13) and `ICON_FONT` is 24 (was 16).
+-    - `gitgraph`: `PAD` is 24 (was 30), the margin round the drawn
+-      content. `COMMIT_DX` is 50 (was 90) and is now the minimum column
+-      pitch: LR columns move right as their labels need. `BRANCH_DY` (70)
+-      is now the minimum lane pitch in TB/BT. `BRANCH_LABEL_W` (70) is now
+-      the minimum width of the LR name column, and TB/BT no longer
+-      reserve it. `R` is 11 (was 12).
+-    - `journey`: `DOT_R` is 5 (was 4) and now sizes the legend dots too.
+-      `DOTS_H` is 20 (was 16).
+-    - `mindmap`: `PAD_X` is 16 (was 12) and `PAD_Y` is 8 (was 7). `RING`
+-      (172) is now only the least ring spacing of the fallback layout.
+-      `FONT` (14) no longer applies to the root or the first level, which
+-      use `ROOT_FONT` and `BRANCH_FONT`.
+-    - `pie`: `RADIUS` is 130 (was 110). `LABEL_R` is 0.72 (was 0.62) and
+-      is now where a label starts: it may slide out to `LABEL_R_MAX`, or
+-      outside the rim. `MIN_LABEL_FRAC` is 0.01 (was 0.04).
+-    - `sankey`: `FONT` is 14 (was 13).
+-    - `timeline`: `AXIS_COLOR` is `#8a90a8` (was `#c2c8dc`) and now
+-      colours only the axis. The task lines keep the old colour as
+-      `TASK_LINE_COLOR`. `TICK_R` is 4.5 (was 3).
++- **Breaking** (needs a **minor** bump): these public structs gain fields
++  and become `#[non_exhaustive]` — ER `model::Entity`, `er::ErRow`,
++  `er::ErTable`; sequence `seq::SeqScene`; `PieChart`, `Journey`,
++  `Timeline`, `JourneyTask`, `pie::PieScene`, `journey::TaskGlyph`,
++  `timeline::PeriodGlyph`; `SankeyConfig`, `SankeyNodeGlyph`,
++  `SankeyScene`; `MindNode`, `mindmap::MindNodeBox`; `model::Architecture`,
++  `ArchService`, `ArchEdge`, `architecture::ArchScene`. `MindShape` gains a
++  `Default` variant (now its `#[default]`) and becomes `#[non_exhaustive]`.
++  Build the model structs with `Default` (or the parser) and set fields
++  (`SeqScene::default()` likewise); the scene structs come from each
++  module's `scene()`. Only struct literals and exhaustive patterns outside
++  the crate are affected.
+ 
+ ### Fixed
+ 
+diff --git a/Cargo.lock b/Cargo.lock
+index 6c09aa5..c5d0100 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -4,4 +4,4 @@ version = 3
+ 
+ [[package]]
+ name = "flowmaid"
+-version = "0.33.0"
++version = "0.32.0"
+diff --git a/Cargo.toml b/Cargo.toml
+index 9bcc9ae..5e8becb 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -1,6 +1,6 @@
+ [package]
+ name = "flowmaid"
+-version = "0.33.0"
++version = "0.32.0"
+ edition = "2021"
+ rust-version = "1.75"
+ description = "Mermaid-like diagram engine in pure std Rust (flowcharts, ER, UML class, sequence, pie, state, mindmap, user-journey, git graphs, timeline, sankey & architecture): hand-written parser, Sugiyama-style layout, SVG renderer, and an interactive scene API for drag-and-drop apps. Zero dependencies."
+diff --git a/README.md b/README.md
+index 857b0c9..a56ef2e 100644
+--- a/README.md
++++ b/README.md
+@@ -70,7 +70,7 @@ Or in `Cargo.toml`:
+ 
+ ```toml
+ [dependencies]
+-flowmaid = "0.33"
++flowmaid = "0.25"
+ ```
+ 
+ ## Usage
+diff --git a/src/architecture.rs b/src/architecture.rs
+index 6c9bcf6..746964b 100644
+--- a/src/architecture.rs
++++ b/src/architecture.rs
+@@ -37,25 +37,17 @@ use crate::style::accent;
+ /// Canvas margin around the whole diagram.
+ pub const PAD: f64 = 24.0;
+ /// Smallest service box. A box grows taller for a wrapped label, and
+-/// wider only for a single word too long to wrap. (0.32 and earlier:
+-/// every box was exactly this size.)
++/// wider only for a single word too long to wrap.
+ pub const SERVICE_W: f64 = 150.0;
+-/// Smallest service box height; see [`SERVICE_W`].
+ pub const SERVICE_H: f64 = 70.0;
+ /// Padding inside a group box.
+ pub const GROUP_PAD: f64 = 24.0;
+ /// Height reserved for a group title.
+ pub const GROUP_TITLE_H: f64 = 26.0;
+-/// Space between a group's frame and its siblings, nested groups
+-/// included (more when an edge label between them needs it). (0.32 and
+-/// earlier: only between top-level groups.)
++/// Space between a group's frame and its siblings.
+ pub const GROUP_GAP: f64 = 50.0;
+-/// Horizontal space between two children of one group that no edge
+-/// joins and whose ports do not face each other; two that an edge joins
+-/// sit further apart. (0.32 and earlier: 28px between every two
+-/// children, joined or not.)
++/// Space between two children of one group that no edge joins.
+ pub const CHILD_GAP_X: f64 = 32.0;
+-/// [`CHILD_GAP_X`] on the vertical axis.
+ pub const CHILD_GAP_Y: f64 = 32.0;
+ /// Font size for service and group labels (the flowchart node size).
+ pub const FONT: u32 = 14;
+diff --git a/src/class.rs b/src/class.rs
+index 71d6a06..9d152ee 100644
+--- a/src/class.rs
++++ b/src/class.rs
+@@ -25,8 +25,8 @@ use std::cell::Cell;
+ use std::collections::{BTreeMap, HashMap};
+ 
+ use crate::edgepass::{refit, Mode};
+-use crate::labels::{avoid_label_overlaps, LABEL_GAP, LABEL_ROUTE_WORK, LABEL_STATIC_WORK};
+-use crate::layout::{text_width, GAP_L, LABEL_BOX_H, LINE_H};
++use crate::labels::{avoid_label_overlaps, LABEL_ROUTE_WORK, LABEL_STATIC_WORK};
++use crate::layout::{text_width, GAP_L, LINE_H};
+ use crate::model::{
+     generics_to_angles, Class, ClassDiagram, Direction, EdgeEnds, EdgeKind, Graph, Marker, Member,
+     RelKind, Shape,
+@@ -275,12 +275,7 @@ fn assemble(d: &ClassDiagram, b: Built, mut scene: Scene, mode: Mode) -> ClassSc
+             std::mem::swap(&mut e.ends.start, &mut e.ends.end);
+         }
+     }
+-    let carded: Vec<bool> = d
+-        .relations
+-        .iter()
+-        .map(|r| r.from_card.is_some() || r.to_card.is_some())
+-        .collect();
+-    part_self_loops(&mut scene, &carded);
++    part_self_loops(&mut scene);
+     let decos: Vec<[EndDeco; 2]> = d
+         .relations
+         .iter()
+@@ -298,7 +293,7 @@ fn assemble(d: &ClassDiagram, b: Built, mut scene: Scene, mode: Mode) -> ClassSc
+             ]
+         })
+         .collect();
+-    orthogonalize(&mut scene, &decos, mode);
++    orthogonalize(&mut scene, &decos);
+     // Rerouting moved labels onto their new lines, where one may now
+     // cover another label or sit under a stroke; the glyph ends are
+     // still marked, so labels keep off them too.
+@@ -352,15 +347,13 @@ const LOOP_NEST: (f64, f64, f64) = (12.0, 28.0, 16.0);
+ /// the loop's apex, where on a small box the chip hides most of the
+ /// loop. Here the loops alternate between that side and the opposite
+ /// one, and loops sharing a side nest, the outer one's ends past the
+-/// inner one's, their glyphs at opposite ends. Loops whose edge has a
+-/// cardinality (`carded[j]`) nest outside the rest, so each card sits
+-/// beside its own end instead of out past the outer loops, next to
+-/// theirs. The labels of a side sit past its outermost loop, side by
+-/// side along the face. A side whose loops would run into another box
+-/// (a sibling close beside the class) or over another edge's end gives
+-/// them to a clear face ([`loop_faces`]). A class's only loop keeps the
+-/// layout's curve while it stays on the layout's side.
+-fn part_self_loops(sc: &mut Scene, carded: &[bool]) {
++/// inner one's, their glyphs at opposite ends. The labels of a side
++/// sit past its outermost loop, side by side along the face. A side
++/// whose loops would run into another box (a sibling close beside the
++/// class) or over another edge's end gives them to a clear face
++/// ([`loop_faces`]). A class's only loop keeps the layout's curve
++/// while it stays on the layout's side.
++fn part_self_loops(sc: &mut Scene) {
+     let idx = node_index(sc);
+     let mut loops: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
+     for (j, e) in sc.edges.iter().enumerate() {
+@@ -406,10 +399,7 @@ fn part_self_loops(sc: &mut Scene, carded: &[bool]) {
+             .collect();
+         let faces = loop_faces(&n, &outs, &ends, &widths, &others);
+         for (f, &out) in outs.iter().enumerate() {
+-            let mut on: Vec<usize> = (0..js.len()).filter(|&k| faces[k] == f).collect();
+-            // Innermost first: the loops without cardinalities, then
+-            // those with, each in source order.
+-            on.sort_by_key(|&k| carded.get(js[k]).copied().unwrap_or(false));
++            let on: Vec<usize> = (0..js.len()).filter(|&k| faces[k] == f).collect();
+             let labels: Vec<Option<f64>> = on.iter().map(|&k| widths[k]).collect();
+             for (&k, (curve, spot)) in on.iter().zip(face_loops(&n, out, &labels)) {
+                 let e = &mut sc.edges[js[k]];
+@@ -427,23 +417,16 @@ fn part_self_loops(sc: &mut Scene, carded: &[bool]) {
+ 
+ /// How far a self-loop's region keeps from another box.
+ const LOOP_CLEAR: f64 = 4.0;
+-/// Air between two loop labels in a row past their loops: more than
+-/// the label stage keeps between labels ([`LABEL_GAP`] plus its overlap
+-/// tolerance), so it leaves the row as drawn. Closer, it would take
+-/// the pair for crowded and could move one onto the loops, where an
+-/// inner loop's apex leaves a spot clear of boxes and labels (the
+-/// stage does not mind strokes there).
+-const LOOP_LABEL_GAP: f64 = LABEL_GAP + 2.0;
+-
+-/// A self-loop as [`face_loops`] draws it: its curve, and its label's
+-/// centre when it has a label.
+-type SelfLoop = ([(f64, f64); 4], Option<(f64, f64)>);
+ 
+ /// Self-loops nested on the face of `n` with outward normal `out`, one
+ /// per entry of `labels` (its label's width, if it has one), innermost
+ /// first, as [`part_self_loops`] draws them: each loop's curve, and its
+ /// label's centre past the outermost loop.
+-fn face_loops(n: &SceneNode, out: (f64, f64), labels: &[Option<f64>]) -> Vec<SelfLoop> {
++fn face_loops(
++    n: &SceneNode,
++    out: (f64, f64),
++    labels: &[Option<f64>],
++) -> Vec<([(f64, f64); 4], Option<(f64, f64)>)> {
+     let t = (-out.1, out.0);
+     let face = (n.x + out.0 * n.w / 2.0, n.y + out.1 * n.h / 2.0);
+     let at = |along: f64, off: f64| {
+@@ -455,7 +438,7 @@ fn face_loops(n: &SceneNode, out: (f64, f64), labels: &[Option<f64>]) -> Vec<Sel
+     let on_side = labels.len();
+     // Each label's room along the face, and where the row of them
+     // (centred on the face) puts each one's centre.
+-    let wide = |w: f64| LABEL_BOX_H * out.0.abs() + w * out.1.abs() + LOOP_LABEL_GAP;
++    let wide = |w: f64| 22.0 * out.0.abs() + w * out.1.abs() + 4.0;
+     let row: f64 = labels.iter().flatten().map(|&w| wide(w)).sum();
+     let mut next = -row / 2.0;
+     labels
+@@ -619,13 +602,6 @@ const ORTHO_UNDER_LABEL: usize = 60;
+ const ORTHO_CROSSING: usize = 10;
+ /// Step between the spots tried for a rerouted edge's label.
+ const LABEL_SPOT_STEP: f64 = 6.0;
+-/// How far from its route's middle a rerouted edge's label is sought.
+-/// A node dragged far off leaves routes thousands of px long, often
+-/// beside each other all the way (a fan's lanes), so no spot is clear:
+-/// searching the whole length would test thousands of spots against
+-/// every run, box and label, for each route tried. Laid-out routes are
+-/// far shorter than twice this.
+-const LABEL_SPOT_REACH: f64 = 2000.0;
+ /// An edge end alone on its face keeps at least this far from the
+ /// face's corners when it is moved.
+ const ORTHO_INSET: f64 = 24.0;
+@@ -646,24 +622,16 @@ const ORTHO_INSET: f64 = 24.0;
+ /// another or enter their glyph on a short leg; a label moves onto its
+ /// new line. `decos[j]` is what edge `j` holds at its start and its end
+ /// (missing = nothing), so ends sharing a face keep their glyphs and
+-/// cardinalities apart. `mode` picks the work budgets
+-/// ([`ORTHO_NUDGE_WORK`], [`UNCROSS_WORK`]).
+-fn orthogonalize(sc: &mut Scene, decos: &[[EndDeco; 2]], mode: Mode) {
+-    let (nudges, swaps) = match mode {
+-        Mode::Static => (ORTHO_NUDGE_WORK.0, UNCROSS_WORK.0),
+-        Mode::Routed => (ORTHO_NUDGE_WORK.1, UNCROSS_WORK.1),
+-    };
+-    let pass = |edges: &mut [SceneEdge], room: bool, soft: bool| {
+-        ortho_pass(&sc.nodes, edges, decos, room, soft, nudges)
+-    };
++/// cardinalities apart.
++fn orthogonalize(sc: &mut Scene, decos: &[[EndDeco; 2]]) {
+     let laid = sc.edges.clone();
+-    let (mut score, mut cramped) = pass(&mut sc.edges, true, false);
++    let (mut score, mut cramped) = ortho_pass(&sc.nodes, &mut sc.edges, decos, true, false);
+     let mut soft = false;
+     if score.0 > 0 {
+         // Long and routed ends held where they are can leave another
+         // edge no way out: let them spread too when that routes more.
+         let mut alt = laid.clone();
+-        let (alt_score, alt_cramped) = pass(&mut alt, true, true);
++        let (alt_score, alt_cramped) = ortho_pass(&sc.nodes, &mut alt, decos, true, true);
+         if alt_score < score {
+             (sc.edges, score, cramped, soft) = (alt, alt_score, alt_cramped, true);
+         }
+@@ -673,12 +641,12 @@ fn orthogonalize(sc: &mut Scene, decos: &[[EndDeco; 2]], mode: Mode) {
+         // when that leaves fewer edges on their curves, or as many
+         // with fewer crossings and covered labels.
+         let mut tight = laid;
+-        if pass(&mut tight, false, soft).0 < score {
++        if ortho_pass(&sc.nodes, &mut tight, decos, false, soft).0 < score {
+             sc.edges = tight;
+         }
+     }
+     nest_jogs(&sc.nodes, &mut sc.edges);
+-    uncross_side_ends(&sc.nodes, &mut sc.edges, decos, swaps);
++    uncross_side_ends(&sc.nodes, &mut sc.edges, decos);
+ }
+ 
+ /// Swap the hub ends of two routes into one class that cross where one
+@@ -690,13 +658,8 @@ fn orthogonalize(sc: &mut Scene, decos: &[[EndDeco; 2]], mode: Mode) {
+ /// side face and the inner one its slot on the near face. Only ends
+ /// holding the same glyph and cardinality swap, and a swap stays only
+ /// when the whole drawing then costs less ([`drawing_cost`]). At most
+-/// `work` swaps are tried ([`UNCROSS_WORK`]).
+-fn uncross_side_ends(
+-    nodes: &[SceneNode],
+-    edges: &mut [SceneEdge],
+-    decos: &[[EndDeco; 2]],
+-    mut work: usize,
+-) {
++/// [`UNCROSS_WORK`] swaps are tried.
++fn uncross_side_ends(nodes: &[SceneNode], edges: &mut [SceneEdge], decos: &[[EndDeco; 2]]) {
+     let idx: HashMap<&str, usize> = nodes
+         .iter()
+         .enumerate()
+@@ -718,6 +681,7 @@ fn uncross_side_ends(
+     let mut corners: Vec<Option<Vec<(f64, f64)>>> = edges.iter().map(ortho_corners).collect();
+     // The drawing's cost as it stands, once a swap is tried.
+     let mut now: Option<usize> = None;
++    let mut work = UNCROSS_WORK;
+     for s in 0..edges.len() {
+         for z in 0..edges.len() {
+             for start in [false, true] {
+@@ -859,11 +823,11 @@ fn uncross_side_ends(
+     }
+ }
+ 
+-/// How many swaps [`uncross_side_ends`] tries, for an automatic layout
+-/// and for a drag: the widest fans laid out need about a dozen, and a
+-/// drag that tangles a big fan would otherwise try every crossing pair,
+-/// each costed over the whole drawing.
+-const UNCROSS_WORK: (usize, usize) = (48, 12);
++/// How many swaps [`uncross_side_ends`] tries: an automatic layout's
++/// widest fans need about a dozen, and a drag that tangles a big fan
++/// would otherwise try every crossing pair, each costed over the whole
++/// drawing.
++const UNCROSS_WORK: usize = 48;
+ 
+ /// Whether two axis-aligned routes (their corners) cross: a stretch of
+ /// one passes through a stretch of the other, clear of both ends.
+@@ -887,12 +851,11 @@ fn routes_cross(p: &[(f64, f64)], q: &[(f64, f64)]) -> bool {
+ /// of these plus [`ORTHO_SEP`]).
+ const ORTHO_NUDGES: [f64; 8] = [4.0, -4.0, 8.0, -8.0, 12.0, -12.0, 16.0, -16.0];
+ 
+-/// How many routes the nudged ends of one [`ortho_pass`] may try, for
+-/// an automatic layout and for a drag: a layout needs a few dozen at
+-/// most, while a drag that leaves many edges without a square exit
+-/// would otherwise try every place for each of them, each try a full
+-/// route search.
+-const ORTHO_NUDGE_WORK: (usize, usize) = (64, 16);
++/// How many routes the nudged ends of one [`ortho_pass`] may try: an
++/// automatic layout needs a few dozen at most, while a drag that leaves
++/// many edges without a square exit would otherwise try every place for
++/// each of them.
++const ORTHO_NUDGE_WORK: usize = 64;
+ 
+ /// Whether end `end` (edge, at its start) may move to `p` on face
+ /// `(i, key)` of box `rect` (`faces`, `moved` and `decos` as
+@@ -901,7 +864,12 @@ const ORTHO_NUDGE_WORK: (usize, usize) = (64, 16);
+ /// neighbours (where spread put them) the room [`spread`] keeps
+ /// between two ends, their glyphs and cardinalities apart.
+ fn end_fits(
+-    (faces, moved, rect, decos): (&Faces, &Moved, &Rect, &[[EndDeco; 2]]),
++    (faces, moved, rect, decos): (
++        &BTreeMap<(usize, (i8, i8)), Vec<FaceEnd>>,
++        &HashMap<(usize, bool), (f64, f64)>,
++        &Rect,
++        &[[EndDeco; 2]],
++    ),
+     (i, key): (usize, (i8, i8)),
+     end: (usize, bool),
+     p: (f64, f64),
+@@ -1425,18 +1393,15 @@ fn f_pt(p: (f64, f64), flip: bool) -> (f64, f64) {
+ 
+ /// One [`orthogonalize`] pass over `edges` among `nodes` (`decos` as
+ /// there); `room` = keep [`ORTHO_ROOM`] between parallel runs where a
+-/// gap allows; `soft` = [`Hold::Soft`] ends spread like free ones;
+-/// `nudges` = how many routes nudged ends may try
+-/// ([`ORTHO_NUDGE_WORK`]). Returns (how many free edges kept their
+-/// curve, what the routes drawn cost apart from cramping) and whether
+-/// any candidate was cramped (else a tight pass would choose the same).
++/// gap allows; `soft` = [`Hold::Soft`] ends spread like free ones. Returns (how many free edges kept their curve, what the
++/// routes drawn cost apart from cramping) and whether any candidate was
++/// cramped (else a tight pass would choose the same).
+ fn ortho_pass(
+     nodes: &[SceneNode],
+     edges: &mut [SceneEdge],
+     decos: &[[EndDeco; 2]],
+     room: bool,
+     soft: bool,
+-    mut nudges: usize,
+ ) -> ((usize, usize), bool) {
+     let rects: Vec<Rect> = nodes
+         .iter()
+@@ -1660,6 +1625,7 @@ fn ortho_pass(
+         .map(|(e, &redo)| !free(e) && !redo)
+         .collect();
+     let (mut curves, mut cost) = (0, 0);
++    let mut nudges = ORTHO_NUDGE_WORK;
+     let cramped = Cell::new(false);
+     // Whether an end on box `i`'s face with outward normal `n` is the
+     // only end there. Ends are looked up by the face their point is
+@@ -1994,14 +1960,6 @@ fn straight_runs(e: &SceneEdge) -> Vec<Run> {
+ /// face, how it may move).
+ type FaceEnd = (usize, bool, f64, Hold);
+ 
+-/// The ends on each face of each box, keyed by (box, outward normal
+-/// rounded), as [`ortho_pass`] collects them.
+-type Faces = BTreeMap<(usize, (i8, i8)), Vec<FaceEnd>>;
+-
+-/// Where [`spread_faces`] (or a nudge) moved each end, keyed by (edge,
+-/// at its start).
+-type Moved = HashMap<(usize, bool), (f64, f64)>;
+-
+ /// How an end may move when the ends on its face spread.
+ #[derive(Clone, Copy, PartialEq)]
+ enum Hold {
+@@ -2610,96 +2568,52 @@ impl Ortho<'_> {
+     fn label_spot(&self, pts: &[(f64, f64)], w: f64, was: (f64, f64)) -> (f64, f64) {
+         let seg_len = |s: &[(f64, f64)]| (s[1].0 - s[0].0).abs() + (s[1].1 - s[0].1).abs();
+         let total: f64 = pts.windows(2).map(seg_len).sum();
+-        // The point `d` along the route, and the stretch it lies on.
+         let at = |mut d: f64| {
+-            for (i, s) in pts.windows(2).enumerate() {
++            for s in pts.windows(2) {
+                 let l = seg_len(s);
+                 if d <= l && l > 0.0 {
+                     let t = d / l;
+-                    let p = (
++                    return (
+                         s[0].0 + (s[1].0 - s[0].0) * t,
+                         s[0].1 + (s[1].1 - s[0].1) * t,
+                     );
+-                    return (p, Some(i));
+                 }
+                 d -= l;
+             }
+-            (pts[pts.len() - 1], Some(pts.len() - 2))
++            pts[pts.len() - 1]
+         };
+         let mid = total / 2.0;
+         let was = nearest_on(pts, was);
+         if total <= 2.0 * ORTHO_STUB {
+             return was;
+         }
+-        let chip_at = |p: (f64, f64)| {
+-            (
++        // Where it was, then every LABEL_SPOT_STEP px from stub to stub,
++        // nearest the middle first.
++        let n = ((mid - ORTHO_STUB) / LABEL_SPOT_STEP).floor() as i32;
++        let steps = (0..=2 * n).map(|k| if k % 2 == 1 { -(k + 1) / 2 } else { k / 2 });
++        let mut best = (usize::MAX, was);
++        for p in std::iter::once(was).chain(steps.map(|k| at(mid + f64::from(k) * LABEL_SPOT_STEP)))
++        {
++            let chip = (
+                 p.0 - w / 2.0 - 1.0,
+                 p.1 - 11.0,
+                 p.0 + w / 2.0 + 1.0,
+                 p.1 + 11.0,
+-            )
+-        };
+-        let hits = |chip: Rect,
+-                    runs: &mut dyn Iterator<Item = &Run>,
+-                    boxes: &mut dyn Iterator<Item = &Rect>| {
+-            runs.filter(|q| {
+-                let (a, b) = q.ends();
+-                rect_hits_segment(chip, a, b)
+-            })
+-            .count()
+-                + boxes.filter(|&&r| rects_meet(chip, r)).count()
+-        };
+-        // What a chip sliding along stretch `i` can meet — the runs,
+-        // boxes and labels across the area it sweeps (a px wider) —
+-        // gathered the first time a spot lands on the stretch, so each
+-        // spot is tested against those alone (the same count).
+-        let gather = |i: usize| -> (Vec<Run>, Vec<Rect>) {
+-            let (a, b) = (chip_at(pts[i]), chip_at(pts[i + 1]));
+-            let swept = (
+-                a.0.min(b.0) - 1.0,
+-                a.1.min(b.1) - 1.0,
+-                a.2.max(b.2) + 1.0,
+-                a.3.max(b.3) + 1.0,
+             );
+-            let runs = self
++            let hits = self
+                 .runs
+                 .all()
+                 .filter(|q| {
+-                    let (a, b) = q.ends();
+-                    rect_hits_segment(swept, a, b)
++                    let (a, b) = if q.vertical {
++                        ((q.c, q.l), (q.c, q.h))
++                    } else {
++                        ((q.l, q.c), (q.h, q.c))
++                    };
++                    rect_hits_segment(chip, a, b)
+                 })
+-                .copied()
+-                .collect();
+-            let boxes = self
+-                .rects
+-                .iter()
+-                .chain(self.labels)
+-                .filter(|&&r| rects_meet(swept, r))
+-                .copied()
+-                .collect();
+-            (runs, boxes)
+-        };
+-        let mut near: Vec<Option<(Vec<Run>, Vec<Rect>)>> = vec![None; pts.len() - 1];
+-        // Where it was, then every LABEL_SPOT_STEP px from stub to stub,
+-        // nearest the middle first, within LABEL_SPOT_REACH of it.
+-        let n = ((mid - ORTHO_STUB).min(LABEL_SPOT_REACH) / LABEL_SPOT_STEP).floor() as i32;
+-        let steps = (0..=2 * n).map(|k| if k % 2 == 1 { -(k + 1) / 2 } else { k / 2 });
+-        let mut best = (usize::MAX, was);
+-        for (p, seg) in std::iter::once((was, None))
+-            .chain(steps.map(|k| at(mid + f64::from(k) * LABEL_SPOT_STEP)))
+-        {
+-            let chip = chip_at(p);
+-            let hits = match seg {
+-                Some(i) => {
+-                    let (runs, boxes) = near[i].get_or_insert_with(|| gather(i));
+-                    hits(chip, &mut runs.iter(), &mut boxes.iter())
+-                }
+-                None => hits(
+-                    chip,
+-                    &mut self.runs.all(),
+-                    &mut self.rects.iter().chain(self.labels),
+-                ),
+-            };
++                .count()
++                + self.rects.iter().filter(|&&r| rects_meet(chip, r)).count()
++                + self.labels.iter().filter(|&&r| rects_meet(chip, r)).count();
+             if hits < best.0 {
+                 best = (hits, p);
+                 if hits == 0 {
+@@ -2856,20 +2770,6 @@ fn nearest_on(pts: &[(f64, f64)], p: (f64, f64)) -> (f64, f64) {
+     best.1
+ }
+ 
+-/// Layout-graph id for note `k`: `note-k`, with a `'` added until no
+-/// node of `g` has it yet. Flowmaid's parser accepts a class named
+-/// `note-0` (mermaid reserves `note`), and `Graph::ensure_node` merges
+-/// by id, so a plain `note-k` would fold the note into that class and
+-/// leave one size too many for the layout (a panic in `scene_sized` /
+-/// `route_sized`).
+-fn note_id(g: &Graph, k: usize) -> String {
+-    let mut id = format!("note-{k}");
+-    while g.node_index(&id).is_some() {
+-        id.push('\'');
+-    }
+-    id
+-}
+-
+ /// The synthetic layout graph plus drawing data.
+ struct Built {
+     g: Graph,
+@@ -2886,10 +2786,10 @@ struct Built {
+ /// INVARIANT: `g.nodes[i]` corresponds to `d.classes[i]`, then
+ /// `g.nodes[classes + k]` to `d.notes[k]`; `g.edges[j]` to
+ /// `d.relations[j]`, then one connector per attached note — class
+-/// names are unique (`ensure_class` dedupes), a note's id is made
+-/// unique against them (`note_id`), `ensure_node` appends in call
+-/// order, and edges are added in relation order. `assemble` asserts
+-/// the counts.
++/// names are unique (`ensure_class` dedupes), note ids cannot collide
++/// with them (`-` is no class-name character), `ensure_node` appends
++/// in call order, and edges are added in relation order. `assemble`
++/// asserts the counts.
+ fn build(d: &ClassDiagram) -> Built {
+     let mut g = Graph::default();
+     g.direction = d.direction;
+@@ -2926,8 +2826,11 @@ fn build(d: &ClassDiagram) -> Built {
+     }
+     let n = d.classes.len();
+     for (k, note) in d.notes.iter().enumerate() {
+-        let i = g.ensure_node(&note_id(&g, k), Some(note.text.clone()), Some(Shape::Rect));
+-        debug_assert_eq!(i, n + k, "note {k} merged into another node");
++        g.ensure_node(
++            &format!("note-{k}"),
++            Some(note.text.clone()),
++            Some(Shape::Rect),
++        );
+     }
+     for r in &d.relations {
+         // Laid out in SOURCE order (mermaid's id1 → id2), so the left
+@@ -5262,78 +5165,6 @@ mod tests {
+         }
+     }
+ 
+-    /// Verifier finding (r6, `w3_loops_three_sib` TB / BT): with three
+-    /// loops nested on one face, the innermost one ('manages', the only
+-    /// one with cardinalities) had its cards pushed out past both outer
+-    /// loops, the '1' about 18 px from the dashed 'reviews' loop's end,
+-    /// reading as that loop's. Carded loops nest outermost now, so each
+-    /// card sits by its own end, nearer it than any other loop's end.
+-    /// And a row of loop labels keeps more than the label stage's gap
+-    /// between chips: closer, the stage took the pair for crowded and
+-    /// moved one onto the loops (`a14` LR: 'four' over its loop).
+-    #[test]
+-    fn loop_cards_sit_by_their_own_end_and_labels_off_the_loops() {
+-        let w3 = "classDiagram
+-    class Employee {
+-      +String name
+-    }
+-    Org <|-- Employee
+-    Org <|-- Team
+-    Org <|-- Office
+-    Employee \"1\" o-- \"*\" Employee : manages
+-    Employee --> Employee : mentors
+-    Employee ..> Employee : reviews";
+-        let a14 = "classDiagram
+-    A \"1\" --> \"*\" A : one
+-    A \"0..1\" o-- \"many\" A : two
+-    A *-- A
+-    A ..> A : four
+-    A <|-- B
+-    A <|-- C";
+-        for src in [w3, a14] {
+-            for dir in ["TB", "BT", "LR", "RL"] {
+-                let cs = scene(&cd(&with_direction(src, dir)));
+-                let loops: Vec<usize> = (0..cs.rels.len())
+-                    .filter(|&j| cs.scene.edges[j].from == cs.scene.edges[j].to)
+-                    .collect();
+-                let ends: Vec<(usize, (f64, f64))> = loops
+-                    .iter()
+-                    .flat_map(|&j| {
+-                        let p = edge_polyline(&cs.scene.edges[j]);
+-                        [(j, p[0]), (j, p[p.len() - 1])]
+-                    })
+-                    .collect();
+-                for (j, spots) in card_spots(&cs).iter().enumerate() {
+-                    let p = edge_polyline(&cs.scene.edges[j]);
+-                    for (slot, end) in [(0, p[0]), (1, p[p.len() - 1])] {
+-                        let Some(c) = spots[slot] else { continue };
+-                        let own = dist(c, end);
+-                        assert!(own < 40.0, "{dir}: card of {j} {own:.0} px from its end");
+-                        for &(k, e) in ends.iter().filter(|&&(k, _)| k != j) {
+-                            assert!(
+-                                own < dist(c, e),
+-                                "{dir}: card of {j} nearer loop {k}'s end\n{src}"
+-                            );
+-                        }
+-                    }
+-                }
+-                for &j in &loops {
+-                    let Some((text, m, w)) = &cs.scene.edges[j].label else {
+-                        continue;
+-                    };
+-                    let chip = (m.0 - w / 2.0, m.1 - 10.0, m.0 + w / 2.0, m.1 + 10.0);
+-                    for &k in &loops {
+-                        let p = edge_polyline(&cs.scene.edges[k]);
+-                        assert!(
+-                            !p.windows(2).any(|s| rect_hits_segment(chip, s[0], s[1])),
+-                            "{dir}: label '{text}' on loop {k}\n{src}"
+-                        );
+-                    }
+-                }
+-            }
+-        }
+-    }
+-
+     /// The verifier's 57-class stress graph (`x5_big`).
+     const BIG: &str = "classDiagram
+     C20 \"1\" --> C9
+@@ -5550,129 +5381,6 @@ mod tests {
+         );
+     }
+ 
+-    /// Verifier finding (r6, drag speed): dragging a node 1e5 px off
+-    /// left routes that long, a fan's lanes beside each other all the
+-    /// way, so no label spot was clear and `label_spot` tested every
+-    /// spot along the whole route against every run, box and label —
+-    /// most of a 2-3x slower drag. The search keeps within
+-    /// LABEL_SPOT_REACH of the middle, and tests each spot against what
+-    /// its stretch can meet, which picks a spot as good as testing
+-    /// everything.
+-    #[test]
+-    fn label_spots_are_sought_near_the_middle_and_tested_locally() {
+-        let cramped = Cell::new(false);
+-        let ortho = |runs, rects, labels| Ortho {
+-            rects,
+-            labels,
+-            ia: usize::MAX,
+-            ib: usize::MAX,
+-            j: usize::MAX,
+-            runs,
+-            room: false,
+-            cramped: &cramped,
+-        };
+-        // A route 1e5 px down from a box, lanes 10 px either side all
+-        // the way but for a clear stretch far past the middle; the label
+-        // was on the box.
+-        let mut lanes = Runs::default();
+-        for x in [-10.0, 10.0] {
+-            lanes.push(Run::of((x, 0.0), (x, 90_000.0)));
+-            lanes.push(Run::of((x, 90_400.0), (x, 100_000.0)));
+-        }
+-        let pts = [(0.0, 0.0), (0.0, 100_000.0)];
+-        let start = [(-40.0, -40.0, 40.0, 0.0)];
+-        let p = ortho(&lanes, &start, &[]).label_spot(&pts, 30.0, (0.0, 0.0));
+-        assert!(
+-            (p.1 - 50_000.0).abs() <= LABEL_SPOT_REACH,
+-            "label sought {:.0} px from the middle",
+-            (p.1 - 50_000.0).abs()
+-        );
+-        // On a short route with runs, boxes and labels about, the spot
+-        // chosen meets no more than any other spot tried, counted
+-        // against everything.
+-        let mut runs = Runs::default();
+-        runs.push(Run::of((-200.0, 300.0), (400.0, 300.0)));
+-        runs.push(Run::of((-200.0, 330.0), (400.0, 330.0)));
+-        runs.push(Run::of((8.0, 0.0), (8.0, 500.0)));
+-        runs.push(Run::of((150.0, 380.0), (150.0, 520.0)));
+-        runs.push(Run::of((-50.0, 140.0), (50.0, 140.0)));
+-        let rects = [(20.0, 200.0, 90.0, 260.0), (-90.0, 360.0, -12.0, 420.0)];
+-        let labels = [(-30.0, 90.0, 30.0, 110.0), (100.0, 440.0, 160.0, 460.0)];
+-        let pts = [(0.0, 0.0), (0.0, 450.0), (300.0, 450.0)];
+-        let ctx = ortho(&runs, &rects, &labels);
+-        let all_hits = |p: (f64, f64)| {
+-            let chip = (p.0 - 16.0, p.1 - 11.0, p.0 + 16.0, p.1 + 11.0);
+-            runs.all()
+-                .filter(|q| {
+-                    let (a, b) = q.ends();
+-                    rect_hits_segment(chip, a, b)
+-                })
+-                .count()
+-                + rects
+-                    .iter()
+-                    .chain(&labels)
+-                    .filter(|&&r| rects_meet(chip, r))
+-                    .count()
+-        };
+-        // The spots tried: every LABEL_SPOT_STEP px either side of the
+-        // middle (375 px along), from stub to stub.
+-        let mid = 375.0;
+-        let n = ((mid - ORTHO_STUB) / LABEL_SPOT_STEP).floor() as i32;
+-        for was in [(0.0, 0.0), (0.0, 300.0), (200.0, 450.0)] {
+-            let p = ctx.label_spot(&pts, 30.0, was);
+-            for k in -n..=n {
+-                let d = mid + f64::from(k) * LABEL_SPOT_STEP;
+-                let q = if d <= 450.0 {
+-                    (0.0, d)
+-                } else {
+-                    (d - 450.0, 450.0)
+-                };
+-                assert!(
+-                    all_hits(p) <= all_hits(q),
+-                    "{q:?} beats {p:?} (from {was:?})"
+-                );
+-            }
+-        }
+-    }
+-
+-    /// Verifier finding (r6, BLOCKING): a class named `note-<k>` (the
+-    /// parser accepts it, though mermaid reserves `note`) took note k's
+-    /// layout id, so the note folded into the class and `scene_sized` /
+-    /// `route_sized` panicked on one size too many — through
+-    /// `render_svg`, `scene` and `route`. Each note is its own node now,
+-    /// after the classes, whatever the classes are called.
+-    #[test]
+-    fn a_class_named_like_a_note_id_keeps_its_note() {
+-        for src in [
+-            "classDiagram\nclass note-0\nnote \"hello\"",
+-            "classDiagram\nclass Order\nclass note-1\nnote for Order \"first\"\nnote \"second\"",
+-            "classDiagram\n<<interface>> note-0\nnote \"x\"",
+-            "classDiagram\nclass A, note-0\nnote \"x\"",
+-            "classDiagram\nclass note-0~T~\nnote \"x\"",
+-            "classDiagram\nclass note-0\nclass note-0'\nclass note-1\nA <|-- B\nnote \"a\"\nnote for A \"b\"",
+-        ] {
+-            let svg = crate::render_svg(src).unwrap_or_else(|e| panic!("{e:?}\n{src}"));
+-            assert!(svg.contains("</svg>"), "{src}");
+-            let d = cd(src);
+-            let cs = scene(&d);
+-            let n = cs.boxes.len();
+-            assert_eq!(n, d.classes.len(), "{src}");
+-            assert_eq!(cs.scene.nodes.len(), n + d.notes.len(), "{src}");
+-            for (k, note) in d.notes.iter().enumerate() {
+-                let node = &cs.scene.nodes[n + k];
+-                assert_eq!(node.label, note.text, "note {k}\n{src}");
+-                assert!(d.classes.iter().all(|c| c.name != node.id), "{src}");
+-            }
+-            let all: Vec<(f64, f64)> = cs.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
+-            for centers in [&all[..], &all[..n]] {
+-                let r = route(&d, centers);
+-                assert_eq!(r.scene.nodes.len(), cs.scene.nodes.len(), "{src}");
+-                assert_eq!(r.scene.edges.len(), cs.scene.edges.len(), "{src}");
+-                to_svg(&r);
+-            }
+-        }
+-    }
+-
+     /// Verifier finding (r3, x4 in LR): a routed edge kept the router's
+     /// 14.5 px final stub, about a triangle's length, so the corner sat
+     /// under the triangle and tilted it. A routed edge entering its glyph
+diff --git a/src/gitgraph.rs b/src/gitgraph.rs
+index 1efbee5..6ad1486 100644
+--- a/src/gitgraph.rs
++++ b/src/gitgraph.rs
+@@ -38,18 +38,14 @@ use crate::style::{accent, accent_ink, text_on, ACCENTS, ACCENT_INKS};
+ /// Canvas margin around the drawn content.
+ pub const PAD: f64 = 24.0;
+ /// Minimum width of the branch-name column left of the first commit in
+-/// LR; a longer name's pill widens it. (0.32 and earlier: a fixed
+-/// width, and TB/BT reserved the same room for the names, where the
+-/// canvas is now fitted round them instead.)
++/// LR; a longer name's pill widens it.
+ pub const BRANCH_LABEL_W: f64 = 70.0;
+ /// Minimum distance between neighbouring commit columns (LR) / rows
+ /// (TB, BT). In LR a column moves further right whenever the ids, tags
+ /// and elbow legs around it need the room to stay clear of each other.
+-/// (0.32 and earlier: a fixed 90px pitch.)
+ pub const COMMIT_DX: f64 = 50.0;
+ /// Distance between branch lanes in LR; the minimum in TB/BT, where a
+-/// lane moves over as far as the ids and tags beside it need. (0.32 and
+-/// earlier: a fixed pitch in every orientation.)
++/// lane moves over as far as the ids and tags beside it need.
+ pub const BRANCH_DY: f64 = 70.0;
+ /// Commit dot radius.
+ pub const R: f64 = 11.0;
+diff --git a/src/journey.rs b/src/journey.rs
+index 12f3a08..26c0479 100644
+--- a/src/journey.rs
++++ b/src/journey.rs
+@@ -36,9 +36,7 @@ pub const SCORE_STEP: f64 = 14.0;
+ /// Actor dot radius (per-task dots and legend dots alike) + spacing +
+ /// the height of the dot row above a face.
+ pub const DOT_R: f64 = 5.0;
+-/// Space between two neighbouring actor dots; see [`DOT_R`].
+ pub const DOT_GAP: f64 = 4.0;
+-/// Height of the actor-dot row above a face; see [`DOT_R`].
+ pub const DOTS_H: f64 = 20.0;
+ /// Room reserved under a face for a one-line label (each extra
+ /// wrapped line adds [`LINE_H`]).
+diff --git a/src/mindmap.rs b/src/mindmap.rs
+index cccb6a2..acabf43 100644
+--- a/src/mindmap.rs
++++ b/src/mindmap.rs
+@@ -41,8 +41,7 @@ pub const PAD_Y: f64 = 8.0;
+ /// Height of one label line at [`FONT`]; other sizes scale it.
+ pub const LINE_H: f64 = 18.0;
+ /// Least ring spacing of the fallback layout (see [`scene`]): depth `k`
+-/// on a ring at least `RING` further out than depth `k - 1`'s. (0.32 and
+-/// earlier: every map used rings, exactly `k · RING` out.)
++/// on a ring at least `RING` further out than depth `k - 1`'s.
+ pub const RING: f64 = 172.0;
+ /// Factor by which the fallback layout widens a ring gap whose
+ /// connectors are not yet clear (see [`ring_centres`]).
+@@ -52,9 +51,7 @@ const RING_GROWTH: f64 = 1.2;
+ const RING_GROWTHS: usize = 64;
+ /// Canvas margin around the whole tree.
+ pub const MARGIN: f64 = 28.0;
+-/// Base font size (px): every node below the first level. (0.32 and
+-/// earlier: every node, root and first level included; those now use
+-/// [`ROOT_FONT`] and [`BRANCH_FONT`].)
++/// Base font size (px): every node below the first level.
+ pub const FONT: u32 = 14;
+ /// Font size of the root's label (bold).
+ pub const ROOT_FONT: f64 = 18.0;
+diff --git a/src/model.rs b/src/model.rs
+index 9efd4e9..58829fd 100644
+--- a/src/model.rs
++++ b/src/model.rs
+@@ -1261,56 +1261,11 @@ pub struct Mindmap {
+     pub nodes: Vec<MindNode>,
+ }
+ 
+-impl Mindmap {
+-    /// Append a node under `parent` and return its index, filling in
+-    /// what the parser derives from indentation: `depth`, `branch` and
+-    /// the parent's `children`. `None` adds the root; once there is
+-    /// one, `None` hangs the node off the root, as the parser does with
+-    /// a stray shallow line, so `nodes[0]` stays the only root. The
+-    /// node starts without icon, classes or style — set them on
+-    /// `nodes[i]` afterwards.
+-    ///
+-    /// # Panics
+-    /// If `parent` is not an index into [`Mindmap::nodes`].
+-    pub fn add_node(
+-        &mut self,
+-        parent: Option<usize>,
+-        text: impl Into<String>,
+-        shape: MindShape,
+-    ) -> usize {
+-        let idx = self.nodes.len();
+-        let parent = parent.or(if idx > 0 { Some(0) } else { None });
+-        // A node's colored branch is its depth-1 ancestor; the root
+-        // has none. depth-1 nodes seed their own branch.
+-        let (depth, branch) = match parent {
+-            None => (0, None),
+-            Some(p) if self.nodes[p].depth == 0 => (1, Some(idx)),
+-            Some(p) => (self.nodes[p].depth + 1, self.nodes[p].branch),
+-        };
+-        self.nodes.push(MindNode {
+-            text: text.into(),
+-            shape,
+-            parent,
+-            children: Vec::new(),
+-            depth,
+-            branch,
+-            icon: None,
+-            classes: Vec::new(),
+-            style: NodeStyle::default(),
+-        });
+-        if let Some(p) = parent {
+-            self.nodes[p].children.push(idx);
+-        }
+-        idx
+-    }
+-}
+-
+ /// One mindmap node. `text` may contain `\n` (from `<br/>`) for a
+ /// multi-line label. `branch` is the index of the depth-1 ancestor
+ /// this node descends from (its colored branch); `None` for the root.
+ ///
+-/// `#[non_exhaustive]`: build one with [`Mindmap::add_node`] (the
+-/// parser uses it too) and set the (public) fields.
++/// `#[non_exhaustive]`: the parser builds these; read their fields.
+ #[derive(Debug, Clone)]
+ #[non_exhaustive]
+ pub struct MindNode {
+@@ -1365,8 +1320,7 @@ pub struct JourneySection {
+ 
+ /// One step: `Task name: score: Actor1, Actor2`. `score` is clamped to
+ /// 1..=5 (satisfaction); `actors` are indices into [`Journey::actors`].
+-/// `#[non_exhaustive]`: build one with [`JourneyTask::new`] (the parser
+-/// uses it too) and set the (public) fields.
++/// `#[non_exhaustive]`: the parser builds these; read their fields.
+ #[derive(Debug)]
+ #[non_exhaustive]
+ pub struct JourneyTask {
+@@ -1380,28 +1334,6 @@ pub struct JourneyTask {
+     pub exact_score: f64,
+ }
+ 
+-impl JourneyTask {
+-    /// A task scored `score`, clamped to 1..=5 into
+-    /// [`JourneyTask::exact_score`] and rounded into
+-    /// [`JourneyTask::score`], exactly as the parser reads a score. A
+-    /// NaN (which the parser rejects) counts as the neutral 3.
+-    /// `actors` are indices into [`Journey::actors`].
+-    pub fn new(name: impl Into<String>, score: f64, actors: Vec<usize>) -> Self {
+-        let exact_score = if score.is_nan() {
+-            3.0
+-        } else {
+-            score.clamp(1.0, 5.0)
+-        };
+-        JourneyTask {
+-            name: name.into(),
+-            // `as` is exact here: the value is a whole number in 1..=5.
+-            score: exact_score.round() as u8,
+-            actors,
+-            exact_score,
+-        }
+-    }
+-}
+-
+ /// Timeline diagram (`timeline` header). `#[non_exhaustive]`: build
+ /// one with `Timeline::default()` and set the (public) fields.
+ #[derive(Debug, Default)]
+@@ -1591,8 +1523,7 @@ pub struct ArchGroup {
+ }
+ 
+ /// A single service/node inside an architecture diagram.
+-/// `#[non_exhaustive]`: build one with [`ArchService::new`] and set the
+-/// (public) fields.
++/// `#[non_exhaustive]`: the parser builds these; read their fields.
+ #[derive(Debug)]
+ #[non_exhaustive]
+ pub struct ArchService {
+@@ -1608,24 +1539,8 @@ pub struct ArchService {
+     pub junction: bool,
+ }
+ 
+-impl ArchService {
+-    /// A service `id` labelled `title` (may be empty), outside every
+-    /// group, without an icon. For a junction set
+-    /// [`ArchService::junction`] and leave `title` empty.
+-    pub fn new(id: impl Into<String>, title: impl Into<String>) -> Self {
+-        ArchService {
+-            id: id.into(),
+-            title: title.into(),
+-            icon: None,
+-            group: None,
+-            junction: false,
+-        }
+-    }
+-}
+-
+ /// One connection between two services via named ports.
+-/// `#[non_exhaustive]`: build one with [`ArchEdge::new`] and set the
+-/// (public) fields.
++/// `#[non_exhaustive]`: the parser builds these; read their fields.
+ #[derive(Debug)]
+ #[non_exhaustive]
+ pub struct ArchEdge {
+@@ -1649,25 +1564,6 @@ pub struct ArchEdge {
+     pub title: Option<String>,
+ }
+ 
+-impl ArchEdge {
+-    /// A plain `from:from_side -- to_side:to` edge (indices into
+-    /// [`Architecture::services`]): no arrowheads, no `{group}`
+-    /// modifier, no label.
+-    pub fn new(from: usize, from_side: ArchSide, to: usize, to_side: ArchSide) -> Self {
+-        ArchEdge {
+-            from,
+-            from_side,
+-            to,
+-            to_side,
+-            arrow_start: false,
+-            arrow_end: false,
+-            from_group: false,
+-            to_group: false,
+-            title: None,
+-        }
+-    }
+-}
+-
+ /// Port side on an architecture service.
+ #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+ pub enum ArchSide {
+diff --git a/src/parser.rs b/src/parser.rs
+index e0a666e..3697e75 100644
+--- a/src/parser.rs
++++ b/src/parser.rs
+@@ -21,7 +21,7 @@ use crate::model::{
+     ClassNote, ClassRel, CommitKind, Direction, Document, EdgeAnimation, EdgeCurve, EdgeEnds,
+     EdgeKind, EdgeMeta, End, ErDiagram, FrameKind, GitBranch, GitCommit, GitGraph, GitOrientation,
+     Graph, Journey, JourneySection, JourneyTask, Key, LinkStyle, LinkTarget, Marker, Member,
+-    MindShape, Mindmap, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation,
++    MindNode, MindShape, Mindmap, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation,
+     SankeyAlignment, SankeyConfig, SankeyDiagram, SankeyLabelStyle, SankeyLink, SankeyLinkColor,
+     SeqHead, SeqItem, SequenceDiagram, Shape, SubEdge, Subgraph, Timeline, TimelineDirection,
+     TimelinePeriod, TimelineSection, Visibility,
+@@ -4284,6 +4284,7 @@ fn parse_mindmap(source: &str, header_line: usize) -> Result<Mindmap, ParseError
+             parent = Some(0);
+         }
+ 
++        let idx = d.nodes.len();
+         let depth = parent.map_or(0, |p| d.nodes[p].depth + 1);
+         if depth >= MAX_NEST_DEPTH {
+             return Err(err(
+@@ -4291,7 +4292,27 @@ fn parse_mindmap(source: &str, header_line: usize) -> Result<Mindmap, ParseError
+                 format!("mindmap nesting too deep (max {MAX_NEST_DEPTH} levels)"),
+             ));
+         }
+-        let idx = d.add_node(parent, text, shape);
++        // A node's colored branch is its depth-1 ancestor; the root
++        // has none. depth-1 nodes seed their own branch.
++        let branch = match depth {
++            0 => None,
++            1 => Some(idx),
++            _ => d.nodes[parent.unwrap()].branch,
++        };
++        d.nodes.push(MindNode {
++            text,
++            shape,
++            parent,
++            children: Vec::new(),
++            depth,
++            branch,
++            icon: None,
++            classes: Vec::new(),
++            style: NodeStyle::default(),
++        });
++        if let Some(p) = parent {
++            d.nodes[p].children.push(idx);
++        }
+         stack.push((indent, idx));
+     }
+ 
+@@ -4432,14 +4453,16 @@ fn parse_journey(source: &str, header_line: usize) -> Result<Journey, ParseError
+             return Err(err(lineno, "journey task needs a name".to_string()));
+         }
+         // Mermaid reads the score with `Number()`, so `3.5` and `-1`
+-        // are scores too; `JourneyTask::new` clamps them to the 1..=5
+-        // scale the faces draw (a NaN has no place on it and stays an
+-        // error).
+-        let score: f64 = score_str
++        // are scores too; clamp to the 1..=5 scale the faces draw (a
++        // NaN has no place on it and stays an error).
++        let exact_score: f64 = score_str
+             .parse::<f64>()
+             .ok()
+             .filter(|v| !v.is_nan())
+-            .ok_or_else(|| err(lineno, format!("invalid journey score: '{}'", score_str)))?;
++            .ok_or_else(|| err(lineno, format!("invalid journey score: '{}'", score_str)))?
++            .clamp(1.0, 5.0);
++        // `as` is exact here: the value is a whole number in 1..=5.
++        let score = exact_score.round() as u8;
+         // Resolve actors to stable indices (dedup, first-appearance order).
+         let mut actor_ids = Vec::new();
+         for a in actors_str.split(',') {
+@@ -4456,11 +4479,12 @@ fn parse_journey(source: &str, header_line: usize) -> Result<Journey, ParseError
+             }
+         }
+         ensure_section(&mut d);
+-        d.sections
+-            .last_mut()
+-            .unwrap()
+-            .tasks
+-            .push(JourneyTask::new(name, score, actor_ids));
++        d.sections.last_mut().unwrap().tasks.push(JourneyTask {
++            name: name.to_string(),
++            score,
++            actors: actor_ids,
++            exact_score,
++        });
+     }
+     Ok(d)
+ }
+diff --git a/src/pie.rs b/src/pie.rs
+index fcff3f6..e818db2 100644
+--- a/src/pie.rs
++++ b/src/pie.rs
+@@ -35,8 +35,7 @@ pub const SWATCH: f64 = 12.0;
+ pub const LEGEND_GAP: f64 = 28.0;
+ /// Percentage labels start at this fraction of the radius; a label
+ /// that does not fit its wedge there slides outward (where the wedge
+-/// is wider) up to [`LABEL_R_MAX`]. (0.32 and earlier: every label sat
+-/// at exactly 0.62 of the radius.)
++/// is wider) up to [`LABEL_R_MAX`].
+ pub const LABEL_R: f64 = 0.72;
+ /// Outermost fraction of the radius an inside label may slide to
+ /// before it moves outside the rim.
+@@ -108,7 +107,6 @@ pub struct PieLabel {
+     pub text: String,
+     /// Text anchor point; `y` is the vertical centre of the text.
+     pub x: f64,
+-    /// Vertical centre of the text (see [`PieLabel::x`]).
+     pub y: f64,
+     /// `true`: centred inside its wedge, inked with
+     /// [`crate::style::text_on`] of the slice colour. `false`: outside
+diff --git a/src/timeline.rs b/src/timeline.rs
+index 48c0e7f..2eb6fb8 100644
+--- a/src/timeline.rs
++++ b/src/timeline.rs
+@@ -44,8 +44,6 @@ pub const WRAP_W: f64 = 160.0;
+ pub const FONT: u32 = 13;
+ /// Axis line color: a neutral at 3.2:1 on white, so the spine reads as
+ /// the diagram's backbone (WCAG 1.4.11 asks 3:1 of meaningful lines).
+-/// (0.32 and earlier: `#c2c8dc`, the axis and the dashed task lines
+-/// alike; the task lines keep that colour as [`TASK_LINE_COLOR`].)
+ pub const AXIS_COLOR: &str = "#8a90a8";
+ /// Dashed task-line color — paler than the axis, it only links a
+ /// period to its events.
+diff --git a/tests/model_build.rs b/tests/model_build.rs
+deleted file mode 100644
+index 89c8aad..0000000
+--- a/tests/model_build.rs
++++ /dev/null
+@@ -1,369 +0,0 @@
+-//! Downstream construction of the diagram models (and reading of the
+-//! scenes) from outside the crate.
+-//!
+-//! Several model structs became `#[non_exhaustive]` when they gained
+-//! fields, which rules out struct literals in other crates. Each one
+-//! must still be buildable from here — through `Default` plus field
+-//! assignment, or a documented constructor — and a hand-built model must
+-//! render exactly like the parsed source it mirrors, so the constructors
+-//! apply the parser's own rules. The scene structs are built by each
+-//! module's `scene()`; hosts read (and may mutate) their fields.
+-
+-use flowmaid::model::{
+-    ArchEdge, ArchGroup, ArchService, ArchSide, Architecture, Attr, Card, Direction, Document,
+-    ErDiagram, Journey, JourneySection, JourneyTask, Key, MindShape, Mindmap, NodeStyle, PieChart,
+-    PieSlice, Relation, SankeyConfig, SankeyDiagram, SankeyLabelStyle, SankeyLink, SeqHead,
+-    SeqItem, SequenceDiagram, Timeline, TimelinePeriod, TimelineSection,
+-};
+-use flowmaid::parser::parse_document;
+-use flowmaid::render;
+-
+-fn parse(src: &str) -> Document {
+-    parse_document(src).unwrap_or_else(|e| panic!("{src}\n{e:?}"))
+-}
+-
+-#[test]
+-fn er_entity_is_built_with_ensure_entity() {
+-    let src = "erDiagram\n\
+-               direction LR\n\
+-               p[Person] {\n\
+-               string name PK \"full name\"\n\
+-               }\n\
+-               p ||--o{ CAR : drives\n";
+-    let Document::Er(parsed) = parse(src) else {
+-        panic!("not ER")
+-    };
+-
+-    let mut d = ErDiagram::default();
+-    d.direction = Direction::LR;
+-    let p = d.ensure_entity("p");
+-    d.entities[p].alias = Some("Person".to_string());
+-    d.entities[p].attrs.push(Attr {
+-        ty: "string".to_string(),
+-        name: "name".to_string(),
+-        keys: vec![Key::Pk],
+-        comment: Some("full name".to_string()),
+-    });
+-    let car = d.ensure_entity("CAR");
+-    d.relations.push(Relation {
+-        from: p,
+-        to: car,
+-        card_from: Card::One,
+-        card_to: Card::ZeroMany,
+-        identifying: true,
+-        label: Some("drives".to_string()),
+-    });
+-    assert_eq!(d.entities[p].title(), "Person");
+-    assert_eq!(render::render_er(&d), render::render_er(&parsed));
+-
+-    // Scene structs: read the fields added for GUI painters.
+-    let es = flowmaid::er::scene(&d);
+-    let t = &es.tables[p];
+-    assert_eq!((t.name.as_str(), t.title.as_str()), ("p", "Person"));
+-    assert_eq!(t.rows[0].comment, "full name");
+-    assert!(t.rows[0].comment_full.is_none());
+-    assert!(t.comment_col_w > 0.0 && t.comment_x() > t.name_x());
+-}
+-
+-#[test]
+-fn pie_chart_is_built_from_default() {
+-    let src = "pie showData\n\
+-               title Pets\n\
+-               accTitle: Pets owned\n\
+-               \"Dogs\" : 386\n\
+-               \"Cats\" : 85\n\
+-               \"Rats\" : 6\n";
+-    let Document::Pie(parsed) = parse(src) else {
+-        panic!("not pie")
+-    };
+-
+-    let mut d = PieChart::default();
+-    d.title = Some("Pets".to_string());
+-    d.show_data = true;
+-    d.acc_title = Some("Pets owned".to_string());
+-    for (label, value) in [("Dogs", 386.0), ("Cats", 85.0), ("Rats", 6.0)] {
+-        d.slices.push(PieSlice {
+-            label: label.to_string(),
+-            value,
+-        });
+-    }
+-    let svg = render::render_pie(&d);
+-    assert_eq!(svg, render::render_pie(&parsed));
+-    assert!(svg.contains("Pets owned"), "accTitle names the SVG");
+-
+-    let ps = flowmaid::pie::scene(&d);
+-    assert_eq!(ps.labels.len(), 3, "every slice of at least 1% is labelled");
+-    let l = &ps.labels[2];
+-    assert_eq!((l.slice, l.text.as_str()), (2, "1%"));
+-    assert!(l.inside || !l.leader.is_empty());
+-}
+-
+-#[test]
+-fn journey_is_built_from_default_and_task_new() {
+-    let src = "journey\n\
+-               title My day\n\
+-               accTitle: Day\n\
+-               section Morning\n\
+-               Make tea: 3.5: Me, Cat\n\
+-               Go upstairs: -1: Me\n\
+-               section Work\n\
+-               Code: 9: Me\n";
+-    let Document::Journey(parsed) = parse(src) else {
+-        panic!("not journey")
+-    };
+-
+-    let mut d = Journey::default();
+-    d.title = Some("My day".to_string());
+-    d.acc_title = Some("Day".to_string());
+-    d.actors = vec!["Me".to_string(), "Cat".to_string()];
+-    d.sections.push(JourneySection {
+-        name: "Morning".to_string(),
+-        tasks: vec![
+-            JourneyTask::new("Make tea", 3.5, vec![0, 1]),
+-            JourneyTask::new("Go upstairs", -1.0, vec![0]),
+-        ],
+-    });
+-    d.sections.push(JourneySection {
+-        name: "Work".to_string(),
+-        tasks: vec![JourneyTask::new("Code", 9.0, vec![0])],
+-    });
+-    // `new` reads a score exactly as the parser does.
+-    let t = &d.sections[0].tasks[0];
+-    assert_eq!((t.score, t.exact_score), (4, 3.5));
+-    let t = &d.sections[0].tasks[1];
+-    assert_eq!((t.score, t.exact_score), (1, 1.0), "-1 clamps to 1");
+-    let t = &d.sections[1].tasks[0];
+-    assert_eq!((t.score, t.exact_score), (5, 5.0), "9 clamps to 5");
+-    let nan = JourneyTask::new("?", f64::NAN, Vec::new());
+-    assert_eq!((nan.score, nan.exact_score), (3, 3.0), "NaN is neutral");
+-    assert_eq!(render::render_journey(&d), render::render_journey(&parsed));
+-
+-    let js = flowmaid::journey::scene(&d);
+-    let g = &js.tasks[0];
+-    assert_eq!((g.exact_score, g.actor_ids.clone()), (3.5, vec![0, 1]));
+-    assert_eq!(g.label, "Make tea");
+-}
+-
+-#[test]
+-fn timeline_is_built_from_default() {
+-    let src = "timeline\n\
+-               title History\n\
+-               accDescr: Social media\n\
+-               2002 : LinkedIn\n\
+-               section Later\n\
+-               2004 : Facebook : Google\n";
+-    let Document::Timeline(parsed) = parse(src) else {
+-        panic!("not timeline")
+-    };
+-
+-    let mut d = Timeline::default();
+-    d.title = Some("History".to_string());
+-    d.acc_descr = Some("Social media".to_string());
+-    d.sections.push(TimelineSection {
+-        name: String::new(),
+-        periods: vec![TimelinePeriod {
+-            period: "2002".to_string(),
+-            events: vec!["LinkedIn".to_string()],
+-        }],
+-    });
+-    d.sections.push(TimelineSection {
+-        name: "Later".to_string(),
+-        periods: vec![TimelinePeriod {
+-            period: "2004".to_string(),
+-            events: vec!["Facebook".to_string(), "Google".to_string()],
+-        }],
+-    });
+-    let svg = render::render_timeline(&d);
+-    assert_eq!(svg, render::render_timeline(&parsed));
+-    assert!(svg.contains(">Social media</desc>"));
+-
+-    let ts = flowmaid::timeline::scene(&d);
+-    let p = &ts.sections[1].periods[0];
+-    assert_eq!(p.label, "2004");
+-    assert!(!p.line_segments.is_empty());
+-}
+-
+-/// Needs its `_` arm: `MindShape` is `#[non_exhaustive]`.
+-fn shape_name(s: MindShape) -> &'static str {
+-    match s {
+-        MindShape::Default => "default",
+-        MindShape::Rounded => "pill",
+-        MindShape::Circle => "circle",
+-        _ => "other",
+-    }
+-}
+-
+-#[test]
+-fn mindmap_nodes_are_built_with_add_node() {
+-    let src = "mindmap\n\
+-               \x20 root((Root))\n\
+-               \x20   A[Square]\n\
+-               \x20     a1\n\
+-               \x20     :::hot\n\
+-               \x20   B(Pill)\n\
+-               \x20   ::icon(fa fa-book)\n\
+-               \x20     b1))Bang((\n";
+-    let Document::Mindmap(parsed) = parse(src) else {
+-        panic!("not mindmap")
+-    };
+-
+-    let mut d = Mindmap::default();
+-    let root = d.add_node(None, "Root", MindShape::Circle);
+-    let a = d.add_node(Some(root), "Square", MindShape::Square);
+-    let a1 = d.add_node(Some(a), "a1", MindShape::default());
+-    d.nodes[a1].classes.push("hot".to_string());
+-    let b = d.add_node(Some(root), "Pill", MindShape::Rounded);
+-    d.nodes[b].icon = Some("fa fa-book".to_string());
+-    let b1 = d.add_node(Some(b), "Bang", MindShape::Bang);
+-    assert_eq!(format!("{:?}", d.nodes), format!("{:?}", parsed.nodes));
+-    assert_eq!((d.nodes[b1].depth, d.nodes[b1].branch), (2, Some(b)));
+-    assert_eq!(d.nodes[root].children, vec![a, b]);
+-    assert_eq!(render::render_mindmap(&d), render::render_mindmap(&parsed));
+-
+-    assert_eq!(shape_name(MindShape::default()), "default");
+-    assert_eq!(shape_name(d.nodes[b1].shape), "other");
+-
+-    // `None` once a root exists hangs the node off the root, as the
+-    // parser does with a stray shallow line.
+-    let stray = d.add_node(None, "stray", MindShape::Default);
+-    assert_eq!(d.nodes[stray].parent, Some(root));
+-    assert_eq!(d.nodes[stray].branch, Some(stray));
+-    d.nodes[stray].style = NodeStyle {
+-        fill: Some("#204060".to_string()),
+-        ..NodeStyle::default()
+-    };
+-    let ms = flowmaid::mindmap::scene(&d);
+-    let n = &ms.nodes[b];
+-    assert_eq!(n.icon.as_deref(), Some("fa fa-book"));
+-    assert!(n.font_size > 0.0 && n.font_weight >= 400);
+-    assert_eq!(ms.nodes[stray].paint(), "#204060");
+-}
+-
+-#[test]
+-fn architecture_is_built_from_default_and_constructors() {
+-    let src = "architecture-beta\n\
+-               accTitle: Shop\n\
+-               group api(cloud)[API]\n\
+-               service db(database)[Database] in api\n\
+-               service web(internet)[Web]\n\
+-               junction j\n\
+-               web:R -[calls]-> L:db\n\
+-               db{group}:B -- T:j\n";
+-    let Document::Architecture(parsed) = parse(src) else {
+-        panic!("not architecture")
+-    };
+-
+-    let mut d = Architecture::default();
+-    d.acc_title = Some("Shop".to_string());
+-    d.groups.push(ArchGroup {
+-        id: "api".to_string(),
+-        title: "API".to_string(),
+-        icon: Some("cloud".to_string()),
+-        parent: None,
+-    });
+-    let mut db = ArchService::new("db", "Database");
+-    db.icon = Some("database".to_string());
+-    db.group = Some(0);
+-    let mut web = ArchService::new("web", "Web");
+-    web.icon = Some("internet".to_string());
+-    let mut j = ArchService::new("j", "");
+-    j.junction = true;
+-    d.services = vec![db, web, j];
+-    let mut calls = ArchEdge::new(1, ArchSide::R, 0, ArchSide::L);
+-    calls.arrow_end = true;
+-    calls.title = Some("calls".to_string());
+-    let mut down = ArchEdge::new(0, ArchSide::B, 2, ArchSide::T);
+-    down.from_group = true;
+-    d.edges = vec![calls, down];
+-    assert_eq!(
+-        format!("{:?}", d.services),
+-        format!("{:?}", parsed.services)
+-    );
+-    assert_eq!(format!("{:?}", d.edges), format!("{:?}", parsed.edges));
+-    assert_eq!(
+-        render::render_architecture(&d),
+-        render::render_architecture(&parsed)
+-    );
+-
+-    let a = flowmaid::architecture::scene(&d);
+-    assert_eq!(a.title_at.len(), a.scene.clusters.len());
+-}
+-
+-#[test]
+-fn sankey_config_is_built_from_default() {
+-    let src = "---\n\
+-               config:\n\
+-               \x20 sankey:\n\
+-               \x20   labelStyle: outlined\n\
+-               \x20   nodeColors:\n\
+-               \x20     A: \"#33a35c\"\n\
+-               ---\n\
+-               sankey-beta\n\
+-               A,B,10\n\
+-               B,C,5\n";
+-    let Document::Sankey(parsed) = parse(src) else {
+-        panic!("not sankey")
+-    };
+-
+-    let mut config = SankeyConfig::default();
+-    config.label_style = SankeyLabelStyle::Outlined;
+-    config
+-        .node_colors
+-        .push(("A".to_string(), "#33a35c".to_string()));
+-    let mut d = SankeyDiagram {
+-        config,
+-        ..SankeyDiagram::default()
+-    };
+-    for (s, t, value) in [("A", "B", 10.0), ("B", "C", 5.0)] {
+-        let source = d.ensure_node(s);
+-        let target = d.ensure_node(t);
+-        d.links.push(SankeyLink {
+-            source,
+-            target,
+-            value,
+-        });
+-    }
+-    assert_eq!(d.config, parsed.config);
+-    assert_eq!(render::render_sankey(&d), render::render_sankey(&parsed));
+-
+-    let ss = flowmaid::sankey::scene(&d);
+-    assert_eq!(ss.label_style, SankeyLabelStyle::Outlined);
+-    assert_eq!(ss.nodes[0].custom_color.as_deref(), Some("#33a35c"));
+-    assert_eq!(ss.nodes[0].fill(), "#33a35c");
+-}
+-
+-#[test]
+-fn sequence_default_mirrors_actors_like_the_parser() {
+-    let Document::Sequence(parsed) = parse("sequenceDiagram\nactor A\nA->>B: hi\n") else {
+-        panic!("not sequence")
+-    };
+-
+-    let mut d = SequenceDiagram::default();
+-    assert!(d.mirror_actors && !d.scoped_frames, "the parser's defaults");
+-    let a = d.ensure_participant("A");
+-    d.participants[a].actor = true;
+-    let b = d.ensure_participant("B");
+-    d.items.push(SeqItem::Message {
+-        from: a,
+-        to: b,
+-        text: "hi".to_string(),
+-        dashed: false,
+-        head: SeqHead::Filled,
+-        activate: false,
+-        deactivate: false,
+-    });
+-    assert_eq!(render::render_seq(&d), render::render_seq(&parsed));
+-
+-    // Hosts read the new scene fields; struct update syntax is out for
+-    // `#[non_exhaustive]` scenes, so a modified copy is cloned and set.
+-    let sc = flowmaid::seq::scene(&d);
+-    assert_eq!(sc.footer.len(), sc.boxes.len());
+-    let fig = flowmaid::seq::actor_figure(&sc.boxes[a]);
+-    assert!(fig.head_r > 0.0 && !fig.segments.is_empty());
+-    let mut no_footer = sc.clone();
+-    no_footer.footer.clear();
+-    assert!(flowmaid::seq::to_svg(&no_footer).starts_with("<svg"));
+-
+-    d.mirror_actors = false;
+-    assert!(flowmaid::seq::scene(&d).footer.is_empty());
+-}

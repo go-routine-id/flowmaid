@@ -1,0 +1,4 @@
+backup/a1-class e2aa016
+backup/a1-class-wip 7602d8c (WIP snapshot on top of e2aa016's parent line; patch in this folder)
+backup/a3-state 066e804
+All integrated into dev via PR #81 (c6d8654); deleted 2026-10-31.
