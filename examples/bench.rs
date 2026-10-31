@@ -1,5 +1,13 @@
 //! Simple benchmark: `cargo run --release --example bench`
 //! Emit mode:         `cargo run --release --example bench -- emit > big.mmd`
+//! Files mode:        `cargo run --release --example bench -- files [--runs N] <paths...>`
+//!
+//! Files mode times the whole public pipeline, [`flowmaid::render_svg`]
+//! (parse + layout + SVG), on real `.mmd` files: per file, 3 warm-up
+//! renders, then `N` timed ones (default 30). It prints TSV, one row per
+//! file sorted by path so the output order never depends on the shell:
+//! `name  type  median_ms  min_ms  svg_bytes`. A file that fails to parse
+//! gets type `error` and the message on stderr.
 
 use std::time::Instant;
 
@@ -55,8 +63,97 @@ fn best<T>(mut f: impl FnMut() -> T) -> (T, f64) {
     (out.unwrap(), t_best)
 }
 
+/// Warm-up renders per file before timing, so first-call costs (page
+/// faults, allocator growth) stay out of the median.
+const FILE_WARMUPS: usize = 3;
+/// Timed renders per file unless `--runs N` says otherwise.
+const FILE_RUNS: usize = 30;
+
+/// The diagram type of a parsed document, as its header names it.
+fn doc_type(doc: &flowmaid::Document) -> &'static str {
+    use flowmaid::Document as D;
+    match doc {
+        D::Flowchart(_) => "flowchart",
+        D::State(_) => "state",
+        D::Er(_) => "er",
+        D::Class(_) => "class",
+        D::Sequence(_) => "sequence",
+        D::Pie(_) => "pie",
+        D::Mindmap(_) => "mindmap",
+        D::Journey(_) => "journey",
+        D::GitGraph(_) => "gitgraph",
+        D::Architecture(_) => "architecture",
+        D::Timeline(_) => "timeline",
+        D::Sankey(_) => "sankey",
+    }
+}
+
+/// `files [--runs N] <paths...>`: median and min wall time of
+/// `render_svg` per file, as TSV.
+fn files(args: &[String]) {
+    let mut runs = FILE_RUNS;
+    let mut paths = Vec::new();
+    let mut it = args.iter();
+    while let Some(a) = it.next() {
+        if a == "--runs" {
+            runs = it
+                .next()
+                .and_then(|n| n.parse().ok())
+                .filter(|&n| n > 0)
+                .expect("--runs takes a positive number");
+        } else {
+            paths.push(a.as_str());
+        }
+    }
+    paths.sort_unstable();
+    paths.dedup();
+    println!("name\ttype\tmedian_ms\tmin_ms\tsvg_bytes");
+    for path in paths {
+        let name = std::path::Path::new(path)
+            .file_stem()
+            .map_or(path.into(), |s| s.to_string_lossy());
+        let src =
+            std::fs::read_to_string(path).unwrap_or_else(|e| panic!("cannot read {}: {}", path, e));
+        let kind = match flowmaid::parser::parse_document(&src) {
+            Ok(doc) => doc_type(&doc),
+            Err(e) => {
+                eprintln!("{}: {}", path, e);
+                println!("{}\terror\t-\t-\t0", name);
+                continue;
+            }
+        };
+        let mut bytes = 0;
+        for _ in 0..FILE_WARMUPS {
+            bytes = flowmaid::render_svg(&src).map_or(0, |s| s.len());
+        }
+        let mut ts: Vec<f64> = (0..runs)
+            .map(|_| {
+                let t = Instant::now();
+                let svg = flowmaid::render_svg(&src);
+                let dt = t.elapsed().as_secs_f64() * 1e3;
+                drop(std::hint::black_box(svg));
+                dt
+            })
+            .collect();
+        ts.sort_by(f64::total_cmp);
+        println!(
+            "{}\t{}\t{:.3}\t{:.3}\t{}",
+            name,
+            kind,
+            ts[ts.len() / 2],
+            ts[0],
+            bytes
+        );
+    }
+}
+
 fn main() {
-    if std::env::args().nth(1).as_deref() == Some("emit") {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(String::as_str) == Some("files") {
+        files(&args[1..]);
+        return;
+    }
+    if args.first().map(String::as_str) == Some("emit") {
         print!("{}", synth(200, 25));
         return;
     }

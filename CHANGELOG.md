@@ -70,6 +70,10 @@ Minor, not patch: several class structs gain public fields (see
   can change shape at the first drag.
 - **`layout::CHOICE_SIZE`** (28px), the side of an unlabelled diamond,
   public like `BASE_H` / `MIN_W` so embedders can reproduce node sizes.
+- **Per-file benchmark.** `cargo run --release --example bench -- files
+  [--runs N] <paths...>` times `render_svg` (parse + layout + SVG) on real
+  `.mmd` files and prints TSV: name, diagram type, median and min ms of `N`
+  runs (default 30, after 3 warm-ups) and SVG bytes, sorted by path.
 
 ### Changed
 
