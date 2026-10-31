@@ -14,14 +14,24 @@ pub(crate) enum JsonValue {
     Object(Vec<(String, JsonValue)>),
 }
 
+/// Deepest array/object nesting accepted. Parsing recurses once per
+/// level, so an unbounded depth lets a small input overflow the stack
+/// (an abort, not an error). Advance documents nest a handful of levels.
+const MAX_DEPTH: usize = 128;
+
 pub(crate) struct JsonParser<'a> {
     s: &'a str,
     pos: usize,
+    depth: usize,
 }
 
 impl<'a> JsonParser<'a> {
     pub(crate) fn new(s: &'a str) -> Self {
-        Self { s, pos: 0 }
+        Self {
+            s,
+            pos: 0,
+            depth: 0,
+        }
     }
 
     pub(crate) fn peek(&self) -> Option<char> {
@@ -52,8 +62,7 @@ impl<'a> JsonParser<'a> {
     pub(crate) fn parse_value(&mut self) -> Result<JsonValue, AdvanceError> {
         self.skip_ws();
         match self.peek() {
-            Some('{') => self.parse_object(),
-            Some('[') => self.parse_array(),
+            Some('{') | Some('[') => self.parse_nested(),
             Some('"') => self.parse_string().map(JsonValue::String),
             Some('t') => self.expect_word("true").map(|_| JsonValue::Bool(true)),
             Some('f') => self.expect_word("false").map(|_| JsonValue::Bool(false)),
@@ -63,6 +72,23 @@ impl<'a> JsonParser<'a> {
                 message: format!("expected JSON value, got {:?}", other),
             }),
         }
+    }
+
+    /// An object or array, one level deeper, within [`MAX_DEPTH`].
+    fn parse_nested(&mut self) -> Result<JsonValue, AdvanceError> {
+        if self.depth >= MAX_DEPTH {
+            return Err(AdvanceError {
+                message: format!("JSON nested too deeply (more than {MAX_DEPTH} levels)"),
+            });
+        }
+        self.depth += 1;
+        let value = if self.peek() == Some('{') {
+            self.parse_object()
+        } else {
+            self.parse_array()
+        };
+        self.depth -= 1;
+        value
     }
 
     pub(crate) fn parse_object(&mut self) -> Result<JsonValue, AdvanceError> {
@@ -293,4 +319,44 @@ pub(crate) fn escape_json_str(s: &str) -> String {
     }
     out.push('"');
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn nested(open: &str, close: &str, n: usize) -> String {
+        format!("{}{}", open.repeat(n), close.repeat(n))
+    }
+
+    #[test]
+    fn moderate_nesting_still_parses() {
+        assert!(parse_json(&nested("[", "]", 100)).is_ok());
+        let objs = format!("{}1{}", "{\"a\":".repeat(100), "}".repeat(100));
+        assert!(parse_json(&objs).is_ok());
+    }
+
+    #[test]
+    fn extreme_nesting_is_an_error_not_a_stack_overflow() {
+        let arrays = parse_json(&nested("[", "]", 100_000)).unwrap_err();
+        assert!(
+            arrays.message.contains("nested too deeply"),
+            "{}",
+            arrays.message
+        );
+        let objs = format!("{}1{}", "{\"a\":".repeat(100_000), "}".repeat(100_000));
+        assert!(parse_json(&objs).is_err());
+    }
+
+    #[test]
+    fn unterminated_deep_nesting_is_an_error() {
+        assert!(parse_json(&"[".repeat(100_000)).is_err());
+    }
+
+    #[test]
+    fn depth_resets_between_siblings() {
+        // 200 sibling arrays, each shallow: the limit is on depth, not count.
+        let s = format!("[{}]", vec!["[[1]]"; 200].join(","));
+        assert!(parse_json(&s).is_ok());
+    }
 }
