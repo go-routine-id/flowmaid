@@ -3975,6 +3975,138 @@ mod tests {
         assert_eq!(d.classes[d.relations[0].from].name, "Dog");
     }
 
+    /// Relation ends as mermaid 12.2.0 names them: a hyphen glues into
+    /// a name (`Animal-Name`, `A-`, `-B`), but `--` / `..` are always
+    /// operators, scanned from the left.
+    #[test]
+    fn hyphenated_names_in_relations() {
+        let ends = |line: &str| -> Vec<(String, String)> {
+            let d = cd(&format!("classDiagram\n{line}"));
+            let n = |i: usize| d.classes[i].name.clone();
+            d.relations.iter().map(|r| (n(r.from), n(r.to))).collect()
+        };
+        let pair = |a: &str, b: &str| vec![(a.to_string(), b.to_string())];
+        for (line, from, to) in [
+            ("Animal-Name --> Dog", "Animal-Name", "Dog"),
+            ("A-B --> C-D", "A-B", "C-D"),
+            ("A-B-->C", "A-B", "C"),
+            ("A-B--C", "A-B", "C"),
+            ("A-B-C ..> D", "A-B-C", "D"),
+            ("A --> B", "A", "B"),
+            ("A--B", "A", "B"),
+            ("A-- B", "A", "B"),
+            ("A- --> B", "A-", "B"),
+            ("A- -- B", "A-", "B"),
+            ("A-->-B", "A", "-B"),
+            ("A---B", "A", "-B"),
+            ("-A --> B", "-A", "B"),
+            ("A-B--|>C", "A-B", "C"),
+            ("A-B--oC", "A-B", "oC"),
+            ("my_o--B", "my_o", "B"),
+        ] {
+            assert_eq!(ends(line), pair(from, to), "{line}");
+        }
+        // Head on the left: `to` is the decorated (left) end.
+        assert_eq!(ends("A<|--B-C"), pair("B-C", "A"));
+        assert_eq!(ends("A-o--B"), pair("B", "A-"), "a hyphen is a boundary");
+        let d = cd("classDiagram\nA-B \"1\" --> \"*\" C-D : owns");
+        let r = &d.relations[0];
+        assert_eq!(
+            (r.from_card.as_deref(), r.to_card.as_deref()),
+            (Some("1"), Some("*"))
+        );
+        assert_eq!(r.label.as_deref(), Some("owns"));
+        // One class per spelling: declaration, inline member, block,
+        // relation and note all name the same `Animal-Name`.
+        let d = cd("classDiagram\n\
+            class Animal-Name\n\
+            Animal-Name : +age int\n\
+            class Animal-Name {\n+eat()\n}\n\
+            Animal-Name --> Dog\n\
+            note for Animal-Name \"x\"\n\
+            note for note-0 \"y\"\n\
+            class note-0");
+        assert_eq!(d.classes.len(), 3);
+        let c = &d.classes[0];
+        assert_eq!(
+            (c.name.as_str(), c.fields.len(), c.methods.len()),
+            ("Animal-Name", 1, 1)
+        );
+        assert_eq!((d.notes[0].class, d.notes[1].class), (Some(0), Some(2)));
+        // A dangling operator still has no class on its far side.
+        for bad in ["A--->B", "A --> ", "A-B -->"] {
+            assert!(
+                parse_document(&format!("classDiagram\n{bad}")).is_err(),
+                "{bad}"
+            );
+        }
+    }
+
+    /// Backtick names are mermaid's literal class names: the text
+    /// between the backticks is the class, so it may hold spaces,
+    /// colons, quotes or operators.
+    #[test]
+    fn backtick_names() {
+        let d = cd("classDiagram\n\
+            class `Foo Bar`\n\
+            `Foo Bar` --> Baz\n\
+            `Foo Bar` : +x int\n\
+            `Foo--Bar` \"1\" --> `Baz` : has\n\
+            `Foo:Bar` <|-- `Foo \"q\"`\n\
+            class `Gen Box`~T~\n\
+            class `A, B`, C\n\
+            <<interface>> `Foo Bar`\n\
+            note for `Foo Bar` \"hi\"");
+        let names: Vec<&str> = d.classes.iter().map(|c| c.name.as_str()).collect();
+        assert_eq!(
+            names,
+            [
+                "Foo Bar",
+                "Baz",
+                "Foo--Bar",
+                "Foo:Bar",
+                "Foo \"q\"",
+                "Gen Box",
+                "A, B",
+                "C"
+            ]
+        );
+        let c = &d.classes[0];
+        assert_eq!((c.fields.len(), c.annotations.len()), (1, 1));
+        assert_eq!(d.classes[5].display_name(), "Gen Box<T>");
+        assert_eq!(d.notes[0].class, Some(0));
+        let n = |i: usize| d.classes[i].name.as_str();
+        let rels: Vec<(&str, &str)> = d.relations.iter().map(|r| (n(r.from), n(r.to))).collect();
+        assert_eq!(
+            rels,
+            [
+                ("Foo Bar", "Baz"),
+                ("Foo--Bar", "Baz"),
+                ("Foo \"q\"", "Foo:Bar")
+            ]
+        );
+        assert_eq!(d.relations[1].from_card.as_deref(), Some("1"));
+        assert_eq!(d.relations[1].label.as_deref(), Some("has"));
+        let d = cd("classDiagram\nclass `Foo Bar` {\n+x int\n}\n`Foo Bar` --> B");
+        assert_eq!((d.classes.len(), d.classes[0].fields.len()), (2, 1));
+        // Mermaid rejects these too.
+        for bad in ["`a`b --> C", "`` --> B", "`Foo --> B"] {
+            assert!(
+                parse_document(&format!("classDiagram\n{bad}")).is_err(),
+                "{bad}"
+            );
+        }
+        // Drawn under its own name, without backticks; the hyphenated
+        // name too.
+        let svg = crate::render_svg("classDiagram\n`Foo Bar` --> Animal-Name").unwrap();
+        assert!(
+            svg.contains(">Foo Bar</text>") && svg.contains(">Animal-Name</text>"),
+            "{svg}"
+        );
+        assert!(!svg.contains('`'));
+        crate::scene::assert_drawn_inside_canvas(&svg);
+    }
+
     #[test]
     fn unclosed_block_reports_the_opening_line() {
         let err = parse_document("classDiagram\nclass Alpha {\n+x\n").unwrap_err();

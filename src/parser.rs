@@ -3365,21 +3365,23 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
             let rest = rest.trim();
             // `class Name {` opens a block; `class Name` just declares.
             if let Some(name) = rest.strip_suffix('{') {
-                let ci = ensure_generic_class(&mut d, name.trim());
+                let ci = declare_class(&mut d, name.trim());
                 open = Some((ci, lineno));
             } else {
                 // `class A, B, C` declares several at once (Mermaid); a
-                // comma inside a generic (`class Map~K, V~`) is not a
-                // separator.
-                let mut depth_odd = false;
+                // comma inside a generic (`class Map~K, V~`) or a
+                // backtick name (`` class `A, B` ``) is not a separator.
+                let (mut depth_odd, mut in_tick) = (false, false);
                 let names = rest.split(|c: char| {
-                    if c == '~' {
-                        depth_odd = !depth_odd;
+                    match c {
+                        '~' if !in_tick => depth_odd = !depth_odd,
+                        '`' => in_tick = !in_tick,
+                        _ => {}
                     }
-                    c == ',' && !depth_odd
+                    c == ',' && !depth_odd && !in_tick
                 });
                 for name in names.map(str::trim).filter(|n| !n.is_empty()) {
-                    ensure_generic_class(&mut d, name);
+                    declare_class(&mut d, name);
                 }
             }
             continue;
@@ -3388,7 +3390,7 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
         if let Some(a) = line.strip_prefix("<<").and_then(|r| r.split_once(">>")) {
             let (a, name) = (a.0.trim(), a.1.trim());
             if !a.is_empty() && !name.is_empty() {
-                let ci = ensure_generic_class(&mut d, name);
+                let ci = declare_class(&mut d, name);
                 d.classes[ci].annotations.push(a.to_string());
                 continue;
             }
@@ -3413,15 +3415,15 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
         // holds no relation operator, this is an inline member
         // `Name : member` — quoted cardinalities and member text must
         // not sway the decision (`Animal : has -- dashes` is a member,
-        // `A "1:n" --> B` is a relation).
-        let colon = find_unquoted(line, ":");
+        // `A "1:n" --> B` is a relation), nor may a backtick name
+        // (`` `Foo:Bar` ``).
+        let colon = find_class_unquoted(line, ":");
         let head = colon.map_or(line, |c| line[..c].trim());
         if find_class_op(head).is_none() {
             if let Some(c) = colon {
-                let name = line[..c].trim();
                 let member = line[c + 1..].trim();
-                if is_class_ident(split_generic(name).0) && !member.is_empty() {
-                    let ci = ensure_generic_class(&mut d, name);
+                if let (Some((id, generic)), false) = (class_name(&line[..c]), member.is_empty()) {
+                    let ci = ensure_generic_class(&mut d, id, generic);
                     add_class_member(&mut d.classes[ci], member);
                     continue;
                 }
@@ -3440,14 +3442,47 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
     }
     // A note for a class the diagram never declares stays free, as
     // mermaid draws it: it does not create the class.
-    for (k, name) in note_for {
-        d.notes[k].class = d.class_index(split_generic(&name).0);
+    for (k, id) in note_for {
+        d.notes[k].class = d.class_index(&id);
     }
     Ok(d)
 }
 
 fn is_class_ident(s: &str) -> bool {
     !s.is_empty() && s.chars().all(|c| c.is_alphanumeric() || c == '_')
+}
+
+/// A class-diagram name char outside backticks. Mermaid's class
+/// grammar glues `MINUS` tokens into a name (`Animal-Name`, `A-`,
+/// `-B`), but lexes `--` first, so a name never holds a `--` / `..`
+/// operator: [`find_class_op`] finds it before any name can.
+fn is_class_name_char(c: char) -> bool {
+    c.is_alphanumeric() || c == '_' || c == '-'
+}
+
+/// A class name as written, split into (id, generic): a bare name
+/// (`Animal-Name`, see [`is_class_name_char`]) or a backtick literal
+/// whose text is the id, backticks stripped as mermaid strips them
+/// (`` `Foo Bar` `` is the class `Foo Bar`, `` `Foo` `` is `Foo`),
+/// either one optionally generic (`Box~T~`, `` `Foo Bar`~T~ ``).
+/// `None` when it is neither.
+fn class_name(raw: &str) -> Option<(&str, Option<&str>)> {
+    let raw = raw.trim();
+    if let Some(rest) = raw.strip_prefix('`') {
+        let close = rest.find('`')?;
+        let (id, tail) = (&rest[..close], &rest[close + 1..]);
+        let generic = match tail {
+            "" => None,
+            t => Some(
+                t.strip_prefix('~')?
+                    .strip_suffix('~')
+                    .filter(|g| !g.is_empty())?,
+            ),
+        };
+        return (!id.is_empty()).then_some((id, generic));
+    }
+    let (id, generic) = split_generic(raw);
+    (!id.is_empty() && id.chars().all(is_class_name_char)).then_some((id, generic))
 }
 
 /// `Box~T~` → (`Box`, `Some("T")`): mermaid's generic class name. The
@@ -3463,15 +3498,22 @@ fn split_generic(name: &str) -> (&str, Option<&str>) {
     }
 }
 
-/// [`ClassDiagram::ensure_class`] for a possibly generic name
-/// (`Box~T~`); the first spelling that names the generic sets it.
-fn ensure_generic_class(d: &mut ClassDiagram, name: &str) -> usize {
-    let (id, generic) = split_generic(name);
+/// [`ClassDiagram::ensure_class`] for a possibly generic class (see
+/// [`class_name`]); the first spelling that names the generic sets it.
+fn ensure_generic_class(d: &mut ClassDiagram, id: &str, generic: Option<&str>) -> usize {
     let ci = d.ensure_class(id);
     if let (Some(t), None) = (generic, &d.classes[ci].generic) {
         d.classes[ci].generic = Some(t.to_string());
     }
     ci
+}
+
+/// The class a `class …` / `<<stereotype>> …` statement declares. Any
+/// text is taken as a name there, as it always was; a [`class_name`]
+/// spelling is read as one (backticks stripped, generic split off).
+fn declare_class(d: &mut ClassDiagram, name: &str) -> usize {
+    let (id, generic) = class_name(name).unwrap_or_else(|| split_generic(name));
+    ensure_generic_class(d, id, generic)
 }
 
 /// The stereotype of a `<<interface>>` member line, without guillemets.
@@ -3482,7 +3524,8 @@ fn annotation_of(line: &str) -> Option<&str> {
 
 /// `note "text"` or `note for Class "text"` (the part after `note`):
 /// the note (still free) and, for `note for`, the class name it names
-/// (resolved by [`parse_class`] once the whole diagram is read). The
+/// as its id (resolved by [`parse_class`] once the whole diagram is
+/// read; a backtick name may hold spaces: `` note for `Foo Bar` "x" ``). The
 /// text may be quoted; `\n` and `<br/>` break lines, as mermaid's own
 /// class notes do. A note without text, or `note for` without a class
 /// name, is an error, as in mermaid.
@@ -3490,15 +3533,23 @@ fn parse_class_note(rest: &str, lineno: usize) -> Result<(ClassNote, Option<Stri
     let (class, text) = match strip_keyword(rest, "for") {
         Some(r) => {
             let r = r.trim();
-            let end = r.find(char::is_whitespace).unwrap_or(r.len());
+            // The name ends at the first whitespace after its closing
+            // backtick, if it opens with one.
+            let from = match r.strip_prefix('`') {
+                Some(t) => t.find('`').map_or(r.len(), |c| c + 2),
+                None => 0,
+            };
+            let end = r[from..]
+                .find(char::is_whitespace)
+                .map_or(r.len(), |e| from + e);
             let name = &r[..end];
-            if !is_class_ident(split_generic(name).0) {
+            let Some((id, _)) = class_name(name) else {
                 return Err(err(
                     lineno,
                     format!("'note for' needs a class name, got '{name}'"),
                 ));
-            }
-            (Some(name.to_string()), r[end..].trim())
+            };
+            (Some(id.to_string()), r[end..].trim())
         }
         None => (None, rest),
     };
@@ -3524,25 +3575,56 @@ fn find_unquoted(s: &str, needle: &str) -> Option<usize> {
     None
 }
 
+/// [`find_unquoted`] for class statements, where a backtick name is
+/// opaque too: no colon or operator inside `` `Foo:Bar` `` or
+/// `` `A--B` `` counts, and a quote inside one (`` `Foo "x"` ``) opens
+/// no cardinality.
+fn find_class_unquoted(s: &str, needle: &str) -> Option<usize> {
+    let mut open: Option<char> = None;
+    for (i, c) in s.char_indices() {
+        match open {
+            Some(q) if c == q => open = None,
+            Some(_) => {}
+            None if c == '"' || c == '`' => open = Some(c),
+            None if s[i..].starts_with(needle) => return Some(i),
+            None => {}
+        }
+    }
+    None
+}
+
 /// Locate the relation operator in `rel`: the earliest position
-/// outside any quoted cardinality where a [`CLASS_OPS`] operator
-/// matches (longest wins, since the table is ordered longest-first).
-/// Returns `(byte position, op, kind, dashed, head_at_left)`.
+/// outside any quoted cardinality or backtick name where a
+/// [`CLASS_OPS`] operator matches (longest wins, since the table is
+/// ordered longest-first). Returns `(byte position, op, kind, dashed,
+/// head_at_left)`.
+///
+/// Scanning from the left, `A-B --> C-D` finds `-->` (a lone hyphen
+/// is no operator), while `A--B` finds `--` and `A-- -B` links `A` to
+/// `-B`, as mermaid's lexer reads them.
 ///
 /// `o` is a valid identifier char, so an `o--` / `--o` marker only
-/// counts at an operand boundary — never inside a name like `Foo`.
+/// counts at an operand boundary — never inside a name like `Foo` or
+/// `my_o`. A hyphen is a boundary: mermaid reads `A-o--B` as `A-`
+/// aggregating `B`.
 fn find_class_op(rel: &str) -> Option<(usize, &'static str, RelKind, bool, bool)> {
-    let mut in_quote = false;
+    let word = |c: char| c.is_alphanumeric() || c == '_';
+    let mut open: Option<char> = None;
     let mut prev: Option<char> = None;
     for (i, c) in rel.char_indices() {
-        if c == '"' {
-            in_quote = !in_quote;
-        } else if !in_quote {
-            if let Some(&(op, k, dash, hl)) = CLASS_OPS.iter().find(|t| rel[i..].starts_with(t.0)) {
-                let before_ok = !op.starts_with('o') || prev.map_or(true, |p| !p.is_alphanumeric());
-                let after_ok = !op.ends_with('o')
-                    || !rel[i + op.len()..].starts_with(|c: char| c.is_alphanumeric());
-                if before_ok && after_ok {
+        match open {
+            Some(q) if c == q => open = None,
+            Some(_) => {}
+            None if c == '"' || c == '`' => open = Some(c),
+            None => {
+                // The longest operator whose markers sit at boundaries:
+                // `A--oC` is a link to `oC`, as in mermaid.
+                let hit = CLASS_OPS.iter().find(|&&(op, ..)| {
+                    rel[i..].starts_with(op)
+                        && (!op.starts_with('o') || !prev.is_some_and(word))
+                        && (!op.ends_with('o') || !rel[i + op.len()..].starts_with(word))
+                });
+                if let Some(&(op, k, dash, hl)) = hit {
                     return Some((i, op, k, dash, hl));
                 }
             }
@@ -3596,8 +3678,8 @@ const CLASS_OPS: &[(&str, RelKind, bool, bool)] = &[
 /// `ClassA "card" <op> "card" ClassB : label`.
 fn parse_class_relation(d: &mut ClassDiagram, line: &str, lineno: usize) -> Result<(), ParseError> {
     // Split off a trailing `: label` at the first colon OUTSIDE any
-    // quoted cardinality (`"1:n"` keeps its colon).
-    let (rel, label) = match find_unquoted(line, ":") {
+    // quoted cardinality (`"1:n"` keeps its colon) or backtick name.
+    let (rel, label) = match find_class_unquoted(line, ":") {
         Some(c) => (
             line[..c].trim(),
             Some(clean_label_1line(line[c + 1..].trim())),
@@ -3613,14 +3695,15 @@ fn parse_class_relation(d: &mut ClassDiagram, line: &str, lineno: usize) -> Resu
     // Strip optional cardinality quotes from the inner edges.
     let (left_name, left_card) = split_card_end(left, true);
     let (right_name, right_card) = split_card_end(right, false);
-    if !is_class_ident(split_generic(left_name).0) || !is_class_ident(split_generic(right_name).0) {
+    let (Some((lid, lgen)), Some((rid, rgen))) = (class_name(left_name), class_name(right_name))
+    else {
         return Err(err(
             lineno,
             format!("class relation needs two class names, got '{left_name}' / '{right_name}'"),
         ));
-    }
-    let li = ensure_generic_class(d, left_name);
-    let ri = ensure_generic_class(d, right_name);
+    };
+    let li = ensure_generic_class(d, lid, lgen);
+    let ri = ensure_generic_class(d, rid, rgen);
     // Normalise so the decorated end is `to`; `head_left` keeps the
     // source order, which the layout ranks by.
     let (from, to, from_card, to_card) = if head_left {
@@ -3640,21 +3723,22 @@ fn parse_class_relation(d: &mut ClassDiagram, line: &str, lineno: usize) -> Resu
 
 /// Split a `Name "card"` (card on the operator side) into
 /// (name, card). `card_after` = the quote sits after the name
-/// (left operand); otherwise before (right operand).
+/// (left operand); otherwise before (right operand). The card is the
+/// quoted run at the operator end, so a quote inside a backtick name
+/// (`` `Foo "x"` ``) is never taken for one.
 fn split_card_end(s: &str, card_after: bool) -> (&str, Option<String>) {
     let s = s.trim();
-    if let (Some(q0), Some(q1)) = (s.find('"'), s.rfind('"')) {
-        if q1 > q0 {
-            let card = s[q0 + 1..q1].to_string();
-            let name = if card_after {
-                s[..q0].trim()
-            } else {
-                s[q1 + 1..].trim()
-            };
-            return (name, Some(card));
-        }
+    let split = if card_after {
+        let r = s.strip_suffix('"');
+        r.and_then(|r| r.rfind('"').map(|q| (r[..q].trim(), &r[q + 1..])))
+    } else {
+        let r = s.strip_prefix('"');
+        r.and_then(|r| r.find('"').map(|q| (r[q + 1..].trim(), &r[..q])))
+    };
+    match split {
+        Some((name, card)) => (name, Some(card.to_string())),
+        None => (s, None),
     }
-    (s, None)
 }
 
 // ---------------------------------------------------------------

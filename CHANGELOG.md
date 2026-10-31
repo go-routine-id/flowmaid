@@ -217,6 +217,17 @@ Minor, not patch: several class structs gain public fields (see
 
 ### Fixed
 
+- **Class names with hyphens or backticks parse, as in mermaid.** A
+  hyphenated name used in a relation or a `note for` (`Animal-Name --> Dog`,
+  `A-B --> C-D`, `A- --> B`) was a parse error, though `class Animal-Name`
+  already declared it; `--` and `..` stay operators, scanned from the left,
+  so `A--B` still links `A` to `B`. Backtick names (`` class `Foo Bar` ``,
+  `` `Foo Bar` --> Baz ``, `` note for `Foo Bar` "x" ``) were parse errors
+  or kept their backticks in the class name; the text between the backticks
+  is now the class, and a colon, quote or operator inside it is part of
+  the name. A marker letter glued to a name no longer hides the operator:
+  `A--oC` links `A` to `oC` (it was a parse error) and `my_o--B` links
+  `my_o` (it was the class `my_` aggregating `B`), as mermaid reads them.
 - **Edge picking covers exactly the painted stroke.** `Scene::edge_at` (and
   so `hit_test`, also for ER and class scenes) measured to a fixed sampling
   of the drawn curve, a few points per spline span, which cuts inside a
