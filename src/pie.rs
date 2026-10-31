@@ -65,8 +65,10 @@ const LABEL_HALF_H: f64 = 5.0;
 
 /// Fill color of slice `i` (and its legend swatch): the sixteen-colour
 /// [`crate::style::accent_wide`] cycle, so a ninth slice no longer
-/// repeats the first one's colour. Identical to
-/// [`crate::style::accent`] for the first eight.
+/// repeats the first one's colour. It matches [`crate::style::accent`]
+/// in the first half of each turn of the cycle (slices 0–7, again 16–23,
+/// and so on); slices 8–15 (24–31, …) take the deep shades where
+/// `accent` would start over.
 pub fn slice_color(i: usize) -> &'static str {
     crate::style::accent_wide(i)
 }

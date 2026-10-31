@@ -3506,7 +3506,7 @@ fn parse_class_note(rest: &str, lineno: usize) -> Result<(ClassNote, Option<Stri
         return Err(err(lineno, "note text is empty".to_string()));
     }
     let text = clean_label(&text.replace("\\n", "<br/>"));
-    Ok((ClassNote { text, class: None }, class))
+    Ok((ClassNote::new(text, None), class))
 }
 
 /// First byte index of `needle` in `s` that lies outside any `"..."`

@@ -24,7 +24,8 @@ Minor, not patch: several class structs gain public fields (see
   edge after the relationships (`NoteBox::edge`). `class::route` accepts
   class centres alone, which puts each note 40px before its class, or class
   + note centres, which keeps notes where you put them. New:
-  `model::ClassNote`, `ClassDiagram::notes`, `class::NoteBox`. A diagram of
+  `model::ClassNote` (built with `ClassNote::new(text, class)`, as the
+  parser builds it), `ClassDiagram::notes`, `class::NoteBox`. A diagram of
   notes alone draws them (the CLI used to stop with "no classes defined"),
   and `note for` a class the diagram never declares leaves the note free
   instead of creating the class — both as in mermaid.
@@ -242,6 +243,14 @@ Minor, not patch: several class structs gain public fields (see
   elbow against the same courses: the drawn transitions, plus each
   transition to or from a composite. Two notes beside one state no longer
   block each other's elbow either, so both links now leave the facing side.
+- **A hand-built mindmap of any depth renders.** The fan layout recursed a
+  few stack frames per level, so a chain several thousand levels deep (built
+  with `Mindmap::add_node`) overflowed the stack. Maps deeper than 200 levels
+  now take the ring layout.
+- Doc comments: `gitgraph::FONT` now says that since 0.33 it no longer
+  sizes tags, which are a size smaller. `pie::slice_color` matches
+  `style::accent(i)` for slices 0–7 and again for 16–23, not only for the
+  first eight as its doc (and the 0.33.0 notes) said.
 
 ## [0.33.0] - 2026-10-31
 

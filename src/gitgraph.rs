@@ -53,7 +53,8 @@ pub const COMMIT_DX: f64 = 50.0;
 pub const BRANCH_DY: f64 = 70.0;
 /// Commit dot radius.
 pub const R: f64 = 11.0;
-/// Font size for commit ids and branch names.
+/// Font size for commit ids and branch names. (0.32 and earlier: every
+/// label's, tags' too; they are now a size smaller.)
 pub const FONT: u32 = 13;
 /// The label a REVERSE commit's scene node carries (its other commits'
 /// nodes have none): a host drawing node labels shows the commit

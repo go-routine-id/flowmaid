@@ -868,6 +868,21 @@ pub struct ClassNote {
     pub class: Option<usize>,
 }
 
+impl ClassNote {
+    /// A note showing `text` — its display text, line breaks as `\n`
+    /// (the parser folds the source's `\n` and `<br/>` into them) —
+    /// linked to `class` (an index into [`ClassDiagram::classes`], as
+    /// `note for Class "text"` resolves) or free-standing (`None`, as
+    /// `note "text"`). This is how the parser builds its notes; push it
+    /// onto [`ClassDiagram::notes`].
+    pub fn new(text: impl Into<String>, class: Option<usize>) -> ClassNote {
+        ClassNote {
+            text: text.into(),
+            class,
+        }
+    }
+}
+
 /// One field or method row.
 #[derive(Debug)]
 pub struct Member {
