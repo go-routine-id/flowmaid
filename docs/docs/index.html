@@ -286,15 +286,16 @@ python3 -m http.server                   # open http://localhost:8000</code></pr
       <td>Fields/methods with visibility, inheritance, composition/aggregation,
       dependencies, association labels &amp; multiplicities</td></tr>
     <tr><td>Sequence</td><td><code>sequenceDiagram</code></td>
-      <td>Participants/actors, 8 arrow types, activations, notes,
-      <code>autonumber</code>, <code>loop/opt/alt/par</code> frames</td></tr>
+      <td>Participants/stick-figure actors (mirrored at the bottom), 8 arrow types,
+      activations, notes, <code>autonumber</code>, <code>loop/opt/alt/par</code> frames</td></tr>
     <tr><td>State</td><td><code>stateDiagram-v2</code></td>
       <td><code>[*]</code> start/end, composite states with own direction,
       <code>&lt;&lt;choice&gt;&gt;</code>/<code>&lt;&lt;fork&gt;&gt;</code>/<code>&lt;&lt;join&gt;&gt;</code>, transition labels</td></tr>
     <tr><td>Pie</td><td><code>pie</code></td>
       <td>Title, <code>showData</code>, percentage labels + legend</td></tr>
     <tr><td>Mindmap</td><td><code>mindmap</code></td>
-      <td>Indentation tree, radial layout, colored branches, six node shapes</td></tr>
+      <td>Indentation tree, radial layout with children fanned round their parent,
+      colored branches, seven node shapes, <code>::icon()</code> glyphs, <code>:::class</code></td></tr>
     <tr><td>User journey</td><td><code>journey</code></td>
       <td>Sections, scored tasks (1–5 smiley faces), actor legend &amp; dots</td></tr>
     <tr><td>Git graph</td><td><code>gitGraph</code></td>
@@ -307,7 +308,8 @@ python3 -m http.server                   # open http://localhost:8000</code></pr
       <code>: </code>continuations, <code>LR</code>/<code>TD</code>, <code>%%</code>/<code>#</code> comments</td></tr>
     <tr><td>Sankey</td><td><code>sankey-beta</code></td>
       <td>CSV <code>source,target,value</code> rows, quoted fields, ribbons sized by
-      value, <code>config.sankey.*</code> from frontmatter</td></tr>
+      value, measured labels, <code>config.sankey.*</code> (incl. <code>nodeColors</code>,
+      <code>labelStyle</code>) from frontmatter</td></tr>
   </table>
   <div class="tip">Every type above renders in the playground — type or paste its source
   into the editor and edit live. The examples dropdown carries presets for

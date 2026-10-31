@@ -18,17 +18,17 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 **Diagram types**
 
 - [x] `flowchart` / `graph` — TD/LR/RL/BT, 11 node shapes, 7 link types + labels, chains, fan-out, cycles, self-loops, parallel edges
-- [x] `erDiagram` — full crow's foot cardinalities, identifying/non-identifying lines, entity attribute tables
+- [x] `erDiagram` — full crow's foot cardinalities (symbols and mermaid's spelled-out forms), identifying/non-identifying lines, entity attribute tables with key and comment columns, entity aliases, `direction` (top-to-bottom by default, as in mermaid)
 - [x] `classDiagram` — three-compartment boxes, member visibility, all UML relations (inheritance/realization/composition/aggregation/association/dependency), cardinalities + labels *(v0.9.0)*
-- [x] `sequenceDiagram` — participants/actors, 8 arrow types, notes, activations, autonumber, loop/opt/alt/par frames *(v0.10.0)*
+- [x] `sequenceDiagram` — participants and stick-figure actors, 8 arrow types, notes, activations, autonumber, loop/opt/alt/par frames, participants mirrored at the bottom *(v0.10.0)*
 - [x] `stateDiagram-v2` — `[*]` start/end, composites with nested `[*]`/`direction`, `<<choice>>`/`<<fork>>`/`<<join>>`, transition labels, descriptions *(v0.11.0)*
-- [x] `journey` — title/section/task, score-colored smiley faces (1–5), section bands, actor legend + per-task dots *(v0.14.0)*
-- [x] `pie` — title, showData, percentage labels + legend *(v0.10.0)*
-- [x] `mindmap` — indentation-built tree, radial layout with colored branches, six node shapes (square/rounded/circle/hexagon/bang/cloud) *(v0.13.0)*
-- [x] `gitGraph` — LR/TB/BT orientations, commits, branches, checkouts/switches, merges with ids and tags *(v0.22.0)*
-- [x] `architecture-beta` — nested groups, services, icons, and port-based edges (`id:L -- R:other`, `-->`, `<-->`, `{group}` qualifiers) *(v0.24.0)*
+- [x] `journey` — title/section/task, score-colored smiley faces (1–5) that rise and fall with the score (the satisfaction curve), fractional scores like `3.5`, pale section bands, actor legend + per-task dots with tooltips, long task names wrapped *(v0.14.0)*
+- [x] `pie` — title, showData, percentage labels down to 1% (inside the wedge when they fit, else outside on a leader) + legend *(v0.10.0)*
+- [x] `mindmap` — indentation-built tree, radial layout with children fanned round their parent and colored branches, seven node shapes (default/square/rounded/circle/hexagon/bang/cloud), `::icon(…)` glyphs, `:::class` (+ mindmap `classDef`) *(v0.13.0)*
+- [x] `gitGraph` — LR/TB/BT orientations (mermaid's `gitGraph TB:` form too), commits (`id`, `tag`, `type: NORMAL|REVERSE|HIGHLIGHT`, `msg`), branches (with `order:` to place lanes), checkouts/switches, and merges with ids, tags and types. Each lane has its own colour. Forks and merges are drawn as rounded elbows, merge, REVERSE and HIGHLIGHT commits each get their own glyph, and tags are drawn as luggage labels. Ids are horizontal and measured, so they never collide or get struck by a line *(v0.22.0)*
+- [x] `architecture-beta` — nested groups, services, junctions, icons, and port-based edges (`id:L -- R:other`, `-->`, `<-->`, labelled `-[label]-`, mermaid's `{group}` modifier). Services are placed by their ports as in mermaid (`a:R -- L:b` puts `b` to the right), groups never overlap, and edges are routed orthogonally around every box and group title without ever being drawn onto an unrelated edge *(v0.24.0)*
 - [x] `sankey-beta` — CSV `source,target,value` rows, quoted fields, node columns by depth, ribbons sized by value, `config.sankey.*` from frontmatter *(v0.29.0)*
-- [x] `timeline` — `title`/`section`, `period : event[: event…]` rows, `:`-continuation lines, `LR`/`TD` direction, `%%`/`#` comments, `<br>` and entity folding *(v0.28.1)*
+- [x] `timeline` — `title`/`section`, `period : event[: event…]` rows, `:`-continuation lines, `LR`/`TD` direction, `%%`/`#` comments, `<br>` and entity folding, bold periods, long periods/events wrapped *(v0.28.1)*
 - [ ] The complete mermaid catalog, tracked on the board: `swimlane-beta` · `gantt` · `quadrantChart` · `requirementDiagram` · `C4` · `zenuml` · `xychart` · `block` · `packet` · `kanban` · `radar` · `eventmodeling` · `treemap` · `venn` · `ishikawa` · `wardley` · `cynefin` · `treeview`
 
 **Flowchart features**
@@ -37,14 +37,14 @@ The goal: **mermaid.js functionality, pure-Rust edition.** Progress board with a
 - [x] `<br/>` multi-line labels *(v0.7.0)*
 - [x] Markdown strings ``"`**bold** _italic_`"`` in node, edge and subgraph labels — real newlines, automatic word wrap for node labels at mermaid 11's 200px width
 - [x] `style` / `classDef` / `class` / `:::` custom colors *(v0.4.0)*
-- [x] Semantic color theme (shape-based) + stable accent palette shared by ER / class / sequence / pie
+- [x] Semantic color theme (shape-based) + stable accent palette shared by ER / class / sequence / pie, with text on accent fills picked for WCAG AA contrast (`style::text_on`)
 - [x] Interactive scene API — drag nodes, edges re-route live; stable node/edge identity (`SceneNode.id`, `SceneEdge.from`/`to`) and local drag re-routing (`scene`, `route`, `route_partial`, `box_edge_bezier`) *(v0.18.0)*
 - [x] Hit-testing / picking — `Scene::{hit_test, node_at, edge_at, cluster_at, hits_in_rect, nearest_node}`, shape-precise, pick-matches-render; completes pick → drag → route for editors *(v0.19.0)*
 - [x] Graph → mermaid serializer — `to_mermaid(g)`, the inverse of `parse`: lossless editor round-trip via mermaid entity codes (`#quot;`, `#124;`), valid standard mermaid out; completes pick → drag → route → **persist** *(v0.20.0)*
 - [x] `$$math$$` tokenized in labels (Phase A: italic TeX passthrough, correct widths) *(v0.20.0)*
 - [x] Compact / serpentine layout — fold a long linear chain into balanced rows to fit a viewport (`fold::scene_compact`, CLI `--compact <px>`) *(v0.18.0)*
 - [x] Accessible SVG — `role="img"` + `aria-label` + per-node/edge `<title>`, deterministic byte-identical output *(v0.18.0)*
-- [x] `accTitle:` / `accDescr:` / multi-line `accDescr { … }` — the title replaces the SVG's accessible name, the description becomes a `<desc>` with `aria-describedby` (flowchart, state, class, sequence, ER; parsed and not yet drawn for pie, journey, timeline, gitGraph, architecture)
+- [x] `accTitle:` / `accDescr:` / multi-line `accDescr { … }` — the title replaces the SVG's accessible name, the description becomes a `<desc>` with `aria-describedby` (flowchart, state, class, sequence, ER, pie, journey, timeline, architecture; parsed and not yet drawn for gitGraph)
 - [x] `flowchart-elk` header — accepted as a `flowchart` alias (flowmaid has one layout engine, so the ELK hint is ignored)
 - [x] Injectable font metrics for embedders using a real font (`layout::intrinsic_size_with`, `TEXT_CALIBRATION`) *(v0.18.0)*
 - [x] Explicit "not supported yet" errors for every known mermaid header
@@ -70,7 +70,7 @@ Or in `Cargo.toml`:
 
 ```toml
 [dependencies]
-flowmaid = "0.25"
+flowmaid = "0.33"
 ```
 
 ## Usage
@@ -119,7 +119,7 @@ Transparent output keeps the default dark text and edge colours, so it reads bes
 
 The header sets the flow direction: `flowchart TD` (top-down, alias `TB`), `LR` (left-right), `RL`, or `BT`. The keywords `graph` and `flowchart-elk` are also accepted; `flowchart-elk` asks mermaid for its ELK layout engine, and flowmaid, which has a single layout, treats it as plain `flowchart`. Lines starting with `%%` are comments, and `;` separates multiple statements on one line.
 
-Accessibility statements follow mermaid: `accTitle: text` replaces the SVG's accessible name (`<title>` and `aria-label`, default "Flowchart diagram"), and `accDescr: text` or a multi-line `accDescr { … }` block adds a `<desc>` that the root `aria-describedby` points at (its id is a content hash, so inlined SVGs never collide). As in mermaid the value runs to the end of the line (`;` and `%%` included), the keywords are case-sensitive, the last statement wins, and a block's continuation indentation and blank lines fold away. They work in state, class, sequence and ER diagrams too. An unclosed `accDescr {` is a line-numbered error (mermaid swallows the rest of the file). Inside a multi-line markdown string or `@{ … }` block the keywords are plain label / YAML text, as in mermaid; after one closes, a statement can follow a `;` on the same line.
+Accessibility statements follow mermaid: `accTitle: text` replaces the SVG's accessible name (`<title>` and `aria-label`, default "Flowchart diagram"), and `accDescr: text` or a multi-line `accDescr { … }` block adds a `<desc>` that the root `aria-describedby` points at (its id is a content hash, so inlined SVGs never collide). As in mermaid the value runs to the end of the line (`;` and `%%` included), the keywords are case-sensitive, the last statement wins, and a block's continuation indentation and blank lines fold away. They work in state, class, sequence, ER, pie, journey, timeline and architecture diagrams too. An unclosed `accDescr {` is a line-numbered error (mermaid swallows the rest of the file). Inside a multi-line markdown string or `@{ … }` block the keywords are plain label / YAML text, as in mermaid; after one closes, a statement can follow a `;` on the same line.
 
 Node shapes: `A[text]` rectangle, `A(text)` rounded, `A([text])` stadium, `A{text}` diamond, `A((text))` circle, `A(((text)))` double circle, `A[(text)]` cylinder (database), `A[[text]]` subroutine, `A{{text}}` hexagon, `A[/text/]` and `A[\text\]` parallelograms; the trapezoids `A[/text\]` and `A[\text/]` and the asymmetric `A>text]` parse too and draw as the same nearest look-alikes as their `@{ shape: … }` names below. Mermaid v11 node metadata works too: `A@{ shape: cyl, label: "DB" }`, glued after the id (and after any bracket shape or `:::class`, which it overrides), on one line or spread over several (YAML block form, `label: |` / `label: >` block scalars read like js-yaml — a folded line indented past the rest keeps its own line, and a line indented less than the first is an error — a quoted value broken across lines becomes a line break). Every name in mermaid's shape registry is accepted: `rect`, `rounded`, `stadium`, `fr-rect`, `cyl`, `circle`, `dbl-circ`, `diam`, `hex`, `lean-r`, `lean-l`, `sm-circ`, `fr-circ`, `fork`, `f-circ` and their aliases draw their exact flowmaid shape; names flowmaid has no geometry for yet (`doc`, `trap-b`, `cloud`, `delay`, `tri`, …) draw the nearest look-alike, and `text` / braces / `bolt` draw without a box. An unknown name, or one with uppercase or `_`, fails with mermaid's own "No such shape" message. As in mermaid 12, a metadata `label` is markdown — `A@{ label: "**b** _i_" }` is bold and italic and wraps like a ``"`…`"`` label — unless `labelType: string` or `labelType: text` keeps it plain. `icon`, `img`, `form`, `pos`, `w`, `h` and `constraint` are accepted but not drawn (an icon/image node keeps its id as its label). The block ends at its first `}`, as in mermaid's lexer, so a nested `{…}` value is an error — quote it. Labels may be quoted to protect special characters (`A["odd [text]"]`) and use `<br/>` for line breaks. Markdown strings work as in mermaid: a label written as ``"`…`"`` (a quote directly followed by a backtick) takes `**bold**` / `__bold__`, `*italic*` / `_italic_` (CommonMark's flanking rules, so `snake_case` and `2 * 3` stay plain) and backslash escapes, and may span several lines; a newline is a line break (its indentation dropped), blank lines count once, and `<br/>` still breaks. Other markdown (headings, lists, links, code, strikethrough) shows as written, which is what mermaid's default HTML labels do. Node labels wrap at mermaid 11's 200px markdown width (175px at flowmaid's 14px text; an over-long word is not split); edge labels and subgraph titles are styled but stay on one line. A bare ``subgraph "`**Two**`"`` takes the markdown text as its id, like mermaid. A raw backtick or `"` inside the string is a line-numbered error (write `#96;` / `#quot;`), and ``"``"`` is an empty label (mermaid rejects it). Entity codes in the text never act as markdown (`#42;` is a literal `*`). Labels are lowered to flowmaid's `<b>` / `<i>` / newline markup at parse time, so the wrap uses the built-in width estimate even when an embedder supplies real font metrics. Mermaid entity codes are decoded in every label position (`#quot;` → `"`, decimal `#65;` → `A`) — since v0.20.0, matching mermaid.js; control characters are refused.
 
@@ -148,7 +148,16 @@ erDiagram
     }
 ```
 
-Supported subset: relationships with all crow's foot cardinalities (`||` exactly one, `|o`/`o|` zero or one, `}o`/`o{` zero or many, `}|`/`|{` one or many), identifying (`--`, solid) and non-identifying (`..`, dashed) lines, optional relationship labels, and entity blocks with `type name [PK|FK|UK] ["comment"]` rows. Types with parentheses (`varchar(255)`) and comments containing commas, parentheses, or single quotes are handled. Entities mentioned only in relationships render as title-only tables. Attribute comments are parsed into the model but not drawn. See `examples/er.mmd`.
+Supported subset:
+- **Cardinalities:** all crow's foot cardinalities, as symbols (`||` exactly one, `|o`/`o|` zero or one, `}o`/`o{` zero or many, `}|`/`|{` one or many; any symbol works on either side) or spelled out the way mermaid spells them (`only one`, `zero or one`, `one or more`, `zero or more`, `1`, `1+`, `0+`, `many(0)`, `many(1)`, …).
+- **Lines:** identifying (`--` or `to`, solid) and non-identifying (`..`, `.-`, `-.` or `optionally to`, dashed).
+- **Labels:** optional relationship labels. A label is kept clear of the crow's feet, and the layout leaves room for both glyphs and the label on a short line.
+- **Entity blocks:** rows of the form `type name [PK|FK|UK] ["comment"]`. Several rows may share a line, and a whole block may fit on one (`A { int id PK "key" string name }`, `B {}`). Key lists may be written in any case (`pk, fk`). Types with parentheses (`varchar(255)`) and comments containing commas, parentheses or quotes are handled.
+- **Comments:** comments are drawn in their own muted, italic column after the keys. One wider than 280px is cut with an ellipsis and keeps its full text as a tooltip.
+- **Entities:** names may be quoted (`"Customer Account"`). An alias (`p[Person]`, `c["Customer Account"]`) replaces the name in the header. Mermaid accepts an alias only where an entity is declared; flowmaid also accepts one inside a relationship. Entities mentioned only in relationships render as title-only tables.
+- **Layout:** `direction TB|BT|LR|RL` sets the flow; the default is top to bottom, as in mermaid. A relationship that closes a cycle is drawn as a plain line rather than a bow.
+
+See `examples/er.mmd`.
 
 ## Class diagrams
 
@@ -171,7 +180,7 @@ Supported subset: class blocks with `+ - # ~` member visibility (a member with `
 
 ## Sequence diagrams
 
-`sequenceDiagram` input renders participant boxes across the top, dashed lifelines below, and one row per statement top-down:
+`sequenceDiagram` input renders participant boxes across the top (repeated below the lifelines, as mermaid's `mirrorActors` does), dashed lifelines between them, and one row per statement top-down:
 
 ```
 sequenceDiagram
@@ -186,7 +195,18 @@ sequenceDiagram
     end
 ```
 
-Supported subset: `participant` / `actor` declarations with `as` aliases (actors draw as outlined boxes; implicit participants are created on first mention, in order of appearance); all eight message arrows — `->>` solid + filled head, `-->>` dashed + filled head, `->` / `-->` plain lines without a head, `-x` / `--x` cross ends, `-)` / `--)` async open arrows — including self-messages (`A->>A:`, drawn as a loop beside the lifeline); `autonumber` (bold `1.` prefixes on messages); notes in all four forms (`Note over A,B:`, `Note over A:`, `Note left of A:`, `Note right of A:` — keywords case-insensitive); activation bars via `activate` / `deactivate` or the `+`/`-` arrow shorthand (`A->>+B:` activates B, `B-->>-A:` deactivates B; unbalanced deactivation is a line-numbered error); and `loop` / `opt` / `alt`+`else` / `par`+`and` frames drawn as labeled boxes with dashed dividers. Trailing `%%` comments are stripped. Limitations: message and note text is single-line (`<br/>` collapses to a space), frames span the full diagram width rather than only the involved participants, and `box`, `rect`, `critical`, `break`, `create`/`destroy`, and `autonumber` arguments produce an explicit "not supported yet" error. See `examples/sequence.mmd`.
+Supported subset:
+
+- **Participants.** `participant` / `actor` declarations with `as` aliases. Actors draw as UML stick figures with their name below. Implicit participants are created on first mention, in order of appearance.
+- **Messages.** All eight arrows: `->>` solid with a filled head, `-->>` dashed with a filled head, `->` / `-->` plain lines without a head, `-x` / `--x` cross ends, and `-)` / `--)` async open arrows. Self-messages (`A->>A:`) draw as a loop beside the lifeline. `autonumber` adds bold `1.` prefixes.
+- **Notes.** All four forms: `Note over A,B:`, `Note over A:`, `Note left of A:` and `Note right of A:`. The keywords are case-insensitive.
+- **Activation bars.** Use `activate` / `deactivate` or the `+`/`-` arrow shorthand (`A->>+B:` activates B, `B-->>-A:` deactivates B). Both forms start and end the bar at the message they belong to, and arrows stop at the bar's edge. Unbalanced deactivation is a line-numbered error.
+- **Frames.** `loop` / `opt` / `alt`+`else` / `par`+`and` draw as labelled boxes with dashed dividers. Each frame's conditions share one column next to its chip. By default, frames are aligned full-width bands that widen to contain their notes. Frontmatter `config: sequence: scopedFrames: true` (a flowmaid key, which mermaid ignores) sizes each frame to the lifelines it covers, as mermaid does.
+- **Config.** Frontmatter `config: sequence: mirrorActors: false` drops the participant row at the bottom.
+- **Comments.** Trailing `%%` comments are stripped. This deliberately differs from mermaid 12, which prints them as part of the message text.
+- **Limitations.** Message and note text is single-line (`<br/>` collapses to a space). `box`, `rect`, `critical`, `break`, `create`/`destroy` and `autonumber` arguments produce an explicit "not supported yet" error.
+
+See `examples/sequence.mmd`.
 
 ## Pie charts
 
@@ -201,7 +221,7 @@ pie showData
     "Iron" : 6
 ```
 
-Supported subset: all header forms (`pie`, `pie showData`, `pie title …`, `pie showData title …`), a standalone `title …` line, and `"Quoted Label" : value` data rows with non-negative numbers. `showData` appends the raw value to each legend entry (`Calcium [42.96]`). Slices under 4% skip their percentage label but keep their legend row, zero-value slices are legend-only, a single 100% slice renders as a full circle, and an all-zero total draws an empty outline instead of NaN geometry. A duplicate label keeps one slice — the last value wins. Colors come from the same stable accent palette as ER/class diagrams (wrapping after 8 slices). `accTitle` / `accDescr` lines are accepted (the value stops at `%%`, as in mermaid's langium grammar) but not yet written into the SVG. Not supported: config/theme directives (`%%{init: …}%%`). See `examples/pie.mmd`.
+Supported subset: all header forms (`pie`, `pie showData`, `pie title …`, `pie showData title …`), a standalone `title …` line, and `"Quoted Label" : value` data rows with non-negative numbers. `showData` appends the raw value to each legend entry (`Calcium [42.96]`). Every slice of at least 1% gets a percentage label, as in mermaid: inside its wedge when the text fits there, otherwise just outside the rim on a short leader line (thinner slices keep their legend row). Percentages round halves up like mermaid's `toFixed(0)`. Zero-value slices are legend-only, a single 100% slice renders as a full circle, and an all-zero total draws an empty outline instead of NaN geometry. A duplicate label keeps one slice — the last value wins. Colors come from the same stable accent palette as ER/class diagrams, extended to sixteen colours before they repeat. `accTitle` / `accDescr` become the SVG's accessible name and `<desc>` (the value stops at `%%`, as in mermaid's langium grammar); without `accTitle`, the chart's title is the accessible name. Not supported: config/theme directives (`%%{init: …}%%`). See `examples/pie.mmd`.
 
 ## State diagrams
 
@@ -239,7 +259,11 @@ timeline
     2006 : Twitter
 ```
 
-Supported subset, mirroring mermaid's timeline contract: optional `title`; `section <name>` groups (periods before the first `section` form a leading unnamed band drawn without a header); `period : event[: event…]` rows with several events inline; a bare `: event` line that continues the previous period's events; `LR` (default) and `TD` direction; `%%` and `#` comments; and `<br>` folding plus `#quot;`/`#NN;` entity decoding. A `:` in event text is literal unless followed by whitespace — so `https://example.com` and `::` survive intact, and a `:` in the *period* position (`2004 : e1 : e2`) separates events. Colors cycle through the stable accent palette per section.
+Supported subset, mirroring mermaid's timeline contract: optional `title`; `section <name>` groups (periods before the first `section` form a leading unnamed band drawn without a header); `period : event[: event…]` rows with several events inline; a bare `: event` line that continues the previous period's events; `LR` (default) and `TD` direction; `%%` and `#` comments; and `<br>` folding plus `#quot;`/`#NN;` entity decoding. A `:` in event text is literal unless followed by whitespace — so `https://example.com` and `::` survive intact, and a `:` in the *period* position (`2004 : e1 : e2`) separates events. Colors cycle through the stable accent palette per named section; the unnamed leading group gets neutral ticks. Period labels are bold, the dashed task line is drawn only between events (never through their text), and periods or events wider than 160px wrap. `accTitle` / `accDescr` become the accessible name and `<desc>`.
+
+## Mindmaps
+
+A `mindmap` builds its tree from indentation, as in mermaid. The root sits at the centre in a deep ink; first-level branches take a stable accent that their whole subtree shares, and run clockwise from 12 o'clock in source order. Every child hangs off its parent on a spoke and siblings fan out round their parent, so leaves cluster where they belong; the branches share the whole circle, each with a trunk only as long as it needs; boxes never overlap, connectors never cross and none runs through a box. A map too big for this search's work budget (which grows with the map: maps of a few hundred nodes finish in well under a second) or with more than 120 branches on the root is laid out on rings round the root instead — much sparser, with the same guarantee. Node shapes follow mermaid's wrappers: none (the default box with an underline), `[square]`, `(rounded)`, `((circle))`, `{{hexagon}}`, `))bang((` and `)cloud(`. A `::icon(fa fa-book)` line under a node draws a small built-in glyph beside its label (common names such as book, file, code, cog, user, home, star, check, bolt, cloud, database, globe; anything else gets a neutral mark — no icon font needed). A `:::urgent large` line adds CSS classes to the node's SVG; as a flowmaid extension, a `classDef urgent fill:#ffe066,stroke:#c92a2a,color:#222` line in the mindmap colours those nodes directly. `mindmap::scene` / `mindmap::route` give the geometry for interactive (drag) hosts. See `examples/mindmap.mmd`.
 
 ## Sankey diagrams
 
@@ -265,6 +289,8 @@ Supported subset: rows of exactly three fields; double-quoted fields, where `""`
 
 Layout follows d3-sankey, which is what mermaid wraps. A node sits in the column of its **longest** path from a source, so every ribbon points rightwards, and its thickness is the larger of its inflow and outflow — a node that merely splits its input never shrinks. Within a column, nodes are ordered by the barycentre of their neighbours to reduce crossings (minimising crossings exactly is NP-hard, so this is the standard heuristic) with ties broken by declaration order, which keeps the SVG a stable function of the input.
 
+The barycentre ordering sweeps in both directions, keeping the ordering with the fewest ribbon crossings. Each node takes a colour from a sixteen-colour palette that differs from every node it shares a ribbon with and from its neighbours above and below. Labels are measured: one that would overprint another label or sit on another node slides along its node or moves to the other side; a first- or last-column label with no room inside may hang off the canvas edge, the columns draw in to make room, and labels that still do not fit wrap onto more lines, so the canvas keeps its configured `width` when it can. When labels between columns still print on each other or on a node (long names at a narrow `width`), the columns spread apart instead — the canvas grows rather than letting labels overprint.
+
 Configuration is read from mermaid's YAML frontmatter under `config.sankey`, and every default matches mermaid's `config.schema.yaml`:
 
 | Key | Default | Notes |
@@ -276,6 +302,8 @@ Configuration is read from mermaid's YAML frontmatter under `config.sankey`, and
 | `prefix` / `suffix` | `''` | Wrapped around a shown value |
 | `nodeWidth` | `10` | Node rectangle width |
 | `nodePadding` | `12` | Vertical gap between nodes in a column |
+| `nodeColors` | `{}` | Node label → CSS colour, block or `{ … }` map; overrides the palette |
+| `labelStyle` | `legacy` | `outlined` draws labels over a white halo; labels left of the busiest column hang left |
 
 An unknown key is skipped and a value that does not parse keeps its default, so config for other diagram types in a shared file never breaks the render. See `examples/sankey.mmd`.
 
@@ -359,13 +387,13 @@ A three-stage pipeline, one module per stage:
 
 For interactive apps there is the `scene` module: `scene()` produces final ready-to-draw geometry (node positions, edge bezier curves), `route()` re-routes edges for custom node positions such as user drags, and `to_svg()` exports any arrangement. `render()` is now just a wrapper over the same pipeline. See `examples/drag_sim.rs` and the egui demo app.
 
-The `er` module maps an `ErDiagram` onto the same machinery and mirrors the `scene` API: `er::scene()` for automatic layout, `er::route()` to follow dragged entity positions, `er::to_svg()` to export any arrangement. Each entity becomes one node of a synthetic left-to-right graph (sized from its attribute table via `scene::scene_sized`), each relationship one edge; only the writer differs — tables instead of shapes, crow's foot glyphs (exposed as plain geometry via `er::glyph`) instead of arrowheads.
+The `er` module maps an `ErDiagram` onto the same machinery and mirrors the `scene` API: `er::scene()` for automatic layout, `er::route()` to follow dragged entity positions, `er::to_svg()` to export any arrangement. Each entity becomes one node of a synthetic graph (top-to-bottom unless the diagram sets `direction`; sized from its attribute table via `scene::scene_sized`), each relationship one edge; only the writer differs — tables instead of shapes, crow's foot glyphs (exposed as plain geometry via `er::glyph`) instead of arrowheads. `er::end_glyphs(edge, cards)` returns exactly the crow's feet the SVG draws for a relationship, laid along its drawn curve (rerouted relationships included). `ErTable::name_x` / `keys_end_x` / `comment_x` give the column positions of the type | name | keys | comment rows.
 
 The `class` module follows the same pattern for `classDiagram`: `class::scene()`, `class::route()`, `class::to_svg()`. Each class becomes one node of a synthetic top-down graph (sized from its member list), each relationship one edge; the writer draws three-compartment boxes and UML end glyphs (exposed as plain geometry via `class::head`) at the target end.
 
-The `seq` module is different: sequence diagrams are not graphs, so it skips the Sugiyama pipeline entirely. `seq::scene()` computes a linear layout — columns from declaration order (gaps widened until every message label and note fits), one row per statement top-down — and returns every box, lifeline, message polyline, note, activation bar, and frame in final coordinates; `seq::to_svg()` serialises any scene, and `seq::head` exposes arrowheads as plain geometry for GUI painters.
+The `seq` module is different: sequence diagrams are not graphs, so it skips the Sugiyama pipeline entirely. `seq::scene()` computes a linear layout — columns from declaration order (gaps widened until every message label and note fits), one row per statement top-down — and returns every box (header and footer), lifeline, message polyline, note, activation bar, and frame in final coordinates; `seq::to_svg()` serialises any scene. GUI painters get arrowheads from `seq::head` and actor stick figures from `seq::actor_figure`, as plain geometry.
 
-The `pie` module is pure geometry — no graph at all. `pie::scene()` returns the circle, per-slice angles/fractions, percentage-label anchors, and legend rows; `pie::to_svg()` serialises them (a ~100% slice becomes a real `<circle>`, since a single SVG arc cannot sweep 360°).
+The `pie` module is pure geometry — no graph at all. `pie::scene()` returns the circle, per-slice angles/fractions, percentage-label anchors, and legend rows; `pie::to_svg()` serialises them (a ~100% slice becomes a real `<circle>`, since a single SVG arc cannot sweep 360°). Each `PieLabel` says whether it sits inside its wedge or outside on a leader (with the leader polyline), so a host can paint the same labels.
 
 State diagrams need no module of their own: the parser maps them straight onto `Graph` (states are rounded nodes, `[*]` pseudostates are dedicated shapes, composites are subgraph clusters), so they inherit the whole flowchart pipeline — including `route()` and dragging — for free.
 

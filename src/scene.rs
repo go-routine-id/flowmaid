@@ -462,6 +462,70 @@ fn curve_d(start: (f64, f64), segs: &[Seg], t: impl Fn((f64, f64)) -> (f64, f64)
     d
 }
 
+/// The SVG path `d` an edge is DRAWN with, mapped through `t` (scene →
+/// output coordinates): a non-default mermaid `curve` through its
+/// points ([`curve_geometry`]), else the `curveBasis` spline through
+/// routed waypoints ([`spline_d`]), else the single cubic `bezier`.
+/// Every painter of a [`SceneEdge`] goes through this one builder: the
+/// router delivers a rerouted edge in `waypoints` and leaves `bezier`
+/// a degenerate `[p0, p0, p3, p3]` chord, so a painter that strokes
+/// `bezier` alone draws it straight through the boxes it was routed
+/// around. [`edge_polyline`] samples exactly this curve (picking) and
+/// [`edge_end_chord`] reads its ends (glyph placement).
+pub(crate) fn edge_path_d(e: &SceneEdge, t: impl Fn((f64, f64)) -> (f64, f64)) -> String {
+    if let Some((start, segs)) = curve_geometry(e) {
+        curve_d(start, &segs, t)
+    } else if e.waypoints.len() >= 2 {
+        let q: Vec<(f64, f64)> = e.waypoints.iter().map(|&p| t(p)).collect();
+        spline_d(&q)
+    } else {
+        let q: Vec<(f64, f64)> = e.bezier.iter().map(|&p| t(p)).collect();
+        format!(
+            "M {:.1} {:.1} C {:.1} {:.1}, {:.1} {:.1}, {:.1} {:.1}",
+            q[0].0, q[0].1, q[1].0, q[1].1, q[2].0, q[2].1, q[3].0, q[3].1
+        )
+    }
+}
+
+/// One end of an edge's DRAWN curve (the one [`edge_path_d`] emits) as
+/// `(tip, toward)`: the end point itself and the point `reach` scene
+/// units back along the curve by arc length — or the far end, when the
+/// whole curve is shorter. The chord `tip → toward` is the direction
+/// of the final drawn stretch, so an end glyph oriented along it (UML
+/// head, crow's foot, cardinality) sits ON the stroke, even for a
+/// rerouted edge whose degenerate `bezier` controls coincide with its
+/// ends (where "toward the adjacent control point" has no direction at
+/// all and the glyph collapses to a zero-size polygon). `toward ==
+/// tip` only for a curve of zero length.
+// The class / ER painters adopt this (with `edge_path_d`) in their own
+// work packages; until then only the tests call it.
+#[cfg_attr(not(test), allow(dead_code))]
+pub(crate) fn edge_end_chord(
+    e: &SceneEdge,
+    at_start: bool,
+    reach: f64,
+) -> ((f64, f64), (f64, f64)) {
+    let mut pts = edge_polyline(e);
+    if !at_start {
+        pts.reverse();
+    }
+    let tip = pts[0];
+    let mut left = reach.max(f64::EPSILON);
+    for w in pts.windows(2) {
+        let d = (w[1].0 - w[0].0).hypot(w[1].1 - w[0].1);
+        if d >= left {
+            let k = left / d;
+            let toward = (
+                w[0].0 + (w[1].0 - w[0].0) * k,
+                w[0].1 + (w[1].1 - w[0].1) * k,
+            );
+            return (tip, toward);
+        }
+        left -= d;
+    }
+    (tip, pts[pts.len() - 1])
+}
+
 /// Dense sample of [`curve_geometry`] for picking and the bounding box.
 fn curve_sample(start: (f64, f64), segs: &[Seg]) -> Vec<(f64, f64)> {
     const STEPS: usize = 12;
@@ -638,7 +702,14 @@ const TITLE_CUT_SEPARATORS: &[char] = &['·', '-', '–', '—', ',', ':', ';', 
 /// Does segment `a`–`b` intersect the axis-aligned rectangle
 /// `[rx0,rx1] × [ry0,ry1]`? Liang-Barsky clip (true when either
 /// endpoint is inside, too).
-fn seg_aabb(a: (f64, f64), b: (f64, f64), rx0: f64, ry0: f64, rx1: f64, ry1: f64) -> bool {
+pub(crate) fn seg_aabb(
+    a: (f64, f64),
+    b: (f64, f64),
+    rx0: f64,
+    ry0: f64,
+    rx1: f64,
+    ry1: f64,
+) -> bool {
     let (dx, dy) = (b.0 - a.0, b.1 - a.1);
     let p = [-dx, dx, -dy, dy];
     let q = [a.0 - rx0, rx1 - a.0, a.1 - ry0, ry1 - a.1];
@@ -1042,6 +1113,7 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
             kind: e.kind,
             ends: e.ends,
             meta: e.meta.clone(),
+            end_room: (0.0, 0.0),
         });
     }
     // The clusters a stand-in's ends cut back to (its box ends).
@@ -2880,21 +2952,8 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
             marker_attr("start", m_start.as_deref()),
             marker_attr("end", m_end.as_deref())
         );
-        // A routed edge splines through its waypoints; otherwise the
-        // single cubic. The arrow marker orients to the end tangent
-        // (last segment) either way.
-        let path_d = if let Some((start, segs)) = curve_geometry(e) {
-            curve_d(start, &segs, t)
-        } else if e.waypoints.len() >= 2 {
-            let q: Vec<(f64, f64)> = e.waypoints.iter().map(|&p| t(p)).collect();
-            spline_d(&q)
-        } else {
-            let q: Vec<(f64, f64)> = e.bezier.iter().map(|&p| t(p)).collect();
-            format!(
-                "M {:.1} {:.1} C {:.1} {:.1}, {:.1} {:.1}, {:.1} {:.1}",
-                q[0].0, q[0].1, q[1].0, q[1].1, q[2].0, q[2].1, q[3].0, q[3].1
-            )
-        };
+        // The arrow marker orients to the end tangent (last segment).
+        let path_d = edge_path_d(e, t);
         // <title> child = screen-reader / hover description (issue #16).
         // A two-way edge reads ↔ rather than →.
         let dir = if e.ends.start_marker(e.kind).is_some() {
@@ -3979,23 +4038,42 @@ pub(crate) fn svg_label_box_with(
 /// per line, block vertically centred on `(cx, cy)`. `<b>`/`<i>`
 /// runs inside a line render as real bold/italic tspans.
 pub(crate) fn svg_text_multiline(s: &mut String, cx: f64, cy: f64, fill: &str, label: &str) {
+    svg_text_lines(s, cx, cy, fill, label, "", false);
+}
+
+/// [`svg_text_multiline`] with extra attributes written into the
+/// `<text>` tag (`attrs`: already escaped, each with a leading space,
+/// e.g. ` font-weight="bold"`). `literal` escapes each line as plain
+/// text instead of interpreting `<b>`/`<i>` runs — for diagram types
+/// whose mermaid renderer shows such tags verbatim.
+pub(crate) fn svg_text_lines(
+    s: &mut String,
+    cx: f64,
+    cy: f64,
+    fill: &str,
+    label: &str,
+    attrs: &str,
+    literal: bool,
+) {
+    let markup = |l: &str| if literal { escape(l) } else { rich(l) };
     let lines: Vec<&str> = label.split('\n').collect();
     if lines.len() <= 1 {
         s.push_str(&format!(
-            "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"middle\" \
+            "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"middle\"{} \
              fill=\"{}\">{}</text>\n",
             cx,
             cy,
+            attrs,
             fill,
-            rich(label)
+            markup(label)
         ));
         return;
     }
     let lh = crate::layout::LINE_H;
     let top = cy - (lines.len() as f64 - 1.0) * lh / 2.0;
     s.push_str(&format!(
-        "<text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\" fill=\"{}\">",
-        cx, top, fill
+        "<text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\"{} fill=\"{}\">",
+        cx, top, attrs, fill
     ));
     for (i, line) in lines.iter().enumerate() {
         s.push_str(&format!(
@@ -4006,7 +4084,7 @@ pub(crate) fn svg_text_multiline(s: &mut String, cx: f64, cy: f64, fill: &str, l
             } else {
                 format!("{lh:.1}")
             },
-            rich(line)
+            markup(line)
         ));
     }
     s.push_str("</text>\n");
@@ -4354,6 +4432,111 @@ mod tests {
         assert!(rnd.contains(" Q "), "{rnd}");
         let cr = edge_paths(&svg_src(&src("catmullRom")))[3].to_string();
         assert!(cr.contains(" C "), "{cr}");
+    }
+
+    /// A bare edge for the path-builder tests: router-style degenerate
+    /// `bezier` chord `[p0, p0, p3, p3]` plus the given waypoints.
+    fn routed_edge(p0: (f64, f64), p3: (f64, f64), waypoints: Vec<(f64, f64)>) -> SceneEdge {
+        SceneEdge {
+            from: "a".into(),
+            to: "b".into(),
+            bezier: [p0, p0, p3, p3],
+            waypoints,
+            kind: EdgeKind::Arrow,
+            ends: EdgeEnds::default(),
+            meta: EdgeMeta::default(),
+            label: None,
+        }
+    }
+
+    /// Report P0 #6: class / ER painters stroked `bezier` alone, so a
+    /// rerouted edge (route in `waypoints`, chord in `bezier`) was
+    /// drawn straight through the boxes. The shared builder draws the
+    /// route.
+    #[test]
+    fn edge_path_d_draws_the_route_not_the_chord() {
+        let wps = vec![(0.0, 0.0), (0.0, 50.0), (80.0, 50.0)];
+        let e = routed_edge((0.0, 0.0), (80.0, 50.0), wps.clone());
+        assert_eq!(edge_path_d(&e, |p| p), spline_d(&wps));
+        // `t` maps every point (the flowchart painter's MARGIN shift).
+        let moved: Vec<(f64, f64)> = wps.iter().map(|&(x, y)| (x + 10.0, y + 5.0)).collect();
+        assert_eq!(
+            edge_path_d(&e, |(x, y)| (x + 10.0, y + 5.0)),
+            spline_d(&moved)
+        );
+        // No waypoints: the single cubic, exactly as before.
+        let plain = routed_edge((0.0, 0.0), (80.0, 50.0), Vec::new());
+        assert_eq!(
+            edge_path_d(&plain, |p| p),
+            "M 0.0 0.0 C 0.0 0.0, 80.0 50.0, 80.0 50.0"
+        );
+        // A non-default curve goes through `curve_geometry`.
+        let mut step = routed_edge((0.0, 0.0), (80.0, 50.0), wps);
+        step.meta.curve = Some(EdgeCurve::StepBefore);
+        let (start, segs) = curve_geometry(&step).unwrap();
+        assert_eq!(edge_path_d(&step, |p| p), curve_d(start, &segs, |p| p));
+    }
+
+    /// The flowchart painter draws every edge with `edge_path_d` — the
+    /// one builder the class / ER painters share — through its MARGIN
+    /// shift, for routed, plain and curved edges alike.
+    #[test]
+    fn flowchart_edges_are_painted_by_edge_path_d() {
+        let src = "flowchart TD\n  A --> B --> C --> D\n  A --> D\n  B e1@--> D\n  \
+                   e1@{ curve: rounded }\n";
+        let sc = scene(&parse(src).unwrap());
+        assert!(
+            sc.edges.iter().any(|e| e.waypoints.len() >= 3),
+            "a routed edge"
+        );
+        let svg = to_svg(&sc);
+        let mut bb = Bbox::new();
+        grow_scene(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
+        let (minx, _, miny, _) = bb.finish();
+        let (tx, ty) = (MARGIN - minx, MARGIN - miny);
+        let paths = edge_paths(&svg);
+        assert_eq!(paths.len(), sc.edges.len());
+        for (e, p) in sc.edges.iter().zip(paths) {
+            let d = edge_path_d(e, |(x, y)| (x + tx, y + ty));
+            assert!(p.starts_with(&format!("<path d=\"{d}\"")), "{p}\n{d}");
+        }
+    }
+
+    #[test]
+    fn edge_end_chord_follows_the_drawn_final_stretch() {
+        let near =
+            |a: (f64, f64), b: (f64, f64)| (a.0 - b.0).abs() < 1e-6 && (a.1 - b.1).abs() < 1e-6;
+        // Routed L: down, then right. The end chord lies on the final
+        // horizontal stretch (the spline ends with a straight run from
+        // (66.7, 50)), the start chord on the first vertical one.
+        let e = routed_edge(
+            (0.0, 0.0),
+            (80.0, 50.0),
+            vec![(0.0, 0.0), (0.0, 50.0), (80.0, 50.0)],
+        );
+        let (tip, toward) = edge_end_chord(&e, false, 10.0);
+        assert!(near(tip, (80.0, 50.0)));
+        assert!(near(toward, (70.0, 50.0)), "{toward:?}");
+        let (tip, toward) = edge_end_chord(&e, true, 5.0);
+        assert!(near(tip, (0.0, 0.0)));
+        assert!(near(toward, (0.0, 5.0)), "{toward:?}");
+        // The degenerate chord `[p0, p0, p3, p3]` without waypoints:
+        // "toward the adjacent control point" had zero length (the
+        // zero-size inheritance triangles); the chord still points.
+        let plain = routed_edge((0.0, 0.0), (100.0, 0.0), Vec::new());
+        let (tip, toward) = edge_end_chord(&plain, false, 14.0);
+        assert!(near(tip, (100.0, 0.0)));
+        assert!(
+            (toward.0 - 86.0).abs() < 1e-6 && toward.1.abs() < 1e-9,
+            "{toward:?}"
+        );
+        // Longer reach than the curve: the far end.
+        let (_, toward) = edge_end_chord(&plain, false, 1e6);
+        assert!(near(toward, (0.0, 0.0)));
+        // Only a zero-length curve has no direction.
+        let dot = routed_edge((5.0, 5.0), (5.0, 5.0), Vec::new());
+        let (tip, toward) = edge_end_chord(&dot, true, 14.0);
+        assert!(near(tip, toward));
     }
 
     #[test]
