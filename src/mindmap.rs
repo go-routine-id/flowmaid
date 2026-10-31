@@ -562,7 +562,7 @@ impl Fan<'_> {
         // Levels from the parent links (not `MindNode::depth`, which a
         // hand-built map may leave unset), parents first in preorder.
         let mut level = vec![0usize; n];
-        for &i in &pre[1..] {
+        for &i in pre.iter().skip(1) {
             level[i] = d.nodes[i].parent.map_or(0, |p| level[p] + 1);
             if level[i] > FAN_MAX_DEPTH {
                 return None;
@@ -3290,6 +3290,15 @@ mod tests {
         let m = mind(&src);
         let sizes: Vec<(f64, f64)> = m.nodes.iter().map(mind_node_size).collect();
         assert!(fan_centres(&m, &sizes).is_some(), "fell back to rings");
+    }
+
+    /// The fan layout copes with an empty map on its own: the levels
+    /// loop skips the root without slicing past an empty preorder
+    /// (`scene` returns early first, but `Fan::new` may not rely on it).
+    #[test]
+    fn the_fan_takes_an_empty_map() {
+        let m = Mindmap::default();
+        assert!(Fan::new(&m, &[]).is_some());
     }
 
     /// Two subtrees whose boxes are far apart can still collide: a spoke
