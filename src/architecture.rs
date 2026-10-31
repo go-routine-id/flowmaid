@@ -37,17 +37,25 @@ use crate::style::accent;
 /// Canvas margin around the whole diagram.
 pub const PAD: f64 = 24.0;
 /// Smallest service box. A box grows taller for a wrapped label, and
-/// wider only for a single word too long to wrap.
+/// wider only for a single word too long to wrap. (0.32 and earlier:
+/// every box was exactly this size.)
 pub const SERVICE_W: f64 = 150.0;
+/// Smallest service box height; see [`SERVICE_W`].
 pub const SERVICE_H: f64 = 70.0;
 /// Padding inside a group box.
 pub const GROUP_PAD: f64 = 24.0;
 /// Height reserved for a group title.
 pub const GROUP_TITLE_H: f64 = 26.0;
-/// Space between a group's frame and its siblings.
+/// Space between a group's frame and its siblings, nested groups
+/// included (more when an edge label between them needs it). (0.32 and
+/// earlier: only between top-level groups.)
 pub const GROUP_GAP: f64 = 50.0;
-/// Space between two children of one group that no edge joins.
+/// Horizontal space between two children of one group that no edge
+/// joins and whose ports do not face each other; two that an edge joins
+/// sit further apart. (0.32 and earlier: 28px between every two
+/// children, joined or not.)
 pub const CHILD_GAP_X: f64 = 32.0;
+/// [`CHILD_GAP_X`] on the vertical axis.
 pub const CHILD_GAP_Y: f64 = 32.0;
 /// Font size for service and group labels (the flowchart node size).
 pub const FONT: u32 = 14;

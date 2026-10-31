@@ -1105,11 +1105,56 @@ pub struct Mindmap {
     pub nodes: Vec<MindNode>,
 }
 
+impl Mindmap {
+    /// Append a node under `parent` and return its index, filling in
+    /// what the parser derives from indentation: `depth`, `branch` and
+    /// the parent's `children`. `None` adds the root; once there is
+    /// one, `None` hangs the node off the root, as the parser does with
+    /// a stray shallow line, so `nodes[0]` stays the only root. The
+    /// node starts without icon, classes or style — set them on
+    /// `nodes[i]` afterwards.
+    ///
+    /// # Panics
+    /// If `parent` is not an index into [`Mindmap::nodes`].
+    pub fn add_node(
+        &mut self,
+        parent: Option<usize>,
+        text: impl Into<String>,
+        shape: MindShape,
+    ) -> usize {
+        let idx = self.nodes.len();
+        let parent = parent.or(if idx > 0 { Some(0) } else { None });
+        // A node's colored branch is its depth-1 ancestor; the root
+        // has none. depth-1 nodes seed their own branch.
+        let (depth, branch) = match parent {
+            None => (0, None),
+            Some(p) if self.nodes[p].depth == 0 => (1, Some(idx)),
+            Some(p) => (self.nodes[p].depth + 1, self.nodes[p].branch),
+        };
+        self.nodes.push(MindNode {
+            text: text.into(),
+            shape,
+            parent,
+            children: Vec::new(),
+            depth,
+            branch,
+            icon: None,
+            classes: Vec::new(),
+            style: NodeStyle::default(),
+        });
+        if let Some(p) = parent {
+            self.nodes[p].children.push(idx);
+        }
+        idx
+    }
+}
+
 /// One mindmap node. `text` may contain `\n` (from `<br/>`) for a
 /// multi-line label. `branch` is the index of the depth-1 ancestor
 /// this node descends from (its colored branch); `None` for the root.
 ///
-/// `#[non_exhaustive]`: the parser builds these; read their fields.
+/// `#[non_exhaustive]`: build one with [`Mindmap::add_node`] (the
+/// parser uses it too) and set the (public) fields.
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct MindNode {
@@ -1164,7 +1209,8 @@ pub struct JourneySection {
 
 /// One step: `Task name: score: Actor1, Actor2`. `score` is clamped to
 /// 1..=5 (satisfaction); `actors` are indices into [`Journey::actors`].
-/// `#[non_exhaustive]`: the parser builds these; read their fields.
+/// `#[non_exhaustive]`: build one with [`JourneyTask::new`] (the parser
+/// uses it too) and set the (public) fields.
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct JourneyTask {
@@ -1176,6 +1222,28 @@ pub struct JourneyTask {
     /// reads it with `Number()`, so `3.5` is a valid score and sits
     /// halfway between 3 and 4 on the satisfaction curve.
     pub exact_score: f64,
+}
+
+impl JourneyTask {
+    /// A task scored `score`, clamped to 1..=5 into
+    /// [`JourneyTask::exact_score`] and rounded into
+    /// [`JourneyTask::score`], exactly as the parser reads a score. A
+    /// NaN (which the parser rejects) counts as the neutral 3.
+    /// `actors` are indices into [`Journey::actors`].
+    pub fn new(name: impl Into<String>, score: f64, actors: Vec<usize>) -> Self {
+        let exact_score = if score.is_nan() {
+            3.0
+        } else {
+            score.clamp(1.0, 5.0)
+        };
+        JourneyTask {
+            name: name.into(),
+            // `as` is exact here: the value is a whole number in 1..=5.
+            score: exact_score.round() as u8,
+            actors,
+            exact_score,
+        }
+    }
 }
 
 /// Timeline diagram (`timeline` header). `#[non_exhaustive]`: build
@@ -1367,7 +1435,8 @@ pub struct ArchGroup {
 }
 
 /// A single service/node inside an architecture diagram.
-/// `#[non_exhaustive]`: the parser builds these; read their fields.
+/// `#[non_exhaustive]`: build one with [`ArchService::new`] and set the
+/// (public) fields.
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct ArchService {
@@ -1383,8 +1452,24 @@ pub struct ArchService {
     pub junction: bool,
 }
 
+impl ArchService {
+    /// A service `id` labelled `title` (may be empty), outside every
+    /// group, without an icon. For a junction set
+    /// [`ArchService::junction`] and leave `title` empty.
+    pub fn new(id: impl Into<String>, title: impl Into<String>) -> Self {
+        ArchService {
+            id: id.into(),
+            title: title.into(),
+            icon: None,
+            group: None,
+            junction: false,
+        }
+    }
+}
+
 /// One connection between two services via named ports.
-/// `#[non_exhaustive]`: the parser builds these; read their fields.
+/// `#[non_exhaustive]`: build one with [`ArchEdge::new`] and set the
+/// (public) fields.
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct ArchEdge {
@@ -1406,6 +1491,25 @@ pub struct ArchEdge {
     /// Edge label from mermaid's `a:R -[label]- L:b` form; `None` = an
     /// unlabelled `--` edge.
     pub title: Option<String>,
+}
+
+impl ArchEdge {
+    /// A plain `from:from_side -- to_side:to` edge (indices into
+    /// [`Architecture::services`]): no arrowheads, no `{group}`
+    /// modifier, no label.
+    pub fn new(from: usize, from_side: ArchSide, to: usize, to_side: ArchSide) -> Self {
+        ArchEdge {
+            from,
+            from_side,
+            to,
+            to_side,
+            arrow_start: false,
+            arrow_end: false,
+            from_group: false,
+            to_group: false,
+            title: None,
+        }
+    }
 }
 
 /// Port side on an architecture service.

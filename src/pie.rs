@@ -35,7 +35,8 @@ pub const SWATCH: f64 = 12.0;
 pub const LEGEND_GAP: f64 = 28.0;
 /// Percentage labels start at this fraction of the radius; a label
 /// that does not fit its wedge there slides outward (where the wedge
-/// is wider) up to [`LABEL_R_MAX`].
+/// is wider) up to [`LABEL_R_MAX`]. (0.32 and earlier: every label sat
+/// at exactly 0.62 of the radius.)
 pub const LABEL_R: f64 = 0.72;
 /// Outermost fraction of the radius an inside label may slide to
 /// before it moves outside the rim.
@@ -107,6 +108,7 @@ pub struct PieLabel {
     pub text: String,
     /// Text anchor point; `y` is the vertical centre of the text.
     pub x: f64,
+    /// Vertical centre of the text (see [`PieLabel::x`]).
     pub y: f64,
     /// `true`: centred inside its wedge, inked with
     /// [`crate::style::text_on`] of the slice colour. `false`: outside

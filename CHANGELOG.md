@@ -141,7 +141,7 @@ Changed).
   whether it is hex, a CSS colour name or `rgb()`).
   New: `MindNode::{icon, classes, style}`, `MindNodeBox::{font_size,
   font_weight, icon, classes, style, paint(), ink()}`,
-  `mindmap::{icon_strokes, label_centre, underline}`.
+  `mindmap::{icon_strokes, label_centre, underline, ICON}`.
 - **More of mermaid's architecture-beta syntax parses.** `junction id` /
   `junction id in group` (a bare point where edges meet, drawn as a dot);
   the `{group}` edge modifier (`a{group}:R --> L:b{group}`), which attaches
@@ -158,6 +158,18 @@ Changed).
 - `ArchScene::title_at`: where each group title is drawn (left end and centre
   line), index-parallel with `scene.clusters`, so a host paints titles where
   the routes avoid them.
+- **Constructors for the model structs that became `#[non_exhaustive]`**, so
+  downstream code can still build diagrams by hand (see **Breaking** under
+  Changed):
+  - `Mindmap::add_node(parent, text, shape)` fills in `depth`, `branch` and
+    the parent's `children` the way the parser does, which now uses it too.
+  - `JourneyTask::new(name, score, actors)` clamps and rounds the score
+    exactly as the parser does (which now uses it too). A NaN counts as 3.
+  - `ArchService::new(id, title)` and
+    `ArchEdge::new(from, from_side, to, to_side)`.
+
+  `tests/model_build.rs` builds each of these models from outside the crate
+  and checks that it renders byte-identically to the source it mirrors.
 
 ### Changed
 
@@ -411,18 +423,81 @@ Changed).
   done a lot of work, later ones weight their estimate. A 200-service random
   tangle takes ~1.4 s instead of ~20 s, a 120-service grid ~4 ms instead of
   ~60 ms; ordinary diagrams route exactly as before the budget.
-- **Breaking** (needs a **minor** bump): these public structs gain fields
-  and become `#[non_exhaustive]` — ER `model::Entity`, `er::ErRow`,
-  `er::ErTable`; sequence `seq::SeqScene`; `PieChart`, `Journey`,
-  `Timeline`, `JourneyTask`, `pie::PieScene`, `journey::TaskGlyph`,
-  `timeline::PeriodGlyph`; `SankeyConfig`, `SankeyNodeGlyph`,
-  `SankeyScene`; `MindNode`, `mindmap::MindNodeBox`; `model::Architecture`,
-  `ArchService`, `ArchEdge`, `architecture::ArchScene`. `MindShape` gains a
-  `Default` variant (now its `#[default]`) and becomes `#[non_exhaustive]`.
-  Build the model structs with `Default` (or the parser) and set fields
-  (`SeqScene::default()` likewise); the scene structs come from each
-  module's `scene()`. Only struct literals and exhaustive patterns outside
-  the crate are affected.
+- **Breaking** (needs a **minor** bump). Nothing public is removed or
+  renamed, and every function keeps its signature. What breaks, and how to
+  migrate:
+  - **Model structs gain fields and become `#[non_exhaustive]`:**
+    `model::Entity`, `PieChart`, `Journey`, `JourneyTask`, `Timeline`,
+    `MindNode`, `Architecture`, `ArchService`, `ArchEdge` and
+    `SankeyConfig`. Outside the crate a struct literal (with or without
+    `..Default::default()`) and a pattern without `..` no longer compile.
+    Start from `Default` and assign the fields for `PieChart`, `Journey`,
+    `Timeline`, `Architecture` and `SankeyConfig`; get an `Entity` from
+    `ErDiagram::ensure_entity`; use the new constructors for the rest:
+    `Mindmap::add_node`, `JourneyTask::new`, `ArchService::new` and
+    `ArchEdge::new` (see Added). `ErDiagram` (new field `direction`) and
+    `SequenceDiagram` (new fields `mirror_actors`, `scoped_frames`) gain
+    fields too, but they already had a private field, so this changes
+    nothing for them. `Edge::end_room` is non-breaking because `Edge` was
+    already `#[non_exhaustive]`.
+  - **Scene structs gain fields and become `#[non_exhaustive]`:**
+    `er::ErRow`, `er::ErTable`, `seq::SeqScene`, `pie::PieScene`,
+    `journey::TaskGlyph`, `timeline::PeriodGlyph`, `sankey::SankeyNodeGlyph`,
+    `sankey::SankeyScene`, `mindmap::MindNodeBox` and
+    `architecture::ArchScene`. They come from each module's `scene()` (or
+    `route()`). Reading and assigning their fields still works. To change
+    one, clone it and assign: struct update syntax
+    (`ArchScene { scene, ..old }`) is refused for these types.
+    `SeqScene::default()` still exists.
+  - **`MindShape`** gains a `Default` variant and becomes
+    `#[non_exhaustive]`, so a `match` needs a `_` arm. `Default` is now
+    `MindShape::default()`, and the parser gives it to a node without a
+    wrapper (it used to give `Rounded`), so code that tested for
+    `Rounded` to find such nodes should test for `Default`. `Rounded`
+    (`id(text)`) still draws a pill.
+  - **Defaults of hand-built models now match the parser.**
+    `SequenceDiagram::default()` has `mirror_actors: true`, so a hand-built
+    diagram gains the footer row of participant boxes; set it to `false`
+    to drop that row. `ErDiagram::default()` now flows top to bottom
+    (`direction` is `Direction::TD`) where ER used to be hard-coded left to
+    right; set `direction = Direction::LR` for the old flow.
+  - **Scene semantics:** in a gitGraph scene, merge edges are
+    `EdgeKind::Open` (they were `Arrow`), and every edge carries its lane
+    colour and width in `meta.style`. Commit nodes used to all be `Circle`.
+    Now a merge is a `DoubleCircle`, a HIGHLIGHT commit a square `Rect`, and
+    a REVERSE commit a `Circle` labelled `REVERSE_MARK`. The renderer now
+    ranks lanes by `GitBranch::order` (see Changed). Pie slice `i` takes
+    `pie::slice_color(i)`, which is `accent(i)` only for the first eight
+    slices.
+  - **Public constants with a new value or meaning.** They still compile,
+    but code that lays things out from them gets new numbers. Each one whose
+    meaning changed says what it was in 0.32 in its doc comment:
+    - `architecture`: `CHILD_GAP_X` / `CHILD_GAP_Y` are 32 (were 28) and
+      now only separate children that no edge joins. Two children an edge
+      joins sit at least 56px apart. `GROUP_GAP` (50) now separates a group's frame
+      from any sibling, nested groups included, where it used to apply
+      only between top-level groups. `SERVICE_W` × `SERVICE_H`
+      (150 × 70) is now the smallest box, not the fixed size. `FONT` is
+      14 (was 13) and `ICON_FONT` is 24 (was 16).
+    - `gitgraph`: `PAD` is 24 (was 30), the margin round the drawn
+      content. `COMMIT_DX` is 50 (was 90) and is now the minimum column
+      pitch: LR columns move right as their labels need. `BRANCH_DY` (70)
+      is now the minimum lane pitch in TB/BT. `BRANCH_LABEL_W` (70) is now
+      the minimum width of the LR name column, and TB/BT no longer
+      reserve it. `R` is 11 (was 12).
+    - `journey`: `DOT_R` is 5 (was 4) and now sizes the legend dots too.
+      `DOTS_H` is 20 (was 16).
+    - `mindmap`: `PAD_X` is 16 (was 12) and `PAD_Y` is 8 (was 7). `RING`
+      (172) is now only the least ring spacing of the fallback layout.
+      `FONT` (14) no longer applies to the root or the first level, which
+      use `ROOT_FONT` and `BRANCH_FONT`.
+    - `pie`: `RADIUS` is 130 (was 110). `LABEL_R` is 0.72 (was 0.62) and
+      is now where a label starts: it may slide out to `LABEL_R_MAX`, or
+      outside the rim. `MIN_LABEL_FRAC` is 0.01 (was 0.04).
+    - `sankey`: `FONT` is 14 (was 13).
+    - `timeline`: `AXIS_COLOR` is `#8a90a8` (was `#c2c8dc`) and now
+      colours only the axis. The task lines keep the old colour as
+      `TASK_LINE_COLOR`. `TICK_R` is 4.5 (was 3).
 
 ### Fixed
 

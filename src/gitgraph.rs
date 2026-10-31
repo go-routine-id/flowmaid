@@ -38,14 +38,18 @@ use crate::style::{accent, accent_ink, text_on, ACCENTS, ACCENT_INKS};
 /// Canvas margin around the drawn content.
 pub const PAD: f64 = 24.0;
 /// Minimum width of the branch-name column left of the first commit in
-/// LR; a longer name's pill widens it.
+/// LR; a longer name's pill widens it. (0.32 and earlier: a fixed
+/// width, and TB/BT reserved the same room for the names, where the
+/// canvas is now fitted round them instead.)
 pub const BRANCH_LABEL_W: f64 = 70.0;
 /// Minimum distance between neighbouring commit columns (LR) / rows
 /// (TB, BT). In LR a column moves further right whenever the ids, tags
 /// and elbow legs around it need the room to stay clear of each other.
+/// (0.32 and earlier: a fixed 90px pitch.)
 pub const COMMIT_DX: f64 = 50.0;
 /// Distance between branch lanes in LR; the minimum in TB/BT, where a
-/// lane moves over as far as the ids and tags beside it need.
+/// lane moves over as far as the ids and tags beside it need. (0.32 and
+/// earlier: a fixed pitch in every orientation.)
 pub const BRANCH_DY: f64 = 70.0;
 /// Commit dot radius.
 pub const R: f64 = 11.0;
