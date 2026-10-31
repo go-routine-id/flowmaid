@@ -4174,9 +4174,11 @@ type Chord = ((f64, f64), (f64, f64));
 /// The rough courses [`note_elbow`] keeps its elbow off, in flow
 /// coordinates (`at`, index-parallel with `g.nodes`): for each of the
 /// first `real` edges the segment between its ends' centres, then for
-/// each sub-edge the segment between its ends — a box end at the centre
-/// of its members, or for a member drawn to its own box the stub along
-/// the flow to the members' nearer flow side (see [`own_box_stub`]).
+/// each sub-edge its drawn course — the segment between its ends cut
+/// off where it meets a box end's frame (aimed at the centre of the
+/// box's members, see [`frame_entry`]), or for a member drawn to its own
+/// box the stub along the flow to the members' nearer flow side (see
+/// [`own_box_stub`]).
 /// Edges past `real` are `scene_clustered`'s stand-ins, never drawn as
 /// such: their sub-edges' courses stand for them, so the static layout
 /// and [`route`] judge an elbow against the same lines from the same
@@ -4244,12 +4246,57 @@ fn edge_chords(g: &Graph, at: &[Placed], real: usize) -> Vec<Chord> {
                         members(si).map(|(b0, b1, l0, l1)| ((b0 + b1) / 2.0, (l0 + l1) / 2.0))
                     }
                 };
-                point(e.from).zip(point(e.to))
+                // The drawn edge stops at a box end's frame: past it the
+                // line to the members' centre is no course at all, and
+                // would refuse elbows inside the box nothing crosses.
+                // The frame here is the members' bbox grown by `SUB_PAD`
+                // (as boxes re-wrap round dragged members), the same in
+                // the static layout and in `route`.
+                let clip = |from: (f64, f64), end: End, to: (f64, f64)| match end {
+                    End::Sub(si) => members(si).map_or(to, |(b0, b1, l0, l1)| {
+                        frame_entry(
+                            from,
+                            to,
+                            (b0 - SUB_PAD, b1 + SUB_PAD, l0 - SUB_PAD, l1 + SUB_PAD),
+                        )
+                    }),
+                    End::Node(_) => to,
+                };
+                point(e.from)
+                    .zip(point(e.to))
+                    .map(|(a, b)| (clip(b, e.from, a), clip(a, e.to, b)))
             }
         };
         out.extend(chord);
     }
     out
+}
+
+/// Where the segment `from` → `to` first enters the box `(b0, b1, l0,
+/// l1)`: `to` itself when `from` already lies inside the box or the
+/// segment misses it.
+fn frame_entry(
+    from: (f64, f64),
+    to: (f64, f64),
+    (b0, b1, l0, l1): (f64, f64, f64, f64),
+) -> (f64, f64) {
+    let d = (to.0 - from.0, to.1 - from.1);
+    let (mut t_in, mut t_out) = (0.0_f64, 1.0_f64);
+    for (p, dp, lo, hi) in [(from.0, d.0, b0, b1), (from.1, d.1, l0, l1)] {
+        if dp.abs() < 1e-9 {
+            if p < lo || p > hi {
+                return to;
+            }
+            continue;
+        }
+        let (ta, tb) = ((lo - p) / dp, (hi - p) / dp);
+        t_in = t_in.max(ta.min(tb));
+        t_out = t_out.min(ta.max(tb));
+    }
+    if t_in <= 0.0 || t_in > t_out {
+        return to;
+    }
+    (from.0 + d.0 * t_in, from.1 + d.1 * t_in)
 }
 
 /// A state `note` card (see [`crate::style::is_note_card`]).
@@ -7715,6 +7762,14 @@ mod tests {
              note left of B : first note\nnote left of B : second note",
             "stateDiagram-v2\n[*] --> A\nA --> B\nA --> B\nA --> B : one\nA --> B : one\n\
              B --> A\nB --> A : back\nnote right of A : dup\nnote right of A : dup again",
+            "stateDiagram-v2\ndirection LR\n[*] --> S0\nstate C0 {\n  [*] --> C0i0\n  \
+             C0i0 --> C0i1 : e1\n  state C0ch <<choice>>\n  C0i0 --> C0ch\n  \
+             C0ch --> C0i1 : y\n  C0ch --> C0i1 : n\n  note left of C0i0 : n924\n  \
+             note left of C0i1 : n552\n  note right of C0i1 : n118\n}\nstate C1 {\n  \
+             [*] --> C1i0\n  state C1ch <<choice>>\n  C1i0 --> C1ch\n  C1ch --> C1i0 : y\n  \
+             C1ch --> C1i0 : n\n  note right of C1i0 : n856\n}\nS0 --> C0\nS0 --> C1 : go2\n\
+             S0 --> S0 : back\nC0 --> C0 : self\nnote left of C1 : m383\nnote left of C1 : m445\n\
+             note right of S0 : m343",
         ]
         .map(String::from)
         .to_vec();
@@ -7833,10 +7888,41 @@ mod tests {
                 }
             }
         }
+        // 67 elbows; 56 while a sub-edge's course ran on past its box's
+        // frame to the members' centre.
         assert!(
-            elbows >= 20,
+            elbows >= 64,
             "only {elbows} elbows: the sources lost their point"
         );
+        // A sub-edge's course stops at its box's frame: run on to the
+        // centre of the box's members, it once refused elbows inside the
+        // box that no drawn line crosses ('inner note' in the nested
+        // composite, `C1i0`'s card under its choice loop).
+        for (k, state, text) in [(0, "I1", "inner note"), (6, "C1i0", "n856")] {
+            let src = &composite_note_sources()[k];
+            let g = match crate::parser::parse_document(src).unwrap() {
+                crate::model::Document::State(g) => g,
+                other => panic!("not a state diagram: {other:?}"),
+            };
+            let (s, ei) = (
+                scene(&g),
+                (0..g.edges.len()).find(|&ei| {
+                    let e = &g.edges[ei];
+                    [(e.from, e.to), (e.to, e.from)]
+                        .iter()
+                        .any(|&(a, b)| g.nodes[a].id == state && g.nodes[b].label == text)
+                }),
+            );
+            let ei = ei.unwrap_or_else(|| panic!("no {state} - {text} link\n{src}"));
+            let centres: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let r = route(&g, &centres);
+            assert!(
+                elbow_of(&s.edges[ei]) && elbow_of(&r.edges[ei]),
+                "{state} - {text}: {:?} vs {:?}\n{src}",
+                s.edges[ei].bezier,
+                r.edges[ei].bezier
+            );
+        }
         // Two cards right of one state: the second's link no longer
         // blocks the first's elbow (it used to keep the plain course).
         let src = &composite_note_sources()[2];

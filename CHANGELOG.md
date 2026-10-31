@@ -241,7 +241,9 @@ Minor, not patch: several class structs gain public fields (see
   while `route` and `route_partial` used the drawn transitions only, so the
   first drag moved the link 60–80px onto another course. Both now test the
   elbow against the same courses: the drawn transitions, plus each
-  transition to or from a composite. Two notes beside one state no longer
+  transition to or from a composite as far as it is drawn, up to the
+  composite's frame (so a note inside the composite keeps its elbow where
+  no line crosses it). Two notes beside one state no longer
   block each other's elbow either, so both links now leave the facing side.
 - **A hand-built mindmap of any depth renders.** The fan layout recursed a
   few stack frames per level, so a chain several thousand levels deep (built
