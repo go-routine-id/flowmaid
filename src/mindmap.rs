@@ -41,7 +41,8 @@ pub const PAD_Y: f64 = 8.0;
 /// Height of one label line at [`FONT`]; other sizes scale it.
 pub const LINE_H: f64 = 18.0;
 /// Least ring spacing of the fallback layout (see [`scene`]): depth `k`
-/// on a ring at least `RING` further out than depth `k - 1`'s.
+/// on a ring at least `RING` further out than depth `k - 1`'s. (0.32 and
+/// earlier: every map used rings, exactly `k · RING` out.)
 pub const RING: f64 = 172.0;
 /// Factor by which the fallback layout widens a ring gap whose
 /// connectors are not yet clear (see [`ring_centres`]).
@@ -51,7 +52,9 @@ const RING_GROWTH: f64 = 1.2;
 const RING_GROWTHS: usize = 64;
 /// Canvas margin around the whole tree.
 pub const MARGIN: f64 = 28.0;
-/// Base font size (px): every node below the first level.
+/// Base font size (px): every node below the first level. (0.32 and
+/// earlier: every node, root and first level included; those now use
+/// [`ROOT_FONT`] and [`BRANCH_FONT`].)
 pub const FONT: u32 = 14;
 /// Font size of the root's label (bold).
 pub const ROOT_FONT: f64 = 18.0;

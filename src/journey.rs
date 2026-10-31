@@ -36,7 +36,9 @@ pub const SCORE_STEP: f64 = 14.0;
 /// Actor dot radius (per-task dots and legend dots alike) + spacing +
 /// the height of the dot row above a face.
 pub const DOT_R: f64 = 5.0;
+/// Space between two neighbouring actor dots; see [`DOT_R`].
 pub const DOT_GAP: f64 = 4.0;
+/// Height of the actor-dot row above a face; see [`DOT_R`].
 pub const DOTS_H: f64 = 20.0;
 /// Room reserved under a face for a one-line label (each extra
 /// wrapped line adds [`LINE_H`]).

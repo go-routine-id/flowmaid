@@ -70,7 +70,7 @@ Or in `Cargo.toml`:
 
 ```toml
 [dependencies]
-flowmaid = "0.25"
+flowmaid = "0.33"
 ```
 
 ## Usage

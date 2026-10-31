@@ -44,6 +44,8 @@ pub const WRAP_W: f64 = 160.0;
 pub const FONT: u32 = 13;
 /// Axis line color: a neutral at 3.2:1 on white, so the spine reads as
 /// the diagram's backbone (WCAG 1.4.11 asks 3:1 of meaningful lines).
+/// (0.32 and earlier: `#c2c8dc`, the axis and the dashed task lines
+/// alike; the task lines keep that colour as [`TASK_LINE_COLOR`].)
 pub const AXIS_COLOR: &str = "#8a90a8";
 /// Dashed task-line color — paler than the axis, it only links a
 /// period to its events.

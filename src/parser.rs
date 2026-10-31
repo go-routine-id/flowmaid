@@ -21,7 +21,7 @@ use crate::model::{
     ClassNote, ClassRel, CommitKind, Direction, Document, EdgeAnimation, EdgeCurve, EdgeEnds,
     EdgeKind, EdgeMeta, End, ErDiagram, FrameKind, GitBranch, GitCommit, GitGraph, GitOrientation,
     Graph, Journey, JourneySection, JourneyTask, Key, LinkStyle, LinkTarget, Marker, Member,
-    MindNode, MindShape, Mindmap, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation,
+    MindShape, Mindmap, NodeStyle, NoteSide, PieChart, PieSlice, RelKind, Relation,
     SankeyAlignment, SankeyConfig, SankeyDiagram, SankeyLabelStyle, SankeyLink, SankeyLinkColor,
     SeqHead, SeqItem, SequenceDiagram, Shape, SubEdge, Subgraph, Timeline, TimelineDirection,
     TimelinePeriod, TimelineSection, Visibility,
@@ -4284,7 +4284,6 @@ fn parse_mindmap(source: &str, header_line: usize) -> Result<Mindmap, ParseError
             parent = Some(0);
         }
 
-        let idx = d.nodes.len();
         let depth = parent.map_or(0, |p| d.nodes[p].depth + 1);
         if depth >= MAX_NEST_DEPTH {
             return Err(err(
@@ -4292,27 +4291,7 @@ fn parse_mindmap(source: &str, header_line: usize) -> Result<Mindmap, ParseError
                 format!("mindmap nesting too deep (max {MAX_NEST_DEPTH} levels)"),
             ));
         }
-        // A node's colored branch is its depth-1 ancestor; the root
-        // has none. depth-1 nodes seed their own branch.
-        let branch = match depth {
-            0 => None,
-            1 => Some(idx),
-            _ => d.nodes[parent.unwrap()].branch,
-        };
-        d.nodes.push(MindNode {
-            text,
-            shape,
-            parent,
-            children: Vec::new(),
-            depth,
-            branch,
-            icon: None,
-            classes: Vec::new(),
-            style: NodeStyle::default(),
-        });
-        if let Some(p) = parent {
-            d.nodes[p].children.push(idx);
-        }
+        let idx = d.add_node(parent, text, shape);
         stack.push((indent, idx));
     }
 
@@ -4453,16 +4432,14 @@ fn parse_journey(source: &str, header_line: usize) -> Result<Journey, ParseError
             return Err(err(lineno, "journey task needs a name".to_string()));
         }
         // Mermaid reads the score with `Number()`, so `3.5` and `-1`
-        // are scores too; clamp to the 1..=5 scale the faces draw (a
-        // NaN has no place on it and stays an error).
-        let exact_score: f64 = score_str
+        // are scores too; `JourneyTask::new` clamps them to the 1..=5
+        // scale the faces draw (a NaN has no place on it and stays an
+        // error).
+        let score: f64 = score_str
             .parse::<f64>()
             .ok()
             .filter(|v| !v.is_nan())
-            .ok_or_else(|| err(lineno, format!("invalid journey score: '{}'", score_str)))?
-            .clamp(1.0, 5.0);
-        // `as` is exact here: the value is a whole number in 1..=5.
-        let score = exact_score.round() as u8;
+            .ok_or_else(|| err(lineno, format!("invalid journey score: '{}'", score_str)))?;
         // Resolve actors to stable indices (dedup, first-appearance order).
         let mut actor_ids = Vec::new();
         for a in actors_str.split(',') {
@@ -4479,12 +4456,11 @@ fn parse_journey(source: &str, header_line: usize) -> Result<Journey, ParseError
             }
         }
         ensure_section(&mut d);
-        d.sections.last_mut().unwrap().tasks.push(JourneyTask {
-            name: name.to_string(),
-            score,
-            actors: actor_ids,
-            exact_score,
-        });
+        d.sections
+            .last_mut()
+            .unwrap()
+            .tasks
+            .push(JourneyTask::new(name, score, actor_ids));
     }
     Ok(d)
 }
