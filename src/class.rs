@@ -602,6 +602,13 @@ const ORTHO_UNDER_LABEL: usize = 60;
 const ORTHO_CROSSING: usize = 10;
 /// Step between the spots tried for a rerouted edge's label.
 const LABEL_SPOT_STEP: f64 = 6.0;
+/// How far from its route's middle a rerouted edge's label is sought.
+/// A node dragged far off leaves routes thousands of px long, often
+/// beside each other all the way (a fan's lanes), so no spot is clear:
+/// searching the whole length would test thousands of spots against
+/// every run, box and label, for each route tried. Laid-out routes are
+/// far shorter than twice this.
+const LABEL_SPOT_REACH: f64 = 2000.0;
 /// An edge end alone on its face keeps at least this far from the
 /// face's corners when it is moved.
 const ORTHO_INSET: f64 = 24.0;
@@ -2586,52 +2593,96 @@ impl Ortho<'_> {
     fn label_spot(&self, pts: &[(f64, f64)], w: f64, was: (f64, f64)) -> (f64, f64) {
         let seg_len = |s: &[(f64, f64)]| (s[1].0 - s[0].0).abs() + (s[1].1 - s[0].1).abs();
         let total: f64 = pts.windows(2).map(seg_len).sum();
+        // The point `d` along the route, and the stretch it lies on.
         let at = |mut d: f64| {
-            for s in pts.windows(2) {
+            for (i, s) in pts.windows(2).enumerate() {
                 let l = seg_len(s);
                 if d <= l && l > 0.0 {
                     let t = d / l;
-                    return (
+                    let p = (
                         s[0].0 + (s[1].0 - s[0].0) * t,
                         s[0].1 + (s[1].1 - s[0].1) * t,
                     );
+                    return (p, Some(i));
                 }
                 d -= l;
             }
-            pts[pts.len() - 1]
+            (pts[pts.len() - 1], Some(pts.len() - 2))
         };
         let mid = total / 2.0;
         let was = nearest_on(pts, was);
         if total <= 2.0 * ORTHO_STUB {
             return was;
         }
-        // Where it was, then every LABEL_SPOT_STEP px from stub to stub,
-        // nearest the middle first.
-        let n = ((mid - ORTHO_STUB) / LABEL_SPOT_STEP).floor() as i32;
-        let steps = (0..=2 * n).map(|k| if k % 2 == 1 { -(k + 1) / 2 } else { k / 2 });
-        let mut best = (usize::MAX, was);
-        for p in std::iter::once(was).chain(steps.map(|k| at(mid + f64::from(k) * LABEL_SPOT_STEP)))
-        {
-            let chip = (
+        let chip_at = |p: (f64, f64)| {
+            (
                 p.0 - w / 2.0 - 1.0,
                 p.1 - 11.0,
                 p.0 + w / 2.0 + 1.0,
                 p.1 + 11.0,
+            )
+        };
+        let hits = |chip: Rect,
+                    runs: &mut dyn Iterator<Item = &Run>,
+                    boxes: &mut dyn Iterator<Item = &Rect>| {
+            runs.filter(|q| {
+                let (a, b) = q.ends();
+                rect_hits_segment(chip, a, b)
+            })
+            .count()
+                + boxes.filter(|&&r| rects_meet(chip, r)).count()
+        };
+        // What a chip sliding along stretch `i` can meet — the runs,
+        // boxes and labels across the area it sweeps (a px wider) —
+        // gathered the first time a spot lands on the stretch, so each
+        // spot is tested against those alone (the same count).
+        let gather = |i: usize| -> (Vec<Run>, Vec<Rect>) {
+            let (a, b) = (chip_at(pts[i]), chip_at(pts[i + 1]));
+            let swept = (
+                a.0.min(b.0) - 1.0,
+                a.1.min(b.1) - 1.0,
+                a.2.max(b.2) + 1.0,
+                a.3.max(b.3) + 1.0,
             );
-            let hits = self
+            let runs = self
                 .runs
                 .all()
                 .filter(|q| {
-                    let (a, b) = if q.vertical {
-                        ((q.c, q.l), (q.c, q.h))
-                    } else {
-                        ((q.l, q.c), (q.h, q.c))
-                    };
-                    rect_hits_segment(chip, a, b)
+                    let (a, b) = q.ends();
+                    rect_hits_segment(swept, a, b)
                 })
-                .count()
-                + self.rects.iter().filter(|&&r| rects_meet(chip, r)).count()
-                + self.labels.iter().filter(|&&r| rects_meet(chip, r)).count();
+                .copied()
+                .collect();
+            let boxes = self
+                .rects
+                .iter()
+                .chain(self.labels)
+                .filter(|&&r| rects_meet(swept, r))
+                .copied()
+                .collect();
+            (runs, boxes)
+        };
+        let mut near: Vec<Option<(Vec<Run>, Vec<Rect>)>> = vec![None; pts.len() - 1];
+        // Where it was, then every LABEL_SPOT_STEP px from stub to stub,
+        // nearest the middle first, within LABEL_SPOT_REACH of it.
+        let n = ((mid - ORTHO_STUB).min(LABEL_SPOT_REACH) / LABEL_SPOT_STEP).floor() as i32;
+        let steps = (0..=2 * n).map(|k| if k % 2 == 1 { -(k + 1) / 2 } else { k / 2 });
+        let mut best = (usize::MAX, was);
+        for (p, seg) in std::iter::once((was, None))
+            .chain(steps.map(|k| at(mid + f64::from(k) * LABEL_SPOT_STEP)))
+        {
+            let chip = chip_at(p);
+            let hits = match seg {
+                Some(i) => {
+                    let (runs, boxes) = near[i].get_or_insert_with(|| gather(i));
+                    hits(chip, &mut runs.iter(), &mut boxes.iter())
+                }
+                None => hits(
+                    chip,
+                    &mut self.runs.all(),
+                    &mut self.rects.iter().chain(self.labels),
+                ),
+            };
             if hits < best.0 {
                 best = (hits, p);
                 if hits == 0 {
@@ -5408,6 +5459,91 @@ mod tests {
             (0.0..120.0).contains(&gap),
             "Supplier {gap:.0} px above Product"
         );
+    }
+
+    /// Verifier finding (r6, drag speed): dragging a node 1e5 px off
+    /// left routes that long, a fan's lanes beside each other all the
+    /// way, so no label spot was clear and `label_spot` tested every
+    /// spot along the whole route against every run, box and label —
+    /// most of a 2-3x slower drag. The search keeps within
+    /// LABEL_SPOT_REACH of the middle, and tests each spot against what
+    /// its stretch can meet, which picks a spot as good as testing
+    /// everything.
+    #[test]
+    fn label_spots_are_sought_near_the_middle_and_tested_locally() {
+        let cramped = Cell::new(false);
+        let ortho = |runs, rects, labels| Ortho {
+            rects,
+            labels,
+            ia: usize::MAX,
+            ib: usize::MAX,
+            j: usize::MAX,
+            runs,
+            room: false,
+            cramped: &cramped,
+        };
+        // A route 1e5 px down from a box, lanes 10 px either side all
+        // the way but for a clear stretch far past the middle; the label
+        // was on the box.
+        let mut lanes = Runs::default();
+        for x in [-10.0, 10.0] {
+            lanes.push(Run::of((x, 0.0), (x, 90_000.0)));
+            lanes.push(Run::of((x, 90_400.0), (x, 100_000.0)));
+        }
+        let pts = [(0.0, 0.0), (0.0, 100_000.0)];
+        let start = [(-40.0, -40.0, 40.0, 0.0)];
+        let p = ortho(&lanes, &start, &[]).label_spot(&pts, 30.0, (0.0, 0.0));
+        assert!(
+            (p.1 - 50_000.0).abs() <= LABEL_SPOT_REACH,
+            "label sought {:.0} px from the middle",
+            (p.1 - 50_000.0).abs()
+        );
+        // On a short route with runs, boxes and labels about, the spot
+        // chosen meets no more than any other spot tried, counted
+        // against everything.
+        let mut runs = Runs::default();
+        runs.push(Run::of((-200.0, 300.0), (400.0, 300.0)));
+        runs.push(Run::of((-200.0, 330.0), (400.0, 330.0)));
+        runs.push(Run::of((8.0, 0.0), (8.0, 500.0)));
+        runs.push(Run::of((150.0, 380.0), (150.0, 520.0)));
+        runs.push(Run::of((-50.0, 140.0), (50.0, 140.0)));
+        let rects = [(20.0, 200.0, 90.0, 260.0), (-90.0, 360.0, -12.0, 420.0)];
+        let labels = [(-30.0, 90.0, 30.0, 110.0), (100.0, 440.0, 160.0, 460.0)];
+        let pts = [(0.0, 0.0), (0.0, 450.0), (300.0, 450.0)];
+        let ctx = ortho(&runs, &rects, &labels);
+        let all_hits = |p: (f64, f64)| {
+            let chip = (p.0 - 16.0, p.1 - 11.0, p.0 + 16.0, p.1 + 11.0);
+            runs.all()
+                .filter(|q| {
+                    let (a, b) = q.ends();
+                    rect_hits_segment(chip, a, b)
+                })
+                .count()
+                + rects
+                    .iter()
+                    .chain(&labels)
+                    .filter(|&&r| rects_meet(chip, r))
+                    .count()
+        };
+        // The spots tried: every LABEL_SPOT_STEP px either side of the
+        // middle (375 px along), from stub to stub.
+        let mid = 375.0;
+        let n = ((mid - ORTHO_STUB) / LABEL_SPOT_STEP).floor() as i32;
+        for was in [(0.0, 0.0), (0.0, 300.0), (200.0, 450.0)] {
+            let p = ctx.label_spot(&pts, 30.0, was);
+            for k in -n..=n {
+                let d = mid + f64::from(k) * LABEL_SPOT_STEP;
+                let q = if d <= 450.0 {
+                    (0.0, d)
+                } else {
+                    (d - 450.0, 450.0)
+                };
+                assert!(
+                    all_hits(p) <= all_hits(q),
+                    "{q:?} beats {p:?} (from {was:?})"
+                );
+            }
+        }
     }
 
     /// Verifier finding (r6, BLOCKING): a class named `note-<k>` (the
