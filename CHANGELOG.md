@@ -217,6 +217,18 @@ Minor, not patch: several class structs gain public fields (see
 
 ### Fixed
 
+- **Edge picking covers exactly the painted stroke.** `Scene::edge_at` (and
+  so `hit_test`, also for ER and class scenes) measured to a fixed sampling
+  of the drawn curve, a few points per spline span, which cuts inside a
+  long gentle bend by up to 2px: a click on the painted line could miss
+  it at a small tolerance, or pick a neighbour whose sampled chord, not
+  whose stroke, passed there. It now measures to the curve itself, plus
+  half the stroke width, so a point on a thick or `linkStyle`-widened edge
+  picks it even at `tol = 0`, and where strokes overlap the topmost wins.
+  A `~~~` link that a `linkStyle` makes visible is drawn, so it is now
+  pickable and marquee-selectable too. Picking also got about 4x faster on
+  large diagrams (no allocation per edge, far spans rejected by their
+  control-point box). Rendering is unchanged.
 - Rerouted class relationships used to be drawn as a straight line through
   the boxes they had been routed around, with their inheritance triangles
   collapsed to nothing. The 'contains' label sat 18.5px off its line. The
