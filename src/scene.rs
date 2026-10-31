@@ -237,7 +237,7 @@ impl Scene {
 
     /// Index of the deepest cluster whose box contains `(x, y)`. Nested
     /// clusters resolve to the innermost (largest `depth`). Clusters
-    /// paint behind nodes and edges, so prefer [`hit_test`] when you
+    /// paint behind nodes and edges, so prefer [`Self::hit_test`] when you
     /// want proper z-order.
     pub fn cluster_at(&self, x: f64, y: f64) -> Option<usize> {
         let mut best: Option<(usize, usize)> = None; // (index, depth)
@@ -260,7 +260,7 @@ impl Scene {
     /// rubber-band / marquee multi-select. Returns nodes, then edges,
     /// then clusters, each in index order. An edge counts once its
     /// painted STROKE touches the rectangle — measured on the drawn
-    /// curve widened by half its stroke width, as [`edge_at`] measures
+    /// curve widened by half its stroke width, as [`Self::edge_at`] measures
     /// it — and exactly the edges `edge_at` can pick are selectable.
     pub fn hits_in_rect(&self, x0: f64, y0: f64, x1: f64, y1: f64) -> Vec<Hit> {
         let (rx0, rx1) = (x0.min(x1), x0.max(x1));
@@ -951,7 +951,7 @@ pub fn scene(g: &Graph) -> Scene {
 /// Same as [`scene`] but with caller-provided node sizes — for
 /// nodes whose size doesn't come from the label (ER entity tables,
 /// icon nodes, ...). A fork/join bar's size is fitted to its branches
-/// (laid across the flow and spanning them, see [`fit_bars`]); every
+/// (laid across the flow and spanning them, see `fit_bars`); every
 /// other valid size is used as given, and a negative or non-finite
 /// width or height counts as 0, as in [`route_sized`].
 pub fn scene_sized(g: &Graph, sizes: &[(f64, f64)]) -> Scene {
@@ -2397,17 +2397,17 @@ const PARTIAL_ROUTE_SHARE: f64 = 0.5;
 /// frame redrawn round one, and those whose `base` label covers or
 /// touches a node or an arrowhead (with the edge owning that head),
 /// are drawn afresh; those whose `base` path comes within
-/// [`PARTIAL_CLEAR`] of a moved node's old or new box, of the strip a
+/// `PARTIAL_CLEAR` of a moved node's old or new box, of the strip a
 /// frame grew by or of its moved title chip keep their `base` path but
 /// are rerouted when it now hits something. Every other edge keeps its
 /// `base` geometry (channel waypoints, label slot; only a port shared
 /// with a redrawn edge is spaced again, and its label moves when it now
 /// covers something) and is an obstacle the affected edges are routed
-/// round (see [`crate::edgepass::Ctx::fixed`]), so a drag frame costs
+/// round (see `edgepass::Ctx::fixed`), so a drag frame costs
 /// what lies near the drag, not the whole drawing. A frame holding a
 /// moved node is drawn round its members as [`route`] draws it; other
 /// frames keep their `base` box. When more than
-/// [`PARTIAL_ROUTE_SHARE`] of the edges would be drawn afresh the frame
+/// `PARTIAL_ROUTE_SHARE` of the edges would be drawn afresh the frame
 /// is a plain [`route`], at its cost.
 ///
 /// `base` must be a full drawing of the graph at `base_centers`: the

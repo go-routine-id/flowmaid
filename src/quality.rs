@@ -149,7 +149,7 @@ pub struct Metrics {
     /// Longest such run (px).
     pub hug_max: f64,
     /// (edge, frame title) pairs where the edge comes within
-    /// [`CHIP_SEP`] of the title chip or the header corner it sits in
+    /// `CHIP_SEP` of the title chip or the header corner it sits in
     /// (G6).
     pub edge_chip: usize,
     /// Crossings within [`PORT_ZONE`] of an end both edges share: they

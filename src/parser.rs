@@ -2136,7 +2136,7 @@ fn header_is_parsed(t: &str) -> bool {
 }
 
 /// The "supported: ..." list both parser entry points quote, built
-/// from [`DIAGRAM_HEADERS`] so it stays in step with the dispatch.
+/// from `DIAGRAM_HEADERS` so it stays in step with the dispatch.
 /// Public so the CLI `--help` can quote the very same list.
 pub fn supported_types() -> String {
     let mut out = String::from("flowchart, graph");

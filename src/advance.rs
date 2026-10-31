@@ -4969,7 +4969,7 @@ impl AdvanceScene {
 
     /// Index of the lane whose box contains `(x, y)`, or `None`. Nested
     /// lanes resolve to the SMALLEST containing box (the most specific
-    /// one). Lanes paint behind nodes and edges, so prefer [`hit_test`]
+    /// one). Lanes paint behind nodes and edges, so prefer [`Self::hit_test`]
     /// when you want proper z-order.
     pub fn lane_at(&self, x: f64, y: f64) -> Option<usize> {
         let mut best: Option<(usize, f64)> = None;
