@@ -1,0 +1,26 @@
+diff -ruN '--exclude=target' base5f/src/layout.rs rev_ll/fm/src/layout.rs
+--- base5f/src/layout.rs	2026-10-28 07:08:21.000000000 +0000
++++ rev_ll/fm/src/layout.rs	2026-10-30 02:59:50.005742281 +0000
+@@ -1905,8 +1905,8 @@
+             };
+             let ends = lcoord[li - 1] + (lo_side + hi_side);
+             let at = cursor + lh / 2.0;
+-            if at - ends < ext {
+-                cursor = cursor.max(ends + ext + 2.0 * LABEL_CLEAR - lh / 2.0);
++            if at - ends < ext + 2.0 * 30.0 {
++                cursor = cursor.max(ends + ext + 2.0 * 30.0 - lh / 2.0);
+             }
+         }
+         if li > 0 && gap_need[li] > 0.0 {
+diff -ruN '--exclude=target' base5f/src/scene.rs rev_ll/fm/src/scene.rs
+--- base5f/src/scene.rs	2026-10-28 07:08:21.000000000 +0000
++++ rev_ll/fm/src/scene.rs	2026-10-30 02:59:17.365041949 +0000
+@@ -3290,7 +3290,7 @@
+                 _ => p.bsize / 2.0 - 12.0,
+             }
+             .max(0.0);
+-            let bias = ((other.0 - p.b) * 0.35 + off).clamp(-flat, flat);
++            let bias = ((other.0 - p.b) * 0.0 + off).clamp(-flat, flat);
+             let l = if bottom {
+                 p.l + p.lsize / 2.0
+             } else {

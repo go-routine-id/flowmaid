@@ -1,0 +1,171 @@
+export const meta = {
+  name: 'parity-phase-b-flowchart',
+  description: 'Phase B: flowchart core parity with mermaid (metrics, arrowheads, subgraphs/bbox, back-edge lanes, polish, theme option, outline snapping + wrap, labels/ports, layering, compound direction, all-orthogonal edges, hops/comb) — serial packages, each implemented, adversarially verified, fixed or reverted, then pushed',
+  phases: [
+    { title: 'Packages', detail: 'serial in the main repo: implement -> verify -> fix (x2) -> keep+push or revert' },
+    { title: 'Wrap-up', detail: 'final guard, renders, perf' },
+  ],
+}
+
+const S = '/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad'
+const REPO = '/home/user/flowmaid'
+const BR = 'ccr-ccc6d89a-5cxd7e'
+
+const IMPL = { type: 'object', properties: {
+  summary: { type: 'string' },
+  commits: { type: 'array', items: { type: 'string' } },
+  items_done: { type: 'array', items: { type: 'string' } },
+  items_skipped: { type: 'array', items: { type: 'object', properties: { item: { type: 'string' }, reason: { type: 'string' } }, required: ['item', 'reason'] } },
+  guard_green: { type: 'boolean' },
+  perf_ok: { type: 'boolean' },
+}, required: ['summary', 'commits', 'items_done', 'items_skipped', 'guard_green', 'perf_ok'] }
+
+const VERDICT = { type: 'object', properties: {
+  verdict: { type: 'string', enum: ['pass', 'fail'] },
+  guard_green: { type: 'boolean' },
+  perf_ok: { type: 'boolean' },
+  verified_fixes: { type: 'array', items: { type: 'string' } },
+  problems: { type: 'array', items: { type: 'string' }, description: 'each: concrete, reproducible, with file:line or image evidence; blocking ones first' },
+  unfixed_items: { type: 'array', items: { type: 'string' } },
+  notes: { type: 'string' },
+}, required: ['verdict', 'guard_green', 'perf_ok', 'verified_fixes', 'problems', 'unfixed_items', 'notes'] }
+
+const SHA = { type: 'object', properties: { sha: { type: 'string' } }, required: ['sha'] }
+
+const COMMON = `Read ${S}/PLAN.md first — its invariants are non-negotiable (the user's explicit constraint: never lose flowmaid's differentiating features — the interactive scene/route/route_partial/hit-test API and its drag speed, fold/compact, to_mermaid, json export, advance module, quality harness, portable SVG, zero deps, MSRV 1.75, wasm, determinism). Then read the parts of ${S}/report.md (Indonesian; §2 themes with root causes, §3 bugs, §5 roadmap items Q*/M*/B*) and ${S}/perdiagram.json named in your package (line numbers refer to commit 5f318a0 and have shifted since: phase A already landed shared helpers in scene.rs — edge_path_d / edge_end_chord — and fixes in class/er/state/seq/gitgraph/pie/journey/timeline/sankey/mindmap/architecture; earlier phase-B packages may have landed too: run \`git log --oneline 5f318a0..HEAD\` to see what is already done and build on it, never undo it).
+Hard rules for every flowchart change:
+- SceneEdge geometry is what hosts (playground, desktop, flowcli) paint: purely-visual SVG treatments (arrow trims, hop arcs, crossing gaps, marker sizes) belong in the SVG painter, NOT in SceneEdge.bezier/waypoints. Geometry that changes the path itself (orthogonal lanes, outline snapping) goes into the scene so hosts get it too; orthogonal/rounded paths are delivered like the router already delivers them — corner-rounded, densely sampled waypoints (router::smooth style) so a host's B-spline through the waypoints reproduces them — and SceneEdge.bezier stays a meaningful chord/approximation.
+- The same geometry rule must hold in scene() AND route()/route_sized()/route_partial() (drag) unless the drag budget forbids it; then document the fallback in a code comment and keep pick == render (hit_test uses the same geometry the SVG draws).
+- Drag budget (PLAN.md invariant 1): \`${S}/tools/perf.sh <label> ${REPO}\` per-file worst drag_ms and route_ms ≤ max(1.25 × baseline, baseline + 1.0 ms) (re-run before concluding a regression — the box is noisy); route_partial < 6 ms; static scene_ms ≤ 2 × baseline.
+- Respect user intent: \`e1@{ curve: … }\`, \`linkStyle … interpolate …\`, \`style\`/\`classDef\`/\`linkStyle\` colours and widths keep working exactly as documented.
+- Keep the report §6 strengths (PLAN.md invariant 4). Do not copy mermaid's bugs.`
+
+const PKGS = [
+  { id: 'b0-metrics', title: 'Quality metrics + ratchets (M0)', spec: `Package B0 — report item M0 and §2.13 (do this first; later packages are measured with it).
+1. Extend the pub quality harness (src/quality.rs; additive only — existing fields/columns keep name, meaning and order) with metrics that SEE today's defects: end angle vs side normal at each arrowhead (count of ends > 10°, max angle), endpoint-to-true-outline distance for every shape (parallelogram/trapezoid/hexagon/cylinder/diamond/circle/stadium/subroutine… — max gap, count > 1px), lateral wiggle (sideways hairpins/direction reversals perpendicular to the flow; router.rs ~855-867 and quality.rs ~1207-1225 only count backtrack along the flow), edges leaving their own frame (both ends inside cluster C but a segment outside the innermost cluster containing both ends; router.rs ~787-801 never costs this), long near-parallel runs of different edges 6–26px apart (count, total length), ink-to-canvas ratio, and an "idiom" count: how many edges are drawn as orthogonal/rounded vs single S-cubic vs B-spline vs bow (so the later all-orthogonal package can be tracked), plus drawn crossings if they differ from the existing crossing count. Append the new columns at the END of the TSV of examples/quality.rs (tools match columns by header name).
+2. Add ratchet gates for the new metrics in tests/quality.rs at the CURRENT corpus values (tests/fixtures/quality/*.mmd), with a comment that later packages lower them; do not loosen any existing gate. Unit-test each metric on tiny hand-made scenes (a known bad end angle, a known outline gap, a known hairpin, a known own-frame escape).
+3. Report the corpus values of the new metrics in your summary (they are the defect baseline for phase B).
+No rendering change in this package: corpus SVGs must stay byte-identical (diff \`${S}/tools/render.sh b0 ${REPO}\` outputs against the previous run you make before starting).` },
+  { id: 'b1-arrows', title: 'Arrowheads, trims, stroke tokens (Q1+M1+Q10)', spec: `Package B1 — report §2.3, items Q1 + M1 (must ship together) + Q10.
+- One arrow marker size for every edge kind: \`userSpaceOnUse\` for all edges (today scene.rs ~2494 only when a stroke width is styled, so \`==>\` heads are 2× ≈ 21–24px), glyph \`M 0 0 L 10 5 L 0 10 z\` in viewBox 0 0 10 10 (wider than today's \`M 0 1 L 9 5 L 0 9\`), ARROW_MARKER_UNITS / ARROW_MARKER_PX re-derived (~11px head) and every consumer of the constant consistent (labels.rs ~92/903/913, casing.rs ~40/262 assume one head size — make them use the real head length incl. thick); same for arrow-start, cross and circle markers; keep the advance.rs marker copy (~5772) in sync. linkStyle stroke colours on markers keep working.
+- Trim the drawn path under the head at SVG emit (single cubic, spline_d, curve_geometry/Rounded) by ~0.45–0.6 head length with refX set so the TIP sits exactly on the node border: no butt-end stroke pixels outside the triangle at 8× zoom, no 0.5-unit overshoot. Painter-only: SceneEdge geometry stays untouched (hosts draw their own heads).
+- Straight final stub: the last ≥ ARROW_MARKER_PX of every drawn edge runs along the side normal so orient=auto points straight in (today cubic end tangents still turn: 15–21° kinks in lr, ~15 heads at 44–86° in bench-75). The router's end stub (router.rs ~2701, ROUTE_CLEAR 12.5 + STUB_EXTRA 2 = 14.5 vs head 11.9, and ≈ FRAME_PAD 14 so legs land on frame lines) becomes ≥ 2 × ARROW_MARKER_PX + corner radius (~30) without landing on frame lines; for cubic edges make the last head-length straight (control point along the normal).
+- Q10 stroke tokens: EDGE_WIDTH 2.0, thick 3.5, node stroke 1.8 (including hard-coded node stroke widths), MARGIN 16 (layout.rs ~58). No other layout change.
+Success: thick head == normal head; head angle vs side normal ≤ 10° for ≥ 95% of edges except back-edge bows (fixed in B3) — measure with B0's metric and lower its ratchet; byte-exact tests \`diagrams_without_link_style_render_exactly_as_before\` and \`edge_markers_draw_at_the_right_ends\` updated with justification. Look at the zoomed PNGs.` },
+  { id: 'b2-subgraph-bbox', title: 'Canvas bbox + nested subgraph correctness (Q2+Q3, P0 #1–3)', spec: `Package B2 — report items Q2, Q3, P0 #1, #2, #3, and the P1 "Scene API for LR with wide labels has wrong geometry (scene.rs ~916-918)".
+- Q2: canvas bbox from true curve extrema (solve cubic derivative roots; spline/waypoint polylines by their points) instead of Bézier control points — scene.rs ~886-912, ~3199-3201, ~916-918; edgepass.rs ~339. Success: left/right margin difference ≤ 4px on every corpus diagram; back-edge width 351→≤314; stress 251→≤220 (or better once B3 lands). Keep self-loops/labels/markers never clipped.
+- Q3/P0 #1: parser.rs ~2613-2624 re-claims nodes into a block that is still open, leaving nested "Async Workers" empty in examples/advanced.mmd (2 rects for 3 subgraphs); scene.rs ~2324 skips the infinite bbox. Do not re-claim nodes owned by an already-closed subgraph. A tested prototype exists in ${S}/rv_adv_skeptic/fm (a patched copy of the repo at 5f318a0: \`diff -ru\` its src against git show 5f318a0 to see it; result ${S}/rv_adv_skeptic/fix2.png).
+- P0 #2: sub_edge_proxies (scene.rs ~1547-1583) has an empty entry set so \`Reg --> Platform\` / \`Rollback --> Platform\` do not rank; fall back to the first member (or a DFS ignoring internal back-edges) so cluster CI sits ABOVE Platform.
+- P0 #3: Dev→CI drawn as an upward arrow into its own frame border (scene.rs ~1236-1262, own_box_stub ~1403-1430; stand-ins and rank groups ~1031-1046, which also cause the empty gap and make 'fail' a back-edge): draw the stand-in as a real Dev→Build edge or drop its rank group.
+- Regression tests: advanced renders 3 cluster rects; Workers has 3 nodes (render.rs ~191 only counts subgraphs); CI.bottom < Platform.top; Reg→Platform enters Platform from above; no edge ends on its own frame border; margins symmetric. Also verify subgraph.mmd, fanout-frames.mmd, dense-td.mmd, dense-lr.mmd look at least as good as before.` },
+  { id: 'b3-backedges', title: 'Back-edges as orthogonal lanes (Q4+M4, LR label axis, 2-cycles, own frame, P0 #13)', spec: `Package B3 — report §2.2 fixes 1–5 (items Q4 + M4), the LR label-axis bug, 2-cycles, own-frame containment, and P0 #13. This is the single ugliest element today (demo, back-edge, lr, wide-labels, stress, fanout, state retry, class charges, dense-td n21→n16, bench-75 hairpin, advanced 'fail' and Cache→Gate).
+- Replace the single cubic "bow" (scene.rs ~3347-3370 \`[p0,(bt,p0.1-40),(bt,p3.1+40),p3]\`) with an orthogonal lane like mermaid/ELK: \`p0 → short stub out along the side normal → lane → stub → p3\`, lane = extent of the layers strictly BETWEEN the two ends (not the end nodes' own layers — scene.rs ~3356 clears l0..=l1) + clearance, corners rounded and delivered as densely sampled smooth waypoints (router::smooth style) so hosts reproduce it; both ends anchored on the side facing the lane (not toward the opposite node centre, scene.rs ~3323-3324, bias 0.35 ~3293), arrowheads entering within ±10° of the side normal and never painted under a node. A prototype with mermaid-identical topology exists: ${S}/rv_be/ (fix_ABCD.png, corp/lr.cmp.png; look for the patched sources there). Keep the duplicated rule in layout.rs drawn_breadth (~2099-2150, BOW_CLEAR ~126) in sync so layout reserves exactly the room the lane uses.
+- LR label-axis bug: the breadth a back-edge label occupies is LABEL_BOX_H × lines for LR/RL and text_width + pad for TD/BT (today text width is used on the breadth axis even in LR: scene.rs ~3360, ~798, ~730 bow_blocked, layout.rs ~2138-2142): wide-labels height 413→≤201.
+- Lane obstacle check on every path (today bow_blocked only runs on the clustered path, scene.rs ~719; in fanout the bow cuts Worker 1 and the router "rescues" it with 2 crossings).
+- 2-cycles between adjacent layers (lr): reversed S inside the gap or an explicit lane for the twin, and pair-aware port_order (ports.rs ~331-336; anchor() clamps flat = bsize/2-12 so PARALLEL_GAP ±8 vanishes). lr height 299→≤226.
+- Own-frame containment: an edge whose ends are both inside cluster C stays inside the innermost cluster containing both (frame grows to include the lane + its label; soft router penalty for segments outside it, router.rs ~787-801; frame growth skips edges without waypoints, scene.rs ~1091).
+- P0 #13 (stress): the 'parallel' label covers an unlabelled edge (labels.rs ~1159-1161 reads_own strict + wider parallel offset); thick A==>D crosses the self-loop apex (loop_points scene.rs ~3679-3688 always on the right; layout.rs ~1350 and pair_sep reserve no loop room; self-loops are no obstacle, edgepass.rs ~196-199, router.rs ~4013): put loops on a free side, reserve room, make them obstacles. Must ship with crossing-aware back-edge side choice.
+- route()/route_partial (drag) must produce the same lanes (O(layers) per back-edge is cheap) within the drag budget.
+- Gates that lock this defect (report §2.13): tests/quality.rs layout_shape_gate MAX_ASPECT / WIDE_LABELS_CENTER_OFF (~226-245; after the fix wide-labels aspect ≈ 9.2, mermaid's own is 13.6) and labels.rs wide_lr_labels_step_beside_their_line_off_the_arrowhead may be revised IN THIS PACKAGE with the new values justified in the commit message. Lower B0's end-angle / own-frame ratchets.
+Success: demo width ≤ 321; wide-labels height ≤ 201; lr height ≤ 226; every back-edge enters within ±10°; 0 own-frame escapes; no head overlapping a node; corpus crossings not increased.` },
+  { id: 'b4-polish', title: 'Cluster palette, cylinder, BK dedup, classDef default, casing (Q6–Q9, Q14, Q15)', spec: `Package B4 — report items Q6, Q7, Q8, Q9, Q14 (flowchart part), Q15.
+- Q6: cluster palette by nesting depth / top-level index and frame stroke ≥ 3:1 contrast against the canvas (scene.rs ~2820-2833): nested frames get distinguishable fills; keep titles never struck by edges. Use style.rs contrast helpers from phase A.
+- Q7: cylinder — label centred in the BODY (cy + 0.75·ry), lid filled, stroke resolved from style (style stroke-width applies to the lid and to subroutine bars too), ry scaled with width (scene.rs ~3029-3048, ~3129-3135, ~3037, ~3052-3053, ~3111); keep advance.rs's cylinder copy in sync.
+- Q8: Brandes–Köpf neighbour dedup (layout.rs ~2512-2521 or ~1361-1365): duplicate neighbours bias alignment so the lr fan is asymmetric — ERR offset 6.6→0px, SVC/ERR symmetric about Auth?.
+- Q9: \`classDef default …\` applies to every node without an explicit class (parser.rs ~1985-1989), as in mermaid; dotted edges use a dash that reads as dotted (scene.rs ~2444: "2 3" or similar, check against mermaid's dotted look at the new EDGE_WIDTH).
+- Q14 flowchart part: sibling edge-label separation threshold 20–24px (layout.rs ~1863) so labels like 'valid'/'invalid' never touch (chip gap ≥ 20px).
+- Q15: casing (crossing gaps) — one under-line per cluster of crossings on the same line (casing.rs ~517-533, ~843-851): no opposite gap patterns within 25px; lines must not look broken (fanout).
+Regression test for each. Look at demo, lr, shapes, advanced, subgraph, fanout, fanout-frames, dense-* before/after.` },
+  { id: 'b5-theme', title: 'Theme option + init/frontmatter (M10, P1 themes)', spec: `Package B5 — report item M10 and the P1 "theme from init/frontmatter ignored". Decision already taken: flowmaid's semantic per-shape palette stays the DEFAULT (byte-identical output when no theme is asked for); add themes as an OPTION.
+- Add an additive, documented, \`#[non_exhaustive]\` theme selection to SvgOptions (scene.rs ~3791-3806 / wherever SvgOptions lives now) — e.g. \`Theme::{Flowmaid (default), Neutral, Default (mermaid's lavender default look: #ECECFF fills, #9370DB strokes, #333 lines), Dark, Forest}\` — pick the set you can do well; at least Neutral and mermaid-Default.
+- Read \`%%{init: {"theme": "…"}}%%\` and YAML frontmatter \`config: theme: …\` (and \`themeVariables\` primaryColor/primaryBorderColor/lineColor/primaryTextColor/background if cheap) for every diagram type; precedence: an explicit non-default SvgOptions theme overrides the source directive (document it). CLI flag \`--theme <name>\` in src/bin (or wherever the CLI lives). Unknown theme names fall back to default without error (mermaid does too).
+- Apply to all 12 renderers coherently: flowchart/state (nodes, clusters, edges, labels, markers), class, ER, sequence, and the chart-like ones (pie/journey/timeline/gitgraph/sankey/mindmap/architecture keep their categorical palettes in Default/Neutral where mermaid does, but text/line/background tokens follow the theme; Dark must be readable everywhere — contrast ≥ 4.5:1 text, ≥ 3:1 lines, use style.rs helpers). Explicit \`style\`/\`classDef\`/\`linkStyle\` still win over the theme.
+- Tests: each theme renders every corpus diagram deterministically; contrast tests; default theme byte-identical to before; init/frontmatter parsing tests (also the json/advance paths if they take SvgOptions). README section + CHANGELOG.` },
+  { id: 'b6-shapes-wrap', title: 'Outline snapping, auto-wrap, diamond aspect (M6, M7, P0 #9)', spec: `Package B6 — report §2.5, §2.12, items M6, M7, the diamond aspect cap, and P0 #9.
+- M6 / P0 #9: edge ends float 7–10px off parallelogram/hexagon outlines and 1–8px off cylinders (shapes, advanced, dense-lr). Add a per-shape outline function (Profile in ports.rs) and snap every edge end (scene AND route/route_partial — this is geometry, hosts need it; and the hit-test outline must agree) to the true outline along the final segment direction. Success: B0's endpoint-to-outline metric ≤ 1px for every shape (write a hex/parallelogram/trapezoid/cylinder/circle/diamond/stadium repro corpus); lower the ratchet.
+- M7: auto-wrap PLAIN node labels that have no explicit break (\`<br/>\`, markdown newline) at mermaid's wrapping width — measure mermaid 12.2.0's actual behaviour (render long labels with ${S}/tools/mmrender.js; report §2.14 #2–#3 says 120px at 14px font for long-labels, while dense-td/dense-lr/fanout-frames/wide-labels were praised for NOT producing 4–8-line towers and orphans) — so: never split words, balance lines (no orphan last word), honour \`%%{init: {"flowchart": {"wrappingWidth": N}}}%%\` / frontmatter, keep markdown-label wrapping behaviour documented, and choose the default so that long-labels stops being a ~1000px-wide strip while dense-* do not become towers (show both in your summary). Factor the wrapper out of markdown.rs (~464 wrap_line) instead of duplicating it. Edge labels: same rule only if mermaid wraps them.
+- Diamond aspect cap ≤ 1.6 (layout.rs ~389, ~406): long diamond labels wrap instead of producing flat wide rhombi; keep compact diamonds for short labels (report §6).
+- Layout uses the wrapped size everywhere (intrinsic_size / intrinsic_size_with for embedders with real fonts — keep TEXT_CALIBRATION semantics); to_mermaid round-trip must not inject the auto breaks into the source.` },
+  { id: 'b7-labels-ports', title: 'Label room + ports package, cluster header slot (M3, M8)', spec: `Package B7 — report §2.4, §2.6, items M3 (one coupled package) and M8. Prototype evidence ${S}/rev_ll/acw.png.
+- M3: labelled-gap room for TD/BT and LR including head room (layout.rs ~1895-1912, ~1855-1877): a rank gap carrying an edge label grows to fit label + head + stubs (≥ ~72px); bias 0 for a lone end (scene.rs ~3293) so single edges meet their node centred; even port spread for k ≥ 3 edges on one side (ports.rs ~256-290, ~460); weighted PAV for port order; snap straight pairs (a 1:1 vertical/horizontal pair whose ends are within a few px becomes perfectly straight). Labels sit on a straight run of their edge, centred, never on a bend or the head. Success: long-labels arrival offset 43.7→< 5px; fanout port spacing within ±2px; labelled gaps ≥ ~72px; no label touching a head.
+- M8: asymmetric cluster header slot (layout.rs ~1486-1496, ~1879-1919; find the router's 26px dependency on it): the gap inside a cluster below its title equals GAP_L rhythm; titles still never struck; the 4 dense-td gates keep passing.
+- Keep: white padded label chips, spread ports, straight symmetric spines (report §6).` },
+  { id: 'b8-layering', title: 'Layering: greedy FAS, ranking, cluster acyclicity, isolated nodes, order robustness (B2, M11)', spec: `Package B8 — report §2.9, items B2 and M11, and the P1 "output depends on declaration order (+57% width in dense-td)".
+- Feedback-arc set: replace the DFS FAS (layout.rs ~989-1182) with a greedy Eades–Lin–Smyth FAS (deterministic tie-breaks by source order) so fewer edges reverse; bench-75 ≥ 60/75 edges point along the flow (right in LR).
+- Ranking: network simplex (or an equivalent tight-tree balancing) with nesting edges so clusters stay contiguous, and cluster-level acyclicity (a cluster is not split across a cycle in a way that inflates frames): frames no wider than their contents + padding; dense-lr becomes landscape.
+- Isolated nodes (no edges) are placed tidily (not all stacked into rank 0 widening the first layer) — follow mermaid's placement for a disconnected component (side by side).
+- Declaration-order robustness: permuting the edge lines of dense-td must not change width by more than ~10%; ordering heuristics should not depend on accidental order beyond the documented "source order preserved" tie-break (report §6: keep source order where nothing else decides).
+- M11: narrow() acceptance (layout.rs ~505, ~593, ~879-985) by area AND total edge length, plus "wrap" candidates on the same rank: narrowing never adds > 2% area (fanout-frames).
+- Layout runs in scene() only; drag (route) must be unaffected; static scene_ms ≤ 2 × baseline (check bench.rs 5000-node case too: keep it within 2× of before). Verify every flowchart/state corpus diagram and the class/ER renderers that reuse layout.` },
+  { id: 'b9-compound', title: 'Compound layout for subgraph/composite direction (B3, P0 #10)', spec: `Package B9 — report item B3 and P0 #10: \`direction LR\` inside a subgraph or a state composite is ignored (scene.rs ~1018): state becomes a 126×368 column and the canvas 403×1133; mermaid draws the composite as one row (~459×109).
+- Compound layout: lay a cluster's interior out in its own direction as a block, then place the block in the parent layout (recursively). Match mermaid's rule precisely — check its docs/behaviour with mmrender.js: in mermaid flowcharts a subgraph's \`direction\` is ignored when any of its nodes links to the outside (edges to the subgraph itself are fine); in state diagrams composite \`direction\` applies. Document the rule in README.
+- Edges crossing the block boundary route cleanly to the block's ports; back-edge lanes (B3), labels (B7) and outline snapping (B6) keep working inside blocks.
+- Interactive: scene() returns the same contract (node centres, cluster top-left); dragging a node inside a compound cluster re-routes correctly with route()/route_partial within the drag budget; hit-testing matches.
+- Tests: examples/state.mmd composite LR is one row; a flowchart subgraph with direction LR and no outside links is a row; one with outside links keeps the parent direction (mermaid rule).` },
+  { id: 'b10-orthogonal', title: 'All-orthogonal static edges (B1 + M2 + M5 + P0 #14)', spec: `Package B10 — report §2.1 (the biggest visual factor: three edge idioms mixed — single S-cubic, B-spline through dummies, orthogonal only for repaired edges), items B1, M2, M5 and P0 #14. Target look: mermaid 12.2 ELK "neo" — orthogonal edges with ~5px rounded corners.
+- B1: every static flowchart/state edge is orthogonal with rounded corners: integrate with the router — dummy chains become polylines, nudge/spread parallel segments, GAP_L per number of legs; deliver as corner-rounded densely sampled waypoints (router::smooth) so hosts reproduce them; SceneEdge.bezier stays a meaningful chord. Edges with an explicit \`curve:\` / \`linkStyle interpolate\` keep their requested curve.
+- M2: edges between adjacent ranks become rounded Z shapes with centred ports and the label on the straight middle run (edge_points scene.rs ~3337/3344, EdgeCurve::Rounded ~376-392) — cheap, use it in route()/route_partial too so dragging keeps the same look.
+- route() (drag): produce the same orthogonal idiom within the drag budget (M2 Z-shapes for adjacent ranks are O(1); long edges via the existing lattice router only where the budget allows). If some case must fall back during drag, it must still be orthogonal-looking (e.g. Z or L), never the old S-cubic, and documented in a comment.
+- M5 router tuning: H_WEIGHT 1.0 for static routing (router.rs ~227), overlap judged before frames when frame costs tie (~443-472, ~4515), side-switch cost for forward edges (~153), re-plan ports after repair (~2690-2722; edgepass.rs ~309-321). Success: fanout-frames 2→0 crossings; dense-td edges using side ports 11→≤ 3.
+- P0 #14 (dense-td): edge pairs overlapping for 30–200 units (solid and dashed merging) and 11 edges cutting 28 foreign-frame pairs (router.rs ~4200-4262, ~4515: clean pairs accepted first are never re-searched): add a second pass for overlap/tight pairs.
+Success: 100% of default-curve flowchart edges orthogonal and rounded (B0 idiom metric: 0 S-cubic, 0 bow); bench-75 crossings ≤ mermaid's (count mermaid's from its SVG); no new edge-node intersections; corpus defects not increased overall; perf within budget. Lower the B0 ratchets you improve.` },
+  { id: 'b11-hops-comb', title: 'Crossing hops + comb bundling for fans (M15 + B4)', spec: `Package B11 — report items M15 and B4 (and §2.10).
+- M15: at crossings of orthogonal segments draw a small semicircle hop (or keep the existing casing gap where a hop is worse — decide visually on dense-td, dense-lr, bench-75, fanout; mermaid draws neither, so pick what reads best and say why) so lines stay continuous and dashed lines don't look broken. Painter-only (SVG); hosts keep plain geometry. Deterministic, cheap.
+- B4: "comb" bundling for fans (≥ 3 edges leaving one side of a node): a shared trunk then evenly spaced teeth, 0 crossings inside a fan, plus an evenly spread port band at hubs (scene.rs ~1460-1536; ports.rs). Must stay within the drag budget in route()/route_partial (or apply only in static scene() with a documented fallback that still looks orthogonal).
+Success: fanout-frames and dense-td hubs: 0 crossings inside fans, even port spacing; no regression in crossings/overlaps elsewhere.` },
+]
+
+const implPrompt = (pk, extra) => `You are a senior Rust engineer on flowmaid. ${COMMON}
+
+${pk.spec}
+
+Work in the main repo ${REPO} on branch ${BR} (cd there). Commit there (several focused commits are fine); never push, never rewrite commits that were on the branch before your package started.
+Verify with the tools: \`${S}/tools/guard.sh ${REPO}\` must print GUARD: ALL GREEN before each commit. Make a "before" render first (\`${S}/tools/render.sh pre-${pk.id} ${REPO}\`) so you can diff; LOOK at mermaid | before | after (\`ONLY=a,b ${S}/tools/render.sh <label> ${REPO}\`, Read the .three.png files; write extra inputs and render them with ${S}/tools/fmrender.sh and ${S}/tools/mmrender.js). Run \`${S}/tools/perf.sh ${pk.id} ${REPO}\` before committing and keep the drag budget.
+Update CHANGELOG.md under ## [Unreleased] (existing Keep-a-Changelog style) for user-visible changes, and README.md where behaviour/options change.
+Work through every item; if an item is genuinely infeasible or would break an invariant, skip it and say why (items_skipped). Add regression tests for each fix; byte-exact snapshots/gates change only for intended output changes, named with a reason in the commit message. Commit messages: what/why + report item ids + changed snapshots/gates + the trailer from PLAN.md.${extra ? `\n\nTHIS IS A FIX ROUND. An independent verifier reviewed your package's current state (committed on ${BR}) and found these problems — fix them all with new commits (do not amend/rebase):\n${extra}` : ''}`
+
+const verifyPrompt = (pk, pre, impl) => `You are an independent, skeptical verifier for flowmaid package "${pk.id}: ${pk.title}". ${COMMON}
+
+The package spec was:
+${pk.spec}
+
+The implementer's report: ${JSON.stringify(impl)}
+The package's commits are \`git -C ${REPO} log --oneline ${pre}..HEAD\` (diff: \`git -C ${REPO} diff ${pre}..HEAD\`). Do NOT modify the repo (no edits, no commits, no checkout); scratch files go under ${S}/verify/${pk.id}/ (you may \`git worktree add ${S}/verify/${pk.id}/pre ${pre}\` to build the pre-package state for comparison, and remove that worktree when done).
+Check, trying hard to find failures:
+1. \`${S}/tools/guard.sh ${REPO}\` is GREEN (run it yourself).
+2. \`${S}/tools/perf.sh v-${pk.id} ${REPO}\`: drag budget per PLAN.md invariant 1 (compare with ${S}/runs/baseline/perf.tsv; re-run once before calling a timing regression) and quality: defects and the B0 metrics must not regress on any corpus file without a justified, intended reason.
+3. Each claimed fix is real: \`${S}/tools/render.sh v-${pk.id} ${REPO}\` and VIEW the .three.png (mermaid | phase baseline | now) of every flowchart/state corpus diagram the package touches plus at least 3 extra inputs you write that stress the change (render with fmrender.sh and mmrender.js). Look for new visual defects: overlaps, clipped content, text over strokes, arrowheads off the border, edges through nodes, frames struck, broken dashes, asymmetric margins, things that got uglier.
+4. Interactive contract: write a scratch program or test (outside the repo, or a temp example you delete) that builds a scene for 3+ corpus diagrams, moves nodes, calls route()/route_partial(), and checks: SceneEdge index-parallel with Graph::edges, waypoints densely sampled where paths are orthogonal, hit_test/edge_at picks the drawn geometry, deterministic output, to_mermaid round-trip unchanged. Non-flowchart renderers (class/er/seq/pie/journey/timeline/gitgraph/sankey/mindmap/architecture) must be byte-identical to before the package unless the package intends otherwise (B5 themes in non-default mode only).
+5. Invariants: public API additive only and documented; no new dependency; determinism; tests not weakened (inspect test diffs: no deleted assertions, no #[ignore], gates loosened only where the spec allows and justified); code style matches; CHANGELOG/README updated; no debug leftovers.
+6. Spec coverage: list spec items not done (unfixed_items); judge whether skips are legitimate.
+verdict = "pass" only if guard is green, perf within budget, no blocking problems, and coverage complete or skips legitimate. Non-blocking polish goes in notes.`
+
+const results = []
+phase('Packages')
+for (const pk of PKGS) {
+  const pre = await agent(`Run \`git -C ${REPO} rev-parse HEAD\` and \`git -C ${REPO} status --short | head\`. Return the full sha. If the working tree has uncommitted changes, report them in nothing but the sha field prefixed with "DIRTY:" followed by the sha. Do nothing else.`, { label: `pre:${pk.id}`, phase: 'Packages', schema: SHA, effort: 'low' })
+  if (!pre || pre.sha.startsWith('DIRTY')) { results.push({ id: pk.id, status: 'skipped: dirty tree before start', pre }); continue }
+  let impl = await agent(implPrompt(pk, null), { label: `impl:${pk.id}`, phase: 'Packages', schema: IMPL })
+  let ver = null
+  for (let round = 0; round < 3; round++) {
+    ver = await agent(verifyPrompt(pk, pre.sha, impl), { label: `verify:${pk.id}#${round}`, phase: 'Packages', schema: VERDICT })
+    if (!ver || ver.verdict === 'pass' || round === 2) break
+    log(`${pk.id}: verifier found ${ver.problems.length} problem(s), fix round ${round + 1}`)
+    impl = await agent(implPrompt(pk, ver.problems.map((p, i) => `${i + 1}. ${p}`).join('\n') + (ver.unfixed_items.length ? `\nUnfixed spec items: ${ver.unfixed_items.join('; ')}` : '')), { label: `fix:${pk.id}#${round + 1}`, phase: 'Packages', schema: IMPL })
+  }
+  if (ver && ver.verdict === 'pass') {
+    await agent(`Run in ${REPO}: \`git push -u origin ${BR}\`. If it fails with a network error, retry up to 4 times waiting 2s, 4s, 8s, 16s between tries. Report the final output. Do nothing else.`, { label: `push:${pk.id}`, phase: 'Packages', effort: 'low' })
+    results.push({ id: pk.id, status: 'kept', done: impl && impl.items_done, skipped: impl && impl.items_skipped, notes: ver.notes })
+  } else {
+    await agent(`The flowmaid package "${pk.id}" failed verification after 2 fix rounds. Preserve and revert it: in ${REPO} run \`git branch -f failed/${pk.id} HEAD && git reset --hard ${pre.sha} && git log --oneline -1\` (only if HEAD differs from ${pre.sha}; never touch commits at or before ${pre.sha}). Report the output. Do nothing else.`, { label: `revert:${pk.id}`, phase: 'Packages', effort: 'low' })
+    results.push({ id: pk.id, status: 'reverted (saved on failed/' + pk.id + ')', problems: ver && ver.problems, unfixed: ver && ver.unfixed_items })
+  }
+  log(`${pk.id}: ${results[results.length - 1].status}`)
+}
+
+phase('Wrap-up')
+const wrap = await agent(`Final check of flowmaid phase B in ${REPO} (branch ${BR}). ${COMMON}
+Package outcomes: ${JSON.stringify(results.map(r => ({ id: r.id, status: r.status })))}
+Run \`${S}/tools/guard.sh ${REPO}\`, \`${S}/tools/render.sh phaseB ${REPO}\`, \`${S}/tools/perf.sh phaseB ${REPO}\`. Make sure CHANGELOG.md [Unreleased] is coherent (deduplicate, group Added/Changed/Fixed) — commit a docs tidy if needed (trailer from PLAN.md) and push with \`git push -u origin ${BR}\` (retry on network errors 2s/4s/8s/16s). Report: guard result, perf table summary (totals and worst drag per file vs baseline), which corpus diagrams improved/regressed visually (view the .three.png files), and \`git log --oneline 5f318a0..HEAD\`.`, { label: 'wrap-up', phase: 'Wrap-up' })
+
+return { results, wrap }

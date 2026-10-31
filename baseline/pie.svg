@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="439" height="294" viewBox="0 0 439 294" font-family="Helvetica, Arial, sans-serif" font-size="13" role="img" aria-label="Pie chart">
+<title>Pie chart</title>
+<rect width="439" height="294" fill="#ffffff"/>
+<text x="219.4" y="37.0" dy="0.33em" text-anchor="middle" font-weight="bold" font-size="16" fill="#232840">Key elements in Product X</text>
+<path d="M 130.0 164.0 L 130.0 54.0 A 110.0 110.0 0 0 1 207.6 242.0 Z" fill="#5b6dc0" stroke="#ffffff" stroke-width="1.5"/>
+<path d="M 130.0 164.0 L 207.6 242.0 A 110.0 110.0 0 0 1 28.5 121.7 Z" fill="#33a35c" stroke="#ffffff" stroke-width="1.5"/>
+<path d="M 130.0 164.0 L 28.5 121.7 A 110.0 110.0 0 0 1 65.5 74.9 Z" fill="#d99114" stroke="#ffffff" stroke-width="1.5"/>
+<path d="M 130.0 164.0 L 65.5 74.9 A 110.0 110.0 0 0 1 97.9 58.8 Z" fill="#c2588c" stroke="#ffffff" stroke-width="1.5"/>
+<path d="M 130.0 164.0 L 97.9 58.8 A 110.0 110.0 0 0 1 127.6 54.0 Z" fill="#199a8e" stroke="#ffffff" stroke-width="1.5"/>
+<path d="M 130.0 164.0 L 127.6 54.0 A 110.0 110.0 0 0 1 130.0 54.0 Z" fill="#8a5cd6" stroke="#ffffff" stroke-width="1.5"/>
+<text x="193.0" y="138.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">38%</text>
+<text x="92.0" y="220.6" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">44%</text>
+<text x="76.5" y="121.7" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">9%</text>
+<text x="99.6" y="102.9" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">5%</text>
+<text x="119.2" y="96.7" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">4%</text>
+<rect x="268.0" y="98.0" width="12" height="12" rx="2" fill="#5b6dc0"/>
+<text x="288.0" y="104.0" dy="0.33em" fill="#232840">Calcium [42.96]</text>
+<rect x="268.0" y="122.0" width="12" height="12" rx="2" fill="#33a35c"/>
+<text x="288.0" y="128.0" dy="0.33em" fill="#232840">Potassium [50.05]</text>
+<rect x="268.0" y="146.0" width="12" height="12" rx="2" fill="#d99114"/>
+<text x="288.0" y="152.0" dy="0.33em" fill="#232840">Magnesium [10.01]</text>
+<rect x="268.0" y="170.0" width="12" height="12" rx="2" fill="#c2588c"/>
+<text x="288.0" y="176.0" dy="0.33em" fill="#232840">Iron [6]</text>
+<rect x="268.0" y="194.0" width="12" height="12" rx="2" fill="#199a8e"/>
+<text x="288.0" y="200.0" dy="0.33em" fill="#232840">Zinc [5]</text>
+<rect x="268.0" y="218.0" width="12" height="12" rx="2" fill="#8a5cd6"/>
+<text x="288.0" y="224.0" dy="0.33em" fill="#232840">Trace elements [0.4]</text>
+</svg>

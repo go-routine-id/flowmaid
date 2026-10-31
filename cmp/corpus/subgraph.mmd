@@ -1,0 +1,16 @@
+%% Nested subgraphs with a per-block direction and cross-cluster edges
+flowchart TD
+    Client[Client] --> GW(API Gateway)
+    GW --> Auth
+    subgraph platform [Platform]
+        direction LR
+        Auth[Auth service] --> Users[User DB]
+        Users --> Bus
+        subgraph events [Event bus]
+            Bus[Broker] --> C1[Consumer A]
+            Bus --> C2[Consumer B]
+        end
+    end
+    C1 --> Store[Warehouse]
+    C2 --> Store
+    style Client fill:#fff3bf,stroke:#f08c00

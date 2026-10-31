@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1813" height="170" viewBox="0 0 1813 170" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="Flowchart diagram">
+<title>Flowchart diagram</title>
+<rect width="1813" height="170" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<path d="M 123.0 84.8 C 153.0 84.8, 153.0 84.8, 183.0 84.8" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>A → B</title></path>
+<path d="M 271.5 84.8 C 301.5 84.8, 301.5 84.8, 331.5 84.8" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>B → C</title></path>
+<path d="M 427.6 84.8 C 457.6 84.8, 457.6 84.8, 487.6 84.8" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>C → D</title></path>
+<path d="M 615.6 84.8 C 645.6 84.8, 645.6 84.8, 675.6 84.8" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>D → E</title></path>
+<path d="M 735.6 84.8 C 765.6 84.8, 765.6 84.8, 795.6 84.8" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>E → F</title></path>
+<path d="M 909.1 84.8 C 939.1 84.8, 939.1 84.8, 969.1 84.8" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>F → G</title></path>
+<path d="M 1052.7 84.8 C 1082.7 84.8, 1082.7 84.8, 1112.7 84.8" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>G → H</title></path>
+<path d="M 1237.2 84.8 C 1267.2 84.8, 1267.2 84.8, 1297.2 84.8" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>H → I</title></path>
+<path d="M 1412.9 84.8 C 1442.9 84.8, 1442.9 84.8, 1472.9 84.8" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>I → J</title></path>
+<path d="M 1616.7 84.8 C 1646.7 84.8, 1646.7 84.8, 1676.7 84.8" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>J → K</title></path>
+<g><title>Rectangle</title>
+<rect x="28.0" y="65.8" width="95.0" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="75.5" y="84.8" dy="0.33em" text-anchor="middle" fill="#232840">Rectangle</text>
+</g>
+<g><title>Rounded</title>
+<rect x="183.0" y="65.8" width="88.5" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="227.2" y="84.8" dy="0.33em" text-anchor="middle" fill="#232840">Rounded</text>
+</g>
+<g><title>Stadium</title>
+<rect x="331.5" y="65.8" width="96.1" height="38.0" rx="19.0" fill="#e5f5ea" stroke="#33a35c" stroke-width="1.6"/>
+<text x="379.6" y="84.8" dy="0.33em" text-anchor="middle" fill="#232840">Stadium</text>
+</g>
+<g><title>Diamond</title>
+<polygon points="551.6,52.5 615.6,84.8 551.6,117.0 487.6,84.8" fill="#fcf2da" stroke="#d99114" stroke-width="1.6"/>
+<text x="551.6" y="84.8" dy="0.33em" text-anchor="middle" fill="#232840">Diamond</text>
+</g>
+<g><title>Circle</title>
+<circle cx="705.6" cy="84.8" r="30.0" fill="#f2ecfa" stroke="#8a5cd6" stroke-width="1.6"/>
+<text x="705.6" y="84.8" dy="0.33em" text-anchor="middle" fill="#232840">Circle</text>
+</g>
+<g><title>Double circle</title>
+<circle cx="852.4" cy="84.8" r="56.8" fill="#e5f5ea" stroke="#33a35c" stroke-width="1.6"/>
+<circle cx="852.4" cy="84.8" r="52.8" fill="#e5f5ea" stroke="#33a35c" stroke-width="1.6"/>
+<text x="852.4" y="84.8" dy="0.33em" text-anchor="middle" fill="#232840">Double circle</text>
+</g>
+<g><title>Cylinder</title>
+<path d="M 969.1 65.8 A 41.8 8.0 0 0 0 1052.7 65.8 L 1052.7 103.8 A 41.8 8.0 0 0 1 969.1 103.8 Z" fill="#e7eef7" stroke="#4d8fbf" stroke-width="1.6"/>
+<path d="M 969.1 65.8 A 41.8 8.0 0 0 1 1052.7 65.8" fill="none" stroke="#4d8fbf" stroke-width="1.6"/>
+<text x="1010.9" y="84.8" dy="0.33em" text-anchor="middle" fill="#232840">Cylinder</text>
+</g>
+<g><title>Subroutine</title>
+<rect x="1112.7" y="65.8" width="124.5" height="38.0" rx="3" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<line x1="1120.7" y1="65.8" x2="1120.7" y2="103.8" stroke="#5b6dc0" stroke-width="1.6"/>
+<line x1="1229.2" y1="65.8" x2="1229.2" y2="103.8" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="1175.0" y="84.8" dy="0.33em" text-anchor="middle" fill="#232840">Subroutine</text>
+</g>
+<g><title>Hexagon</title>
+<polygon points="1297.2,84.8 1311.2,65.8 1398.9,65.8 1412.9,84.8 1398.9,103.8 1311.2,103.8" fill="#f2ecfa" stroke="#8a5cd6" stroke-width="1.6"/>
+<text x="1355.0" y="84.8" dy="0.33em" text-anchor="middle" fill="#232840">Hexagon</text>
+</g>
+<g><title>Parallelogram</title>
+<polygon points="1486.9,65.8 1616.7,65.8 1602.7,103.8 1472.9,103.8" fill="#fcf2da" stroke="#d99114" stroke-width="1.6"/>
+<text x="1544.8" y="84.8" dy="0.33em" text-anchor="middle" fill="#232840">Parallelogram</text>
+</g>
+<g><title>Reverse</title>
+<polygon points="1676.7,65.8 1770.5,65.8 1784.5,103.8 1690.7,103.8" fill="#fcf2da" stroke="#d99114" stroke-width="1.6"/>
+<text x="1730.6" y="84.8" dy="0.33em" text-anchor="middle" fill="#232840">Reverse</text>
+</g>
+</svg>

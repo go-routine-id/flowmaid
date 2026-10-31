@@ -1,0 +1,232 @@
+<title>Flowmaid vs Mermaid</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column for findings, a wide two-up gallery for renders */
+:root{
+  --paper:#f6f7fb; --sheet:#ffffff; --ink:#1d2236; --muted:#5b627c; --rule:#dfe2ee;
+  --accent:#3d4fb8; --accent-soft:#e7eafb;
+  --hot:#b4232a; --hot-soft:#fdeaea; --warm:#9a5b00; --warm-soft:#fdf1dc; --ok:#1f7a45; --ok-soft:#e3f5ea;
+  --canvas:#ffffff;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#12141d; --sheet:#1a1d29; --ink:#e6e8f2; --muted:#a0a6c0; --rule:#2c3042;
+  --accent:#9aa8ff; --accent-soft:#262c4d;
+  --hot:#ff8a8f; --hot-soft:#3a1d22; --warm:#f2b75c; --warm-soft:#38291a; --ok:#6fd49a; --ok-soft:#173326;
+  --canvas:#ffffff; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --paper:#12141d; --sheet:#1a1d29; --ink:#e6e8f2; --muted:#a0a6c0; --rule:#2c3042;
+  --accent:#9aa8ff; --accent-soft:#262c4d;
+  --hot:#ff8a8f; --hot-soft:#3a1d22; --warm:#f2b75c; --warm-soft:#38291a; --ok:#6fd49a; --ok-soft:#173326;
+  --canvas:#ffffff; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font:17px/1.55 var(--f-body);
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:0 64px}
+.wrap{max-width:1180px;margin:0 auto}
+.col{max-width:760px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15}
+h1{font-size:clamp(2.1rem,5vw,3.2rem);margin:0;font-weight:700;letter-spacing:-.01em}
+h2{font-size:1.6rem;margin:0 0 14px;font-weight:700}
+h3{font-size:1.1rem;margin:0;font-weight:600}
+h4{font:600 .78rem/1.3 var(--f-body);text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 6px}
+code{font-family:var(--f-mono);font-size:.86em;background:var(--accent-soft);padding:.05em .35em;border-radius:4px}
+a{color:var(--accent)}
+.hero{padding-block:44px 28px;border-bottom:1px solid var(--rule);margin-bottom:36px}
+.eyebrow{font:600 .8rem var(--f-mono);color:var(--accent);letter-spacing:.04em;margin-bottom:10px}
+.lede{font-size:1.18rem;color:var(--ink);margin:16px 0 0}
+.meta{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:20px;font:400 .85rem var(--f-mono);color:var(--muted)}
+.meta b{color:var(--ink);font-weight:600}
+section{margin-bottom:52px}
+.reasons{counter-reset:r;list-style:none;padding:0;margin:0;display:grid;gap:12px}
+.reasons li{counter-increment:r;display:grid;grid-template-columns:2.2rem 1fr;gap:4px 12px;background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:14px 16px}
+.reasons li::before{content:counter(r);font:700 1.3rem var(--f-display);color:var(--accent);grid-row:span 2}
+.reasons strong{display:block}
+.reasons span{color:var(--muted);font-size:.95rem}
+.tablewrap{overflow-x:auto;border:1px solid var(--rule);border-radius:10px;background:var(--sheet)}
+table{border-collapse:collapse;width:100%;font-size:.93rem}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--rule)}
+th{font:600 .75rem var(--f-body);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--paper)}
+tr:last-child td{border-bottom:0}
+td.n{font:600 .85rem var(--f-mono);color:var(--muted);white-space:nowrap}
+.proto{display:grid;gap:18px}
+.proto .row{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+.proto figure,.pair figure{margin:0;min-width:0}
+figcaption{font:600 .78rem var(--f-mono);color:var(--muted);margin-bottom:6px}
+.canvas{background:var(--canvas);border:1px solid var(--rule);border-radius:8px;padding:8px;overflow:auto;max-height:720px}
+.canvas img{display:block;width:100%;height:auto}
+.note{font-size:.92rem;color:var(--muted);margin:6px 0 0}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}
+.filters button{font:600 .88rem var(--f-body);border:1px solid var(--rule);background:var(--sheet);color:var(--ink);padding:7px 14px;border-radius:999px;cursor:pointer}
+.filters button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--sheet)}
+.filters button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.toc{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:22px}
+.toc a{font:400 .8rem var(--f-mono);text-decoration:none;padding:3px 8px;border-radius:5px;background:var(--sheet);border:1px solid var(--rule);color:var(--ink)}
+.cards{display:grid;gap:26px}
+.card{background:var(--sheet);border:1px solid var(--rule);border-radius:12px;padding:18px;scroll-margin-top:16px}
+.card-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.card-head code{background:none;padding:0;font-size:1.05rem}
+.chip{font:600 .75rem var(--f-mono);padding:3px 9px;border-radius:999px}
+.chip-hot{background:var(--hot-soft);color:var(--hot)}
+.chip-warm{background:var(--warm-soft);color:var(--warm)}
+.chip-ok{background:var(--ok-soft);color:var(--ok)}
+.verdict{margin:0 0 14px;color:var(--muted)}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.notes{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;margin-top:16px;font-size:.95rem}
+.notes ul{margin:0;padding-left:1.1em}
+.notes li{margin-bottom:4px}
+.notes p{margin:0}
+.road{display:grid;gap:16px}
+.road .tier{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:16px 18px}
+.road ol{margin:8px 0 0;padding-left:1.3em}
+.road li{margin-bottom:6px}
+.tier h3 small{font:600 .75rem var(--f-mono);color:var(--muted);margin-left:8px}
+.keep{columns:2 320px;column-gap:28px;padding-left:1.1em;margin:0}
+.keep li{break-inside:avoid;margin-bottom:6px}
+@media (max-width:760px){
+  .pair,.proto .row,.notes{grid-template-columns:1fr}
+  body{font-size:16px}
+}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+</style>
+
+<div class="wrap">
+<header class="hero">
+  <div class="eyebrow">LAPORAN PARITAS VISUAL · 30 OKT 2026</div>
+  <h1>Flowmaid vs Mermaid</h1>
+  <p class="lede col">Sumber <code>.mmd</code> yang sama dirender dengan mermaid.js 12.2.0 dan flowmaid 0.32. Kesannya memang benar: flowmaid terlihat lebih jelek. Penyebabnya bukan warna atau font. Per elemen, flowmaid sering lebih rapi. Yang kalah adalah <strong>komposisi</strong>: bentuk edge, back-edge, kepala panah, dan layout cluster. Selain itu ada beberapa bug yang menghilangkan informasi.</p>
+  <div class="meta"><span><b>25</b> diagram</span><span><b>266</b> temuan terverifikasi</span><span><b>204</b> terkonfirmasi · <b>62</b> sebagian · <b>1</b> dibantah</span><span>commit <b>5f318a0</b></span></div>
+</header>
+
+<section class="col">
+  <h2>Lima alasan terbesar</h2>
+  <ol class="reasons">
+    <li><strong>Tiga gaya edge dalam satu gambar</strong><span>Edge antar-rank bersebelahan jadi cubic S, edge panjang jadi B-spline, dan hanya edge yang diperbaiki router yang orthogonal. Mermaid 12.2 (ELK) membuat semua edge orthogonal dengan sudut membulat. Terlihat di sekitar 14 diagram.</span></li>
+    <li><strong>Back-edge digambar sebagai satu lengkungan lebar</strong><span>Hasilnya bentuk laso dan loop V yang menggantung. Panah masuk pada sudut sekitar 14° dan setengahnya tertutup node. Kanvas jadi membengkak. Terlihat di sekitar 11 diagram (<code>scene.rs:3347-3370</code>).</span></li>
+    <li><strong>Kepala panah tidak konsisten</strong><span>Pada <code>==&gt;</code> kepalanya 2× ukuran normal (<code>scene.rs:2494</code>). Glyph-nya sempit dan stroke menyembul melewati ujung. Segmen terakhir tidak tegak lurus terhadap sisi node.</span></li>
+    <li><strong>Struktur layout salah pada diagram ber-cluster dan diagram padat</strong><span>Subgraph bersarang hilang dan <code>direction</code> di subgraph diabaikan. Node tanpa edge diparkir di rank 0. Akibatnya diagram LR berubah portrait, dan crossing-nya 1,6–4× lebih banyak dari mermaid.</span></li>
+    <li><strong>Informasi hilang atau artinya salah</strong><span>Note di state dan class, <code>«interface»</code>, dan komentar ER tidak ikut dirender. Chip label ER menutupi lingkaran "zero", jadi <code>o{</code> terbaca <code>|{</code>. Hierarki class terbalik.</span></li>
+  </ol>
+</section>
+
+<section>
+  <div class="col">
+    <h2>Prototipe perbaikan</h2>
+    <p>Prototipe ini dibuat saat verifikasi, di salinan repo dalam scratchpad. Repo aslinya tidak diubah. Gambar ini hanya bukti bahwa arah perbaikannya benar. Kodenya belum layak dirilis.</p>
+  </div>
+  <div class="proto">
+    <div class="row">
+      <figure><figcaption>demo · sekarang (back-edge laso, panah 14°)</figcaption><div class="canvas"><!--PROTO-DEMO-BEFORE--></div></figure>
+      <figure><figcaption>demo · lane back-edge orthogonal</figcaption><div class="canvas"><!--PROTO-DEMO-AFTER--></div></figure>
+    </div>
+    <div class="row">
+      <figure><figcaption>advanced · sekarang (Async Workers hilang, CI di samping)</figcaption><div class="canvas"><!--PROTO-ADV-BEFORE--></div></figure>
+      <figure><figcaption>advanced · fix parser subgraph + proxy edge-ke-subgraph</figcaption><div class="canvas"><!--PROTO-ADV-AFTER--></div></figure>
+    </div>
+    <figure><figcaption>lr · kiri sekarang (loop V), kanan lane orthogonal</figcaption><div class="canvas"><!--PROTO-LR--></div></figure>
+  </div>
+</section>
+
+<section>
+  <div class="col"><h2>Bug kebenaran (prioritas tertinggi)</h2><p>Bug ini membuat gambar menampilkan hal yang salah atau kehilangan informasi, jadi masalahnya lebih dari sekadar soal selera.</p></div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>#</th><th>Bug</th><th>Diagram</th><th>Akar masalah</th><th>Effort</th></tr></thead>
+    <tbody>
+      <tr><td class="n">1</td><td>Subgraph bersarang "Async Workers" tidak digambar</td><td>advanced</td><td>Parser meng-klaim ulang node ke blok yang masih terbuka, <code>parser.rs:2613-2624</code></td><td>S</td></tr>
+      <tr><td class="n">2</td><td>Edge ke subgraph (<code>Reg --&gt; Platform</code>) tidak memengaruhi ranking, sehingga CI berada di samping Platform</td><td>advanced</td><td><code>sub_edge_proxies</code> mendapat entry set kosong, <code>scene.rs:1547-1583</code></td><td>S</td></tr>
+      <tr><td class="n">3</td><td><code>Dev --&gt; CI</code> digambar sebagai panah ke atas yang berhenti di border frame</td><td>advanced</td><td><code>own_box_stub</code>, <code>scene.rs:1403-1430</code></td><td>S</td></tr>
+      <tr><td class="n">4</td><td>Chip label menutupi lingkaran "zero", jadi kardinalitas terbaca salah</td><td>er</td><td>Placer label tidak tahu glyph kardinalitas, <code>er.rs:121-126</code></td><td>M</td></tr>
+      <tr><td class="n">5</td><td>Hierarki terbalik: parent dan interface digambar di bawah anak</td><td>class</td><td>Parser menormalisasi arah relasi, <code>parser.rs:3302-3307</code></td><td>M</td></tr>
+      <tr><td class="n">6</td><td>Edge hasil reroute digambar lurus menembus kotak, dan segitiga inheritance hilang</td><td>class</td><td><code>class.rs:208-219</code> mengabaikan <code>waypoints</code></td><td>S–M</td></tr>
+      <tr><td class="n">7</td><td>Note, <code>«interface»</code>, dan komentar atribut dibuang tanpa peringatan</td><td>state, class, er</td><td><code>parser.rs:4885</code>, <code>:3128</code>, <code>:3149</code>; <code>er.rs:34-41</code></td><td>S–M</td></tr>
+      <tr><td class="n">8</td><td>Ujung edge melayang 7–10px dari sisi miring parallelogram/hexagon</td><td>shapes, advanced</td><td><code>anchor()</code> dan <code>ports::span</code> menganggapnya rect</td><td>M</td></tr>
+      <tr><td class="n">9</td><td><code>direction LR</code> di subgraph atau composite state diabaikan</td><td>state, flowchart</td><td>Hanya satu pass Sugiyama global, <code>scene.rs:1018</code></td><td>L</td></tr>
+      <tr><td class="n">10</td><td>Edge architecture tersembunyi di belakang node lain atau menembus kotak</td><td>architecture</td><td><code>orthogonal_route</code> tanpa port dan obstacle</td><td>M</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="col"><h2>Galeri per diagram</h2><p>Mermaid di kiri, flowmaid di kanan, dari input yang identik. Chip di tiap kartu menunjukkan jumlah isu berat (severity 3) dan total isu yang lolos verifikasi.</p></div>
+  <div class="filters" role="group" aria-label="Saring diagram">
+    <button type="button" id="f-all" data-f="all" aria-pressed="true">Semua (25)</button>
+    <button type="button" id="f-flow" data-f="flow" aria-pressed="false">Flowchart (14)</button>
+    <button type="button" id="f-other" data-f="other" aria-pressed="false">Tipe lain (11)</button>
+  </div>
+  <nav class="toc" aria-label="Lompat ke diagram" id="toc"></nav>
+  <div class="cards" id="cards">
+<!--CARDS-->
+  </div>
+</section>
+
+<section class="col">
+  <h2>Roadmap</h2>
+  <p>Urutannya ditentukan oleh dampak visual dikali jumlah diagram yang terdampak, lalu dibagi effort. Item yang ditulis "bersama" harus dirilis dalam satu PR, karena kalau dirilis sendiri justru memperburuk hasil.</p>
+  <div class="road">
+    <div class="tier"><h3>Sprint 1 <small>fondasi + kemenangan cepat</small></h3><ol>
+      <li><strong>Metrik kualitas baru + revisi gate lama.</strong> Beberapa gate di <code>tests/quality.rs</code> justru mengunci defect: <code>MAX_ASPECT</code> melindungi loop 230px di wide-labels. Perlu metrik baru: ujung di outline, wiggle menyamping, edge keluar frame sendiri, dan sudut masuk panah.</li>
+      <li><strong>Marker panah satu ukuran (<code>userSpaceOnUse</code>), bersama trim path di bawah kepala.</strong> Kepala <code>==&gt;</code> jadi sama dengan kepala normal, dan tidak ada lagi stroke yang menyembul.</li>
+      <li><strong>Bounding box kanvas dihitung dari ekstrem kurva, bukan titik kontrol.</strong> Margin jadi seimbang di 7 diagram.</li>
+      <li><strong>Fix parser subgraph bersarang dan proxy edge-ke-subgraph.</strong> Sudah diprototipe, 620 test lulus.</li>
+      <li><strong>Quick fix back-edge dan bug sumbu label LR.</strong> Lebar demo 383→321 dan tinggi wide-labels 413→201.</li>
+    </ol></div>
+    <div class="tier"><h3>Sprint 2 <small>polish + paket port</small></h3><ol>
+      <li>Helper kontras di <code>style.rs</code> untuk memilih teks putih atau gelap per warna. Satu perubahan ini memperbaiki 8 tipe diagram yang gagal WCAG AA.</li>
+      <li>Warna cluster per kedalaman, dengan stroke berkontras ≥3:1.</li>
+      <li>Cylinder: label di tengah body, tutupnya diisi, dan stroke mengikuti style.</li>
+      <li>Dukung <code>classDef default</code>. Ganti pola dotted dari <code>5 4</code> ke <code>2 3</code>.</li>
+      <li>Paket ruang label + port, dirilis bersama: gap rank untuk edge berlabel, port merata, dan panah mendarat di tengah sisi.</li>
+      <li>Edge antar-rank bersebelahan jadi Z orthogonal dengan sudut membulat.</li>
+    </ol></div>
+    <div class="tier"><h3>Sprint 3 <small>paritas penuh</small></h3><ol>
+      <li>Back-edge sebagai lane orthogonal yang diurus router, plus aturan agar edge tetap di dalam frame-nya sendiri.</li>
+      <li><strong>Semua edge flowchart orthogonal</strong>: chain dummy diubah jadi polyline, lalu <code>nudge</code>/<code>spread</code> memisahkan channel. Ini faktor visual terbesar.</li>
+      <li>Untuk graf besar: greedy FAS dan network simplex, supaya bench-75 benar-benar mengalir ke kanan.</li>
+      <li>Compound layout untuk <code>direction</code> di subgraph.</li>
+    </ol></div>
+  </div>
+</section>
+
+<section class="col">
+  <h2>Yang jangan sampai hilang</h2>
+  <p>Hal-hal berikut sudah lebih baik di flowmaid, jadi jangan dikorbankan demi meniru mermaid.</p>
+  <ul class="keep">
+    <li>Chip label putih yang berpadding. Label mermaid berupa blok abu-abu dan sering ditembus garis.</li>
+    <li>Judul cluster tidak pernah tertabrak edge. Mermaid mencoret "Platform" dan "Event bus".</li>
+    <li>Diamond kompak untuk label pendek (102×65, sementara mermaid 171×171).</li>
+    <li>SVG portabel: pakai <code>&lt;text&gt;</code> tanpa <code>foreignObject</code>, ukurannya 5–10× lebih kecil, dan punya aria.</li>
+    <li>Menghormati <code>&lt;br/&gt;</code> dan tidak menghasilkan wrap yatim. Auto-wrap cukup untuk label tanpa break eksplisit.</li>
+    <li>Self-loop yang jelas. Self-loop di mermaid rusak di advanced dan stress.</li>
+    <li>Semantik dotted dan thick tetap terjaga. Mermaid mengubah 2 edge dotted jadi solid di dense-td.</li>
+    <li><code>&lt;&lt;choice&gt;&gt;</code>/<code>&lt;&lt;fork&gt;&gt;</code> di state digambar benar. Mermaid 12.2 menggambarnya sebagai kotak.</li>
+    <li>Pie, journey, timeline, dan sankey sudah setara atau lebih baik.</li>
+    <li>Palet semantik per-shape. Tawarkan tema netral sebagai opsi, bukan pengganti.</li>
+  </ul>
+</section>
+
+<section class="col">
+  <h2>Metode</h2>
+  <p class="note">Semua contoh di <code>examples/*.mmd</code> dan <code>tests/fixtures/quality/*.mmd</code> dirender, kecuali mode advance. Mermaid dijalankan di Chromium headless dengan konfigurasi default, flowmaid lewat CLI release build. Di <code>class.mmd</code>, deklarasi <code>class A, B</code> dipecah jadi dua baris, karena mermaid tidak menerima sintaks itu. Setiap diagram ditinjau satu agent. Agent kedua lalu mencoba membantah setiap temuan dan menelusuri akar masalahnya di <code>src/</code>. Satu audit terpisah membandingkan token gaya global. Nomor baris mengacu ke commit 5f318a0.</p>
+</section>
+</div>
+
+<script>
+(function(){
+  var cards=[].slice.call(document.querySelectorAll('.card'));
+  var toc=document.getElementById('toc');
+  cards.forEach(function(c){var a=document.createElement('a');a.href='#'+c.id;a.textContent=c.id.slice(2);a.dataset.group=c.dataset.group;toc.appendChild(a);});
+  var btns=[].slice.call(document.querySelectorAll('.filters button'));
+  function apply(f){
+    btns.forEach(function(b){b.setAttribute('aria-pressed', String(b.dataset.f===f));});
+    cards.forEach(function(c){c.hidden=!(f==='all'||c.dataset.group===f);});
+    [].slice.call(toc.children).forEach(function(a){a.hidden=!(f==='all'||a.dataset.group===f);});
+    try{localStorage.setItem('fm-filter',f);}catch(e){}
+  }
+  btns.forEach(function(b){b.addEventListener('click',function(){apply(b.dataset.f);});});
+  var saved='all';try{saved=localStorage.getItem('fm-filter')||'all';}catch(e){}
+  apply(saved);
+})();
+</script>

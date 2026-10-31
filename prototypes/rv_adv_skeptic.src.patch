@@ -1,0 +1,48 @@
+diff -ruN '--exclude=target' base5f/src/parser.rs rv_adv_skeptic/fm/src/parser.rs
+--- base5f/src/parser.rs	2026-10-28 07:08:21.000000000 +0000
++++ rv_adv_skeptic/fm/src/parser.rs	2026-10-30 02:16:53.712548277 +0000
+@@ -2616,7 +2616,10 @@
+     // `subgraph one` puts a2 in the box). Top-level mentions never
+     // un-claim.
+     if let Some(&owner) = subs.last() {
+-        if !g.subgraphs[owner].nodes.contains(&n) {
++        // mermaid: the first subgraph to CLOSE keeps the node.
++        let cur = g.subgraphs.iter().position(|s| s.nodes.contains(&n));
++        let closed = cur.is_some_and(|c| !subs.contains(&c));
++        if !closed && !g.subgraphs[owner].nodes.contains(&n) {
+             for s in g.subgraphs.iter_mut() {
+                 s.nodes.retain(|&m| m != n);
+             }
+diff -ruN '--exclude=target' base5f/src/scene.rs rv_adv_skeptic/fm/src/scene.rs
+--- base5f/src/scene.rs	2026-10-28 07:08:21.000000000 +0000
++++ rv_adv_skeptic/fm/src/scene.rs	2026-10-30 02:20:03.392144548 +0000
+@@ -1568,9 +1568,16 @@
+         }
+     }
+     let members = |s: usize, flags: &std::collections::HashSet<(usize, usize)>| -> Vec<usize> {
+-        (0..g.nodes.len())
++        let m: Vec<usize> = (0..g.nodes.len())
+             .filter(|&v| node_cluster[v].contains(&s) && !flags.contains(&(s, v)))
+-            .collect()
++            .collect();
++        if !m.is_empty() {
++            return m;
++        }
++        // A cycle inside the box leaves no member without an internal
++        // in-/out-edge: fall back to the first declared member (mermaid's
++        // findNonClusterChild anchor).
++        (0..g.nodes.len()).filter(|&v| node_cluster[v].contains(&s)).take(1).collect()
+     };
+     let ends = |end: End, flags| match end {
+         End::Node(v) => vec![v],
+@@ -2491,7 +2498,9 @@
+             marker: m,
+             start,
+             color: st.stroke.clone(),
+-            user_space: m == Marker::Arrow && st.stroke_width.is_some(),
++            user_space: m == Marker::Arrow
++                && (st.stroke_width.is_some()
++                    || matches!(e.kind, EdgeKind::Thick | EdgeKind::ThickOpen)),
+         };
+         if v.color.is_none() && !v.user_space {
+             return Some(marker_base_id(start, m).to_string());

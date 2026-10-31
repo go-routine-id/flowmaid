@@ -1,0 +1,8 @@
+[package]
+name = "ixcheck"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "FM" }
+[profile.release]
+debug = false

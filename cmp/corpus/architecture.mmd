@@ -1,0 +1,18 @@
+architecture-beta
+    group frontend(cloud)[Frontend]
+    service web(web)[Web App] in frontend
+    service mobile(mobile)[Mobile App] in frontend
+
+    group backend(server)[Backend]
+    service api(server)[API Gateway] in backend
+    service svc(cpu)[Business Logic] in backend
+
+    group data(database)[Data]
+    service db(database)[PostgreSQL] in data
+    service cache(cache)[Redis] in data
+
+    web:R -- L:api
+    mobile:R -- L:api
+    api:R --> L:svc
+    svc:R <--> L:db
+    svc:B -- T:cache

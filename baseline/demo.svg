@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="383" height="532" viewBox="0 0 383 532" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="Flowchart diagram">
+<title>Flowchart diagram</title>
+<rect width="383" height="532" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<path d="M 163.9 66.0 C 163.9 96.0, 163.9 96.0, 163.9 126.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>A → B</title></path>
+<path d="M 163.9 164.0 C 163.9 194.0, 163.9 194.0, 163.9 224.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>B → C</title></path>
+<path d="M 148.1 278.6 C 148.1 313.6, 112.7 313.6, 112.7 348.6" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>C → D: yes</title></path>
+<path d="M 179.7 278.6 C 179.7 313.6, 208.1 313.6, 208.1 348.6" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>C → E: no</title></path>
+<path d="M 222.1 348.6 C 352.8 308.6, 355.2 204.0, 191.5 164.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>E → B</title></path>
+<path d="M 85.1 386.6 C 85.1 416.6, 85.1 416.6, 85.1 446.6" fill="none" stroke="#44507a" stroke-width="3.4" marker-end="url(#arrow)"><title>D → F</title></path>
+<g><title>Start</title>
+<rect x="126.9" y="28.0" width="74.0" height="38.0" rx="19.0" fill="#e5f5ea" stroke="#33a35c" stroke-width="1.6"/>
+<text x="163.9" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">Start</text>
+</g>
+<g><title>Read input</title>
+<rect x="114.0" y="126.0" width="99.7" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="163.9" y="145.0" dy="0.33em" text-anchor="middle" fill="#232840">Read input</text>
+</g>
+<g><title>Valid?</title>
+<polygon points="163.9,224.0 215.0,256.3 163.9,288.6 112.8,256.3" fill="#fcf2da" stroke="#d99114" stroke-width="1.6"/>
+<text x="163.9" y="256.3" dy="0.33em" text-anchor="middle" fill="#232840">Valid?</text>
+</g>
+<g><title>Process data</title>
+<rect x="28.0" y="348.6" width="114.2" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="85.1" y="367.6" dy="0.33em" text-anchor="middle" fill="#232840">Process data</text>
+</g>
+<g><title>Show error</title>
+<rect x="192.2" y="348.6" width="101.0" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="242.7" y="367.6" dy="0.33em" text-anchor="middle" fill="#232840">Show error</text>
+</g>
+<g><title>Done</title>
+<circle cx="85.1" cy="475.2" r="28.6" fill="#f2ecfa" stroke="#8a5cd6" stroke-width="1.6"/>
+<text x="85.1" y="475.2" dy="0.33em" text-anchor="middle" fill="#232840">Done</text>
+</g>
+<rect x="112.5" y="303.6" width="35.8" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="130.4" y="313.6" dy="0.33em" text-anchor="middle" fill="#232840">yes</text>
+<rect x="179.1" y="303.6" width="29.6" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="193.9" y="313.6" dy="0.33em" text-anchor="middle" fill="#232840">no</text>
+</svg>
