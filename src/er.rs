@@ -16,8 +16,9 @@
 use crate::layout::{text_width, LABEL_BOX_H};
 use crate::model::{Attr, Card, EdgeKind, Entity, ErDiagram, Graph, Shape};
 use crate::scene::{
-    edge_path_d, edge_polyline, escape, fit_top_left, route_sized, scene_sized, seg_aabb,
-    svg_label_box, svg_open_a11y, A11y, Scene, SceneEdge, SvgOptions, EDGE_COLOR, TEXT_COLOR,
+    edge_path_d, edge_polyline, edge_stroke_width, escape, fit_top_left, route_sized, scene_sized,
+    seg_aabb, svg_label_box, svg_open_a11y, A11y, Scene, SceneEdge, SvgOptions, EDGE_COLOR,
+    TEXT_COLOR,
 };
 
 /// Table header height in pixels.
@@ -182,6 +183,11 @@ fn assemble(d: &ErDiagram, tables: Vec<ErTable>, mut scene: Scene, g: &Graph) ->
         .collect();
     // Here, not in the SVG writer, so GUI painters get the same spots.
     labels_off_glyphs(&mut scene, &cards);
+    // The width `to_svg` strokes, kept on the edges so picking
+    // (`Scene::edge_at` / `hits_in_rect`) covers the very same pixels.
+    for e in &mut scene.edges {
+        e.paint_width = Some(LINE_W);
+    }
     ErScene {
         scene,
         tables,
@@ -386,7 +392,7 @@ pub(crate) fn to_svg_a11y_with(es: &ErScene, a11y: &A11y, opts: &SvgOptions) -> 
             "<path d=\"{}\" fill=\"none\" stroke=\"{}\" stroke-width=\"{}\"{}/>\n",
             edge_path_d(e, |p| p),
             EDGE_COLOR,
-            LINE_W,
+            edge_stroke_width(e), // LINE_W, as `assemble` set it
             dash
         ));
     }

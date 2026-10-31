@@ -5,17 +5,17 @@
 //! `b` one grid cell right of `a`, `a:B -- T:b` one cell below, and a
 //! mixed pair such as `a:R -- T:b` one cell diagonally (right, and
 //! below because `b` is entered from the top). A breadth-first walk
-//! over the edges turns those steps into a grid ([`place_cells`]);
+//! over the edges turns those steps into a grid (`place_cells`);
 //! every group's cells are then made contiguous, so no frame overlaps
-//! another or swallows a stranger ([`legalize`]); and the grid becomes
+//! another or swallows a stranger (`legalize`); and the grid becomes
 //! pixels with each column and row only as wide and tall as what is in
-//! it ([`Axis`]). Edges leave and enter along their port normals and
+//! it (`Axis`). Edges leave and enter along their port normals and
 //! are routed orthogonally around every service box, junction and
-//! group title ([`Grid`]), so no line passes behind a box or strikes a
+//! group title (`Grid`), so no line passes behind a box or strikes a
 //! title, and no edge turns on (or runs along) an unrelated one, which
 //! would draw a junction that is not there. Edge label chips go last,
 //! each on (or just beside) a stretch of its own line where it covers no
-//! box, title or other chip ([`place_chips`]).
+//! box, title or other chip (`place_chips`).
 //!
 //! Like `pie`/`journey`/`mindmap`/`gitgraph`, the layout is fully
 //! automatic and the result is exposed as a generic [`Scene`] so
@@ -477,6 +477,7 @@ fn build(d: &Architecture) -> (ArchScene, Vec<Vec<Pt>>) {
             ends: Default::default(),
             meta: Default::default(),
             label,
+            paint_width: None,
         });
         arrow_starts.push(e.arrow_start);
         arrow_ends.push(e.arrow_end);

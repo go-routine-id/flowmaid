@@ -13,10 +13,8 @@
 //! px reads as dashed, and a dashed edge means `-.->` in mermaid.
 
 use crate::labels::seg_cells;
-use crate::model::EdgeKind;
 use crate::scene::{
-    edge_drawn, edge_polyline, DefsKey, Scene, SceneEdge, ARROW_MARKER_PX, EDGE_WIDTH,
-    EDGE_WIDTH_THICK,
+    edge_drawn, edge_polyline, edge_stroke_width as stroke_width, DefsKey, Scene, ARROW_MARKER_PX,
 };
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
@@ -61,15 +59,6 @@ pub(crate) struct Masks {
 type Pt = (f64, f64);
 /// The grid cells one segment is bucketed into.
 type Cells = Vec<(i64, i64)>;
-
-/// Stroke width `to_svg` paints edge `e` with.
-fn stroke_width(e: &SceneEdge) -> f64 {
-    let base = match e.kind {
-        EdgeKind::Thick | EdgeKind::ThickOpen => EDGE_WIDTH_THICK,
-        _ => EDGE_WIDTH,
-    };
-    e.meta.style.stroke_width.unwrap_or(base)
-}
 
 /// Proper intersection point of segments `a`–`b` and `c`–`d`, half-open
 /// on both (the same rule as the quality yardstick).

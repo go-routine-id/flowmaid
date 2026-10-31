@@ -114,7 +114,7 @@ pub struct PieLabel {
     pub y: f64,
     /// `true`: centred inside its wedge, inked with
     /// [`crate::style::text_on`] of the slice colour. `false`: outside
-    /// the rim on the white canvas, inked with [`TEXT_COLOR`], with
+    /// the rim on the white canvas, inked with `TEXT_COLOR`, with
     /// `x` at the end of [`PieLabel::leader`].
     pub inside: bool,
     /// SVG `text-anchor`: `middle` inside; `start` (right half) or

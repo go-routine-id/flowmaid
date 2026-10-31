@@ -765,10 +765,28 @@ impl ClassDiagram {
                 methods: Vec::new(),
                 annotations: Vec::new(),
                 generic: None,
+                lollipop: false,
             });
             self.index.insert(name.to_string(), i);
             i
         }
+    }
+
+    /// Add a lollipop interface named `name` (see [`Class::lollipop`])
+    /// and return its index. Every call adds a new one, as each
+    /// `bar ()-- foo` line does in mermaid: it is not entered under its
+    /// name, so [`ClassDiagram::ensure_class`] / [`ClassDiagram::class_index`]
+    /// never return it and a class may share its name.
+    pub fn add_lollipop(&mut self, name: &str) -> usize {
+        self.classes.push(Class {
+            name: name.to_string(),
+            fields: Vec::new(),
+            methods: Vec::new(),
+            annotations: Vec::new(),
+            generic: None,
+            lollipop: true,
+        });
+        self.classes.len() - 1
     }
 
     pub fn class_index(&self, name: &str) -> Option<usize> {
@@ -794,6 +812,11 @@ pub struct Class {
     /// Generic parameter from `class Box~T~` (`T`), shown as `Box<T>`;
     /// `None` = not generic.
     pub generic: Option<String>,
+    /// A lollipop interface (`bar` in `bar ()-- foo`, made by
+    /// [`ClassDiagram::add_lollipop`]): drawn as its name alone, no
+    /// box, beside the small circle its relation ends in. `name` is
+    /// then only the text shown.
+    pub lollipop: bool,
 }
 
 impl Class {
@@ -915,9 +938,11 @@ impl Visibility {
 }
 
 /// A relationship between two classes. Normalised so the end glyph
-/// (triangle / diamond / arrow) always sits at the `to` end;
-/// [`ClassRel::head_left`] remembers which operand the source wrote
-/// first, which the layout ranks by.
+/// (triangle / diamond / arrow / lollipop circle) always sits at the
+/// `to` end; [`ClassRel::head_left`] remembers which operand the source
+/// wrote first, which the layout ranks by. A two-way relation
+/// (`A <|--|> B`, `A *--> B`) also has a glyph at the `from` end:
+/// [`ClassRel::from_kind`].
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct ClassRel {
@@ -935,13 +960,20 @@ pub struct ClassRel {
     /// first), which puts parents, interfaces and wholes above their
     /// children in a top-down diagram; see [`ClassRel::source_order`].
     pub head_left: bool,
+    /// The glyph at the `from` end of a two-way relation, whose `kind`
+    /// is the glyph at `to` (`A <|--|> B`, `A *--> B`, `A o..o B`);
+    /// `None` = only the `to` end is decorated. The parser keeps a
+    /// two-way relation in source order: `from` is the left operand
+    /// and [`ClassRel::head_left`] is `false`.
+    pub from_kind: Option<RelKind>,
 }
 
 impl ClassRel {
     /// A relation `from` → `to` of `kind` with its glyph at `to`, as
     /// `B --|> A` would parse: solid unless `kind` is realization or
-    /// dependency, no cardinalities, no label, source order `from`
-    /// first. The fields are public; adjust them after.
+    /// dependency, no cardinalities, no label, no glyph at `from`,
+    /// source order `from` first. The fields are public; adjust them
+    /// after.
     pub fn new(from: usize, to: usize, kind: RelKind) -> ClassRel {
         ClassRel {
             from,
@@ -952,6 +984,7 @@ impl ClassRel {
             to_card: None,
             label: None,
             head_left: false,
+            from_kind: None,
         }
     }
 
@@ -984,6 +1017,10 @@ pub enum RelKind {
     Dependency,
     /// `--` — plain line.
     Link,
+    /// `()--` — a small hollow circle: the lollipop of an interface
+    /// (`bar ()-- foo`, where `bar` is a [`Class::lollipop`]), or one
+    /// end of a two-way relation (`A ()--* B`).
+    Lollipop,
 }
 
 /// Sequence diagram (`sequenceDiagram` header). Items keep source
