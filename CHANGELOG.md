@@ -7,15 +7,17 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.33.0] - 2026-10-31
+
 Advance mode's edge router was rewritten over three phases. Together they
 make "no line through a box" a property of the search rather than a case
 to detect, and take crossings on the measured scenarios from seven to
 zero. ER, sequence, gitGraph, pie, journey, timeline, sankey, mindmap and
 architecture diagrams were reworked to read at least as well as mermaid's,
 keeping flowmaid's interactive scene API, portable SVG and compact size.
-Flowchart output is byte-identical. Needs a **minor** bump: `AdvanceScene`
-and several diagram structs gain public fields (see **Breaking** under
-Changed).
+Flowchart output is byte-identical. Minor, not patch: `AdvanceScene` and
+several diagram structs gain public fields (see **Breaking** under Changed).
+Class and state diagram work lands in a later release.
 
 ### Added
 
