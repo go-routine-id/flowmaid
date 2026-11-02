@@ -46,3 +46,6 @@ In `dev` but not yet released (→ 0.34.0): class (hierarchy, notes, «interface
 - Create PRs only when asked; when the user says "merge ke dev": PR work branch → dev, wait for green CI, merge commit with expectedHeadSha, unsubscribe.
 - Commit trailer: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` + `Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5`. No model names elsewhere.
 - Pending offers to the user: review/help merge contributor PR #78 (JSON nesting depth cap, targets main).
+
+## 6. Live run (2026-11-02 07:10 WIB)
+Phase B launched: workflow run `wf_435bc7f8-05d`, script `phaseB.draft.js` (13 packages b0..b11 + c-leftovers). Resume after a restart with Workflow({scriptPath: <scratchpad>/phaseB.draft.js, resumeFromRunId: "wf_435bc7f8-05d"}). Each passing package is pushed to the work branch; failed ones are parked on `failed/<id>`. guard.sh now includes rustdoc -D warnings. After it: phase C (README screenshots + benchmark) and release/0.34.0.
