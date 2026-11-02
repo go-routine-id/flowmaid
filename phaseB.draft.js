@@ -38,7 +38,11 @@ Hard rules for every flowchart change:
 - The same geometry rule must hold in scene() AND route()/route_sized()/route_partial() (drag) unless the drag budget forbids it; then document the fallback in a code comment and keep pick == render (hit_test uses the same geometry the SVG draws).
 - Drag budget (PLAN.md invariant 1): \`${S}/tools/perf.sh <label> ${REPO}\` per-file worst drag_ms and route_ms ≤ max(1.25 × baseline, baseline + 1.0 ms) (re-run before concluding a regression — the box is noisy); route_partial < 6 ms; static scene_ms ≤ 2 × baseline.
 - Respect user intent: \`e1@{ curve: … }\`, \`linkStyle … interpolate …\`, \`style\`/\`classDef\`/\`linkStyle\` colours and widths keep working exactly as documented.
-- Keep the report §6 strengths (PLAN.md invariant 4). Do not copy mermaid's bugs.`
+- Keep the report §6 strengths (PLAN.md invariant 4). Do not copy mermaid's bugs.
+- Pick == render (since 0b63338): Scene::edge_at / hits_in_rect measure to the stroke the painter draws by walking scene::edge_path_d with scene::edge_stroke_width. Any change to how an edge's path is drawn must go through edge_path_d / edge_stroke_width (or keep them in sync), and the test edge_picking_matches_the_painted_strokes_on_every_fixture must keep passing. Painter-only treatments that remove ink (arrow trims, crossing gaps) are fine to ignore in picking.
+- Routing must stay finite for any node sizes (since 5a8b266: sane_sizes, the diamond guard in border); keep routing_stays_finite_for_any_node_sizes_and_coincident_centres passing.
+- guard.sh now also runs `cargo doc --no-deps` with -D warnings: no intra-doc link to a private item, no unresolved link.
+- The branch already holds 0.33.0 plus class/state/interactive work (see CHANGELOG [Unreleased]); state diagrams ride the flowchart pipeline, so check examples/state.mmd and the state corpus too.`
 
 const PKGS = [
   // a-followups: done and pushed 2026-10-31 (d7e423d..6f81d0a)
@@ -90,7 +94,8 @@ Regression test for each. Look at demo, lr, shapes, advanced, subgraph, fanout, 
   { id: 'b7-labels-ports', title: 'Label room + ports package, cluster header slot (M3, M8)', spec: `Package B7 — report §2.4, §2.6, items M3 (one coupled package) and M8. Prototype evidence ${S}/rev_ll/acw.png.
 - M3: labelled-gap room for TD/BT and LR including head room (layout.rs ~1895-1912, ~1855-1877): a rank gap carrying an edge label grows to fit label + head + stubs (≥ ~72px); bias 0 for a lone end (scene.rs ~3293) so single edges meet their node centred; even port spread for k ≥ 3 edges on one side (ports.rs ~256-290, ~460); weighted PAV for port order; snap straight pairs (a 1:1 vertical/horizontal pair whose ends are within a few px becomes perfectly straight). Labels sit on a straight run of their edge, centred, never on a bend or the head. Success: long-labels arrival offset 43.7→< 5px; fanout port spacing within ±2px; labelled gaps ≥ ~72px; no label touching a head.
 - M8: asymmetric cluster header slot (layout.rs ~1486-1496, ~1879-1919; find the router's 26px dependency on it): the gap inside a cluster below its title equals GAP_L rhythm; titles still never struck; the 4 dense-td gates keep passing.
-- Keep: white padded label chips, spread ports, straight symmetric spines (report §6).` },
+- Keep: white padded label chips, spread ports, straight symmetric spines (report §6).
+- Also (verifier leftover): state note links' elbow ends differ 7–18px between scene() and route() because ports on a face are spread differently in the two paths — make static and route port spreading agree so a 1px drag never moves a note link (and one nested-composite case, ${S}/verify/fu/v2/dump/g26.mmd, where the static scene elbows and route refuses).` },
   { id: 'b8-layering', title: 'Layering: greedy FAS, ranking, cluster acyclicity, isolated nodes, order robustness (B2, M11)', spec: `Package B8 — report §2.9, items B2 and M11, and the P1 "output depends on declaration order (+57% width in dense-td)".
 - Feedback-arc set: replace the DFS FAS (layout.rs ~989-1182) with a greedy Eades–Lin–Smyth FAS (deterministic tie-breaks by source order) so fewer edges reverse; bench-75 ≥ 60/75 edges point along the flow (right in LR).
 - Ranking: network simplex (or an equivalent tight-tree balancing) with nesting edges so clusters stay contiguous, and cluster-level acyclicity (a cluster is not split across a cycle in a way that inflates frames): frames no wider than their contents + padding; dense-lr becomes landscape.
@@ -114,6 +119,14 @@ Success: 100% of default-curve flowchart edges orthogonal and rounded (B0 idiom 
 - M15: at crossings of orthogonal segments draw a small semicircle hop (or keep the existing casing gap where a hop is worse — decide visually on dense-td, dense-lr, bench-75, fanout; mermaid draws neither, so pick what reads best and say why) so lines stay continuous and dashed lines don't look broken. Painter-only (SVG); hosts keep plain geometry. Deterministic, cheap.
 - B4: "comb" bundling for fans (≥ 3 edges leaving one side of a node): a shared trunk then evenly spaced teeth, 0 crossings inside a fan, plus an evenly spread port band at hubs (scene.rs ~1460-1536; ports.rs). Must stay within the drag budget in route()/route_partial (or apply only in static scene() with a documented fallback that still looks orthogonal).
 Success: fanout-frames and dense-td hubs: 0 crossings inside fans, even port spacing; no regression in crossings/overlaps elsewhere.` },
+  { id: 'c-leftovers', title: 'Non-flowchart leftovers from the phase A verifiers', spec: `Package C-leftovers — non-blocking findings the phase A verifiers left on non-flowchart renderers. Fix each that is local and in proportion (regression test each); skip with a reason anything that would need a redesign:
+- class: a plain six-source fan-in has 4 crossings (unlabelled gap one jog lane short when the end count is even; repro ${S}/verify/a1-class/r4/gen/in6_l0_c0_TB.mmd, mermaid 0); 5+ self-loops on a class with a close sibling run under the sibling (${S}/verify/a1-class/r6/final/loopk/k5_TB.mmd); dotted namespace names \`A.B --> C\` (valid in mermaid) if simple.
+- state: in twins3 (three transitions to one state) the 'two' chip lies half over the 'three' stroke; in a wide-label LR choice the long chip touches the start of c->A (${S}/verify/a3-state/in5/).
+- journey/timeline: the greedy wrap leaves orphan last words ('… in the / evening') — balance lines like the flowchart wrapper from B6 if it exists (reuse it); wrap_text (src/layout.rs ~348) drops <b>/<i> styling across a wrap point.
+- gitGraph: a merge into a farther lane that is free between the two commits is drawn like a fork (\`checkout feat\` then \`merge main\`); \`branch x order: 0\` tie rule vs mermaid's \`order ?? 0\`.
+- ER: under direction LR a pair of relationships between the same two entities draws as a crossing X; in cycles the 'employs' label sits on the neighbouring 'works in' line.
+- pie with 17+ slices: slice 17 repeats slice 1's colour and can touch it; journey with 11+ actors repeats a colour — give a second cue or extend the cycle.
+Flowchart output must not change in this package.` },
 ]
 
 const implPrompt = (pk, extra) => `You are a senior Rust engineer on flowmaid. ${COMMON}

@@ -10,6 +10,7 @@ step test cargo test --all-targets
 step doctest cargo test --doc
 step msrv cargo +1.75 check --all-targets
 step wasm cargo check --lib --target wasm32-unknown-unknown
+step rustdoc env RUSTDOCFLAGS="-D warnings" cargo doc --no-deps -q
 rm -f /tmp/guard.$$.log
 [ $fail = 0 ] && echo "GUARD: ALL GREEN" || echo "GUARD: FAILURES"
 exit $fail
