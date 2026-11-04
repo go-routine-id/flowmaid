@@ -55,7 +55,7 @@ Pass `note` instead of `resumeAt` when the B8 work looks unfinished. For context
 
 ### 2a. Release 0.35.0 follow-through (filled in as it happens)
 - PR #95 merged 2026-11-04 14:06 UTC → `main` = **`3430984`** (0.35.0).
-- Tag `v0.35.0` + `cargo publish`: **the user** does it (`git fetch origin && git tag -a v0.35.0 <merge sha> -m "flowmaid 0.35.0" && git push origin v0.35.0 && git checkout v0.35.0 && cargo publish`).
+- Tag `v0.35.0` + `cargo publish`: **the user** does it (`git fetch origin && git tag -a v0.35.0 3430984 -m "flowmaid 0.35.0" && git push origin v0.35.0 && git checkout v0.35.0 && cargo publish`).
 - main → dev sync: **PR #96 merged** → `dev` = **`9dc3292`**; the work branch `ccr-ccc6d89a-5cxd7e` was fast-forwarded and pushed (= `9dc3292`). **So Monday is path A: start B9 from `9dc3292`.**
 
 ## 3. Rules (from the user, plus this session's practice)
