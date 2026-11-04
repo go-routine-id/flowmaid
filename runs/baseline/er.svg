@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="602" height="950" viewBox="0 0 602 950" font-family="Helvetica, Arial, sans-serif" font-size="13" role="img" aria-label="Entity-relationship diagram">
+<title>Entity-relationship diagram</title>
+<rect width="602" height="950" fill="#ffffff"/>
+<path d="M 275.0 164.0 C 307.0 164.0, 307.0 164.0, 339.0 164.0" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<path d="M 283.0 158.5 L 283.0 169.5" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<path d="M 288.0 158.5 L 288.0 169.5" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<path d="M 327.0 164.0 L 339.0 170.0" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<path d="M 327.0 164.0 L 339.0 158.0" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<path d="M 327.0 164.0 L 339.0 164.0" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<circle cx="320.0" cy="164.0" r="4.5" fill="#ffffff" stroke="#44507a" stroke-width="1.7"/>
+<rect x="32.0" y="50.0" width="243.0" height="228.0" rx="4" fill="#ffffff" stroke="#5b6dc0" stroke-width="1.6"/>
+<rect x="32.0" y="50.0" width="243.0" height="30.0" rx="4" fill="#5b6dc0"/>
+<text x="153.5" y="65.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">categories</text>
+<text x="42.0" y="91.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="135.6" y="91.0" dy="0.33em" fill="#232840">id</text>
+<text x="265.0" y="91.0" dy="0.33em" text-anchor="end" font-weight="bold" fill="#44507a">PK</text>
+<line x1="32.0" y1="102.0" x2="275.0" y2="102.0" stroke="#d5d9ec"/>
+<text x="42.0" y="113.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="135.6" y="113.0" dy="0.33em" fill="#232840">organization_id</text>
+<line x1="32.0" y1="124.0" x2="275.0" y2="124.0" stroke="#d5d9ec"/>
+<text x="42.0" y="135.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="135.6" y="135.0" dy="0.33em" fill="#232840">created_by</text>
+<line x1="32.0" y1="146.0" x2="275.0" y2="146.0" stroke="#d5d9ec"/>
+<text x="42.0" y="157.0" dy="0.33em" fill="#6a7086">varchar(255)</text>
+<text x="135.6" y="157.0" dy="0.33em" fill="#232840">name</text>
+<line x1="32.0" y1="168.0" x2="275.0" y2="168.0" stroke="#d5d9ec"/>
+<text x="42.0" y="179.0" dy="0.33em" fill="#6a7086">varchar(255)</text>
+<text x="135.6" y="179.0" dy="0.33em" fill="#232840">slug</text>
+<line x1="32.0" y1="190.0" x2="275.0" y2="190.0" stroke="#d5d9ec"/>
+<text x="42.0" y="201.0" dy="0.33em" fill="#6a7086">boolean</text>
+<text x="135.6" y="201.0" dy="0.33em" fill="#232840">is_active</text>
+<line x1="32.0" y1="212.0" x2="275.0" y2="212.0" stroke="#d5d9ec"/>
+<text x="42.0" y="223.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="135.6" y="223.0" dy="0.33em" fill="#232840">created_at</text>
+<line x1="32.0" y1="234.0" x2="275.0" y2="234.0" stroke="#d5d9ec"/>
+<text x="42.0" y="245.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="135.6" y="245.0" dy="0.33em" fill="#232840">updated_at</text>
+<line x1="32.0" y1="256.0" x2="275.0" y2="256.0" stroke="#d5d9ec"/>
+<text x="42.0" y="267.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="135.6" y="267.0" dy="0.33em" fill="#232840">deleted_at</text>
+<rect x="339.0" y="28.0" width="235.2" height="272.0" rx="4" fill="#ffffff" stroke="#33a35c" stroke-width="1.6"/>
+<rect x="339.0" y="28.0" width="235.2" height="30.0" rx="4" fill="#33a35c"/>
+<text x="456.6" y="43.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">questions</text>
+<text x="349.0" y="69.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="434.8" y="69.0" dy="0.33em" fill="#232840">id</text>
+<text x="564.2" y="69.0" dy="0.33em" text-anchor="end" font-weight="bold" fill="#44507a">PK</text>
+<line x1="339.0" y1="80.0" x2="574.2" y2="80.0" stroke="#d5d9ec"/>
+<text x="349.0" y="91.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="434.8" y="91.0" dy="0.33em" fill="#232840">organization_id</text>
+<line x1="339.0" y1="102.0" x2="574.2" y2="102.0" stroke="#d5d9ec"/>
+<text x="349.0" y="113.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="434.8" y="113.0" dy="0.33em" fill="#232840">created_by</text>
+<line x1="339.0" y1="124.0" x2="574.2" y2="124.0" stroke="#d5d9ec"/>
+<text x="349.0" y="135.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="434.8" y="135.0" dy="0.33em" fill="#232840">category_id</text>
+<text x="564.2" y="135.0" dy="0.33em" text-anchor="end" font-weight="bold" fill="#44507a">FK</text>
+<line x1="339.0" y1="146.0" x2="574.2" y2="146.0" stroke="#d5d9ec"/>
+<text x="349.0" y="157.0" dy="0.33em" fill="#6a7086">text</text>
+<text x="434.8" y="157.0" dy="0.33em" fill="#232840">question</text>
+<line x1="339.0" y1="168.0" x2="574.2" y2="168.0" stroke="#d5d9ec"/>
+<text x="349.0" y="179.0" dy="0.33em" fill="#6a7086">text</text>
+<text x="434.8" y="179.0" dy="0.33em" fill="#232840">answer</text>
+<line x1="339.0" y1="190.0" x2="574.2" y2="190.0" stroke="#d5d9ec"/>
+<text x="349.0" y="201.0" dy="0.33em" fill="#6a7086">varchar(20)</text>
+<text x="434.8" y="201.0" dy="0.33em" fill="#232840">difficulty</text>
+<line x1="339.0" y1="212.0" x2="574.2" y2="212.0" stroke="#d5d9ec"/>
+<text x="349.0" y="223.0" dy="0.33em" fill="#6a7086">boolean</text>
+<text x="434.8" y="223.0" dy="0.33em" fill="#232840">is_active</text>
+<line x1="339.0" y1="234.0" x2="574.2" y2="234.0" stroke="#d5d9ec"/>
+<text x="349.0" y="245.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="434.8" y="245.0" dy="0.33em" fill="#232840">created_at</text>
+<line x1="339.0" y1="256.0" x2="574.2" y2="256.0" stroke="#d5d9ec"/>
+<text x="349.0" y="267.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="434.8" y="267.0" dy="0.33em" fill="#232840">updated_at</text>
+<line x1="339.0" y1="278.0" x2="574.2" y2="278.0" stroke="#d5d9ec"/>
+<text x="349.0" y="289.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="434.8" y="289.0" dy="0.33em" fill="#232840">deleted_at</text>
+<rect x="28.0" y="328.0" width="251.0" height="316.0" rx="4" fill="#ffffff" stroke="#d99114" stroke-width="1.6"/>
+<rect x="28.0" y="328.0" width="251.0" height="30.0" rx="4" fill="#d99114"/>
+<text x="153.5" y="343.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">schedules</text>
+<text x="38.0" y="369.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="131.6" y="369.0" dy="0.33em" fill="#232840">id</text>
+<text x="269.0" y="369.0" dy="0.33em" text-anchor="end" font-weight="bold" fill="#44507a">PK</text>
+<line x1="28.0" y1="380.0" x2="279.0" y2="380.0" stroke="#d5d9ec"/>
+<text x="38.0" y="391.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="131.6" y="391.0" dy="0.33em" fill="#232840">organization_id</text>
+<line x1="28.0" y1="402.0" x2="279.0" y2="402.0" stroke="#d5d9ec"/>
+<text x="38.0" y="413.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="131.6" y="413.0" dy="0.33em" fill="#232840">created_by</text>
+<line x1="28.0" y1="424.0" x2="279.0" y2="424.0" stroke="#d5d9ec"/>
+<text x="38.0" y="435.0" dy="0.33em" fill="#6a7086">varchar(255)</text>
+<text x="131.6" y="435.0" dy="0.33em" fill="#232840">candidate_name</text>
+<line x1="28.0" y1="446.0" x2="279.0" y2="446.0" stroke="#d5d9ec"/>
+<text x="38.0" y="457.0" dy="0.33em" fill="#6a7086">varchar(255)</text>
+<text x="131.6" y="457.0" dy="0.33em" fill="#232840">candidate_email</text>
+<line x1="28.0" y1="468.0" x2="279.0" y2="468.0" stroke="#d5d9ec"/>
+<text x="38.0" y="479.0" dy="0.33em" fill="#6a7086">varchar(20)</text>
+<text x="131.6" y="479.0" dy="0.33em" fill="#232840">scheduled_date</text>
+<line x1="28.0" y1="490.0" x2="279.0" y2="490.0" stroke="#d5d9ec"/>
+<text x="38.0" y="501.0" dy="0.33em" fill="#6a7086">varchar(10)</text>
+<text x="131.6" y="501.0" dy="0.33em" fill="#232840">scheduled_time</text>
+<line x1="28.0" y1="512.0" x2="279.0" y2="512.0" stroke="#d5d9ec"/>
+<text x="38.0" y="523.0" dy="0.33em" fill="#6a7086">int</text>
+<text x="131.6" y="523.0" dy="0.33em" fill="#232840">duration</text>
+<line x1="28.0" y1="534.0" x2="279.0" y2="534.0" stroke="#d5d9ec"/>
+<text x="38.0" y="545.0" dy="0.33em" fill="#6a7086">varchar(50)</text>
+<text x="131.6" y="545.0" dy="0.33em" fill="#232840">status</text>
+<line x1="28.0" y1="556.0" x2="279.0" y2="556.0" stroke="#d5d9ec"/>
+<text x="38.0" y="567.0" dy="0.33em" fill="#6a7086">text</text>
+<text x="131.6" y="567.0" dy="0.33em" fill="#232840">notes</text>
+<line x1="28.0" y1="578.0" x2="279.0" y2="578.0" stroke="#d5d9ec"/>
+<text x="38.0" y="589.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="131.6" y="589.0" dy="0.33em" fill="#232840">created_at</text>
+<line x1="28.0" y1="600.0" x2="279.0" y2="600.0" stroke="#d5d9ec"/>
+<text x="38.0" y="611.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="131.6" y="611.0" dy="0.33em" fill="#232840">updated_at</text>
+<line x1="28.0" y1="622.0" x2="279.0" y2="622.0" stroke="#d5d9ec"/>
+<text x="38.0" y="633.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="131.6" y="633.0" dy="0.33em" fill="#232840">deleted_at</text>
+<rect x="32.0" y="694.0" width="243.0" height="228.0" rx="4" fill="#ffffff" stroke="#c2588c" stroke-width="1.6"/>
+<rect x="32.0" y="694.0" width="243.0" height="30.0" rx="4" fill="#c2588c"/>
+<text x="153.5" y="709.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">settings</text>
+<text x="42.0" y="735.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="135.6" y="735.0" dy="0.33em" fill="#232840">id</text>
+<text x="265.0" y="735.0" dy="0.33em" text-anchor="end" font-weight="bold" fill="#44507a">PK</text>
+<line x1="32.0" y1="746.0" x2="275.0" y2="746.0" stroke="#d5d9ec"/>
+<text x="42.0" y="757.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="135.6" y="757.0" dy="0.33em" fill="#232840">organization_id</text>
+<line x1="32.0" y1="768.0" x2="275.0" y2="768.0" stroke="#d5d9ec"/>
+<text x="42.0" y="779.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="135.6" y="779.0" dy="0.33em" fill="#232840">created_by</text>
+<line x1="32.0" y1="790.0" x2="275.0" y2="790.0" stroke="#d5d9ec"/>
+<text x="42.0" y="801.0" dy="0.33em" fill="#6a7086">varchar(255)</text>
+<text x="135.6" y="801.0" dy="0.33em" fill="#232840">key</text>
+<line x1="32.0" y1="812.0" x2="275.0" y2="812.0" stroke="#d5d9ec"/>
+<text x="42.0" y="823.0" dy="0.33em" fill="#6a7086">text</text>
+<text x="135.6" y="823.0" dy="0.33em" fill="#232840">value</text>
+<line x1="32.0" y1="834.0" x2="275.0" y2="834.0" stroke="#d5d9ec"/>
+<text x="42.0" y="845.0" dy="0.33em" fill="#6a7086">varchar(50)</text>
+<text x="135.6" y="845.0" dy="0.33em" fill="#232840">type</text>
+<line x1="32.0" y1="856.0" x2="275.0" y2="856.0" stroke="#d5d9ec"/>
+<text x="42.0" y="867.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="135.6" y="867.0" dy="0.33em" fill="#232840">created_at</text>
+<line x1="32.0" y1="878.0" x2="275.0" y2="878.0" stroke="#d5d9ec"/>
+<text x="42.0" y="889.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="135.6" y="889.0" dy="0.33em" fill="#232840">updated_at</text>
+<line x1="32.0" y1="900.0" x2="275.0" y2="900.0" stroke="#d5d9ec"/>
+<text x="42.0" y="911.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="135.6" y="911.0" dy="0.33em" fill="#232840">deleted_at</text>
+<rect x="288.7" y="154.0" width="36.6" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="307.0" y="164.0" dy="0.33em" text-anchor="middle" fill="#232840">has</text>
+</svg>

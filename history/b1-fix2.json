@@ -1,0 +1,38 @@
+{
+ "summary": "B1 fix round 3: all six review items are addressed in three new commits on ccr-ccc6d89a-5cxd7e. Guard is ALL GREEN before each commit, and perf.sh drag/route/scene timings are within budget (two re-runs confirmed noise).\n\nBlocking #1 (to_svg speed), commit a0a2314:\n- Each edge's squared ends are now worked out once per paint, in a new `PaintedEdge`, and the crossing casing reuses those strokes (`casing::masks` takes them through `line_of`).\n- `square_end` got faster without changing its choices: an exact max-min stray measure with warm start and squared distances, cached arc tables, deferred allocation, and `trim_segs` measuring only the commands its cuts reach.\n- Commit 81c34c5 added a cheaper pass/fail check where only the stray limit matters, lazy tail tables and 1 px tail sampling.\n- `to_svg` best of 3, pre-B1 → e0a63d2 → now:\n\n| Chart | pre-B1 | e0a63d2 | now |\n|---|---|---|---|\n| bench-75 | 3.8 ms | 13.1 ms | 4.0 ms |\n| dense-td | 1.8 ms | 12.9 ms | 2.5 ms |\n| dense-lr | 1.7 ms | 15.4 ms | 2.1 ms |\n| synth200 | 16.6 ms | 182 ms | 22.6 ms |\n| synth1000 | 18.5 ms | 157 ms | 36.9 ms |\n| 600-node | 6.7 ms | 50 ms | 13.8 ms |\n\n- Instruction counts agree: synth1000 179M → 326M, bench-75 26.9M → 30.4M.\n- The synthetic charts are still 1.4–2x pre-B1, because two thirds of their ends turn hard into the head.\n\nBlocking #2 (picking speed):\n- `edge_distance` squares an end only where that can change the answer. A squared end changes nothing farther than 63 px from its tip (was 110), and a target on a tip is on the stroke.\n- Outside the head the new stretch stays within a fixed slack of the scene curve. To guarantee that, the fallback strays are now capped at 6 px; the corpus maximum was 5.8, so no output changed.\n- Only the near end is squared when the other cannot matter.\n- Whole-canvas `hits_in_rect`: dense-lr 4.6 → 0.00 ms, 600-node 37.7 → 0.04 ms (pre-B1 0.18).\n- Mean hover: fanout 218 → 2.0 µs (pre-B1 1.4), dense-lr 44.8 → 8.8 µs (pre-B1 11.1).\n- A new test checks the shortcuts give the same distance as squaring every time, within the 0.05 px flattening tolerance.\n- Output from this commit is unchanged apart from 1–5 coordinates per file that round 0.1 px differently.\n\n#3 (elbows and S-wiggles), commit 81c34c5:\n- A curve that swings in from the side now leaves itself where the line to the corner under the head touches it, and runs straight into the head: no S, no hump. A curve that slips under the head first keeps its own curve up to there.\n- Visually confirmed on dense-td n16→n23, bench-75 db→svc2 and cache→svc4, fanout-frames n0→g1, and a thick fan.\n- The SVG-level count of ends meeting the head base more than 20° off is unchanged (bench-75 17/29). A square head on a hook keeps the angle the scene cubic arrives at; see the skipped M1 items.\n- `quality::end_kink` went from 62|81 to 60|77.\n\n#4–#6, commit 05d93b3:\n- #4: arrowheads standing side by side closer than a head plus 1.5 px are drawn narrower (`arrow-w<width>` markers, at least 6 px). x2_fan's Sink heads now keep gaps instead of merging into one band.\n- #5: the advance painter's stroke ends along the route's last leg even when that leg is shorter than the cut.\n- #6: the doc line is rewrapped, and `quality::Metrics` is now `#[non_exhaustive]` (noted under Breaking in the CHANGELOG).\n\nGates and snapshots:\n- Byte-exact snapshots unchanged.\n- Lowered: `end_kink` 62|81 → 60|77, routed `band_len` 46610 → 46604, routed `x_drawn` 521 → 520.\n- One gate raised: `BORDER_LEN_MAX` static 1070 → 1082. Two bench-75 ends just inside the \"data\" frame now enter along the touching line instead of an S that hugged the curve, running 9 and 3 px longer near the frame's border. No route changed; the reason is in the gate's comment.\n- New regression tests cover each item. CHANGELOG and README are updated.",
+ "commits": [
+  "a0a2314 perf(flowchart): square each glyph end once per paint; pick without squaring (B1 review r3 #1, #2)",
+  "81c34c5 fix(flowchart): a curve swinging into its head runs straight in, no S or hump (B1 review r3 #3, Q1+M1)",
+  "05d93b3 fix(flowchart): crowded heads keep apart; advance heads face a short last leg; Metrics non-exhaustive (B1 review r3 #4-#6)"
+ ],
+ "items_done": [
+  "#1 BLOCKING to_svg speed: squared ends worked out once per edge per paint and shared with the casing; candidate search pruned and made cheaper. to_svg 1.1-1.4x pre-B1 on the corpus (was 3-9x), 1.4-2x on the synthetic charts",
+  "#2 BLOCKING picking speed: edge_distance squares only where it can change the answer (reach 110 -> 63 px, only the near end, early-outs on the scene curve, a target on a tip); whole-canvas marquee faster than pre-B1, hover back near pre-B1; a test checks equality with always-squaring",
+  "#3 entry fallback: a curve swinging in from the side leaves itself at the tangent point and runs straight into a square head (no S, no hump); a curve slipping under the head keeps its own curve; end_kink 62|81 -> 60|77",
+  "#4 heads merging on over-full sides: side-by-side heads closer than a head plus 1.5 px are painted narrower (arrow-w markers, at least 6 px, never too narrow to cover the stroke's end)",
+  "#5 advance polyline_d_painted: a short last leg gets a final run along its own line, so the head faces that leg (with a test)",
+  "#6 quality::Metrics end_kink doc rewrapped; Metrics marked #[non_exhaustive] and noted under Breaking in the CHANGELOG",
+  "Regression tests: a_paint_squares_each_glyph_end_once, picking_squares_ends_only_where_it_can_change_the_answer, a_curve_swinging_in_from_the_side_enters_its_head_straight, crowded_heads_narrow_so_neighbours_keep_apart, an_advance_route_with_a_short_last_leg_keeps_its_head_on_that_leg",
+  "CHANGELOG [Unreleased] and README updated (speed, straight entry, arrow-w marker, Metrics breaking note)"
+ ],
+ "items_skipped": [
+  {
+   "item": "M1: router end stub >= 2*ARROW_MARKER_PX + corner radius (router.rs)",
+   "reason": "Unchanged from the previous round. Lengthening the stub in the route search moved routes in the dense fixtures (+12-40% overlap/tight; the attempt is saved as b1/router_longstub.patch). Router heads are square because the cut lands in their straight run; the remaining base angle is a routing trade-off, not a painter fix."
+  },
+  {
+   "item": "M1: straight last head length for strongly turning single cubics, done in the scene (longer end handles)",
+   "reason": "Now measured, and infeasible with a cubic. tangent() caps a handle at half the border gap so the cubic stays monotone. fanout-frames n0->g1 is [(215,908.5),(238,908.5),(238,557),(261,557)]: 23 px handles over a 351 px rise, 27 px off its end tangent one head length back. Getting within a px over the last head would need handles of about 118 px, past the other end's x, so the curve would overshoot. The fix needs a different edge shape (stubs plus a spline through waypoints) in the edge-routing stage, outside B1's painter scope. Meanwhile the painter enters these heads straight along the tangent line (#3)."
+  },
+  {
+   "item": "Q10 MARGIN 16 in scene coordinates",
+   "reason": "Unchanged: applied as the SVG padding only. Shifting every scene coordinate flips the router's float-exact tie-breaks in the dense fixtures, a layout change Q10 rules out. ER and class SVGs keep their 28 px padding."
+  },
+  {
+   "item": "#4 the ports-stage fix: spreading ends round a corner on over-full sides",
+   "reason": "This is the ports stage (report §2.4) and it rerouted the dense fixtures when tried. The painter now keeps crowded heads apart by narrowing them, which fixes the visible regression the wider glyph caused."
+  }
+ ],
+ "guard_green": true,
+ "perf_ok": true
+}

@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="513" viewBox="0 0 700 513" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="Flowchart diagram">
+<title>Flowchart diagram</title>
+<rect width="700" height="513" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker><mask id="flowmaid-5f9c3d32a750ed96-x6" maskUnits="userSpaceOnUse" x="220.0" y="140.2" width="125.1" height="107.6"><rect x="220.0" y="140.2" width="125.1" height="107.6" fill="#fff"/><circle cx="286.8" cy="195.7" r="4.47" fill="#000"/></mask><mask id="flowmaid-5f9c3d32a750ed96-x12" maskUnits="userSpaceOnUse" x="263.0" y="42.2" width="104.0" height="306.0"><rect x="263.0" y="42.2" width="104.0" height="306.0" fill="#fff"/><circle cx="286.8" cy="209.4" r="4.47" fill="#000"/></mask></defs>
+<path d="M 310.5 66.0 C 310.5 96.0, 104.9 96.0, 104.9 126.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>A → B1</title></path>
+<path d="M 324.5 66.0 C 324.5 96.0, 243.8 96.0, 243.8 126.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>A → B2</title></path>
+<path d="M 352.5 66.0 C 352.5 96.0, 350.2 96.0, 350.2 126.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>A → B3</title></path>
+<path d="M 377.7 66.0 C 377.7 96.0, 456.7 96.0, 456.7 126.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>A → B4</title></path>
+<path d="M 391.7 66.0 C 391.7 96.0, 595.6 96.0, 595.6 126.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>A → B5</title></path>
+<path d="M 104.9 164.0 C 104.9 194.0, 307.3 194.0, 307.3 224.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>B1 → C</title></path>
+<path d="M 243.8 164.0 C 243.8 194.0, 321.3 194.0, 321.3 224.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)" mask="url(#flowmaid-5f9c3d32a750ed96-x6)"><title>B2 → C</title></path>
+<path d="M 350.2 164.0 C 350.2 194.0, 350.2 194.0, 350.2 224.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>B3 → C</title></path>
+<path d="M 456.7 164.0 C 456.7 194.0, 379.1 194.0, 379.1 224.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>B4 → C</title></path>
+<path d="M 595.6 164.0 C 595.6 194.0, 393.1 194.0, 393.1 224.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>B5 → C</title></path>
+<path d="M 350.2 262.0 C 350.2 292.0, 357.2 294.4, 357.2 324.4" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>C → D</title></path>
+<path d="M 350.2 386.6 C 350.2 416.6, 350.2 416.6, 350.2 446.6" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>D → E: yes</title></path>
+<path d="M 343.2 324.4 L 343.2 323.0 C 343.2 321.5, 343.2 318.7, 343.2 315.9 C 343.2 313.1, 343.2 310.3, 341.8 308.9 C 340.4 307.5, 337.6 307.5, 330.6 307.5 C 323.5 307.5, 312.2 307.5, 304.2 307.5 C 296.2 307.5, 291.5 307.5, 289.2 305.2 C 286.8 302.8, 286.8 298.2, 286.8 268.2 C 286.8 238.2, 286.8 182.8, 286.8 152.8 C 286.8 122.8, 286.8 118.2, 289.2 115.8 C 291.5 113.5, 296.2 113.5, 300.1 113.5 C 304.1 113.5, 307.3 113.5, 313.6 113.5 C 319.9 113.5, 329.2 113.5, 333.9 111.2 C 338.5 108.8, 338.5 104.2, 338.5 96.2 C 338.5 88.3, 338.5 77.2, 338.5 71.6 L 338.5 66.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)" mask="url(#flowmaid-5f9c3d32a750ed96-x12)"><title>D → A: no</title></path>
+<g><title>Dispatcher</title>
+<rect x="300.8" y="28.0" width="98.9" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="350.2" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">Dispatcher</text>
+</g>
+<g><title>Worker 1</title>
+<rect x="28.0" y="126.0" width="88.9" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="72.4" y="145.0" dy="0.33em" text-anchor="middle" fill="#232840">Worker 1</text>
+</g>
+<g><title>Worker 2</title>
+<rect x="166.9" y="126.0" width="88.9" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="211.3" y="145.0" dy="0.33em" text-anchor="middle" fill="#232840">Worker 2</text>
+</g>
+<g><title>Worker 3</title>
+<rect x="305.8" y="126.0" width="88.9" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="350.2" y="145.0" dy="0.33em" text-anchor="middle" fill="#232840">Worker 3</text>
+</g>
+<g><title>Worker 4</title>
+<rect x="444.7" y="126.0" width="88.9" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="489.1" y="145.0" dy="0.33em" text-anchor="middle" fill="#232840">Worker 4</text>
+</g>
+<g><title>Worker 5</title>
+<rect x="583.6" y="126.0" width="88.9" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="628.0" y="145.0" dy="0.33em" text-anchor="middle" fill="#232840">Worker 5</text>
+</g>
+<g><title>Aggregator</title>
+<rect x="299.3" y="224.0" width="101.8" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="350.2" y="243.0" dy="0.33em" text-anchor="middle" fill="#232840">Aggregator</text>
+</g>
+<g><title>All succeeded?</title>
+<polygon points="350.2,322.0 446.2,354.3 350.2,386.6 254.2,354.3" fill="#fcf2da" stroke="#d99114" stroke-width="1.6"/>
+<text x="350.2" y="354.3" dy="0.33em" text-anchor="middle" fill="#232840">All succeeded?</text>
+</g>
+<g><title>Done</title>
+<rect x="311.7" y="446.6" width="77.1" height="38.0" rx="19.0" fill="#e5f5ea" stroke="#33a35c" stroke-width="1.6"/>
+<text x="350.2" y="465.6" dy="0.33em" text-anchor="middle" fill="#232840">Done</text>
+</g>
+<rect x="332.3" y="406.6" width="35.8" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="350.2" y="416.6" dy="0.33em" text-anchor="middle" fill="#232840">yes</text>
+<rect x="272.1" y="275.9" width="29.6" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="286.9" y="285.9" dy="0.33em" text-anchor="middle" fill="#232840">no</text>
+</svg>

@@ -1,0 +1,447 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 03d7c5b..8c8c8cf 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -128,7 +128,10 @@ Minor, not patch: several class structs gain public fields (see
+   crossing their legs: lanes from ends stacked on one layer into one node
+   run side by side straight out of their ends and turn in one after the
+   other, and lanes nested round each other are dealt out so the end
+-  nearest their side takes the outermost lane and the shortest stub.
++  nearest their side takes the outermost lane and the shortest stub;
++  lanes of edges between the same two ends leave and enter in that order
++  too, the outermost nearest the lane (x6: two `Gamma -> Alpha` lanes
++  crossed twice in `route()`).
+   Where it meets an end another edge also uses, the lane is judged by
+   where that edge heads, so it never turns across an edge arriving beside
+   it: the state `retry` loop runs straight up out of `Rejected` round the
+@@ -172,7 +175,13 @@ Minor, not patch: several class structs gain public fields (see
+ - **Self-loops keep their room** (report P0 #13): the layout keeps a
+   looped node's loop (and 12 px) clear of its high-side neighbour, so a
+   long edge's channel beside it no longer runs through the loop's apex
+-  (stress: `A ==> D`), and a back-edge's lane clears the loop too.
++  (stress: `A ==> D`), and a back-edge's lane clears the loop too. The
++  router treats every self-loop as an obstacle, so `route()` keeps other
++  edges off it as well (stress's `A ==> D` ran 5 px from `B`'s loop on a
++  drag). `route()` draws a loop on the side `scene()` does — in LR / RL
++  below its node, not on the screen's right, where its node's edges
++  leave (x6: a loop hidden under three parallel edges) — and a drag that
++  crowds that side moves it to the free one.
+ - **A labelled parallel edge keeps its label off its twin** (report
+   P0 #13): in TD / BT, parallel edges next to a labelled one leave
+   half the label's width plus 15 px between their lines (a 16 px gap put
+diff --git a/README.md b/README.md
+index 0502807..52db79b 100644
+--- a/README.md
++++ b/README.md
+@@ -436,9 +436,9 @@ Consumers built on this API (separate repos; the engine itself stays dependency-
+ 
+ ## Limitations & ideas
+ 
+-Already handled: the canvas is the drawing itself — every curve to its exact extremes (not its control points), every stroke's width and end glyph, every label — plus a 28 px margin on each side, so self-loops and back-edges are never clipped and the margins match; a back-edge runs in an orthogonal lane just past what lies between its ends, square out of and into its nodes (a 2-cycle's return edge across the gap beside its twin), in `scene()` and `route()` alike, and an edge between two members of a subgraph stays inside its frame; a static `Scene`'s `width` × `height` and node centres are exactly the SVG's canvas and coordinates; parallel edges (same node pair) separate automatically; long edges that align with a column of nodes bow sideways as a mitigation.
++Already handled: the canvas is the drawing itself — every curve to its exact extremes (not its control points), every stroke's width and end glyph, every label — plus a 28 px margin on each side, so self-loops and back-edges are never clipped and the margins match; a back-edge runs in an orthogonal lane just past what lies between its ends, square out of and into its nodes (a 2-cycle's return edge across the gap beside its twin), in `scene()` and `route()` alike, and an edge between two members of a subgraph stays inside its frame; a self-loop keeps its room, sits on the same side in `scene()` and `route()` (a side a drag crowds sends it to the free one) and other edges are routed clear of it; a static `Scene`'s `width` × `height` and node centres are exactly the SVG's canvas and coordinates; parallel edges (same node pair) separate automatically; long edges that align with a column of nodes bow sideways as a mitigation.
+ 
+-Still open: text width is estimated (~character-class table) since there are no real font metrics, so very long labels or CJK can be off; the long-edge mitigation is only a heuristic — the real solution is *virtual nodes* per crossed layer; edge labels can collide with nodes on dense diagrams; escaped quotes (`\"`) inside labels aren't supported; the router does not yet treat self-loops as obstacles (the layout keeps their room instead). The full mermaid.js parity roadmap lives in [issue #10](https://github.com/go-routine-id/flowmaid/issues/10).
++Still open: text width is estimated (~character-class table) since there are no real font metrics, so very long labels or CJK can be off; the long-edge mitigation is only a heuristic — the real solution is *virtual nodes* per crossed layer; edge labels can collide with nodes on dense diagrams; escaped quotes (`\"`) inside labels aren't supported. The full mermaid.js parity roadmap lives in [issue #10](https://github.com/go-routine-id/flowmaid/issues/10).
+ 
+ ## License
+ 
+diff --git a/src/lanes.rs b/src/lanes.rs
+index 896f4c3..418c710 100644
+--- a/src/lanes.rs
++++ b/src/lanes.rs
+@@ -193,8 +193,21 @@ pub(crate) fn corners(
+     let ((pa, sa), (pb, sb)) = (a, b);
+     let x = lane.x;
+     let (s0, s3) = legs(pa, pb, &lane);
+-    let xa = clamp_to(x, port_span(sa, pa));
+-    let xb = clamp_to(x, port_span(sb, pb));
++    // An end's port: as near the lane as its side allows — one
++    // LANE_STAGGER further in per twin lane (between the same two ends)
++    // nested round it, so twins leave and enter in their nesting order,
++    // the outermost nearest the lane, and their legs never cross.
++    let port = |p: &Placed, shape: Shape| {
++        let span = port_span(shape, p);
++        let near = clamp_to(x, span);
++        let inward = if x > span.1 { -1.0 } else { 1.0 };
++        if (near - x).abs() > LANE_EPS {
++            clamp_to(near + inward * lane.twins as f64 * LANE_STAGGER, span)
++        } else {
++            near
++        }
++    };
++    let (xa, xb) = (port(pa, sa), port(pb, sb));
+     // Met on its side, an end is entered level with its centre, moved
+     // one LANE_STAGGER toward the other end per lane nested round it
+     // there (within the side's straight run): the lanes meeting one side
+@@ -547,6 +560,11 @@ pub(crate) struct Lane {
+     /// run along the border); set by the caller that draws the lane (0
+     /// from [`plan`]).
+     pub out: [f64; 2],
++    /// How many lanes of edges between the same two ends run farther out
++    /// on its side: its ports sit that many [`LANE_STAGGER`]s further in
++    /// at both ends ([`corners`]), so twins leave and enter in their
++    /// nesting order.
++    pub twins: usize,
+ }
+ 
+ impl Lane {
+@@ -558,6 +576,7 @@ impl Lane {
+             stagger: [0, 0],
+             room: [f64::INFINITY; 2],
+             out: [0.0; 2],
++            twins: 0,
+         }
+     }
+ }
+@@ -695,6 +714,7 @@ pub(crate) fn plan(
+             stagger: [0, 0],
+             room: [f64::INFINITY; 2],
+             out: [0.0; 2],
++            twins: 0,
+         });
+         placed.push((i, x));
+     }
+@@ -760,6 +780,15 @@ pub(crate) fn plan(
+         .collect();
+     for &(i, xi) in &laid {
+         let mut stagger = [0usize; 2];
++        let twins = laid
++            .iter()
++            .filter(|&&(j, xj)| {
++                j != i
++                    && wants[j].ends == wants[i].ends
++                    && side(j, xj) == side(i, xi)
++                    && (xj - xi) * side(i, xi) > LANE_EPS
++            })
++            .count();
+         for (k, layer) in [(0, wants[i].band.1), (1, wants[i].band.0)] {
+             let out_dir = |j: usize, x: f64| {
+                 let d = x - centre(wants[j].spans[k]);
+@@ -784,6 +813,7 @@ pub(crate) fn plan(
+         }
+         if let Some(l) = out[i].as_mut() {
+             l.stagger = stagger;
++            l.twins = twins;
+         }
+     }
+     out
+diff --git a/src/router.rs b/src/router.rs
+index ef2af2f..e8c18df 100644
+--- a/src/router.rs
++++ b/src/router.rs
+@@ -77,7 +77,9 @@ use crate::clearance::{
+     EDGE_SPACING, FRAME_INSET, FRAME_SEP, MIN_OVERLAP_RUN, NODE_CLEARANCE, NODE_SEP, PARALLEL_COS,
+     PORT_ZONE, SAMPLE_STEP, TIGHT_RUN_MIN, WIGGLE_TOL,
+ };
+-use crate::scene::{edge_polyline, grow_scene, title_head, Bbox, Scene, ARROW_MARKER_PX, MARGIN};
++use crate::scene::{
++    edge_drawn, edge_polyline, grow_scene, title_head, Bbox, Scene, ARROW_MARKER_PX, MARGIN,
++};
+ use std::cmp::Reverse;
+ use std::collections::BinaryHeap;
+ 
+@@ -504,7 +506,13 @@ struct World {
+     /// ([`NODE_CLEARANCE`]), as the wider rule costs a drag frame
+     /// reroutes that lie on other edges instead (G1, G13).
+     chip_reach: f64,
++    /// Every node's box, index-parallel with `sc.nodes`, then the box of
++    /// every self-loop (report P0 #13): a loop is drawn beside its node,
++    /// and a path through it reads as running through the node.
+     nodes: Vec<(R, Shape)>,
++    /// Per entry of `nodes`: the node it belongs to (itself, or the
++    /// looped node), so an edge of that node is never its obstacle.
++    owner: Vec<usize>,
+     frames: Vec<R>,
+     chips: Vec<R>,
+     /// (edge, label box) of every labelled edge, as placed so far.
+@@ -648,7 +656,7 @@ fn end_node(e: EndRef) -> Option<usize> {
+ 
+ impl World {
+     fn new(g: &Graph, sc: &Scene) -> World {
+-        let nodes = sc
++        let mut nodes: Vec<(R, Shape)> = sc
+             .nodes
+             .iter()
+             .map(|n| {
+@@ -663,6 +671,18 @@ impl World {
+                 )
+             })
+             .collect();
++        let mut owner: Vec<usize> = (0..nodes.len()).collect();
++        // Self-loops: the box of each as drawn.
++        for e in sc.edges.iter().filter(|e| e.from == e.to && edge_drawn(e)) {
++            let Some(v) = sc.nodes.iter().position(|n| n.id == e.from) else {
++                continue;
++            };
++            let r = bounds(&edge_polyline(e));
++            if [r.0, r.1, r.2, r.3].iter().all(|c| c.is_finite()) {
++                nodes.push((r, Shape::Rect));
++                owner.push(v);
++            }
++        }
+         let frames: Vec<R> = sc
+             .clusters
+             .iter()
+@@ -695,6 +715,7 @@ impl World {
+             dir: g.direction,
+             chip_reach: CHIP_SEP,
+             nodes,
++            owner,
+             frames,
+             chips,
+             labels,
+@@ -737,7 +758,13 @@ impl World {
+     /// Whether a stub at `p` of an edge `info` stands in the open: off
+     /// every node and chip, and out of every frame it must avoid.
+     fn stub_free(&self, info: &Info, p: Pt) -> bool {
+-        self.nodes.iter().all(|&(r, _)| !inside(r, p))
++        // An end's own self-loop is no obstacle to its stub; its own box is.
++        let ends = [end_node(info.ends.0), end_node(info.ends.1)];
++        let own_loop = |v: usize| self.owner[v] != v && ends.contains(&Some(self.owner[v]));
++        self.nodes
++            .iter()
++            .enumerate()
++            .all(|(v, &(r, _))| own_loop(v) || !inside(r, p))
+             && self.chips.iter().all(|&r| !inside(r, p))
+             && info
+                 .blocked_frames
+@@ -762,7 +789,7 @@ impl World {
+         let bb = bounds(pts);
+         let ends = [end_node(info.ends.0), end_node(info.ends.1)];
+         for (v, &(r, shape)) in self.nodes.iter().enumerate() {
+-            if ends.contains(&Some(v)) || !overlaps(grow(bb, CRAMP_NODE_GAP), r) {
++            if ends.contains(&Some(self.owner[v])) || !overlaps(grow(bb, CRAMP_NODE_GAP), r) {
+                 continue;
+             }
+             // Only the part of each segment near the node is sampled, so
+@@ -867,7 +894,7 @@ impl World {
+                 self.nodes
+                     .iter()
+                     .enumerate()
+-                    .filter(|(v, _)| !ends.contains(&Some(*v)))
++                    .filter(|(v, _)| !ends.contains(&Some(self.owner[*v])))
+                     .map(|(_, n)| n.0),
+             );
+         for r in sides.filter(|_| s.node == 0) {
+@@ -3299,7 +3326,7 @@ fn place_group(f: &Fences, routes: &mut [Option<Vec<Pt>>], segs: &[Seg], grp: &[
+     let scene_slab_at = |c: (f64, f64, f64), at: (f64, f64, f64)| {
+         let mut slab = open;
+         for (v, &(r, _)) in w.nodes.iter().enumerate() {
+-            if own.contains(&EndRef::Node(v)) {
++            if own.contains(&EndRef::Node(w.owner[v])) {
+                 continue;
+             }
+             let (a, b, lo, hi) = rect(grow(r, c.0));
+@@ -4133,7 +4160,7 @@ fn narrow_px(w: &World, info: &Info, pts: &[Pt]) -> f64 {
+             w.nodes
+                 .iter()
+                 .enumerate()
+-                .filter(|(v, _)| !ends.contains(&Some(*v)))
++                .filter(|(v, _)| !ends.contains(&Some(w.owner[*v])))
+                 .map(|(_, n)| n.0),
+         )
+         .filter(|&r| overlaps(probe, r))
+@@ -5270,6 +5297,7 @@ mod tests {
+             dir: crate::model::Direction::LR,
+             chip_reach: CHIP_SEP,
+             nodes: nodes.iter().map(|&r| (r, Shape::Rect)).collect(),
++            owner: (0..nodes.len()).collect(),
+             frames: frames.to_vec(),
+             chips: Vec::new(),
+             labels: Vec::new(),
+diff --git a/src/scene.rs b/src/scene.rs
+index 8efe103..8277faa 100644
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@ -4193,6 +4193,8 @@ fn route_built(
+     } else {
+         flow_frame_spans(g, &flow_at, g.direction)
+     };
++    // How far each node's self-loop reaches past its side.
++    let loops_at = loop_reach(g);
+     // A labelled 2-cycle across one gap bows apart as in the static
+     // layout ([`twin_bows`]).
+     let bows = twin_bows(g, &offs, |ei| {
+@@ -4269,7 +4271,15 @@ fn route_built(
+                     Some(g.direction),
+                     lone_ends(g, &bars, e),
+                 );
+-                if bows[ei] == 0.0 {
++                if e.from == e.to && loop_on_low_side(&flow_at, e.from, &loops_at) {
++                    // Its high side crowded by a drag: the loop goes on
++                    // the free low side, mirrored across its node.
++                    let c = flow_at[e.from].b;
++                    pts.map(|p| {
++                        let (b, l) = to_flow(g.direction, p);
++                        from_flow(g.direction, (2.0 * c - b, l))
++                    })
++                } else if bows[ei] == 0.0 {
+                     pts
+                 } else {
+                     bowed(pts.map(|p| to_flow(g.direction, p)), bows[ei])
+@@ -7008,13 +7018,10 @@ fn route_backs(g: &Graph, flow: &[Placed]) -> Vec<Back> {
+         node_cluster_paths(g)
+     };
+     let horizontal = matches!(g.direction, Direction::LR | Direction::RL);
+-    // A self-loop beside a node is in a lane's way too (on screen right:
+-    // the high breadth side in TD / BT).
+-    let loops = if horizontal {
+-        vec![0.0; g.nodes.len()]
+-    } else {
+-        loop_reach(g)
+-    };
++    // A self-loop beside a node is in a lane's way too (on its high
++    // breadth side, as `free_edge` draws it with the static layout's
++    // room there; the low side when a drag crowded that, [`loop_side`]).
++    let loops = loop_reach(g);
+     let wants: Vec<Want> = backs
+         .iter()
+         .map(|&ei| {
+@@ -7265,12 +7272,18 @@ fn free_edge(
+     dir: Option<Direction>,
+     lone: (bool, bool),
+ ) -> [(f64, f64); 4] {
+-    if self_loop {
+-        return loop_points(a, off);
+-    }
+     let Some(dir) = dir else {
++        if self_loop {
++            return loop_points(a, off);
++        }
+         return axis_edge(a, b, sa, sb, off);
+     };
++    if self_loop {
++        // On the high breadth side, as the static layout draws it (and
++        // keeps the room for it): on screen right only in TD / BT — in
++        // LR / RL, below the node, not in the gap its edges leave by.
++        return loop_points(&flow_placed(dir, a), off).map(|p| from_flow(dir, p));
++    }
+     let (fa, fb) = (flow_placed(dir, a), flow_placed(dir, b));
+     if let Some(pts) = nested_edge(&fa, &fb, sa, sb, off) {
+         return pts.map(|p| from_flow(dir, p));
+@@ -7424,6 +7437,36 @@ pub(crate) fn loop_reach(g: &Graph) -> Vec<f64> {
+     reach
+ }
+ 
++/// Whether the self-loop of node `v` goes on its low breadth side in
++/// [`route`]: when a node level with it along the flow (`at`, flow
++/// coordinates) lies within its loop's reach (`reach`, [`loop_reach`])
++/// plus [`crate::clearance::NODE_SEP`] of its high side and none that
++/// close to its low side. The static layout keeps that room on the high
++/// side (`layout` keeps a looped node's high-side neighbour off), so
++/// over the scene's own centres the loop stays where `scene()` draws
++/// it; only a drag that crowds it there sends it to the free side.
++fn loop_on_low_side(at: &[Placed], v: usize, reach: &[f64]) -> bool {
++    let p = &at[v];
++    let room = reach.get(v).copied().unwrap_or(0.0) + crate::clearance::NODE_SEP;
++    let level = |q: &Placed| {
++        q.l - q.lsize / 2.0 < p.l + p.lsize / 2.0 && q.l + q.lsize / 2.0 > p.l - p.lsize / 2.0
++    };
++    let crowded = |high: bool| {
++        at.iter().enumerate().any(|(w, q)| {
++            if w == v || !level(q) {
++                return false;
++            }
++            let gap = if high {
++                (q.b - q.bsize / 2.0) - (p.b + p.bsize / 2.0)
++            } else {
++                (p.b - p.bsize / 2.0) - (q.b + q.bsize / 2.0)
++            };
++            (0.0..room).contains(&gap) || (gap < 0.0 && if high { q.b > p.b } else { q.b < p.b })
++        })
++    };
++    crowded(true) && !crowded(false)
++}
++
+ /// Small self-loop on the node's right side; parallel loops stack
+ /// vertically.
+ fn loop_points(a: &Placed, off: f64) -> [(f64, f64); 4] {
+@@ -12986,6 +13029,88 @@ mod tests {
+         assert!(end_skew(back, false) < 10.0, "{back:?}");
+     }
+ 
++    #[test]
++    fn twin_lanes_leave_and_enter_in_their_nesting_order() {
++        // x6-rl-loops: two back-edges Gamma -> Alpha in lanes on one side
++        // left Gamma from ports in the wrong order in route() (which does
++        // not re-sort its ports): the outer lane's leg crossed the inner
++        // one twice. The outer lane now takes the port nearest its side.
++        let src =
++            "flowchart RL\n  A[Alpha] -->|forward| B[Beta]\n  A -->|parallel| B\n  A --> B\n  \
++                   B --> C[Gamma]\n  C --> A\n  B --> B\n  C -.->|long back label here| A\n  \
++                   C --> D[Delta] --> E[Epsilon]\n  E --> C";
++        for sc in static_and_routed(src) {
++            let lanes: Vec<Vec<(f64, f64)>> = sc
++                .edges
++                .iter()
++                .filter(|e| e.from == "C" && e.to == "A")
++                .map(edge_polyline)
++                .collect();
++            assert_eq!(lanes.len(), 2);
++            let crosses = lanes[0].windows(2).any(|w| {
++                lanes[1]
++                    .windows(2)
++                    .any(|v| crate::lanes::tests_seg_cross(w[0], w[1], v[0], v[1]))
++            });
++            assert!(!crosses, "{lanes:?}");
++        }
++    }
++
++    #[test]
++    fn a_self_loop_sits_where_scene_draws_it_and_moves_to_a_free_side() {
++        // route() drew every loop on the screen's right — in LR / RL the
++        // side its node's edges leave by, where the static layout draws
++        // none (x6-rl-loops: Beta's loop hid under the A -> B edges). It
++        // now sits on the flow's high breadth side as in scene(), the
++        // router keeps other edges off it (stress: A ==> D ran 5 px from
++        // B's loop in route()), and a drag that crowds that side sends it
++        // to the free one.
++        let loop_box = |sc: &Scene, id: &str| {
++            let p = edge_polyline(the_edge(sc, id, id));
++            p.iter().fold(
++                (
++                    f64::INFINITY,
++                    f64::INFINITY,
++                    f64::NEG_INFINITY,
++                    f64::NEG_INFINITY,
++                ),
++                |r, q| (r.0.min(q.0), r.1.min(q.1), r.2.max(q.0), r.3.max(q.1)),
++            )
++        };
++        let src = "flowchart LR\nA --> B\nB --> B\nB --> C";
++        for sc in static_and_routed(src) {
++            let (_, by, _, bh) = node_box(&sc, "B");
++            let r = loop_box(&sc, "B");
++            assert!(r.1 >= by + bh - 1.0, "below B: {r:?}");
++        }
++        let src = include_str!("../examples/stress.mmd");
++        let [_, r] = static_and_routed(src);
++        let lb = loop_box(&r, "B");
++        let gap = edge_polyline(the_edge(&r, "A", "D"))
++            .iter()
++            .map(|&(x, y)| (lb.0 - x).max(x - lb.2).max(lb.1 - y).max(y - lb.3))
++            .fold(f64::INFINITY, f64::min);
++        assert!(
++            gap >= crate::clearance::CRAMP_NODE_GAP,
++            "A ==> D {gap:.1} px off the loop"
++        );
++        // A node dragged up beside B's loop: the loop moves to B's left.
++        let g = parse("flowchart TD\nA --> B\nB --> B\nB --> C\nA --> D").unwrap();
++        let s = scene(&g);
++        let mut c: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
++        let (b, d) = (g.node_index("B").unwrap(), g.node_index("D").unwrap());
++        c[d] = (
++            c[b].0 + s.nodes[b].w / 2.0 + s.nodes[d].w / 2.0 + 20.0,
++            c[b].1,
++        );
++        let r = route(&g, &c);
++        let lb = loop_box(&r, "B");
++        assert!(
++            lb.2 <= c[b].0 - s.nodes[b].w / 2.0 + 1.0,
++            "left of B: {lb:?}"
++        );
++    }
++
+     #[test]
+     fn diagrams_without_link_style_render_exactly_as_before() {
+         // Byte-level: no styled defs, the kind's stroke attrs (report

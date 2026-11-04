@@ -1,0 +1,2160 @@
+From e0a63d287d60221deb605a2b4397d57119567cda Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 2 Nov 2026 06:12:02 +0000
+Subject: [PATCH 3/6] fix(flowchart): square heads without moving the curve;
+ stubs keep clear; wide strokes cut deeper (B1 review #1-#4, Q1+M1)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Report §2.3; fixes the B1 review of fb3af47.
+
+#1 (blocking) The arrow cut tilted heads wherever the drawn path's final
+straight was shorter than the cut (subgraph.mmd routed C1/C2 -> Store,
+0 -> 14.8 deg): the arc-length cut ended the stroke on the bend before it
+and orient="auto" followed that. #2 (blocking) stubbed_cubic moved a
+cubic's end point a head back, dragging its whole tail up to 9.5 px off
+SceneEdge::bezier, against which routing, ports, labels and chips were
+spaced (dense-td n16->n43 0.81 px off g10's chip, bench-75 casing gap
+over svc4->cache's head, dense-lr overlaps).
+
+Both replaced by one painter-only step, scene::square_end, run on every
+glyph end of every drawn form (cubic, spline, mermaid curve) before the
+cut: the end point stays put and the head faces the curve's own end
+tangent. The curve's last stretch gives way to a straight run along that
+tangent (up to a head, longest first) with a smooth bend into it, taken
+only when the bend keeps within SQUARE_END_DEV (1 px) of the scene curve
+outside the arrowhead. A curve too sharp for that (an S-cubic whose
+handles are a fraction of its sideways reach: a wide fan's outer
+branches turn 50-70 deg over their last head) enters the head straight
+along a line touching it, onto a 1.5 px run past the cut: the head is
+square, the tip on the border, and the stray (up to ~4 px) stays within
+two heads of the tip. A mermaid `curve` only gets what its head needs.
+drawn_segs (painter, picking, edge_end_tangent) = plain_segs + square_ends;
+edge_distance squares an end only when the pointer is near a tip.
+edge_painted_polyline keeps the scene curve's own samples up to the
+junction. seg_param_at refines the cut within a sampled piece (was up to
+0.1 px off on long cubics).
+
+#3 edgepass::glyph_stubs (scene geometry for long edges) now weighs each
+end's stub with stub_keeps_clear: rejected when the reshaped curve comes
+nearer than CRAMP_NODE_GAP to an unrelated node than it was, or runs
+longer within CLEAR_GAP / EDGE_SPACING of another edge (EDGE_SPACING only
+for edges converging on the stubbed node). bench-75 static gw->svc5 keeps
+its 16.6 px off lb: node_near 1 -> 0, defects 15 -> 13. Only the spline
+spans near the change are sampled, so route() stays within budget.
+
+#4 A linkStyle stroke wider than ARROW_TRIM stops its own width short
+(arrow_trim = clamp(width, ARROW_TRIM, ARROW_MARKER_PX)), its head set
+further ahead in an `<base>-t<width>` marker (arrow-t8, refX 2.727); the
+advance painter keys its markers by colour and cut alike.
+
+Corpus (14 flowcharts): heads <= 10 deg off square for non-bow ends
+static 96.4% (pre-B1 91.1, fb3af47 98.8), routed 95.1% (94.7, 94.3 — the
+criterion now met in both). Defects 69|98 = pre-B1 (fb3af47 72|99);
+overlap 2746|7550 (fb3af47 3232|8414, pre 2764|7514), tight 9224|21070,
+edge_chip routed 2. perf.sh within budget (bench-75 route 12.81 ms, drag
+20.60 ms vs baseline 12.61 / 20.22).
+
+Tests: new a_head_faces_the_end_tangent_where_the_final_straight_is_
+shorter_than_the_cut (#1), squared_ends_face_the_curve_and_keep_near_it_
+on_every_fixture (#1+#2, static and routed), a_turning_curve_runs_
+straight_into_its_end_glyph_near_its_scene_curve (replaces a_turning_
+cubic_runs_straight_into_its_end_glyph: no more stubbed_cubic),
+a_wide_stroke_stops_its_width_short_under_its_own_head (#4),
+edgepass a_stub_never_crowds_a_node_or_an_edge_its_curve_kept_clear_of
+(#3). Changed: every_edge_kind_and_width_gets_one_head_size (a 6 px
+stroke now gets arrow-t6, a 5 px one still shares #arrow);
+class_and_er_edges_keep_their_painters_geometry (square_ends, not
+glyph_stubs). Byte-exact diagrams_without_link_style_render_exactly_as_
+before and edge_markers_draw_at_the_right_ends unchanged.
+
+Gates (tests/quality.rs): the ones fb3af47 loosened are back at their
+pre-B1 values — CHANNEL_MAX 2920|7620, 400|1290, 9350|21900, 3110|3700;
+EDGE_CHIP_MAX (0, 2); GAP_FLOORS dense-lr 9.6, dense-td 12.1; dense-td
+static ceiling 42. DEFECT_BASELINE (reasons in its comment): end_tilt
+8 -> 14 static (the guard drops six stubs that crowded nodes or edges;
+pre-B1 24), end_tilt_max routed 127.6 -> 128.4 (pre-B1: the bow's head
+reads its uncut tangent), lat_backtrack routed 674 -> 676 and band_len
+47754 -> 46610 routed (squared ends step sideways within their px),
+band_pairs 119 -> 117, idiom_spline 27 -> 25, x_drawn 523 -> 521,
+end_kink 19|39 -> 62|81 (fb3af47's low count came from the moved tails;
+within a px of the scene curve, a curve swinging in from the side keeps
+its kink at the head's base — squaring those needs the scene geometry).
+
+Not done: #5 (heads touching at a 10 px port pitch on an over-full
+side). Spilling ends round corners once the pitch drops under a head
+(capacity at ARROW_MARKER_PX + 1) rerouted the dense fixtures (bench-75
+routed end_tilt 16 -> 25, static defects 69 -> 72, edge_chip routed
+2 -> 4): a ports-stage change (report §2.4), not B1.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+---
+ CHANGELOG.md     |   44 +-
+ README.md        |    4 +-
+ src/advance.rs   |   45 +-
+ src/casing.rs    |    2 +-
+ src/edgepass.rs  |  337 +++++++++++++-
+ src/scene.rs     | 1140 +++++++++++++++++++++++++++++++++++++---------
+ tests/quality.rs |   77 ++--
+ 7 files changed, 1337 insertions(+), 312 deletions(-)
+
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index cb852bf..d8803fe 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -119,22 +119,32 @@ Minor, not patch: several class structs gain public fields (see
+   a head twice the size (about 22 px) and a `linkStyle stroke-width` edge
+   shares the head too. The head is the wider `M 0 0 L 10 5 L 0 10 z`
+   triangle. The SVG painter stops the stroke half a head short under an
+-  arrowhead (`refX` puts the tip back exactly on the node border), so the
+-  butt end of a 2 or 3.5 px stroke no longer pokes out beside the tip and
+-  the tip no longer overshoots into the node. A single-curve edge that
+-  still turns at its glyph end is drawn with a straight, head-long stub
+-  along the end's handle (the side's normal), so the head and the stroke
+-  entering it point square into the side; a long edge's spline gets a
+-  straight stub too (its last channel leg used to slant into the node,
+-  head and all). The stub of a single curve and the cut under the head are
+-  the SVG painter's: `SceneEdge::bezier` is unchanged and still ends on the
+-  border (hosts draw their own heads along its end tangent, which already
+-  points square in), and `Scene::edge_at` / `hits_in_rect` follow the
+-  painted stroke. A long edge's stub is in `SceneEdge::waypoints`, so hosts
+-  draw it too. Marker ids: a `linkStyle` width no longer needs a variant,
+-  so the `-u` ids (`arrow-u`, `arrow-u__<colour>`) are gone — a coloured
+-  end is `<base id>_<colour>` (`arrow__ff3`), an uncoloured one keeps its
+-  base id. The advance painter draws the same head and cut.
++  arrowhead — a `linkStyle` stroke wider than that its own width short, up
++  to a whole head — with `refX` putting the tip back exactly on the node
++  border, so the butt end of the stroke no longer pokes out beside the tip
++  and the tip no longer overshoots into the node. Every glyph faces along
++  its curve's own end tangent (square to the side wherever the curve
++  arrives square): the painter ends a curve that still turns there in a
++  straight run along that tangent, bending into it within a pixel of the
++  curve, so the stroke reaches the head's base already heading its way;
++  a curve that swings in from the side too hard for that (a wide fan's
++  outer branches) enters the head straight along a line touching it, its
++  head still square with the tip on the border. A long edge's spline whose
++  last channel leg slanted into its node gets a straight stub along the
++  side's normal in `SceneEdge::waypoints` (so hosts draw it too), unless
++  the stub would bring it nearer a node or along another edge than the
++  routing left it. The squared ends and the cut are the SVG painter's:
++  `SceneEdge::bezier` is unchanged and still ends on the border (hosts draw
++  their own heads along its end tangent), the painted curve stays within a
++  pixel of it outside the head beyond two head lengths of the tip, and
++  `Scene::edge_at` / `hits_in_rect` follow the painted stroke. Marker ids:
++  a `linkStyle` width no longer needs a size variant, so the `-u` ids
++  (`arrow-u`, `arrow-u__<colour>`) are gone — a coloured end is
++  `<base id>_<colour>` (`arrow__ff3`), a stroke wider than 5.5 px gets
++  `<base id>-t<width>` (`arrow-t8`, the same head set further ahead), and
++  an unstyled one keeps its base id. The advance painter draws the same
++  head and cut. A crossing gap is no longer cut within a head and a gap's
++  radius of an edge end, where it could bite the arrowhead.
+ - **Stroke and canvas tokens** (report Q10): edges are 2 px (thick 3.5 px,
+   from 1.7 / 3.4), node outlines 1.8 px (from 1.6, the cylinder's lid, the
+   subroutine's bars and a final state's ring included), and the SVG pads
+@@ -148,7 +158,7 @@ Minor, not patch: several class structs gain public fields (see
+   reads frame ends either way across the border; new `end_kink` (appended
+   after `x_drawn`) counts glyph ends whose stroke meets the head's base
+   more than 10° off square. The yardstick measures the painted strokes
+-  (straight glyph stubs included), as the crossing casing cuts its gaps in
++  (squared glyph ends included), as the crossing casing cuts its gaps in
+   them; `quality::ARROW_LEN` follows the head size (11 px).
+ - **Class hierarchies read top-down, like mermaid and UML.** Relations are
+   laid out in source order (left operand first), so in `Animal <|-- Dog`
+diff --git a/README.md b/README.md
+index 1740cd0..c3e0f5c 100644
+--- a/README.md
++++ b/README.md
+@@ -127,7 +127,7 @@ Edges: `-->` arrow, `---` open line, `-.->` dotted, `-.-` dotted open, `==>` thi
+ 
+ Subgraphs use mermaid's block syntax — `subgraph id [Title]` … `end` — with arbitrary nesting and an optional `direction LR` line per block (inherited from the parent otherwise). A node mentioned inside a block is claimed by it, mermaid-style, even if it first appeared elsewhere. Edges may freely cross cluster borders, and an edge may target a subgraph *itself* (`CF --> VPC`) — it attaches to the cluster box; forward references (edge before the block) work via a pre-scan. See `examples/subgraph.mmd`.
+ 
+-Edges are styled with mermaid's `linkStyle`: `linkStyle 3 stroke:#ff3,stroke-width:4px,color:red` styles the fourth link, `linkStyle 1,2,7 color:blue` several (no spaces in the list), and `linkStyle default …` every link, including ones defined later. Indices count every link in source order, as mermaid does: each pair of a fan-out (`A & B --> C & D` is A-C, A-D, B-C, B-D), invisible `~~~` links, and links to a subgraph; an index past the links defined so far is mermaid's line-numbered "out of bounds" error. Properties: `stroke` (the arrow, cross and circle markers take the same colour), `stroke-width` (0 to 1000px; the arrowhead keeps its normal size, as in mermaid — every end glyph is 11px whatever the stroke, a thick `==>` edge included), `stroke-dasharray` (`5 5`; `0` makes a dotted edge solid), `fill` and `color` (edge label text); unknown properties are ignored, and so is the bare `5` mermaid splits off `stroke-dasharray:5,5`. A later `linkStyle` for the same index replaces the earlier one; the default and an index style merge per property, the index winning. `linkStyle <n> interpolate <curve>` (with or without styles) sets the curve, using the same names as `curve:` above; an `e1@{ curve: … }` on the same edge wins. A `~~~` link stays hidden unless its style sets a positive `stroke-width`, as in mermaid, and never gets markers. Two deliberate differences from mermaid: when both the default and an index style set `stroke`, the markers follow the colour the line is drawn in (mermaid takes the default's), and a circle marker is filled as well as outlined in the edge colour (mermaid colours only its outline).
++Edges are styled with mermaid's `linkStyle`: `linkStyle 3 stroke:#ff3,stroke-width:4px,color:red` styles the fourth link, `linkStyle 1,2,7 color:blue` several (no spaces in the list), and `linkStyle default …` every link, including ones defined later. Indices count every link in source order, as mermaid does: each pair of a fan-out (`A & B --> C & D` is A-C, A-D, B-C, B-D), invisible `~~~` links, and links to a subgraph; an index past the links defined so far is mermaid's line-numbered "out of bounds" error. Properties: `stroke` (the arrow, cross and circle markers take the same colour), `stroke-width` (0 to 1000px; the arrowhead keeps its normal size, as in mermaid — every end glyph is 11px whatever the stroke, a thick `==>` edge included; under a stroke wider than half a head the line stops its own width short, its head set further ahead in an `arrow-t<width>` marker), `stroke-dasharray` (`5 5`; `0` makes a dotted edge solid), `fill` and `color` (edge label text); unknown properties are ignored, and so is the bare `5` mermaid splits off `stroke-dasharray:5,5`. A later `linkStyle` for the same index replaces the earlier one; the default and an index style merge per property, the index winning. `linkStyle <n> interpolate <curve>` (with or without styles) sets the curve, using the same names as `curve:` above; an `e1@{ curve: … }` on the same edge wins. A `~~~` link stays hidden unless its style sets a positive `stroke-width`, as in mermaid, and never gets markers. Two deliberate differences from mermaid: when both the default and an index style set `stroke`, the markers follow the colour the line is drawn in (mermaid takes the default's), and a circle marker is filled as well as outlined in the edge colour (mermaid colours only its outline).
+ 
+ Links use mermaid's `click` statement: `click A "https://example.com"`, `click A href "https://example.com" "Tooltip" _blank` (url, then optional tooltip, then optional `_self` / `_blank` / `_parent` / `_top`, in that order), and `click A,B "url"` for several nodes. The SVG wraps the node in `<a href=… xlink:href=…>` (with `rel="noopener noreferrer"` on `_blank`; no `target` means the same tab, as in mermaid), and a tooltip becomes the node's `<title>`. Urls are checked like mermaid's default `strict` security level (a port of `@braintree/sanitize-url`): after decoding percent escapes, HTML and mermaid entities and dropping control and invisible characters, a `javascript:`, `data:` or `vbscript:` url is not linked at all (mermaid would write `about:blank`); relative, scheme-less, `mailto:`, `https:` and other urls stay exactly as written. Callbacks (`click A callback`, `click A call fn(args) "tooltip"`) are accepted for compatibility and ignored, since a static SVG runs no script, but their tooltip still applies. As in mermaid, a link only lands on a node that already exists: an unknown id, a subgraph or edge id, or a node declared further down is ignored without creating a node, while a tooltip reaches a node declared later. Keywords are case-sensitive (`Click A` is a node), and flowmaid is lenient about extra spaces (`click A  href  "u"`), which mermaid rejects. Scene consumers get the link and tooltip on `SceneNode::link`.
+ 
+@@ -430,7 +430,7 @@ End-to-end through the CLI for the 5,000-node case — including reading 10,151
+ 
+ ## Interactivity & desktop apps
+ 
+-Beyond static SVG, the engine exposes an interactive API for GUI apps through the `scene` module: `scene(&graph)` returns a `Scene` — the position, size, and shape of every node plus the bezier curve of every edge in final coordinates — ready to draw with any framework's painter. When a node is dragged, call `route(&graph, &positions)` to re-route edges for custom positions *without* re-running layout — so nodes never jump back. `to_svg(&scene)` exports any state, including after drags. Hit-testing is done by the app from the `Scene` geometry (per-node position + size + shape are all there). An edge ends on its node's border with its end tangent square to the side, so a host draws its own arrowhead there; flowmaid's own SVG stops the stroke half a head short under its 11px head and draws a single curve's last head length straight, painter-only treatments that leave `SceneEdge::bezier` as it is (`Scene::edge_at` follows the painted stroke). Nodes with a mermaid `click` carry it on `SceneNode::link` (url, target, tooltip), so a host can open the link or show the tooltip itself. The same `scene`/`route`/`to_svg` triple exists for ER (`er::`) and class (`class::`) diagrams, and state diagrams ride the flowchart API directly; sequence diagrams and pie charts are static (their `scene()` has no `route()` — nothing sensible to drag).
++Beyond static SVG, the engine exposes an interactive API for GUI apps through the `scene` module: `scene(&graph)` returns a `Scene` — the position, size, and shape of every node plus the bezier curve of every edge in final coordinates — ready to draw with any framework's painter. When a node is dragged, call `route(&graph, &positions)` to re-route edges for custom positions *without* re-running layout — so nodes never jump back. `to_svg(&scene)` exports any state, including after drags. Hit-testing is done by the app from the `Scene` geometry (per-node position + size + shape are all there). An edge ends on its node's border with its end tangent square to the side, so a host draws its own arrowhead there; flowmaid's own SVG stops the stroke half a head short under its 11px head and ends a curve still turning there in a straight run along that tangent, within a pixel of the curve outside the head — painter-only treatments that leave `SceneEdge::bezier` as it is (`Scene::edge_at` follows the painted stroke). Nodes with a mermaid `click` carry it on `SceneNode::link` (url, target, tooltip), so a host can open the link or show the tooltip itself. The same `scene`/`route`/`to_svg` triple exists for ER (`er::`) and class (`class::`) diagrams, and state diagrams ride the flowchart API directly; sequence diagrams and pie charts are static (their `scene()` has no `route()` — nothing sensible to drag).
+ 
+ Consumers built on this API (separate repos; the engine itself stays dependency-free): [flowmaid-desktop](https://github.com/go-routine-id/flowmaid-desktop), an eframe/egui editor with document tabs, a folder explorer, drag & drop canvas with zoom & pan, and SVG export; [flowmaid-web](https://github.com/go-routine-id/flowmaid-web), the wasm playground with the same drag model in the browser; and [**flowcli**](https://github.com/go-routine-id/flowcli), a terminal renderer (ratatui) that draws the `Scene` as Unicode box- and line-drawing — **no SVG at all**, the clearest proof the scene API is genuinely renderer-agnostic. For other frameworks: Tauri/Dioxus can inject the SVG string into a webview; iced has an svg widget; Slint and GTK4 render SVG natively; or draw the `Scene` directly with each framework's painter like the desktop and terminal apps do.
+ 
+diff --git a/src/advance.rs b/src/advance.rs
+index cdf0c39..14b69d8 100644
+--- a/src/advance.rs
++++ b/src/advance.rs
+@@ -32,6 +32,15 @@ fn scene_key(sc: &AdvanceScene) -> String {
+     k.finish()
+ }
+ 
++/// Stroke width an advance edge is painted with: its style's, else its
++/// kind's (the flowchart's widths).
++fn advance_edge_width(e: &AdvanceSceneEdge) -> f64 {
++    e.style.stroke_width.unwrap_or(match e.kind {
++        EdgeKind::Thick | EdgeKind::ThickOpen => crate::scene::EDGE_WIDTH_THICK,
++        _ => crate::scene::EDGE_WIDTH,
++    })
++}
++
+ // ------------------------------------------------------------------
+ // Public error type
+ // ------------------------------------------------------------------
+@@ -5753,22 +5762,26 @@ pub fn to_svg_with(sc: &AdvanceScene, opts: &SvgOptions) -> String {
+     // page both emitted `advance-arrow-1` and the second one's arrows
+     // took the first one's colours.
+     let key = scene_key(sc);
+-    let mut markers: Vec<(String, String)> = Vec::new();
++    // (colour, how far the stroke stops short of the tip, id): a stroke
++    // wider than the usual cut stops further back, its head set further
++    // ahead to keep the tip on the route's end.
++    let mut markers: Vec<(String, f64, String)> = Vec::new();
+     for e in &sc.edges {
+         if matches!(e.kind, EdgeKind::Invisible) || !e.kind.has_arrow() {
+             continue;
+         }
+         let color = crate::scene::style_attr(e.style.color.as_deref(), &sc.style.edge_color);
+-        if !markers.iter().any(|(c, _)| *c == color) {
++        let trim = crate::scene::arrow_trim(advance_edge_width(e));
++        if !markers.iter().any(|(c, t, _)| *c == color && *t == trim) {
+             let id = format!("advance-arrow-{}-{}", key, markers.len() + 1);
+-            markers.push((color, id));
++            markers.push((color, trim, id));
+         }
+     }
+     // The flowchart's own head (one size, in user space), so both
+     // painters draw the same glyph.
+     let mut defs = String::new();
+-    for (color, id) in &markers {
+-        defs.push_str(&crate::scene::arrow_marker_def(id, color));
++    for (color, trim, id) in &markers {
++        defs.push_str(&crate::scene::arrow_marker_def(id, color, *trim));
+     }
+     if !defs.is_empty() {
+         s.push_str(&format!("<defs>{}</defs>\n", defs));
+@@ -5822,26 +5835,20 @@ pub fn to_svg_with(sc: &AdvanceScene, opts: &SvgOptions) -> String {
+             Some(d) => format!(" stroke-dasharray=\"{}\"", d),
+             None => String::new(),
+         };
+-        let sw = e.style.stroke_width.unwrap_or(match e.kind {
+-            EdgeKind::Thick | EdgeKind::ThickOpen => crate::scene::EDGE_WIDTH_THICK,
+-            _ => crate::scene::EDGE_WIDTH,
+-        });
++        let sw = advance_edge_width(e);
++        let head_trim = crate::scene::arrow_trim(sw);
+         let marker = if e.kind.has_arrow() {
+             markers
+                 .iter()
+-                .find(|(c, _)| *c == color)
+-                .map(|(_, id)| format!(" marker-end=\"url(#{})\"", id))
++                .find(|(c, t, _)| *c == color && *t == head_trim)
++                .map(|(_, _, id)| format!(" marker-end=\"url(#{})\"", id))
+                 .unwrap_or_default()
+         } else {
+             String::new()
+         };
+         // The stroke stops short under the head, whose tip the marker
+         // puts back on the route's end.
+-        let trim = if marker.is_empty() {
+-            0.0
+-        } else {
+-            crate::scene::ARROW_TRIM
+-        };
++        let trim = if marker.is_empty() { 0.0 } else { head_trim };
+         let d = crate::scene::polyline_d_painted(&e.points, trim);
+         s.push_str(&format!(
+             "<path d=\"{}\" fill=\"none\" stroke=\"{}\" stroke-width=\"{:.1}\"{}{}/>\n",
+@@ -7128,7 +7135,11 @@ mod tests {
+             .expect("a marker");
+         let color = scene.style.edge_color.clone();
+         assert!(
+-            svg.contains(&crate::scene::arrow_marker_def(id, &color)),
++            svg.contains(&crate::scene::arrow_marker_def(
++                id,
++                &color,
++                crate::scene::ARROW_TRIM
++            )),
+             "{svg}"
+         );
+         assert!(svg.contains("stroke-width=\"3.5\""), "{svg}");
+diff --git a/src/casing.rs b/src/casing.rs
+index 20c1d74..9fae26a 100644
+--- a/src/casing.rs
++++ b/src/casing.rs
+@@ -167,7 +167,7 @@ fn crossings_with(sc: &Scene, skip_ends: bool) -> Vec<(usize, usize, Pt, Cut)> {
+     if idx.len() < 2 {
+         return Vec::new();
+     }
+-    // The strokes as painted (a cubic's straight glyph stubs included).
++    // The strokes as painted (their squared glyph ends included).
+     let lines: Vec<Vec<Pt>> = idx
+         .iter()
+         .map(|&i| edge_painted_polyline(&sc.edges[i]))
+diff --git a/src/edgepass.rs b/src/edgepass.rs
+index 8b6c652..ed2fdd0 100644
+--- a/src/edgepass.rs
++++ b/src/edgepass.rs
+@@ -30,8 +30,14 @@
+ //! [`scene`]: crate::scene::scene
+ //! [`route`]: crate::scene::route
+ 
++use crate::clearance::{CLEAR_GAP, CRAMP_NODE_GAP, EDGE_SPACING};
+ use crate::model::{Direction, End, Graph};
+-use crate::scene::{edge_drawn, grow_scene, shift_scene, Bbox, Scene, ARROW_MARKER_PX, MARGIN};
++use crate::scene::{
++    basis_sample, edge_drawn, edge_polyline, grow_scene, sample_cubic, shift_scene, Bbox, Scene,
++    ARROW_MARKER_PX, MARGIN,
++};
++
++type Pt = (f64, f64);
+ 
+ /// Which builder produced the scene. `Routed` scenes keep their node
+ /// positions exactly as the host gave them (no normalisation), so the
+@@ -333,9 +339,11 @@ pub(crate) const WAYPOINT_STUB: f64 = 2.5 * ARROW_MARKER_PX;
+ /// short, the waypoints within [`WAYPOINT_STUB`] of the end along the
+ /// normal give way to a stub's two points, when the path beyond reaches
+ /// past it by a head (room to turn; a router path's own stub, cut short
+-/// by a corner, is left as it is). Runs after the ports and the nudge
+-/// settle the ends, before the labels; idempotent (a stubbed end is
+-/// straight enough).
++/// by a corner, is left as it is) and the reshaped curve keeps as clear
++/// of the nodes and edges round it as it was ([`stub_keeps_clear`]).
++/// Runs after the ports and the nudge settle the ends, before the
++/// labels; idempotent (a stubbed end is straight enough, a stub left out
++/// is weighed alike again).
+ fn glyph_stubs(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
+     for i in 0..sc.edges.len() {
+         let e = &sc.edges[i];
+@@ -349,12 +357,13 @@ fn glyph_stubs(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
+             e.ends.start_marker(e.kind).is_some(),
+             e.ends.end_marker(e.kind).is_some(),
+         );
+-        let mut wps = e.waypoints.clone();
+-        let mut changed = false;
++        // Each end on its own: its stub is weighed against the curve as
++        // it stands (the other end's stub in, if that one was kept).
+         for (glyph, end, at_start) in [(glyphs.0, from, true), (glyphs.1, to, false)] {
+             if !glyph {
+                 continue;
+             }
++            let mut wps = sc.edges[i].waypoints.clone();
+             if at_start {
+                 wps.reverse();
+             }
+@@ -378,29 +387,267 @@ fn glyph_stubs(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
+                     (along(wps[k]) + 4.0 * along(wps[k + 1]) + along(wps[k + 2])) / 6.0
+                 }
+             };
+-            if straight < ARROW_MARKER_PX - STUB_ON_LINE {
+-                // The points within the stub give way to it, and what
+-                // lies beyond must leave a head's length to turn in.
+-                let keep = wps[..n - 1]
+-                    .iter()
+-                    .rposition(|&q| along(q) > WAYPOINT_STUB || off(q) >= STUB_ON_LINE);
+-                let room = keep.is_some_and(|k| along(wps[k]) >= WAYPOINT_STUB + ARROW_MARKER_PX);
+-                if let (Some(k), true) = (keep, room) {
+-                    let at = |d: f64| (p.0 + out.0 * d, p.1 + out.1 * d);
+-                    wps.truncate(k + 1);
+-                    wps.extend([at(WAYPOINT_STUB), at(WAYPOINT_STUB / 2.0), p]);
+-                    changed = true;
+-                }
++            if straight >= ARROW_MARKER_PX - STUB_ON_LINE {
++                continue;
+             }
++            // The points within the stub give way to it, and what lies
++            // beyond must leave a head's length to turn in.
++            let keep = wps[..n - 1]
++                .iter()
++                .rposition(|&q| along(q) > WAYPOINT_STUB || off(q) >= STUB_ON_LINE);
++            let room = keep.is_some_and(|k| along(wps[k]) >= WAYPOINT_STUB + ARROW_MARKER_PX);
++            let (Some(k), true) = (keep, room) else {
++                continue;
++            };
++            let at = |d: f64| (p.0 + out.0 * d, p.1 + out.1 * d);
++            wps.truncate(k + 1);
++            wps.extend([at(WAYPOINT_STUB), at(WAYPOINT_STUB / 2.0), p]);
+             if at_start {
+                 wps.reverse();
+             }
++            let node: Vec<usize> = match end {
++                EndRef::Node(v) => vec![v],
++                EndRef::Frame(_) => Vec::new(),
++            };
++            if stub_keeps_clear(sc, cx, i, &wps, &node) {
++                sc.edges[i].waypoints = wps;
++                moved[i] = true;
++            }
++        }
++    }
++}
++
++/// Whether edge `i` drawn through the stubbed waypoints `new`
++/// ([`glyph_stubs`]) stays as clear of the scene as it was: where its
++/// curve changes, it comes no nearer than [`CRAMP_NODE_GAP`] to a node
++/// that is not one of its ends (unless its old curve came nearer
++/// still), and runs no longer within [`CLEAR_GAP`] — nor within
++/// [`EDGE_SPACING`] — of another edge than it did (only the latter for
++/// one ending on the node the stub runs into, `stubbed`: ends
++/// converging on a node run in side by side). The routing and port
++/// stages spaced the old curve; a stub that would undo that is left
++/// out, the painter squaring that end within a px instead
++/// (`scene::square_end`).
++fn stub_keeps_clear(sc: &Scene, cx: &Ctx, i: usize, new: &[Pt], stubbed: &[usize]) -> bool {
++    let old = &edge_polyline(&sc.edges[i]);
++    let fresh = basis_sample(new);
++    // The stubs replace waypoints only near the ends, so the curves share
++    // their samples away from them (the spline is local): the stretch of
++    // each between its shared head and tail (a sample either side).
++    let same = |a: Pt, b: Pt| (a.0 - b.0).abs() <= 1e-9 && (a.1 - b.1).abs() <= 1e-9;
++    let head = fresh
++        .iter()
++        .zip(old)
++        .take_while(|(a, b)| same(**a, **b))
++        .count();
++    let tail = fresh
++        .iter()
++        .rev()
++        .zip(old.iter().rev())
++        .take_while(|(a, b)| same(**a, **b))
++        .count()
++        .min(fresh.len().min(old.len()) - head);
++    if head + tail >= fresh.len() && fresh.len() == old.len() {
++        return true;
++    }
++    let cut = |a: &[Pt]| -> std::ops::RangeInclusive<usize> {
++        head.saturating_sub(1)..=(a.len() - tail).min(a.len() - 1)
++    };
++    let (now, was) = (&fresh[cut(&fresh)], &old[cut(old)]);
++    let mut bb = (
++        f64::INFINITY,
++        f64::INFINITY,
++        f64::NEG_INFINITY,
++        f64::NEG_INFINITY,
++    );
++    for p in now {
++        bb = (bb.0.min(p.0), bb.1.min(p.1), bb.2.max(p.0), bb.3.max(p.1));
++    }
++    let reach = CLEAR_GAP.max(CRAMP_NODE_GAP);
++    let near = |r: (f64, f64, f64, f64)| {
++        r.0 <= bb.2 + reach && r.2 >= bb.0 - reach && r.1 <= bb.3 + reach && r.3 >= bb.1 - reach
++    };
++    let Some((from, to)) = cx.ends[i] else {
++        return true;
++    };
++    let own = |v: usize| {
++        matches!(from, EndRef::Node(a) if a == v) || matches!(to, EndRef::Node(b) if b == v)
++    };
++    for (v, n) in sc.nodes.iter().enumerate() {
++        let r = (
++            n.x - n.w / 2.0,
++            n.y - n.h / 2.0,
++            n.x + n.w / 2.0,
++            n.y + n.h / 2.0,
++        );
++        if own(v) || !near(r) {
++            continue;
++        }
++        let gap = |p: &Pt| {
++            (r.0 - p.0)
++                .max(p.0 - r.2)
++                .max(0.0)
++                .hypot((r.1 - p.1).max(p.1 - r.3).max(0.0))
++        };
++        let g_now = now.iter().map(gap).fold(f64::INFINITY, f64::min);
++        let g_was = was.iter().map(gap).fold(f64::INFINITY, f64::min);
++        if g_now < CRAMP_NODE_GAP && g_now < g_was - STUB_SAME {
++            return false;
++        }
++    }
++    // Length of `run` within `gap` of a line, its points' distances to
++    // it given.
++    let close = |run: &[Pt], dist: &[f64], gap: f64| -> f64 {
++        run.windows(2)
++            .zip(dist.windows(2))
++            .filter(|(_, d)| d[0] < gap && d[1] < gap)
++            .map(|(w, _)| (w[1].0 - w[0].0).hypot(w[1].1 - w[0].1))
++            .sum()
++    };
++    for j in 0..sc.edges.len() {
++        if j == i || !cx.drawn[j] {
++            continue;
++        }
++        // Ends converging on the node a stub runs into run in side by
++        // side, as their ports space them: only a run on top of one
++        // (within EDGE_SPACING) counts there.
++        let converging = cx.ends[j].is_some_and(|(a, b)| {
++            [a, b]
++                .iter()
++                .any(|x| matches!(x, EndRef::Node(v) if stubbed.contains(v)))
++        });
++        let gaps: &[f64] = if converging {
++            &[EDGE_SPACING]
++        } else {
++            &[EDGE_SPACING, CLEAR_GAP]
++        };
++        // Only its pieces near the changed stretch can come close.
++        let piece = near_pieces(&sc.edges[j], &near);
++        if piece.is_empty() {
++            continue;
+         }
+-        if changed {
+-            sc.edges[i].waypoints = wps;
+-            moved[i] = true;
++        // Each point's distance to the line where it is under CLEAR_GAP
++        // (beyond, any distance as good as far): pieces whose box lies
++        // farther are skipped unmeasured.
++        let gap_to = |p: Pt, r: (f64, f64, f64, f64)| {
++            (r.0 - p.0)
++                .max(p.0 - r.2)
++                .max(0.0)
++                .hypot((r.1 - p.1).max(p.1 - r.3).max(0.0))
++        };
++        let boxes: Vec<(f64, f64, f64, f64)> = piece
++            .chunks(2)
++            .map(|w| {
++                (
++                    w[0].0.min(w[1].0),
++                    w[0].1.min(w[1].1),
++                    w[0].0.max(w[1].0),
++                    w[0].1.max(w[1].1),
++                )
++            })
++            .collect();
++        let pairs = |run: &[Pt]| -> Vec<f64> {
++            run.iter()
++                .map(|&p| {
++                    piece
++                        .chunks(2)
++                        .zip(&boxes)
++                        .filter(|(_, &r)| gap_to(p, r) < CLEAR_GAP)
++                        .map(|(w, _)| seg_dist(p, w[0], w[1]))
++                        .fold(f64::INFINITY, f64::min)
++                })
++                .collect()
++        };
++        let (d_now, d_was) = (pairs(now), pairs(was));
++        if gaps
++            .iter()
++            .any(|&g| close(now, &d_now, g) > close(was, &d_was, g) + STUB_CLOSE_SLACK)
++        {
++            return false;
+         }
+     }
++    true
++}
++
++/// The pieces (point pairs) of `e`'s curve ([`edge_polyline`]'s, as
++/// sampled there) whose box `near` accepts, sampling only the spans of a
++/// spline whose waypoints' box it accepts (a span lies within its
++/// waypoints' hull): a stub is weighed against the few edges near it,
++/// mid-drag, without sampling every edge.
++fn near_pieces(
++    e: &crate::scene::SceneEdge,
++    near: &dyn Fn((f64, f64, f64, f64)) -> bool,
++) -> Vec<Pt> {
++    let boxed = |pts: &[Pt]| {
++        let mut r = (
++            f64::INFINITY,
++            f64::INFINITY,
++            f64::NEG_INFINITY,
++            f64::NEG_INFINITY,
++        );
++        for p in pts {
++            r = (r.0.min(p.0), r.1.min(p.1), r.2.max(p.0), r.3.max(p.1));
++        }
++        r
++    };
++    let keep = |line: &[Pt]| -> Vec<Pt> {
++        line.windows(2)
++            .filter(|w| near(boxed(w)))
++            .flat_map(|w| [w[0], w[1]])
++            .collect()
++    };
++    let w = &e.waypoints;
++    if e.meta.curve.is_some() || w.len() < 3 {
++        // A mermaid curve may overshoot its points: sampled whole.
++        if e.meta.curve.is_none() && w.len() < 2 && !near(boxed(&e.bezier)) {
++            return Vec::new();
++        }
++        return keep(&edge_polyline(e));
++    }
++    // The `curveBasis` spline span by span (as basis_sample samples
++    // it), each sampled only when the box of its waypoints is near.
++    let n = w.len();
++    let lerp6 =
++        |a: Pt, b: Pt, c: Pt| ((a.0 + 4.0 * b.0 + c.0) / 6.0, (a.1 + 4.0 * b.1 + c.1) / 6.0);
++    let first = ((5.0 * w[0].0 + w[1].0) / 6.0, (5.0 * w[0].1 + w[1].1) / 6.0);
++    let mut out = keep(&[w[0], first]);
++    let mut cur = first;
++    for i in 2..=n {
++        let (a, b) = (w[i - 2], w[i - 1]);
++        let p = w[i.min(n - 1)];
++        let end = lerp6(a, b, p);
++        if near(boxed(&w[i.saturating_sub(3)..=i.min(n - 1)])) {
++            let bez = [
++                cur,
++                ((2.0 * a.0 + b.0) / 3.0, (2.0 * a.1 + b.1) / 3.0),
++                ((a.0 + 2.0 * b.0) / 3.0, (a.1 + 2.0 * b.1) / 3.0),
++                end,
++            ];
++            out.extend(keep(&sample_cubic(&bez, 6)));
++        }
++        cur = end;
++    }
++    out.extend(keep(&[cur, w[n - 1]]));
++    out
++}
++
++/// How far (px) two curves may lie apart and count as the same there
++/// ([`stub_keeps_clear`]), and the least gap it counts as nearer.
++const STUB_SAME: f64 = 0.5;
++/// How much longer (px) a stub may make an edge's run close beside
++/// another ([`stub_keeps_clear`]): sampling slack.
++const STUB_CLOSE_SLACK: f64 = 2.0;
++
++/// Distance from `p` to the segment `a`–`b`.
++fn seg_dist(p: Pt, a: Pt, b: Pt) -> f64 {
++    let (dx, dy) = (b.0 - a.0, b.1 - a.1);
++    let l2 = dx * dx + dy * dy;
++    let t = if l2 > 0.0 {
++        (((p.0 - a.0) * dx + (p.1 - a.1) * dy) / l2).clamp(0.0, 1.0)
++    } else {
++        0.0
++    };
++    (p.0 - a.0 - t * dx).hypot(p.1 - a.1 - t * dy)
+ }
+ 
+ /// How far (px) a waypoint may lie off an end's normal and still count
+@@ -490,6 +737,52 @@ mod tests {
+         assert_idempotent(src);
+     }
+ 
++    /// A stub that would bend a long edge's curve towards a node beside
++    /// it, or along another edge, is left out (B1 review #3: a stubbed
++    /// `gw -> svc5` passed 6.5 px from `lb` in bench-75, against 16.6):
++    /// the routing and port stages spaced the curve as it was.
++    #[test]
++    fn a_stub_never_crowds_a_node_or_an_edge_its_curve_kept_clear_of() {
++        let g = parse("flowchart TD\nA --> B --> C --> D\nA --> D").unwrap();
++        let sc = scene(&g);
++        let cx = ctx(&g, &sc);
++        let i = (0..sc.edges.len())
++            .find(|&i| sc.edges[i].from == "A" && sc.edges[i].to == "D")
++            .unwrap();
++        let node = |id: &str| sc.nodes.iter().position(|n| n.id == id).unwrap();
++        let d = node("D");
++        let old = sc.edges[i].waypoints.clone();
++        // A's curve runs down beside B and C to its stub into D's top.
++        let n = old.len();
++        assert!(n >= 5, "{old:?}");
++        // As it is: nothing changes, nothing crowds.
++        assert!(stub_keeps_clear(&sc, &cx, i, &old, &[d]));
++        // Its last channel point swung onto C: the curve (which only
++        // approaches its waypoints) crowds C.
++        let c = &sc.nodes[node("C")];
++        let mut onto = old.clone();
++        onto[n - 4] = (c.x, c.y);
++        assert!(!stub_keeps_clear(&sc, &cx, i, &onto, &[d]));
++        // ... swung onto the line C -> D, clear of the nodes: it runs along
++        // that line (which ends on D, the node the stub runs into: only
++        // running on top of it, within EDGE_SPACING, counts).
++        let cd = (0..sc.edges.len())
++            .find(|&j| sc.edges[j].from == "C" && sc.edges[j].to == "D")
++            .unwrap();
++        let line = edge_polyline(&sc.edges[cd]);
++        let at = |f: f64| {
++            let q = line[((line.len() - 1) as f64 * f) as usize];
++            (q.0 + 2.0, q.1)
++        };
++        let mut along = old.clone();
++        along.splice(n - 4..n - 1, [at(0.3), at(0.5), at(0.7)]);
++        assert!(!stub_keeps_clear(&sc, &cx, i, &along, &[d]));
++        // A stub moving the curve in open air is kept.
++        let mut aside = old.clone();
++        aside[n - 4].0 += 6.0;
++        assert!(stub_keeps_clear(&sc, &cx, i, &aside, &[d]));
++    }
++
+     #[test]
+     fn finish_is_idempotent_on_a_flat_diagram() {
+         assert_idempotent("flowchart TD\nA-->B\nB-->C\nC-->|no|A\nB-->D");
+diff --git a/src/scene.rs b/src/scene.rs
+index e12f54f..2418069 100644
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@ -106,9 +106,9 @@ pub struct SceneEdge {
+     /// ends lie on the node borders; on a forward, side-by-side or nested
+     /// curve the controls lie on the sides' normals, so a head drawn
+     /// along the end tangent points square in.
+-    /// flowmaid's own SVG draws the last head length of a curve still
+-    /// turning there straight along that tangent, a few px off the cubic
+-    /// near the end, and stops the stroke under its arrowhead.
++    /// flowmaid's own SVG ends a curve still turning there in a straight
++    /// run along that tangent, bending into it within a px of this curve
++    /// outside the arrowhead, and stops the stroke under its arrowhead.
+     pub bezier: [(f64, f64); 4],
+     /// Routed polyline (final coords) a long edge threads through — its
+     /// node-boundary start, the per-layer channel points, and its end.
+@@ -452,8 +452,20 @@ fn edge_distance<T: PickTarget>(e: &SceneEdge, target: T, reach: f64) -> f64 {
+         };
+         best = best.min(d);
+     };
+-    // The very commands edge_path_d emits, span for span.
+-    let (start, segs) = drawn_segs(e, |p| p);
++    // The very commands edge_path_d emits, span for span. Squaring an
++    // end ([`square_end`]) changes the curve only within
++    // SQUARE_END_REACH of that end: a target farther from both ends than
++    // that and `reach` is measured on the scene curve alone, so a
++    // pointer move far from every tip never squares an end.
++    let (start, segs) = plain_segs(e, |p| p);
++    let tip = segs.last().map_or(start, |s| s.end());
++    let near = |q: (f64, f64)| target.box_gap(q.0, q.1, q.0, q.1) <= SQUARE_END_REACH + reach;
++    let (start, segs) = if near(start) || near(tip) {
++        let (start, segs, _) = square_ends(e, start, segs);
++        (start, segs)
++    } else {
++        (start, segs)
++    };
+     let mut cur = start;
+     for seg in segs {
+         probe(cur, seg);
+@@ -510,10 +522,9 @@ fn cubic_dist<T: PickTarget>(p: T, b: &[(f64, f64); 4], lim: f64, depth: u32) ->
+ /// routing, port and label stages reason on: a routed edge follows the
+ /// same curveBasis spline [`spline_segs`] draws (which pulls away from
+ /// the raw waypoints), a plain edge its single cubic. The flowchart
+-/// painter ends a cubic that still turns at a glyph end in a straight
+-/// [`GLYPH_STUB`] instead ([`stubbed_cubic`]): a few px off this curve,
+-/// near the end, where those stages leave the converging ends alone —
+-/// so they keep reasoning on the curve the scene holds (a host draws it
++/// painter squares each glyph end to its glyph ([`square_end`]): within
++/// [`SQUARE_END_DEV`] of this curve outside the arrowhead, so those
++/// stages keep reasoning on the curve the scene holds (a host draws it
+ /// too), and a route never changes for the way its head is drawn.
+ /// Picking, the crossing casing and the quality yardstick follow the
+ /// painted stroke ([`edge_painted_polyline`]).
+@@ -529,31 +540,62 @@ pub(crate) fn edge_polyline(e: &SceneEdge) -> Vec<(f64, f64)> {
+ 
+ /// A dense sampling of the stroke the flowchart painter draws for `e`
+ /// (the commands of [`drawn_segs`], uncut by the arrow trims): the
+-/// [`edge_polyline`] curve, except a single cubic's straight glyph stubs
+-/// ([`stubbed_cubic`]). What the crossing casing cuts gaps in and the
+-/// quality yardstick measures.
++/// [`edge_polyline`] curve, its glyph ends squared ([`square_ends`]) —
++/// sampled as that one is, the new bends as finely as a curve span.
++/// What the crossing casing cuts gaps in and the quality yardstick
++/// measures.
+ pub(crate) fn edge_painted_polyline(e: &SceneEdge) -> Vec<(f64, f64)> {
+-    if curve_geometry(e).is_some() || e.waypoints.len() >= 2 {
+-        return edge_polyline(e);
+-    }
+-    let stubs = glyph_stubs(e, &e.bezier);
+-    if stubs == (false, false) {
+-        return sample_cubic(&e.bezier, 24);
+-    }
+-    // The cubic between its straight runs, sampled as densely as a
+-    // whole one, and the runs' outer ends.
+-    let (start, segs) = stubbed_cubic(e.bezier, stubs);
+-    let mut out = vec![start];
+-    let mut cur = start;
+-    for seg in segs {
+-        match seg {
+-            Seg::C(c1, c2, p) => {
+-                let b = [cur, c1, c2, p];
+-                out.extend((1..=24).map(|k| cubic_at(&b, k as f64 / 24.0)));
++    let (start, segs) = plain_segs(e, |p| p);
++    let (start, segs, cuts) = square_ends(e, start, segs);
++    let orig = edge_polyline(e);
++    if cuts == [None, None] {
++        return orig;
++    }
++    // The curve's own samples between the squared ends, by arc length
++    // along them; each squared end's new stretch sampled as finely as a
++    // curve span.
++    let mut arc = Vec::with_capacity(orig.len());
++    let mut run = 0.0;
++    for (k, p) in orig.iter().enumerate() {
++        if k > 0 {
++            run += (p.0 - orig[k - 1].0).hypot(p.1 - orig[k - 1].1);
++        }
++        arc.push(run);
++    }
++    let (lo, hi) = (cuts[0].unwrap_or(0.0), run - cuts[1].unwrap_or(0.0));
++    let sample = |out: &mut Vec<(f64, f64)>, from: (f64, f64), tail: &[Seg]| {
++        let mut cur = from;
++        for &seg in tail {
++            match seg {
++                Seg::L(p) => out.push(p),
++                _ => {
++                    let b = seg.cubic(cur);
++                    out.extend((1..=12).map(|k| cubic_at(&b, k as f64 / 12.0)));
++                }
+             }
+-            _ => out.push(seg.end()),
++            cur = seg.end();
+         }
+-        cur = seg.end();
++    };
++    let n = segs.len();
++    let mut out = vec![start];
++    if cuts[0].is_some() {
++        sample(&mut out, start, &segs[..2]);
++    }
++    let inner = orig.iter().zip(&arc).filter(|&(_, &s)| s > lo && s < hi);
++    if cuts[0].is_some() && cuts[1].is_some() {
++        out.extend(inner.map(|(&p, _)| p));
++    } else if cuts[0].is_some() {
++        out.extend(inner.map(|(&p, _)| p));
++        out.push(orig[orig.len() - 1]);
++    } else {
++        out.clear();
++        out.push(orig[0]);
++        out.extend(inner.map(|(&p, _)| p));
++    }
++    if cuts[1].is_some() {
++        let j = if n >= 3 { segs[n - 3].end() } else { start };
++        out.push(j);
++        sample(&mut out, j, &segs[n - 2..]);
+     }
+     out
+ }
+@@ -745,14 +787,22 @@ fn curve_d(start: (f64, f64), segs: &[Seg], t: impl Fn((f64, f64)) -> (f64, f64)
+ }
+ 
+ /// The commands an edge is DRAWN with, mapped through `t` (scene →
+-/// output coordinates), as (start point, commands): a non-default
+-/// mermaid `curve` through its points ([`curve_geometry`]), else the
+-/// `curveBasis` spline through routed waypoints ([`spline_segs`]), else
+-/// the single cubic `bezier` — with a straight [`GLYPH_STUB`] at each end
+-/// glyph where it fits ([`glyph_stubs`]). The points are mapped before
+-/// the spline's and the stub's arithmetic, as the painter always did, so
+-/// the printed path is the one it always printed.
++/// output coordinates), as (start point, commands): its scene curve
++/// ([`plain_segs`]) with each end glyph's end squared to the glyph
++/// ([`square_ends`]).
+ fn drawn_segs(e: &SceneEdge, t: impl Fn((f64, f64)) -> (f64, f64)) -> ((f64, f64), Vec<Seg>) {
++    let (start, segs) = plain_segs(e, t);
++    let (start, segs, _) = square_ends(e, start, segs);
++    (start, segs)
++}
++
++/// The commands of `e`'s scene curve as drawn, mapped through `t`
++/// (scene → output coordinates), as (start point, commands): a
++/// non-default mermaid `curve` through its points ([`curve_geometry`]),
++/// else the `curveBasis` spline through routed waypoints
++/// ([`spline_segs`]), else the single cubic `bezier`. The points are
++/// mapped before the spline's arithmetic, as the painter always did.
++fn plain_segs(e: &SceneEdge, t: impl Fn((f64, f64)) -> (f64, f64)) -> ((f64, f64), Vec<Seg>) {
+     if let Some((start, segs)) = curve_geometry(e) {
+         (t(start), segs.iter().map(|s| s.map(&t)).collect())
+     } else if e.waypoints.len() >= 2 {
+@@ -760,112 +810,465 @@ fn drawn_segs(e: &SceneEdge, t: impl Fn((f64, f64)) -> (f64, f64)) -> ((f64, f64
+         spline_segs(&q)
+     } else {
+         let q = e.bezier.map(&t);
+-        stubbed_cubic(q, glyph_stubs(e, &q))
+-    }
+-}
+-
+-/// Which ends of `e`'s single cubic `b` (in any coordinates a
+-/// translation away from the scene's) [`stubbed_cubic`] draws with a
+-/// straight [`GLYPH_STUB`], as (source, target): an end with a glyph of
+-/// an edge the flowchart painter strokes (an ER or class scene's own
+-/// painter draws its own ends; a self-loop keeps its loop; a mermaid
+-/// `curve` is the author's) whose handle is long enough to give the
+-/// stub and keep [`GLYPH_STUB_HANDLE`] behind it. The builders aim a
+-/// forward, side-by-side or nested curve's handles square to the side
+-/// (along the side's normal), so the stub runs square into it.
+-fn glyph_stubs(e: &SceneEdge, b: &[(f64, f64); 4]) -> (bool, bool) {
+-    if e.paint_width.is_some()
+-        || e.from == e.to
+-        || e.meta.curve.is_some_and(|c| c != EdgeCurve::Basis)
+-    {
+-        return (false, false);
+-    }
+-    let fits = |tip: (f64, f64), ctl: (f64, f64), turn: f64| {
+-        (tip.0 - ctl.0).hypot(tip.1 - ctl.1) >= GLYPH_STUB + GLYPH_STUB_HANDLE
+-            && turn > GLYPH_STUB_TURN
++        (q[0], vec![Seg::C(q[1], q[2], q[3])])
++    }
++}
++
++/// The path `(start, segs)` of `e` ([`plain_segs`]) with each glyph end
++/// squared to its glyph ([`square_end`]), and for (source, target) how
++/// far back along the curve that end's new stretch leaves it (`None`:
++/// unchanged; the new stretch is the first two commands at the source,
++/// the last two at the target): an end glyph
++/// an end glyph of an edge the flowchart painter strokes (an ER or class
++/// scene's painter draws its own ends; a self-loop keeps its loop). An
++/// arrowhead's end gets at least the straight run the painter cuts under
++/// it ([`arrow_trims`]), so the head faces along the curve's own end
++/// tangent with its tip on the end point; the default curve gets up to
++/// a [`GLYPH_STUB`] — a mermaid `curve` is the author's and only gets
++/// what its head needs.
++fn square_ends(e: &SceneEdge, start: (f64, f64), segs: Vec<Seg>) -> ((f64, f64), Vec<Seg>, Cuts) {
++    if e.paint_width.is_some() || e.from == e.to || !edge_drawn(e) {
++        return (start, segs, [None; 2]);
++    }
++    let author = e.meta.curve.is_some_and(|c| c != EdgeCurve::Basis);
++    let trims = arrow_trims(e);
++    let head = Some(edge_stroke_width(e) / 2.0);
++    // Two glyphs share the curve: each end's bend keeps to its half.
++    let share = if e.ends.start_marker(e.kind).is_some() && e.ends.end_marker(e.kind).is_some() {
++        0.5
++    } else {
++        1.0
+     };
+-    let ends = (
+-        e.ends.start_marker(e.kind).is_some(),
+-        e.ends.end_marker(e.kind).is_some(),
+-    );
+-    if ends == (false, false) {
+-        return ends;
++    let (mut start, mut segs, mut cuts) = (start, segs, [None; 2]);
++    for (at_start, m, trim) in [
++        (false, e.ends.end_marker(e.kind), trims.1),
++        (true, e.ends.start_marker(e.kind), trims.0),
++    ] {
++        let Some(m) = m else { continue };
++        let want = if author { trim } else { GLYPH_STUB.max(trim) };
++        let head = if m == Marker::Arrow { head } else { None };
++        if at_start {
++            let (s, g) = reverse_segs(start, &segs);
++            let (s, g, cut) = square_end(s, g, want, trim, head, share);
++            if cut.is_some() {
++                (start, segs) = reverse_segs(s, &g);
++                cuts[0] = cut;
++            }
++        } else {
++            let cut;
++            (start, segs, cut) = square_end(start, segs, want, trim, head, share);
++            cuts[1] = cut;
++        }
+     }
+-    let (t0, t3) = end_turns(b);
+-    (
+-        ends.0 && fits(b[0], b[1], t0),
+-        ends.1 && fits(b[3], b[2], t3),
+-    )
++    (start, segs, cuts)
+ }
+ 
+-/// How far (degrees) a single cubic may turn over its last
+-/// [`GLYPH_STUB`] of arc and still be drawn whole at an end glyph: so
+-/// little that the head, oriented a few px back, and the stroke entering
+-/// its base stay square to within a few degrees. Only a curve turning
+-/// harder gets the stub — the rest keep the very curve the scene holds.
+-const GLYPH_STUB_TURN: f64 = 4.0;
+-
+-/// How far (degrees) the cubic `b` turns over the last [`GLYPH_STUB`] of
+-/// arc into each end, as (source, target): the angle between its tangent
+-/// at the end and the heading of the drawn curve a stub's length back.
+-fn end_turns(b: &[(f64, f64); 4]) -> (f64, f64) {
+-    const STEPS: usize = 24;
+-    let pts = sample_cubic(b, STEPS);
+-    let turn =
+-        |tip: (f64, f64), ctl: [(f64, f64); 2], walk: &mut dyn Iterator<Item = (f64, f64)>| {
+-            // The tangent at the end: off the nearest control point that
+-            // is not the end itself.
+-            let Some(c) = ctl
+-                .into_iter()
+-                .find(|c| (c.0 - tip.0).hypot(c.1 - tip.1) > 1e-9)
+-            else {
+-                return 0.0;
+-            };
+-            let t = (tip.0 - c.0, tip.1 - c.1);
+-            let mut left = GLYPH_STUB;
+-            let mut prev = tip;
+-            for q in walk {
+-                let d = (q.0 - prev.0).hypot(q.1 - prev.1);
+-                if d >= left || d > 0.0 && left <= 1e-9 {
+-                    let h = (prev.0 - q.0, prev.1 - q.1);
+-                    let cos = (t.0 * h.0 + t.1 * h.1) / (t.0.hypot(t.1) * h.0.hypot(h.1));
+-                    return cos.clamp(-1.0, 1.0).acos().to_degrees();
+-                }
+-                left -= d;
+-                prev = q;
++/// How far (px of arc) back from (source, target) a squared end
++/// ([`square_ends`]) leaves the scene's curve; `None`: unchanged.
++type Cuts = [Option<f64>; 2];
++
++/// The path `(start, segs)` run backwards, as (its end, the commands
++/// back to its start): the same curve exactly.
++fn reverse_segs(start: (f64, f64), segs: &[Seg]) -> ((f64, f64), Vec<Seg>) {
++    let mut froms = Vec::with_capacity(segs.len());
++    let mut cur = start;
++    for s in segs {
++        froms.push(cur);
++        cur = s.end();
++    }
++    let back = segs
++        .iter()
++        .zip(&froms)
++        .rev()
++        .map(|(&s, &f)| match s {
++            Seg::L(_) => Seg::L(f),
++            Seg::Q(c, _) => Seg::Q(c, f),
++            Seg::C(c1, c2, _) => Seg::C(c2, c1, f),
++        })
++        .collect();
++    (cur, back)
++}
++
++/// Most (px) a squared end ([`square_end`]) strays from the curve the
++/// scene holds, outside the arrowhead drawn over it: the routing, port
++/// and label stages spaced every clearance (chips, node corners, other
++/// lines, crossing gaps) against that curve, and a host draws it.
++const SQUARE_END_DEV: f64 = 1.0;
++/// Straight runs [`square_end`] tries, longest first, in parts of the
++/// run it wants.
++const SQUARE_END_RUNS: [f64; 3] = [1.0, 0.75, 0.5];
++/// Lengths (in [`GLYPH_STUB`]s) of the bend from the curve into the
++/// straight run that [`square_end`] tries, gentlest first.
++const SQUARE_END_BENDS: [f64; 5] = [3.0, 2.0, 1.5, 1.0, 0.5];
++/// How far (px) from its end a squared end's new stretch can lie: the
++/// longest run and bend, and the bend's handles (a third of its chord
++/// each) beyond them — twice that, to spare.
++const SQUARE_END_REACH: f64 = 2.0 * (GLYPH_STUB + ARROW_MARKER_PX + 3.0 * GLYPH_STUB);
++/// How far (px) up the end tangent beyond the arrow cut a curve that
++/// swings in from the side meets it ([`square_end`]): the last stretch
++/// before the cut runs along the tangent, so the head faces that way
++/// (long enough that the SVG's 0.1 px rounding turns it under 4°), and
++/// the corner onto it lies well inside the head.
++const SQUARE_END_ENTRY: f64 = 1.5;
++/// Farthest (px of arc back from the end) the straight entry under the
++/// head ([`square_end`]) leaves the curve: two heads, so what it strays
++/// stays near the head, even where the line touching the curve would
++/// leave it farther back (the entry then meets the curve at a slight
++/// angle instead).
++const SQUARE_END_ENTRY_REACH: f64 = 2.0 * GLYPH_STUB;
++/// Pieces a squared end's new bend is sampled in where [`square_end`]
++/// measures its stray (each a px or two long).
++const SQUARE_END_BEND_STEPS: usize = 24;
++/// Every how many samples of the curve's tail [`square_end`] tries to
++/// leave it for the straight entry under the head (about every 2 px).
++const SQUARE_END_ENTRY_STEP: usize = 4;
++/// Arc step (px) the curve is sampled at where [`square_end`] measures
++/// its stray.
++const SQUARE_END_STEP: f64 = 0.5;
++/// How far (px) the curve may lie off its end tangent and still count
++/// as already running straight into the end.
++const SQUARE_END_FLAT: f64 = 0.05;
++
++/// The path `(start, segs)` with its END squared to the glyph drawn
++/// there (report §2.3, M1), and how far back along the curve (px of
++/// arc) its new stretch — the last two commands — leaves it (`None`:
++/// unchanged). The curve's last stretch gives way to a straight run
++/// along its own end tangent into the end point — so the glyph,
++/// oriented along it, points square into the side — and a bend that
++/// leaves the curve smoothly some way back and joins the run, so the
++/// stroke meets the glyph's base already heading its way instead of
++/// still turning under it. The run is `want` px, or shorter, when the
++/// bend then keeps within [`SQUARE_END_DEV`] of the curve (measured
++/// outside the arrowhead, `head` the stroke's half width when one
++/// covers the end). Failing that, below an arrowhead (`need`, the
++/// stretch the painter cuts under it, > 0) the stroke enters the head
++/// straight along a line touching the curve, onto a run just past the
++/// cut — the head must face along the end tangent with its tip on the
++/// end point, whatever the curve does — straying from the curve only
++/// within [`SQUARE_END_ENTRY_REACH`] of the end. The new stretch leaves
++/// the curve within `share` of its length from the end (half, when the
++/// other end is squared too). Unchanged when the curve already runs
++/// straight that far, or has no direction at its end; the rest of the
++/// curve is its own.
++fn square_end(
++    start: (f64, f64),
++    segs: Vec<Seg>,
++    want: f64,
++    need: f64,
++    head: Option<f64>,
++    share: f64,
++) -> ((f64, f64), Vec<Seg>, Option<f64>) {
++    let n = segs.len();
++    if n == 0 || want <= 0.0 {
++        return (start, segs, None);
++    }
++    let mut froms = Vec::with_capacity(n);
++    let mut cur = start;
++    for s in &segs {
++        froms.push(cur);
++        cur = s.end();
++    }
++    let b = cur;
++    let Some(d) = end_heading(froms[n - 1], segs[n - 1]) else {
++        return (start, segs, None);
++    };
++    let lens: Vec<f64> = segs
++        .iter()
++        .zip(&froms)
++        .map(|(&s, &f)| seg_lengths(f, s)[TRIM_STEPS])
++        .collect();
++    let total: f64 = lens.iter().sum();
++    let longest = want + SQUARE_END_BENDS[0] * GLYPH_STUB;
++    let tail = tail_samples(&froms, &segs, &lens, longest.min(total));
++    // Off the end tangent (signed), and back along it from the end.
++    let lat = |q: (f64, f64)| (q.0 - b.0) * d.1 - (q.1 - b.1) * d.0;
++    let along = |q: (f64, f64)| (b.0 - q.0) * d.0 + (b.1 - q.1) * d.1;
++    if tail
++        .iter()
++        .take_while(|&&(s, _)| s <= want)
++        .all(|&(_, q)| lat(q).abs() <= SQUARE_END_FLAT && along(q) >= -SQUARE_END_FLAT)
++    {
++        return (start, segs, None);
++    }
++    // A point the arrowhead covers: inside its triangle (tip on the end,
++    // a head long and wide) with the stroke's whole width.
++    let covered = |q: (f64, f64)| {
++        head.is_some_and(|hw| {
++            let a = along(q);
++            (0.0..=ARROW_MARKER_PX).contains(&a) && lat(q).abs() + hw <= a / 2.0
++        })
++    };
++    // Where command `i` ends, in arc back from the end.
++    let mut back = vec![0.0; n];
++    for i in (0..n - 1).rev() {
++        back[i] = back[i + 1] + lens[i + 1];
++    }
++    // The curve kept up to `s_j` px of arc back from the end (its start,
++    // when shorter), as (its commands, where it stops, the heading
++    // there); `None` past this end's share or where it has no heading.
++    let keep = |s_j: f64| -> Option<Kept> {
++        if share < 1.0 && s_j > share * total + 1e-9 {
++            return None;
++        }
++        let (i, u) = if s_j >= total - 1e-9 {
++            (0, 0.0)
++        } else {
++            let i = (0..n).find(|&i| back[i] <= s_j && s_j < back[i] + lens[i])?;
++            (
++                i,
++                seg_param_at(froms[i], segs[i], lens[i] - (s_j - back[i])),
++            )
++        };
++        let mut out: Vec<Seg> = segs[..i].to_vec();
++        let j = if u > 0.0 {
++            let (_, part) = segs[i].part(froms[i], 0.0, u);
++            out.push(part);
++            part.end()
++        } else {
++            froms[i]
++        };
++        Some((out, j, seg_heading_at(froms[i], segs[i], u)?))
++    };
++    // How far the new stretch (sampled as `pts`) strays from the curve
++    // it replaces (its last `s_j` px), outside the head: where it could
++    // come nearer anything the curve kept clear of. What it leaves out
++    // only gives room.
++    let stray = |pts: &[(f64, f64)], s_j: f64| {
++        let old: Vec<(f64, f64)> = tail
++            .iter()
++            .take_while(|&&(s, _)| s <= s_j + SQUARE_END_STEP)
++            .map(|&(_, q)| q)
++            .collect();
++        pts.iter()
++            .filter(|&&q| !covered(q))
++            .map(|&q| {
++                old.windows(2)
++                    .map(|w| point_seg_dist(q.0, q.1, w[0], w[1]))
++                    .fold(f64::INFINITY, f64::min)
++            })
++            .fold(0.0, f64::max)
++    };
++    // A straight run of `run` px, the bend into it leaving the curve
++    // `run + bend` px back, smooth at both ends. As (stray, commands);
++    // `None` for a bend that would bulge back up from the run before
++    // reaching it (a curve turning hard right at the end).
++    let smooth = |run: f64, bend: f64| -> Option<(f64, f64, Vec<Seg>)> {
++        let s_j = run + bend;
++        let (mut out, j, tj) = keep(s_j)?;
++        let p = (b.0 - d.0 * run, b.1 - d.1 * run);
++        let k = (p.0 - j.0).hypot(p.1 - j.1) / 3.0;
++        let bent = Seg::C(
++            (j.0 + tj.0 * k, j.1 + tj.1 * k),
++            (p.0 - d.0 * k, p.1 - d.1 * k),
++            p,
++        );
++        let bb = bent.cubic(j);
++        let mut pts: Vec<(f64, f64)> = (0..=SQUARE_END_BEND_STEPS)
++            .map(|k| cubic_at(&bb, k as f64 / SQUARE_END_BEND_STEPS as f64))
++            .collect();
++        if pts.windows(2).any(|w| along(w[1]) > along(w[0]) + 1e-9) {
++            return None;
++        }
++        pts.extend([lerp(p, b, 0.5), b]);
++        out.extend([bent, Seg::L(b)]);
++        Some((stray(&pts, s_j), s_j.min(total), out))
++    };
++    // A curve swinging in from the side right at its end: it is kept up
++    // to where the line from a point `run_in` px up the end tangent
++    // touches it (within SQUARE_END_ENTRY_REACH), then runs down that
++    // line in under the head — leaving the curve along its own heading,
++    // the corner onto the tangent hidden under the head — and on along
++    // the tangent into the end.
++    let run_in = need + SQUARE_END_ENTRY;
++    let entry = || -> Option<(f64, f64, Vec<Seg>)> {
++        let p = (b.0 - d.0 * run_in, b.1 - d.1 * run_in);
++        let lim = SQUARE_END_ENTRY_REACH.min(if share < 1.0 { share * total } else { total });
++        let turn = |k: usize| {
++            // The curve's heading at sample k (toward the end) against the
++            // line from it to `p`.
++            let (q, h) = (tail[k].1, (tail[k - 1].1, tail[k + 1].1));
++            let (hx, hy) = (h.0 .0 - h.1 .0, h.0 .1 - h.1 .1);
++            let (lx, ly) = (p.0 - q.0, p.1 - q.1);
++            let den = hx.hypot(hy) * lx.hypot(ly);
++            if den <= 1e-12 {
++                return f64::INFINITY;
+             }
+-            0.0
++            -(hx * lx + hy * ly) / den
+         };
+-    (
+-        turn(b[0], [b[1], b[2]], &mut pts.iter().skip(1).copied()),
+-        turn(b[3], [b[2], b[1]], &mut pts.iter().rev().skip(1).copied()),
+-    )
++        // Off the curve along its own heading at sample k, so the entry
++        // leaves it smoothly, then straight at the corner. As (stray, how
++        // far back it leaves the curve, commands).
++        let at = |k: usize| -> Option<(f64, f64, Vec<Seg>)> {
++            let (mut out, j, tj) = keep(tail[k].0)?;
++            let len = (p.0 - j.0).hypot(p.1 - j.1);
++            let h = len / 3.0;
++            let dir = ((p.0 - j.0) / len, (p.1 - j.1) / len);
++            let into = Seg::C(
++                (j.0 + tj.0 * h, j.1 + tj.1 * h),
++                (p.0 - dir.0 * h, p.1 - dir.1 * h),
++                p,
++            );
++            let bb = into.cubic(j);
++            let mut pts: Vec<(f64, f64)> = (0..=SQUARE_END_BEND_STEPS)
++                .map(|k| cubic_at(&bb, k as f64 / SQUARE_END_BEND_STEPS as f64))
++                .collect();
++            pts.extend([lerp(p, b, 0.5), b]);
++            out.extend([into, Seg::L(b)]);
++            Some((stray(&pts, tail[k].0), tail[k].0, out))
++        };
++        // Where it strays least, the line nearest touching the curve
++        // among equals — leaving it no nearer the end along the tangent
++        // than the corner (the stroke would double back towards the
++        // corner, a hook). A curve that never gets that far back within
++        // reach is left where the line touches it most nearly.
++        let ks: Vec<usize> = (1..tail.len().saturating_sub(1))
++            .filter(|&k| tail[k].0 >= run_in && tail[k].0 <= lim)
++            .collect();
++        let far: Vec<usize> = ks
++            .iter()
++            .copied()
++            .filter(|&k| along(tail[k].1) >= run_in)
++            .collect();
++        if far.is_empty() {
++            let k = ks
++                .into_iter()
++                .min_by(|&x, &y| turn(x).total_cmp(&turn(y)))?;
++            return at(k);
++        }
++        far.iter()
++            .step_by(SQUARE_END_ENTRY_STEP)
++            .chain(far.last())
++            .filter_map(|&k| at(k).map(|c| (turn(k), c)))
++            .min_by(|a, b| {
++                let key = |c: &(f64, (f64, f64, Vec<Seg>))| (c.1 .0 * 100.0).round();
++                key(a).total_cmp(&key(b)).then(a.0.total_cmp(&b.0))
++            })
++            .map(|(_, c)| c)
++    };
++    // The first bend that keeps within the stray with a run longer than
++    // the head's own cut (the stroke reaching the head's base already
++    // heading square — what the run is for), longest run first.
++    let runs: Vec<f64> = SQUARE_END_RUNS
++        .iter()
++        .map(|f| f * want)
++        .filter(|&r| r > need)
++        .collect();
++    let bent = runs.iter().find_map(|&run| {
++        SQUARE_END_BENDS
++            .iter()
++            .find_map(|&bend| smooth(run, bend * GLYPH_STUB).filter(|c| c.0 <= SQUARE_END_DEV))
++    });
++    if let Some((_, cut, out)) = bent {
++        return (start, out, Some(cut));
++    }
++    if need <= 0.0 {
++        return (start, segs, None);
++    }
++    // Under an arrowhead, else: the curve turns too hard over its last
++    // stretch to meet a run within a px. The straight entry — a bend into
++    // the cut alone would turn all the remaining turn under and beside
++    // the head, a visible bulge; the entry leaves the curve where it
++    // touches it, and strays (up to a few px, for a curve swinging in
++    // from the side) only within a head or two of the tip. A curve too
++    // short for it: the bend into the cut straying least.
++    if let Some((_, cut, out)) = entry() {
++        return (start, out, Some(cut));
++    }
++    let best = SQUARE_END_BENDS
++        .iter()
++        .filter_map(|&bend| smooth(need, bend * GLYPH_STUB))
++        .min_by(|a, b| a.0.total_cmp(&b.0));
++    match best {
++        Some((_, cut, out)) => (start, out, Some(cut)),
++        None => (start, segs, None),
++    }
++}
++
++/// A curve kept up to a point ([`square_end`]): its commands, where it
++/// stops, and its unit heading there.
++type Kept = (Vec<Seg>, (f64, f64), (f64, f64));
++
++/// The unit heading of `seg` (from `from`) INTO its end, read off the
++/// nearest control point that is not the end itself; `None` for a
++/// command without length.
++fn end_heading(from: (f64, f64), seg: Seg) -> Option<(f64, f64)> {
++    let p = seg.end();
++    let ctl: Vec<(f64, f64)> = match seg {
++        Seg::L(_) => vec![from],
++        Seg::Q(c, _) => vec![c, from],
++        Seg::C(c1, c2, _) => vec![c2, c1, from],
++    };
++    let q = ctl
++        .into_iter()
++        .find(|q| (p.0 - q.0).hypot(p.1 - q.1) > 1e-9)?;
++    let l = (p.0 - q.0).hypot(p.1 - q.1);
++    Some(((p.0 - q.0) / l, (p.1 - q.1) / l))
+ }
+ 
+-/// The single cubic `b` as drawn, as (start point, commands): at each
+-/// end `stubs` marks, a straight [`GLYPH_STUB`] along the end's handle
+-/// into the end point, the cubic now ending (or starting) at the stub's
+-/// inner end with the same control point — still on the handle's line,
+-/// so the curve meets the stub without a kink and the glyph points
+-/// square into the side. The rest of the curve is the cubic's own; it
+-/// strays from the cubic only near a stubbed end, by under a stub's
+-/// length.
+-fn stubbed_cubic(b: [(f64, f64); 4], stubs: (bool, bool)) -> ((f64, f64), Vec<Seg>) {
+-    let toward = |from: (f64, f64), to: (f64, f64)| {
+-        let l = (to.0 - from.0).hypot(to.1 - from.1);
+-        lerp(from, to, GLYPH_STUB / l)
+-    };
+-    let mut segs = Vec::with_capacity(3);
+-    let s0 = if stubs.0 { toward(b[0], b[1]) } else { b[0] };
+-    if stubs.0 {
+-        segs.push(Seg::L(s0));
++/// The unit heading of `seg` (from `from`) at parameter `u`, forward;
++/// `None` where it has no direction.
++fn seg_heading_at(from: (f64, f64), seg: Seg, u: f64) -> Option<(f64, f64)> {
++    let b = seg.cubic(from);
++    let v = 1.0 - u;
++    let mut t = (
++        3.0 * (v * v * (b[1].0 - b[0].0)
++            + 2.0 * u * v * (b[2].0 - b[1].0)
++            + u * u * (b[3].0 - b[2].0)),
++        3.0 * (v * v * (b[1].1 - b[0].1)
++            + 2.0 * u * v * (b[2].1 - b[1].1)
++            + u * u * (b[3].1 - b[2].1)),
++    );
++    if t.0.hypot(t.1) < 1e-9 {
++        // A cusp or a coincident control point: the chord either side.
++        let (a, c) = (
++            cubic_at(&b, (u - 1e-3).max(0.0)),
++            cubic_at(&b, (u + 1e-3).min(1.0)),
++        );
++        t = (c.0 - a.0, c.1 - a.1);
+     }
+-    let s3 = if stubs.1 { toward(b[3], b[2]) } else { b[3] };
+-    segs.push(Seg::C(b[1], b[2], s3));
+-    if stubs.1 {
+-        segs.push(Seg::L(b[3]));
++    let l = t.0.hypot(t.1);
++    (l > 1e-12).then(|| (t.0 / l, t.1 / l))
++}
++
++/// The last `reach` px of arc of a path (`froms[i]` where command `i`
++/// starts, `lens[i]` its length), end first, as (arc back from the
++/// end, point) every [`SQUARE_END_STEP`] px or so — the end itself and
++/// the stretch's far end included.
++fn tail_samples(
++    froms: &[(f64, f64)],
++    segs: &[Seg],
++    lens: &[f64],
++    reach: f64,
++) -> Vec<(f64, (f64, f64))> {
++    let n = segs.len();
++    let mut out = vec![(0.0, segs[n - 1].end())];
++    let mut back = 0.0;
++    for i in (0..n).rev() {
++        let left = reach - back;
++        if left <= 0.0 {
++            break;
++        }
++        let len = lens[i];
++        if len <= 0.0 {
++            continue;
++        }
++        let u0 = if left >= len {
++            0.0
++        } else {
++            seg_param_at(froms[i], segs[i], len - left)
++        };
++        let steps = (left.min(len) / SQUARE_END_STEP).ceil().max(1.0) as usize;
++        let b = segs[i].cubic(froms[i]);
++        let (mut prev, mut s) = (segs[i].end(), back);
++        for k in 1..=steps {
++            let q = cubic_at(&b, 1.0 - (1.0 - u0) * k as f64 / steps as f64);
++            s += (q.0 - prev.0).hypot(q.1 - prev.1);
++            out.push((s, q));
++            prev = q;
++        }
++        back += len;
+     }
+-    (b[0], segs)
++    out
+ }
+ 
+ /// The commands of a smooth B-spline (d3's `curveBasis` — what mermaid
+@@ -914,14 +1317,15 @@ pub(crate) fn edge_path_d(e: &SceneEdge, t: impl Fn((f64, f64)) -> (f64, f64)) -
+ }
+ 
+ /// How far (px) the flowchart painter stops `e`'s stroke short of each
+-/// end, as (source, target): [`ARROW_TRIM`] under an arrowhead, so the
+-/// stroke's butt end hides inside it; nothing at a cross, a circle or a
+-/// bare end (the stroke runs on to the border beneath those), nor on an
+-/// edge an ER or class painter strokes (they draw their own ends).
++/// end, as (source, target): [`arrow_trim`] of its width under an
++/// arrowhead, so the stroke's butt end hides inside it; nothing at a
++/// cross, a circle or a bare end (the stroke runs on to the border
++/// beneath those), nor on an edge an ER or class painter strokes (they
++/// draw their own ends).
+ pub(crate) fn arrow_trims(e: &SceneEdge) -> (f64, f64) {
+     let at = |m: Option<Marker>| {
+         if edge_drawn(e) && e.paint_width.is_none() && m == Some(Marker::Arrow) {
+-            ARROW_TRIM
++            arrow_trim(edge_stroke_width(e))
+         } else {
+             0.0
+         }
+@@ -944,12 +1348,22 @@ fn edge_path_d_painted(e: &SceneEdge, t: impl Fn((f64, f64)) -> (f64, f64)) -> S
+     curve_d(start, &segs, |p| p)
+ }
+ 
++/// How far (px) the painter stops a stroke `width` px wide short of an
++/// arrow tip: [`ARROW_TRIM`], or the width itself for a stroke wider
++/// than that (a `linkStyle stroke-width`) — a head is as wide as it is
++/// long, so `width` back from the tip it covers a butt end that wide —
++/// up to a whole head.
++pub(crate) fn arrow_trim(width: f64) -> f64 {
++    width.clamp(ARROW_TRIM, ARROW_MARKER_PX)
++}
++
+ /// The `<marker>` def of the end arrowhead with id `id`, painted in
+-/// `color`: the flowchart's own glyph, so the advance painter's heads
+-/// match it ([`marker_def`]). A path ending under it must stop
+-/// [`ARROW_TRIM`] short of the tip ([`polyline_d_painted`]).
+-pub(crate) fn arrow_marker_def(id: &str, color: &str) -> String {
+-    marker_def(id, Marker::Arrow, false, color)
++/// `color`, for a path stopping `trim` px short of the tip
++/// ([`arrow_trim`] of its width, [`polyline_d_painted`]): the
++/// flowchart's own glyph, so the advance painter's heads match it
++/// ([`marker_def`]).
++pub(crate) fn arrow_marker_def(id: &str, color: &str, trim: f64) -> String {
++    marker_def(id, Marker::Arrow, false, color, trim)
+ }
+ 
+ /// SVG path `d` of the polyline `pts` (straight `L` legs, as the
+@@ -1000,8 +1414,37 @@ fn seg_param_at(from: (f64, f64), seg: Seg, len: f64) -> f64 {
+     let lens = seg_lengths(from, seg);
+     let k = lens.partition_point(|&l| l < len).clamp(1, TRIM_STEPS);
+     let (l0, l1) = (lens[k - 1], lens[k]);
+-    let f = if l1 > l0 { (len - l0) / (l1 - l0) } else { 0.0 };
+-    ((k - 1) as f64 + f.clamp(0.0, 1.0)) / TRIM_STEPS as f64
++    if l1 <= l0 {
++        return (k - 1) as f64 / TRIM_STEPS as f64;
++    }
++    // Within the piece, by its own finer pieces (their lengths scaled to
++    // the piece's): the speed along a long cubic's piece varies, and a
++    // straight interpolation there is off by a tenth of a px.
++    let b = seg.cubic(from);
++    let (t0, t1) = (
++        (k - 1) as f64 / TRIM_STEPS as f64,
++        k as f64 / TRIM_STEPS as f64,
++    );
++    let mut fine = [0.0; TRIM_STEPS + 1];
++    let mut prev = cubic_at(&b, t0);
++    for (j, f) in fine.iter_mut().enumerate().skip(1) {
++        let q = cubic_at(&b, t0 + (t1 - t0) * j as f64 / TRIM_STEPS as f64);
++        *f = (q.0 - prev.0).hypot(q.1 - prev.1);
++        prev = q;
++    }
++    for j in 1..=TRIM_STEPS {
++        fine[j] += fine[j - 1];
++    }
++    let scale = (l1 - l0) / fine[TRIM_STEPS].max(f64::MIN_POSITIVE);
++    let want = (len - l0) / scale;
++    let j = fine.partition_point(|&l| l < want).clamp(1, TRIM_STEPS);
++    let (f0, f1) = (fine[j - 1], fine[j]);
++    let f = if f1 > f0 {
++        (want - f0) / (f1 - f0)
++    } else {
++        0.0
++    };
++    t0 + (t1 - t0) * ((j - 1) as f64 + f.clamp(0.0, 1.0)) / TRIM_STEPS as f64
+ }
+ 
+ /// The path (start, commands) with `t0` of arc length cut off its start
+@@ -1112,10 +1555,11 @@ pub(crate) fn edge_end_chord(
+ /// strokes ([`edge_path_d_painted`], cut short under an arrowhead) — the
+ /// curve's heading INTO the end at the target, the reverse of the way it
+ /// sets off at the source. Read off the control point next to the
+-/// stroke's end (a coincident one defers to the next): the last command
+-/// of a mermaid `curve`, the closing `L` of the `curveBasis` spline, the
+-/// cubic's end tangent or its straight stub. `(0, 0)` only for a curve
+-/// without length.
++/// stroke's end (a coincident one defers to the next): along the
++/// scene curve's own end tangent wherever the end is squared to its
++/// glyph ([`square_end`]), else the last command of a mermaid `curve`,
++/// the closing `L` of the `curveBasis` spline, the cubic's end tangent.
++/// `(0, 0)` only for a curve without length.
+ pub(crate) fn edge_end_tangent(e: &SceneEdge, at_start: bool) -> ((f64, f64), (f64, f64)) {
+     let (start, segs) = drawn_segs(e, |p| p);
+     let tip = if at_start {
+@@ -3264,16 +3708,13 @@ pub(crate) const ARROW_TRIM: f64 = ARROW_MARKER_PX / 2.0;
+ /// its mirror for the source end (tip at x = 0).
+ const ARROW_GLYPH_END: &str = "M 0 0 L 10 5 L 0 10 z";
+ const ARROW_GLYPH_START: &str = "M 10 0 L 0 5 L 10 10 z";
+-/// Straight run (px) a flowchart edge drawn as one cubic ends in at an
+-/// end glyph, along the cubic's end tangent (the side's normal): a whole
+-/// head, so the head and the stroke entering its base point the same
+-/// way, square into the side — never along a curve still turning under
+-/// the head (report §2.3).
++/// Straight run (px) the flowchart painter wants a stroke to end in at
++/// an end glyph, along the curve's end tangent (the side's normal): a
++/// whole head, so the head and the stroke entering its base point the
++/// same way, square into the side — never along a curve still turning
++/// under the head (report §2.3). It gets that run where bending into it
++/// keeps close to the scene's curve ([`square_end`]).
+ pub(crate) const GLYPH_STUB: f64 = ARROW_MARKER_PX;
+-/// Least handle (px) a cubic keeps behind its [`GLYPH_STUB`]: a shorter
+-/// handle would bend the curve hard right at the head's base, so such a
+-/// cubic is drawn whole (it is short anyway).
+-const GLYPH_STUB_HANDLE: f64 = ARROW_MARKER_PX / 2.0;
+ 
+ /// Corner radius (px) `to_svg` paints a plain box with: `Rect`,
+ /// `Subroutine` and a fork/join bar.
+@@ -3364,21 +3805,25 @@ pub(crate) fn node_outline(n: &SceneNode) -> Vec<(f64, f64)> {
+ }
+ 
+ /// A marker variant a `linkStyle`d edge end needs: the glyph in the
+-/// edge's stroke colour. Every glyph has one size in user space
+-/// ([`ARROW_MARKER_PX`]), so a styled width needs no variant of its own.
++/// edge's stroke colour, and an arrowhead set further ahead of a stroke
++/// wider than [`ARROW_TRIM`] (cut back further, [`arrow_trim`]). Every
++/// glyph has one size in user space ([`ARROW_MARKER_PX`]).
+ #[derive(Clone, PartialEq)]
+ struct MarkerVariant {
+     marker: Marker,
+     start: bool,
+     color: Option<String>,
++    /// How far (px) the stroke stops short of an arrow tip.
++    trim: f64,
+ }
+ 
+ /// The marker ids every drawn edge end uses, plus the defs of the
+ /// styled variants among them. An unstyled end keeps its base id, so a
+-/// diagram without `linkStyle` colours gets just the base defs. A
+-/// styled id is the base id, then `_` and the colour with every
+-/// non-alphanumeric character as `_` (mermaid's marker id rule); two
+-/// colours that sanitise alike get a counter.
++/// diagram without `linkStyle` colours or wide strokes gets just the
++/// base defs. A styled id is the base id, then `-t` and the trim (`.`
++/// as `_`) for a wide stroke's arrowhead, then `_` and the colour with
++/// every non-alphanumeric character as `_` (mermaid's marker id rule);
++/// two colours that sanitise alike get a counter.
+ struct EdgeMarkers {
+     /// Per scene edge: (start id, end id).
+     ids: Vec<(Option<String>, Option<String>)>,
+@@ -3397,30 +3842,45 @@ fn edge_markers(edges: &[SceneEdge]) -> EdgeMarkers {
+         } else {
+             e.ends.end_marker(e.kind)
+         }?;
++        let (t0, t3) = arrow_trims(e);
+         let v = MarkerVariant {
+             marker: m,
+             start,
+             color: e.meta.style.stroke.clone(),
++            trim: if m != Marker::Arrow {
++                ARROW_TRIM
++            } else if start {
++                t0
++            } else {
++                t3
++            },
+         };
+-        let Some(c) = &v.color else {
++        if v.color.is_none() && v.trim == ARROW_TRIM {
+             return Some(marker_base_id(start, m).to_string());
+-        };
++        }
+         if let Some((_, id)) = made.iter().find(|(w, _)| *w == v) {
+             return Some(id.clone());
+         }
+         let mut id = marker_base_id(start, m).to_string();
+-        id.push('_');
+-        id.extend(
+-            c.chars()
+-                .map(|ch| if ch.is_ascii_alphanumeric() { ch } else { '_' }),
+-        );
++        if v.trim != ARROW_TRIM {
++            id.push_str("-t");
++            id.push_str(&format!("{}", v.trim).replace('.', "_"));
++        }
++        if let Some(c) = &v.color {
++            id.push('_');
++            id.extend(
++                c.chars()
++                    .map(|ch| if ch.is_ascii_alphanumeric() { ch } else { '_' }),
++            );
++        }
+         let base = id.clone();
+         let mut n = 1;
+         while made.iter().any(|(_, x)| *x == id) {
+             n += 1;
+             id = format!("{base}_{n}");
+         }
+-        defs.push_str(&marker_def(&id, m, start, &style_attr(Some(c), EDGE_COLOR)));
++        let color = style_attr(v.color.as_deref(), EDGE_COLOR);
++        defs.push_str(&marker_def(&id, m, start, &color, v.trim));
+         made.push((v, id.clone()));
+         Some(id)
+     };
+@@ -3434,20 +3894,25 @@ fn edge_markers(edges: &[SceneEdge]) -> EdgeMarkers {
+ /// The `<marker>` def of one end glyph in `color`: every glyph sized
+ /// [`ARROW_MARKER_PX`] in user space and oriented along the drawn end.
+ /// An arrow's `refX` puts its tip on the end point although the painter
+-/// stops the stroke [`ARROW_TRIM`] short of it ([`edge_path_d_painted`]);
+-/// a cross or circle sits just outside the node, the stroke still
+-/// running to the border beneath it.
+-fn marker_def(id: &str, m: Marker, start: bool, color: &str) -> String {
++/// stops the stroke `trim` px short of it ([`arrow_trims`],
++/// [`edge_path_d_painted`]); a cross or circle sits just outside the
++/// node, the stroke still running to the border beneath it.
++fn marker_def(id: &str, m: Marker, start: bool, color: &str, trim: f64) -> String {
+     let px = ARROW_MARKER_PX;
+     match m {
+         Marker::Arrow => {
+             // View-box units per px, and the tip's own x in the box.
+             let units = 10.0 / px;
+             let (refx, d) = if start {
+-                (ARROW_TRIM * units, ARROW_GLYPH_START)
++                (trim * units, ARROW_GLYPH_START)
+             } else {
+-                (10.0 - ARROW_TRIM * units, ARROW_GLYPH_END)
++                (10.0 - trim * units, ARROW_GLYPH_END)
+             };
++            // To a thousandth of a unit, no trailing zeros (`5`, `2.727`).
++            let refx = format!("{refx:.3}")
++                .trim_end_matches('0')
++                .trim_end_matches('.')
++                .to_string();
+             format!(
+                 "<marker id=\"{id}\" viewBox=\"0 0 10 10\" refX=\"{refx}\" refY=\"5\" \
+                  markerUnits=\"userSpaceOnUse\" markerWidth=\"{px}\" markerHeight=\"{px}\" \
+@@ -3515,7 +3980,7 @@ fn extra_marker_defs(ids: &[(Option<String>, Option<String>)]) -> String {
+             got.as_deref() == Some(base)
+         });
+         if used {
+-            out.push_str(&marker_def(base, m, start, EDGE_COLOR));
++            out.push_str(&marker_def(base, m, start, EDGE_COLOR, ARROW_TRIM));
+         }
+     }
+     out
+@@ -3704,7 +4169,8 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
+             marker_base_id(false, Marker::Arrow),
+             Marker::Arrow,
+             false,
+-            EDGE_COLOR
++            EDGE_COLOR,
++            ARROW_TRIM
+         ),
+         extra_marker_defs(&markers.ids),
+         markers.defs,
+@@ -8368,15 +8834,20 @@ mod tests {
+ 
+     #[test]
+     fn every_edge_kind_and_width_gets_one_head_size() {
+-        // A thick edge, a styled wide one and a plain one share `#arrow`,
++        // A thick edge, a styled wider one and a plain one share `#arrow`,
+         // sized in user space: the head no longer doubles on `==>`.
+         let svg = svg_src(
+-            "flowchart LR\nA --> B\nC ==> D\nE -.-> F\nG --> H\nlinkStyle 3 stroke-width:6px\n",
++            "flowchart LR\nA --> B\nC ==> D\nE -.-> F\nG --> H\nlinkStyle 3 stroke-width:5px\n",
+         );
+         for p in edge_paths(&svg) {
+             assert!(p.contains("marker-end=\"url(#arrow)\""), "{p}");
+         }
+         assert_eq!(svg.matches("<marker id=").count(), 1, "{svg}");
++        // A stroke wider than the cut keeps the head's size too, set
++        // further ahead of its own deeper cut (`arrow-t6`).
++        let wide = svg_src("flowchart LR\nG --> H\nlinkStyle 0 stroke-width:6px\n");
++        assert!(wide.contains("marker-end=\"url(#arrow-t6)\""), "{wide}");
++        assert_eq!(wide.matches("markerWidth=\"11\"").count(), 2, "{wide}");
+         assert!(svg.contains(&format!(
+             "markerUnits=\"userSpaceOnUse\" markerWidth=\"{ARROW_MARKER_PX}\""
+         )));
+@@ -8436,40 +8907,290 @@ mod tests {
+         }
+     }
+ 
++    /// `pts` sampled `steps` per command of the path (start, commands).
++    fn dense_path(start: (f64, f64), segs: &[Seg], steps: usize) -> Vec<(f64, f64)> {
++        let mut out = vec![start];
++        let mut cur = start;
++        for seg in segs {
++            let b = seg.cubic(cur);
++            out.extend((1..=steps).map(|k| cubic_at(&b, k as f64 / steps as f64)));
++            cur = seg.end();
++        }
++        out
++    }
++
++    /// How far the squared end at `tip` (heading `d` into it) strays from
++    /// the scene curve `plain`: the farthest point of `painted` from it,
++    /// over the points outside the arrowhead (half stroke `hw`, `None`
++    /// for a cross or a circle), as (beyond `near` of the tip, within).
++    fn end_stray(
++        painted: &[(f64, f64)],
++        plain: &[(f64, f64)],
++        tip: (f64, f64),
++        d: (f64, f64),
++        hw: Option<f64>,
++        near: f64,
++    ) -> (f64, f64) {
++        let reach = 4.0 * near;
++        let close = |q: &&(f64, f64)| (q.0 - tip.0).hypot(q.1 - tip.1) <= reach;
++        // The scene curve's stretch round the tip, as a polyline (its
++        // pieces whose either end is that close).
++        let line: Vec<(f64, f64)> = plain
++            .windows(2)
++            .filter(|w| close(&&w[0]) || close(&&w[1]))
++            .flat_map(|w| [w[0], w[1]])
++            .collect();
++        let mut out = (0.0f64, 0.0f64);
++        for &q in painted.iter().filter(close) {
++            let along = (tip.0 - q.0) * d.0 + (tip.1 - q.1) * d.1;
++            let lat = ((q.0 - tip.0) * d.1 - (q.1 - tip.1) * d.0).abs();
++            if hw.is_some_and(|hw| {
++                (0.0..=ARROW_MARKER_PX).contains(&along) && lat + hw <= along / 2.0
++            }) {
++                continue;
++            }
++            let off = line
++                .windows(2)
++                .map(|w| point_seg_dist(q.0, q.1, w[0], w[1]))
++                .fold(f64::INFINITY, f64::min);
++            if (q.0 - tip.0).hypot(q.1 - tip.1) > near {
++                out.0 = out.0.max(off);
++            } else {
++                out.1 = out.1.max(off);
++            }
++        }
++        out
++    }
++
+     #[test]
+-    fn a_turning_cubic_runs_straight_into_its_end_glyph() {
++    fn a_turning_curve_runs_straight_into_its_end_glyph_near_its_scene_curve() {
+         // A fan: the outer branches are S-curves whose cubic still turns
+-        // under the head. The painter ends each in a head-long straight
+-        // stub along the end's handle — square onto the top side — and
+-        // the stroke it leaves runs square into the head's base.
++        // under the head. The painter squares each end to the head: the
++        // head faces the cubic's own end tangent (plumb onto the top side)
++        // with its tip on the end, the stroke cut back to that tangent;
++        // where bending into a straight run keeps within SQUARE_END_DEV of
++        // the cubic, the stroke runs straight into the head's base.
++        // Nowhere farther than two heads from the tip does the painted
++        // curve stray more than that — the end point stays put, unlike a
++        // stub that moves it and drags the whole tail along — and the
++        // scene keeps its cubic (a host draws it).
+         let g = parse("flowchart TD\nA --> B & C & D & E & F\n").unwrap();
+         let sc = scene(&g);
+-        let mut stubbed = 0;
++        let mut longer = 0;
+         for e in &sc.edges {
+-            let (_, heading) = edge_end_tangent(e, false);
++            let (tip, heading) = edge_end_tangent(e, false);
++            assert_eq!(tip, e.bezier[3]);
+             assert!(heading.0.abs() < 1e-9 && heading.1 > 0.0, "{heading:?}");
+-            let stubs = glyph_stubs(e, &e.bezier);
+-            assert!(!stubs.0, "no glyph at the source");
+-            let painted = edge_painted_polyline(e);
+-            let n = painted.len();
+-            let (q, p) = (painted[n - 2], painted[n - 1]);
+-            if stubs.1 {
+-                stubbed += 1;
+-                assert_eq!(q.0, p.0, "a plumb stub");
+-                assert!((p.1 - q.1 - GLYPH_STUB).abs() < 1e-9, "{q:?} {p:?}");
+-                // The scene's cubic is untouched; the painted curve keeps
+-                // its control point on the handle line.
+-                assert_eq!(edge_polyline(e).last(), Some(&e.bezier[3]));
+-                assert_eq!(e.bezier[2].0, e.bezier[3].0);
++            assert_eq!(e.bezier[2].0, e.bezier[3].0, "the scene's cubic");
++            let (start, segs) = drawn_segs(e, |p| p);
++            assert_eq!(segs.last().map(|s| s.end()), Some(tip));
++            let (_, cut) = trim_segs(start, segs.clone(), 0.0, ARROW_TRIM);
++            let end = cut.last().unwrap().end();
++            assert!((end.0 - tip.0).abs() < 1e-9, "{end:?}");
++            // (On the straight spine the cut falls on the cubic, found by
++            // arc length over its samples: to a hundredth of a px.)
++            assert!((tip.1 - end.1 - ARROW_TRIM).abs() < 0.01, "{end:?}");
++            // How far the drawn curve runs plumb into the tip.
++            let pts = dense_path(start, &segs, 64);
++            let run = pts
++                .iter()
++                .rev()
++                .take_while(|q| (q.0 - tip.0).abs() < 1e-6)
++                .last()
++                .map_or(0.0, |q| tip.1 - q.1);
++            assert!(run >= ARROW_TRIM + SQUARE_END_ENTRY - 1e-6, "{run}");
++            longer += usize::from(run > ARROW_TRIM + SQUARE_END_ENTRY + 1e-6);
++            let plain = sample_cubic(&e.bezier, 400);
++            let (far, near) = end_stray(
++                &pts,
++                &plain,
++                tip,
++                heading,
++                Some(edge_stroke_width(e) / 2.0),
++                SQUARE_END_ENTRY_REACH,
++            );
++            assert!(far <= SQUARE_END_DEV + 0.05, "{}->{}: {far}", e.from, e.to);
++            assert!(
++                near <= ARROW_MARKER_PX / 2.0,
++                "{}->{}: {near}",
++                e.from,
++                e.to
++            );
++        }
++        // The spine runs straight anyway and its neighbours bend into a
++        // run longer than the cut; the outermost swing in too hard for one
++        // within a px and enter the head along the end tangent.
++        assert_eq!(longer, 3);
++    }
++
++    #[test]
++    fn a_head_faces_the_end_tangent_where_the_final_straight_is_shorter_than_the_cut() {
++        // B1 review #1: a spline whose closing straight (a sixth of its
++        // last waypoint leg, here 16 / 6 px) is shorter than the cut under
++        // the head. Cutting the drawn curve by arc length used to end the
++        // stroke on the bend before it, so `orient="auto"` tilted the head
++        // ~15° off the side (subgraph.mmd routed, C1/C2 -> Store). The
++        // squared end runs along the end tangent past the cut: the head is
++        // square, its tip on the end.
++        let wps = vec![(0.0, 0.0), (60.0, 0.0), (100.0, 0.0), (100.0, 16.0)];
++        let e = routed_edge((0.0, 0.0), (100.0, 16.0), wps.clone());
++        let (tip, head) = edge_end_tangent(&e, false);
++        assert_eq!(tip, (100.0, 16.0));
++        assert!(
++            head.0.abs() < 1e-9 && (head.1 - 1.0).abs() < 1e-9,
++            "{head:?}"
++        );
++        let (start, segs) = drawn_segs(&e, |p| p);
++        let (_, cut) = trim_segs(start, segs, 0.0, ARROW_TRIM);
++        let end = cut.last().unwrap().end();
++        assert!((end.0 - 100.0).abs() < 1e-9 && (16.0 - ARROW_TRIM - end.1).abs() < 1e-6);
++        // The scene's waypoints are untouched: a host draws them.
++        assert_eq!(e.waypoints, wps);
++        // The plain cut, for the record: its stroke heads off square.
++        let (s0, g0) = plain_segs(&e, |p| p);
++        let (_, plain_cut) = trim_segs(s0, g0, 0.0, ARROW_TRIM);
++        let Some(&Seg::C(_, c2, p)) = plain_cut.last() else {
++            panic!("{plain_cut:?}")
++        };
++        let tilt = (p.0 - c2.0).atan2(p.1 - c2.1).to_degrees().abs();
++        assert!(tilt > 5.0, "{tilt}");
++    }
++
++    #[test]
++    fn squared_ends_face_the_curve_and_keep_near_it_on_every_fixture() {
++        // Report §2.3 / M1, B1 review #1 and #2: on every flowchart and
++        // state fixture, static and routed, each end glyph faces along its
++        // scene curve's own end tangent and an arrowhead's stroke stops
++        // exactly its cut back on that tangent (the tip on the end, never
++        // tilted by a cut into a curve still turning); outside the head the
++        // painted curve keeps within SQUARE_END_DEV of the scene curve the
++        // routing, port and label stages spaced, beyond two heads of the
++        // tip — and within half a head nearer, where a curve swinging in
++        // from the side enters the head.
++        let root = env!("CARGO_MANIFEST_DIR");
++        let mut files: Vec<std::path::PathBuf> = ["tests/fixtures/quality", "examples"]
++            .iter()
++            .flat_map(|d| std::fs::read_dir(format!("{root}/{d}")).unwrap())
++            .map(|f| f.unwrap().path())
++            .filter(|p| p.extension().is_some_and(|x| x == "mmd"))
++            .collect();
++        files.sort();
++        let near = |a: (f64, f64), b: (f64, f64)| (a.0 - b.0).hypot(a.1 - b.1) < 1e-6;
++        // A curve straight to within SQUARE_END_FLAT over a head is drawn
++        // as it is: its heading at the cut within half a degree.
++        let along =
++            |a: (f64, f64), b: (f64, f64)| a.0 * b.0 + a.1 * b.1 > 0.5f64.to_radians().cos();
++        // The cut is found by arc length over a sampled curve, on a curve
++        // that may lie SQUARE_END_FLAT off its tangent (the SVG writes
++        // tenths).
++        let cut_at =
++            |a: (f64, f64), b: (f64, f64)| (a.0 - b.0).hypot(a.1 - b.1) < SQUARE_END_FLAT + 0.01;
++        let (mut ends, mut squared) = (0, 0);
++        for f in &files {
++            use crate::model::Document;
++            let src = std::fs::read_to_string(f).unwrap();
++            let g = match crate::parser::parse_document(&src) {
++                Ok(Document::Flowchart(g) | Document::State(g)) => g,
++                _ => continue,
++            };
++            let st = scene(&g);
++            let centres: Vec<(f64, f64)> = st.nodes.iter().map(|n| (n.x, n.y)).collect();
++            let rt = route(&g, &centres);
++            for sc in [&st, &rt] {
++                let mode = if std::ptr::eq(sc, &st) {
++                    "static"
++                } else {
++                    "routed"
++                };
++                for e in sc.edges.iter().filter(|e| edge_drawn(e) && e.from != e.to) {
++                    let (s0, g0) = plain_segs(e, |p| p);
++                    let (s1, g1) = drawn_segs(e, |p| p);
++                    let trims = arrow_trims(e);
++                    let (plain, painted) = (dense_path(s0, &g0, 48), dense_path(s1, &g1, 48));
++                    for (at_start, m, trim) in [
++                        (true, e.ends.start_marker(e.kind), trims.0),
++                        (false, e.ends.end_marker(e.kind), trims.1),
++                    ] {
++                        let Some(m) = m else { continue };
++                        ends += 1;
++                        let (rs, rg) = reverse_segs(s0, &g0);
++                        let (from, last) = if at_start {
++                            let n = rg.len();
++                            (if n > 1 { rg[n - 2].end() } else { rs }, rg[n - 1])
++                        } else {
++                            let n = g0.len();
++                            (if n > 1 { g0[n - 2].end() } else { s0 }, g0[n - 1])
++                        };
++                        let Some(d) = end_heading(from, last) else {
++                            continue;
++                        };
++                        let (tip, head) = edge_end_tangent(e, at_start);
++                        let what = format!("{f:?} {mode} {}->{} start={at_start}", e.from, e.to);
++                        assert!(along(head, d), "{what}: {head:?} vs {d:?}");
++                        if trim > 0.0 {
++                            let (s, g) = drawn_segs(e, |p| p);
++                            let (s, g) = trim_segs(s, g, trims.0, trims.1);
++                            let end = if at_start { s } else { g.last().unwrap().end() };
++                            let want = (tip.0 - d.0 * trim, tip.1 - d.1 * trim);
++                            // A curve too short to lose the cut is stroked whole.
++                            if !near(end, tip) {
++                                assert!(cut_at(end, want), "{what}: {end:?} vs {want:?}");
++                            }
++                        }
++                        let hw = (m == Marker::Arrow).then(|| edge_stroke_width(e) / 2.0);
++                        let (far, close) =
++                            end_stray(&painted, &plain, tip, d, hw, SQUARE_END_ENTRY_REACH);
++                        squared += usize::from(far + close > 0.0);
++                        assert!(far <= SQUARE_END_DEV + 0.1, "{what}: {far}");
++                        assert!(close <= ARROW_MARKER_PX / 2.0, "{what}: {close}");
++                    }
++                }
+             }
+         }
+-        assert!(stubbed >= 2, "the fan's outer branches turn");
+-        // A straight spine turns not at all: drawn whole.
+-        let sc = scene(&parse("flowchart TD\nA --> B\n").unwrap());
+-        assert_eq!(
+-            glyph_stubs(&sc.edges[0], &sc.edges[0].bezier),
+-            (false, false)
++        assert!(
++            ends > 500 && squared > 100,
++            "{ends} ends, {squared} squared"
++        );
++    }
++
++    #[test]
++    fn a_wide_stroke_stops_its_width_short_under_its_own_head() {
++        // B1 review #4: a `linkStyle` stroke wider than the usual cut
++        // showed its butt end's shoulders beside the head. Its stroke stops
++        // its own width short (a head is as wide as it is long), its head
++        // set that much further ahead so the tip stays on the border — the
++        // same 11 px glyph, in a variant marker.
++        let src = "flowchart LR\nA --> B\nC --> D\nlinkStyle 1 stroke-width:8px\n";
++        let sc = scene(&parse(src).unwrap());
++        assert_eq!(arrow_trims(&sc.edges[0]), (0.0, ARROW_TRIM));
++        assert_eq!(arrow_trims(&sc.edges[1]), (0.0, 8.0));
++        let svg = to_svg(&sc);
++        let paths = edge_paths(&svg);
++        assert!(
++            paths[0].contains("marker-end=\"url(#arrow)\""),
++            "{}",
++            paths[0]
+         );
++        assert!(
++            paths[1].contains("marker-end=\"url(#arrow-t8)\""),
++            "{}",
++            paths[1]
++        );
++        assert!(svg.contains(
++            "<marker id=\"arrow-t8\" viewBox=\"0 0 10 10\" refX=\"2.727\" refY=\"5\" \
++             markerUnits=\"userSpaceOnUse\" markerWidth=\"11\" markerHeight=\"11\""
++        ));
++        let mut bb = Bbox::new();
++        grow_scene(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
++        let (minx, _, _, _) = bb.finish();
++        let d = &sc.nodes[3];
++        let left = d.x - d.w / 2.0 + SVG_MARGIN - minx;
++        let pts = painted_points(paths[1]);
++        let end = pts[pts.len() - 1];
++        assert!((left - end.0 - 8.0).abs() < 0.11, "{end:?} vs {left}");
++        // Up to a whole head; a hairline keeps the usual cut.
++        assert_eq!(arrow_trim(30.0), ARROW_MARKER_PX);
++        assert_eq!(arrow_trim(1.0), ARROW_TRIM);
+     }
+ 
+     #[test]
+@@ -8494,7 +9215,8 @@ mod tests {
+         });
+         for e in cs.scene.edges.iter().chain(&es.scene.edges) {
+             assert!(e.paint_width.is_some());
+-            assert_eq!(glyph_stubs(e, &e.bezier), (false, false));
++            let (start, segs) = plain_segs(e, |p| p);
++            assert_eq!(square_ends(e, start, segs).2, [None, None]);
+             assert_eq!(arrow_trims(e), (0.0, 0.0));
+             assert_eq!(edge_path_d(e, |p| p), edge_path_d_painted(e, |p| p));
+         }
+diff --git a/tests/quality.rs b/tests/quality.rs
+index 30aa11e..2540d94 100644
+--- a/tests/quality.rs
++++ b/tests/quality.rs
+@@ -32,10 +32,7 @@ const CEILINGS: &[(&str, Ceil, Ceil)] = &[
+     // Routed edge_node 2 / 3 -> 0 once an edge the searches leave
+     // through nodes gets the rescue detour (frames crossed, nodes not).
+     ("dense-lr", (0, 11, 13), (0, 13, 20)),
+-    // dense-td static 42 -> 43 when the painter's straight glyph stubs
+-    // (report M1) made one more pair of ends converging on a node read
+-    // as parallel lines on top of each other (overlap_pairs 14 -> 15).
+-    ("dense-td", (0, 28, 43), (0, 28, 47)),
++    ("dense-td", (0, 28, 42), (0, 28, 47)),
+     ("fanout-frames", (0, 0, 0), (0, 0, 0)),
+     ("wide-labels", (0, 0, 0), (0, 0, 0)), // (0,0,6) (0,0,8)
+ ];
+@@ -48,13 +45,9 @@ const GAP_FLOORS: &[(&str, f64, f64)] = &[
+     ("back-edge", 40.0, 40.0),
+     // Static 3.4 before the channel nudge spread parallel legs apart.
+     ("bench-75", 5.9, 2.1),
+-    // The generated dense fixtures, as first measured; static 9.6 ->
+-    // 9.2 and 12.1 -> 11.3 once the yardstick measures the strokes as
+-    // painted, a cubic still turning at its glyph end drawn with a
+-    // straight stub into it (report M1): such an end runs square into
+-    // the side instead of curving away from its neighbour.
+-    ("dense-lr", 9.2, 5.5),
+-    ("dense-td", 11.3, 3.2),
++    // The generated dense fixtures, as first measured.
++    ("dense-lr", 9.6, 5.5),
++    ("dense-td", 12.1, 3.2),
+     ("fanout-frames", 40.0, 40.0),
+     ("wide-labels", 40.0, 40.0),
+ ];
+@@ -326,19 +319,11 @@ fn crossing_gaps_do_not_read_as_dashes() {
+ /// the chip spacing off title chips (a reroute that used
+ /// to slip past a chip now takes a lane beside another leg); routed hug
+ /// 4 440 -> 3 700 with the rescue and detour lanes kept off borders.
+-/// Report M1 (straight runs into end glyphs, measured as painted: a
+-/// cubic still turning at its glyph end ends in a head-long stub, a
+-/// long edge's spline in a straight stub along the side's normal): ends
+-/// converging on one side now run parallel into it instead of fanning
+-/// in, so more of them count as on top of or beside each other past
+-/// the port zone — overlap 2 764 -> 3 232 | 7 514 -> 8 414, longest
+-/// run 1 286 -> 1 366 routed, tight 9 342 -> 10 084 | 20 974 -> 21 998,
+-/// hug 3 106 -> 3 117 static (routes themselves unchanged).
+ const CHANNEL_MAX: [(&str, f64, f64); 4] = [
+-    ("overlap_len", 3_240.0, 8_420.0),
+-    ("overlap_max", 400.0, 1_370.0),
+-    ("tight_len", 10_090.0, 22_000.0),
+-    ("hug_len", 3_120.0, 3_700.0),
++    ("overlap_len", 2_920.0, 7_620.0),
++    ("overlap_max", 400.0, 1_290.0),
++    ("tight_len", 9_350.0, 21_900.0),
++    ("hug_len", 3_110.0, 3_700.0),
+ ];
+ 
+ /// Most edges (over all fixtures, per mode) that pass a title chip
+@@ -346,9 +331,8 @@ const CHANNEL_MAX: [(&str, f64, f64); 4] = [
+ /// (`route()` only prices a touch, as the wider rule costs a drag
+ /// reroutes that lie on other edges, G1): 2 in `bench-75`, legs into
+ /// the frame the chip names passing it within the spacing, never
+-/// through it; 3 with `dense-td` n16->n43's straight glyph stub (report
+-/// M1) running square into its node past g10's chip.
+-const EDGE_CHIP_MAX: (usize, usize) = (0, 3);
++/// through it.
++const EDGE_CHIP_MAX: (usize, usize) = (0, 2);
+ 
+ /// Edges keep their channel (G1/G4) and keep off frames' title chips
+ /// (G6), in either mode.
+@@ -401,35 +385,40 @@ fn channels_keep_edges_apart_and_off_chips() {
+ /// chain splines, back-edge bows), `x_drawn` the crossings a reader
+ /// sees, level and plumb edges included.
+ ///
+-/// B1 (report Q1 + M1): end_tilt 24 -> 8 static (heads face along the
+-/// stroke cut short under them; S-cubics and long edges' splines end in
+-/// straight stubs square to the side), max 86.5 -> 86.3 | 128.4 ->
+-/// 127.6; the routed 19 left are back-edge bows (B3) and ends the ports
+-/// stage turned round a corner. `end_kink` lands at 19 | 39: the
+-/// stroke entering a head's base still turning, chiefly router paths
+-/// whose final leg is only one clearance long, and the bows. Measured as
+-/// painted, the stubs end converging edges in parallel runs: band_pairs
+-/// 117 -> 119 and band_len 46 446 -> 47 754 routed, x_drawn 521 -> 523
+-/// routed (two crossings by a stub near an end). idiom_spline 19 -> 27
++/// B1 (report Q1 + M1): end_tilt 24 -> 14 static — every head faces
++/// along its curve's own end tangent, the stroke cut back to it, and a
++/// long edge whose last channel leg slanted into its node ends in a
++/// straight stub along the side's normal where that keeps the curve as
++/// clear as it was; the routed 19 left are back-edge bows (B3) and ends
++/// the ports stage turned round a corner. `end_kink` (new) lands at
++/// 62 | 81: the painter bends a curve still turning at its end into a
++/// straight run only within a px of the scene's curve, which the
++/// routing, port and label stages spaced; an S-cubic whose handles are
++/// a fraction of its sideways reach (a wide fan's outer branches)
++/// turns far more over its last head than that allows, so its stroke
++/// enters the head from the side (squaring those needs the scene's own
++/// geometry). As painted, the squared ends step sideways by up to that
++/// px: lat_backtrack 674 -> 676 routed (three turned ends in
++/// bench-75), band_len 46 446 -> 46 610 routed. idiom_spline 19 -> 25
+ /// static: a long edge whose channel legs were level but whose last leg
+ /// slanted into its node counted as orthogonal though it never was; the
+ /// slant now sits before its stub, where the count sees it.
+ const DEFECT_BASELINE: [(&str, f64, f64); 15] = [
+-    ("end_tilt", 8.0, 19.0),
+-    ("end_tilt_max", 86.3, 127.6),
++    ("end_tilt", 14.0, 19.0),
++    ("end_tilt_max", 86.3, 128.4),
+     ("end_gaps", 11.0, 11.0),
+     ("end_gap_max", 4.7, 4.7),
+     ("lat_wiggles", 16.0, 19.0),
+-    ("lat_backtrack", 1_902.0, 674.0),
++    ("lat_backtrack", 1_902.0, 676.0),
+     ("own_frame_x", 1.0, 0.0),
+     ("own_frame_len", 32.0, 0.0),
+-    ("band_pairs", 93.0, 119.0),
+-    ("band_len", 41_640.0, 47_754.0),
++    ("band_pairs", 93.0, 117.0),
++    ("band_len", 41_640.0, 46_610.0),
+     ("idiom_scubic", 60.0, 83.0),
+-    ("idiom_spline", 27.0, 21.0),
++    ("idiom_spline", 25.0, 21.0),
+     ("idiom_bow", 7.0, 8.0),
+-    ("x_drawn", 521.0, 523.0),
+-    ("end_kink", 19.0, 39.0),
++    ("x_drawn", 521.0, 521.0),
++    ("end_kink", 62.0, 81.0),
+ ];
+ 
+ /// Least mean `ink` over the fixtures (static, routed): the painted
+-- 
+2.43.0
+

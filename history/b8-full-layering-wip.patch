@@ -1,0 +1,860 @@
+diff --git a/src/layout.rs b/src/layout.rs
+index a453bd7..9b883a0 100644
+--- a/src/layout.rs
++++ b/src/layout.rs
+@@ -1,8 +1,10 @@
+ //! Sugiyama layout engine, following dagre (the algorithm mermaid.js
+ //! uses):
+ //!
+-//! 1. Detect back-edges via DFS so cycles don't break layering.
+-//! 2. Assign layers with longest-path (topological, Kahn-style).
++//! 1. Break cycles with a greedy feedback-arc set, subgraphs kept
++//!    contiguous ([`crate::rank`]).
++//! 2. Assign layers with network simplex: the least total edge length,
++//!    each subgraph's span of layers kept short ([`crate::rank`]).
+ //! 3. Split long edges into per-layer dummy chains (routing channels);
+ //!    a labelled long edge sizes its middle dummy to the label.
+ //! 4. Order within layers to cut crossings: weighted-median sweeps plus
+@@ -15,14 +17,13 @@
+ //! l = layer / depth); the renderer maps them to final x,y
+ //! according to the diagram direction (TD/LR/BT/RL).
+ 
+-use crate::clearance::{FRAME_SEP, NODE_SEP, TIGHT_RUN_MIN};
++use crate::clearance::{EDGE_SEP, FRAME_SEP, NODE_SEP, TIGHT_RUN_MIN};
+ use crate::labels::{FAN_FAR, FAN_SIBLING_GAP, LABEL_SIDE_AIR, LABEL_STRADDLE, STROKE_PAD};
+ use crate::model::{Direction, EdgeKind, Graph, Node, Shape};
+ use crate::ports::PORT_INSET;
+ use crate::scene::{port_lean, ARROW_MARKER_PX};
+ use std::borrow::Cow;
+ use std::collections::BTreeMap;
+-use std::collections::VecDeque;
+ 
+ /// Position & size of one node in abstract coordinates.
+ pub struct Placed {
+@@ -105,6 +106,21 @@ const ASPECT_TARGET: f64 = 2.5;
+ /// the longer edges and channel detours of a stacked or staggered
+ /// drawing outweigh the breadth saved on a moderately wide one.
+ const RIBBON_ENTRY: f64 = 4.0;
++/// Share of drawing area (breadth x depth) a narrowing step may add
++/// (report M11): narrowing is meant to fill the drawing, not to grow
++/// it. fanout-frames' stacked frame had grown it 16 %.
++const NARROW_AREA_SLACK: f64 = 0.02;
++/// Share of total edge length (node centre to centre, both axes) a
++/// narrowing step may add (report M11).
++const NARROW_LEN_SLACK: f64 = 0.1;
++/// Share of edge length along the flow a narrowing step may add (report
++/// M11): a box stacked under its sibling lengthens every edge into it by
++/// the sibling's depth, a detour past it. Folding fanout-frames' column
++/// of boxes fed by one node into two cut its total edge length (the
++/// fan's spread shrank) but grew it 53 % along the flow — every edge
++/// into the second column threading the first; dense-lr's one stacked
++/// box grows it 12 %.
++const NARROW_FLOW_SLACK: f64 = 0.15;
+ /// Fewest real nodes a layer needs before its leaves are staggered.
+ const STAGGER_MIN_NODES: usize = 6;
+ /// Most staggering proposals laid out per diagram (each one is a full
+@@ -1465,7 +1481,7 @@ fn layout_core(
+         "number of sizes must match number of nodes"
+     );
+     let groups: Vec<RankGroup> = rank_only.to_vec();
+-    let rk = rank(g, &groups);
++    let rk = rank(g, sizes, &groups, node_cluster);
+     let mut layer = rk.layer.clone();
+     if g.tight_sources {
+         if let Some(tight) = tighten_sources(g, &groups, &rk, &layer) {
+@@ -1579,35 +1595,68 @@ fn narrow(g: &Graph, sizes: &[(f64, f64)], node_cluster: Option<&[Vec<usize>]>,
+     // over the packed drawing the re-layering steps start from, so
+     // several steps cannot pile up re-threadings.
+     let hit_cap = st.best.hits + NARROW_HIT_SLACK;
++    // A step must give back breadth without adding area or edge length
++    // past their slack (report M11), crossings or node hits.
++    let area = |p: &Placement| p.lo.total_b * p.depth;
+     let better = |cand: &Placement, cur: &Placement| {
+         cand.lo.total_b <= cur.lo.total_b * (1.0 - STAGGER_MIN_GAIN)
++            && area(cand) <= area(cur) * (1.0 + NARROW_AREA_SLACK)
++            && edge_length(g, &cand.lo, false) <= edge_length(g, &cur.lo, false) * (1.0 + NARROW_LEN_SLACK)
+             && cand.crossings <= cap
+             && cand.hits <= hit_cap.min(cur.hits + NARROW_HIT_SLACK)
+     };
++    // A stacked box's in-edges thread past its sibling; a staggered leaf
++    // only steps one layer out beside its row.
++    let no_detour = |cand: &Placement, cur: &Placement| {
++        edge_length(g, &cand.lo, true) <= edge_length(g, &cur.lo, true) * (1.0 + NARROW_FLOW_SLACK)
++    };
+     // 1. Sibling stacking: two sibling subgraphs that share layers sit
+     // side by side, so their parent is as broad as both. The pairs that
+     // would give back the most breadth are tried ranked one below the
+     // other (a rank-only group, never drawn), unless an edge path runs
+-    // the other way; the narrowest result wins the round.
++    // the other way; so is a wrap of three or more siblings sharing a
++    // layer into two runs, the later run below the earlier
++    // ([`wrap_candidates`], report M11). The smallest result wins the
++    // round.
+     if let Some(nc) = node_cluster {
+         let mut tried: Vec<(usize, usize)> = Vec::new();
++        let mut wraps_tried: Vec<RankGroup> = Vec::new();
+         for _ in 0..STACK_MAX_ROUNDS {
+             if !ribbon(&st.best) {
+                 break;
+             }
+             let pairs = stack_candidates(g, nc, &st.groups, &st.rk, &st.layer, &st.best.lo, &tried);
+-            if pairs.is_empty() {
++            let wraps: Vec<RankGroup> =
++                wrap_candidates(g, nc, &st.groups, &st.rk, &st.layer, &st.best.lo)
++                    .into_iter()
++                    .filter(|w| !wraps_tried.contains(w))
++                    .collect();
++            if pairs.is_empty() && wraps.is_empty() {
+                 break;
+             }
++            let groups_to_try: Vec<(Option<(usize, usize)>, RankGroup)> = wraps
++                .into_iter()
++                .take(1)
++                .map(|w| (None, w))
++                .chain(
++                    pairs
++                        .iter()
++                        .take(STACK_BEAM)
++                        .map(|&(a, b)| (Some((a, b)), stack_group(nc, a, b))),
++                )
++                .collect();
+             let mut won: Option<(Vec<RankGroup>, Ranking, Placement)> = None;
+-            for &(above, below) in pairs.iter().take(STACK_BEAM) {
++            for (pair, group) in groups_to_try {
+                 if !st.afford(g) {
+                     break;
+                 }
+-                tried.push((above, below));
++                match pair {
++                    Some(p) => tried.push(p),
++                    None => wraps_tried.push(group.clone()),
++                }
+                 let mut cand_groups = st.groups.clone();
+-                cand_groups.push(stack_group(nc, above, below));
+-                let crk = rank(g, &cand_groups);
++                cand_groups.push(group);
++                let crk = rank(g, sizes, &cand_groups, node_cluster);
+                 let cand = place(
+                     g,
+                     sizes,
+@@ -1618,7 +1667,8 @@ fn narrow(g: &Graph, sizes: &[(f64, f64)], node_cluster: Option<&[Vec<usize>]>,
+                     packed_opts,
+                 );
+                 let cur = won.as_ref().map_or(&st.best, |w| &w.2);
+-                if better(&cand, &st.best) && cand.lo.total_b < cur.lo.total_b {
++                let smaller = (area(&cand), cand.lo.total_b) < (area(cur), cur.lo.total_b);
++                if better(&cand, &st.best) && no_detour(&cand, &st.best) && (won.is_none() || smaller) {
+                     won = Some((cand_groups, crk, cand));
+                 }
+             }
+@@ -1632,9 +1682,10 @@ fn narrow(g: &Graph, sizes: &[(f64, f64)], node_cluster: Option<&[Vec<usize>]>,
+             tried.clear();
+         }
+     }
+-    // 2. Sources pulled down next to their targets (dagre's network
+-    // simplex does the same): longest-path parks every source on the
+-    // first layer, however deep its targets sit, which widens it.
++    // 2. Sources pulled down next to their targets: the network simplex
++    // ([`rank`]) already does so wherever it shortens the drawing, so
++    // this mostly finds nothing to move; it still settles a source a
++    // stacking round re-ranked.
+     if ribbon(&st.best) {
+         if let Some(tight) =
+             tighten_sources(g, &st.groups, &st.rk, &st.layer).filter(|_| st.afford(g))
+@@ -1862,6 +1913,138 @@ fn stack_group(nc: &[Vec<usize>], above: usize, below: usize) -> RankGroup {
+     (members_of(nc, above), members_of(nc, below))
+ }
+ 
++/// Total edge length of a placement, node centre to centre along both
++/// axes, or along the flow only (`flow`; self-loops left out): what a
++/// narrowing step must not grow past [`NARROW_LEN_SLACK`] /
++/// [`NARROW_FLOW_SLACK`].
++fn edge_length(g: &Graph, lo: &LayoutResult, flow: bool) -> f64 {
++    g.edges
++        .iter()
++        .filter(|e| e.from != e.to)
++        .map(|e| {
++            let (a, b) = (&lo.nodes[e.from], &lo.nodes[e.to]);
++            let along = (a.l - b.l).abs();
++            if flow {
++                along
++            } else {
++                (a.b - b.b).abs() + along
++            }
++        })
++        .sum()
++}
++
++/// Wrap candidates (report M11): per parent box (or the top level), the
++/// three or more child boxes that share its most shared layer, in drawn
++/// order, split into two runs of about equal breadth — the later run
++/// ranked below the earlier one (one rank-only group), so a column of
++/// boxes fed from one side folds into two instead of moving a single
++/// box past its sibling. Skipped when an edge path (or rank-only link)
++/// leads from the later run back into the earlier one.
++fn wrap_candidates(
++    g: &Graph,
++    nc: &[Vec<usize>],
++    groups: &[RankGroup],
++    rk: &Ranking,
++    layer: &[usize],
++    lo: &LayoutResult,
++) -> Vec<RankGroup> {
++    let n = layer.len();
++    // Per box: parent, layer span, breadth span.
++    let mut info: BTreeMap<usize, (Option<usize>, usize, usize, f64, f64)> = BTreeMap::new();
++    for v in 0..n {
++        let p = &lo.nodes[v];
++        for (i, &c) in nc[v].iter().enumerate() {
++            let parent = i.checked_sub(1).map(|k| nc[v][k]);
++            let e = info.entry(c).or_insert((
++                parent,
++                layer[v],
++                layer[v],
++                f64::INFINITY,
++                f64::NEG_INFINITY,
++            ));
++            e.1 = e.1.min(layer[v]);
++            e.2 = e.2.max(layer[v]);
++            e.3 = e.3.min(p.b - p.bsize / 2.0);
++            e.4 = e.4.max(p.b + p.bsize / 2.0);
++        }
++    }
++    let mut next: Vec<Vec<usize>> = vec![Vec::new(); n];
++    for (ei, e) in g.edges.iter().enumerate() {
++        if !rk.back[ei] && e.from != e.to {
++            next[e.from].push(e.to);
++        }
++    }
++    for (from, to) in groups {
++        for &a in from {
++            next[a].extend(to.iter().copied());
++        }
++    }
++    let mut parents: Vec<Option<usize>> = info.values().map(|i| i.0).collect();
++    parents.sort_unstable();
++    parents.dedup();
++    let mut out: Vec<(f64, RankGroup)> = Vec::new();
++    for parent in parents {
++        let kids: Vec<usize> = info
++            .iter()
++            .filter(|(_, i)| i.0 == parent)
++            .map(|(&c, _)| c)
++            .collect();
++        if kids.len() < 3 {
++            continue;
++        }
++        // The layer most of them share (the first on a tie).
++        let (lmin, lmax) = (
++            kids.iter().map(|c| info[c].1).min().unwrap_or(0),
++            kids.iter().map(|c| info[c].2).max().unwrap_or(0),
++        );
++        let at = |l: usize| kids.iter().filter(|c| info[c].1 <= l && l <= info[c].2).count();
++        let Some(l) = (lmin..=lmax).max_by(|&a, &b| at(a).cmp(&at(b)).then(b.cmp(&a))) else {
++            continue;
++        };
++        let mut row: Vec<usize> = kids
++            .iter()
++            .copied()
++            .filter(|c| info[c].1 <= l && l <= info[c].2)
++            .collect();
++        if row.len() < 3 {
++            continue;
++        }
++        row.sort_by(|a, b| info[a].3.total_cmp(&info[b].3).then(a.cmp(b)));
++        let width = |c: &usize| info[c].4 - info[c].3;
++        let total: f64 = row.iter().map(width).sum();
++        let mut acc = 0.0;
++        let mut split = 1;
++        let mut best = f64::INFINITY;
++        for k in 1..row.len() {
++            acc += width(&row[k - 1]);
++            let worse = acc.max(total - acc);
++            if worse < best {
++                best = worse;
++                split = k;
++            }
++        }
++        let members = |cs: &[usize]| -> Vec<usize> {
++            (0..n).filter(|&v| cs.iter().any(|c| nc[v].contains(c))).collect()
++        };
++        let (first, then) = (members(&row[..split]), members(&row[split..]));
++        // No path from the later run back into the earlier.
++        let mut seen = vec![false; n];
++        let mut stack = then.clone();
++        while let Some(u) = stack.pop() {
++            if std::mem::replace(&mut seen[u], true) {
++                continue;
++            }
++            stack.extend(next[u].iter().copied());
++        }
++        if first.iter().any(|&v| seen[v]) {
++            continue;
++        }
++        out.push((total, (first, then)));
++    }
++    out.sort_by(|a, b| b.0.total_cmp(&a.0));
++    out.into_iter().map(|c| c.1).collect()
++}
++
+ /// Sibling pairs `(above, below)` worth stacking, not yet in `tried`:
+ /// siblings that share a layer, where no edge path (or rank-only link)
+ /// runs from `below` back into `above`, most promising first (by the
+@@ -1963,62 +2146,179 @@ fn stack_candidates(
+     cands.into_iter().map(|c| (c.1, c.2)).collect()
+ }
+ 
+-/// Layering result shared by every candidate placement: the DFS cycle
++/// Layering result shared by every candidate placement: the cycle
+ /// breakers over the ranking graph (real nodes then one hub per
+-/// rank-only group) and its longest-path layers.
++/// rank-only group) and its network-simplex layers ([`crate::rank`]).
+ struct Ranking {
+     /// Per ranking link (real edges, then hub links): a cycle breaker.
+     back: Vec<bool>,
+     /// Rank-only group `k`'s first hub link id.
+     group_eid: Vec<usize>,
+-    /// Longest-path layer per REAL node.
++    /// Layer per REAL node.
+     layer: Vec<usize>,
+ }
+ 
+-/// Steps 1 and 2: mark back-edges, then longest-path layering.
+-fn rank(g: &Graph, rank_only: &[RankGroup]) -> Ranking {
++/// Links two sibling boxes need (one way, cycle breakers counted the
++/// way they turned) before the later box is ranked wholly below the
++/// earlier ([`rank`]). bench-75's zones (12 edge -> app links, 21 app ->
++/// data ...) then read as columns along the flow; a single link does
++/// not move a whole box: dense-lr's right-hand boxes, each fed once
++/// from three boxes, were stretched over every layer those three
++/// spanned, and `route()` paid a quarter more to cross them.
++const BOX_SEQUENCE_LINKS: usize = 2;
++
++/// A real edge's weight in the ranking ([`crate::rank`]): rank-only
++/// links share one between the members of a side, so a group counts
++/// like one edge however many members it names (840 divides evenly
++/// by every side size up to 8).
++const RANK_EDGE_WEIGHT: i64 = 840;
++
++/// Steps 1 and 2: mark back-edges (greedy feedback-arc set, boxes
++/// contiguous), then network-simplex layering with nesting links.
++fn rank(
++    g: &Graph,
++    sizes: &[(f64, f64)],
++    rank_only: &[RankGroup],
++    node_cluster: Option<&[Vec<usize>]>,
++) -> Ranking {
+     let n = g.nodes.len();
+     // Ranking graph: the real nodes, then one HUB per rank-only group
+     // (`from -> hub` weighs one layer, `hub -> to` none), so a group
+     // costs |from| + |to| links instead of every from x to pair.
+     let nx = n + rank_only.len();
+-    let mut adj: Vec<Vec<(usize, usize)>> = vec![Vec::new(); nx];
+-    for (ei, e) in g.edges.iter().enumerate() {
+-        adj[e.from].push((e.to, ei));
+-    }
+-    // Hub links ride the same DFS / layering as real edges, numbered
+-    // after them; `group_eid[k]` is group k's first link id.
+-    let ne = g.edges.len();
+-    let mut nlinks = ne;
++    // Per link: (from, to), its minimum length and its weight.
++    let mut links: Vec<(usize, usize)> = Vec::with_capacity(g.edges.len());
++    let mut minlen: Vec<i64> = Vec::with_capacity(g.edges.len());
++    let mut weight: Vec<i64> = Vec::with_capacity(g.edges.len());
++    for e in &g.edges {
++        links.push((e.from, e.to));
++        minlen.push(1);
++        weight.push(RANK_EDGE_WEIGHT);
++    }
++    // Hub links ride the same cycle breaking / layering as real edges,
++    // numbered after them; `group_eid[k]` is group k's first link id.
+     let mut group_eid = Vec::with_capacity(rank_only.len());
+     for (k, (from, to)) in rank_only.iter().enumerate() {
+-        group_eid.push(nlinks);
++        group_eid.push(links.len());
++        let share = |side: usize| (RANK_EDGE_WEIGHT / side.max(1) as i64).max(1);
+         for &a in from {
+-            adj[a].push((n + k, nlinks));
+-            nlinks += 1;
++            links.push((a, n + k));
++            minlen.push(1);
++            weight.push(share(from.len()));
+         }
+         for &b in to {
+-            adj[n + k].push((b, nlinks));
+-            nlinks += 1;
++            links.push((n + k, b));
++            minlen.push(0);
++            weight.push(share(to.len()));
++        }
++    }
++    // Box path per ranking node: a hub sits in the deepest box holding
++    // every member it links, so a group inside one box orders inside it.
++    let paths: Option<Vec<Vec<usize>>> = node_cluster.map(|nc| {
++        let mut p: Vec<Vec<usize>> = nc.to_vec();
++        for (from, to) in rank_only {
++            let mut it = from.iter().chain(to).map(|&v| nc[v].as_slice());
++            let first = it.next().unwrap_or(&[]);
++            let common = it.fold(first.len(), |k, q| {
++                first.iter().zip(q).take(k).take_while(|(a, b)| a == b).count()
++            });
++            p.push(first[..common].to_vec());
+         }
++        p
++    });
++
++    // --- 1. Cycle breakers. ---
++    let back = if std::env::var_os("FMDBG_DFS").is_some() { dfs_back(nx, &links) } else { crate::rank::feedback_links(nx, &links, &weight, if std::env::var_os("FMDBG_NOHIER").is_some() { None } else { paths.as_deref() }) };
++
++    // --- 2. Network-simplex layering: real cycle breakers reversed (a
++    // back-edge still pulls its ends together), hub cycle breakers
++    // dropped, plus the nesting links of every box.
++    let mut ns: Vec<crate::rank::Link> = Vec::with_capacity(links.len());
++    let ne = g.edges.len();
++    for (li, &(a, b)) in links.iter().enumerate() {
++        if a == b || (back[li] && li >= ne) {
++            continue;
++        }
++        let (from, to) = if back[li] { (b, a) } else { (a, b) };
++        ns.push(crate::rank::Link {
++            from,
++            to,
++            minlen: minlen[li],
++            weight: weight[li],
++        });
++    }
++    let mut nv = nx;
++    if let (Some(nc), Some(paths), true) = (node_cluster, paths.as_deref(), std::env::var_os("FMDBG_NONEST").is_none()) {
++        let heavy = weight.iter().sum::<i64>() + 1;
++        let ends = nesting(nc, nx, heavy, &mut ns);
++        nv = nx + 2 * ends.len();
++        // Two sibling boxes joined by [`BOX_SEQUENCE_LINKS`] edges follow
++        // one another: the later box starts below the earlier one's last
++        // layer (by the edges' minimum length) instead of sharing layers
++        // with it and so standing beside it across the flow (a pure
++        // constraint: no weight). Counted per ordered pair of the boxes
++        // two edge ends first differ in, cycle breakers the way they
++        // turned; rank-only links never count.
++        let mut pairs: BTreeMap<(usize, usize), (usize, i64)> = BTreeMap::new();
++        for (li, &(a, b)) in links.iter().enumerate() {
++            if a == b || li >= ne {
++                continue;
++            }
++            let (pa, pb) = (&paths[a], &paths[b]);
++            let cp = pa.iter().zip(pb).take_while(|(x, y)| x == y).count();
++            let (Some(&ca), Some(&cb)) = (pa.get(cp), pb.get(cp)) else {
++                continue;
++            };
++            let key = if back[li] { (cb, ca) } else { (ca, cb) };
++            let e = pairs.entry(key).or_insert((0, 0));
++            e.0 += 1;
++            e.1 = e.1.max(minlen[li]);
++        }
++        for (&(first, then), &(count, len)) in &pairs {
++            if count >= BOX_SEQUENCE_LINKS && std::env::var_os("FMDBG_NOSEQ").is_none() {
++                ns.push(crate::rank::Link {
++                    from: ends[&first].1,
++                    to: ends[&then].0,
++                    minlen: len,
++                    weight: 0,
++                });
++            }
++        }
++    }
++    let ranks = crate::rank::network_simplex(nv, &ns);
++    let mut layer: Vec<usize> = ranks[..n].iter().map(|&r| r.max(0) as usize).collect();
++    if let (Some(nc), true) = (node_cluster, std::env::var_os("FMDBG_NOSETTLE").is_none()) {
++        settle_loose_members(g, sizes, nc, &links, &mut layer);
++    }
++    let layer = compact_layers(layer);
++    Ranking {
++        back,
++        group_eid,
++        layer,
+     }
++}
+ 
+-    // --- 1. Mark back-edges (cycle breakers) with iterative DFS ---
+-    let mut state = vec![0u8; nx]; // 0 unvisited, 1 on stack, 2 done
+-    let mut back = vec![false; nlinks];
++/// The depth-first cycle breakers (the pre-B8 rule): links in
++/// declaration order per node, nodes in index order.
++fn dfs_back(nx: usize, links: &[(usize, usize)]) -> Vec<bool> {
++    let mut adj: Vec<Vec<(usize, usize)>> = vec![Vec::new(); nx];
++    for (li, &(a, b)) in links.iter().enumerate() {
++        adj[a].push((b, li));
++    }
++    let mut state = vec![0u8; nx];
++    let mut back = vec![false; links.len()];
+     for s in 0..nx {
+         if state[s] != 0 {
+             continue;
+         }
+         state[s] = 1;
+         let mut stack: Vec<(usize, usize)> = vec![(s, 0)];
+-        while !stack.is_empty() {
+-            let (u, ci) = *stack.last().unwrap();
++        while let Some(&(u, ci)) = stack.last() {
+             if ci < adj[u].len() {
+                 stack.last_mut().unwrap().1 += 1;
+                 let (v, ei) = adj[u][ci];
+                 if v == u {
+-                    back[ei] = true; // self-loop
++                    back[ei] = true;
+                     continue;
+                 }
+                 match state[v] {
+@@ -2026,7 +2326,7 @@ fn rank(g: &Graph, rank_only: &[RankGroup]) -> Ranking {
+                         state[v] = 1;
+                         stack.push((v, 0));
+                     }
+-                    1 => back[ei] = true, // edge back to an ancestor = cycle
++                    1 => back[ei] = true,
+                     _ => {}
+                 }
+             } else {
+@@ -2035,67 +2335,124 @@ fn rank(g: &Graph, rank_only: &[RankGroup]) -> Ranking {
+             }
+         }
+     }
++    back
++}
+ 
+-    // --- 2. Longest-path layering on the DAG (back-edges excluded) ---
+-    let mut indeg = vec![0usize; nx];
+-    for links in &adj {
+-        for &(v, ei) in links {
+-            if !back[ei] {
+-                indeg[v] += 1;
+-            }
++/// Nesting links (dagre's nesting graph, without its border ranks):
++/// per box a top and a bottom node, linked to each direct member and to
++/// each child box's top / bottom with minimum length 0 and weight
++/// `heavy` — more than every other link together — so the layering
++/// first keeps each box's span of layers as short as its own edges
++/// allow, and an edge-less member falls inside that span instead of on
++/// the first layer (dense-lr, dense-td: frames stretched over layers
++/// holding nothing of theirs, report §2.9). New nodes are numbered from
++/// `first`; returns each box's (top, bottom) node.
++fn nesting(
++    nc: &[Vec<usize>],
++    first: usize,
++    heavy: i64,
++    ns: &mut Vec<crate::rank::Link>,
++) -> BTreeMap<usize, (usize, usize)> {
++    // Box id -> (top, bottom) node, in id order.
++    let mut ends: BTreeMap<usize, (usize, usize)> = BTreeMap::new();
++    let mut next = first;
++    for path in nc {
++        for &c in path {
++            ends.entry(c).or_insert_with(|| {
++                next += 2;
++                (next - 2, next - 1)
++            });
+         }
+     }
+-    let mut layer = vec![0usize; nx];
+-    let mut q: VecDeque<usize> = (0..nx).filter(|&v| indeg[v] == 0).collect();
+-    while let Some(u) = q.pop_front() {
+-        let step = usize::from(u < n); // hub -> to adds no layer
+-        for &(v, ei) in &adj[u] {
+-            if back[ei] {
+-                continue;
+-            }
+-            if layer[u] + step > layer[v] {
+-                layer[v] = layer[u] + step;
+-            }
+-            indeg[v] -= 1;
+-            if indeg[v] == 0 {
+-                q.push_back(v);
+-            }
++    let link = |from: usize, to: usize| crate::rank::Link {
++        from,
++        to,
++        minlen: 0,
++        weight: heavy,
++    };
++    let mut child_boxes: std::collections::BTreeSet<(usize, usize)> = Default::default();
++    for (v, path) in nc.iter().enumerate() {
++        let Some(&c) = path.last() else { continue };
++        let (top, bottom) = ends[&c];
++        ns.push(link(top, v));
++        ns.push(link(v, bottom));
++        for w in path.windows(2) {
++            child_boxes.insert((w[0], w[1]));
+         }
+     }
++    for (parent, child) in child_boxes {
++        let (pt, pb) = ends[&parent];
++        let (ct, cb) = ends[&child];
++        ns.push(link(pt, ct));
++        ns.push(link(cb, pb));
++    }
++    ends
++}
+ 
+-    // --- 3. Lead nodes (a state `note left of X`) one layer before
+-    // their nearest target, as dagre's tight ranking puts them: the
+-    // pass above parks every source on layer 0. Only a source moves, so
+-    // no other node's layer depends on it; through a rank-only hub the
+-    // target is the nearest member the hub ranks below it.
+-    // A rank-only group linking into the node (a transition into its
+-    // composite) only keeps it below the group's sources: the floor.
+-    for &v in g.lead_nodes.iter().filter(|&&v| v < n) {
+-        let into = |u: usize| adj[u].iter().any(|&(w, ei)| w == v && !back[ei]);
+-        let has_in = (0..n).any(into);
+-        let floor = (n..nx).filter(|&h| into(h)).map(|h| layer[h]).max();
+-        let reach = |w: usize| -> Option<usize> {
+-            if w < n {
+-                Some(layer[w])
+-            } else {
+-                adj[w].iter().map(|&(t, _)| layer[t]).min()
++/// Each box member linked to nothing (no edge, no rank-only link) takes
++/// the layer of its innermost box's span where that box's members fill
++/// the least breadth (nearest the span's middle on a tie, then the
++/// earlier). The layering leaves such a member anywhere in the span —
++/// its nesting links cost the same everywhere — and so on one end of
++/// it: dense-td's and dense-lr's loose notes all stood on their box's
++/// first layer, one long row (report §2.9). Members go one at a time in
++/// declaration order, each counting the ones placed before it. `links`
++/// are the ranking links (real edges, then hub links).
++fn settle_loose_members(
++    g: &Graph,
++    sizes: &[(f64, f64)],
++    nc: &[Vec<usize>],
++    links: &[(usize, usize)],
++    layer: &mut [usize],
++) {
++    let n = g.nodes.len();
++    let mut linked = vec![false; n];
++    for &(a, b) in links {
++        if a != b {
++            for v in [a, b] {
++                if v < n {
++                    linked[v] = true;
++                }
+             }
+-        };
+-        let to = adj[v]
+-            .iter()
+-            .filter(|&&(_, ei)| !back[ei])
+-            .filter_map(|&(w, _)| reach(w))
+-            .min();
+-        if let Some(to) = to.filter(|&t| !has_in && t > layer[v] + 1) {
+-            layer[v] = (to - 1).max(floor.unwrap_or(0));
+         }
+     }
+-
+-    layer.truncate(n);
+-    Ranking {
+-        back,
+-        group_eid,
+-        layer,
++    let loose: Vec<usize> = (0..n).filter(|&v| !linked[v] && !nc[v].is_empty()).collect();
++    if loose.is_empty() {
++        return;
++    }
++    let horizontal = matches!(g.direction, Direction::LR | Direction::RL);
++    let breadth = |v: usize| if horizontal { sizes[v].1 } else { sizes[v].0 } + GAP_B;
++    let mut settled = vec![true; n];
++    for &v in &loose {
++        settled[v] = false;
++    }
++    for &v in &loose {
++        let Some(&c) = nc[v].last() else { continue };
++        let members: Vec<usize> = (0..n)
++            .filter(|&w| w != v && settled[w] && nc[w].contains(&c))
++            .collect();
++        let (Some(lo), Some(hi)) = (
++            members.iter().map(|&w| layer[w]).min(),
++            members.iter().map(|&w| layer[w]).max(),
++        ) else {
++            settled[v] = true;
++            continue;
++        };
++        let mut fill = vec![0.0f64; hi - lo + 1];
++        for &w in &members {
++            fill[layer[w] - lo] += breadth(w);
++        }
++        let mid2 = lo + hi; // twice the span's middle
++        let best = (lo..=hi)
++            .min_by(|&a, &b| {
++                fill[a - lo]
++                    .total_cmp(&fill[b - lo])
++                    .then((2 * a).abs_diff(mid2).cmp(&(2 * b).abs_diff(mid2)))
++                    .then(a.cmp(&b))
++            })
++            .unwrap_or(lo);
++        layer[v] = best;
++        settled[v] = true;
+     }
+ }
+ 
+@@ -2370,7 +2727,16 @@ fn place(
+     // Adjacent pairs linked so far only by a 2-cycle's return edge,
+     // which stands in for the first forward edge of the pair.
+     let mut return_only: std::collections::HashSet<(usize, usize)> = Default::default();
+-    for (ei, e) in g.edges.iter().enumerate() {
++    // Edges in a canonical order — by their ends' declaration indices,
++    // the edge index only between parallel edges — so the dummies' and
++    // links' order, which every ordering tie-break below falls back on,
++    // does not depend on the order the edge lines were written in
++    // (report §2.9: shuffling dense-td's edge lines moved its width by
++    // up to 20 %).
++    let mut by_ends: Vec<usize> = (0..g.edges.len()).collect();
++    if std::env::var_os("FMDBG_NOCANON").is_none() { by_ends.sort_by_key(|&ei| (g.edges[ei].from, g.edges[ei].to, ei)); }
++    for ei in by_ends {
++        let e = &g.edges[ei];
+         if e.from == e.to {
+             continue; // self-loop — no layered path
+         }
+@@ -3293,6 +3659,54 @@ fn place(
+         }
+         need
+     };
++    // Per lower layer: room in the gap before it for every lateral run
++    // crossing it (report §2.9) — `k` runs take `k` tracks and the
++    // corners between them, `2k - 1` [`EDGE_SEP`]s, so up to three runs
++    // keep GAP_L. A network-simplex layering packs a box's members onto
++    // few layers, so one gap can carry a whole zone's edges: bench-75's
++    // 21 app -> data edges and the lanes passing them shared one GAP_L,
++    // and the router laid them over one another (58 overlapping pairs);
++    // with the room, `route()` also finds its channels for less work
++    // (dense-td's took 11 % fewer instructions than with one `EDGE_SEP` per run).
++    // A run is a chain step whose ends lie more than [`TIGHT_RUN_MIN`]
++    // apart sideways (a straighter one crosses the gap as a line of its
++    // own); back-edges ride lanes beside the layers. Clustered flowchart
++    // and state drawings only, where the router draws those runs as
++    // orthogonal legs.
++    let run_need: Vec<f64> = {
++        let mut runs = vec![0usize; nlayers];
++        if clustered && g.edge_paint_width.is_none() && std::env::var_os("FMDBG_NORUN").is_none() {
++            for (ei, e) in g.edges.iter().enumerate() {
++                if e.from == e.to || back[ei] || matches!(e.kind, EdgeKind::Invisible) {
++                    continue;
++                }
++                let chain = &edge_chain[ei];
++                let ends = [e.from, e.to];
++                let (lo, hi) = if alayer[e.from] <= alayer[e.to] {
++                    (ends[0], ends[1])
++                } else {
++                    (ends[1], ends[0])
++                };
++                let mut path: Vec<usize> = Vec::with_capacity(chain.len() + 2);
++                path.push(lo);
++                if alayer[e.from] <= alayer[e.to] {
++                    path.extend(chain.iter().copied());
++                } else {
++                    path.extend(chain.iter().rev().copied());
++                }
++                path.push(hi);
++                for w in path.windows(2) {
++                    let (a, b) = (w[0], w[1]);
++                    if alayer[b] == alayer[a] + 1 && (bpos[a] - bpos[b]).abs() > TIGHT_RUN_MIN {
++                        runs[alayer[b]] += 1;
++                    }
++                }
++            }
++        }
++        runs.iter()
++            .map(|&k| if k == 0 { 0.0 } else { (2 * k - 1) as f64 * EDGE_SEP })
++            .collect()
++    };
+     // The layer lines and the depth they span. `judged`: as the layout
+     // search judges a candidate (crossings, node hits, the ribbon tests)
+     // — a title strip's slot grown on both sides, a labelled gap only as
+@@ -3407,6 +3821,10 @@ fn place(
+             if !judged && li > 0 && cross_need[li] > 0.0 {
+                 cursor = cursor.max(lcoord[li - 1] + cross_need[li] - before);
+             }
++            if !judged && li > 0 && run_need[li] > 0.0 {
++                let prev = lcoord[li - 1] + prev_after;
++                cursor = cursor.max(prev + run_need[li]);
++            }
+             prev_after = after;
+             lcoord[li] = cursor + before;
+             cursor += before + after + gap_l;
+diff --git a/src/lib.rs b/src/lib.rs
+index f35ae42..14f7ca6 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -54,6 +54,7 @@ pub mod model;
+ pub mod parser;
+ pub mod pie;
+ mod ports;
++mod rank;
+ // Layout-quality yardstick for tests and `examples/quality.rs`; not a
+ // stable API.
+ #[doc(hidden)]
+diff --git a/src/router.rs b/src/router.rs
+index 94092a3..9c0f42e 100644
+--- a/src/router.rs
++++ b/src/router.rs
+@@ -392,6 +392,20 @@ fn sample_count(l: f64) -> usize {
+     ((l / SAMPLE_STEP).ceil().max(1.0) as usize).min(MAX_SEG_SAMPLES)
+ }
+ 
++/// Whether segment `a`–`b` lies wholly outside `r` by its bounding box
++/// (with a hair of margin): [`clip`] would find nothing there, so a
++/// caller may skip the segment before its divisions. Scoring a long
++/// candidate tests every segment against every node, frame, chip and
++/// label its box meets; most miss (`World::score` ran 12 % fewer
++/// instructions on dense-td's `route()`, the result unchanged).
++fn off_box(a: Pt, b: Pt, r: R) -> bool {
++    const HAIR: f64 = 1e-6;
++    a.0.max(b.0) < r.0 - HAIR
++        || a.0.min(b.0) > r.2 + HAIR
++        || a.1.max(b.1) < r.1 - HAIR
++        || a.1.min(b.1) > r.3 + HAIR
++}
++
+ /// The part of segment `a`–`b` inside the closed rect `r`
+ /// (Liang-Barsky), or `None` when it misses.
+ fn clip(a: Pt, b: Pt, r: R) -> Option<(Pt, Pt)> {
+@@ -825,6 +839,9 @@ impl World {
+             self.look(pts.len());
+             // Done once it is through the node: only the class counts.
+             'node: for w in pts.windows(2) {
++                if off_box(w[0], w[1], near) {
++                    continue;
++                }
+                 let Some((a, b)) = clip(w[0], w[1], near) else {
+                     continue;
+                 };
+@@ -853,8 +870,9 @@ impl World {
+             self.look(pts.len());
+             let inner = grow(r, -FRAME_INSET);
+             let enters = pts.windows(2).any(|w| {
+-                clip(w[0], w[1], inner)
+-                    .is_some_and(|(a, b)| inside(inner, ((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0)))
++                !off_box(w[0], w[1], inner)
++                    && clip(w[0], w[1], inner)
++                        .is_some_and(|(a, b)| inside(inner, ((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0)))
+             });
+             if enters {
+                 s.frame += 1;
+@@ -882,7 +900,11 @@ impl World {
+         for (f, &c) in self.chips.iter().enumerate() {
+             let own = [info.ends.0, info.ends.1].contains(&EndRef::Frame(f));
+             let g = grow(c, if own { NODE_CLEARANCE } else { self.chip_reach });
+-            if overlaps(grow(bb, EPS), g) && pts.windows(2).any(|w| clip(w[0], w[1], g).is_some()) {
++            if overlaps(grow(bb, EPS), g)
++                && pts
++                    .windows(2)
++                    .any(|w| !off_box(w[0], w[1], g) && clip(w[0], w[1], g).is_some())
++            {
+                 s.chip += 1;
+             }
+         }
+@@ -893,8 +915,9 @@ impl World {
+             }
+             self.look(pts.len());
+             let under = pts.windows(2).any(|w| {
+-                clip(w[0], w[1], r)
+-                    .is_some_and(|(a, b)| inside(r, ((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0)))
++                !off_box(w[0], w[1], r)
++                    && clip(w[0], w[1], r)
++                        .is_some_and(|(a, b)| inside(r, ((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0)))
+             });
+             s.label += usize::from(under);
+         }
