@@ -42,16 +42,21 @@ Pass `note` instead of `resumeAt` when the B8 work looks unfinished. For context
 
 **D. B9 started by accident.** Save it (`git branch backup-b9-wip HEAD`, then push to `backup/b9-wip`). Reset the work branch to the B8 head, and follow A. The B9 attempt may be thrown away: the workflow re-implements B9 from scratch.
 
-## 2. State at the pause (update as steps finish)
+## 2. State at the pause (final unless noted)
 | Thing | Value |
 |---|---|
-| Released | **0.34.0**: `main` = `dd7c591` (PR #92). Tag `v0.34.0` was pushed by the user, and the user published to crates.io (max_version 0.34.0). Contents: B0–B7, contributor JSON fix #78, and the hub-label perf fix `9c62b27`. |
-| dev | `f6c8e82` (PR #93, "Sync main into dev", merged by the user), so it contains 0.34.0. |
-| Work branch | `ccr-ccc6d89a-5cxd7e`. origin = `d50c525` (B7). B8 WIP is local and on `backup/b8-layering-wip` (`4381c24` after fix#1). At the time of writing, B8 verify#1 is running. |
-| Workflow | Run `wf_513402ce-c52` (script `phaseB2.js`, task `wsgxt13tf`). It is stopped on purpose as soon as B8 passes. If B8 fails 4 rounds, it stops by itself. |
-| Planned after B8 passes | Path B (merge dev into the work branch, PR to dev), then release **0.35.0** (= dev, §6) through a PR to main. The user tags `v0.35.0` and runs `cargo publish`. Then fast-forward the work branch and disable the hourly task. |
-| Hourly merge task | `trig_019VQH3TYG4ijXR8niHxK13z` is bound to the old session, and will be disabled at the pause. In a new session, delete it and create a new one (§5). |
-| Backups | `backup/parity-workspace` (this folder) and `backup/b8-layering-wip`. The user may delete the obsolete `backup/a1-class`, `backup/a1-class-wip` and `backup/a3-state`; they still exist, and `history/deleted-backup-branches.txt` is wrong about that. |
+| 0.34.0 | `main` `dd7c591` (PR #92); tag `v0.34.0` and crates.io published by the user. |
+| B8 | **Passed** verify#1 (2026-11-04 13:39 UTC). Pushed `4381c24`. The work branch then merged dev (`65decf7`: CHANGELOG with B8 under [Unreleased]). Merged to dev via **PR #94** → dev `2bd1114`. Verdicts: `history/b8-verify0.json`, `history/b8-verify1.json`. |
+| 0.35.0 | `release/0.35.0` `57e1981` (version, CHANGELOG Highlights, README mentions and large-graph table, compare PNGs relabelled), **PR #95** → main. See §2a for the merge sha and tag status. |
+| Workflow | Run `wf_513402ce-c52` **stopped** right at `push:b8-layering` (B9 never started). Next package: **b9-compound**, i.e. path A in §1. |
+| Hourly task | `trig_019VQH3TYG4ijXR8niHxK13z` **disabled** (bound to the old session; delete it and create a new one in a new session, §5). |
+| Work branch | `ccr-ccc6d89a-5cxd7e`, fast-forwarded to dev or main after the release (§2a). |
+| Backups | `backup/parity-workspace` (this folder) and `backup/b8-layering-wip` (now merged; can be deleted). The obsolete `backup/a1-class`, `backup/a1-class-wip` and `backup/a3-state` can go too (the user decides). |
+
+### 2a. Release 0.35.0 follow-through (filled in as it happens)
+- PR #95 merge sha: (pending)
+- Tag `v0.35.0` + `cargo publish`: **the user** does it (`git fetch origin && git tag -a v0.35.0 <merge sha> -m "flowmaid 0.35.0" && git push origin v0.35.0 && git checkout v0.35.0 && cargo publish`).
+- main → dev sync PR: (pending). Work branch fast-forwarded: (pending).
 
 ## 3. Rules (from the user, plus this session's practice)
 - Quality bar: *"yang penting kualitasnya tidak main-main dan premium"*. Go step by step and never skip a package (*"jangan loncat"*).
@@ -126,6 +131,12 @@ Notes:
 4. `scene::tests::colliding_label_placement_stays_near_linear` (debug, 20 s limit) takes about 2.3 s on branches that contain 9c62b27. A branch without that fix (B8 WIP before the dev merge) takes 16–26 s and may fail under load. That is not B8's fault; merge dev in.
 5. Known non-blocking issues: HANDOFF.md §4 (class fan-in crossings, state chips, journey/timeline wrap, gitGraph, ER, pie and journey colour wrap).
 6. When phase B is done: delete the hourly task, clean up old worktrees and target dirs, and suggest the user delete the obsolete backup branches.
+7. **B8 leftovers (from verify#1; fold into B9 or a B8 follow-up):**
+   - *Incomplete r1 #1.* A box member that is a source but links out of the box, and every member of a box that narrowing stacked or wrapped, still sit on layer 0 beside the hub. Generated case f182 goes from 0 to 7 static defects with 4 frame strikes; repros in s4 and s10.
+   - *Suggested fix:* compute a box's first row from the members that have an edge coming in from outside, and pull its source members and loose parts down to that row, ignoring rank-only hub links.
+   - *Skipped on drag-budget grounds:* network simplex with nesting edges, and the "frames no wider than their contents" item that depends on it; greedy ELS FAS (two-walk DFS met the 66/75 target instead); seating parts on their innermost nested box.
+   - *Not done:* `dense-lr` is still portrait.
+   - Details are in `history/b8-verify1.json`.
 
 ## 9. What is in this folder
 | Path | Contents |
