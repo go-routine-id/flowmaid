@@ -47,16 +47,16 @@ Pass `note` instead of `resumeAt` when the B8 work looks unfinished. For context
 |---|---|
 | 0.34.0 | `main` `dd7c591` (PR #92); tag `v0.34.0` and crates.io published by the user. |
 | B8 | **Passed** verify#1 (2026-11-04 13:39 UTC). Pushed `4381c24`. The work branch then merged dev (`65decf7`: CHANGELOG with B8 under [Unreleased]). Merged to dev via **PR #94** → dev `2bd1114`. Verdicts: `history/b8-verify0.json`, `history/b8-verify1.json`. |
-| 0.35.0 | `release/0.35.0` `57e1981` (version, CHANGELOG Highlights, README mentions and large-graph table, compare PNGs relabelled), **PR #95** → main. See §2a for the merge sha and tag status. |
+| 0.35.0 | `release/0.35.0` `57e1981` → **PR #95 merged** → `main` = `3430984`. Tag `v0.35.0` and `cargo publish` are still **to be done by the user** (§2a). |
 | Workflow | Run `wf_513402ce-c52` **stopped** right at `push:b8-layering` (B9 never started). Next package: **b9-compound**, i.e. path A in §1. |
 | Hourly task | `trig_019VQH3TYG4ijXR8niHxK13z` **disabled** (bound to the old session; delete it and create a new one in a new session, §5). |
-| Work branch | `ccr-ccc6d89a-5cxd7e`, fast-forwarded to dev or main after the release (§2a). |
+| Work branch | `ccr-ccc6d89a-5cxd7e` = dev = `9dc3292` (contains main `3430984` = 0.35.0). Clean, nothing unpushed. |
 | Backups | `backup/parity-workspace` (this folder) and `backup/b8-layering-wip` (now merged; can be deleted). The obsolete `backup/a1-class`, `backup/a1-class-wip` and `backup/a3-state` can go too (the user decides). |
 
 ### 2a. Release 0.35.0 follow-through (filled in as it happens)
-- PR #95 merge sha: (pending)
+- PR #95 merged 2026-11-04 14:06 UTC → `main` = **`3430984`** (0.35.0).
 - Tag `v0.35.0` + `cargo publish`: **the user** does it (`git fetch origin && git tag -a v0.35.0 <merge sha> -m "flowmaid 0.35.0" && git push origin v0.35.0 && git checkout v0.35.0 && cargo publish`).
-- main → dev sync PR: (pending). Work branch fast-forwarded: (pending).
+- main → dev sync: **PR #96 merged** → `dev` = **`9dc3292`**; the work branch `ccr-ccc6d89a-5cxd7e` was fast-forwarded and pushed (= `9dc3292`). **So Monday is path A: start B9 from `9dc3292`.**
 
 ## 3. Rules (from the user, plus this session's practice)
 - Quality bar: *"yang penting kualitasnya tidak main-main dan premium"*. Go step by step and never skip a package (*"jangan loncat"*).
