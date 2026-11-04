@@ -1,0 +1,7 @@
+stateDiagram-v2
+state c <<choice>>
+[*] --> P
+P --> c
+c --> False: if n < 0
+c --> True : if n >= 0
+c --> Zero : if n == 0

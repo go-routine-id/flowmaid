@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1276" height="192" viewBox="0 0 1276 192" font-family="Helvetica, Arial, sans-serif" font-size="13" role="img" aria-label="Architecture diagram">
+<title>Architecture diagram</title>
+<rect width="1276" height="192" fill="#ffffff"/>
+<defs><marker id='flowmaid-arch-arrow-end' markerWidth='10' markerHeight='10' refX='9' refY='5' orient='auto' markerUnits='userSpaceOnUse'><path d='M 0,0 L 10,5 L 0,10 L 1,5 z' fill='#44507a'/></marker><marker id='flowmaid-arch-arrow-start' markerWidth='10' markerHeight='10' refX='1' refY='5' orient='auto' markerUnits='userSpaceOnUse'><path d='M 10,0 L 0,5 L 10,10 L 9,5 z' fill='#44507a'/></marker></defs>
+<rect x='24.0' y='24.0' width='376.0' height='144.0' rx='8' fill='#f7f8fc' stroke='#d5d9ec' stroke-width='2'/>
+<text x='48.0' y='44.0' font-size='13' font-weight='bold' fill='#232840'>☁ Frontend</text>
+<rect x='450.0' y='24.0' width='376.0' height='144.0' rx='8' fill='#f7f8fc' stroke='#d5d9ec' stroke-width='2'/>
+<text x='474.0' y='44.0' font-size='13' font-weight='bold' fill='#232840'>🖥 Backend</text>
+<rect x='876.0' y='24.0' width='376.0' height='144.0' rx='8' fill='#f7f8fc' stroke='#d5d9ec' stroke-width='2'/>
+<text x='900.0' y='44.0' font-size='13' font-weight='bold' fill='#232840'>🗄 Data</text>
+<polyline points='198.0,109.0 474.0,109.0' fill='none' stroke='#44507a' stroke-width='2' />
+<polyline points='376.0,109.0 474.0,109.0' fill='none' stroke='#44507a' stroke-width='2' />
+<polyline points='624.0,109.0 652.0,109.0' fill='none' stroke='#44507a' stroke-width='2' marker-end='url(#flowmaid-arch-arrow-end)' />
+<polyline points='802.0,109.0 900.0,109.0' fill='none' stroke='#44507a' stroke-width='2' marker-end='url(#flowmaid-arch-arrow-end)' marker-start='url(#flowmaid-arch-arrow-start)' />
+<polyline points='727.0,144.0 940.0,144.0 940.0,74.0 1153.0,74.0' fill='none' stroke='#44507a' stroke-width='2' />
+<rect x='48.0' y='74.0' width='150.0' height='70.0' rx='8' fill='#ffffff' stroke='#5b6dc0' stroke-width='2.0'/>
+<text x='123.0' y='113.0' dy='0.33em' text-anchor='middle' font-size='13' fill='#232840'>Web App
+<tspan x='123.0' dy='-20' font-size='16'>🌐</tspan>
+</text>
+<rect x='226.0' y='74.0' width='150.0' height='70.0' rx='8' fill='#ffffff' stroke='#33a35c' stroke-width='2.0'/>
+<text x='301.0' y='113.0' dy='0.33em' text-anchor='middle' font-size='13' fill='#232840'>Mobile App
+<tspan x='301.0' dy='-20' font-size='16'>📱</tspan>
+</text>
+<rect x='474.0' y='74.0' width='150.0' height='70.0' rx='8' fill='#ffffff' stroke='#d99114' stroke-width='2.0'/>
+<text x='549.0' y='113.0' dy='0.33em' text-anchor='middle' font-size='13' fill='#232840'>API Gateway
+<tspan x='549.0' dy='-20' font-size='16'>🖥</tspan>
+</text>
+<rect x='652.0' y='74.0' width='150.0' height='70.0' rx='8' fill='#ffffff' stroke='#c2588c' stroke-width='2.0'/>
+<text x='727.0' y='113.0' dy='0.33em' text-anchor='middle' font-size='13' fill='#232840'>Business Logic
+<tspan x='727.0' dy='-20' font-size='16'>🧠</tspan>
+</text>
+<rect x='900.0' y='74.0' width='150.0' height='70.0' rx='8' fill='#ffffff' stroke='#199a8e' stroke-width='2.0'/>
+<text x='975.0' y='113.0' dy='0.33em' text-anchor='middle' font-size='13' fill='#232840'>PostgreSQL
+<tspan x='975.0' dy='-20' font-size='16'>🗄</tspan>
+</text>
+<rect x='1078.0' y='74.0' width='150.0' height='70.0' rx='8' fill='#ffffff' stroke='#8a5cd6' stroke-width='2.0'/>
+<text x='1153.0' y='113.0' dy='0.33em' text-anchor='middle' font-size='13' fill='#232840'>Redis
+<tspan x='1153.0' dy='-20' font-size='16'>⚡</tspan>
+</text>
+</svg>

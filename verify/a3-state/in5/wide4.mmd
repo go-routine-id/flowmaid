@@ -1,0 +1,8 @@
+stateDiagram-v2
+state c <<choice>>
+[*] --> P
+P --> c
+c --> A : the request came from a verified partner
+c --> B : the request is anonymous but rate limited
+c --> C : the request failed signature validation
+c --> D : x

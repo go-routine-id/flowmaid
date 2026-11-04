@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="909" height="773" viewBox="0 0 909 773" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="Mind map">
+<title>Mind map</title>
+<rect width="909" height="773" fill="#ffffff"/>
+<path d="M 475.0 384.8 C 501.6 334.1 528.2 283.3 554.8 232.5" fill="none" stroke="#5b6dc0" stroke-width="4.5" stroke-linecap="round"/>
+<path d="M 554.8 232.5 C 552.8 171.3 550.8 110.0 548.8 48.8" fill="none" stroke="#5b6dc0" stroke-width="3.5" stroke-linecap="round"/>
+<path d="M 554.8 232.5 C 602.0 195.5 649.1 158.4 696.3 121.4" fill="none" stroke="#5b6dc0" stroke-width="3.5" stroke-linecap="round"/>
+<path d="M 475.0 384.8 C 528.4 405.8 581.7 426.8 635.1 447.7" fill="none" stroke="#33a35c" stroke-width="4.5" stroke-linecap="round"/>
+<path d="M 635.1 447.7 C 690.1 389.3 745.1 330.9 800.2 272.5" fill="none" stroke="#33a35c" stroke-width="3.5" stroke-linecap="round"/>
+<path d="M 635.1 447.7 C 693.8 450.9 752.6 454.0 811.3 457.2" fill="none" stroke="#33a35c" stroke-width="3.5" stroke-linecap="round"/>
+<path d="M 635.1 447.7 C 667.1 503.4 699.0 559.0 731.0 614.6" fill="none" stroke="#33a35c" stroke-width="3.5" stroke-linecap="round"/>
+<path d="M 635.1 447.7 C 626.8 532.2 618.5 616.7 610.2 701.2" fill="none" stroke="#33a35c" stroke-width="3.5" stroke-linecap="round"/>
+<path d="M 475.0 384.8 C 442.7 432.2 410.4 479.6 378.1 527.0" fill="none" stroke="#d99114" stroke-width="4.5" stroke-linecap="round"/>
+<path d="M 378.1 527.0 C 412.2 594.2 446.2 661.5 480.2 728.8" fill="none" stroke="#d99114" stroke-width="3.5" stroke-linecap="round"/>
+<path d="M 378.1 527.0 C 361.4 583.2 344.6 639.5 327.8 695.8" fill="none" stroke="#d99114" stroke-width="3.5" stroke-linecap="round"/>
+<path d="M 378.1 527.0 C 310.6 536.1 243.1 545.2 175.6 554.3" fill="none" stroke="#d99114" stroke-width="3.5" stroke-linecap="round"/>
+<path d="M 475.0 384.8 C 431.4 347.6 387.8 310.4 344.2 273.2" fill="none" stroke="#c2588c" stroke-width="4.5" stroke-linecap="round"/>
+<path d="M 344.2 273.2 C 277.4 279.3 210.6 285.5 143.9 291.7" fill="none" stroke="#c2588c" stroke-width="3.5" stroke-linecap="round"/>
+<path d="M 344.2 273.2 C 310.8 225.4 277.4 177.7 243.9 130.0" fill="none" stroke="#c2588c" stroke-width="3.5" stroke-linecap="round"/>
+<path d="M 344.2 273.2 C 339.0 206.6 333.7 140.1 328.5 73.6" fill="none" stroke="#c2588c" stroke-width="3.5" stroke-linecap="round"/>
+<path d="M 344.2 273.2 C 372.3 196.8 400.4 120.4 428.5 44.0" fill="none" stroke="#c2588c" stroke-width="3.5" stroke-linecap="round"/>
+<ellipse cx="475.0" cy="384.8" rx="39.9" ry="24.8" fill="#c9cfe0"/>
+<text x="475.0" y="384.8" text-anchor="middle" fill="#232840" font-weight="bold"><tspan x="475.0" dy="4.5">flowmaid</tspan></text>
+<rect x="527.2" y="216.5" width="55.2" height="32.0" rx="14.0" fill="#5b6dc0"/>
+<text x="554.8" y="232.5" text-anchor="middle" fill="#ffffff"><tspan x="554.8" dy="4.5">Input</tspan></text>
+<rect x="496.1" y="32.8" width="105.4" height="32.0" rx="3.0" fill="#5b6dc0"/>
+<text x="548.8" y="48.8" text-anchor="middle" fill="#ffffff"><tspan x="548.8" dy="4.5">Mermaid text</tspan></text>
+<rect x="628.0" y="105.4" width="136.6" height="32.0" rx="14.0" fill="#5b6dc0"/>
+<text x="696.3" y="121.4" text-anchor="middle" fill="#ffffff"><tspan x="696.3" dy="4.5">YAML frontmatter</tspan></text>
+<rect x="600.9" y="431.7" width="68.3" height="32.0" rx="14.0" fill="#33a35c"/>
+<text x="635.1" y="447.7" text-anchor="middle" fill="#ffffff"><tspan x="635.1" dy="4.5">Engine</tspan></text>
+<polygon points="745.9,256.5 854.5,256.5 870.5,272.5 854.5,288.5 745.9,288.5 729.9,272.5" fill="#33a35c"/>
+<text x="800.2" y="272.5" text-anchor="middle" fill="#ffffff"><tspan x="800.2" dy="4.5">Layered layout</tspan></text>
+<rect x="741.5" y="441.2" width="139.6" height="32.0" rx="14.0" fill="#33a35c"/>
+<text x="811.3" y="457.2" text-anchor="middle" fill="#ffffff"><tspan x="811.3" dy="4.5">Orthogonal routing</tspan></text>
+<rect x="668.4" y="598.6" width="125.3" height="32.0" rx="14.0" fill="#33a35c"/>
+<text x="731.0" y="614.6" text-anchor="middle" fill="#ffffff"><tspan x="731.0" dy="4.5">Corridor detours</tspan></text>
+<rect x="566.5" y="685.2" width="87.3" height="32.0" rx="14.0" fill="#33a35c"/>
+<text x="610.2" y="701.2" text-anchor="middle" fill="#ffffff"><tspan x="610.2" dy="4.5">Hit-testing</tspan></text>
+<rect x="345.7" y="511.0" width="64.9" height="32.0" rx="14.0" fill="#d99114"/>
+<text x="378.1" y="527.0" text-anchor="middle" fill="#ffffff"><tspan x="378.1" dy="4.5">Output</tspan></text>
+<rect x="432.2" y="712.8" width="96.0" height="32.0" rx="3.0" fill="#d99114"/>
+<text x="480.2" y="728.8" text-anchor="middle" fill="#ffffff"><tspan x="480.2" dy="4.5">SVG export</tspan></text>
+<rect x="262.7" y="679.8" width="130.3" height="32.0" rx="14.0" fill="#d99114"/>
+<text x="327.8" y="695.8" text-anchor="middle" fill="#ffffff"><tspan x="327.8" dy="4.5">Interactive scene</tspan></text>
+<polygon points="175.6,530.5 189.2,537.0 211.6,532.3 214.3,539.7 242.1,537.5 233.4,544.5 262.4,545.2 243.8,550.9 269.6,554.3 243.8,557.7 262.4,563.4 233.4,564.1 242.1,571.1 214.3,568.9 211.6,576.3 189.2,571.6 175.6,578.1 162.1,571.6 139.7,576.3 137.0,568.9 109.2,571.1 117.8,564.1 88.9,563.4 107.5,557.7 81.7,554.3 107.5,550.9 88.9,545.2 117.8,544.5 109.2,537.5 137.0,539.7 139.7,532.3 162.1,537.0" fill="#d99114"/>
+<text x="175.6" y="554.3" text-anchor="middle" fill="#ffffff"><tspan x="175.6" dy="4.5">Zero dependencies</tspan></text>
+<rect x="312.1" y="257.2" width="64.1" height="32.0" rx="14.0" fill="#c2588c"/>
+<text x="344.2" y="273.2" text-anchor="middle" fill="#ffffff"><tspan x="344.2" dy="4.5">Reach</tspan></text>
+<polygon points="243.5,291.7 257.5,294.9 251.2,297.8 241.6,300.3 244.2,304.0 227.8,305.4 222.4,308.4 213.6,311.0 193.7,310.0 187.7,314.2 172.6,314.5 157.7,314.0 143.9,316.3 130.0,314.0 115.1,314.5 100.0,314.2 94.0,310.0 74.1,311.0 65.3,308.4 59.9,305.4 43.5,304.0 46.1,300.3 36.5,297.8 30.2,294.9 44.2,291.7 30.2,288.5 36.5,285.6 46.1,283.1 43.5,279.4 59.9,278.0 65.3,275.0 74.1,272.4 94.0,273.4 100.0,269.2 115.1,268.9 130.0,269.4 143.9,267.1 157.7,269.4 172.6,268.9 187.7,269.2 193.7,273.4 213.6,272.4 222.4,275.0 227.8,278.0 244.2,279.4 241.6,283.1 251.2,285.6 257.5,288.5" fill="#c2588c"/>
+<text x="143.9" y="291.7" text-anchor="middle" fill="#ffffff"><tspan x="143.9" dy="4.5">Eleven diagram types</tspan></text>
+<rect x="220.3" y="114.0" width="47.3" height="32.0" rx="14.0" fill="#c2588c"/>
+<text x="243.9" y="130.0" text-anchor="middle" fill="#ffffff"><tspan x="243.9" dy="4.5">CLI</tspan></text>
+<rect x="291.0" y="57.6" width="75.0" height="32.0" rx="14.0" fill="#c2588c"/>
+<text x="328.5" y="73.6" text-anchor="middle" fill="#ffffff"><tspan x="328.5" dy="4.5">Desktop</tspan></text>
+<rect x="402.1" y="28.0" width="52.8" height="32.0" rx="14.0" fill="#c2588c"/>
+<text x="428.5" y="44.0" text-anchor="middle" fill="#ffffff"><tspan x="428.5" dy="4.5">Web</tspan></text>
+</svg>

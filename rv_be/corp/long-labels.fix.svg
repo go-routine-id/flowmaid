@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="672" height="429" viewBox="0 0 672 429" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="Flowchart diagram">
+<title>Flowchart diagram</title>
+<rect width="672" height="429" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<path d="M 336.0 66.0 C 336.0 96.0, 336.0 96.0, 336.0 126.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>A → B</title></path>
+<path d="M 303.6 187.2 C 303.6 218.9, 254.9 218.9, 254.9 250.6" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>B → C: complete</title></path>
+<path d="M 368.4 187.2 C 368.4 218.9, 417.1 218.9, 417.1 250.6" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>B → D: incomplete</title></path>
+<path d="M 211.2 288.6 C 211.2 318.6, 211.2 318.6, 211.2 348.6" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>C → E</title></path>
+<g><title>ADMINISTRATIVE REQUIREMENTS DOCUMENT VALIDATION</title>
+<rect x="115.2" y="28.0" width="441.7" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="336.0" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">ADMINISTRATIVE REQUIREMENTS DOCUMENT VALIDATION</text>
+</g>
+<g><title>Are all documents complete and compliant with the rules?</title>
+<polygon points="336.0,126.0 644.0,158.3 336.0,190.6 28.0,158.3" fill="#fcf2da" stroke="#d99114" stroke-width="1.6"/>
+<text x="336.0" y="158.3" dy="0.33em" text-anchor="middle" fill="#232840">Are all documents complete and compliant with the rules?</text>
+</g>
+<g><title>Issue the certificate</title>
+<rect x="134.5" y="250.6" width="153.4" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="211.2" y="269.6" dy="0.33em" text-anchor="middle" fill="#232840">Issue the certificate</text>
+</g>
+<g><title>Return documents to the applicant</title>
+<rect x="337.9" y="250.6" width="245.8" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="460.8" y="269.6" dy="0.33em" text-anchor="middle" fill="#232840">Return documents to the applicant</text>
+</g>
+<g><title>OK</title>
+<circle cx="211.2" cy="374.6" r="26.0" fill="#f2ecfa" stroke="#8a5cd6" stroke-width="1.6"/>
+<text x="211.2" y="374.6" dy="0.33em" text-anchor="middle" fill="#232840">OK</text>
+</g>
+<rect x="243.6" y="208.9" width="71.2" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="279.2" y="218.9" dy="0.33em" text-anchor="middle" fill="#232840">complete</text>
+<rect x="351.6" y="208.9" width="82.4" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="392.8" y="218.9" dy="0.33em" text-anchor="middle" fill="#232840">incomplete</text>
+</svg>

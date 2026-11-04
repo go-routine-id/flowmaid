@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="838" height="1661" viewBox="0 0 838 1661" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="Flowchart diagram">
+<title>Flowchart diagram</title>
+<rect width="838" height="1661" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker><mask id="flowmaid-8b2aa0f901d13df3-x2" maskUnits="userSpaceOnUse" x="191.2" y="855.2" width="114.3" height="88.8"><rect x="191.2" y="855.2" width="114.3" height="88.8" fill="#fff"/><circle cx="253.5" cy="893.5" r="4.47" fill="#000"/></mask><mask id="flowmaid-8b2aa0f901d13df3-x6" maskUnits="userSpaceOnUse" x="83.7" y="935.7" width="226.3" height="445.1"><rect x="83.7" y="935.7" width="226.3" height="445.1" fill="#fff"/><circle cx="220.1" cy="1357.0" r="4.47" fill="#000"/></mask></defs>
+<rect x="261.0" y="28.0" width="255.7" height="562.0" rx="8" fill="#f7f8fd" stroke="#c9cfe8" stroke-width="1.4"/>
+<rect x="281.7" y="610.0" width="214.3" height="302.0" rx="8" fill="#f7f8fd" stroke="#c9cfe8" stroke-width="1.4"/>
+<rect x="548.7" y="28.0" width="261.5" height="650.0" rx="8" fill="#f7f8fd" stroke="#c9cfe8" stroke-width="1.4"/>
+<rect x="286.1" y="952.0" width="205.6" height="214.0" rx="8" fill="#f7f8fd" stroke="#c9cfe8" stroke-width="1.4"/>
+<rect x="283.6" y="1186.0" width="210.6" height="92.0" rx="8" fill="#f7f8fd" stroke="#c9cfe8" stroke-width="1.4"/>
+<rect x="286.2" y="1298.0" width="205.2" height="285.0" rx="8" fill="#f7f8fd" stroke="#c9cfe8" stroke-width="1.4"/>
+<path d="M 121.5 959.5 L 121.5 967.3 C 121.5 975.2, 121.5 990.8, 121.5 1004.7 C 121.5 1018.5, 121.5 1030.5, 127.5 1036.5 C 133.5 1042.5, 145.5 1042.5, 155.9 1042.5 C 166.4 1042.5, 175.2 1042.5, 185.6 1042.5 C 196.1 1042.5, 208.1 1042.5, 214.1 1048.5 C 220.1 1054.5, 220.1 1066.5, 220.1 1155.8 C 220.1 1245.0, 220.1 1411.5, 220.1 1500.8 C 220.1 1590.0, 220.1 1602.0, 226.1 1608.0 C 232.1 1614.0, 244.1 1614.0, 265.4 1614.0 C 286.7 1614.0, 317.4 1614.0, 332.7 1614.0 L 348.0 1614.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>n0 → n21</title></path>
+<path d="M 215.0 908.5 C 238.0 908.5, 238.0 557.0, 261.0 557.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>n0 → g1</title></path>
+<path d="M 215.0 920.2 C 248.4 920.2, 248.4 879.0, 281.7 879.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)" mask="url(#flowmaid-8b2aa0f901d13df3-x2)"><title>n0 → g2</title></path>
+<path d="M 215.0 932.0 L 218.2 932.0 C 221.4 932.0, 227.8 932.0, 234.2 932.0 C 240.7 932.0, 247.1 932.0, 250.3 928.8 C 253.5 925.6, 253.5 919.2, 253.5 870.2 C 253.5 821.3, 253.5 729.9, 253.5 678.2 C 253.5 626.5, 253.5 614.5, 259.5 608.5 C 265.5 602.5, 277.5 602.5, 319.2 602.5 C 360.8 602.5, 432.1 602.5, 472.9 602.5 C 513.7 602.5, 524.0 602.5, 529.1 607.6 C 534.2 612.8, 534.2 623.0, 534.2 632.0 C 534.2 641.1, 534.2 648.9, 534.2 654.0 C 534.2 659.2, 534.2 661.6, 535.4 662.8 C 536.6 664.0, 539.0 664.0, 541.4 664.0 C 543.9 664.0, 546.3 664.0, 547.5 664.0 L 548.7 664.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>n0 → g3</title></path>
+<path d="M 215.0 943.8 C 250.5 943.8, 250.5 1011.0, 286.1 1011.0" fill="none" stroke="#44507a" stroke-width="1.7" stroke-dasharray="5 4" marker-end="url(#arrow)"><title>n0 → g4</title></path>
+<path d="M 215.0 955.5 C 249.3 955.5, 249.3 1245.0, 283.6 1245.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>n0 → g5</title></path>
+<path d="M 107.5 959.5 L 107.5 1019.8 C 107.5 1080.0, 107.5 1200.5, 107.5 1266.8 C 107.5 1333.0, 107.5 1345.0, 113.5 1351.0 C 119.5 1357.0, 131.5 1357.0, 161.3 1357.0 C 191.1 1357.0, 238.7 1357.0, 262.5 1357.0 L 286.2 1357.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)" mask="url(#flowmaid-8b2aa0f901d13df3-x6)"><title>n0 → g6</title></path>
+<g><title>veniam sed incididunt sed aliqua</title>
+<rect x="28.0" y="904.5" width="187.0" height="55.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="121.5" y="923.5" text-anchor="middle" fill="#232840"><tspan x="121.5" dy="0.33em">veniam</tspan><tspan x="121.5" dy="17.0">sed incididunt sed aliqua</tspan></text>
+</g>
+<g><title>lorem elit consectetur nostrud magna ipsum laboris consectetur consectetur magna</title>
+<path d="M 275.0 286.0 A 113.9 8.0 0 0 0 502.7 286.0 L 502.7 358.0 A 113.9 8.0 0 0 1 275.0 358.0 Z" fill="#e7eef7" stroke="#4d8fbf" stroke-width="1.6"/>
+<path d="M 275.0 286.0 A 113.9 8.0 0 0 1 502.7 286.0" fill="none" stroke="#4d8fbf" stroke-width="1.6"/>
+<text x="388.9" y="305.0" text-anchor="middle" fill="#232840"><tspan x="388.9" dy="0.33em">lorem elit consectetur nostrud</tspan><tspan x="388.9" dy="17.0">magna ipsum laboris</tspan><tspan x="388.9" dy="17.0">consectetur consectetur magna</tspan></text>
+</g>
+<g><title>ullamco sit dolor eiusmod laboris adipiscing</title>
+<rect x="318.4" y="68.0" width="141.0" height="72.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="388.9" y="87.0" text-anchor="middle" fill="#232840"><tspan x="388.9" dy="0.33em">ullamco sit</tspan><tspan x="388.9" dy="17.0">dolor eiusmod</tspan><tspan x="388.9" dy="17.0">laboris adipiscing</tspan></text>
+</g>
+<g><title>tempor do laboris ipsum</title>
+<rect x="291.6" y="190.0" width="194.6" height="38.0" rx="19.0" fill="#e5f5ea" stroke="#33a35c" stroke-width="1.6"/>
+<text x="388.9" y="209.0" dy="0.33em" text-anchor="middle" fill="#232840">tempor do laboris ipsum</text>
+</g>
+<g><title>elit elit ipsum magna ipsum tempor nostrud adipiscing labore ullamco</title>
+<rect x="293.2" y="416.0" width="191.2" height="72.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="388.9" y="435.0" text-anchor="middle" fill="#232840"><tspan x="388.9" dy="0.33em">elit elit ipsum magna</tspan><tspan x="388.9" dy="17.0">ipsum tempor nostrud</tspan><tspan x="388.9" dy="17.0">adipiscing labore ullamco</tspan></text>
+</g>
+<g><title>laboris ipsum</title>
+<rect x="331.1" y="538.0" width="115.5" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="388.9" y="557.0" dy="0.33em" text-anchor="middle" fill="#232840">laboris ipsum</text>
+</g>
+<g><title>do sed</title>
+<rect x="345.8" y="650.0" width="86.1" height="38.0" rx="19.0" fill="#e5f5ea" stroke="#33a35c" stroke-width="1.6"/>
+<text x="388.9" y="669.0" dy="0.33em" text-anchor="middle" fill="#232840">do sed</text>
+</g>
+<g><title>elit dolor laboris incididunt dolor magna aliqua ipsum sed</title>
+<rect x="295.7" y="738.0" width="186.3" height="72.0" rx="36.0" fill="#e5f5ea" stroke="#33a35c" stroke-width="1.6"/>
+<text x="388.9" y="757.0" text-anchor="middle" fill="#232840"><tspan x="388.9" dy="0.33em">elit dolor laboris</tspan><tspan x="388.9" dy="17.0">incididunt dolor magna</tspan><tspan x="388.9" dy="17.0">aliqua ipsum sed</tspan></text>
+</g>
+<g><title>sit</title>
+<rect x="355.9" y="860.0" width="66.0" height="38.0" rx="19.0" fill="#e5f5ea" stroke="#33a35c" stroke-width="1.6"/>
+<text x="388.9" y="879.0" dy="0.33em" text-anchor="middle" fill="#232840">sit</text>
+</g>
+<g><title>amet veniam ullamco adipiscing ipsum eiusmod sed</title>
+<rect x="563.2" y="609.0" width="232.5" height="55.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="679.5" y="628.0" text-anchor="middle" fill="#232840"><tspan x="679.5" dy="0.33em">amet veniam ullamco adipiscing</tspan><tspan x="679.5" dy="17.0">ipsum eiusmod sed</tspan></text>
+</g>
+<g><title>tempor incididunt dolor incididunt consectetur lorem sit</title>
+<rect x="577.5" y="68.0" width="203.9" height="72.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="679.5" y="87.0" text-anchor="middle" fill="#232840"><tspan x="679.5" dy="0.33em">tempor incididunt</tspan><tspan x="679.5" dy="17.0">dolor incididunt consectetur</tspan><tspan x="679.5" dy="17.0">lorem sit</tspan></text>
+</g>
+<g><title>amet nostrud consectetur labore laboris</title>
+<rect x="562.7" y="190.0" width="233.5" height="55.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="679.5" y="209.0" text-anchor="middle" fill="#232840"><tspan x="679.5" dy="0.33em">amet nostrud consectetur labore</tspan><tspan x="679.5" dy="17.0">laboris</tspan></text>
+</g>
+<g><title>magna elit adipiscing nostrud</title>
+<rect x="571.9" y="295.0" width="215.1" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="679.5" y="314.0" dy="0.33em" text-anchor="middle" fill="#232840">magna elit adipiscing nostrud</text>
+</g>
+<g><title>dolor ullamco</title>
+<path d="M 621.3 391.0 A 58.1 8.0 0 0 0 737.6 391.0 L 737.6 429.0 A 58.1 8.0 0 0 1 621.3 429.0 Z" fill="#e7eef7" stroke="#4d8fbf" stroke-width="1.6"/>
+<path d="M 621.3 391.0 A 58.1 8.0 0 0 1 737.6 391.0" fill="none" stroke="#4d8fbf" stroke-width="1.6"/>
+<text x="679.5" y="410.0" dy="0.33em" text-anchor="middle" fill="#232840">dolor ullamco</text>
+</g>
+<g><title>do ullamco sed laboris tempor do</title>
+<rect x="605.5" y="487.0" width="148.0" height="72.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="679.5" y="506.0" text-anchor="middle" fill="#232840"><tspan x="679.5" dy="0.33em">do ullamco</tspan><tspan x="679.5" dy="17.0">sed laboris tempor</tspan><tspan x="679.5" dy="17.0">do</tspan></text>
+</g>
+<g><title>labore do sit</title>
+<rect x="334.4" y="992.0" width="109.0" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="388.9" y="1011.0" dy="0.33em" text-anchor="middle" fill="#232840">labore do sit</text>
+</g>
+<g><title>magna consectetur elit nostrud labore ullamco aliqua</title>
+<rect x="300.1" y="1080.0" width="177.6" height="72.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="388.9" y="1099.0" text-anchor="middle" fill="#232840"><tspan x="388.9" dy="0.33em">magna</tspan><tspan x="388.9" dy="17.0">consectetur elit nostrud</tspan><tspan x="388.9" dy="17.0">labore ullamco aliqua</tspan></text>
+</g>
+<g><title>sit tempor do eiusmod</title>
+<rect x="297.6" y="1226.0" width="182.6" height="38.0" rx="19.0" fill="#e5f5ea" stroke="#33a35c" stroke-width="1.6"/>
+<text x="388.9" y="1245.0" dy="0.33em" text-anchor="middle" fill="#232840">sit tempor do eiusmod</text>
+</g>
+<g><title>laboris labore do</title>
+<rect x="320.6" y="1338.0" width="136.6" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="388.9" y="1357.0" dy="0.33em" text-anchor="middle" fill="#232840">laboris labore do</text>
+</g>
+<g><title>nostrud laboris lorem incididunt</title>
+<rect x="300.2" y="1426.0" width="177.2" height="55.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="388.9" y="1445.0" text-anchor="middle" fill="#232840"><tspan x="388.9" dy="0.33em">nostrud</tspan><tspan x="388.9" dy="17.0">laboris lorem incididunt</tspan></text>
+</g>
+<g><title>labore</title>
+<rect x="353.2" y="1531.0" width="71.3" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="388.9" y="1550.0" dy="0.33em" text-anchor="middle" fill="#232840">labore</text>
+</g>
+<g><title>ipsum</title>
+<rect x="348.0" y="1595.0" width="81.7" height="38.0" rx="19.0" fill="#e5f5ea" stroke="#33a35c" stroke-width="1.6"/>
+<text x="388.9" y="1614.0" dy="0.33em" text-anchor="middle" fill="#232840">ipsum</text>
+</g>
+<rect x="267.0" y="33.0" width="79.1" height="16" rx="4" fill="#f7f8fd" fill-opacity="0.9"/>
+<text x="271.0" y="45.0" font-size="12" font-weight="bold" fill="#6a7086">tempor lorem</text>
+<rect x="287.7" y="615.0" width="74.0" height="16" rx="4" fill="#f7f8fd" fill-opacity="0.9"/>
+<text x="291.7" y="627.0" font-size="12" font-weight="bold" fill="#6a7086">lorem ipsum</text>
+<rect x="554.7" y="33.0" width="193.7" height="16" rx="4" fill="#f7f8fd" fill-opacity="0.9"/>
+<text x="558.7" y="45.0" font-size="12" font-weight="bold" fill="#6a7086">incididunt eiusmod dolor incididunt</text>
+<rect x="292.1" y="957.0" width="134.2" height="16" rx="4" fill="#f7f8fd" fill-opacity="0.9"/>
+<text x="296.1" y="969.0" font-size="12" font-weight="bold" fill="#6a7086">dolor lorem consectetur</text>
+<rect x="289.6" y="1191.0" width="112.7" height="16" rx="4" fill="#f7f8fd" fill-opacity="0.9"/>
+<text x="293.6" y="1203.0" font-size="12" font-weight="bold" fill="#6a7086">eiusmod sit nostrud</text>
+<rect x="292.2" y="1303.0" width="23.9" height="16" rx="4" fill="#f7f8fd" fill-opacity="0.9"/>
+<text x="296.2" y="1315.0" font-size="12" font-weight="bold" fill="#6a7086">elit</text>
+</svg>

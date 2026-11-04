@@ -1,0 +1,277 @@
+[
+ {
+  "name": "advanced",
+  "mermaidSize": [
+   906,
+   1484
+  ],
+  "flowmaidSize": [
+   807,
+   756
+  ]
+ },
+ {
+  "name": "architecture",
+  "mermaidSize": [
+   869,
+   608
+  ],
+  "flowmaidSize": [
+   1276,
+   192
+  ]
+ },
+ {
+  "name": "back-edge",
+  "mermaidSize": [
+   360,
+   615
+  ],
+  "flowmaidSize": [
+   351,
+   532
+  ]
+ },
+ {
+  "name": "bench-75",
+  "mermaidSize": [
+   4327,
+   1058
+  ],
+  "flowmaidSize": [
+   1772,
+   2017
+  ]
+ },
+ {
+  "name": "class",
+  "mermaidSize": [
+   569,
+   1412
+  ],
+  "flowmaidSize": [
+   774,
+   636
+  ]
+ },
+ {
+  "name": "demo",
+  "mermaidSize": [
+   360,
+   615
+  ],
+  "flowmaidSize": [
+   383,
+   532
+  ]
+ },
+ {
+  "name": "dense-lr",
+  "mermaidSize": [
+   4959,
+   3858
+  ],
+  "flowmaidSize": [
+   2259,
+   3450
+  ]
+ },
+ {
+  "name": "dense-td",
+  "mermaidSize": [
+   4131,
+   4378
+  ],
+  "flowmaidSize": [
+   4249,
+   1823
+  ]
+ },
+ {
+  "name": "er",
+  "mermaidSize": [
+   1519,
+   1151
+  ],
+  "flowmaidSize": [
+   602,
+   950
+  ]
+ },
+ {
+  "name": "fanout-frames",
+  "mermaidSize": [
+   648,
+   2271
+  ],
+  "flowmaidSize": [
+   838,
+   1661
+  ]
+ },
+ {
+  "name": "fanout",
+  "mermaidSize": [
+   992,
+   648
+  ],
+  "flowmaidSize": [
+   700,
+   513
+  ]
+ },
+ {
+  "name": "gitgraph",
+  "mermaidSize": [
+   507,
+   254
+  ],
+  "flowmaidSize": [
+   772,
+   212
+  ]
+ },
+ {
+  "name": "journey",
+  "mermaidSize": [
+   1300,
+   540
+  ],
+  "flowmaidSize": [
+   573,
+   250
+  ]
+ },
+ {
+  "name": "long-labels",
+  "mermaidSize": [
+   358,
+   672
+  ],
+  "flowmaidSize": [
+   672,
+   429
+  ]
+ },
+ {
+  "name": "lr",
+  "mermaidSize": [
+   1074,
+   226
+  ],
+  "flowmaidSize": [
+   790,
+   299
+  ]
+ },
+ {
+  "name": "mindmap",
+  "mermaidSize": [
+   810,
+   490
+  ],
+  "flowmaidSize": [
+   909,
+   773
+  ]
+ },
+ {
+  "name": "pie",
+  "mermaidSize": [
+   666,
+   450
+  ],
+  "flowmaidSize": [
+   439,
+   294
+  ]
+ },
+ {
+  "name": "sankey",
+  "mermaidSize": [
+   600,
+   400
+  ],
+  "flowmaidSize": [
+   600,
+   400
+  ]
+ },
+ {
+  "name": "sequence",
+  "mermaidSize": [
+   1060,
+   1391
+  ],
+  "flowmaidSize": [
+   759,
+   962
+  ]
+ },
+ {
+  "name": "shapes",
+  "mermaidSize": [
+   2157,
+   187
+  ],
+  "flowmaidSize": [
+   1813,
+   170
+  ]
+ },
+ {
+  "name": "state",
+  "mermaidSize": [
+   649,
+   886
+  ],
+  "flowmaidSize": [
+   403,
+   1133
+  ]
+ },
+ {
+  "name": "stress",
+  "mermaidSize": [
+   289,
+   584
+  ],
+  "flowmaidSize": [
+   251,
+   415
+  ]
+ },
+ {
+  "name": "subgraph",
+  "mermaidSize": [
+   466,
+   749
+  ],
+  "flowmaidSize": [
+   382,
+   786
+  ]
+ },
+ {
+  "name": "timeline",
+  "mermaidSize": [
+   995,
+   643
+  ],
+  "flowmaidSize": [
+   624,
+   201
+  ]
+ },
+ {
+  "name": "wide-labels",
+  "mermaidSize": [
+   2257,
+   166
+  ],
+  "flowmaidSize": [
+   1847,
+   413
+  ]
+ }
+]

@@ -1,0 +1,8 @@
+stateDiagram-v2
+direction LR
+state c <<choice>>
+[*] --> P
+P --> c
+c --> B : yes
+c --> B : maybe
+c --> C : no

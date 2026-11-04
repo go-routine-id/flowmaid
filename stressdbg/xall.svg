@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="287" height="415" viewBox="0 0 287 415" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="Flowchart diagram">
+<title>Flowchart diagram</title>
+<rect width="287" height="415" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker><marker id="arrow-u" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11.9" markerHeight="11.9" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<path d="M 191.8 66.0 C 191.8 96.0, 167.0 96.0, 167.0 126.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>A → B</title></path>
+<path d="M 171.6 66.0 C 171.6 96.0, 150.4 96.0, 150.4 126.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>A → B: parallel</title></path>
+<path d="M 193.7 137.0 C 241.7 117.0, 241.7 173.0, 193.7 153.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>B → B</title></path>
+<path d="M 146.4 164.0 C 146.4 194.0, 146.4 194.0, 146.4 224.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>B → C</title></path>
+<path d="M 156.1 282.4 C 156.1 315.5, 173.3 315.5, 173.3 348.6" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>C → D: yes</title></path>
+<path d="M 110.4 246.9 C 22.5 206.9, 28.5 106.0, 151.3 66.0" fill="none" stroke="#44507a" stroke-width="1.7" stroke-dasharray="5 4" marker-end="url(#arrow)"><title>C → A: no</title></path>
+<path d="M 212.1 66.0 L 220.3 79.2 C 228.5 92.3, 244.9 118.7, 253.2 150.4 C 261.4 182.1, 261.4 219.2, 251.9 253.1 C 242.4 287.1, 223.4 317.8, 213.9 333.2 L 204.5 348.6" fill="none" stroke="#44507a" stroke-width="3.4" marker-end="url(#arrow-u)"><title>A → D</title></path>
+<g><title>Source</title>
+<rect x="143.3" y="28.0" width="76.8" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="181.7" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">Source</text>
+</g>
+<g><title>Process 1</title>
+<rect x="99.0" y="126.0" width="94.7" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="146.4" y="145.0" dy="0.33em" text-anchor="middle" fill="#232840">Process 1</text>
+</g>
+<g><title>Check</title>
+<polygon points="146.4,224.0 197.0,256.3 146.4,288.6 95.7,256.3" fill="#fcf2da" stroke="#d99114" stroke-width="1.6"/>
+<text x="146.4" y="256.3" dy="0.33em" text-anchor="middle" fill="#232840">Check</text>
+</g>
+<g><title>End</title>
+<rect x="159.2" y="348.6" width="57.3" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="187.8" y="367.6" dy="0.33em" text-anchor="middle" fill="#232840">End</text>
+</g>
+<rect x="130.9" y="86.0" width="60.1" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="161.0" y="96.0" dy="0.33em" text-anchor="middle" fill="#232840">parallel</text>
+<rect x="146.8" y="305.5" width="35.8" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="164.7" y="315.5" dy="0.33em" text-anchor="middle" fill="#232840">yes</text>
+<rect x="28.0" y="146.5" width="29.6" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="42.8" y="156.5" dy="0.33em" text-anchor="middle" fill="#232840">no</text>
+</svg>

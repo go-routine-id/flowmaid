@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="318" height="1133" viewBox="0 0 318 1133" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="State diagram">
+<title>State diagram</title>
+<rect width="318" height="1133" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<rect x="70.3" y="186.0" width="126.1" height="368.0" rx="8" fill="#f7f8fd" stroke="#c9cfe8" stroke-width="1.4"/>
+<path d="M 133.4 42.0 C 133.4 72.0, 133.4 72.0, 133.4 102.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>start → Idle</title></path>
+<path d="M 133.4 240.0 C 133.4 283.0, 133.4 283.0, 133.4 326.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>start → Syntax</title></path>
+<path d="M 133.4 364.0 C 133.4 394.0, 133.4 394.0, 133.4 424.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Syntax → Semantics: ok</title></path>
+<path d="M 133.4 462.0 C 133.4 492.0, 133.4 492.0, 133.4 522.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Semantics → end</title></path>
+<path d="M 121.0 654.6 C 121.0 689.6, 93.2 689.6, 93.2 724.6" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>decide → Rejected: invalid</title></path>
+<path d="M 145.8 654.6 C 145.8 697.1, 177.2 697.1, 177.2 739.6" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>decide → forked: valid</title></path>
+<path d="M 177.2 747.6 C 177.2 785.1, 155.7 785.1, 155.7 822.6" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>forked → Persist</title></path>
+<path d="M 213.2 747.6 C 213.2 785.1, 234.7 785.1, 234.7 822.6" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>forked → Notify</title></path>
+<path d="M 155.7 860.6 C 155.7 890.6, 177.2 890.6, 177.2 920.6" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Persist → joined</title></path>
+<path d="M 234.7 860.6 C 234.7 890.6, 213.2 890.6, 213.2 920.6" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Notify → joined</title></path>
+<path d="M 195.2 928.6 C 195.2 958.6, 195.2 958.6, 195.2 988.6" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>joined → Done</title></path>
+<path d="M 55.3 724.6 L 55.3 634.0 C 55.3 543.3, 55.3 362.0, 55.3 267.0 C 55.3 172.0, 55.3 163.2, 59.7 158.9 C 64.1 154.5, 72.8 154.5, 80.4 154.5 C 87.9 154.5, 94.3 154.5, 98.6 154.5 C 103.0 154.5, 105.4 154.5, 106.6 153.3 C 107.8 152.1, 107.8 149.7, 107.8 147.2 C 107.8 144.8, 107.8 142.4, 107.8 141.2 L 107.8 140.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Rejected → Idle: retry</title></path>
+<path d="M 195.2 1026.6 C 195.2 1056.6, 195.2 1056.6, 195.2 1086.6" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Done → end</title></path>
+<path d="M 133.4 140.0 C 133.4 163.0, 144.2 163.0, 144.2 186.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Idle → Validating: submit</title></path>
+<path d="M 133.4 554.0 C 133.4 577.0, 133.4 577.0, 133.4 600.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Validating → decide</title></path>
+<g><title>start</title>
+<circle cx="133.4" cy="35.0" r="7.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="133.4" y="35.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>waiting for input</title>
+<rect x="67.8" y="102.0" width="131.1" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="133.4" y="121.0" dy="0.33em" text-anchor="middle" fill="#232840">waiting for input</text>
+</g>
+<g><title>start</title>
+<circle cx="133.4" cy="233.0" r="7.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="133.4" y="233.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>Syntax</title>
+<rect x="95.8" y="326.0" width="75.2" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="133.4" y="345.0" dy="0.33em" text-anchor="middle" fill="#232840">Syntax</text>
+</g>
+<g><title>Semantics</title>
+<rect x="84.3" y="424.0" width="98.1" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="133.4" y="443.0" dy="0.33em" text-anchor="middle" fill="#232840">Semantics</text>
+</g>
+<g><title>end</title>
+<circle cx="133.4" cy="531.0" r="9.0" fill="#ffffff" stroke="#44507a" stroke-width="1.6"/>
+<circle cx="133.4" cy="531.0" r="5.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="133.4" y="531.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g>
+<polygon points="133.4,600.0 173.4,632.3 133.4,664.6 93.4,632.3" fill="#fcf2da" stroke="#d99114" stroke-width="1.6"/>
+<text x="133.4" y="632.3" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>Rejected</title>
+<rect x="28.0" y="724.6" width="87.2" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="71.6" y="743.6" dy="0.33em" text-anchor="middle" fill="#232840">Rejected</text>
+</g>
+<g><title>fork/join</title>
+<rect x="165.2" y="739.6" width="60.0" height="8.0" rx="3" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="195.2" y="743.6" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>Persist</title>
+<rect x="96.7" y="822.6" width="75.5" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="134.4" y="841.6" dy="0.33em" text-anchor="middle" fill="#232840">Persist</text>
+</g>
+<g><title>Notify</title>
+<rect x="222.2" y="822.6" width="67.7" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="256.0" y="841.6" dy="0.33em" text-anchor="middle" fill="#232840">Notify</text>
+</g>
+<g><title>fork/join</title>
+<rect x="165.2" y="920.6" width="60.0" height="8.0" rx="3" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="195.2" y="924.6" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>Done</title>
+<rect x="162.6" y="988.6" width="65.1" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="195.2" y="1007.6" dy="0.33em" text-anchor="middle" fill="#232840">Done</text>
+</g>
+<g><title>end</title>
+<circle cx="195.2" cy="1095.6" r="9.0" fill="#ffffff" stroke="#44507a" stroke-width="1.6"/>
+<circle cx="195.2" cy="1095.6" r="5.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="195.2" y="1095.6" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<rect x="119.0" y="384.0" width="28.8" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="133.4" y="394.0" dy="0.33em" text-anchor="middle" fill="#232840">ok</text>
+<rect x="79.8" y="679.6" width="54.6" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="107.1" y="689.6" dy="0.33em" text-anchor="middle" fill="#232840">invalid</text>
+<rect x="139.8" y="687.1" width="43.4" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="161.5" y="697.1" dy="0.33em" text-anchor="middle" fill="#232840">valid</text>
+<rect x="34.3" y="560.6" width="42.1" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="55.3" y="570.6" dy="0.33em" text-anchor="middle" fill="#232840">retry</text>
+<rect x="137.8" y="148.6" width="55.6" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="165.6" y="158.6" dy="0.33em" text-anchor="middle" fill="#232840">submit</text>
+<rect x="76.3" y="191.0" width="61.8" height="16" rx="4" fill="#f7f8fd" fill-opacity="0.9"/>
+<text x="80.3" y="203.0" font-size="12" font-weight="bold" fill="#6a7086">Validating</text>
+</svg>

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="624" height="201" viewBox="0 0 624 201" font-family="Helvetica, Arial, sans-serif" font-size="13" role="img" aria-label="Timeline">
+<title>Timeline</title>
+<rect width="624" height="201" fill="#ffffff"/>
+<text x="312.0" y="41.0" dy="0.33em" text-anchor="middle" font-weight="bold" font-size="17" fill="#232840">History of Social Media Platform</text>
+<line x1="24.0" y1="127.0" x2="312.0" y2="127.0" stroke="#c2c8dc" stroke-width="1.5"/>
+<circle cx="72.0" cy="127.0" r="3.0" fill="#5b6dc0"/>
+<line x1="72.0" y1="127.0" x2="72.0" y2="152.0" stroke="#c2c8dc" stroke-width="1.2" stroke-dasharray="4,4"/>
+<text x="72.0" y="110.5" dy="0.33em" text-anchor="middle" fill="#232840">2002</text>
+<text x="72.0" y="143.5" dy="0.33em" text-anchor="middle" fill="#232840">LinkedIn</text>
+<circle cx="168.0" cy="127.0" r="3.0" fill="#5b6dc0"/>
+<line x1="168.0" y1="127.0" x2="168.0" y2="177.0" stroke="#c2c8dc" stroke-width="1.2" stroke-dasharray="4,4"/>
+<text x="168.0" y="110.5" dy="0.33em" text-anchor="middle" fill="#232840">2004</text>
+<text x="168.0" y="143.5" dy="0.33em" text-anchor="middle" fill="#232840">Facebook</text>
+<text x="168.0" y="168.5" dy="0.33em" text-anchor="middle" fill="#232840">Google</text>
+<circle cx="264.0" cy="127.0" r="3.0" fill="#5b6dc0"/>
+<line x1="264.0" y1="127.0" x2="264.0" y2="152.0" stroke="#c2c8dc" stroke-width="1.2" stroke-dasharray="4,4"/>
+<text x="264.0" y="110.5" dy="0.33em" text-anchor="middle" fill="#232840">2005</text>
+<text x="264.0" y="143.5" dy="0.33em" text-anchor="middle" fill="#232840">YouTube</text>
+<rect x="312.0" y="58.0" width="288.0" height="30.0" rx="4" fill="#33a35c"/>
+<text x="456.0" y="73.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">Mobile</text>
+<line x1="312.0" y1="127.0" x2="600.0" y2="127.0" stroke="#c2c8dc" stroke-width="1.5"/>
+<circle cx="360.0" cy="127.0" r="3.0" fill="#33a35c"/>
+<line x1="360.0" y1="127.0" x2="360.0" y2="177.0" stroke="#c2c8dc" stroke-width="1.2" stroke-dasharray="4,4"/>
+<text x="360.0" y="110.5" dy="0.33em" text-anchor="middle" fill="#232840">2007</text>
+<text x="360.0" y="143.5" dy="0.33em" text-anchor="middle" fill="#232840">iPhone</text>
+<text x="360.0" y="168.5" dy="0.33em" text-anchor="middle" fill="#232840">Android</text>
+<circle cx="456.0" cy="127.0" r="3.0" fill="#33a35c"/>
+<line x1="456.0" y1="127.0" x2="456.0" y2="152.0" stroke="#c2c8dc" stroke-width="1.2" stroke-dasharray="4,4"/>
+<text x="456.0" y="110.5" dy="0.33em" text-anchor="middle" fill="#232840">2009</text>
+<text x="456.0" y="143.5" dy="0.33em" text-anchor="middle" fill="#232840">WhatsApp</text>
+<circle cx="552.0" cy="127.0" r="3.0" fill="#33a35c"/>
+<line x1="552.0" y1="127.0" x2="552.0" y2="177.0" stroke="#c2c8dc" stroke-width="1.2" stroke-dasharray="4,4"/>
+<text x="552.0" y="110.5" dy="0.33em" text-anchor="middle" fill="#232840">2010</text>
+<text x="552.0" y="143.5" dy="0.33em" text-anchor="middle" fill="#232840">Instagram</text>
+<text x="552.0" y="168.5" dy="0.33em" text-anchor="middle" fill="#232840">Pinterest</text>
+</svg>

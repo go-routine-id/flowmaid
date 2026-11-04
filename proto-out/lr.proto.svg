@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="786" height="227" viewBox="0 0 786 227" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="Flowchart diagram">
+<title>Flowchart diagram</title>
+<rect width="786" height="227" fill="#ffffff"/>
+<defs><filter id="fm-shadow" x="-10%" y="-10%" width="130%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#232840" flood-opacity="0.14"/></filter><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#44507a"/></marker></defs>
+<path d="M 112.0 175.0 C 137.0 175.0, 137.0 175.0, 162.0 175.0" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>U → FE</title></path>
+<path d="M 258.0 175.0 C 283.0 175.0, 283.0 175.0, 308.0 175.0" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>FE → API</title></path>
+<path d="M 386.4 160.9 C 430.6 160.9, 430.6 99.3, 474.9 99.3" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>API → SVC: ok</title></path>
+<path d="M 403.0 176.9 C 438.5 176.9, 438.5 179.8, 474.0 179.8" fill="none" stroke="#44507a" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrow)"><title>API → ERR: denied</title></path>
+<path d="M 595.1 76.3 C 627.5 76.3, 627.5 46.0, 659.9 46.0" fill="none" stroke="#44507a" stroke-width="3.5" marker-end="url(#arrow)"><title>SVC → DB</title></path>
+<path d="M 595.1 90.3 C 620.6 90.3, 621.8 122.0, 647.2 122.0" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>SVC → CACHE</title></path>
+<path d="M 647.2 136.0 L 643.6 136.0 C 640.0 136.0, 632.7 136.0, 626.5 136.0 C 620.2 136.0, 614.9 136.0, 612.3 133.4 C 609.6 130.7, 609.6 125.5, 609.6 121.4 C 609.6 117.3, 609.6 114.5, 609.6 111.8 C 609.6 109.2, 609.6 106.8, 608.4 105.6 C 607.2 104.3, 604.8 104.3, 602.4 104.4 C 600.0 104.3, 597.6 104.3, 596.4 104.4 L 595.1 104.3" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>CACHE → SVC</title></path>
+<g><title>User</title>
+<rect x="16.0" y="154.0" width="96.0" height="42.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.8" filter="url(#fm-shadow)"/>
+<text x="64.0" y="175.0" dy="0.33em" text-anchor="middle" fill="#232840">User</text>
+</g>
+<g><title>Frontend</title>
+<rect x="162.0" y="154.0" width="96.0" height="42.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.8" filter="url(#fm-shadow)"/>
+<text x="210.0" y="175.0" dy="0.33em" text-anchor="middle" fill="#232840">Frontend</text>
+</g>
+<g><title>Auth?</title>
+<polygon points="356.8,139.3 405.6,175.0 356.8,210.7 308.0,175.0" fill="#fcf2da" stroke="#d99114" stroke-width="1.8" filter="url(#fm-shadow)"/>
+<text x="356.8" y="175.0" dy="0.33em" text-anchor="middle" fill="#232840">Auth?</text>
+</g>
+<g><title>Service Layer</title>
+<rect x="474.9" y="69.3" width="120.3" height="42.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.8" filter="url(#fm-shadow)"/>
+<text x="535.0" y="90.3" dy="0.33em" text-anchor="middle" fill="#232840">Service Layer</text>
+</g>
+<g><title>401 Response</title>
+<rect x="474.0" y="161.3" width="122.0" height="42.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.8" filter="url(#fm-shadow)"/>
+<text x="535.0" y="182.3" dy="0.33em" text-anchor="middle" fill="#232840">401 Response</text>
+</g>
+<g><title>Database</title>
+<rect x="659.9" y="16.0" width="96.0" height="42.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.8" filter="url(#fm-shadow)"/>
+<text x="707.9" y="37.0" dy="0.33em" text-anchor="middle" fill="#232840">Database</text>
+</g>
+<g><title>Redis Cache</title>
+<rect x="646.0" y="108.0" width="123.7" height="42.0" rx="21.0" fill="#e5f5ea" stroke="#33a35c" stroke-width="1.8" filter="url(#fm-shadow)"/>
+<text x="707.9" y="129.0" dy="0.33em" text-anchor="middle" fill="#232840">Redis Cache</text>
+</g>
+<rect x="416.2" y="120.1" width="28.8" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="430.6" y="130.1" dy="0.33em" text-anchor="middle" fill="#232840">ok</text>
+<rect x="415.6" y="190.3" width="56.4" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="443.8" y="200.3" dy="0.33em" text-anchor="middle" fill="#232840">denied</text>
+</svg>

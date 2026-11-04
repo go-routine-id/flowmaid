@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400" font-family="Helvetica, Arial, sans-serif" font-size="13" role="img" aria-label="Sankey diagram">
+<title>Sankey diagram</title>
+<rect width="600" height="400" fill="#ffffff"/>
+<defs>
+<linearGradient id="fmsk-4d338c2d44d6c0c2-0" gradientUnits="userSpaceOnUse" x1="34.0" x2="295.0"><stop offset="0" stop-color="#5b6dc0"/><stop offset="1" stop-color="#33a35c"/></linearGradient>
+<linearGradient id="fmsk-4d338c2d44d6c0c2-1" gradientUnits="userSpaceOnUse" x1="34.0" x2="295.0"><stop offset="0" stop-color="#d99114"/><stop offset="1" stop-color="#33a35c"/></linearGradient>
+<linearGradient id="fmsk-4d338c2d44d6c0c2-2" gradientUnits="userSpaceOnUse" x1="34.0" x2="295.0"><stop offset="0" stop-color="#d99114"/><stop offset="1" stop-color="#c2588c"/></linearGradient>
+<linearGradient id="fmsk-4d338c2d44d6c0c2-3" gradientUnits="userSpaceOnUse" x1="34.0" x2="295.0"><stop offset="0" stop-color="#199a8e"/><stop offset="1" stop-color="#33a35c"/></linearGradient>
+<linearGradient id="fmsk-4d338c2d44d6c0c2-4" gradientUnits="userSpaceOnUse" x1="34.0" x2="295.0"><stop offset="0" stop-color="#8a5cd6"/><stop offset="1" stop-color="#33a35c"/></linearGradient>
+<linearGradient id="fmsk-4d338c2d44d6c0c2-5" gradientUnits="userSpaceOnUse" x1="34.0" x2="295.0"><stop offset="0" stop-color="#d96459"/><stop offset="1" stop-color="#33a35c"/></linearGradient>
+<linearGradient id="fmsk-4d338c2d44d6c0c2-6" gradientUnits="userSpaceOnUse" x1="305.0" x2="566.0"><stop offset="0" stop-color="#33a35c"/><stop offset="1" stop-color="#4d8fbf"/></linearGradient>
+<linearGradient id="fmsk-4d338c2d44d6c0c2-7" gradientUnits="userSpaceOnUse" x1="305.0" x2="566.0"><stop offset="0" stop-color="#33a35c"/><stop offset="1" stop-color="#5b6dc0"/></linearGradient>
+<linearGradient id="fmsk-4d338c2d44d6c0c2-8" gradientUnits="userSpaceOnUse" x1="305.0" x2="566.0"><stop offset="0" stop-color="#33a35c"/><stop offset="1" stop-color="#33a35c"/></linearGradient>
+<linearGradient id="fmsk-4d338c2d44d6c0c2-9" gradientUnits="userSpaceOnUse" x1="305.0" x2="566.0"><stop offset="0" stop-color="#c2588c"/><stop offset="1" stop-color="#5b6dc0"/></linearGradient>
+<linearGradient id="fmsk-4d338c2d44d6c0c2-10" gradientUnits="userSpaceOnUse" x1="305.0" x2="566.0"><stop offset="0" stop-color="#c2588c"/><stop offset="1" stop-color="#d99114"/></linearGradient>
+</defs>
+<path d="M34.0,24.0 C164.5,24.0 164.5,92.5 295.0,92.5 L295.0,182.5 C164.5,182.5 164.5,113.9 34.0,113.9 Z" fill="url(#fmsk-4d338c2d44d6c0c2-0)" fill-opacity="0.45"><title>Coal → Electricity: 42 TWh</title></path>
+<path d="M34.0,164.5 C164.5,164.5 164.5,182.5 295.0,182.5 L295.0,248.8 C164.5,248.8 164.5,230.8 34.0,230.8 Z" fill="url(#fmsk-4d338c2d44d6c0c2-1)" fill-opacity="0.45"><title>Gas → Electricity: 31 TWh</title></path>
+<path d="M34.0,125.9 C164.5,125.9 164.5,42.0 295.0,42.0 L295.0,80.5 C164.5,80.5 164.5,164.5 34.0,164.5 Z" fill="url(#fmsk-4d338c2d44d6c0c2-2)" fill-opacity="0.45"><title>Gas → Heating: 18 TWh</title></path>
+<path d="M34.0,242.8 C164.5,242.8 164.5,248.8 295.0,248.8 L295.0,302.3 C164.5,302.3 164.5,296.3 34.0,296.3 Z" fill="url(#fmsk-4d338c2d44d6c0c2-3)" fill-opacity="0.45"><title>Nuclear → Electricity: 25 TWh</title></path>
+<path d="M34.0,308.3 C164.5,308.3 164.5,302.3 295.0,302.3 L295.0,338.7 C164.5,338.7 164.5,344.7 34.0,344.7 Z" fill="url(#fmsk-4d338c2d44d6c0c2-4)" fill-opacity="0.45"><title>Wind → Electricity: 17 TWh</title></path>
+<path d="M34.0,356.7 C164.5,356.7 164.5,338.7 295.0,338.7 L295.0,358.0 C164.5,358.0 164.5,376.0 34.0,376.0 Z" fill="url(#fmsk-4d338c2d44d6c0c2-5)" fill-opacity="0.45"><title>Solar → Electricity: 9 TWh</title></path>
+<path d="M305.0,178.2 C435.5,178.2 435.5,178.2 566.0,178.2 L566.0,280.9 C435.5,280.9 435.5,280.9 305.0,280.9 Z" fill="url(#fmsk-4d338c2d44d6c0c2-6)" fill-opacity="0.45"><title>Electricity → Industry: 48 TWh</title></path>
+<path d="M305.0,92.5 C435.5,92.5 435.5,80.5 566.0,80.5 L566.0,166.2 C435.5,166.2 435.5,178.2 305.0,178.2 Z" fill="url(#fmsk-4d338c2d44d6c0c2-7)" fill-opacity="0.45"><title>Electricity → Homes: 40 TWh</title></path>
+<path d="M305.0,280.9 C435.5,280.9 435.5,292.9 566.0,292.9 L566.0,370.0 C435.5,370.0 435.5,358.0 305.0,358.0 Z" fill="url(#fmsk-4d338c2d44d6c0c2-8)" fill-opacity="0.45"><title>Electricity → Losses: 36 TWh</title></path>
+<path d="M305.0,54.8 C435.5,54.8 435.5,54.8 566.0,54.8 L566.0,80.5 C435.5,80.5 435.5,80.5 305.0,80.5 Z" fill="url(#fmsk-4d338c2d44d6c0c2-9)" fill-opacity="0.45"><title>Heating → Homes: 12 TWh</title></path>
+<path d="M305.0,42.0 C435.5,42.0 435.5,30.0 566.0,30.0 L566.0,42.8 C435.5,42.8 435.5,54.8 305.0,54.8 Z" fill="url(#fmsk-4d338c2d44d6c0c2-10)" fill-opacity="0.45"><title>Heating → Industry, light: 6 TWh</title></path>
+<rect x="24.0" y="24.0" width="10.0" height="89.9" fill="#5b6dc0"><title>Coal</title></rect>
+<text x="40.0" y="69.0" dy="0.33em" text-anchor="start" fill="#232840">Coal (42 TWh)</text>
+<rect x="295.0" y="92.5" width="10.0" height="265.5" fill="#33a35c"><title>Electricity</title></rect>
+<text x="311.0" y="225.3" dy="0.33em" text-anchor="start" fill="#232840">Electricity (124 TWh)</text>
+<rect x="24.0" y="125.9" width="10.0" height="104.9" fill="#d99114"><title>Gas</title></rect>
+<text x="40.0" y="178.4" dy="0.33em" text-anchor="start" fill="#232840">Gas (49 TWh)</text>
+<rect x="295.0" y="42.0" width="10.0" height="38.5" fill="#c2588c"><title>Heating</title></rect>
+<text x="311.0" y="61.3" dy="0.33em" text-anchor="start" fill="#232840">Heating (18 TWh)</text>
+<rect x="24.0" y="242.8" width="10.0" height="53.5" fill="#199a8e"><title>Nuclear</title></rect>
+<text x="40.0" y="269.6" dy="0.33em" text-anchor="start" fill="#232840">Nuclear (25 TWh)</text>
+<rect x="24.0" y="308.3" width="10.0" height="36.4" fill="#8a5cd6"><title>Wind</title></rect>
+<text x="40.0" y="326.5" dy="0.33em" text-anchor="start" fill="#232840">Wind (17 TWh)</text>
+<rect x="24.0" y="356.7" width="10.0" height="19.3" fill="#d96459"><title>Solar</title></rect>
+<text x="40.0" y="366.4" dy="0.33em" text-anchor="start" fill="#232840">Solar (9 TWh)</text>
+<rect x="566.0" y="178.2" width="10.0" height="102.8" fill="#4d8fbf"><title>Industry</title></rect>
+<text x="560.0" y="229.5" dy="0.33em" text-anchor="end" fill="#232840">Industry (48 TWh)</text>
+<rect x="566.0" y="54.8" width="10.0" height="111.3" fill="#5b6dc0"><title>Homes</title></rect>
+<text x="560.0" y="110.5" dy="0.33em" text-anchor="end" fill="#232840">Homes (52 TWh)</text>
+<rect x="566.0" y="292.9" width="10.0" height="77.1" fill="#33a35c"><title>Losses</title></rect>
+<text x="560.0" y="331.5" dy="0.33em" text-anchor="end" fill="#232840">Losses (36 TWh)</text>
+<rect x="566.0" y="30.0" width="10.0" height="12.8" fill="#d99114"><title>Industry, light</title></rect>
+<text x="560.0" y="36.4" dy="0.33em" text-anchor="end" fill="#232840">Industry, light (6 TWh)</text>
+</svg>

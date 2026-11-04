@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="759" height="962" viewBox="0 0 759 962" font-family="Helvetica, Arial, sans-serif" font-size="13" role="img" aria-label="Sequence diagram">
+<title>Sequence diagram</title>
+<rect width="759" height="962" fill="#ffffff"/>
+<rect x="48.9" y="248.0" width="592.6" height="262.0" rx="4" fill="none" stroke="#aeb6d8" stroke-width="1.2"/>
+<rect x="48.9" y="526.0" width="592.6" height="70.0" rx="4" fill="none" stroke="#aeb6d8" stroke-width="1.2"/>
+<rect x="48.9" y="612.0" width="592.6" height="134.0" rx="4" fill="none" stroke="#aeb6d8" stroke-width="1.2"/>
+<rect x="48.9" y="762.0" width="592.6" height="158.0" rx="4" fill="none" stroke="#aeb6d8" stroke-width="1.2"/>
+<line x1="98.9" y1="58.0" x2="98.9" y2="938.0" stroke="#aeb6d8" stroke-dasharray="4 4"/>
+<line x1="238.9" y1="58.0" x2="238.9" y2="938.0" stroke="#aeb6d8" stroke-dasharray="4 4"/>
+<line x1="443.0" y1="58.0" x2="443.0" y2="938.0" stroke="#aeb6d8" stroke-dasharray="4 4"/>
+<line x1="591.5" y1="58.0" x2="591.5" y2="938.0" stroke="#aeb6d8" stroke-dasharray="4 4"/>
+<rect x="439.0" y="160.0" width="8.0" height="34.0" fill="#ffffff" stroke="#d99114" stroke-width="1.4"/>
+<rect x="439.0" y="308.0" width="8.0" height="138.0" fill="#ffffff" stroke="#d99114" stroke-width="1.4"/>
+<rect x="48.9" y="248.0" width="29.1" height="18" fill="#eef1fb" stroke="#aeb6d8"/>
+<text x="63.4" y="257.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#232840">alt</text>
+<text x="84.0" y="257.0" dy="0.33em" fill="#232840">[session valid]</text>
+<line x1="48.9" y1="454.0" x2="641.5" y2="454.0" stroke="#aeb6d8" stroke-dasharray="5 4"/>
+<text x="345.2" y="466.0" dy="0.33em" text-anchor="middle" fill="#232840">[expired]</text>
+<rect x="48.9" y="526.0" width="33.5" height="18" fill="#eef1fb" stroke="#aeb6d8"/>
+<text x="65.6" y="535.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#232840">opt</text>
+<text x="88.4" y="535.0" dy="0.33em" fill="#232840">[slow network]</text>
+<rect x="48.9" y="612.0" width="40.8" height="18" fill="#eef1fb" stroke="#aeb6d8"/>
+<text x="69.3" y="621.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#232840">loop</text>
+<text x="95.7" y="621.0" dy="0.33em" fill="#232840">[every 30s]</text>
+<rect x="48.9" y="762.0" width="34.3" height="18" fill="#eef1fb" stroke="#aeb6d8"/>
+<text x="66.0" y="771.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#232840">par</text>
+<text x="89.2" y="771.0" dy="0.33em" fill="#232840">[cache warmup]</text>
+<line x1="48.9" y1="830.0" x2="641.5" y2="830.0" stroke="#aeb6d8" stroke-dasharray="5 4"/>
+<text x="345.2" y="842.0" dy="0.33em" text-anchor="middle" fill="#232840">[audit]</text>
+<rect x="24.0" y="106.0" width="66.9" height="26.0" rx="3" fill="#fcf2da" stroke="#d99114" stroke-width="1.2"/>
+<text x="57.4" y="119.0" dy="0.33em" text-anchor="middle" fill="#232840">human</text>
+<rect x="86.9" y="210.0" width="164.0" height="26.0" rx="3" fill="#fcf2da" stroke="#d99114" stroke-width="1.2"/>
+<text x="168.9" y="223.0" dy="0.33em" text-anchor="middle" fill="#232840">cookies already set</text>
+<rect x="599.5" y="344.0" width="135.0" height="26.0" rx="3" fill="#fcf2da" stroke="#d99114" stroke-width="1.2"/>
+<text x="667.0" y="357.0" dy="0.33em" text-anchor="middle" fill="#232840">indexed by tenant</text>
+<rect x="395.9" y="674.0" width="94.3" height="26.0" rx="3" fill="#fcf2da" stroke="#d99114" stroke-width="1.2"/>
+<text x="443.0" y="687.0" dy="0.33em" text-anchor="middle" fill="#232840">rate-limited</text>
+<path d="M 98.9 90.0 L 238.9 90.0" fill="none" stroke="#44507a" stroke-width="1.6"/>
+<polygon points="238.9,90.0 227.9,95.5 227.9,84.5" fill="#44507a"/>
+<text x="168.9" y="80.0" dy="0.33em" text-anchor="middle" fill="#232840"><tspan font-weight="bold">1. </tspan>open dashboard</text>
+<path d="M 238.9 160.0 L 443.0 160.0" fill="none" stroke="#44507a" stroke-width="1.6"/>
+<polygon points="443.0,160.0 432.0,165.5 432.0,154.5" fill="#44507a"/>
+<text x="341.0" y="150.0" dy="0.33em" text-anchor="middle" fill="#232840"><tspan font-weight="bold">2. </tspan>GET /session</text>
+<path d="M 443.0 194.0 L 238.9 194.0" fill="none" stroke="#44507a" stroke-width="1.6" stroke-dasharray="6 4"/>
+<polygon points="238.9,194.0 249.9,188.5 249.9,199.5" fill="#44507a"/>
+<text x="341.0" y="184.0" dy="0.33em" text-anchor="middle" fill="#232840"><tspan font-weight="bold">3. </tspan>200 session</text>
+<path d="M 238.9 294.0 L 443.0 294.0" fill="none" stroke="#44507a" stroke-width="1.6"/>
+<polygon points="443.0,294.0 432.0,299.5 432.0,288.5" fill="#44507a"/>
+<text x="341.0" y="284.0" dy="0.33em" text-anchor="middle" fill="#232840"><tspan font-weight="bold">4. </tspan>GET /widgets</text>
+<path d="M 443.0 328.0 L 591.5 328.0" fill="none" stroke="#44507a" stroke-width="1.6"/>
+<polygon points="591.5,328.0 580.5,333.5 580.5,322.5" fill="#44507a"/>
+<text x="517.3" y="318.0" dy="0.33em" text-anchor="middle" fill="#232840"><tspan font-weight="bold">5. </tspan>SELECT widgets</text>
+<path d="M 591.5 398.0 L 443.0 398.0" fill="none" stroke="#44507a" stroke-width="1.6" stroke-dasharray="6 4"/>
+<polygon points="443.0,398.0 454.0,392.5 454.0,403.5" fill="#44507a"/>
+<text x="517.3" y="388.0" dy="0.33em" text-anchor="middle" fill="#232840"><tspan font-weight="bold">6. </tspan>rows</text>
+<path d="M 443.0 432.0 L 238.9 432.0" fill="none" stroke="#44507a" stroke-width="1.6" stroke-dasharray="6 4"/>
+<polygon points="238.9,432.0 249.9,426.5 249.9,437.5" fill="#44507a"/>
+<text x="341.0" y="422.0" dy="0.33em" text-anchor="middle" fill="#232840"><tspan font-weight="bold">7. </tspan>widget list</text>
+<path d="M 238.9 492.0 L 98.9 492.0" fill="none" stroke="#44507a" stroke-width="1.6" stroke-dasharray="6 4"/>
+<text x="168.9" y="482.0" dy="0.33em" text-anchor="middle" fill="#232840"><tspan font-weight="bold">8. </tspan>redirect to login</text>
+<path d="M 238.9 560.0 L 270.9 560.0 L 270.9 576.0 L 238.9 576.0" fill="none" stroke="#44507a" stroke-width="1.6"/>
+<text x="278.9" y="568.0" dy="0.33em" fill="#232840"><tspan font-weight="bold">9. </tspan>show spinner</text>
+<path d="M 238.9 658.0 L 443.0 658.0" fill="none" stroke="#44507a" stroke-width="1.6"/>
+<path d="M 432.0 664.5 L 443.0 658.0" fill="none" stroke="#44507a" stroke-width="1.6"/>
+<path d="M 432.0 651.5 L 443.0 658.0" fill="none" stroke="#44507a" stroke-width="1.6"/>
+<text x="341.0" y="648.0" dy="0.33em" text-anchor="middle" fill="#232840"><tspan font-weight="bold">10. </tspan>poll status</text>
+<path d="M 443.0 728.0 L 238.9 728.0" fill="none" stroke="#44507a" stroke-width="1.6" stroke-dasharray="6 4"/>
+<path d="M 249.9 721.5 L 238.9 728.0" fill="none" stroke="#44507a" stroke-width="1.6"/>
+<path d="M 249.9 734.5 L 238.9 728.0" fill="none" stroke="#44507a" stroke-width="1.6"/>
+<text x="341.0" y="718.0" dy="0.33em" text-anchor="middle" fill="#232840"><tspan font-weight="bold">11. </tspan>status (async)</text>
+<path d="M 443.0 808.0 L 591.5 808.0" fill="none" stroke="#44507a" stroke-width="1.6"/>
+<text x="517.3" y="798.0" dy="0.33em" text-anchor="middle" fill="#232840"><tspan font-weight="bold">12. </tspan>warm cache</text>
+<path d="M 443.0 868.0 L 591.5 868.0" fill="none" stroke="#44507a" stroke-width="1.6"/>
+<path d="M 589.0 872.5 L 580.0 863.5" fill="none" stroke="#44507a" stroke-width="1.6"/>
+<path d="M 589.0 863.5 L 580.0 872.5" fill="none" stroke="#44507a" stroke-width="1.6"/>
+<text x="517.3" y="858.0" dy="0.33em" text-anchor="middle" fill="#232840"><tspan font-weight="bold">13. </tspan>write log</text>
+<path d="M 98.9 902.0 L 238.9 902.0" fill="none" stroke="#44507a" stroke-width="1.6" stroke-dasharray="6 4"/>
+<path d="M 236.4 906.5 L 227.4 897.5" fill="none" stroke="#44507a" stroke-width="1.6"/>
+<path d="M 236.4 897.5 L 227.4 906.5" fill="none" stroke="#44507a" stroke-width="1.6"/>
+<text x="168.9" y="892.0" dy="0.33em" text-anchor="middle" fill="#232840"><tspan font-weight="bold">14. </tspan>close tab</text>
+<rect x="58.9" y="24.0" width="80.0" height="34.0" rx="4" fill="#ffffff" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="98.9" y="41.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#5b6dc0">Visitor</text>
+<rect x="196.2" y="24.0" width="85.3" height="34.0" rx="4" fill="#33a35c" stroke="#33a35c" stroke-width="1.6"/>
+<text x="238.9" y="41.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">Frontend</text>
+<rect x="388.4" y="24.0" width="109.3" height="34.0" rx="4" fill="#d99114" stroke="#d99114" stroke-width="1.6"/>
+<text x="443.0" y="41.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">API Gateway</text>
+<rect x="551.5" y="24.0" width="80.0" height="34.0" rx="4" fill="#c2588c" stroke="#c2588c" stroke-width="1.6"/>
+<text x="591.5" y="41.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">DB</text>
+</svg>

@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="573" height="250" viewBox="0 0 573 250" font-family="Helvetica, Arial, sans-serif" font-size="13" role="img" aria-label="User journey">
+<title>User journey</title>
+<rect width="573" height="250" fill="#ffffff"/>
+<rect x="24.0" y="88.0" width="312.0" height="30.0" rx="6" fill="#5b6dc0"/>
+<text x="180.0" y="103.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">Go to work</text>
+<rect x="336.0" y="88.0" width="212.7" height="30.0" rx="6" fill="#33a35c"/>
+<text x="442.4" y="103.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">Go home</text>
+<polyline points="76.0,170.0 180.0,170.0 284.0,170.0 390.4,170.0 496.7,170.0" fill="none" stroke="#c2c8dc" stroke-width="2"/>
+<circle cx="76.0" cy="140.0" r="4.0" fill="#5b6dc0"/>
+<circle cx="76.0" cy="170.0" r="22.0" fill="#57b563" stroke="#2f3550" stroke-width="1.4"/>
+<circle cx="69.0" cy="166.0" r="2.2" fill="#232840"/>
+<circle cx="83.0" cy="166.0" r="2.2" fill="#232840"/>
+<path d="M 66.8 175.3 Q 76.0 187.6 85.2 175.3" fill="none" stroke="#232840" stroke-width="1.6" stroke-linecap="round"/>
+<text x="76.0" y="206.0" dy="0.33em" text-anchor="middle" fill="#232840">Make tea</text>
+<circle cx="180.0" cy="140.0" r="4.0" fill="#5b6dc0"/>
+<circle cx="180.0" cy="170.0" r="22.0" fill="#f2c94c" stroke="#2f3550" stroke-width="1.4"/>
+<circle cx="173.0" cy="166.0" r="2.2" fill="#232840"/>
+<circle cx="187.0" cy="166.0" r="2.2" fill="#232840"/>
+<path d="M 170.8 175.3 Q 180.0 175.3 189.2 175.3" fill="none" stroke="#232840" stroke-width="1.6" stroke-linecap="round"/>
+<text x="180.0" y="206.0" dy="0.33em" text-anchor="middle" fill="#232840">Go upstairs</text>
+<circle cx="278.0" cy="140.0" r="4.0" fill="#5b6dc0"/>
+<circle cx="290.0" cy="140.0" r="4.0" fill="#33a35c"/>
+<circle cx="284.0" cy="170.0" r="22.0" fill="#e8574f" stroke="#2f3550" stroke-width="1.4"/>
+<circle cx="277.0" cy="166.0" r="2.2" fill="#232840"/>
+<circle cx="291.0" cy="166.0" r="2.2" fill="#232840"/>
+<path d="M 274.8 175.3 Q 284.0 163.0 293.2 175.3" fill="none" stroke="#232840" stroke-width="1.6" stroke-linecap="round"/>
+<text x="284.0" y="206.0" dy="0.33em" text-anchor="middle" fill="#232840">Do work</text>
+<circle cx="390.4" cy="140.0" r="4.0" fill="#5b6dc0"/>
+<circle cx="390.4" cy="170.0" r="22.0" fill="#57b563" stroke="#2f3550" stroke-width="1.4"/>
+<circle cx="383.3" cy="166.0" r="2.2" fill="#232840"/>
+<circle cx="397.4" cy="166.0" r="2.2" fill="#232840"/>
+<path d="M 381.1 175.3 Q 390.4 187.6 399.6 175.3" fill="none" stroke="#232840" stroke-width="1.6" stroke-linecap="round"/>
+<text x="390.4" y="206.0" dy="0.33em" text-anchor="middle" fill="#232840">Go downstairs</text>
+<circle cx="496.7" cy="140.0" r="4.0" fill="#5b6dc0"/>
+<circle cx="496.7" cy="170.0" r="22.0" fill="#57b563" stroke="#2f3550" stroke-width="1.4"/>
+<circle cx="489.7" cy="166.0" r="2.2" fill="#232840"/>
+<circle cx="503.7" cy="166.0" r="2.2" fill="#232840"/>
+<path d="M 487.5 175.3 Q 496.7 187.6 505.9 175.3" fill="none" stroke="#232840" stroke-width="1.6" stroke-linecap="round"/>
+<text x="496.7" y="206.0" dy="0.33em" text-anchor="middle" fill="#232840">Sit down</text>
+<text x="286.4" y="41.0" dy="0.33em" text-anchor="middle" font-weight="bold" font-size="17" fill="#232840">My working day</text>
+<circle cx="237.9" cy="73.0" r="6" fill="#5b6dc0"/>
+<text x="247.9" y="73.0" dy="0.33em" fill="#232840">Me</text>
+<circle cx="291.4" cy="73.0" r="6" fill="#33a35c"/>
+<text x="301.4" y="73.0" dy="0.33em" fill="#232840">Cat</text>
+</svg>

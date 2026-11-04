@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="869" height="738" viewBox="0 0 869 738" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="Flowchart diagram">
+<title>Flowchart diagram</title>
+<rect width="869" height="738" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<rect x="560.1" y="28.0" width="281.1" height="364.0" rx="8" fill="#f7f8fd" stroke="#c9cfe8" stroke-width="1.4"/>
+<rect x="28.0" y="28.0" width="497.6" height="478.0" rx="8" fill="#f7f8fd" stroke="#c9cfe8" stroke-width="1.4"/>
+<path d="M 710.3 106.0 C 710.3 149.0, 710.3 149.0, 710.3 192.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Build → Scan</title></path>
+<path d="M 736.6 247.0 C 736.6 277.0, 759.2 277.0, 759.2 307.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Scan → Reg: pass</title></path>
+<path d="M 683.6 247.0 C 683.6 281.0, 660.7 281.0, 660.7 315.0" fill="none" stroke="#44507a" stroke-width="1.7" stroke-dasharray="5 4" marker-end="url(#arrow)"><title>Scan → Dev: fail</title></path>
+<path d="M 387.5 106.0 C 387.5 149.0, 367.3 149.0, 367.3 192.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Gate → Auth</title></path>
+<path d="M 426.5 106.0 C 426.5 149.2, 452.2 149.2, 452.2 192.5" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Gate → Cache</title></path>
+<path d="M 343.6 247.0 L 343.6 262.9 C 343.6 278.8, 343.6 310.7, 329.5 342.5 C 315.4 374.3, 287.3 406.2, 273.2 422.1 L 259.1 438.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Auth → Users</title></path>
+<path d="M 466.2 192.5 C 570.1 152.5, 571.4 146.0, 442.5 106.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Cache → Gate</title></path>
+<path d="M 131.9 246.5 C 131.9 285.0, 110.9 285.0, 110.9 323.5" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Q → W1</title></path>
+<path d="M 180.5 246.5 C 180.5 285.0, 201.2 285.0, 201.2 323.5" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Q → W2</title></path>
+<path d="M 130.9 334.5 C 178.9 314.5, 178.9 370.5, 130.9 350.5" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>W1 → W1</title></path>
+<path d="M 366.5 106.0 C 366.5 149.2, 194.1 149.2, 194.1 192.5" fill="none" stroke="#44507a" stroke-width="3.4" marker-end="url(#arrow)"><title>Gate → Q</title></path>
+<path d="M 118.9 361.5 C 118.9 399.8, 191.6 399.8, 191.6 438.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>W1 → Users</title></path>
+<path d="M 225.3 361.5 C 225.3 399.8, 225.3 399.8, 225.3 438.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>W2 → Users</title></path>
+<path d="M 203.9 590.0 C 203.9 621.9, 178.7 621.9, 178.7 653.9" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Mon → Done: yes</title></path>
+<path d="M 251.1 590.0 C 251.1 625.5, 273.1 625.5, 273.1 661.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Mon → Rollback: no</title></path>
+<path d="M 743.9 315.0 C 645.7 315.0, 623.9 342.5, 525.6 342.5" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Reg → Platform</title></path>
+<path d="M 225.3 506.0 C 225.3 529.0, 225.3 529.0, 225.3 552.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Platform → Mon</title></path>
+<path d="M 295.4 661.0 L 295.4 506.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Rollback → Platform</title></path>
+<g><title>Developer git push</title>
+<polygon points="588.1,315.0 693.9,315.0 679.9,370.0 574.1,370.0" fill="#fff3bf" stroke="#f08c00" stroke-width="2"/>
+<text x="634.0" y="334.0" text-anchor="middle" fill="#232840"><tspan x="634.0" dy="0.33em">Developer</tspan><tspan x="634.0" dy="17.0">git push</tspan></text>
+</g>
+<g><title>Build &amp; Test</title>
+<rect x="644.2" y="68.0" width="132.1" height="38.0" rx="3" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<line x1="652.2" y1="68.0" x2="652.2" y2="106.0" stroke="#5b6dc0" stroke-width="1.6"/>
+<line x1="768.3" y1="68.0" x2="768.3" y2="106.0" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="710.3" y="87.0" dy="0.33em" text-anchor="middle" fill="#232840">Build &amp; Test</text>
+</g>
+<g><title>Security scan</title>
+<polygon points="654.6,219.5 668.6,192.0 751.9,192.0 765.9,219.5 751.9,247.0 668.6,247.0" fill="#f2ecfa" stroke="#8a5cd6" stroke-width="1.6"/>
+<text x="710.3" y="211.0" text-anchor="middle" fill="#232840"><tspan x="710.3" dy="0.33em">Security</tspan><tspan x="710.3" dy="17.0">scan</tspan></text>
+</g>
+<g><title>Artifact Registry</title>
+<path d="M 743.9 315.0 A 41.7 8.0 0 0 0 827.2 315.0 L 827.2 370.0 A 41.7 8.0 0 0 1 743.9 370.0 Z" fill="#e7eef7" stroke="#4d8fbf" stroke-width="1.6"/>
+<path d="M 743.9 315.0 A 41.7 8.0 0 0 1 827.2 315.0" fill="none" stroke="#4d8fbf" stroke-width="1.6"/>
+<text x="785.6" y="334.0" text-anchor="middle" fill="#232840"><tspan x="785.6" dy="0.33em">Artifact</tspan><tspan x="785.6" dy="17.0">Registry</tspan></text>
+</g>
+<g><title>API Gateway</title>
+<rect x="354.5" y="68.0" width="113.3" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="411.2" y="87.0" dy="0.33em" text-anchor="middle" fill="#232840">API Gateway</text>
+</g>
+<g><title>Auth service</title>
+<rect x="293.2" y="192.0" width="100.7" height="55.0" rx="3" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<line x1="301.2" y1="192.0" x2="301.2" y2="247.0" stroke="#5b6dc0" stroke-width="1.6"/>
+<line x1="385.9" y1="192.0" x2="385.9" y2="247.0" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="343.6" y="211.0" text-anchor="middle" fill="#232840"><tspan x="343.6" dy="0.33em">Auth</tspan><tspan x="343.6" dy="17.0">service</tspan></text>
+</g>
+<g><title>Redis</title>
+<path d="M 443.9 200.5 A 33.9 8.0 0 0 0 511.6 200.5 L 511.6 238.5 A 33.9 8.0 0 0 1 443.9 238.5 Z" fill="#e7eef7" stroke="#4d8fbf" stroke-width="1.6"/>
+<path d="M 443.9 200.5 A 33.9 8.0 0 0 1 511.6 200.5" fill="none" stroke="#4d8fbf" stroke-width="1.6"/>
+<text x="477.8" y="219.5" dy="0.33em" text-anchor="middle" fill="#232840">Redis</text>
+</g>
+<g><title>Users DB</title>
+<path d="M 179.6 446.0 A 45.8 8.0 0 0 0 271.1 446.0 L 271.1 484.0 A 45.8 8.0 0 0 1 179.6 484.0 Z" fill="#e7eef7" stroke="#4d8fbf" stroke-width="1.6"/>
+<path d="M 179.6 446.0 A 45.8 8.0 0 0 1 271.1 446.0" fill="none" stroke="#4d8fbf" stroke-width="1.6"/>
+<text x="225.3" y="465.0" dy="0.33em" text-anchor="middle" fill="#232840">Users DB</text>
+</g>
+<g><title>Job Queue</title>
+<path d="M 106.7 200.5 A 49.7 8.0 0 0 0 206.1 200.5 L 206.1 238.5 A 49.7 8.0 0 0 1 106.7 238.5 Z" fill="#e7eef7" stroke="#4d8fbf" stroke-width="1.6"/>
+<path d="M 106.7 200.5 A 49.7 8.0 0 0 1 206.1 200.5" fill="none" stroke="#4d8fbf" stroke-width="1.6"/>
+<text x="156.4" y="219.5" dy="0.33em" text-anchor="middle" fill="#232840">Job Queue</text>
+</g>
+<g><title>Worker 1</title>
+<rect x="42.0" y="323.5" width="88.9" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="86.5" y="342.5" dy="0.33em" text-anchor="middle" fill="#232840">Worker 1</text>
+</g>
+<g><title>Worker 2</title>
+<rect x="180.9" y="323.5" width="88.9" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="225.3" y="342.5" dy="0.33em" text-anchor="middle" fill="#232840">Worker 2</text>
+</g>
+<g><title>Healthy?</title>
+<polygon points="167.8,571.0 181.8,552.0 268.9,552.0 282.9,571.0 268.9,590.0 181.8,590.0" fill="#f2ecfa" stroke="#8a5cd6" stroke-width="1.6"/>
+<text x="225.3" y="571.0" dy="0.33em" text-anchor="middle" fill="#232840">Healthy?</text>
+</g>
+<g><title>Live</title>
+<circle cx="163.9" cy="680.0" r="30.0" fill="#d3f9d8" stroke="#2b8a3e" stroke-width="3"/>
+<circle cx="163.9" cy="680.0" r="26.0" fill="#d3f9d8" stroke="#2b8a3e" stroke-width="3"/>
+<text x="163.9" y="680.0" dy="0.33em" text-anchor="middle" fill="#232840">Live</text>
+</g>
+<g><title>Rollback</title>
+<polygon points="243.9,661.0 339.8,661.0 353.8,699.0 257.9,699.0" fill="#ffe3e3" stroke="#e03131" stroke-width="1.6"/>
+<text x="298.9" y="680.0" dy="0.33em" text-anchor="middle" fill="#c92a2a">Rollback</text>
+</g>
+<rect x="726.1" y="267.0" width="43.6" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="747.9" y="277.0" dy="0.33em" text-anchor="middle" fill="#232840">pass</text>
+<rect x="655.9" y="271.0" width="32.5" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="672.1" y="281.0" dy="0.33em" text-anchor="middle" fill="#232840">fail</text>
+<rect x="173.4" y="611.9" width="35.8" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="191.3" y="621.9" dy="0.33em" text-anchor="middle" fill="#232840">yes</text>
+<rect x="247.3" y="615.5" width="29.6" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="262.1" y="625.5" dy="0.33em" text-anchor="middle" fill="#232840">no</text>
+<rect x="566.1" y="33.0" width="87.5" height="16" rx="4" fill="#f7f8fd" fill-opacity="0.9"/>
+<text x="570.1" y="45.0" font-size="12" font-weight="bold" fill="#6a7086">CI/CD Pipeline</text>
+<rect x="34.0" y="33.0" width="114.7" height="16" rx="4" fill="#f7f8fd" fill-opacity="0.9"/>
+<text x="38.0" y="45.0" font-size="12" font-weight="bold" fill="#6a7086">Production Platform</text>
+</svg>

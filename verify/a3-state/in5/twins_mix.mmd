@@ -1,0 +1,8 @@
+stateDiagram-v2
+state c <<choice>>
+[*] --> P
+P --> c
+c --> B : low
+c --> B : medium
+c --> C : high
+c --> D : critical
