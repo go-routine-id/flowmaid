@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="224" height="152" viewBox="0 0 224 152" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="Flowchart diagram">
+<title>Flowchart diagram</title>
+<rect width="224" height="152" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<path d="M 82.0 40.0 C 112.0 40.0, 112.0 40.0, 142.0 40.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>A → B</title></path>
+<path d="M 142.0 54.0 C 102.0 124.0, 122.0 124.0, 82.0 54.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>B → A: x</title></path>
+<g><title>A</title>
+<rect x="28.0" y="28.0" width="54.0" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="55.0" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">A</text>
+</g>
+<g><title>B</title>
+<rect x="142.0" y="28.0" width="54.0" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="169.0" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">B</text>
+</g>
+<rect x="101.5" y="96.5" width="21.0" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="112.0" y="106.5" dy="0.33em" text-anchor="middle" fill="#232840">x</text>
+</svg>

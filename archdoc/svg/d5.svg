@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="460" height="884" viewBox="0 0 460 884" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="State diagram">
+<title>State diagram</title>
+<defs><marker id="arrow__333333" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#333333"/></marker></defs>
+<path d="M 190.4 42.0 C 190.4 70.0, 190.4 71.9, 190.4 96.5" fill="none" stroke="#333333" stroke-width="2" marker-end="url(#arrow__333333)"><title>start → Requested</title></path>
+<path d="M 190.4 140.0 C 190.4 174.1, 190.4 175.9, 190.4 206.5" fill="none" stroke="#333333" stroke-width="2" marker-end="url(#arrow__333333)"><title>Requested → Warm: ambil dari pool</title></path>
+<path d="M 190.4 250.0 C 190.4 284.1, 190.4 285.9, 190.4 316.5" fill="none" stroke="#333333" stroke-width="2" marker-end="url(#arrow__333333)"><title>Warm → Running: prompt pertama</title></path>
+<path d="M 156.3 359.9 C 156.3 422.2, 124.8 436.0, 110.8 476.7 C 107.2 487.1, 104.2 498.0, 104.2 509.0 L 104.2 514.5" fill="none" stroke="#333333" stroke-width="2" marker-end="url(#arrow__333333)"><title>Running → Waiting: canUseTool</title></path>
+<path d="M 159.5 520.0 C 159.5 440.9, 174.9 518.2, 175.3 365.5" fill="none" stroke="#333333" stroke-width="2" marker-end="url(#arrow__333333)"><title>Waiting → Running: approve / deny</title></path>
+<path d="M 194.3 360.0 C 194.3 422.0, 217.8 436.0, 228.4 476.4 C 231.2 487.0, 233.5 498.0, 233.5 509.0 L 233.5 514.5" fill="none" stroke="#333333" stroke-width="2" marker-end="url(#arrow__333333)"><title>Running → Idle: turn selesai</title></path>
+<path d="M 264.4 520.0 C 264.4 457.9, 237.9 444.0, 226.0 403.5 C 223.0 392.9, 220.4 382.0, 220.4 371.0 L 220.4 365.5" fill="none" stroke="#333333" stroke-width="2" marker-end="url(#arrow__333333)"><title>Idle → Running: prompt baru</title></path>
+<path d="M 248.9 558.0 C 248.9 592.1, 248.9 593.9, 248.9 624.5" fill="none" stroke="#333333" stroke-width="2" marker-end="url(#arrow__333333)"><title>Idle → Suspended: idle lewat batas</title></path>
+<path d="M 288.6 630.0 L 288.6 628.3 C 288.6 626.7, 288.6 623.3, 288.6 620.0 C 288.6 616.7, 288.6 613.3, 290.2 611.7 C 291.9 610.0, 295.2 610.0, 302.2 610.0 C 309.1 610.0, 319.6 610.0, 330.9 610.0 C 342.1 610.0, 354.1 610.0, 360.1 604.0 C 366.1 598.0, 366.1 586.0, 366.1 547.2 C 366.1 508.3, 366.1 442.7, 366.1 403.8 C 366.1 365.0, 366.1 353.0, 360.1 347.0 C 354.1 341.0, 342.1 341.0, 319.8 341.0 C 297.6 341.0, 265.0 341.0, 248.7 341.0 L 237.9 341.0" fill="none" stroke="#333333" stroke-width="2" marker-end="url(#arrow__333333)"><title>Suspended → Running: resume session_id</title></path>
+<path d="M 248.9 668.0 C 248.9 702.1, 248.9 703.9, 248.9 734.5" fill="none" stroke="#333333" stroke-width="2" marker-end="url(#arrow__333333)"><title>Suspended → Reclaimed: TTL habis</title></path>
+<path d="M 248.9 778.0 C 248.9 806.0, 248.9 807.9, 248.9 832.5" fill="none" stroke="#333333" stroke-width="2" marker-end="url(#arrow__333333)"><title>Reclaimed → end</title></path>
+<g><title>start</title>
+<circle cx="190.4" cy="35.0" r="7.0" fill="#333333" stroke="#333333" stroke-width="1.8"/>
+<text x="190.4" y="35.0" dy="0.33em" text-anchor="middle" fill="#333333"></text>
+</g>
+<g><title>Requested</title>
+<rect x="140.7" y="102.0" width="99.4" height="38.0" rx="9.0" fill="#ffffff" stroke="#333333" stroke-width="1.8"/>
+<text x="190.4" y="121.0" dy="0.33em" text-anchor="middle" fill="#333333">Requested</text>
+</g>
+<g><title>Warm</title>
+<rect x="155.7" y="212.0" width="69.4" height="38.0" rx="9.0" fill="#ffffff" stroke="#333333" stroke-width="1.8"/>
+<text x="190.4" y="231.0" dy="0.33em" text-anchor="middle" fill="#333333">Warm</text>
+</g>
+<g><title>Running</title>
+<rect x="148.3" y="322.0" width="84.1" height="38.0" rx="9.0" fill="#ffffff" stroke="#333333" stroke-width="1.8"/>
+<text x="190.4" y="341.0" dy="0.33em" text-anchor="middle" fill="#333333">Running</text>
+</g>
+<g><title>Waiting</title>
+<rect x="92.2" y="520.0" width="79.3" height="38.0" rx="9.0" fill="#ffffff" stroke="#333333" stroke-width="1.8"/>
+<text x="131.8" y="539.0" dy="0.33em" text-anchor="middle" fill="#333333">Waiting</text>
+</g>
+<g><title>Idle</title>
+<rect x="221.5" y="520.0" width="54.9" height="38.0" rx="9.0" fill="#ffffff" stroke="#333333" stroke-width="1.8"/>
+<text x="248.9" y="539.0" dy="0.33em" text-anchor="middle" fill="#333333">Idle</text>
+</g>
+<g><title>Suspended</title>
+<rect x="197.3" y="630.0" width="103.3" height="38.0" rx="9.0" fill="#ffffff" stroke="#333333" stroke-width="1.8"/>
+<text x="248.9" y="649.0" dy="0.33em" text-anchor="middle" fill="#333333">Suspended</text>
+</g>
+<g><title>Reclaimed</title>
+<rect x="199.7" y="740.0" width="98.4" height="38.0" rx="9.0" fill="#ffffff" stroke="#333333" stroke-width="1.8"/>
+<text x="248.9" y="759.0" dy="0.33em" text-anchor="middle" fill="#333333">Reclaimed</text>
+</g>
+<g><title>end</title>
+<circle cx="248.9" cy="847.0" r="9.0" fill="#ffffff" stroke="#333333" stroke-width="1.8"/>
+<circle cx="248.9" cy="847.0" r="5.0" fill="#333333" stroke="#333333" stroke-width="1.8"/>
+<text x="248.9" y="847.0" dy="0.33em" text-anchor="middle" fill="#333333"></text>
+</g>
+<rect x="137.2" y="166.0" width="106.4" height="20" rx="4" fill="#ffffff" stroke="#cccccc"/>
+<text x="190.4" y="176.0" dy="0.33em" text-anchor="middle" fill="#333333">ambil dari pool</text>
+<rect x="133.8" y="276.0" width="113.1" height="20" rx="4" fill="#ffffff" stroke="#cccccc"/>
+<text x="190.4" y="286.0" dy="0.33em" text-anchor="middle" fill="#333333">prompt pertama</text>
+<rect x="28.0" y="442.2" width="89.8" height="20" rx="4" fill="#ffffff" stroke="#cccccc"/>
+<text x="72.9" y="452.2" dy="0.33em" text-anchor="middle" fill="#333333">canUseTool</text>
+<rect x="109.8" y="468.5" width="107.6" height="20" rx="4" fill="#ffffff" stroke="#cccccc"/>
+<text x="163.6" y="478.5" dy="0.33em" text-anchor="middle" fill="#333333">approve / deny</text>
+<rect x="228.0" y="458.9" width="86.3" height="20" rx="4" fill="#ffffff" stroke="#cccccc"/>
+<text x="271.2" y="468.9" dy="0.33em" text-anchor="middle" fill="#333333">turn selesai</text>
+<rect x="241.6" y="420.1" width="89.7" height="20" rx="4" fill="#ffffff" stroke="#cccccc"/>
+<text x="286.4" y="430.1" dy="0.33em" text-anchor="middle" fill="#333333">prompt baru</text>
+<rect x="193.2" y="584.0" width="111.5" height="20" rx="4" fill="#ffffff" stroke="#cccccc"/>
+<text x="248.9" y="594.0" dy="0.33em" text-anchor="middle" fill="#333333">idle lewat batas</text>
+<rect x="300.4" y="485.0" width="131.5" height="20" rx="4" fill="#ffffff" stroke="#cccccc"/>
+<text x="366.1" y="495.0" dy="0.33em" text-anchor="middle" fill="#333333">resume session_id</text>
+<rect x="208.5" y="694.0" width="80.8" height="20" rx="4" fill="#ffffff" stroke="#cccccc"/>
+<text x="248.9" y="704.0" dy="0.33em" text-anchor="middle" fill="#333333">TTL habis</text>
+</svg>

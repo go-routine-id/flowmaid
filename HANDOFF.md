@@ -1,3 +1,5 @@
+> **2026-11-04: read MONDAY.md first** — it is the entry point and wins over anything below. The header, §1, §2 and §5 of this file are from 2026-10-31 and outdated; the run log in §6–§8 is current.
+
 # Handoff — flowmaid mermaid-parity (state at 2026-10-31 15:50 WIB)
 
 Read this first on Monday 2026-11-02 07:05 WIB (scheduled resume). The user writes Indonesian; reply in Indonesian.

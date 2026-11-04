@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="448" height="286" viewBox="0 0 448 286" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="Flowchart diagram">
+<title>Flowchart diagram</title>
+<rect width="448" height="286" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<path d="M 91.5 62.0 C 124.7 62.0, 124.7 121.0, 157.8 121.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>A → H</title></path>
+<path d="M 92.7 140.2 C 125.2 140.2, 125.2 135.0, 157.8 135.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>B → H</title></path>
+<path d="M 97.8 224.0 C 127.8 224.0, 127.8 149.0, 157.8 149.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>C → H</title></path>
+<path d="M 273.5 121.0 C 303.5 121.0, 303.5 54.0, 333.5 54.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>H → P</title></path>
+<path d="M 273.5 135.0 C 304.9 135.0, 304.9 135.0, 336.2 135.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>H → Q</title></path>
+<path d="M 273.5 149.0 C 311.5 149.0, 311.5 216.0, 349.5 216.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>H → R</title></path>
+<g><title>One</title>
+<rect x="34.2" y="36.0" width="57.3" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="62.9" y="55.0" dy="0.33em" text-anchor="middle" fill="#232840">One</text>
+</g>
+<g><title>Hexagon</title>
+<polygon points="157.8,135.0 171.8,116.0 259.5,116.0 273.5,135.0 259.5,154.0 171.8,154.0" fill="#f2ecfa" stroke="#8a5cd6" stroke-width="1.6"/>
+<text x="215.7" y="135.0" dy="0.33em" text-anchor="middle" fill="#232840">Hexagon</text>
+</g>
+<g><title>Two</title>
+<rect x="33.1" y="124.0" width="59.6" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="62.9" y="143.0" dy="0.33em" text-anchor="middle" fill="#232840">Two</text>
+</g>
+<g><title>Three</title>
+<rect x="28.0" y="212.0" width="69.8" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="62.9" y="231.0" dy="0.33em" text-anchor="middle" fill="#232840">Three</text>
+</g>
+<g><title>Para</title>
+<polygon points="347.5,28.0 419.5,28.0 405.5,66.0 333.5,66.0" fill="#fcf2da" stroke="#d99114" stroke-width="1.6"/>
+<text x="376.5" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">Para</text>
+</g>
+<g><title>Rev</title>
+<polygon points="336.2,116.0 402.8,116.0 416.8,154.0 350.2,154.0" fill="#fcf2da" stroke="#d99114" stroke-width="1.6"/>
+<text x="376.5" y="135.0" dy="0.33em" text-anchor="middle" fill="#232840">Rev</text>
+</g>
+<g><title>Db</title>
+<path d="M 349.5 212.0 A 27.0 8.0 0 0 0 403.5 212.0 L 403.5 250.0 A 27.0 8.0 0 0 1 349.5 250.0 Z" fill="#e7eef7" stroke="#4d8fbf" stroke-width="1.6"/>
+<path d="M 349.5 212.0 A 27.0 8.0 0 0 1 403.5 212.0" fill="none" stroke="#4d8fbf" stroke-width="1.6"/>
+<text x="376.5" y="231.0" dy="0.33em" text-anchor="middle" fill="#232840">Db</text>
+</g>
+</svg>

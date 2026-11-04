@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="336" height="404" viewBox="0 0 336 404" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="Flowchart diagram">
+<title>Flowchart diagram</title>
+<rect width="336" height="404" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<path d="M 73.3 66.0 C 73.3 96.0, 91.9 96.0, 91.9 126.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>A → P</title></path>
+<path d="M 147.3 66.0 C 147.3 96.0, 129.9 96.0, 129.9 126.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>B → P</title></path>
+<path d="M 130.8 164.0 C 130.8 194.0, 147.9 194.0, 147.9 224.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>P → C</title></path>
+<path d="M 277.4 66.0 L 277.4 79.2 C 277.4 92.3, 277.4 118.7, 264.1 145.0 C 250.8 171.3, 224.2 197.7, 210.9 210.8 L 197.6 224.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>D → C</title></path>
+<path d="M 167.8 278.0 C 167.8 308.0, 167.8 308.0, 167.8 338.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>C → E</title></path>
+<g><title>One</title>
+<rect x="28.0" y="28.0" width="57.3" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="56.6" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">One</text>
+</g>
+<g><title>Parallelogram</title>
+<polygon points="53.0,126.0 182.8,126.0 168.8,164.0 39.0,164.0" fill="#fcf2da" stroke="#d99114" stroke-width="1.6"/>
+<text x="110.9" y="145.0" dy="0.33em" text-anchor="middle" fill="#232840">Parallelogram</text>
+</g>
+<g><title>Two</title>
+<rect x="135.3" y="28.0" width="59.6" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="165.1" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">Two</text>
+</g>
+<g><title>Cylinder</title>
+<path d="M 126.0 232.0 A 41.8 8.0 0 0 0 209.6 232.0 L 209.6 270.0 A 41.8 8.0 0 0 1 126.0 270.0 Z" fill="#e7eef7" stroke="#4d8fbf" stroke-width="1.6"/>
+<path d="M 126.0 232.0 A 41.8 8.0 0 0 1 209.6 232.0" fill="none" stroke="#4d8fbf" stroke-width="1.6"/>
+<text x="167.8" y="251.0" dy="0.33em" text-anchor="middle" fill="#232840">Cylinder</text>
+</g>
+<g><title>Four</title>
+<rect x="246.4" y="28.0" width="62.0" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="277.4" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">Four</text>
+</g>
+<g><title>Hexagon</title>
+<polygon points="110.0,357.0 124.0,338.0 211.7,338.0 225.7,357.0 211.7,376.0 124.0,376.0" fill="#f2ecfa" stroke="#8a5cd6" stroke-width="1.6"/>
+<text x="167.8" y="357.0" dy="0.33em" text-anchor="middle" fill="#232840">Hexagon</text>
+</g>
+</svg>

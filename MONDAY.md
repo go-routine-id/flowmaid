@@ -1,117 +1,145 @@
-# flowmaid: resuming on Monday
+# flowmaid: resuming on Monday (START HERE)
 
-> **Ringkasan (ID):** Fase B berhenti sementara setelah B8 atas permintaan user, lalu dirilis. Senin lanjut dari **B9** (compound layout), B10, B11, lalu c-leftovers. Semua bahan kerja ada di branch `backup/parity-workspace` (folder ini). Ikuti §3 kalau container baru, §2 kalau container lama masih hidup. User harus memberi aba-aba sebelum workflow jalan lagi.
+> **Ringkasan (ID):** Fase B dijeda setelah B8 atas permintaan user ("kalau b8 selesai mohon rilis aja dulu, nanti kita lanjutkan di hari senin"). Senin: (1) cek keadaan dengan §1, (2) pilih jalur A/B/C/D, (3) **tunggu aba-aba user** sebelum workflow jalan lagi. Semua bahan kerja ada di branch `backup/parity-workspace` (folder ini). File lain di sini (HANDOFF.md, README.md lama, phaseB.draft.js) adalah riwayat. Kalau ada yang bertentangan, MONDAY.md yang benar.
 
-Written 2026-11-04 by the session that ran phase B (session `cac93b13…`, claude.ai session `session_01JGDFJkgB3ttBJtcTtc6aL5`). §0 gets updated once B8 and the release are done.
+Written 2026-11-04 by the session that ran phase B (CLI session `cac93b13…`, claude.ai `session_01JGDFJkgB3ttBJtcTtc6aL5`). §2 records the state at the pause and gets updated as the pause completes.
 
-## 0. State at pause (update when final)
+## 1. First five minutes: find out where things stand
+Run this as one Bash call:
+```bash
+cd /home/user/flowmaid && git fetch -q origin --tags && \
+git log --oneline -6 origin/dev && echo --- && git log --oneline -4 origin/ccr-ccc6d89a-5cxd7e && echo --- && \
+git ls-remote origin 'refs/heads/backup/*' 'refs/heads/release/*' && git tag -l 'v0.3*' && git status --short | head
+```
+Then pick the matching path:
+
+| Situation | Path |
+|---|---|
+| `origin/dev` has the B8 merge (a "Merge pull request … ccr-ccc6d89a-5cxd7e" after `f6c8e82`, with B8 commits such as `feat(layout): narrowing keeps a step…` and `fix(layout): edge-less subgraph members…`) | **A** |
+| B8 commits are on `origin/ccr-ccc6d89a-5cxd7e`, which means they passed verification and were pushed, but `dev` lacks them | **B** |
+| B8 exists only on `backup/b8-layering-wip`, so it never passed verification | **C** |
+| Commits for B9 or later are on the work branch or on a `backup/b9-*` branch | **D** |
+
+**A. B8 is in dev: start B9.** Fast-forward the work branch to `origin/dev` (`git checkout ccr-ccc6d89a-5cxd7e && git merge --ff-only origin/dev`; push it if it moved). Once the user gives the go, run `phaseB-continue.js` with `{from: "b9-compound"}` (§4).
+
+**B. B8 was pushed but is not in dev.** The PR to dev conflicts in `CHANGELOG.md` because dev already has the 0.34.0 release (PR #93 synced main into dev). Fix it on the work branch:
+1. `git merge origin/dev`.
+2. Resolve CHANGELOG: keep dev's `## [0.34.0]` section unchanged, and put B8's entries under `## [Unreleased]` above it. B8's entries are the hunks `git diff d50c525 <B8 head> -- CHANGELOG.md` adds.
+3. `src/layout.rs` merged cleanly in a test. If it does conflict, keep the `hub_label_room` speedup (fan built once, `s_curve_blend`, `FanCurves`) from 9c62b27.
+4. Run guard, commit the merge, push, open a PR to dev, wait for green CI, merge. Then continue with A.
+
+**C. B8 never passed: rebuild it on top of dev, then verify.**
+```bash
+cd /home/user/flowmaid && git checkout ccr-ccc6d89a-5cxd7e && git merge --ff-only origin/dev   # d50c525 is in dev, so this fast-forwards
+PRE=$(git rev-parse HEAD)
+git cherry-pick d50c525..origin/backup/b8-layering-wip    # B8 commits; resolve CHANGELOG as in B (B8 entries under [Unreleased])
+```
+Then run the workflow with:
+```
+{from: "b8-layering", pre: "<PRE>", resumeAt: "verify"}
+```
+Pass `note` instead of `resumeAt` when the B8 work looks unfinished. For context, verify#0's findings and fix#1's report are in `history/b8-verify0.json`. Ignore `history/b8-full-layering-wip.patch`, `b8-layout-full.rs` and `b8-rank.rs`: they are early drafts and must not be applied.
+
+**D. B9 started by accident.** Save it (`git branch backup-b9-wip HEAD`, then push to `backup/b9-wip`). Reset the work branch to the B8 head, and follow A. The B9 attempt may be thrown away: the workflow re-implements B9 from scratch.
+
+## 2. State at the pause (update as steps finish)
 | Thing | Value |
 |---|---|
-| Last release | **0.34.0** on `main` = `dd7c591` (PR #92). B0–B7, contributor JSON fix #78, hub-label perf fix `9c62b27`. Tag `v0.34.0` and `cargo publish` are done by the user (see §5). |
-| Next release | **0.35.0** = 0.34.0 + B8 (layering). Planned right after B8 passes (see §0a). |
-| `dev` | `9a78178` (B0–B7) until B8 merges. |
-| Work branch | `ccr-ccc6d89a-5cxd7e`. B8 is in progress (verify#0 failed, fix#1 running at the time of writing). |
-| Phase B workflow | Run `wf_513402ce-c52`, script `phaseB2.js`, task `wsgxt13tf`. It is stopped deliberately after B8 is pushed, on the user's request. |
-| Hourly merge task | `trig_019VQH3TYG4ijXR8niHxK13z`. Disabled over the weekend; re-enable or recreate it on Monday (§4). |
-| Backups | `backup/parity-workspace` (this folder), `backup/b8-layering-wip` (B8 WIP snapshot). The obsolete `backup/a1-class`, `backup/a1-class-wip` and `backup/a3-state` can be deleted by the user. |
+| Released | **0.34.0**: `main` = `dd7c591` (PR #92). Tag `v0.34.0` was pushed by the user, and the user published to crates.io (max_version 0.34.0). Contents: B0–B7, contributor JSON fix #78, and the hub-label perf fix `9c62b27`. |
+| dev | `f6c8e82` (PR #93, "Sync main into dev", merged by the user), so it contains 0.34.0. |
+| Work branch | `ccr-ccc6d89a-5cxd7e`. origin = `d50c525` (B7). B8 WIP is local and on `backup/b8-layering-wip` (`4381c24` after fix#1). At the time of writing, B8 verify#1 is running. |
+| Workflow | Run `wf_513402ce-c52` (script `phaseB2.js`, task `wsgxt13tf`). It is stopped on purpose as soon as B8 passes. If B8 fails 4 rounds, it stops by itself. |
+| Planned after B8 passes | Path B (merge dev into the work branch, PR to dev), then release **0.35.0** (= dev, §6) through a PR to main. The user tags `v0.35.0` and runs `cargo publish`. Then fast-forward the work branch and disable the hourly task. |
+| Hourly merge task | `trig_019VQH3TYG4ijXR8niHxK13z` is bound to the old session, and will be disabled at the pause. In a new session, delete it and create a new one (§5). |
+| Backups | `backup/parity-workspace` (this folder) and `backup/b8-layering-wip`. The user may delete the obsolete `backup/a1-class`, `backup/a1-class-wip` and `backup/a3-state`; they still exist, and `history/deleted-backup-branches.txt` is wrong about that. |
 
-### 0a. Pause procedure, as planned
-1. B8 passes → the workflow pushes the work branch → stop the workflow before B9 edits anything.
-2. PR work branch → `dev` (B8), wait for green CI, merge.
-3. `release/0.35.0` from `main`, then merge `dev` into it.
-   - In CHANGELOG, `[0.35.0]` holds only the B8 entries, above `[0.34.0]`. Take main's CHANGELOG and add the entries from `git diff d50c525..<B8 head> -- CHANGELOG.md`.
-   - Keep the hub-label perf fix `9c62b27` when resolving `src/layout.rs`.
-   - Bump the version and the README snippet, and add Highlights.
-   - Refresh the README compare PNGs (`compare/pair.js`), and the benchmark if needed.
-   - Run guard, open a PR to `main`, merge when CI is green.
-4. PR `main` → `dev`, merge, then fast-forward the work branch to it. Monday's B9 then starts on everything, including the perf fix.
-5. Disable the hourly task. Update §0 and HANDOFF.md, push this backup.
-
-## 1. User rules (non-negotiable)
-- Quality bar: *"yang penting kualitasnya tidak main-main dan premium"*. Go step by step and never skip a package (*"jangan loncat"*). A package passes only after independent verification, with up to 4 fix rounds; otherwise stop for review. Rare edge cases still block.
+## 3. Rules (from the user, plus this session's practice)
+- Quality bar: *"yang penting kualitasnya tidak main-main dan premium"*. Go step by step and never skip a package (*"jangan loncat"*).
+  - A package passes only after an independent verification, with up to 4 fix rounds; otherwise stop and review with the user. Rare edge cases still block.
 - After every passing package: push the work branch, open a PR to `dev`, wait for green CI (test, msrv, wasm), merge with a merge commit and `expectedHeadSha`.
-- Push only to `ccr-ccc6d89a-5cxd7e`. Other branches (release/*, backup/*) need the user's explicit permission. Granted so far: release/0.34.0, release/0.35.0, backup/*.
-- Commit trailers:
-  `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`
-  `Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5`
-  No model names anywhere else.
-- Reply to the user in Indonesian. The user decides when the workflow stops and resumes (*"tunggu aba-aba aku"*).
+  - The workflow itself only pushes. The PR and merge come from the hourly task (§5) or are done by hand.
+- The user decides when the workflow stops and resumes (*"tunggu aba-aba aku"*).
+- Reply in Indonesian. No model names in commits, PRs or code.
 - Never lose flowmaid's differentiators (PLAN.md invariants):
   - interactive scene / route / route_partial / hit_test with drag speed;
   - fold, to_mermaid, advance;
   - portable SVG, zero dependencies, MSRV 1.75, wasm, determinism;
   - the semantic palette stays the default.
+- **New session identity:**
+  - *Commit trailer.* Use the attribution lines the new session's system reminder gives; they replace `Claude-Session: …session_01JGDFJkgB3ttBJtcTtc6aL5`. Also update the trailer line in `PLAN.md`, which every agent prompt cites. Editing PLAN.md does not touch the prompt text, so it is safe.
+  - *Branch.* Push to the branch the new session designates. If it is not `ccr-ccc6d89a-5cxd7e`, create it from that branch, which carries all the history, and change `const BR = …` in `phaseB-continue.js`. PRs then go from the new branch to `dev`.
+  - *Pushing elsewhere.* release/* and backup/* need the user's explicit permission. It was granted for release/0.34.0, release/0.35.0 and backup/*.
 
-## 2. Same container still alive (scratchpad present)
-- If the workflow is merely stopped, resume it with `Workflow({scriptPath: "<scratchpad>/phaseB2.js", resumeFromRunId: "wf_513402ce-c52"})`. The cache replays B0–B8 and continues with B9.
-- **Never edit `implPrompt`, `verifyPrompt` or `COMMON` before a resume**: the cache key is the prompt plus its options. If a restart interrupted a fix round, add a note scoped to that package and round only, like `RESTART_NOTE_B7`.
-- Better alternative: run `phaseB-continue.js` with `{from: "b9-compound"}`. It does not depend on the old run's cache, and its `pre` is the current HEAD, which includes the release and the perf fix.
+## 4. Running the workflow
+- **Fresh session or fresh container:** `Workflow({scriptPath: "<S>/phaseB-continue.js", args: {from: "<package>", pre?: "<sha>", resumeAt?: "verify", note?: "…"}})`.
+  - Package ids, in order: `b8-layering`, `b9-compound`, `b10-orthogonal`, `b11-hops-comb`, `c-leftovers`, then the wrap-up.
+  - With no args it starts at b8, so always pass `from`.
+  - Each package goes impl → verify → up to 4 fix rounds → push, or STOP with its commits left on the branch.
+- **Same container, old run:** `Workflow({scriptPath: "<S>/phaseB2.js", resumeFromRunId: "wf_513402ce-c52"})`. **Never edit `implPrompt`, `verifyPrompt` or `COMMON` before a resume** (they are the cache key). Prefer `phaseB-continue.js` after the pause, because its `pre` is the current HEAD.
+- **Stopping cleanly after a package:** the script starts the next package seconds after the push. To pause, watch the run's journal for `"label":"push:<pkg>"` and stop the task at once. If needed, finish the push by hand (`git push -u origin <branch>`). Path D covers a late stop.
+- **Back up WIP** to `backup/<pkg>-wip` at each fix-round commit if the container might go away.
 
-## 3. Fresh container: rebuild the workspace
+## 5. Hourly merge task (recreate in a new session)
+1. Delete `trig_019VQH3TYG4ijXR8niHxK13z`; it wakes the old session.
+2. Create a task bound to the new session, at cron minute 14, with this prompt (fill in the run id and journal path):
+> Hourly check-in for the user's rule "pastikan di push setiap selesai, push dan merge di dev branch". In /home/user/flowmaid: git fetch origin dev <work branch>. If origin/<work branch> has commits not in origin/dev, and no PR <work branch> -> dev is already open, open one (summarise the passed package(s) from the commit messages and CHANGELOG, PR attribution footer), subscribe to it, and merge it (merge commit, expectedHeadSha) once CI test/msrv/wasm are green; if it conflicts, merge origin/dev into the work branch and resolve (CHANGELOG: new entries under [Unreleased]) only between packages, never while a package is in progress; then unsubscribe and tell the user in Indonesian which package is now in dev. Also glance at the Phase B workflow (run <runId>, journal ~/.claude/projects/-home-user-flowmaid/<cli-session>/subagents/workflows/<runId>/journal.jsonl): if a package was pushed or a verify verdict changed since the last report, give the user a short progress update; if nothing changed, say nothing. When phase B's workflow has finished (all packages through c-leftovers pushed and merged), delete this scheduled task.
+3. Disable it while the workflow is paused, because every firing costs tokens.
+
+## 6. Fresh container: rebuild the workspace
+Run as **one** Bash call, because variables and `cd` do not carry over between calls:
 ```bash
-NEW=<new scratchpad path from the system prompt>
-OLD=/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad
-git clone -b backup/parity-workspace https://github.com/go-routine-id/flowmaid "$NEW"
-cd "$NEW" && grep -rlI "$OLD" --exclude-dir=.git . | xargs sed -i "s#$OLD#$NEW#g"
-(cd mm && npm install)          # mermaid 12.2.0 (registry.npmjs.org is reachable)
-rustup toolchain install 1.75 && rustup target add wasm32-unknown-unknown   # if missing
-cd /home/user/flowmaid && git fetch origin && git checkout ccr-ccc6d89a-5cxd7e && git merge --ff-only origin/ccr-ccc6d89a-5cxd7e
-"$NEW/tools/guard.sh" /home/user/flowmaid   # must print GUARD: ALL GREEN
+NEW=<scratchpad path from the new system prompt>; OLD=/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad
+TMP=$(mktemp -d) && git clone -q -b backup/parity-workspace https://github.com/go-routine-id/flowmaid "$TMP/ws" && \
+mkdir -p "$NEW" && cp -a "$TMP/ws/." "$NEW/" && cd "$NEW" && \
+grep -rlI "$OLD" --exclude-dir=.git . | xargs sed -i "s#$OLD#$NEW#g" && \
+(cd mm && npm install --silent) && \
+(rustup toolchain list | grep -q 1.75 || rustup toolchain install 1.75) && rustup target add wasm32-unknown-unknown && \
+echo READY
 ```
+Then run `"$NEW/tools/guard.sh" /home/user/flowmaid`. It must print `GUARD: ALL GREEN` on the branch you start from.
+
 Notes:
-- Playwright and Chromium come preinstalled: `require('playwright')` works from any directory, so do not reinstall them.
-- `tools/mmrender.js` and `tools/mmbench.js` load `mm/node_modules/mermaid/dist/mermaid.min.js`.
-- Check disk with `df`. Each cargo `target/` dir is 1.5–2 GB; delete old ones when less than 3 GB is free.
+- Playwright and Chromium are preinstalled; never reinstall them.
+- The sed leaves about 24 tracked files modified in `$NEW`. That is fine, and is also fine if the backup is pushed again from there.
+- Check disk with `df`: each cargo `target/` is 1.5–2 GB. Delete old ones when less than 3 GB is free.
 
-Then, once the user gives the go:
-```
-Workflow({scriptPath: "<NEW>/phaseB-continue.js", args: {from: "b9-compound"}})
-```
-- It runs B9 → B10 → B11 → c-leftovers, then the wrap-up. Each package goes impl → verify → up to 4 fix rounds → push, or STOP with its commits left on the branch.
-- If B9 had already started and left commits, also pass `pre: "<sha before B9>"` and either `resumeAt: "verify"` or `note: "<what is left>"`.
-- Package specs live inside the script (`PKGS`). They cite report.md items and use the scratch files in this folder: rev_ll, rv_adv_skeptic, rv_be, verify/…, fmx_fanframes, proto-out and stressdbg are all included.
-
-## 4. Hourly merge task (recreate on Monday if it is gone)
-Create a scheduled task with cron minute 14, bound to the session, using this prompt:
-> Hourly check-in for the user's rule "pastikan di push setiap selesai, push dan merge di dev branch". In /home/user/flowmaid: git fetch origin dev ccr-ccc6d89a-5cxd7e. If origin/ccr-ccc6d89a-5cxd7e has commits not in origin/dev (git log origin/dev..origin/ccr-ccc6d89a-5cxd7e), and no PR ccr-ccc6d89a-5cxd7e -> dev is already open, open one (summarise the passed package(s) from the commit messages and CHANGELOG, PR attribution footer), subscribe to it, and merge it (merge commit, expectedHeadSha) once CI test/msrv/wasm are green; then unsubscribe and tell the user in Indonesian which package is now in dev. Also glance at the Phase B workflow (journal of the current run): if a package was pushed or a verify verdict changed since the last report, give the user a short progress update; if nothing changed, say nothing. When phase B's workflow has finished (all packages through c-leftovers pushed and merged), delete this scheduled task.
-
-The task needs a session; a new session means a new task. Delete it when phase B ends.
-
-## 5. Release procedure (as done for 0.34.0)
-1. Make a worktree `release/X` from `origin/main`, merge `origin/dev` into it, and resolve conflicts (CHANGELOG as in §0a).
-2. Bump `Cargo.toml` and `Cargo.lock`. Update the README snippet `flowmaid = "X"`. Keep `exclude = ["docs/img/"]`.
-3. CHANGELOG `## [X] - date` with a `### Highlights` list.
-4. README "flowmaid next to mermaid":
-   - Regenerate `docs/img/compare/*.png` with `compare/pair.js` (mermaid renders in `cmp/out`).
-   - Re-run the benchmark with `compare/benchcmp-rel.sh` (`BENCH_BIN`, `OUT` env vars; result in `compare/bench/compare.md`) when layout changed.
-   - The large-graph table comes from `cargo run --release --example bench`; see `compare/synth.txt`.
-5. Run `tools/guard.sh <worktree>` and `cargo package --list` (expect `docs/img` absent). Commit "release: X — …", push `release/X` (needs permission), open a PR to `main`, and merge once CI is green.
-6. **Tag + publish: the user does both.** The container's git proxy refuses tag pushes (HTTP 403), the GitHub MCP has no create-tag/release tool, and there is no crates.io token. Give the user:
+## 7. Release procedure (as done for 0.34.0; next: 0.35.0)
+1. **Branch.** Make a worktree `release/X` from `origin/dev` (dev contains main since PR #93). Check that main is an ancestor: `git merge-base --is-ancestor origin/main origin/dev`.
+2. **Version.** `Cargo.toml` and `Cargo.lock` → X. Keep `exclude = ["docs/img/"]`.
+3. **CHANGELOG.** Rename `## [Unreleased]` to `## [X] - date`, add a new empty `## [Unreleased]` above it, and add a `### Highlights` list at the top of `[X]`.
+4. **README.** Update every version mention: the `flowmaid = "0.34"` snippet, and "flowmaid 0.34.0" in the comparison intro and image alt texts (README lines ~14–18).
+   - **Images.** `FM_VERSION=X node compare/pair.js $S/cmp/corpus <tree>/target/release/flowmaid $S/cmp/out <empty scratch dir> <tree>/docs/img/compare advanced back-edge class demo er sequence state subgraph`. Do this whenever layout changed; B8 does change it.
+   - **Benchmark.** Build with `cargo build --release --example bench --bin flowmaid` in `<tree>`, then `BENCH_BIN=<tree>/target/release/examples/bench OUT=$S/compare/bench compare/benchcmp-rel.sh <tree>`. Copy the table from `compare/bench/compare.md` into README "### Next to mermaid" and update the "about N× faster" lines.
+   - **Large-graph table.** From `cargo run --release --example bench` (see `compare/synth.txt`).
+5. **Checks.** Run `tools/guard.sh <tree>` and `cargo package --list` (no `docs/img`). Look at the 1,000-edge labelled fan timing (should be about 0.4 s release).
+6. **Ship.** Commit "release: X — …", push `release/X`, open a PR to `main`, merge when CI is green.
+7. **Tag and publish: the user does both.** The container's git proxy refuses tag pushes (HTTP 403), the GitHub MCP has no tag/release tool, and there is no crates.io token. Give the user:
    ```
-   git fetch origin && git tag -a vX <merge sha> -m vX && git push origin vX && git checkout vX && cargo publish
+   git fetch origin && git tag -a vX <merge sha> -m "flowmaid X" && git push origin vX && git checkout vX && cargo publish
    ```
-   Or the GitHub Releases UI: new release, tag vX, target main.
-7. Merge `main` back into `dev` with a PR, then bring the work branch up to date.
+8. **Sync back.** Open a PR `main` → `dev` (or the user does it, as with #93), then fast-forward the work branch.
 
-## 6. Open items / follow-ups (do not forget)
-1. **Remaining phase B packages:** B9 compound layout (subgraph or composite `direction LR`, P0 #10); B10 all-orthogonal static edges (biggest visual factor); B11 crossing hops + comb bundling; c-leftovers (non-flowchart verifier leftovers, HANDOFF §4); then the wrap-up.
-2. **Large-graph performance package** (user informed, not yet scheduled). Dense synthetic graphs: 1,000 nodes take about 3.3 s versus 1.8 s before phase B. Corpus diagrams take 0.04–48 ms. The README states this honestly. Propose it after phase B.
-3. **Watch for quadratic loops in new code.** The B7 hub-label regression (6.5 s on a 1,000-edge labelled fan) was caught only by a wall-clock test that barely passed. When reviewing a package, consider asking the verifier to time `examples` on a 1,000-edge labelled fan and on the 1,000-node synthetic graph.
-4. `scene::tests::colliding_label_placement_stays_near_linear` is a debug wall-clock test with a 20 s limit. It now takes about 2.3 s, so a failure means a real regression.
-5. Known non-blocking issues to fold in later are in HANDOFF.md §4 (class fan-in crossings, state chips, journey/timeline wrap, gitGraph, ER, pie and journey colour wrap).
-6. README compare images and the benchmark describe the release they were made for. Refresh them on each release that changes layout.
-7. Once phase B is done, delete the hourly task and clean up old worktrees and target dirs.
+## 8. Open items and follow-ups (do not forget)
+1. **Phase B:** B8 (if not done), then B9 compound layout (subgraph/composite `direction LR`, P0 #10), B10 all-orthogonal static edges (biggest visual factor), B11 crossing hops + comb bundling, c-leftovers (non-flowchart verifier leftovers, HANDOFF §4), and the wrap-up.
+2. **Large-graph performance package.** The user knows about it; not yet scheduled. 1,000-node dense synthetic graphs take about 3.3 s versus 1.8 s before phase B; corpus diagrams take 0.04–48 ms. The README states this honestly. Propose it after phase B.
+3. **Watch for quadratic code in new packages.** The B7 hub-label regression (6.5 s on a 1,000-edge labelled fan) was caught only by a wall-clock test that barely passed. After each package, time a 1,000-edge labelled fan (`python3 -c "print('flowchart TB'); [print(f'  H -->|label {i}| T{i}') for i in range(1000)]"`) and the 1,000-node synthetic graph against the previous release.
+4. `scene::tests::colliding_label_placement_stays_near_linear` (debug, 20 s limit) takes about 2.3 s on branches that contain 9c62b27. A branch without that fix (B8 WIP before the dev merge) takes 16–26 s and may fail under load. That is not B8's fault; merge dev in.
+5. Known non-blocking issues: HANDOFF.md §4 (class fan-in crossings, state chips, journey/timeline wrap, gitGraph, ER, pie and journey colour wrap).
+6. When phase B is done: delete the hourly task, clean up old worktrees and target dirs, and suggest the user delete the obsolete backup branches.
 
-## 7. Where things are in this folder
+## 9. What is in this folder
 | Path | Contents |
 |---|---|
-| `HANDOFF.md` | Full chronological log of runs, restarts, merges and lessons. |
-| `PLAN.md`, `report.md`, `perdiagram.json` | The parity plan and audit that every workflow prompt cites. |
-| `phaseB2.js` | The live run's script. |
-| `phaseB-continue.js` | Continue from a package in a fresh session. |
-| `phaseB2.rescue.js`, `history/` | Older scripts and verifier outputs. |
-| `tools/` | guard.sh, render.sh (3-way mermaid / baseline / now), perf.sh (drag budget vs `runs/baseline/perf.tsv`), fmrender.sh, mmrender.js, mmbench.js, benchcmp.sh, perfcmp.py, render3.js and render4.js. |
+| `MONDAY.md` | This file. |
+| `HANDOFF.md` | Chronological log of runs, restarts, merges and lessons. Its header and §1, §2 and §5 are from 2026-10-31 and outdated; its §6–§8 log is current. |
+| `PLAN.md`, `report.md`, `perdiagram.json`, `style.md` | The parity plan and audit that every workflow prompt cites. |
+| `phaseB-continue.js` | Continue from any package (use this). |
+| `phaseB2.js` | The live run's script (only for `resumeFromRunId` in the same container). |
+| `phaseB.draft.js`, `phaseB2.rescue.js`, `history/` | Older scripts, verifier outputs, `b8-verify0.json`. |
+| `tools/` | guard.sh, render.sh (3-way mermaid / baseline / now), perf.sh (drag budget vs `runs/baseline/perf.tsv`), fmrender.sh, mmrender.js, mmbench.js, benchcmp.sh, perfcmp.py, render3.js. `render4.js` (hard-coded playwright path) and `ixcheck/` are unused. |
 | `cmp/corpus`, `cmp/out`, `flowcorpus`, `runs/baseline`, `runs/bench` | Corpus, mermaid renders, perf baseline. |
 | `compare/` | README comparison tooling and results (pair.js, benchcmp-rel.sh, bench/compare.md, synth*.txt). |
-| `mm/package.json` | Run `npm install` for mermaid 12.2.0. |
-| `rev_ll`, `rv_adv_skeptic`, `rv_be`, `fmx_fanframes`, `proto-out`, `stressdbg`, `verify/…`, `prototypes` | Evidence that the package specs reference. |
+| `mm/package.json` + lock | Run `npm install` for mermaid 12.2.0. |
+| `rev_ll`, `rv_adv_skeptic`, `rv_be`, `rv`, `rev`, `rv_shapes`, `rv_denselr_skeptic`, `sk`, `tlx`, `t`, `fm`, `cmp/zff`, `fmx_fanframes`, `proto-out`, `proto/src`, `stressdbg`, `prototypes`, `verify/…`, `para.png`, `exp1.png` | Evidence cited by the package specs, report.md and perdiagram.json. |
+| `archdoc/` | The user's RFC-001 architecture PDF sources and output (chat + Claude Code bridge). Not part of flowmaid. |
+| `README.md` | Old restore notes; superseded by §6. |

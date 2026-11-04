@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="478" height="192" viewBox="0 0 478 192" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="Flowchart diagram">
+<title>Flowchart diagram</title>
+<rect width="478" height="192" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<path d="M 47.0 66.0 C 47.0 96.0, 47.0 96.0, 47.0 126.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>A → B</title></path>
+<path d="M 63.0 126.0 C 353.4 86.0, 353.4 106.0, 63.0 66.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>B → A: cached response served without hitting the backend</title></path>
+<g><title>A</title>
+<rect x="28.0" y="28.0" width="54.0" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="55.0" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">A</text>
+</g>
+<g><title>B</title>
+<rect x="28.0" y="126.0" width="54.0" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="55.0" y="145.0" dy="0.33em" text-anchor="middle" fill="#232840">B</text>
+</g>
+<rect x="112.0" y="86.0" width="337.6" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="280.8" y="96.0" dy="0.33em" text-anchor="middle" fill="#232840">cached response served without hitting the backend</text>
+</svg>

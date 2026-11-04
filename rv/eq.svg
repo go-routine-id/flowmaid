@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="383" height="131" viewBox="0 0 383 131" font-family="Helvetica, Arial, sans-serif" font-size="13" role="img" aria-label="Entity-relationship diagram">
+<title>Entity-relationship diagram</title>
+<rect width="383" height="131" fill="#ffffff"/>
+<path d="M 148.0 65.4 C 191.4 65.4, 191.4 65.4, 234.8 65.4" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<path d="M 156.0 59.9 L 156.0 70.9" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<path d="M 161.0 59.9 L 161.0 70.9" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<path d="M 222.8 65.4 L 234.8 71.4" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<path d="M 222.8 65.4 L 234.8 59.4" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<path d="M 222.8 65.4 L 234.8 65.4" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<circle cx="215.8" cy="65.4" r="4.5" fill="#ffffff" stroke="#44507a" stroke-width="1.7"/>
+<rect x="28.0" y="39.4" width="120.0" height="52.0" rx="4" fill="#ffffff" stroke="#5b6dc0" stroke-width="1.6"/>
+<rect x="28.0" y="39.4" width="120.0" height="30.0" rx="4" fill="#5b6dc0"/>
+<text x="88.0" y="54.4" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">A</text>
+<text x="38.0" y="80.4" dy="0.33em" fill="#6a7086">int</text>
+<text x="67.1" y="80.4" dy="0.33em" fill="#232840">id</text>
+<text x="138.0" y="80.4" dy="0.33em" text-anchor="end" font-weight="bold" fill="#44507a">PK</text>
+<rect x="234.8" y="39.4" width="120.0" height="52.0" rx="4" fill="#ffffff" stroke="#33a35c" stroke-width="1.6"/>
+<rect x="234.8" y="39.4" width="120.0" height="30.0" rx="4" fill="#33a35c"/>
+<text x="294.8" y="54.4" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">B</text>
+<text x="244.8" y="80.4" dy="0.33em" fill="#6a7086">int</text>
+<text x="273.9" y="80.4" dy="0.33em" fill="#232840">id</text>
+<text x="344.8" y="80.4" dy="0.33em" text-anchor="end" font-weight="bold" fill="#44507a">PK</text>
+<rect x="154.0" y="55.4" width="74.8" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="191.4" y="65.4" dy="0.33em" text-anchor="middle" fill="#232840">has many</text>
+</svg>

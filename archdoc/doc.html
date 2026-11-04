@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>RFC-001 — Vibe coding di dalam chat</title>
+<style>
+@font-face { font-family: "Archivo"; font-weight: 800; src: url("fonts/Archivo-800.ttf") format("truetype"); }
+@font-face { font-family: "Archivo"; font-weight: 900; src: url("fonts/Archivo-900.ttf") format("truetype"); }
+:root {
+  --paper:#f9fafb; --surface:#ffffff; --ink:#101828; --muted:#667085; --faint:#98a2b3;
+  --line:#dfe3ea; --line-strong:#c9d2e0; --accent:#1d3fa0; --accent-soft:#eaeffc; --on-accent:#ffffff;
+  --tbar:#f2f4f7; --tbar-line:#e4e7ec; --nav:#101828; --nav-line:#344054; --nav-link:#98a2b3;
+  --nav-hi:#ffffff; --nav-ink:#e4e7ec; --nav-accent:#7d96e8; --dot:#d0d5dd; --reg:rgba(29,63,160,.4);
+  --mono:"JetBrains Mono", ui-monospace, monospace; --sans:Inter, system-ui, sans-serif; --display:Archivo, Inter, sans-serif;
+}
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink); }
+body { font-family: var(--sans); font-size: 13.5px; line-height: 1.65; }
+.page { position: relative; width: 210mm; height: 297mm; overflow: hidden; background: var(--paper); break-after: page; }
+.page:last-child { break-after: auto; }
+/* frame: one ruled column on the background grid */
+.grid { position: absolute; inset: 0; background-image:
+  linear-gradient(var(--tbar) 1px, transparent 1px), linear-gradient(90deg, var(--tbar) 1px, transparent 1px);
+  background-size: 72px 72px; background-position: -1px -1px; }
+.frame { position: absolute; top: 0; bottom: 26px; left: 14mm; right: 14mm; background: var(--paper);
+  border-left: 1px solid var(--line-strong); border-right: 1px solid var(--line-strong); }
+.inner { position: absolute; inset: 0; padding: 30px 34px 24px; }
+.reg { position: absolute; font-family: var(--mono); font-size: 14px; color: var(--reg); line-height: 1; }
+/* status bar */
+.statusbar { position: absolute; left: 0; right: 0; bottom: 0; height: 26px; background: var(--nav); color: var(--nav-link);
+  font-family: var(--mono); font-size: 10px; letter-spacing: .04em; display: flex; align-items: center; justify-content: space-between; padding: 0 14mm; text-transform: uppercase; }
+.statusbar b { color: var(--nav-accent); font-weight: 500; }
+.statusbar .live::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--nav-accent); margin-right: 7px; vertical-align: 1px; }
+/* type */
+.prompt { font-family: var(--mono); font-size: 12px; color: var(--muted); margin: 0 0 6px; }
+.prompt .p { color: var(--accent); font-weight: 600; }
+h2 { font-family: var(--mono); font-weight: 500; font-size: 25px; line-height: 1.25; letter-spacing: -.02em; margin: 0 0 14px; }
+h3 { font-family: var(--mono); font-weight: 600; font-size: 14.5px; line-height: 1.4; letter-spacing: -.01em; margin: 18px 0 6px; }
+h3 .n { color: var(--faint); font-weight: 400; margin-right: 6px; }
+p { margin: 0 0 10px; }
+.lede { font-size: 15px; line-height: 1.7; color: var(--ink); }
+.muted { color: var(--muted); }
+.eyebrow { font-family: var(--mono); font-size: 10.5px; letter-spacing: .3em; text-transform: uppercase; color: var(--accent); margin: 0 0 14px; }
+.label-caps { font-family: var(--mono); font-size: 9.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+.labelrow { display: flex; justify-content: space-between; border-bottom: 1px solid var(--line-strong); padding-bottom: 6px; margin: 4px 0 12px; }
+code, .mono { font-family: var(--mono); font-size: .88em; }
+code { background: var(--accent-soft); color: var(--accent); padding: 0 4px; }
+ul.dash { list-style: none; padding: 0; margin: 0 0 10px; }
+ul.dash li { position: relative; padding-left: 18px; margin: 0 0 5px; font-size: 13px; line-height: 1.55; }
+ul.dash li::before { content: "—"; position: absolute; left: 0; color: var(--accent); font-family: var(--mono); }
+a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--line-strong); }
+/* display */
+.display { font-family: var(--display); font-weight: 900; letter-spacing: -.055em; line-height: .9; margin: 0; color: var(--ink); }
+.display em { font-style: normal; color: var(--accent); }
+/* terminal / editor window card */
+.term { background: var(--surface); border: 1px solid var(--line-strong); margin: 0 0 14px; }
+.term .bar { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; background: var(--tbar); border-bottom: 1px solid var(--tbar-line);
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.term .bar i { width: 7px; height: 7px; border-radius: 50%; background: var(--dot); display: inline-block; }
+.term .bar i:first-child { background: var(--accent); }
+.term .bar span { margin-left: 8px; }
+.term .body { padding: 14px 16px; font-size: 13px; }
+.term.dark { background: var(--nav); border-color: var(--nav-line); }
+.term.dark .bar { background: #1d2939; border-color: var(--nav-line); color: var(--nav-link); }
+.term.dark .bar i { background: var(--nav-line); }
+.term.dark .bar i:first-child { background: var(--nav-accent); }
+pre { margin: 0; font-family: var(--mono); font-size: 11.2px; line-height: 1.6; color: var(--nav-ink); white-space: pre-wrap; }
+pre .c { color: var(--nav-link); } pre .k { color: var(--nav-accent); } pre .s { color: #e4e7ec; }
+/* status panel */
+.status { border: 1px solid var(--line-strong); background: var(--surface); font-family: var(--mono); font-size: 11px; }
+.status .row { display: flex; justify-content: space-between; padding: 7px 12px; border-top: 1px solid var(--line); }
+.status .row:first-child { border-top: 0; }
+.status .k { color: var(--muted); text-transform: uppercase; letter-spacing: .16em; font-size: 9.5px; }
+.status .v { color: var(--ink); }
+.status .on::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-right: 6px; vertical-align: 1px; }
+.status .off::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; border: 1px solid var(--muted); margin-right: 6px; vertical-align: 0; box-sizing: border-box; }
+/* tables */
+table { width: 100%; border-collapse: collapse; margin: 0 0 14px; font-size: 11.8px; line-height: 1.48; background: var(--surface); border: 1px solid var(--line-strong); }
+th { text-align: left; font-family: var(--mono); font-weight: 400; font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted);
+  background: var(--tbar); border-bottom: 1px solid var(--line-strong); padding: 8px 10px; }
+td { padding: 6px 9px; border-top: 1px solid var(--line); vertical-align: top; }
+td:first-child { font-family: var(--mono); font-size: 11.5px; font-weight: 600; color: var(--ink); white-space: nowrap; }
+td.tag { white-space: nowrap; }
+.badge { display: inline-block; font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; padding: 1px 6px; border: 1px solid var(--line-strong); color: var(--muted); }
+.badge.new { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+/* figure */
+.fig { background: var(--surface); border: 1px solid var(--line-strong); margin: 0 0 12px; }
+.fig .bar { height: 28px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; background: var(--tbar); border-bottom: 1px solid var(--tbar-line);
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.fig .img { padding: 10px; display: flex; justify-content: center; background: var(--paper); }
+.fig img { display: block; max-width: 100%; height: auto; }
+.cap { font-family: var(--mono); font-size: 10px; color: var(--muted); margin: -4px 0 12px; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-family: var(--mono); font-size: 10px; color: var(--muted); margin: 0 0 10px; }
+.legend span:not(.nosw)::before { content: ""; display: inline-block; width: 12px; height: 10px; margin-right: 6px; vertical-align: -1px; border: 1px solid var(--line-strong); background: var(--surface); }
+.legend .lnew::before { background: var(--accent-soft); border-color: var(--accent); }
+.legend .lext::before { background: var(--tbar); border-color: var(--faint); }
+.legend .lcli::before { background: var(--nav); border-color: var(--nav-line); }
+/* layout helpers */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.cols3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line-strong); }
+.card .hd { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 12px; background: var(--tbar); border-bottom: 1px solid var(--tbar-line); }
+.card .hd b { font-family: var(--mono); font-size: 12.5px; font-weight: 600; }
+.card .hd span { font-family: var(--mono); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.card .bd { padding: 10px 12px; font-size: 12.3px; line-height: 1.55; }
+.card .bd ul.dash li { font-size: 12.1px; margin-bottom: 3px; }
+.note { border: 1px solid var(--line-strong); background: var(--accent-soft); padding: 10px 14px; font-size: 12.5px; margin: 0 0 12px; }
+.note b { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin-right: 6px; }
+.stat { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line-strong); background: var(--surface); margin: 0 0 16px; }
+.stat div { padding: 12px 14px; border-left: 1px solid var(--line); }
+.stat div:first-child { border-left: 0; }
+.stat .num { font-family: var(--display); font-weight: 900; font-size: 30px; letter-spacing: -.045em; line-height: 1; }
+.stat .num em { font-style: normal; color: var(--accent); }
+.stat .lbl { font-family: var(--mono); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
+.phase { display: grid; grid-template-columns: 74px 1fr; border: 1px solid var(--line-strong); background: var(--surface); margin: 0 0 8px; }
+.phase .pn { border-right: 1px solid var(--line); padding: 10px 0 0 12px; font-family: var(--display); font-weight: 900; font-size: 34px; letter-spacing: -.05em; color: var(--line-strong); line-height: 1; }
+.phase .pb { padding: 9px 14px; font-size: 12.2px; line-height: 1.5; }
+.phase .pb b { font-family: var(--mono); font-size: 12.5px; }
+.phase .pb .exit { font-family: var(--mono); font-size: 10.5px; color: var(--muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ============ P1 COVER ============ -->
+<section class="page">
+  <div class="grid"></div>
+  <div class="frame"><div class="inner" style="padding-top:42px">
+    <div class="labelrow"><span class="label-caps">ariansaputra.com · rfc</span><span class="label-caps">draft · v0.1 · 4 nov 2026</span></div>
+    <p class="prompt" style="margin-top:56px"><span class="p">#![arian]</span> cat ./rfc-001-vibe-coding-di-chat.md</p>
+    <p class="eyebrow">architecture · rfc-001</p>
+    <h1 class="display" style="font-size:78px;margin-bottom:26px">Vibe coding<br>di dalam <em>chat</em>.</h1>
+    <p class="lede" style="max-width:520px">Rancangan untuk menjalankan Claude Code di container milik sendiri dan menyambungkannya ke chat service yang sudah ada — dengan streaming jawaban, izin tool di chat, notifikasi tugas, sesi yang bisa dilanjutkan, dan diagram interaktif flowmaid.</p>
+
+    <div class="cols" style="margin-top:38px;grid-template-columns:1.25fr 1fr">
+      <div class="term">
+        <div class="bar"><i></i><i></i><i></i><span>tldr.md</span></div>
+        <div class="body">
+          <ul class="dash" style="margin:0">
+            <li>Agent runtime: Claude Agent SDK di satu sandbox per sesi.</li>
+            <li>Chat service tetap jadi pintu masuk; orchestrator baru di belakangnya.</li>
+            <li>Event agen (selesai, butuh izin) lewat hook <code>http</code> ke notif service.</li>
+            <li>Sesi tersimpan di storage service — container boleh mati, sesi tetap jalan.</li>
+            <li>flowmaid merender diagram di chat: WASM di klien, SVG di server.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="status">
+        <div class="row"><span class="k">status</span><span class="v on">draft untuk review</span></div>
+        <div class="row"><span class="k">pemilik</span><span class="v">Arian Saputra</span></div>
+        <div class="row"><span class="k">cakupan</span><span class="v">chat · agent · notif</span></div>
+        <div class="row"><span class="k">runtime</span><span class="v">Claude Agent SDK</span></div>
+        <div class="row"><span class="k">diagram</span><span class="v">flowmaid dev</span></div>
+        <div class="row"><span class="k">rilis flowmaid</span><span class="v off">0.34.0 · menyusul</span></div>
+      </div>
+    </div>
+
+    <div style="position:absolute;left:34px;right:34px;bottom:26px">
+      <div class="labelrow" style="margin-bottom:8px"><span class="label-caps">isi dokumen</span><span class="label-caps">12 bagian</span></div>
+      <div class="cols3" style="font-family:var(--mono);font-size:10.5px;color:var(--muted);gap:4px 12px;line-height:1.7">
+        <div>01 ringkasan<br>02 konteks<br>03 diagram arsitektur<br>04 komponen baru</div>
+        <div>05 alur utama<br>06 flowmaid di chat<br>07 keamanan<br>08 data &amp; penyimpanan</div>
+        <div>09 skala &amp; biaya<br>10 rencana bertahap<br>11 risiko<br>12 referensi</div>
+      </div>
+    </div>
+  </div>
+  <span class="reg" style="top:14px;right:10px">+</span><span class="reg" style="bottom:14px;left:10px">+</span>
+  </div>
+  <div class="statusbar"><span class="live">rfc-001 · vibe coding di chat</span><span>remote · async · <b>utc+7</b></span><span>01 / 11</span></div>
+</section>
+
+<!-- ============ P2 RINGKASAN ============ -->
+<section class="page">
+  <div class="frame"><div class="inner">
+    <p class="prompt"><span class="p">#![arian]</span> cat ./01_ringkasan.md</p>
+    <h2>Ringkasan</h2>
+    <p class="lede">Chat service yang sudah ada mendapat satu kemampuan baru: menerima perintah "vibe coding" dan menjalankannya lewat Claude Code di container kita sendiri. Pengguna mengetik di chat, agen bekerja di sandbox, jawaban dan progres mengalir balik ke thread yang sama.</p>
+
+    <div class="stat" style="margin-bottom:10px">
+      <div><div class="num">1<em>:</em>1</div><div class="lbl">sandbox per sesi</div></div>
+      <div><div class="num">6</div><div class="lbl">layanan yang dipakai ulang</div></div>
+      <div><div class="num">7</div><div class="lbl">komponen baru</div></div>
+      <div><div class="num">&lt;6<em>ms</em></div><div class="lbl">drag diagram flowmaid</div></div>
+    </div>
+
+    <h3><span class="n">##</span>Apa yang dibangun</h3>
+    <ul class="dash">
+      <li><b>Session orchestrator</b> — memetakan thread chat ke sesi agen dan sandbox, men-stream token ke chat service.</li>
+      <li><b>Sandbox runner pool</b> — container siap pakai berisi Claude Agent SDK, CLI <code>claude</code> dan toolchain build.</li>
+      <li><b>Event gateway</b> — menerima hook <code>http</code> dari agen (selesai, butuh izin, error) dan meneruskannya ke notif service.</li>
+      <li><b>Secret vault + egress proxy</b> — API key dan token git disuntikkan per sesi; lalu lintas keluar lewat allowlist.</li>
+      <li><b>flowmaid</b> — diagram mermaid di pesan agen dirender interaktif di chat, dan dikirim balik sebagai teks setelah diedit.</li>
+    </ul>
+
+    <h3><span class="n">##</span>Keputusan utama</h3>
+    <table>
+      <tr><th style="width:22%">keputusan</th><th style="width:34%">pilihan</th><th>alasan</th></tr>
+      <tr><td>Runtime agen</td><td>Claude Agent SDK (TypeScript / Python)</td><td>Cara resmi meng-embed Claude Code: streaming, sesi, hook, izin, sub-agent. Untuk bahasa lain: <code>claude -p</code> stream-json.</td></tr>
+      <tr><td>Isolasi</td><td>Satu sandbox per sesi, warm pool</td><td>File, proses dan rahasia tiap pengguna terpisah; sandbox mati tidak menyeret sesi lain.</td></tr>
+      <tr><td>Event</td><td>Hook <code>http</code> → event gateway</td><td>Tanpa polling. <code>Stop</code>, <code>TaskCompleted</code>, <code>Notification</code> langsung sampai ke notif service.</td></tr>
+      <tr><td>Autentikasi</td><td>API key Claude Console / Bedrock / Vertex di vault</td><td>Wajib untuk produk yang melayani pengguna lain (Commercial Terms). Login Pro/Max tidak boleh dipakai.</td></tr>
+      <tr><td>State sesi</td><td>Event log + transkrip di storage service</td><td>Sesi bisa dilanjutkan di host lain (<code>resume</code> + <code>SessionStore</code>) setelah container diganti.</td></tr>
+      <tr><td>Diagram</td><td>flowmaid: WASM di klien, SVG di server</td><td>Zero dependency, deterministik, drag cepat, satu sumber geometri untuk layar dan ekspor.</td></tr>
+    </table>
+  </div></div>
+  <div class="statusbar"><span class="live">01 · ringkasan</span><span>rfc-001 · <b>draft</b></span><span>02 / 11</span></div>
+</section>
+
+<!-- ============ P3 KONTEKS ============ -->
+<section class="page">
+  <div class="frame"><div class="inner">
+    <p class="prompt"><span class="p">#![arian]</span> cat ./02_konteks.md</p>
+    <h2>Konteks</h2>
+    <p>Platform sudah punya layanan inti. Rancangan ini memakai ulang semuanya dan hanya menambah lapisan agen di belakang chat service. Tidak ada layanan lama yang diganti.</p>
+
+    <h3><span class="n">##</span>Layanan yang sudah ada</h3>
+    <table>
+      <tr><th style="width:22%">layanan</th><th style="width:12%">status</th><th>peran dalam arsitektur ini</th></tr>
+      <tr><td>Account service</td><td class="tag"><span class="badge">ada</span></td><td>Identitas pengguna dan tenant; kuota dan batas biaya agen per akun; kepemilikan API key (kunci platform atau milik pengguna).</td></tr>
+      <tr><td>Chat service</td><td class="tag"><span class="badge">ada</span></td><td>Pintu masuk. Meneruskan prompt ke orchestrator, men-stream token ke klien, menampilkan kartu izin dan blok diagram flowmaid.</td></tr>
+      <tr><td>Notif service</td><td class="tag"><span class="badge">ada</span></td><td>Menerima event dari event gateway — tugas selesai, butuh izin, gagal — lalu mengirim push dan in-app.</td></tr>
+      <tr><td>Email service</td><td class="tag"><span class="badge">ada</span></td><td>Ringkasan tugas panjang dan laporan harian; thumbnail diagram dari flowmaid server-side.</td></tr>
+      <tr><td>Storage service</td><td class="tag"><span class="badge">ada</span></td><td>Event log dan transkrip sesi, snapshot workspace, artefak dan lampiran yang dihasilkan agen.</td></tr>
+      <tr><td>dll.</td><td class="tag"><span class="badge">ada</span></td><td>Billing / metering (biaya token per sesi), audit log, observability (OpenTelemetry).</td></tr>
+    </table>
+
+    <h3><span class="n">##</span>Komponen baru</h3>
+    <table>
+      <tr><th style="width:26%">komponen</th><th style="width:12%">status</th><th>tugas singkat</th></tr>
+      <tr><td>Session orchestrator</td><td class="tag"><span class="badge new">baru</span></td><td>API sesi, peta thread ↔ sesi ↔ sandbox, stream event, kuota.</td></tr>
+      <tr><td>Sandbox runner pool</td><td class="tag"><span class="badge new">baru</span></td><td>Container hangat, klaim per sesi, reclaim saat idle.</td></tr>
+      <tr><td>Agent runtime</td><td class="tag"><span class="badge new">baru</span></td><td>Claude Agent SDK di dalam sandbox; menulis ke workspace git.</td></tr>
+      <tr><td>Event gateway</td><td class="tag"><span class="badge new">baru</span></td><td>Penerima hook <code>http</code>; verifikasi, routing ke chat dan notif.</td></tr>
+      <tr><td>Secret vault</td><td class="tag"><span class="badge new">baru</span></td><td>API key Claude dan token git, disuntikkan saat sandbox diklaim.</td></tr>
+      <tr><td>Egress proxy</td><td class="tag"><span class="badge new">baru</span></td><td>Satu-satunya jalan keluar sandbox: allowlist, log, batas.</td></tr>
+      <tr><td>flowmaid render</td><td class="tag"><span class="badge new">baru</span></td><td>WASM di klien untuk diagram interaktif; SVG di server untuk notif dan email.</td></tr>
+    </table>
+    <div class="note"><b>prinsip</b>Agen tidak pernah bicara langsung ke klien. Semua lewat chat service, sehingga autentikasi, rate limit dan audit tetap di satu tempat.</div>
+  </div></div>
+  <div class="statusbar"><span class="live">02 · konteks</span><span>rfc-001 · <b>draft</b></span><span>03 / 11</span></div>
+</section>
+
+<!-- ============ P4 DIAGRAM ============ -->
+<section class="page">
+  <div class="frame"><div class="inner">
+    <p class="prompt"><span class="p">#![arian]</span> cat ./03_diagram-arsitektur.md</p>
+    <h2>Diagram arsitektur</h2>
+    <div class="legend"><span class="lcli">klien</span><span>layanan yang sudah ada</span><span class="lnew">komponen baru</span><span class="lext">eksternal</span><span class="nosw">⋯ garis titik = rahasia disuntikkan</span></div>
+    <div class="fig">
+      <div class="bar"><span>architecture.mmd</span><span>dirender dengan flowmaid</span></div>
+      <div class="img"><img src="svg/d1.svg" style="height:198mm"></div>
+    </div>
+    <p class="cap">Sandbox per sesi hanya bisa keluar lewat egress proxy. Chat service tetap satu-satunya pintu ke klien.</p>
+  </div></div>
+  <div class="statusbar"><span class="live">03 · diagram arsitektur</span><span>rfc-001 · <b>draft</b></span><span>04 / 11</span></div>
+</section>
+
+<!-- ============ P5 KOMPONEN ============ -->
+<section class="page">
+  <div class="frame"><div class="inner">
+    <p class="prompt"><span class="p">#![arian]</span> cat ./04_komponen-baru.md</p>
+    <h2>Komponen baru</h2>
+    <div class="cols" style="gap:12px">
+      <div class="card"><div class="hd"><b>Session orchestrator</b><span>go · stateless</span></div><div class="bd">
+        <ul class="dash">
+          <li><code>POST /sessions</code>, <code>/sessions/{id}/messages</code>, <code>/interrupt</code>, <code>/permissions/{req}</code>.</li>
+          <li>Peta <span class="mono">thread_id ↔ session_id ↔ sandbox_id</span> di Redis / Postgres.</li>
+          <li>Stream event ke chat service lewat gRPC stream atau SSE.</li>
+          <li>Menulis event log ke storage service; cek kuota di account service.</li>
+        </ul></div></div>
+      <div class="card"><div class="hd"><b>Sandbox runner pool</b><span>k3s · gvisor</span></div><div class="bd">
+        <ul class="dash">
+          <li>Pod hangat siap klaim; mulai dari 1 vCPU / 1 GiB per agen.</li>
+          <li>Image: Agent SDK, CLI <code>claude</code>, git, node, go, rust.</li>
+          <li>NetworkPolicy: keluar hanya ke egress proxy; ResourceQuota per tenant.</li>
+          <li>Idle lewat batas → suspend; TTL habis → reclaim.</li>
+        </ul></div></div>
+      <div class="card"><div class="hd"><b>Agent runtime</b><span>claude agent sdk</span></div><div class="bd">
+        <ul class="dash">
+          <li><code>ClaudeSDKClient</code> / <code>query()</code> dengan <code>include_partial_messages</code>.</li>
+          <li><code>resume: session_id</code>; <code>canUseTool</code> meneruskan izin ke chat.</li>
+          <li><code>settingSources: []</code>, <code>cwd</code> per sesi, tanpa login OAuth.</li>
+          <li>Sub-agent: pesan membawa <code>parent_tool_use_id</code>.</li>
+        </ul></div></div>
+      <div class="card"><div class="hd"><b>Event gateway</b><span>go · http</span></div><div class="bd">
+        <ul class="dash">
+          <li>Menerima hook <code>http</code>: <code>Stop</code>, <code>SubagentStop</code>, <code>TaskCompleted</code>, <code>Notification</code>.</li>
+          <li><code>PostToolUse</code> masuk audit log.</li>
+          <li>Token per sesi di header; event tanpa token ditolak.</li>
+          <li>Meneruskan ke chat service (thread) dan notif service (push).</li>
+        </ul></div></div>
+      <div class="card"><div class="hd"><b>Secret vault</b><span>vault / kms</span></div><div class="bd">
+        <ul class="dash">
+          <li>API key Claude per tenant, token git per pengguna.</li>
+          <li>Disuntikkan ke env sandbox saat klaim, dicabut saat reclaim.</li>
+          <li>Tidak pernah masuk prompt, transkrip atau log.</li>
+        </ul></div></div>
+      <div class="card"><div class="hd"><b>Egress proxy</b><span>envoy / squid</span></div><div class="bd">
+        <ul class="dash">
+          <li>Allowlist: <span class="mono">api.anthropic.com</span>, git host, registry paket.</li>
+          <li>Log per sesi; batas bandwidth dan koneksi.</li>
+          <li>Tambah domain lewat konfigurasi tenant, bukan dari agen.</li>
+        </ul></div></div>
+    </div>
+    <div class="card" style="margin-top:12px"><div class="hd"><b>flowmaid render</b><span>rust · wasm32 · zero deps</span></div><div class="bd">
+      <ul class="dash" style="columns:2;column-gap:24px">
+        <li>Klien: modul WASM merender blok <code>mermaid</code> di pesan agen sebagai diagram interaktif.</li>
+        <li>Server: library atau CLI yang sama menghasilkan SVG untuk thumbnail notif, email dan preview link.</li>
+        <li>13 jenis diagram: flowchart, sequence, class, state, ER, gitGraph, architecture, mindmap, dan lainnya.</li>
+        <li>Tema mengikuti aplikasi: palet semantik flowmaid, atau <code>neutral</code> / <code>dark</code> / <code>forest</code>.</li>
+      </ul></div></div>
+  </div></div>
+  <div class="statusbar"><span class="live">04 · komponen baru</span><span>rfc-001 · <b>draft</b></span><span>05 / 11</span></div>
+</section>
+
+<!-- ============ P6 ALUR 1-2 ============ -->
+<section class="page">
+  <div class="frame"><div class="inner">
+    <p class="prompt"><span class="p">#![arian]</span> cat ./05_alur-utama.md</p>
+    <h2>Alur utama</h2>
+    <h3><span class="n">05.1</span>Kirim prompt, terima jawaban live</h3>
+    <p>Chat service meneruskan prompt beserta <code>session_id</code>. Orchestrator memanggil agen dengan <code>resume</code>, sehingga konteks percakapan lama ikut. Token mengalir balik sebagai <code>StreamEvent</code> dan ditampilkan langsung di thread. <code>ResultMessage</code> di akhir membawa biaya dan pemakaian token untuk metering.</p>
+    <div class="fig"><div class="bar"><span>prompt-stream.mmd</span><span>sequence</span></div><div class="img"><img src="svg/d2.svg" style="height:86mm"></div></div>
+    <h3><span class="n">05.2</span>Izin tool di dalam chat</h3>
+    <p>Sebelum agen menjalankan perintah berisiko — <code>Bash</code>, menulis file di luar workspace, akses jaringan baru — SDK memanggil <code>canUseTool</code>. Orchestrator menahan giliran itu dan chat service menampilkan kartu approve / deny. Mode izin per tenant: <code>default</code>, <code>acceptEdits</code>, atau <code>plan</code> untuk review sebelum eksekusi.</p>
+    <div class="fig"><div class="bar"><span>permission.mmd</span><span>sequence</span></div><div class="img"><img src="svg/d3.svg" style="height:68mm"></div></div>
+  </div></div>
+  <div class="statusbar"><span class="live">05 · alur utama</span><span>rfc-001 · <b>draft</b></span><span>06 / 11</span></div>
+</section>
+
+<!-- ============ P7 ALUR 3-4 ============ -->
+<section class="page">
+  <div class="frame"><div class="inner">
+    <h3 style="margin-top:0"><span class="n">05.3</span>Tugas background dan notifikasi</h3>
+    <p>Tugas panjang — build, test suite, sub-agent — tetap berjalan saat pengguna menutup aplikasi. Hook <code>TaskCompleted</code> atau <code>Stop</code> mengirim JSON event ke event gateway. Gateway mencocokkan sesi ke pengguna, menaruh event di thread chat, dan meminta notif service mengirim push. Email hanya untuk ringkasan, bukan untuk setiap event.</p>
+    <div class="fig"><div class="bar"><span>background-notif.mmd</span><span>sequence</span></div><div class="img"><img src="svg/d4.svg" style="height:82mm"></div></div>
+
+    <h3><span class="n">05.4</span>Siklus hidup sesi</h3>
+    <div class="cols" style="grid-template-columns:1fr 0.8fr;align-items:start">
+      <div>
+        <p>Sesi dan sandbox punya umur yang berbeda. Sandbox boleh mati — idle terlalu lama, node di-drain, crash — tanpa kehilangan percakapan.</p>
+        <ul class="dash">
+          <li><b>Warm</b>: pod sudah hidup di pool, belum terikat pengguna.</li>
+          <li><b>Running / Waiting</b>: agen bekerja, atau menunggu izin di chat.</li>
+          <li><b>Idle</b>: giliran selesai; sandbox masih terpasang untuk balasan cepat.</li>
+          <li><b>Suspended</b>: sandbox dilepas; event log dan snapshot workspace ada di storage service.</li>
+          <li><b>Resume</b>: prompt baru mengklaim sandbox baru, memulihkan workspace, lalu memanggil agen dengan <code>resume: session_id</code> lewat <code>SessionStore</code>.</li>
+          <li><b>Reclaimed</b>: TTL habis; data dihapus sesuai kebijakan retensi.</li>
+        </ul>
+        <div class="note"><b>catatan</b>Format file transkrip <span class="mono">.jsonl</span> milik CLI bersifat internal dan bisa berubah. Simpan event dari stream-json / SDK, jangan parse transkrip.</div>
+      </div>
+      <div class="fig" style="margin:0"><div class="bar"><span>session.mmd</span><span>state</span></div><div class="img"><img src="svg/d5.svg" style="height:112mm"></div></div>
+    </div>
+  </div></div>
+  <div class="statusbar"><span class="live">05 · alur utama</span><span>rfc-001 · <b>draft</b></span><span>07 / 11</span></div>
+</section>
+
+<!-- ============ P8 FLOWMAID ============ -->
+<section class="page">
+  <div class="frame"><div class="inner">
+    <p class="prompt"><span class="p">#![arian]</span> cat ./06_flowmaid-di-chat.md</p>
+    <h2>flowmaid di dalam chat</h2>
+    <p>Vibe coding banyak bicara lewat diagram: alur API, skema data, state machine, urutan deploy. Agen menulis blok <code>mermaid</code>; chat merendernya dengan flowmaid, dan pengguna bisa langsung menggeser node. Hasil edit dikirim balik sebagai teks mermaid, jadi agen membaca diagram yang sama dengan yang dilihat pengguna.</p>
+    <div class="fig"><div class="bar"><span>flowmaid-loop.mmd</span><span>flowchart</span></div><div class="img"><img src="svg/d6.svg" style="height:62mm"></div></div>
+
+    <div class="cols" style="grid-template-columns:1fr 1fr">
+      <div>
+        <h3 style="margin-top:4px"><span class="n">##</span>Kenapa flowmaid</h3>
+        <ul class="dash">
+          <li>Zero dependency, satu crate Rust; build ke <code>wasm32</code> tanpa runtime JS besar.</li>
+          <li>Interaktif: <code>scene</code>, <code>route_partial</code> saat drag, <code>hit_test</code> untuk pick, <code>to_mermaid</code> untuk simpan.</li>
+          <li>Deterministik: input sama, SVG sama — aman untuk cache dan snapshot test.</li>
+          <li>Satu sumber geometri untuk layar, thumbnail dan ekspor SVG.</li>
+          <li>13 jenis diagram mermaid, tema mengikuti aplikasi.</li>
+        </ul>
+      </div>
+      <div>
+        <h3 style="margin-top:4px"><span class="n">##</span>Garis besar integrasi</h3>
+        <div class="term dark" style="margin:0">
+          <div class="bar"><i></i><i></i><i></i><span>chat_render.rs</span></div>
+          <div class="body"><pre><span class="c">// klien (wasm): blok mermaid agen</span>
+<span class="k">let</span> g     = parse(src)?;
+<span class="k">let</span> scene = scene::scene(&amp;g);
+<span class="c">// drag: hanya edge terdampak</span>
+route_partial(&amp;g, &amp;scene, moved);
+<span class="k">let</span> hit = scene.hit_test(x, y);
+<span class="c">// simpan: kembali ke agen</span>
+<span class="k">let</span> text = to_mermaid(&amp;g);
+<span class="c">// server: SVG notif / email</span>
+<span class="k">let</span> svg =
+  render_svg_advanced(src, &amp;opts)?;</pre></div>
+        </div>
+        <p class="cap" style="margin-top:6px">Nama fungsi sesuai README flowmaid; signature lengkap di dokumentasi crate.</p>
+      </div>
+    </div>
+    <div class="note"><b>status</b>flowmaid sedang di fase B (paket 7 dari 13: label dan port). Diagram di dokumen ini dirender dengan build dev hari ini. Rilis 0.34.0 menyusul setelah fase B dan C selesai.</div>
+  </div></div>
+  <div class="statusbar"><span class="live">06 · flowmaid di chat</span><span>rfc-001 · <b>draft</b></span><span>08 / 11</span></div>
+</section>
+
+<!-- ============ P9 KEAMANAN + DATA ============ -->
+<section class="page">
+  <div class="frame"><div class="inner">
+    <p class="prompt"><span class="p">#![arian]</span> cat ./07_keamanan.md</p>
+    <h2>Keamanan dan isolasi</h2>
+    <ul class="dash">
+      <li><b>Satu sandbox per sesi.</b> Filesystem, proses dan env tidak dibagi antar pengguna. Runtime seperti gVisor atau Kata menambah lapisan di atas container biasa.</li>
+      <li><b>Jaringan tertutup.</b> NetworkPolicy deny-all; keluar hanya lewat egress proxy dengan allowlist per tenant. Hook <code>http</code> ke event gateway lewat jalur internal yang sama.</li>
+      <li><b>Rahasia tidak pernah jadi teks.</b> API key dan token git ada di vault, masuk ke env saat klaim, dicabut saat reclaim. Tidak masuk prompt, transkrip atau log.</li>
+      <li><b>Izin eksplisit.</b> <code>canUseTool</code> + mode izin per tenant; deny rules untuk perintah berbahaya (<span class="mono">rm -rf /</span>, akses metadata cloud).</li>
+      <li><b>Audit.</b> <code>PreToolUse</code> / <code>PostToolUse</code> dan setiap keputusan izin tercatat di audit log dengan <code>session_id</code> dan pengguna.</li>
+      <li><b>Lisensi dan autentikasi.</b> Produk yang melayani pengguna lain wajib memakai API key (Claude Console, Bedrock, Vertex) di bawah Commercial Terms. Login Free/Pro/Max tidak boleh dipakai atas nama pengguna; binary Claude Code tidak dimodifikasi.</li>
+    </ul>
+
+    <p class="prompt" style="margin-top:22px"><span class="p">#![arian]</span> cat ./08_data-dan-penyimpanan.md</p>
+    <h2>Data dan penyimpanan</h2>
+    <table>
+      <tr><th style="width:24%">data</th><th style="width:26%">disimpan di</th><th>catatan</th></tr>
+      <tr><td>Event log sesi</td><td>Storage service</td><td>Dari stream-json / SDK: pesan, tool call, hasil, biaya. Sumber kebenaran untuk tampilan chat dan resume.</td></tr>
+      <tr><td>Transkrip agen</td><td>Sandbox → storage</td><td>Dipulihkan lewat <code>SessionStore</code> saat resume di host lain. Format internal, jangan di-parse.</td></tr>
+      <tr><td>Workspace</td><td>Git host + snapshot</td><td>Commit per giliran atau per tugas; snapshot tar untuk resume cepat.</td></tr>
+      <tr><td>Artefak</td><td>Storage service</td><td>Build output, laporan, SVG diagram dari flowmaid.</td></tr>
+      <tr><td>Rahasia</td><td>Secret vault</td><td>Tidak pernah ditulis ke storage biasa.</td></tr>
+      <tr><td>Metering</td><td>Billing / account</td><td>Token dan biaya per <code>ResultMessage</code>, dijumlah per sesi dan tenant.</td></tr>
+    </table>
+  </div></div>
+  <div class="statusbar"><span class="live">07–08 · keamanan · data</span><span>rfc-001 · <b>draft</b></span><span>09 / 11</span></div>
+</section>
+
+<!-- ============ P10 SKALA + RENCANA ============ -->
+<section class="page">
+  <div class="frame"><div class="inner">
+    <p class="prompt"><span class="p">#![arian]</span> cat ./09_skala-dan-biaya.md</p>
+    <h2>Skala dan biaya</h2>
+    <ul class="dash">
+      <li><b>Ukuran awal.</b> 1 vCPU / 1 GiB per agen (titik awal dari dokumentasi hosting Agent SDK); naikkan per tenant untuk build berat.</li>
+      <li><b>Warm pool.</b> Jumlah pod hangat mengikuti puncak sesi baru per menit; target klaim di bawah 2 detik.</li>
+      <li><b>Idle dan TTL.</b> Suspend setelah idle beberapa menit; reclaim setelah TTL. Sesi tetap bisa dilanjutkan dari storage.</li>
+      <li><b>Biaya token.</b> Prompt caching otomatis menurunkan biaya konteks berulang. Kuota dan batas biaya per akun dicek orchestrator sebelum setiap giliran.</li>
+      <li><b>Observability.</b> OpenTelemetry dari SDK: latensi giliran, token, tool call, kegagalan.</li>
+    </ul>
+
+    <p class="prompt" style="margin-top:20px"><span class="p">#![arian]</span> cat ./10_rencana-bertahap.md</p>
+    <h2>Rencana bertahap</h2>
+    <div class="phase"><div class="pn">P0</div><div class="pb"><b>Proof of concept</b> — satu container, Agent SDK, prompt dari chat dan token di-stream balik ke satu thread.<div class="exit">selesai bila: satu pengguna internal bisa vibe coding end to end</div></div></div>
+    <div class="phase"><div class="pn">P1</div><div class="pb"><b>Sesi dan izin</b> — session orchestrator, <code>resume</code>, kartu izin <code>canUseTool</code>, event log di storage service.<div class="exit">selesai bila: sesi bertahan setelah container di-restart</div></div></div>
+    <div class="phase"><div class="pn">P2</div><div class="pb"><b>Notifikasi dan background</b> — hook <code>http</code>, event gateway, notif service, ringkasan email.<div class="exit">selesai bila: tugas 20 menit selesai dan pengguna dapat push</div></div></div>
+    <div class="phase"><div class="pn">P3</div><div class="pb"><b>Isolasi dan pool</b> — sandbox per sesi, warm pool, egress proxy, vault, NetworkPolicy dan ResourceQuota per tenant.<div class="exit">selesai bila: uji penetrasi antar tenant lulus</div></div></div>
+    <div class="phase"><div class="pn">P4</div><div class="pb"><b>flowmaid interaktif</b> — WASM di klien, drag dan simpan via <code>to_mermaid</code>, SVG server-side untuk notif dan email.<div class="exit">selesai bila: diagram dari agen bisa diedit dan dibaca balik oleh agen</div></div></div>
+  </div></div>
+  <div class="statusbar"><span class="live">09–10 · skala · rencana</span><span>rfc-001 · <b>draft</b></span><span>10 / 11</span></div>
+</section>
+
+<!-- ============ P11 RISIKO + REFERENSI ============ -->
+<section class="page">
+  <div class="frame"><div class="inner">
+    <p class="prompt"><span class="p">#![arian]</span> cat ./11_risiko.md</p>
+    <h2>Risiko dan pertanyaan terbuka</h2>
+    <table>
+      <tr><th style="width:30%">risiko</th><th>mitigasi</th></tr>
+      <tr><td>Biaya token melonjak</td><td>Batas biaya per akun dan per sesi; peringatan di chat sebelum batas; model lebih ringan untuk tugas rutin.</td></tr>
+      <tr><td>Kode agen keluar sandbox</td><td>Runtime terisolasi, deny-all network, tanpa kredensial cloud di env, egress proxy.</td></tr>
+      <tr><td>Format internal berubah</td><td>Pakai SDK dan stream-json saja; pin versi SDK dan CLI di image; uji upgrade di staging.</td></tr>
+      <tr><td>Container mati di tengah tugas</td><td>Event log + snapshot workspace; resume otomatis di sandbox baru.</td></tr>
+      <tr><td>Kepatuhan lisensi</td><td>API key per tenant atau milik pengguna; tidak ada login consumer bersama.</td></tr>
+    </table>
+    <ul class="dash">
+      <li>Bahasa orchestrator: Go (selaras dengan layanan yang ada) memanggil SDK TypeScript lewat sidecar, atau langsung <code>claude -p</code> stream-json?</li>
+      <li>Kunci API: kunci platform dengan metering, atau bring-your-own-key per pengguna, atau keduanya?</li>
+      <li>Hosted alternatif: Managed Agents (beta) dengan sandbox milik sendiri, untuk mengurangi kode orchestrator?</li>
+    </ul>
+
+    <p class="prompt" style="margin-top:20px"><span class="p">#![arian]</span> cat ./12_referensi.md</p>
+    <h2>Referensi</h2>
+    <ul class="dash" style="font-family:var(--mono);font-size:11px">
+      <li>Agent SDK overview — code.claude.com/docs/en/agent-sdk/overview</li>
+      <li>Agent SDK sessions · streaming · permissions · hosting — code.claude.com/docs/en/agent-sdk/</li>
+      <li>Headless / <code>claude -p</code> — code.claude.com/docs/en/headless</li>
+      <li>Hooks reference — code.claude.com/docs/en/hooks</li>
+      <li>Managed Agents (beta) — platform.claude.com/docs/en/managed-agents/overview</li>
+      <li>Legal and compliance — code.claude.com/docs/en/legal-and-compliance</li>
+      <li>flowmaid — github.com/go-routine-id/flowmaid</li>
+    </ul>
+
+    <div style="position:absolute;left:34px;right:34px;bottom:30px">
+      <p class="eyebrow" style="margin-bottom:10px">langkah berikutnya</p>
+      <h1 class="display" style="font-size:52px;letter-spacing:-.05em;line-height:.93;margin-bottom:12px">Siap untuk <em>P0</em>.</h1>
+      <p class="lede" style="font-size:14px;margin:0">Satu container, satu thread chat, satu pengguna internal — lalu naik bertahap ke P4.</p>
+    </div>
+  </div></div>
+  <div class="statusbar"><span class="live">11–12 · risiko · referensi</span><span>rfc-001 · <b>draft</b></span><span>11 / 11</span></div>
+</section>
+
+</body>
+</html>

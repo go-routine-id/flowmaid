@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1012" height="298" viewBox="0 0 1012 298" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="Flowchart diagram">
+<title>Flowchart diagram</title>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#44507a"/></marker></defs>
+<path d="M 149.8 159.2 C 177.8 159.2, 179.7 159.2, 204.3 159.2" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>AG → MSG</title></path>
+<path d="M 312.3 152.2 C 341.2 152.2, 347.1 126.2, 366.5 115.5 C 369.8 113.7, 373.0 110.9, 376.8 110.9 L 379.5 110.9" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>MSG → RW</title></path>
+<path d="M 521.1 110.9 C 564.1 110.9, 565.9 110.9, 605.3 110.9" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>RW → VIEW</title></path>
+<path d="M 753.2 96.9 C 794.1 90.1, 807.3 76.3, 830.3 68.2 C 840.7 64.6, 851.7 61.8, 862.6 61.8 L 868.1 61.8" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>VIEW → RP: drag node</title></path>
+<path d="M 873.6 77.9 C 832.7 81.1, 819.6 95.3, 796.4 103.9 C 786.2 107.8, 775.2 110.9, 764.2 110.9 L 758.8 110.9" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>RP → VIEW</title></path>
+<path d="M 753.2 124.9 C 795.2 124.9, 808.4 135.7, 832.2 142.5 C 842.8 145.5, 853.8 147.9, 864.7 147.9 L 870.2 147.9" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>VIEW → TM: simpan</title></path>
+<path d="M 875.7 161.9 L 874.1 161.9 C 872.4 161.9, 869.1 161.9, 865.7 161.9 C 862.4 161.9, 859.1 161.9, 857.4 163.6 C 855.7 165.2, 855.7 168.6, 855.7 179.0 C 855.7 189.4, 855.7 206.9, 855.7 221.7 C 855.7 236.4, 855.7 248.4, 849.7 254.4 C 843.7 260.4, 831.7 260.4, 723.4 260.4 C 615.1 260.4, 410.4 260.4, 302.1 260.4 C 193.8 260.4, 181.8 260.4, 175.8 254.4 C 169.8 248.4, 169.8 236.4, 169.8 223.8 C 169.8 211.2, 169.8 197.9, 169.8 189.6 C 169.8 181.3, 169.8 178.0, 168.1 176.3 C 166.5 174.7, 163.1 174.7, 159.8 174.7 C 158.2 174.7, 156.7 174.7, 155.3 174.7" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>TM → AG: konteks baru</title></path>
+<path d="M 312.3 166.2 C 337.1 166.2, 341.4 194.4, 359.1 204.1 C 360.8 205.1, 362.1 207.4, 364.1 207.4 L 366.8 207.4" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>MSG → SRV</title></path>
+<path d="M 533.8 207.4 C 561.8 207.4, 563.7 207.4, 588.3 207.4" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>SRV → PUSH</title></path>
+<g><title>Agent menulis blok mermaid</title>
+<rect x="28.0" y="131.7" width="121.8" height="55.0" rx="3.0" fill="#ffffff" stroke="#c9d2e0" stroke-width="1.8"/>
+<text x="88.9" y="150.7" text-anchor="middle" fill="#101828"><tspan x="88.9" dy="0.33em">Agent menulis</tspan><tspan x="88.9" dy="17.0">blok mermaid</tspan></text>
+</g>
+<g><title>Pesan chat</title>
+<rect x="209.8" y="140.2" width="102.5" height="38.0" rx="3.0" fill="#ffffff" stroke="#c9d2e0" stroke-width="1.8"/>
+<text x="261.1" y="159.2" dy="0.33em" text-anchor="middle" fill="#101828">Pesan chat</text>
+</g>
+<g><title>flowmaid WASM di klien</title>
+<rect x="385.0" y="83.4" width="136.1" height="55.0" rx="3.0" fill="#eaeffc" stroke="#1d3fa0" stroke-width="1.8"/>
+<text x="453.1" y="102.4" text-anchor="middle" fill="#101828"><tspan x="453.1" dy="0.33em">flowmaid WASM</tspan><tspan x="453.1" dy="17.0">di klien</tspan></text>
+</g>
+<g><title>Diagram interaktif</title>
+<rect x="610.8" y="91.9" width="142.4" height="38.0" rx="3.0" fill="#ffffff" stroke="#c9d2e0" stroke-width="1.8"/>
+<text x="682.0" y="110.9" dy="0.33em" text-anchor="middle" fill="#101828">Diagram interaktif</text>
+</g>
+<g><title>route_partial</title>
+<rect x="873.6" y="47.9" width="110.6" height="38.0" rx="3.0" fill="#eaeffc" stroke="#1d3fa0" stroke-width="1.8"/>
+<text x="928.9" y="66.9" dy="0.33em" text-anchor="middle" fill="#101828">route_partial</text>
+</g>
+<g><title>to_mermaid</title>
+<rect x="875.7" y="135.9" width="106.4" height="38.0" rx="3.0" fill="#eaeffc" stroke="#1d3fa0" stroke-width="1.8"/>
+<text x="928.9" y="154.9" dy="0.33em" text-anchor="middle" fill="#101828">to_mermaid</text>
+</g>
+<g><title>flowmaid server-side</title>
+<rect x="372.3" y="188.4" width="161.5" height="38.0" rx="3.0" fill="#eaeffc" stroke="#1d3fa0" stroke-width="1.8"/>
+<text x="453.1" y="207.4" dy="0.33em" text-anchor="middle" fill="#101828">flowmaid server-side</text>
+</g>
+<g><title>Thumbnail notif / email</title>
+<rect x="593.8" y="188.4" width="176.5" height="38.0" rx="3.0" fill="#ffffff" stroke="#c9d2e0" stroke-width="1.8"/>
+<text x="682.0" y="207.4" dy="0.33em" text-anchor="middle" fill="#101828">Thumbnail notif / email</text>
+</g>
+<rect x="785.5" y="28.0" width="77.2" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="824.1" y="38.0" dy="0.33em" text-anchor="middle" fill="#232840">drag node</text>
+<rect x="779.6" y="124.5" width="59.5" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="809.3" y="134.5" dy="0.33em" text-anchor="middle" fill="#232840">simpan</text>
+<rect x="465.6" y="250.4" width="94.3" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="512.8" y="260.4" dy="0.33em" text-anchor="middle" fill="#232840">konteks baru</text>
+</svg>

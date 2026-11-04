@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1967" height="175" viewBox="0 0 1967 175" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="Flowchart diagram">
+<title>Flowchart diagram</title>
+<rect width="1967" height="175" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker><mask id="flowmaid-aa29717a86dd4194-x2" maskUnits="userSpaceOnUse" x="72.2" y="34.2" width="351.9" height="128.4"><rect x="72.2" y="34.2" width="351.9" height="128.4" fill="#fff"/><circle cx="368.1" cy="99.7" r="4.47" fill="#000"/></mask></defs>
+<path d="M 96.0 65.2 C 248.2 65.2, 248.2 44.0, 400.3 44.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>A → B: request with a very long descriptive label</title></path>
+<path d="M 486.4 54.0 C 656.6 54.0, 656.6 72.2, 826.7 72.2" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>B → C: forwarded after authentication and rate limiting</title></path>
+<path d="M 400.3 58.0 C 360.3 161.3, 136.0 156.9, 96.0 93.2" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)" mask="url(#flowmaid-aa29717a86dd4194-x2)"><title>B → A: cached response served without hitting the backend</title></path>
+<path d="M 906.1 86.2 L 956.9 90.5 C 1007.7 94.7, 1109.2 103.1, 1230.3 107.3 C 1351.5 111.5, 1492.2 111.5, 1598.2 108.0 C 1704.3 104.5, 1775.7 97.5, 1811.4 94.0 L 1847.1 90.5" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>C → D: query by primary key</title></path>
+<path d="M 906.1 72.2 C 1034.2 72.2, 1034.2 54.0, 1162.3 54.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>C → E: publish domain event to the topic</title></path>
+<path d="M 1259.2 47.0 C 1426.8 47.0, 1426.8 47.0, 1594.3 47.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>E → F: consumed asynchronously by the worker pool</title></path>
+<path d="M 1671.5 54.0 C 1759.3 54.0, 1759.3 68.0, 1847.1 68.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>F → D: writes the projection</title></path>
+<path d="M 96.0 79.2 L 153.9 84.6 C 211.8 90.0, 327.6 100.8, 449.4 101.9 C 571.1 103.1, 698.9 94.7, 762.8 90.5 L 826.7 86.2" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>A → C: health probe</title></path>
+<g><title>Client</title>
+<rect x="28.0" y="60.2" width="68.0" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="62.0" y="79.2" dy="0.33em" text-anchor="middle" fill="#232840">Client</text>
+</g>
+<g><title>Gateway</title>
+<rect x="400.3" y="28.0" width="86.1" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="443.4" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">Gateway</text>
+</g>
+<g><title>Service</title>
+<rect x="826.7" y="60.2" width="79.4" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="866.4" y="79.2" dy="0.33em" text-anchor="middle" fill="#232840">Service</text>
+</g>
+<g><title>Database</title>
+<path d="M 1847.1 60.2 A 45.8 8.0 0 0 0 1938.7 60.2 L 1938.7 98.2 A 45.8 8.0 0 0 1 1847.1 98.2 Z" fill="#e7eef7" stroke="#4d8fbf" stroke-width="1.6"/>
+<path d="M 1847.1 60.2 A 45.8 8.0 0 0 1 1938.7 60.2" fill="none" stroke="#4d8fbf" stroke-width="1.6"/>
+<text x="1892.9" y="79.2" dy="0.33em" text-anchor="middle" fill="#232840">Database</text>
+</g>
+<g><title>Queue</title>
+<rect x="1162.3" y="28.0" width="96.9" height="38.0" rx="3" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<line x1="1170.3" y1="28.0" x2="1170.3" y2="66.0" stroke="#5b6dc0" stroke-width="1.6"/>
+<line x1="1251.2" y1="28.0" x2="1251.2" y2="66.0" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="1210.8" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">Queue</text>
+</g>
+<g><title>Worker</title>
+<rect x="1594.3" y="28.0" width="77.2" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="1632.9" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">Worker</text>
+</g>
+<rect x="109.2" y="45.3" width="268.3" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="243.4" y="55.3" dy="0.33em" text-anchor="middle" fill="#232840">request with a very long descriptive label</text>
+<rect x="493.7" y="52.0" width="304.3" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="645.9" y="62.0" dy="0.33em" text-anchor="middle" fill="#232840">forwarded after authentication and rate limiting</text>
+<rect x="90.3" y="127.3" width="337.6" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="259.1" y="137.3" dy="0.33em" text-anchor="middle" fill="#232840">cached response served without hitting the backend</text>
+<rect x="1576.1" y="96.0" width="144.5" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="1648.4" y="106.0" dy="0.33em" text-anchor="middle" fill="#232840">query by primary key</text>
+<rect x="924.1" y="53.1" width="220.2" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="1034.2" y="63.1" dy="0.33em" text-anchor="middle" fill="#232840">publish domain event to the topic</text>
+<rect x="1272.0" y="37.0" width="299.1" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="1421.5" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">consumed asynchronously by the worker pool</text>
+<rect x="1684.0" y="50.1" width="139.6" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="1753.8" y="60.1" dy="0.33em" text-anchor="middle" fill="#232840">writes the projection</text>
+<rect x="403.2" y="93.1" width="92.3" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="449.4" y="103.1" dy="0.33em" text-anchor="middle" fill="#232840">health probe</text>
+</svg>

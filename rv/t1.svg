@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="722" height="512" viewBox="0 0 722 512" font-family="Helvetica, Arial, sans-serif" font-size="13" role="img" aria-label="Sequence diagram">
+<title>Sequence diagram</title>
+<rect width="722" height="512" fill="#ffffff"/>
+<rect x="118.1" y="108.0" width="420.1" height="160.0" rx="4" fill="none" stroke="#aeb6d8" stroke-width="1.2"/>
+<rect x="118.1" y="318.0" width="420.1" height="152.0" rx="4" fill="none" stroke="#aeb6d8" stroke-width="1.2"/>
+<rect x="128.1" y="348.0" width="400.1" height="106.0" rx="4" fill="none" stroke="#aeb6d8" stroke-width="1.2"/>
+<line x1="168.1" y1="58.0" x2="168.1" y2="488.0" stroke="#aeb6d8" stroke-dasharray="4 4"/>
+<line x1="368.2" y1="58.0" x2="368.2" y2="488.0" stroke="#aeb6d8" stroke-dasharray="4 4"/>
+<line x1="488.2" y1="58.0" x2="488.2" y2="488.0" stroke="#aeb6d8" stroke-dasharray="4 4"/>
+<rect x="364.2" y="90.0" width="8.0" height="210.0" fill="#ffffff" stroke="#33a35c" stroke-width="1.4"/>
+<rect x="118.1" y="108.0" width="29.1" height="18" fill="#eef1fb" stroke="#aeb6d8"/>
+<text x="132.7" y="117.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#232840">alt</text>
+<text x="153.2" y="117.0" dy="0.33em" fill="#232840">[ok]</text>
+<line x1="118.1" y1="212.0" x2="538.2" y2="212.0" stroke="#aeb6d8" stroke-dasharray="5 4"/>
+<text x="328.1" y="224.0" dy="0.33em" text-anchor="middle" fill="#232840">[fail]</text>
+<rect x="118.1" y="318.0" width="40.8" height="18" fill="#eef1fb" stroke="#aeb6d8"/>
+<text x="138.5" y="327.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#232840">loop</text>
+<text x="164.9" y="327.0" dy="0.33em" fill="#232840">[outer]</text>
+<rect x="128.1" y="348.0" width="33.5" height="18" fill="#eef1fb" stroke="#aeb6d8"/>
+<text x="144.8" y="357.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#232840">opt</text>
+<text x="167.6" y="357.0" dy="0.33em" fill="#232840">[inner]</text>
+<rect x="496.2" y="170.0" width="202.2" height="26.0" rx="3" fill="#fcf2da" stroke="#d99114" stroke-width="1.2"/>
+<text x="597.3" y="183.0" dy="0.33em" text-anchor="middle" fill="#232840">a fairly long note on the right</text>
+<rect x="24.0" y="376.0" width="136.1" height="26.0" rx="3" fill="#fcf2da" stroke="#d99114" stroke-width="1.2"/>
+<text x="92.0" y="389.0" dy="0.33em" text-anchor="middle" fill="#232840">left side note here</text>
+<path d="M 168.1 90.0 L 368.2 90.0" fill="none" stroke="#44507a" stroke-width="1.6"/>
+<polygon points="368.2,90.0 357.2,95.5 357.2,84.5" fill="#44507a"/>
+<text x="268.1" y="80.0" dy="0.33em" text-anchor="middle" fill="#232840">start</text>
+<path d="M 368.2 154.0 L 488.2 154.0" fill="none" stroke="#44507a" stroke-width="1.6"/>
+<polygon points="488.2,154.0 477.2,159.5 477.2,148.5" fill="#44507a"/>
+<text x="428.2" y="144.0" dy="0.33em" text-anchor="middle" fill="#232840">ask</text>
+<path d="M 368.2 250.0 L 168.1 250.0" fill="none" stroke="#44507a" stroke-width="1.6"/>
+<polygon points="168.1,250.0 179.1,244.5 179.1,255.5" fill="#44507a"/>
+<text x="268.1" y="240.0" dy="0.33em" text-anchor="middle" fill="#232840">err</text>
+<path d="M 368.2 300.0 L 168.1 300.0" fill="none" stroke="#44507a" stroke-width="1.6" stroke-dasharray="6 4"/>
+<polygon points="168.1,300.0 179.1,294.5 179.1,305.5" fill="#44507a"/>
+<text x="268.1" y="290.0" dy="0.33em" text-anchor="middle" fill="#232840">done</text>
+<path d="M 168.1 418.0 L 200.1 418.0 L 200.1 434.0 L 168.1 434.0" fill="none" stroke="#44507a" stroke-width="1.6"/>
+<polygon points="168.1,434.0 179.1,428.5 179.1,439.5" fill="#44507a"/>
+<text x="208.1" y="426.0" dy="0.33em" fill="#232840">think hard about it</text>
+<rect x="128.1" y="24.0" width="80.0" height="34.0" rx="4" fill="#5b6dc0" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="168.1" y="41.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">Alice</text>
+<rect x="328.2" y="24.0" width="80.0" height="34.0" rx="4" fill="#33a35c" stroke="#33a35c" stroke-width="1.6"/>
+<text x="368.2" y="41.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">Bob</text>
+<rect x="448.2" y="24.0" width="80.0" height="34.0" rx="4" fill="#d99114" stroke="#d99114" stroke-width="1.6"/>
+<text x="488.2" y="41.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">Carol</text>
+</svg>

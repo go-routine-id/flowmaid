@@ -1,0 +1,12 @@
+stateDiagram-v2
+  [*] --> Requested
+  Requested --> Warm : ambil dari pool
+  Warm --> Running : prompt pertama
+  Running --> Waiting : canUseTool
+  Waiting --> Running : approve / deny
+  Running --> Idle : turn selesai
+  Idle --> Running : prompt baru
+  Idle --> Suspended : idle lewat batas
+  Suspended --> Running : resume session_id
+  Suspended --> Reclaimed : TTL habis
+  Reclaimed --> [*]

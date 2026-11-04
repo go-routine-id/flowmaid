@@ -1,0 +1,14 @@
+sequenceDiagram
+  participant A as Agent runtime
+  participant E as Event gateway
+  participant C as Chat service
+  participant N as Notif service
+  participant M as Email service
+  actor U as User
+  A->>E: hook TaskCompleted (http)
+  E->>E: cek signature, session ke user
+  E->>C: event ke thread
+  E->>N: kirim notifikasi
+  N->>U: push
+  N->>M: ringkasan (opsional)
+  M->>U: email

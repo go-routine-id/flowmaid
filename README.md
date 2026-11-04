@@ -1,3 +1,5 @@
+> **Superseded:** read MONDAY.md (restore steps in its §6). The notes below are from 2026-10-31.
+
 # flowmaid mermaid-parity workspace backup
 
 Scratch workspace of the mermaid-parity effort (session_01JGDFJkgB3ttBJtcTtc6aL5), saved so work can resume in a fresh container.

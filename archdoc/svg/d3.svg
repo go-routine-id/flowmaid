@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="623" height="406" viewBox="0 0 623 406" font-family="Helvetica, Arial, sans-serif" font-size="13" role="img" aria-label="Sequence diagram">
+<title>Sequence diagram</title>
+<line x1="82.0" y1="58.0" x2="82.0" y2="334.0" stroke="#888888" stroke-dasharray="4 4"/>
+<line x1="281.1" y1="58.0" x2="281.1" y2="334.0" stroke="#888888" stroke-dasharray="4 4"/>
+<line x1="426.4" y1="58.0" x2="426.4" y2="334.0" stroke="#888888" stroke-dasharray="4 4"/>
+<line x1="559.3" y1="72.0" x2="559.3" y2="334.0" stroke="#888888" stroke-dasharray="4 4"/>
+<path d="M 82.0 104.0 L 281.1 104.0" fill="none" stroke="#333333" stroke-width="1.6"/>
+<polygon points="281.1,104.0 270.1,109.5 270.1,98.5" fill="#333333"/>
+<text x="181.6" y="94.0" dy="0.33em" text-anchor="middle" fill="#333333">canUseTool(Bash, npm test)</text>
+<path d="M 281.1 138.0 L 426.4 138.0" fill="none" stroke="#333333" stroke-width="1.6"/>
+<polygon points="426.4,138.0 415.4,143.5 415.4,132.5" fill="#333333"/>
+<text x="353.8" y="128.0" dy="0.33em" text-anchor="middle" fill="#333333">kartu izin</text>
+<path d="M 426.4 172.0 L 559.3 172.0" fill="none" stroke="#333333" stroke-width="1.6"/>
+<polygon points="559.3,172.0 548.3,177.5 548.3,166.5" fill="#333333"/>
+<text x="492.9" y="162.0" dy="0.33em" text-anchor="middle" fill="#333333">approve / deny</text>
+<path d="M 559.3 206.0 L 426.4 206.0" fill="none" stroke="#333333" stroke-width="1.6"/>
+<polygon points="426.4,206.0 437.4,200.5 437.4,211.5" fill="#333333"/>
+<text x="492.9" y="196.0" dy="0.33em" text-anchor="middle" fill="#333333">approve</text>
+<path d="M 426.4 240.0 L 281.1 240.0" fill="none" stroke="#333333" stroke-width="1.6"/>
+<polygon points="281.1,240.0 292.1,234.5 292.1,245.5" fill="#333333"/>
+<text x="353.8" y="230.0" dy="0.33em" text-anchor="middle" fill="#333333">keputusan</text>
+<path d="M 281.1 274.0 L 82.0 274.0" fill="none" stroke="#333333" stroke-width="1.6" stroke-dasharray="6 4" stroke-dashoffset="3.4"/>
+<polygon points="82.0,274.0 93.0,268.5 93.0,279.5" fill="#333333"/>
+<text x="181.6" y="264.0" dy="0.33em" text-anchor="middle" fill="#333333">allow</text>
+<path d="M 82.0 296.0 L 114.0 296.0 L 114.0 312.0 L 82.0 312.0" fill="none" stroke="#333333" stroke-width="1.6"/>
+<polygon points="82.0,312.0 93.0,306.5 93.0,317.5" fill="#333333"/>
+<text x="122.0" y="304.0" dy="0.33em" fill="#333333">jalankan tool</text>
+<rect x="24.0" y="24.0" width="116.0" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="82.0" y="41.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Agent runtime</text>
+<rect x="228.7" y="24.0" width="104.8" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="281.1" y="41.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Orchestrator</text>
+<rect x="373.5" y="24.0" width="105.8" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="426.4" y="41.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Chat service</text>
+<circle cx="559.3" cy="31.0" r="6.0" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<path d="M 559.3 37.0 L 559.3 48.0 M 550.3 41.0 L 568.3 41.0 M 559.3 48.0 L 551.3 56.0 M 559.3 48.0 L 567.3 56.0" fill="none" stroke="#333333" stroke-width="1.6" stroke-linecap="round"/>
+<text x="559.3" y="64.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">User</text>
+<rect x="24.0" y="334.0" width="116.0" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="82.0" y="351.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Agent runtime</text>
+<rect x="228.7" y="334.0" width="104.8" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="281.1" y="351.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Orchestrator</text>
+<rect x="373.5" y="334.0" width="105.8" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="426.4" y="351.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Chat service</text>
+<circle cx="559.3" cy="341.0" r="6.0" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<path d="M 559.3 347.0 L 559.3 358.0 M 550.3 351.0 L 568.3 351.0 M 559.3 358.0 L 551.3 366.0 M 559.3 358.0 L 567.3 366.0" fill="none" stroke="#333333" stroke-width="1.6" stroke-linecap="round"/>
+<text x="559.3" y="374.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">User</text>
+</svg>

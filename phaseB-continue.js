@@ -42,7 +42,7 @@ Hard rules for every flowchart change:
 - Pick == render (since 0b63338): Scene::edge_at / hits_in_rect measure to the stroke the painter draws by walking scene::edge_path_d with scene::edge_stroke_width. Any change to how an edge's path is drawn must go through edge_path_d / edge_stroke_width (or keep them in sync), and the test edge_picking_matches_the_painted_strokes_on_every_fixture must keep passing. Painter-only treatments that remove ink (arrow trims, crossing gaps) are fine to ignore in picking.
 - Routing must stay finite for any node sizes (since 5a8b266: sane_sizes, the diamond guard in border); keep routing_stays_finite_for_any_node_sizes_and_coincident_centres passing.
 - guard.sh now also runs \`cargo doc --no-deps\` with -D warnings: no intra-doc link to a private item, no unresolved link.
-- The branch already holds 0.33.0 plus class/state/interactive work (see CHANGELOG [Unreleased]); state diagrams ride the flowchart pipeline, so check examples/state.mmd and the state corpus too.`
+- The branch already holds the released 0.34.0 (B0–B7) and any later phase-B packages (see `git log` and CHANGELOG); state diagrams ride the flowchart pipeline, so check examples/state.mmd and the state corpus too.`
 
 const PKGS = [
   // a-followups: done and pushed 2026-10-31 (d7e423d..6f81d0a)

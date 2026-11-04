@@ -1,0 +1,54 @@
+flowchart LR
+  subgraph CL[Klien]
+    WEB[Chat app web / mobile<br/>flowmaid WASM]
+  end
+  subgraph EX[Platform yang sudah ada]
+    GW[API gateway]
+    CHAT[Chat service]
+    ACC[Account service]
+    NOTIF[Notif service]
+    MAIL[Email service]
+    STO[(Storage service)]
+  end
+  subgraph AP[Agent platform baru]
+    ORCH[Session orchestrator]
+    EVT[Event gateway<br/>penerima hook]
+    POOL[Sandbox runner pool]
+    VAULT[Secret vault]
+    FMR[flowmaid render<br/>SVG server-side]
+    subgraph SB[Sandbox per sesi]
+      SDK[Agent runtime<br/>Claude Agent SDK]
+      WS[(Workspace git)]
+    end
+    PROXY[Egress proxy]
+  end
+  subgraph EXT[Eksternal]
+    CLAUDE[Claude API]
+    GIT[Git host]
+  end
+  WEB <--> GW
+  GW --> CHAT
+  CHAT --> ACC
+  CHAT -->|prompt, izin| ORCH
+  ORCH -->|klaim| POOL
+  POOL --> SDK
+  SDK -->|stream event| ORCH
+  ORCH -->|stream token| CHAT
+  SDK -->|hook http| EVT
+  EVT --> NOTIF
+  NOTIF --> MAIL
+  ORCH --> STO
+  SDK --> WS
+  VAULT -.->|API key| SDK
+  SDK --> PROXY
+  PROXY --> CLAUDE
+  PROXY --> GIT
+  CHAT --> FMR
+  classDef old fill:#ffffff,stroke:#c9d2e0,color:#101828
+  classDef new fill:#eaeffc,stroke:#1d3fa0,color:#101828
+  classDef ext fill:#f2f4f7,stroke:#98a2b3,color:#344054
+  classDef client fill:#101828,stroke:#344054,color:#ffffff
+  class GW,CHAT,ACC,NOTIF,MAIL,STO old
+  class ORCH,EVT,POOL,VAULT,FMR,SDK,WS,PROXY new
+  class CLAUDE,GIT ext
+  class WEB client

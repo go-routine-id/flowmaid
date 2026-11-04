@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="138" height="538" viewBox="0 0 138 538" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="Flowchart diagram">
+<title>Flowchart diagram</title>
+<rect width="138" height="538" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<rect x="28.0" y="112.0" width="82.0" height="314.0" rx="8" fill="#f7f8fd" stroke="#c9cfe8" stroke-width="1.4"/>
+<path d="M 69.0 190.0 C 69.0 233.0, 69.0 233.0, 69.0 276.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>A → B</title></path>
+<path d="M 69.0 314.0 C 69.0 344.0, 69.0 344.0, 69.0 374.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>B → C</title></path>
+<path d="M 69.0 66.0 C 69.0 89.0, 69.0 89.0, 69.0 112.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>X → s</title></path>
+<path d="M 69.0 426.0 C 69.0 449.0, 69.0 449.0, 69.0 472.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>s → Y</title></path>
+<g><title>X</title>
+<rect x="42.0" y="28.0" width="54.0" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="69.0" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">X</text>
+</g>
+<g><title>A</title>
+<rect x="42.0" y="152.0" width="54.0" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="69.0" y="171.0" dy="0.33em" text-anchor="middle" fill="#232840">A</text>
+</g>
+<g><title>B</title>
+<rect x="42.0" y="276.0" width="54.0" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="69.0" y="295.0" dy="0.33em" text-anchor="middle" fill="#232840">B</text>
+</g>
+<g><title>C</title>
+<rect x="42.0" y="374.0" width="54.0" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="69.0" y="393.0" dy="0.33em" text-anchor="middle" fill="#232840">C</text>
+</g>
+<g><title>Y</title>
+<rect x="42.0" y="472.0" width="54.0" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.6"/>
+<text x="69.0" y="491.0" dy="0.33em" text-anchor="middle" fill="#232840">Y</text>
+</g>
+<rect x="34.0" y="117.0" width="14.0" height="16" rx="4" fill="#f7f8fd" fill-opacity="0.9"/>
+<text x="38.0" y="129.0" font-size="12" font-weight="bold" fill="#6a7086">s</text>
+</svg>

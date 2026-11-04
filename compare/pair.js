@@ -1,5 +1,6 @@
 // mermaid | flowmaid side-by-side PNGs for the README.
-// usage: node pair.js <corpusDir> <flowmaidBin> <mmDir> <fmDir> <outDir> name...
+// usage: FM_VERSION=0.35.0 node pair.js <corpusDir> <flowmaidBin> <mmDir> <fmDir> <outDir> name...
+// e.g. node pair.js $S/cmp/corpus <tree>/target/release/flowmaid $S/cmp/out <scratch fm dir, must exist> <tree>/docs/img/compare advanced back-edge class demo er sequence state subgraph
 const { chromium } = require('playwright');
 const fs = require('fs'), path = require('path'), { execFileSync } = require('child_process');
 const [corpus, bin, mmdir, fmdir, out, ...names] = process.argv.slice(2);
@@ -17,7 +18,7 @@ const [corpus, bin, mmdir, fmdir, out, ...names] = process.argv.slice(2);
     const img = f => 'data:image/png;base64,' + fs.readFileSync(f).toString('base64');
     await p.setContent(`<html><body style="margin:0;background:#fff;font:600 15px Inter,Helvetica,sans-serif;color:#101828">
       <table id=t style="border-collapse:collapse"><tr>
-        <th style="padding:10px 14px 4px;text-align:left">mermaid 12.2.0</th><th style="padding:10px 14px 4px;text-align:left;border-left:1px solid #e3e7ee">flowmaid 0.34.0</th></tr>
+        <th style="padding:10px 14px 4px;text-align:left">mermaid 12.2.0</th><th style="padding:10px 14px 4px;text-align:left;border-left:1px solid #e3e7ee">flowmaid ${process.env.FM_VERSION || "?"}</th></tr>
       <tr><td style="padding:6px 14px 14px;vertical-align:top"><img src="${img(path.join(mmdir, n + '.mermaid.png'))}" style="max-width:620px;max-height:760px"></td>
           <td style="padding:6px 14px 14px;vertical-align:top;border-left:1px solid #e3e7ee"><img src="${img(path.join(fmdir, n + '.png'))}" style="max-width:620px;max-height:760px"></td></tr></table></body></html>`);
     await (await p.$('#t')).screenshot({ path: path.join(out, n + '.png') });

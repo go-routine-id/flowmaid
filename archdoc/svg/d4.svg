@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1008" height="406" viewBox="0 0 1008 406" font-family="Helvetica, Arial, sans-serif" font-size="13" role="img" aria-label="Sequence diagram">
+<title>Sequence diagram</title>
+<line x1="82.0" y1="58.0" x2="82.0" y2="334.0" stroke="#888888" stroke-dasharray="4 4"/>
+<line x1="272.2" y1="58.0" x2="272.2" y2="334.0" stroke="#888888" stroke-dasharray="4 4"/>
+<line x1="513.4" y1="58.0" x2="513.4" y2="334.0" stroke="#888888" stroke-dasharray="4 4"/>
+<line x1="659.0" y1="58.0" x2="659.0" y2="334.0" stroke="#888888" stroke-dasharray="4 4"/>
+<line x1="807.9" y1="58.0" x2="807.9" y2="334.0" stroke="#888888" stroke-dasharray="4 4"/>
+<line x1="944.2" y1="72.0" x2="944.2" y2="334.0" stroke="#888888" stroke-dasharray="4 4"/>
+<path d="M 82.0 104.0 L 272.2 104.0" fill="none" stroke="#333333" stroke-width="1.6"/>
+<polygon points="272.2,104.0 261.2,109.5 261.2,98.5" fill="#333333"/>
+<text x="177.1" y="94.0" dy="0.33em" text-anchor="middle" fill="#333333">hook TaskCompleted (http)</text>
+<path d="M 272.2 126.0 L 304.2 126.0 L 304.2 142.0 L 272.2 142.0" fill="none" stroke="#333333" stroke-width="1.6"/>
+<polygon points="272.2,142.0 283.2,136.5 283.2,147.5" fill="#333333"/>
+<text x="312.2" y="134.0" dy="0.33em" fill="#333333">cek signature, session ke user</text>
+<path d="M 272.2 178.0 L 513.4 178.0" fill="none" stroke="#333333" stroke-width="1.6"/>
+<polygon points="513.4,178.0 502.4,183.5 502.4,172.5" fill="#333333"/>
+<text x="392.8" y="168.0" dy="0.33em" text-anchor="middle" fill="#333333">event ke thread</text>
+<path d="M 272.2 212.0 L 659.0 212.0" fill="none" stroke="#333333" stroke-width="1.6"/>
+<polygon points="659.0,212.0 648.0,217.5 648.0,206.5" fill="#333333"/>
+<text x="465.6" y="202.0" dy="0.33em" text-anchor="middle" fill="#333333">kirim notifikasi</text>
+<path d="M 659.0 246.0 L 944.2 246.0" fill="none" stroke="#333333" stroke-width="1.6"/>
+<polygon points="944.2,246.0 933.2,251.5 933.2,240.5" fill="#333333"/>
+<text x="801.6" y="236.0" dy="0.33em" text-anchor="middle" fill="#333333">push</text>
+<path d="M 659.0 280.0 L 807.9 280.0" fill="none" stroke="#333333" stroke-width="1.6"/>
+<polygon points="807.9,280.0 796.9,285.5 796.9,274.5" fill="#333333"/>
+<text x="733.4" y="270.0" dy="0.33em" text-anchor="middle" fill="#333333">ringkasan (opsional)</text>
+<path d="M 807.9 314.0 L 944.2 314.0" fill="none" stroke="#333333" stroke-width="1.6"/>
+<polygon points="944.2,314.0 933.2,319.5 933.2,308.5" fill="#333333"/>
+<text x="876.1" y="304.0" dy="0.33em" text-anchor="middle" fill="#333333">email</text>
+<rect x="24.0" y="24.0" width="116.0" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="82.0" y="41.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Agent runtime</text>
+<rect x="212.1" y="24.0" width="120.3" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="272.2" y="41.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Event gateway</text>
+<rect x="460.5" y="24.0" width="105.8" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="513.4" y="41.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Chat service</text>
+<rect x="606.3" y="24.0" width="105.3" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="659.0" y="41.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Notif service</text>
+<rect x="751.6" y="24.0" width="112.6" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="807.9" y="41.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Email service</text>
+<circle cx="944.2" cy="31.0" r="6.0" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<path d="M 944.2 37.0 L 944.2 48.0 M 935.2 41.0 L 953.2 41.0 M 944.2 48.0 L 936.2 56.0 M 944.2 48.0 L 952.2 56.0" fill="none" stroke="#333333" stroke-width="1.6" stroke-linecap="round"/>
+<text x="944.2" y="64.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">User</text>
+<rect x="24.0" y="334.0" width="116.0" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="82.0" y="351.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Agent runtime</text>
+<rect x="212.1" y="334.0" width="120.3" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="272.2" y="351.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Event gateway</text>
+<rect x="460.5" y="334.0" width="105.8" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="513.4" y="351.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Chat service</text>
+<rect x="606.3" y="334.0" width="105.3" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="659.0" y="351.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Notif service</text>
+<rect x="751.6" y="334.0" width="112.6" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="807.9" y="351.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Email service</text>
+<circle cx="944.2" cy="341.0" r="6.0" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<path d="M 944.2 347.0 L 944.2 358.0 M 935.2 351.0 L 953.2 351.0 M 944.2 358.0 L 936.2 366.0 M 944.2 358.0 L 952.2 366.0" fill="none" stroke="#333333" stroke-width="1.6" stroke-linecap="round"/>
+<text x="944.2" y="374.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">User</text>
+</svg>

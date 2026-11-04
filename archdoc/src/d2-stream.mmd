@@ -1,0 +1,16 @@
+sequenceDiagram
+  actor U as User
+  participant C as Chat service
+  participant O as Orchestrator
+  participant A as Agent runtime
+  participant M as Claude API
+  U->>C: kirim prompt
+  C->>O: prompt + session_id
+  O->>A: query(prompt, resume)
+  A->>M: konteks + cache
+  M-->>A: stream token
+  A-->>O: StreamEvent text_delta
+  O-->>C: SSE / WebSocket
+  C-->>U: token tampil live
+  A-->>O: ResultMessage
+  O->>C: simpan transkrip

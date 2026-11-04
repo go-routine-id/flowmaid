@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="731" height="502" viewBox="0 0 731 502" font-family="Helvetica, Arial, sans-serif" font-size="13" role="img" aria-label="Sequence diagram">
+<title>Sequence diagram</title>
+<line x1="64.0" y1="72.0" x2="64.0" y2="430.0" stroke="#888888" stroke-dasharray="4 4"/>
+<line x1="196.9" y1="58.0" x2="196.9" y2="430.0" stroke="#888888" stroke-dasharray="4 4"/>
+<line x1="343.0" y1="58.0" x2="343.0" y2="430.0" stroke="#888888" stroke-dasharray="4 4"/>
+<line x1="509.8" y1="58.0" x2="509.8" y2="430.0" stroke="#888888" stroke-dasharray="4 4"/>
+<line x1="657.6" y1="58.0" x2="657.6" y2="430.0" stroke="#888888" stroke-dasharray="4 4"/>
+<path d="M 64.0 104.0 L 196.9 104.0" fill="none" stroke="#333333" stroke-width="1.6"/>
+<polygon points="196.9,104.0 185.9,109.5 185.9,98.5" fill="#333333"/>
+<text x="130.4" y="94.0" dy="0.33em" text-anchor="middle" fill="#333333">kirim prompt</text>
+<path d="M 196.9 138.0 L 343.0 138.0" fill="none" stroke="#333333" stroke-width="1.6"/>
+<polygon points="343.0,138.0 332.0,143.5 332.0,132.5" fill="#333333"/>
+<text x="269.9" y="128.0" dy="0.33em" text-anchor="middle" fill="#333333">prompt + session_id</text>
+<path d="M 343.0 172.0 L 509.8 172.0" fill="none" stroke="#333333" stroke-width="1.6"/>
+<polygon points="509.8,172.0 498.8,177.5 498.8,166.5" fill="#333333"/>
+<text x="426.4" y="162.0" dy="0.33em" text-anchor="middle" fill="#333333">query(prompt, resume)</text>
+<path d="M 509.8 206.0 L 657.6 206.0" fill="none" stroke="#333333" stroke-width="1.6"/>
+<polygon points="657.6,206.0 646.6,211.5 646.6,200.5" fill="#333333"/>
+<text x="583.7" y="196.0" dy="0.33em" text-anchor="middle" fill="#333333">konteks + cache</text>
+<path d="M 657.6 240.0 L 509.8 240.0" fill="none" stroke="#333333" stroke-width="1.6" stroke-dasharray="6 4" stroke-dashoffset="4.1"/>
+<polygon points="509.8,240.0 520.8,234.5 520.8,245.5" fill="#333333"/>
+<text x="583.7" y="230.0" dy="0.33em" text-anchor="middle" fill="#333333">stream token</text>
+<path d="M 509.8 274.0 L 343.0 274.0" fill="none" stroke="#333333" stroke-width="1.6" stroke-dasharray="6 4" stroke-dashoffset="4.6"/>
+<polygon points="343.0,274.0 354.0,268.5 354.0,279.5" fill="#333333"/>
+<text x="426.4" y="264.0" dy="0.33em" text-anchor="middle" fill="#333333">StreamEvent text_delta</text>
+<path d="M 343.0 308.0 L 196.9 308.0" fill="none" stroke="#333333" stroke-width="1.6" stroke-dasharray="6 4" stroke-dashoffset="5.0"/>
+<polygon points="196.9,308.0 207.9,302.5 207.9,313.5" fill="#333333"/>
+<text x="269.9" y="298.0" dy="0.33em" text-anchor="middle" fill="#333333">SSE / WebSocket</text>
+<path d="M 196.9 342.0 L 64.0 342.0" fill="none" stroke="#333333" stroke-width="1.6" stroke-dasharray="6 4" stroke-dashoffset="1.5"/>
+<polygon points="64.0,342.0 75.0,336.5 75.0,347.5" fill="#333333"/>
+<text x="130.4" y="332.0" dy="0.33em" text-anchor="middle" fill="#333333">token tampil live</text>
+<path d="M 509.8 376.0 L 343.0 376.0" fill="none" stroke="#333333" stroke-width="1.6" stroke-dasharray="6 4" stroke-dashoffset="4.6"/>
+<polygon points="343.0,376.0 354.0,370.5 354.0,381.5" fill="#333333"/>
+<text x="426.4" y="366.0" dy="0.33em" text-anchor="middle" fill="#333333">ResultMessage</text>
+<path d="M 343.0 410.0 L 196.9 410.0" fill="none" stroke="#333333" stroke-width="1.6"/>
+<polygon points="196.9,410.0 207.9,404.5 207.9,415.5" fill="#333333"/>
+<text x="269.9" y="400.0" dy="0.33em" text-anchor="middle" fill="#333333">simpan transkrip</text>
+<circle cx="64.0" cy="31.0" r="6.0" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<path d="M 64.0 37.0 L 64.0 48.0 M 55.0 41.0 L 73.0 41.0 M 64.0 48.0 L 56.0 56.0 M 64.0 48.0 L 72.0 56.0" fill="none" stroke="#333333" stroke-width="1.6" stroke-linecap="round"/>
+<text x="64.0" y="64.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">User</text>
+<rect x="144.0" y="24.0" width="105.8" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="196.9" y="41.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Chat service</text>
+<rect x="290.6" y="24.0" width="104.8" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="343.0" y="41.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Orchestrator</text>
+<rect x="451.8" y="24.0" width="116.0" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="509.8" y="41.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Agent runtime</text>
+<rect x="607.8" y="24.0" width="99.5" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="657.6" y="41.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Claude API</text>
+<circle cx="64.0" cy="437.0" r="6.0" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<path d="M 64.0 443.0 L 64.0 454.0 M 55.0 447.0 L 73.0 447.0 M 64.0 454.0 L 56.0 462.0 M 64.0 454.0 L 72.0 462.0" fill="none" stroke="#333333" stroke-width="1.6" stroke-linecap="round"/>
+<text x="64.0" y="470.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">User</text>
+<rect x="144.0" y="430.0" width="105.8" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="196.9" y="447.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Chat service</text>
+<rect x="290.6" y="430.0" width="104.8" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="343.0" y="447.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Orchestrator</text>
+<rect x="451.8" y="430.0" width="116.0" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="509.8" y="447.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Agent runtime</text>
+<rect x="607.8" y="430.0" width="99.5" height="34.0" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.6"/>
+<text x="657.6" y="447.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#333333">Claude API</text>
+</svg>

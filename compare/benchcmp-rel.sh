@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Per-file render benchmark: flowmaid (render_svg, release build) vs mermaid 12.2.0 (headless Chromium).
-# usage: benchcmp.sh [repo=/home/user/flowmaid] [corpus=$S/cmp/corpus] [runs=30]
+# usage: BENCH_BIN=<tree>/target/release/examples/bench OUT=$S/compare/bench benchcmp-rel.sh <tree> [corpus=$S/cmp/corpus] [runs=30]
+# (build first: cargo build --release --example bench --bin flowmaid). The README table is copied from $OUT/compare.md by hand.
 # Writes $S/runs/bench/{flowmaid.tsv,mermaid.tsv,compare.md}.
 set -euo pipefail
 S=/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad
