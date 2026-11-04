@@ -80,3 +80,4 @@ B. FRESH container (scratchpad gone): `git clone -b backup/parity-workspace` int
    - B8 restore if needed: `git checkout ccr-ccc6d89a-5cxd7e && git merge --ff-only origin/backup/b8-layering-wip`.
    - runs/baseline/perf.tsv and the corpus are needed by tools/perf.sh / render.sh: they are in this backup (runs-bench, flowcorpus, baseline); mermaid reference renders need `npm i mermaid@12.2.0` + playwright under <scratchpad>/mm (tools/mmrender.js).
 C. Re-arm the hourly merge task (opens/merges PR ccr→dev when the work branch moves) if it was deleted: see the prompt of trig_019VQH3TYG4ijXR8niHxK13z.
+- 2026-11-04: release/0.34.0 pushed = 945d9d3 (guard all green; main a2a7dc7 is an ancestor → clean merge, 116 commits). backup/parity-workspace = f195bbe. B8 verify#0 failed, fix:b8#1 running.
