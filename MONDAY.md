@@ -10,6 +10,8 @@ Written 2026-11-04 by the session that ran phase B (CLI session `cac93b13…`, c
 > - Its CHANGELOG text is in `<S>/par/CHANGELOG-c1.md`; add it to CHANGELOG at the next release.
 > - The main track's c-leftovers was narrowed to class/state. Stop the main run after `push:b11-hops-comb`, then resume it with `resumeFromRunId` so the narrowed spec is picked up.
 
+> **0.36.0 released 2026-11-09:** `main` = `b2d6d0c` (PR #99, B8b + c1). The user tags `v0.36.0` and runs `cargo publish`. B9 is running; its PR to dev will conflict on CHANGELOG, so integrate it through branch `ccr-ccc6d89a-5cxd7e-par` (§10).
+
 ## 1. First five minutes: find out where things stand
 Run this as one Bash call:
 ```bash
