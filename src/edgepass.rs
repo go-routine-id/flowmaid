@@ -282,6 +282,21 @@ pub(crate) fn end_rect(sc: &Scene, e: EndRef) -> (f64, f64, f64, f64) {
     }
 }
 
+/// Whether `end` is the frame of a cluster holding `other` (a state
+/// composite's edge to one of its own states, or a subgraph's to a
+/// nested one): such an end leaves or enters its border from inside.
+pub(crate) fn holds_other(cx: &Ctx, end: EndRef, other: EndRef) -> bool {
+    match (end, other) {
+        (EndRef::Frame(c), EndRef::Node(v)) => {
+            cx.node_frames.get(v).is_some_and(|f| f.contains(&c))
+        }
+        (EndRef::Frame(c), EndRef::Frame(d)) => {
+            c != d && cx.frame_anc.get(d).is_some_and(|f| f.contains(&c))
+        }
+        _ => false,
+    }
+}
+
 /// The side of `rect` nearest to `p` (ties: top, bottom, left, right).
 pub(crate) fn side_of(rect: (f64, f64, f64, f64), p: (f64, f64)) -> Side {
     let cands = [
@@ -372,6 +387,7 @@ pub(crate) fn finish_held(g: &Graph, sc: &mut Scene, mode: Mode, fixed: &[bool],
     crate::router::spread_close(g, sc, &cx, mode, &mut moved);
     glyph_stubs(sc, &cx, &mut moved);
     straight_cubics(sc, &cx);
+    square_s_cubics(sc, &cx);
     snap_ends(sc, &cx);
     let budget = match mode {
         Mode::Static => crate::labels::LABEL_STATIC_WORK,
@@ -409,6 +425,108 @@ fn straight_cubics(sc: &mut Scene, cx: &Ctx) {
             b,
         ];
         e.waypoints.clear();
+    }
+}
+
+/// How far (px) across its run a free cubic between facing sides may
+/// stray and be drawn straight by sliding one end along its side
+/// ([`square_s_cubics`]): a sub-pixel S is a rounding's leftover.
+const SQUARE_SLIDE: f64 = 1.0;
+
+/// Report §2.1, B1: a flowchart or state edge the stages after the
+/// ortho stage left as an S — a single cubic between two sides facing
+/// each other along one axis, its handles along that axis, its ends a
+/// little apart across it — drawn on the axes: within [`SQUARE_SLIDE`]
+/// straight (the end on a flat side slides onto the other's line, the
+/// target's where both are), else, up to a corner's two roundings
+/// across, a Z whose step lies midway (or a head's run short of a glyph
+/// end) with rounded corners. The ortho stage draws such an edge
+/// straight or as a Z, but the spacing after the router slides ends it
+/// moved (a choice's two ends on one point), a drag frame respaces a
+/// kept edge's end beside a redrawn one, and the S came back: `x3_state`'s
+/// `Ready --> check` 6 px across, `x6_rl`'s `C --> D` under a 1 px drag
+/// of `E`. Note card links, authored curves and self-loops keep their
+/// curves, and class and ER painters draw their own. Idempotent: what it
+/// draws has waypoints or is straight.
+fn square_s_cubics(sc: &mut Scene, cx: &Ctx) {
+    for i in 0..sc.edges.len() {
+        let Some((from, to)) = cx.ends[i] else {
+            continue;
+        };
+        let e = &sc.edges[i];
+        if !cx.drawn[i]
+            || from == to
+            || !e.waypoints.is_empty()
+            || e.paint_width.is_some()
+            || e.meta.curve.is_some()
+            || crate::ports::note_link(sc, cx, i)
+        {
+            continue;
+        }
+        let [p0, c1, c2, p3] = e.bezier;
+        // In (breadth, along) coordinates of the axis the handles run on.
+        let vertical = if c1.0 == p0.0 && c2.0 == p3.0 && c1.1 != p0.1 {
+            true
+        } else if c1.1 == p0.1 && c2.1 == p3.1 && c1.0 != p0.0 {
+            false
+        } else {
+            continue;
+        };
+        let flip = |p: Pt| if vertical { p } else { (p.1, p.0) };
+        let (a, h1, h2, b) = (flip(p0), flip(c1), flip(c2), flip(p3));
+        let run = b.1 - a.1;
+        let off = (b.0 - a.0).abs();
+        if !(1e-9..2.0 * crate::router::CORNER_R).contains(&off)
+            || (h1.1 - a.1) * run <= 0.0
+            || (b.1 - h2.1) * run <= 0.0
+        {
+            continue;
+        }
+        let flat = |end: EndRef| match end {
+            EndRef::Frame(_) => true,
+            EndRef::Node(v) => !matches!(
+                sc.nodes[v].shape,
+                crate::model::Shape::Circle
+                    | crate::model::Shape::DoubleCircle
+                    | crate::model::Shape::StateStart
+                    | crate::model::Shape::StateEnd
+                    | crate::model::Shape::Diamond
+            ),
+        };
+        let e = &mut sc.edges[i];
+        if off <= SQUARE_SLIDE {
+            // Slide one end onto the other's line.
+            let (a, b) = if flat(to) || !flat(from) {
+                (a, (a.0, b.1))
+            } else {
+                ((b.0, a.1), b)
+            };
+            let (p0, p3) = (flip(a), flip(b));
+            e.bezier = [
+                p0,
+                (p0.0 + (p3.0 - p0.0) / 3.0, p0.1 + (p3.1 - p0.1) / 3.0),
+                (
+                    p0.0 + 2.0 * (p3.0 - p0.0) / 3.0,
+                    p0.1 + 2.0 * (p3.1 - p0.1) / 3.0,
+                ),
+                p3,
+            ];
+            continue;
+        }
+        let glyph = (
+            e.ends.start_marker(e.kind).is_some(),
+            e.ends.end_marker(e.kind).is_some(),
+        );
+        let len = run.abs();
+        let head = crate::ortho::HEAD_LEG.min(len - crate::router::CORNER_R);
+        let t = match glyph {
+            (false, true) => b.1 - run.signum() * (len / 2.0).max(head),
+            (true, false) => a.1 + run.signum() * (len / 2.0).max(head),
+            _ => a.1 + run / 2.0,
+        };
+        let corners: Vec<Pt> = [a, (a.0, t), (b.0, t), b].into_iter().map(flip).collect();
+        e.bezier = [corners[0], corners[1], corners[2], corners[3]];
+        e.waypoints = crate::router::smooth(&corners, crate::router::CORNER_R);
     }
 }
 

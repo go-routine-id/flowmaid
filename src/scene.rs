@@ -17148,4 +17148,109 @@ mod tests {
             )));
         }
     }
+
+    /// Whether `e` is drawn on the axes (report §2.1, B1): a path whose
+    /// corners are all square (`router::ortho_corners`), or one straight
+    /// cubic along an axis.
+    fn on_the_axes(e: &SceneEdge) -> bool {
+        if !e.waypoints.is_empty() {
+            return crate::router::ortho_corners(e).is_some();
+        }
+        let [p0, c1, c2, p3] = e.bezier;
+        let plumb = [c1, c2, p3].iter().all(|p| (p.0 - p0.0).abs() < 1e-6);
+        let level = [c1, c2, p3].iter().all(|p| (p.1 - p0.1).abs() < 1e-6);
+        plumb || level
+    }
+
+    fn state_graph(src: &str) -> crate::model::Graph {
+        match crate::parser::parse_document(src).unwrap() {
+            crate::model::Document::State(g) => g,
+            _ => unreachable!(),
+        }
+    }
+
+    /// B10 review r1 #5: a state composite's edge to one of its own
+    /// states leaves the composite's border from inside. Its port on the
+    /// border was ordered among the outside edges there by its heading
+    /// (straight back in: last), spread to the far end of the border 137
+    /// px from the state, and the ortho stage drew it as an S (then, its
+    /// side's normal read as facing out, a Z hugging the border 4 px
+    /// inside). Now it takes the end of the side it lies at and drops
+    /// straight into the state, in `scene()` and `route()` alike.
+    #[test]
+    fn a_composite_edge_to_its_own_state_drops_straight_from_the_border() {
+        let src = "stateDiagram-v2\ndirection BT\n[*] --> S0\nstate C0 {\n  [*] --> C0i0\n  \
+                   C0i0 --> C0i1\n  C0i0 --> C0i2 : e2\n  note left of C0i0 : n325\n  \
+                   note right of C0i1 : n604\n  note left of C0i0 : n655\n}\nstate C1 {\n  \
+                   [*] --> C1i0\n  note left of C1i0 : n923\n  note right of C1i0 : n809\n}\n\
+                   state C2 {\n  [*] --> C2i0\n  state C2ch <<choice>>\n  C2i0 --> C2ch\n  \
+                   C2ch --> C2i0 : y\n  C2ch --> C2i0 : n\n  C2i0 --> [*]\n}\nS0 --> C0 : go1\n\
+                   S0 --> C1 : go2\nC0 --> C2\nC0 --> C0i1\nC2i0 --> C2 : x\nC2 --> C0 : back\n\
+                   note right of S0 : m69\nnote left of C1 : m667\nnote left of C0 : m939\nC2 --> [*]";
+        let g = state_graph(src);
+        let s = scene(&g);
+        let c: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let r = route(&g, &c);
+        for sc in [&s, &r] {
+            let e = the_edge(sc, "C0", "C0i1");
+            let n = sc.nodes.iter().find(|n| n.id == "C0i1").unwrap();
+            assert!(e.waypoints.is_empty() && on_the_axes(e), "{e:?}");
+            assert!(
+                (e.bezier[0].0 - n.x).abs() < 1.0,
+                "not under the state: {e:?}"
+            );
+        }
+    }
+
+    /// B10 review r1 #5: a single cubic between facing sides that the
+    /// stages after the ortho stage left a few px across its run (the
+    /// spacing after the router spread a choice's two top ends: `Ready
+    /// --> check` 6.3 px; a drag frame respacing a kept edge's end beside
+    /// a redrawn one: `x6_rl`'s `C --> D` under a 1 px drag of `E`) is
+    /// drawn on the axes, as a Z, not as an S. Idempotent.
+    #[test]
+    fn a_cubic_the_spacing_slid_off_its_line_is_squared() {
+        let st = "stateDiagram-v2\n    [*] --> Idle\n    Idle --> Loading : fetch\n    \
+                  Loading --> Ready : ok\n    Loading --> Error : fail\n    Error --> Idle : reset\n    \
+                  Ready --> Editing : edit\n    state Editing {\n        [*] --> Dirty\n        \
+                  Dirty --> Saving : save\n        Saving --> Clean : done\n        \
+                  Saving --> Dirty : conflict\n        Clean --> [*]\n    }\n    \
+                  Editing --> Ready : close\n    state check <<choice>>\n    Ready --> check\n    \
+                  check --> Idle : stale\n    check --> Ready : fresh\n    \
+                  note right of Error : shown to user\n    Ready --> [*]";
+        let g = state_graph(st);
+        let s = scene(&g);
+        let c: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+        for sc in [&s, &route(&g, &c)] {
+            let e = the_edge(sc, "Ready", "check");
+            assert!(on_the_axes(e), "{e:?}");
+        }
+        let mut again = s.clone();
+        crate::edgepass::finish(&g, &mut again, crate::edgepass::Mode::Static);
+        let (a, b) = (
+            the_edge(&s, "Ready", "check"),
+            the_edge(&again, "Ready", "check"),
+        );
+        assert_eq!(format!("{a:?}"), format!("{b:?}"));
+
+        let rl = "flowchart RL\n    A[Alpha] -->|forward| B[Beta]\n    A -->|parallel| B\n    \
+                  A --> B\n    B --> C[Gamma]\n    C --> A\n    C -.->|long back label here| A\n    \
+                  C --> D[Delta] --> E[Epsilon]\n    E --> C\n    B --> E";
+        let g = parse(rl).unwrap();
+        let s = scene(&g);
+        let c: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+        for (id, dx) in [("E", 1.0), ("E", 30.0), ("C", 1.0)] {
+            let mut m = c.clone();
+            let k = s.nodes.iter().position(|n| n.id == id).unwrap();
+            m[k].0 += dx;
+            let p = route_partial(&g, &m, &s, &c);
+            for e in p
+                .edges
+                .iter()
+                .filter(|e| e.from != e.to && e.label.is_none())
+            {
+                assert!(on_the_axes(e), "drag {id} {dx}: {e:?}");
+            }
+        }
+    }
 }

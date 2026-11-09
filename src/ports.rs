@@ -687,6 +687,11 @@ fn end_and_steer(sc: &Scene, i: usize, src: bool, side: Option<Side>) -> (Pt, Pt
     }
 }
 
+/// The order key of an end heading into the frame it is on (past any
+/// heading's, which lie in -2..2), and its place's weight in that key.
+const INWARD_KEY: f64 = 3.0;
+const INWARD_ORDER: f64 = 1e-6;
+
 /// The key a group of ends is sorted by: heading, then outgoing before
 /// incoming, then edge index.
 fn port_order(a: &PortEnd, b: &PortEnd) -> std::cmp::Ordering {
@@ -1165,6 +1170,47 @@ fn side_groups(sc: &Scene, cx: &Ctx) -> BTreeMap<(EndRef, Side), Vec<PortEnd>> {
                 back: cx.back.get(i).copied().unwrap_or(false),
                 weight: 1.0,
             });
+        }
+    }
+    // A flowchart edge from a frame's border into the frame (a state
+    // composite's edge to one of its own states) heads inside: its
+    // heading says nothing about the outside edges on that border, which
+    // it never crosses, so it takes the end of the side nearer where it
+    // lies (by the outside ends' places), in place order among its kind.
+    // Ordered as heading straight back in, it went last and was spread
+    // to the far end of the border, 137 px from the state above it.
+    for ((end, _), ports) in groups.iter_mut() {
+        let inward = |p: &PortEnd| {
+            sc.edges[p.edge].paint_width.is_none()
+                && cx
+                    .ends
+                    .get(p.edge)
+                    .copied()
+                    .flatten()
+                    .is_some_and(|(f, t)| {
+                        let other = if p.src { t } else { f };
+                        crate::edgepass::holds_other(cx, *end, other)
+                    })
+        };
+        if !ports.iter().any(inward) {
+            continue;
+        }
+        let outside: Vec<f64> = ports
+            .iter()
+            .filter(|p| !inward(p))
+            .map(|p| p.want)
+            .collect();
+        for p in ports.iter_mut() {
+            if inward(p) {
+                let before = outside.iter().filter(|&&w| w < p.want).count();
+                let after = outside.len() - before;
+                let end = if before <= after {
+                    -INWARD_KEY
+                } else {
+                    INWARD_KEY
+                };
+                p.key = end + p.want * INWARD_ORDER;
+            }
         }
     }
     groups

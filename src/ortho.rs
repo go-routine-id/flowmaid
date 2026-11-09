@@ -431,10 +431,18 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
             EndRef::Node(v) => crate::ports::outline_side(sc.nodes[v].shape, end_rect(sc, end), p),
             EndRef::Frame(_) => side_of(end_rect(sc, end), p),
         };
-        let (n0, n3) = (
-            flow_normal(dir, side(from, p0)),
-            flow_normal(dir, side(to, p3)),
-        );
+        // An end on the border of a frame that holds the other end (a
+        // state composite's edge to one of its own states) leaves or
+        // enters the border from inside: its side faces in.
+        let facing = |end: EndRef, other: EndRef, p: Pt| {
+            let n = flow_normal(dir, side(end, p));
+            if crate::edgepass::holds_other(cx, end, other) {
+                (-n.0, -n.1)
+            } else {
+                n
+            }
+        };
+        let (n0, n3) = (facing(from, to, p0), facing(to, from, p3));
         let (mut f0, mut f3) = (to_flow(dir, p0), to_flow(dir, p3));
         // A fork / join bar meets each branch right where the branch lies
         // (`scene::toward`): a branch a few px off its bar's port drops
