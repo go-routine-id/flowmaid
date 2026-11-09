@@ -2614,9 +2614,23 @@ fn parse_node(
     // block claims it for that block (the canonical docs example
     // relies on this: `c1-->a2` at top level, then `a2` inside
     // `subgraph one` puts a2 in the box). Top-level mentions never
-    // un-claim.
+    // un-claim. A node already held by a subgraph NESTED inside
+    // `owner` stays there: re-mentioning it in the enclosing block
+    // must not empty the inner box (and drop its frame).
     if let Some(&owner) = subs.last() {
-        if !g.subgraphs[owner].nodes.contains(&n) {
+        let held_by_descendant = g.subgraphs.iter().any(|s| {
+            let mut p = s.parent;
+            let mut inside = false;
+            while let Some(pi) = p {
+                if pi == owner {
+                    inside = true;
+                    break;
+                }
+                p = g.subgraphs[pi].parent;
+            }
+            inside && s.nodes.contains(&n)
+        });
+        if !held_by_descendant && !g.subgraphs[owner].nodes.contains(&n) {
             for s in g.subgraphs.iter_mut() {
                 s.nodes.retain(|&m| m != n);
             }
@@ -6382,6 +6396,30 @@ mod tests {
         // Unclosed inline label errors with a line number.
         let err = parse("A -- oops -> B").unwrap_err();
         assert!(err.message.contains("never closed"), "{}", err.message);
+    }
+
+    #[test]
+    fn parent_mention_does_not_pull_node_out_of_nested_subgraph() {
+        // #74: `Gate ==> Q` inside `P` re-mentions Q, which the nested
+        // `W` already owns. P must not steal it (W would end up empty
+        // and lose its frame).
+        let g = parse(
+            "flowchart TD
+             subgraph P
+             subgraph W
+             Q --> W1
+             end
+             Gate ==> Q
+             end
+",
+        )
+        .unwrap();
+        let (q, w1) = (g.node_index("Q").unwrap(), g.node_index("W1").unwrap());
+        let gate = g.node_index("Gate").unwrap();
+        assert!(g.subgraphs[1].nodes.contains(&q), "W keeps Q");
+        assert!(g.subgraphs[1].nodes.contains(&w1), "W keeps W1");
+        assert!(!g.subgraphs[0].nodes.contains(&q), "P does not claim Q");
+        assert!(g.subgraphs[0].nodes.contains(&gate), "P still owns Gate");
     }
 
     #[test]

@@ -42,6 +42,10 @@ zero. Needs a **minor** bump: `AdvanceScene` gains a public field.
 - Parallel edges were drawn on top of each other, and five or more
   parallel ported edges could be drawn through the node between them.
 - A route could step out and come straight back along the same line.
+- A nested subgraph lost its frame and title when a node it held was mentioned
+  again in the enclosing subgraph (`Gate ==> Q` after `subgraph Workers … end`):
+  the parent took the node, leaving the inner subgraph empty. Nodes held by a
+  nested subgraph now stay there. Reproduced by `examples/advanced.mmd`.
 
 ## [0.32.0] - 2026-10-28
 
