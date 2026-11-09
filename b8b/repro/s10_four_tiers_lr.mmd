@@ -1,0 +1,35 @@
+flowchart LR
+  lb[Load balancer]
+  subgraph web[Web tier]
+    w1[web 1]
+    w2[web 2]
+    w3[web 3]
+  end
+  subgraph app[App tier]
+    ap1[app 1]
+    ap2[app 2]
+    ap3[app 3] --> ap4[app worker]
+  end
+  subgraph data[Data tier]
+    d1[(primary)]
+    d2[(replica)]
+    d3[(backup)]
+  end
+  subgraph obs[Observability]
+    m1[metrics]
+    m2[logs]
+  end
+  subgraph q[Queues]
+    q1[orders]
+    q2[events]
+  end
+  subgraph c[Caches]
+    c1[redis]
+    c2[memcache]
+  end
+  lb --> w1
+  lb --> ap1
+  lb --> d1
+  lb -.-> m1
+  lb --> q1
+  lb --> c1
