@@ -6,6 +6,10 @@ Written 2026-11-04 by the session that ran phase B (CLI session `cac93b13…`, c
 
 > **Update 2026-11-09:** resumed. Live run `wf_5b4ccf67-c1e` (task `wyf69sgs1`, script phaseB-continue.js, `{from: "b8b-leftovers"}`): B8b (B8 leftovers) → B9 → B10 → B11 → c-leftovers. The hourly task is re-enabled. To resume after a restart in this session, use `Workflow({scriptPath: "<S>/phaseB-continue.js", resumeFromRunId: "wf_5b4ccf67-c1e"})`, and don't edit prompts before resuming.
 
+> **Update 2026-11-09 (parallel):** a second track runs on branch `ccr-ccc6d89a-5cxd7e-par` (worktree `<S>/wt/par`, script `phaseB-par.js`, run `wf_e7e056b0-fbb`, package `c1-nonflow`).
+> - Its CHANGELOG text is in `<S>/par/CHANGELOG-c1.md`; add it to CHANGELOG at the next release.
+> - The main track's c-leftovers was narrowed to class/state. Stop the main run after `push:b11-hops-comb`, then resume it with `resumeFromRunId` so the narrowed spec is picked up.
+
 ## 1. First five minutes: find out where things stand
 Run this as one Bash call:
 ```bash

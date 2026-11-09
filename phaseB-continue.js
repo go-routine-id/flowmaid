@@ -142,14 +142,16 @@ Success: 100% of default-curve flowchart edges orthogonal and rounded (B0 idiom 
 - M15: at crossings of orthogonal segments draw a small semicircle hop (or keep the existing casing gap where a hop is worse — decide visually on dense-td, dense-lr, bench-75, fanout; mermaid draws neither, so pick what reads best and say why) so lines stay continuous and dashed lines don't look broken. Painter-only (SVG); hosts keep plain geometry. Deterministic, cheap.
 - B4: "comb" bundling for fans (≥ 3 edges leaving one side of a node): a shared trunk then evenly spaced teeth, 0 crossings inside a fan, plus an evenly spread port band at hubs (scene.rs ~1460-1536; ports.rs). Must stay within the drag budget in route()/route_partial (or apply only in static scene() with a documented fallback that still looks orthogonal).
 Success: fanout-frames and dense-td hubs: 0 crossings inside fans, even port spacing; no regression in crossings/overlaps elsewhere.` },
-  { id: 'c-leftovers', title: 'Non-flowchart leftovers from the phase A verifiers', spec: `Package C-leftovers — non-blocking findings the phase A verifiers left on non-flowchart renderers. Fix each that is local and in proportion (regression test each); skip with a reason anything that would need a redesign:
-- class: a plain six-source fan-in has 4 crossings (unlabelled gap one jog lane short when the end count is even; repro ${S}/verify/a1-class/r4/gen/in6_l0_c0_TB.mmd, mermaid 0); 5+ self-loops on a class with a close sibling run under the sibling (${S}/verify/a1-class/r6/final/loopk/k5_TB.mmd); dotted namespace names \`A.B --> C\` (valid in mermaid) if simple.
-- state: in twins3 (three transitions to one state) the 'two' chip lies half over the 'three' stroke; in a wide-label LR choice the long chip touches the start of c->A (${S}/verify/a3-state/in5/).
-- journey/timeline: the greedy wrap leaves orphan last words ('… in the / evening') — balance lines like the flowchart wrapper from B6 if it exists (reuse it); wrap_text (src/layout.rs ~348) drops <b>/<i> styling across a wrap point.
-- gitGraph: a merge into a farther lane that is free between the two commits is drawn like a fork (\`checkout feat\` then \`merge main\`); \`branch x order: 0\` tie rule vs mermaid's \`order ?? 0\`.
-- ER: under direction LR a pair of relationships between the same two entities draws as a crossing X; in cycles the 'employs' label sits on the neighbouring 'works in' line.
-- pie with 17+ slices: slice 17 repeats slice 1's colour and can touch it; journey with 11+ actors repeats a colour — give a second cue or extend the cycle.
-Flowchart output must not change in this package.` },
+  { id: 'c-leftovers', title: 'Class and state leftovers from the phase A verifiers', spec: `Package C-leftovers (main track). Non-blocking findings the phase A verifiers left on the class and state renderers. The journey/timeline, gitGraph, ER and pie/journey colour items were done in parallel as package c1-nonflow on branch ccr-ccc6d89a-5cxd7e-par (already in dev, or check git log). Do not redo them.
+Fix each item that is local and in proportion, with a regression test each. Skip with a reason anything that would need a redesign.
+- class:
+  - A plain six-source fan-in has 4 crossings: the unlabelled gap is one jog lane short when the end count is even. Repro ${S}/verify/a1-class/r4/gen/in6_l0_c0_TB.mmd (mermaid has 0).
+  - 5+ self-loops on a class with a close sibling run under the sibling (${S}/verify/a1-class/r6/final/loopk/k5_TB.mmd).
+  - Dotted namespace names \`A.B --> C\` (valid in mermaid), if simple.
+- state:
+  - In twins3 (three transitions to one state) the 'two' chip lies half over the 'three' stroke.
+  - In a wide-label LR choice, the long chip touches the start of c->A (${S}/verify/a3-state/in5/).
+Flowchart output must not change in this package unless a state fix needs it, justified.` },
 ]
 
 const implPrompt = (pk, extra) => `You are a senior Rust engineer on flowmaid. ${COMMON}
