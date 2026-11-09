@@ -17253,4 +17253,86 @@ mod tests {
             }
         }
     }
+
+    /// B10: the cheap sampling of a flowchart path on the axes (its legs
+    /// as lines, each rounded corner a few chords) stays within half a
+    /// px of the full `curveBasis` sampling, which hit-testing and the
+    /// label stage used to pay for on every leg.
+    #[test]
+    fn a_square_paths_cheap_samples_stay_on_its_spline() {
+        let c = [
+            (0.0, 0.0),
+            (0.0, 60.0),
+            (90.0, 60.0),
+            (90.0, 200.0),
+            (30.0, 200.0),
+            (30.0, 260.0),
+        ];
+        let wps = crate::router::smooth(&c, crate::router::CORNER_R);
+        let full = basis_sample(&wps);
+        let cheap = basis_sample_with(&wps, true);
+        assert!(cheap.len() < full.len(), "{} {}", cheap.len(), full.len());
+        let dist = |p: (f64, f64), poly: &[(f64, f64)]| {
+            poly.windows(2)
+                .map(|w| {
+                    let (a, b) = (w[0], w[1]);
+                    let (dx, dy) = (b.0 - a.0, b.1 - a.1);
+                    let l2 = dx * dx + dy * dy;
+                    let t = if l2 == 0.0 {
+                        0.0
+                    } else {
+                        (((p.0 - a.0) * dx + (p.1 - a.1) * dy) / l2).clamp(0.0, 1.0)
+                    };
+                    (a.0 + t * dx - p.0).hypot(a.1 + t * dy - p.1)
+                })
+                .fold(f64::INFINITY, f64::min)
+        };
+        for &p in &full {
+            assert!(dist(p, &cheap) < 0.5, "{p:?}");
+        }
+        for &p in &cheap {
+            assert!(dist(p, &full) < 0.5, "{p:?}");
+        }
+    }
+
+    /// B10: nodes laid on one point (a host's collapsed graph, a drag
+    /// dropping a node on its neighbour) leave both ends of an edge on
+    /// one spot; the ortho stage keeps the builder's path there instead
+    /// of panicking on an empty plan.
+    #[test]
+    fn edges_between_nodes_on_one_point_draw_without_panicking() {
+        let src = "flowchart TD\nA -->|go| B --> C\nA --> C\nB --> D & E\nD -.-> A";
+        let g = parse(src).unwrap();
+        let s = scene(&g);
+        let c: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let r = route(&g, &vec![(50.0, 50.0); c.len()]);
+        assert_eq!(r.edges.len(), s.edges.len());
+        let b = s.nodes.iter().position(|n| n.id == "B").unwrap();
+        let mut m = c.clone();
+        m[b] = c[0];
+        let p = route_partial(&g, &m, &s, &c);
+        assert_eq!(p.edges.len(), s.edges.len());
+        assert!(p
+            .edges
+            .iter()
+            .all(|e| e.bezier.iter().all(|q| q.0.is_finite() && q.1.is_finite())));
+    }
+
+    /// B10: a decision's fan leaves every face on the axes — the ports
+    /// stage slides an end's leg along its own axis when it moves the
+    /// end, so an end moved round a diamond's corner no longer kinks
+    /// back towards its old line — in `scene()` and `route()`, each way.
+    #[test]
+    fn a_decisions_fan_leaves_on_the_axes() {
+        for d in ["TD", "LR"] {
+            let src = format!(
+                "flowchart {d}\nS --> D{{Decide}}\nD -->|a| A\nD -->|b| B\nD --> C\nD --> E\nD --> F\nD --> G\nG --> S"
+            );
+            for sc in static_and_routed(&src) {
+                for e in sc.edges.iter().filter(|e| e.from == "D") {
+                    assert!(on_the_axes(e), "{d}: {e:?}");
+                }
+            }
+        }
+    }
 }

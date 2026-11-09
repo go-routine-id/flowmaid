@@ -1821,3 +1821,353 @@ fn nearest_on(pts: &[Pt], p: Pt) -> Pt {
     }
     best.1
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::parse;
+    use crate::scene::scene;
+
+    const DIRS: [Direction; 4] = [Direction::TD, Direction::BT, Direction::LR, Direction::RL];
+
+    /// A jog of `edge` in gap `gap` from breadth `lo_at` (where the run
+    /// from the low flow side meets it) to `hi_at`, free in `room`.
+    fn jog(edge: usize, gap: usize, lo_at: f64, hi_at: f64, room: (f64, f64), want: f64) -> Jog {
+        Jog {
+            edge,
+            gap,
+            lo_at,
+            hi_at,
+            room,
+            want,
+            at: want,
+            above_label: false,
+            plain: (room, want),
+            label_half: 0.0,
+            runs: (room.0 - 20.0, room.1 + 20.0),
+        }
+    }
+
+    /// Whether some leg of jog `a` properly crosses some leg of `b`.
+    fn jogs_cross(a: &Jog, b: &Jog) -> bool {
+        let (la, lb) = (jog_legs(a, a.at), jog_legs(b, b.at));
+        la.iter()
+            .any(|&(p, q)| lb.iter().any(|&(r, s)| segs_cross(p, q, r, s)))
+    }
+
+    #[test]
+    fn flow_coordinates_run_downstream_in_every_direction() {
+        let p = (12.5, -40.0);
+        for dir in DIRS {
+            assert_eq!(from_flow(dir, to_flow(dir, p)), p, "{dir:?}");
+        }
+        // One step downstream (TD down, BT up, LR right, RL left) is +1
+        // along the flow, and the side it leaves by faces +1 along it.
+        let steps = [
+            (Direction::TD, (0.0, 1.0), Side::Bottom),
+            (Direction::BT, (0.0, -1.0), Side::Top),
+            (Direction::LR, (1.0, 0.0), Side::Right),
+            (Direction::RL, (-1.0, 0.0), Side::Left),
+        ];
+        for (dir, step, side) in steps {
+            assert_eq!(to_flow(dir, step).1, 1.0, "{dir:?}");
+            assert_eq!(flow_normal(dir, side), (0.0, 1.0), "{dir:?}");
+        }
+        assert_eq!(
+            flow_rect(Direction::BT, (0.0, 0.0, 10.0, 20.0)),
+            (0.0, 10.0, -20.0, 0.0)
+        );
+        assert_eq!(
+            flow_rect(Direction::LR, (0.0, 0.0, 10.0, 20.0)),
+            (0.0, 20.0, 0.0, 10.0)
+        );
+    }
+
+    #[test]
+    fn segment_tests_count_proper_crossings_only() {
+        assert!(segs_cross(
+            (0.0, 0.0),
+            (10.0, 10.0),
+            (0.0, 10.0),
+            (10.0, 0.0)
+        ));
+        // Touching at an end, collinear, or apart: no crossing.
+        assert!(!segs_cross(
+            (0.0, 0.0),
+            (10.0, 0.0),
+            (5.0, 0.0),
+            (5.0, 10.0)
+        ));
+        assert!(!segs_cross((0.0, 0.0), (10.0, 0.0), (2.0, 0.0), (8.0, 0.0)));
+        assert!(!segs_cross(
+            (0.0, 0.0),
+            (10.0, 0.0),
+            (0.0, 1.0),
+            (10.0, 1.0)
+        ));
+        let r = (0.0, 0.0, 10.0, 10.0);
+        assert!(seg_hits_rect((-5.0, 5.0), (15.0, 5.0), r));
+        assert!(seg_hits_rect((5.0, 5.0), (5.0, 50.0), r));
+        assert!(!seg_hits_rect((-5.0, -5.0), (-1.0, 20.0), r));
+    }
+
+    #[test]
+    fn collapse_drops_repeats_and_points_on_a_straight_leg() {
+        let pts = vec![
+            (0.0, 0.0),
+            (0.0, 0.0),
+            (0.0, 5.0),
+            (0.0, 10.0),
+            (5.0, 10.0),
+            (9.0, 10.0),
+            (9.0, 20.0),
+        ];
+        assert_eq!(
+            collapse(pts),
+            vec![(0.0, 0.0), (0.0, 10.0), (9.0, 10.0), (9.0, 20.0)]
+        );
+        assert_eq!(
+            nearest_on(&[(0.0, 0.0), (10.0, 0.0), (10.0, 10.0)], (12.0, 5.0)),
+            (10.0, 5.0)
+        );
+    }
+
+    #[test]
+    fn boxes_side_by_side_join_straight_or_by_a_midway_z() {
+        let flat = across_flow((0.0, 0.0), 1.0, (20.0, 0.3), -1.0).unwrap();
+        assert_eq!(flat.len(), 2);
+        let z = across_flow((0.0, 0.0), 1.0, (20.0, 6.0), -1.0).unwrap();
+        let at: Vec<Pt> = z
+            .iter()
+            .map(|c| match *c {
+                Corner::At(p) => p,
+                Corner::Jog(..) => unreachable!(),
+            })
+            .collect();
+        assert_eq!(at, vec![(0.0, 0.0), (10.0, 0.0), (10.0, 6.0), (20.0, 6.0)]);
+        // Sides not facing each other, or the target behind: not this
+        // shape.
+        assert!(across_flow((0.0, 0.0), 1.0, (20.0, 6.0), 1.0).is_none());
+        assert!(across_flow((0.0, 0.0), 1.0, (-20.0, 6.0), -1.0).is_none());
+    }
+
+    #[test]
+    fn a_labelled_twin_bulges_past_its_twin_or_not_at_all() {
+        let (across, head_leg) = (20.0, HEAD_LEG);
+        let a = ((0.0, 0.0), (0.0, 1.0), false);
+        let b = ((0.0, 100.0), (0.0, -1.0), true);
+        let plan = twin_bulge(a, b, 10.0, across, head_leg).expect("a bulge");
+        let pts: Vec<Pt> = plan
+            .iter()
+            .map(|c| match *c {
+                Corner::At(p) => p,
+                Corner::Jog(..) => unreachable!(),
+            })
+            .collect();
+        assert_eq!(pts.len(), 6);
+        // Out past its twin's line by the label's half and a stroke's
+        // air, on its own side, a corner's half out of its bare source
+        // and a head's run short of its target.
+        let run = pts[2].0;
+        assert!(run <= 10.0 - across - TWIN_AIR + EPS, "{pts:?}");
+        assert_eq!(pts[1], (0.0, BARE_LEG));
+        assert_eq!(pts[4], (0.0, 100.0 - head_leg));
+        for w in pts.windows(2) {
+            assert!(w[0].0 == w[1].0 || w[0].1 == w[1].1, "{pts:?}");
+        }
+        // Its own run already that far off its twin: a plain Z draws it.
+        assert!(twin_bulge(a, b, 100.0, across, head_leg).is_none());
+        // A gap too shallow for both steps.
+        let near = ((0.0, 40.0), (0.0, -1.0), true);
+        assert!(twin_bulge(a, near, 10.0, across, head_leg).is_none());
+    }
+
+    #[test]
+    fn a_channels_tracks_keep_a_pitch_apart_and_never_cross() {
+        // Two steps turning the same way across one gap, one starting
+        // further out: libavoid's order puts the one turning further out
+        // away from the turn, so neither crosses the other's leg.
+        let mut jogs = vec![
+            jog(0, 0, 0.0, 100.0, (30.0, 70.0), 50.0),
+            jog(1, 0, 20.0, 120.0, (30.0, 70.0), 50.0),
+        ];
+        place_tracks(&mut jogs, &[]);
+        for (i, a) in jogs.iter().enumerate() {
+            assert!(
+                a.at >= a.room.0 - EPS && a.at <= a.room.1 + EPS,
+                "{i}: {}",
+                a.at
+            );
+            for b in &jogs[i + 1..] {
+                assert!(
+                    (a.at - b.at).abs() >= TRACK_PITCH_MIN - EPS,
+                    "{} {}",
+                    a.at,
+                    b.at
+                );
+                assert!(!jogs_cross(a, b), "{} {}", a.at, b.at);
+            }
+        }
+        // One turning the other way across them crosses one of them
+        // whatever the order (two Zs facing each other): it still keeps
+        // a track of its own.
+        let mut facing = vec![
+            jog(0, 0, 0.0, 100.0, (30.0, 70.0), 50.0),
+            jog(1, 0, 140.0, 40.0, (30.0, 70.0), 50.0),
+        ];
+        place_tracks(&mut facing, &[]);
+        assert!((facing[0].at - facing[1].at).abs() >= TRACK_PITCH_MIN - EPS);
+        // A step in another gap is its own channel.
+        let mut alone = vec![
+            jog(0, 0, 0.0, 100.0, (30.0, 70.0), 50.0),
+            jog(1, 1, 20.0, 120.0, (30.0, 70.0), 50.0),
+        ];
+        place_tracks(&mut alone, &[]);
+        assert_eq!((alone[0].at, alone[1].at), (50.0, 50.0));
+        // Off a kept step a pitch away where its room allows.
+        let mut off = vec![jog(0, 0, 0.0, 100.0, (30.0, 70.0), 50.0)];
+        place_tracks(&mut off, &[(50.0, (10.0, 90.0))]);
+        assert!(
+            (off[0].at - 50.0).abs() >= TRACK_PITCH - EPS,
+            "{}",
+            off[0].at
+        );
+    }
+
+    #[test]
+    fn a_step_crossing_a_kept_curve_moves_clear_of_it_in_its_room() {
+        // A note card's link (kept as drawn) down at breadth 50 to flow
+        // 45: a step at 40 across from 0 to 100 crosses it.
+        let line = vec![(50.0, 20.0), (50.0, 45.0)];
+        let mut jogs = vec![jog(0, 0, 0.0, 100.0, (30.0, 70.0), 40.0)];
+        assert!(jog_legs(&jogs[0], 40.0)
+            .iter()
+            .any(|&(a, b)| segs_cross(a, b, line[0], line[1])));
+        uncross(&mut jogs, std::slice::from_ref(&line));
+        let t = jogs[0].at;
+        assert!((30.0..=70.0).contains(&t), "{t}");
+        assert!(
+            !jog_legs(&jogs[0], t)
+                .iter()
+                .any(|&(a, b)| segs_cross(a, b, line[0], line[1])),
+            "{t}"
+        );
+        // Nearest where it was: just past the line's end.
+        assert!((45.0 - EPS..=45.0 + TRACK_PITCH).contains(&t), "{t}");
+        // A step crossing nothing stays.
+        let mut free = vec![jog(0, 0, 0.0, 100.0, (30.0, 70.0), 60.0)];
+        uncross(&mut free, std::slice::from_ref(&line));
+        assert_eq!(free[0].at, 60.0);
+    }
+
+    /// The room a dummy column may move in keeps [`COLUMN_CLEAR`] off a
+    /// box beside it on its row, and [`straighten`] runs a drifting
+    /// chain straight wherever the rooms share a breadth.
+    #[test]
+    fn a_drifting_chain_runs_straight_where_its_rooms_allow() {
+        let rows = [(40.0, 60.0), (90.0, 110.0), (140.0, 160.0)];
+        let cols = [(100.0, 50.0), (130.0, 100.0), (96.0, 150.0)];
+        let room = |boxes: &[Rect]| -> Vec<Pt> {
+            let r = ColumnRoom {
+                rows: &rows,
+                boxes,
+                loops: &[],
+                frames: &[],
+                columns: &[],
+                runs: &[],
+                labels: &[],
+                own: [None, None],
+                edge: 0,
+            };
+            straighten(&r, 100.0, &cols, 100.0)
+        };
+        // Nothing beside it: one straight run under its source.
+        assert!(room(&[]).iter().all(|q| q.0 == 100.0));
+        // A box right of the middle column, clear of 100: still straight.
+        let right = [(140.0, 200.0, 90.0, 110.0)];
+        assert!(room(&right).iter().all(|q| q.0 == 100.0));
+        // A box left of it reaching past 100 on its row: the column keeps
+        // its clearance, and the chain runs straight beside the box.
+        let left = [(60.0, 120.0, 90.0, 110.0)];
+        let out = room(&left);
+        assert!(out[1].0 >= 130.0 - EPS, "{out:?}");
+        assert!(out.iter().all(|q| q.0 == out[0].0), "{out:?}");
+        let r = ColumnRoom {
+            rows: &rows,
+            boxes: &left,
+            loops: &[],
+            frames: &[],
+            columns: &[],
+            runs: &[],
+            labels: &[],
+            own: [None, None],
+            edge: 0,
+        };
+        assert_eq!(r.slot((150.0, 100.0)).0, 120.0 + COLUMN_CLEAR);
+    }
+
+    /// A label moves with its run: to the middle of a plain Z's step,
+    /// or onto the target's run along the flow where it rides there;
+    /// one a px or two off its old curve lands on the new line, one set
+    /// beside its line keeps its offset.
+    #[test]
+    fn a_label_follows_its_run_onto_the_new_line() {
+        let sc = scene(&parse("flowchart TD\nA -->|yes| B").unwrap());
+        let mut e = sc.edges[0].clone();
+        e.waypoints.clear();
+        e.bezier = [(0.0, 0.0), (0.0, 50.0), (40.0, 50.0), (40.0, 100.0)];
+        let mid = (20.0, 50.0);
+        let z = [(0.0, 0.0), (0.0, 30.0), (40.0, 30.0), (40.0, 100.0)];
+        let label = |e: &mut SceneEdge, at: Pt| {
+            if let Some((_, c, _)) = e.label.as_mut() {
+                *c = at;
+            }
+        };
+        let at = |e: &SceneEdge| e.label.as_ref().unwrap().1;
+        // On the curve's middle: onto the step's middle.
+        label(&mut e, mid);
+        let mut f = e.clone();
+        relabel(&mut f, &z, None);
+        assert_eq!(at(&f), (20.0, 30.0));
+        // A px off: onto the line.
+        label(&mut e, (mid.0, mid.1 + 1.5));
+        let mut f = e.clone();
+        relabel(&mut f, &z, None);
+        assert_eq!(at(&f), (20.0, 30.0));
+        // Set beside its line on purpose: keeps the offset.
+        label(&mut e, (mid.0, mid.1 + 12.0));
+        let mut f = e.clone();
+        relabel(&mut f, &z, None);
+        assert_eq!(at(&f), (20.0, 42.0));
+        // Riding the run into the target: its spot along the flow kept.
+        label(&mut e, (25.0, 70.0));
+        let mut f = e.clone();
+        relabel(&mut f, &z, Some(Direction::TD));
+        assert_eq!(at(&f), (40.0, 70.0));
+    }
+
+    /// Every flowchart edge between distinct nodes the stage takes comes
+    /// out on the axes in each direction, a straight one as a straight
+    /// cubic, the rest with square corners only.
+    #[test]
+    fn edges_come_out_on_the_axes_in_every_direction() {
+        for d in ["TD", "BT", "LR", "RL"] {
+            let src = format!(
+                "flowchart {d}\nA --> B & C & D\nB -->|label| E\nC --> E\nD --> F --> G\nA --> G"
+            );
+            let sc = scene(&parse(&src).unwrap());
+            for e in &sc.edges {
+                if e.waypoints.is_empty() {
+                    let [p0, c1, c2, p3] = e.bezier;
+                    let line = |p: Pt| {
+                        ((p3.0 - p0.0) * (p.1 - p0.1) - (p3.1 - p0.1) * (p.0 - p0.0)).abs() < 1e-6
+                    };
+                    assert!(line(c1) && line(c2), "{d}: {e:?}");
+                    assert!(p0.0 == p3.0 || p0.1 == p3.1, "{d}: {e:?}");
+                } else {
+                    assert!(crate::router::ortho_corners(e).is_some(), "{d}: {e:?}");
+                }
+            }
+        }
+    }
+}

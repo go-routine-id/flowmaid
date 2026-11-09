@@ -4618,4 +4618,27 @@ note for Map~K,V~ \"generic\"
         assert_eq!(span_cells((i64::MIN, 0, 0, 0)), None);
         assert_eq!(span_cells((0, 0, 1, 1)), Some(4));
     }
+
+    /// The stroke grid's shortcut for a segment on an axis (an
+    /// orthogonal path's leg) files it in the cells of its box, which are
+    /// exactly the cells [`seg_cells`] walks to.
+    #[test]
+    fn an_axis_segment_fills_the_cells_of_its_box() {
+        let cell = OBSTACLE_CELL;
+        let segs: [((f64, f64), (f64, f64)); 4] = [
+            ((3.0, 7.0), (3.0, 7.0 + 5.3 * cell)),
+            ((-11.0, 40.0), (-11.0 + 7.9 * cell, 40.0)),
+            ((2.0 * cell, 0.5), (2.0 * cell, -3.2 * cell)),
+            ((10.0, 10.0), (10.0 - 0.4 * cell, 10.0)),
+        ];
+        for (a, b) in segs {
+            let r = (a.0.min(b.0), a.1.min(b.1), a.0.max(b.0), a.1.max(b.1));
+            let (x0, y0, x1, y1) = cell_span(r, cell).unwrap();
+            let mut boxed: Vec<(i64, i64)> = (x0..=x1)
+                .flat_map(|x| (y0..=y1).map(move |y| (x, y)))
+                .collect();
+            boxed.sort_unstable();
+            assert_eq!(Some(boxed), seg_cells(a, b, cell), "{a:?} {b:?}");
+        }
+    }
 }

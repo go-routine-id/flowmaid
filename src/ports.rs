@@ -2551,4 +2551,33 @@ mod tests {
             }
         }
     }
+
+    /// B10: a Z or an L on the axes steers its ends by the chord through
+    /// its corners (as the single curve it replaced did), so a side's
+    /// order — and a second pass over it — stays as the curves set it;
+    /// stepping off the straight stub instead read a Z's square first
+    /// corner as heading straight across. A class or ER path steers as
+    /// it always did.
+    #[test]
+    fn a_square_path_steers_its_ends_by_its_corners_chord() {
+        let mut sc = scene(&parse("flowchart TD\nA --> B").unwrap());
+        let a = sc.edges[0].bezier[0];
+        let b = (a.0 + 40.0, sc.edges[0].bezier[3].1);
+        let m = (a.1 + b.1) / 2.0;
+        let c = [a, (a.0, m), (b.0, m), b];
+        sc.edges[0].waypoints = crate::router::smooth(&c, crate::router::CORNER_R);
+        sc.edges[0].bezier = c;
+        let chord = (
+            (c[0].0 + 3.0 * c[1].0 + 3.0 * c[2].0 + c[3].0) / 8.0,
+            (c[0].1 + 3.0 * c[1].1 + 3.0 * c[2].1 + c[3].1) / 8.0,
+        );
+        for src in [true, false] {
+            let (p, q) = end_and_steer(&sc, 0, src, Some(Side::Bottom));
+            assert_eq!(p, if src { a } else { b });
+            assert_eq!(q, chord, "src {src}");
+        }
+        sc.edges[0].paint_width = Some(2.0);
+        let (_, q) = end_and_steer(&sc, 0, true, Some(Side::Bottom));
+        assert_ne!(q, chord);
+    }
 }

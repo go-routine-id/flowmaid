@@ -1357,4 +1357,130 @@ mod tests {
             assert!(sc.width >= base.width - 500.0);
         }
     }
+
+    /// The vertical scene edge `A --> B` (TD) and its context.
+    fn plain_pair() -> (Graph, Scene, Ctx) {
+        let g = parse("flowchart TD\nA --> B").unwrap();
+        let sc = scene(&g);
+        let cx = ctx(&g, &sc);
+        (g, sc, cx)
+    }
+
+    /// A two-point path on an axis (the nudge's step merged away) is
+    /// drawn as the straight cubic it is, its head box no longer the
+    /// whole leg's (B10); a class or ER painter's path stays.
+    #[test]
+    fn a_two_point_axis_path_becomes_a_straight_cubic() {
+        let (_, mut sc, cx) = plain_pair();
+        let a = sc.edges[0].bezier[0];
+        let b = (a.0, sc.edges[0].bezier[3].1);
+        sc.edges[0].waypoints = vec![a, b];
+        let mut class = sc.clone();
+        straight_cubics(&mut sc, &cx);
+        let e = &sc.edges[0];
+        assert!(e.waypoints.is_empty(), "{e:?}");
+        assert_eq!(e.bezier[0], a);
+        assert_eq!(e.bezier[3], b);
+        assert!(e.bezier.iter().all(|p| p.0 == a.0), "{e:?}");
+        class.edges[0].paint_width = Some(2.0);
+        let before = format!("{:?}", class.edges[0]);
+        straight_cubics(&mut class, &cx);
+        assert_eq!(format!("{:?}", class.edges[0]), before);
+    }
+
+    /// B10: an end the nudge slid along a drum's lid at the depth its
+    /// old place met the lid — deep inside the box, on a run along an
+    /// axis — comes back out along the run onto the outline (a Z drawn
+    /// straight onto a drum 25 px off its centre ended inside it). A
+    /// class or ER end stays where it is.
+    #[test]
+    fn an_end_sunk_into_a_drums_lid_comes_back_to_its_outline() {
+        let g = parse("flowchart TD\nA --> DB[(Store)]").unwrap();
+        let sc = scene(&g);
+        let n = sc.nodes.iter().find(|n| n.id == "DB").unwrap();
+        let (x, top) = (n.x + n.w / 4.0, n.y - n.h / 2.0);
+        let mut e = sc.edges[0].clone();
+        let (a, b) = ((x, top - 40.0), (x, top + 25.0));
+        e.waypoints = vec![a, b];
+        e.bezier = [a, a, b, b];
+        let q = snapped_end(n, &e, false).expect("brought back");
+        assert_eq!(q.0, x);
+        assert!(q.1 >= top - 0.5 && q.1 < top + 25.0, "{q:?}");
+        // On the outline: nothing left to snap there.
+        let mut on = e.clone();
+        on.waypoints[1] = q;
+        on.bezier[3] = q;
+        if let Some(r) = snapped_end(n, &on, false) {
+            assert!((r.0 - q.0).hypot(r.1 - q.1) < 1e-6, "{q:?} -> {r:?}");
+        }
+        e.paint_width = Some(2.0);
+        assert!(snapped_end(n, &e, false).is_none());
+    }
+
+    /// [`square_s_cubics`]: a single cubic between facing sides a few
+    /// px across its run comes out as a rounded Z whose step leaves its
+    /// head's run into the target; under a px, straight with the end
+    /// slid; a class path stays; idempotent.
+    #[test]
+    fn an_s_left_between_facing_sides_is_squared() {
+        let (_, sc0, cx) = plain_pair();
+        let a = sc0.edges[0].bezier[0];
+        let b = sc0.edges[0].bezier[3];
+        let s_cubic = |sc: &mut Scene, dx: f64| {
+            let b2 = (a.0 + dx, b.1);
+            let m = (a.1 + b2.1) / 2.0;
+            sc.edges[0].waypoints.clear();
+            sc.edges[0].bezier = [a, (a.0, m), (b2.0, m), b2];
+            b2
+        };
+        let mut sc = sc0.clone();
+        let b2 = s_cubic(&mut sc, 6.0);
+        square_s_cubics(&mut sc, &cx);
+        let c = crate::router::ortho_corners(&sc.edges[0]).expect("on the axes");
+        assert_eq!(c.len(), 4, "{c:?}");
+        assert_eq!((c[0], c[3]), (a, b2));
+        let len = b2.1 - a.1;
+        assert!(b2.1 - c[2].1 >= len / 2.0 - 1e-9, "{c:?}");
+        let once = format!("{:?}", sc.edges[0]);
+        square_s_cubics(&mut sc, &cx);
+        assert_eq!(format!("{:?}", sc.edges[0]), once);
+
+        let mut sc = sc0.clone();
+        s_cubic(&mut sc, 0.6);
+        square_s_cubics(&mut sc, &cx);
+        let e = &sc.edges[0];
+        assert!(e.waypoints.is_empty());
+        assert!(e.bezier.iter().all(|p| p.0 == a.0), "{e:?}");
+
+        let mut sc = sc0.clone();
+        s_cubic(&mut sc, 6.0);
+        sc.edges[0].paint_width = Some(2.0);
+        let before = format!("{:?}", sc.edges[0]);
+        square_s_cubics(&mut sc, &cx);
+        assert_eq!(format!("{:?}", sc.edges[0]), before);
+    }
+
+    /// [`holds_other`]: a composite's frame holds its own states and its
+    /// nested composites, not itself, its parent or a state outside it.
+    #[test]
+    fn a_frame_holds_its_own_states_and_nested_frames() {
+        let src =
+            "stateDiagram-v2\nstate Outer {\n  [*] --> A\n  state Inner {\n    [*] --> B\n  }\n  \
+                   A --> Inner\n}\nX --> Outer\nOuter --> A";
+        let g = match crate::parser::parse_document(src).unwrap() {
+            crate::model::Document::State(g) => g,
+            _ => unreachable!(),
+        };
+        let sc = scene(&g);
+        let cx = ctx(&g, &sc);
+        let frame = |id: &str| EndRef::Frame(sc.clusters.iter().position(|c| c.id == id).unwrap());
+        let node = |id: &str| EndRef::Node(sc.nodes.iter().position(|n| n.id == id).unwrap());
+        assert!(holds_other(&cx, frame("Outer"), node("A")));
+        assert!(holds_other(&cx, frame("Outer"), node("B")));
+        assert!(holds_other(&cx, frame("Outer"), frame("Inner")));
+        assert!(!holds_other(&cx, frame("Inner"), frame("Outer")));
+        assert!(!holds_other(&cx, frame("Outer"), frame("Outer")));
+        assert!(!holds_other(&cx, frame("Outer"), node("X")));
+        assert!(!holds_other(&cx, node("A"), frame("Outer")));
+    }
 }
