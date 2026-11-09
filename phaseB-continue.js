@@ -151,6 +151,13 @@ Fix each item that is local and in proportion, with a regression test each. Skip
 - state:
   - In twins3 (three transitions to one state) the 'two' chip lies half over the 'three' stroke.
   - In a wide-label LR choice, the long chip touches the start of c->A (${S}/verify/a3-state/in5/).
+- B9 (compound direction) leftovers from its verification. The full findings are in ${S}/history/b9-verdicts.json; repros are in ${S}/verify/b9-compound/.
+  - A fork/join bar that branches to a block composite now resizes when a state inside the block is dragged. This breaks the released promise "dragging never resizes a bar" (fit_bars doc in src/scene.rs, CHANGELOG). Restore it, or document a justified exception.
+  - Parity: in state diagrams, mermaid lays out a composite without its own \`direction\` top-down whatever the diagram's direction, but flowmaid inherits the diagram's direction. Match mermaid if local.
+  - A block is ordered after sibling nodes created before its first member, whatever the declaration order. Follow declaration order as mermaid does, if local.
+  - A block's proxy widens its layer for sibling subgraphs (bulk f114, f259). Reduce it if in proportion.
+  - Nit: in src/compound.rs, \`let (labels, sizes) = …; let _ = labels;\` should become \`let (_, sizes) = …\`.
+  - Also delete the dead \`layout::wrap_text\` / \`lines_at\` and \`wrap::RETIRED_GREEDY_WRAP\` (no callers since c1-nonflow).
 Flowchart output must not change in this package unless a state fix needs it, justified.` },
 ]
 
