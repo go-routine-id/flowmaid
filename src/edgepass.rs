@@ -390,9 +390,11 @@ pub(crate) fn finish_held(g: &Graph, sc: &mut Scene, mode: Mode, fixed: &[bool],
     square_s_cubics(sc, &cx);
     snap_ends(sc, &cx);
     // A corner a moved end left far from its rounding point turns as a
-    // rounded corner again (see `ports::reround`).
+    // rounded corner again (see `ports::reround`). An edge a drag keeps
+    // ([`Ctx::fixed`]) keeps its geometry, whoever drew it (a fold's
+    // turns).
     for (i, e) in sc.edges.iter_mut().enumerate() {
-        if cx.drawn.get(i).copied().unwrap_or(false) {
+        if cx.drawn.get(i).copied().unwrap_or(false) && !cx.fixed.get(i).copied().unwrap_or(false) {
             crate::ports::reround(e);
         }
     }

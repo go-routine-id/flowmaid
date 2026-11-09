@@ -720,6 +720,13 @@ fn channels_keep_edges_apart_and_off_chips() {
 /// other's legs (bench-75 static 56 -> 60 pairs, 22 158 -> 25 854 px;
 /// dense-lr 26 -> 31 pairs; routed bench-75 30 746 -> 31 540 px from the
 /// shifted layout).
+///
+/// B10 review r3 (#5): a corner a moved end left without its rounding
+/// point turns as a rounded corner again (`ports::reround`); where its
+/// spline had swept over hundreds of px (bench-75's `svc6 --> ext`,
+/// `alerts --> gw`; dense-td's `n43 --> n16`) the leg now runs straight
+/// to the corner beside its neighbours, a track pitch apart: band_len
+/// 71 210 | 68 660 -> 71 360 | 69 110 (same pairs).
 const DEFECT_BASELINE: [(&str, f64, f64); 16] = [
     ("end_tilt", 0.0, 0.0),
     ("end_tilt_max", 0.3, 0.6),
@@ -730,7 +737,7 @@ const DEFECT_BASELINE: [(&str, f64, f64); 16] = [
     ("own_frame_x", 0.0, 0.0),
     ("own_frame_len", 0.0, 0.0),
     ("band_pairs", 124.0, 139.0),
-    ("band_len", 71_210.0, 68_660.0),
+    ("band_len", 71_360.0, 69_110.0),
     ("idiom_scubic", 0.0, 0.0),
     ("idiom_spline", 0.0, 0.0),
     ("idiom_bow", 0.0, 0.0),
@@ -950,11 +957,17 @@ fn long_labels_wrap_and_dense_labels_do_not_tower() {
 /// does again (round below, not over the top), and the kept `gw ->
 /// svc2` and `svc1 -> queue` it passes are rerouted off the redrawn
 /// edges of a dragged neighbour. B10 review r2: bench-75 16 -> 15, the
-/// pre-B10 value again.
+/// pre-B10 value again. B10 review r3 (#5): dense-td 4 -> 5, bench-75
+/// 15 -> 16 — the corners `ports::reround` rounds again in the base
+/// scene change where the ports stage reads its kept paths heading
+/// (the first point off a stub), so a drag of `n5` re-places `n16 ->
+/// n41`'s end on `n16`'s crowded side 27.7 px over, and a drag of `logs`
+/// `dash -> user`'s 40.4 px; the scene's own corners are no longer
+/// swept over hundreds of px.
 const DRAG_JUMPS_MAX: &[(&str, usize)] = &[
     ("quality/dense-lr", 0),
-    ("quality/dense-td", 4),
-    ("quality/bench-75", 15),
+    ("quality/dense-td", 5),
+    ("quality/bench-75", 16),
     ("notes/spread-face", 0),
     ("notes/fork-twins", 0),
     ("notes/near-drag", 0),
