@@ -7,6 +7,37 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.37.0] - 2026-11-09
+
+### Highlights
+
+Flowchart parity phase B: B9, compound layout. No public API is removed
+or changed.
+
+- **`direction` inside a subgraph or a state composite now works, as in
+  mermaid.** A block whose members link to each other, and which no edge
+  joins to a node outside it (in either direction), is laid out on its
+  own, in its own direction, and placed in the drawing like one node the
+  size of its frame (nested blocks too); edges to or from the block
+  itself are fine. Once an edge crosses its border to or from a member,
+  the block takes the direction round it, which is mermaid's rule. The state
+  showcase's `Validating` composite (`direction LR` in a top-down diagram)
+  is now one row, 413 × 92, where it used to be a 126 × 368 column; the
+  canvas is 535 × 873 (mermaid: 459 × 109 in 649 × 886).
+- **Dragging and picking keep up.** `route()` and `route_partial()` route
+  each block in its own direction. Dragging a state inside a composite
+  grows the frame, and a drag outside a block leaves it alone: 0.5 ms a
+  frame on average on `examples/state.mmd` (2.0 ms before). Picking still
+  follows the drawn strokes.
+- **No flowchart in the corpus changes:** its subgraph `direction`s are all
+  linked across, or set on members with no links among them. Over a
+  separate 1 351-input set of flowchart and state sources with a
+  `direction` line, 277 change: crossings 1 110 -> 932, edges
+  through frames 78 -> 54, defects 376 -> 316 (but edges drawn on top of
+  each other 76 -> 106, mostly in hub fans to blocks).
+- **A tidier README:** a table of contents, one section per diagram type in
+  the same shape, and the overview brought up to date.
+
 ### Fixed
 
 - **`direction` inside a subgraph or a state composite is honoured**
@@ -19,13 +50,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
   of its frame (recursively: mermaid's documentation example of `TB`, `RL`
   and `BT` blocks nested in an `LR` chart draws as mermaid draws it). The
   rule is mermaid's, for flowcharts and state diagrams alike: the
-  direction holds while none of the subgraph's nodes links to a node
-  outside it — edges to or from the subgraph itself are fine, and meet its
+  direction holds while no edge joins one of the subgraph's nodes to a
+  node outside it, in either direction — edges to or from the subgraph
+  itself are fine, and meet its
   frame as they meet any node's border, labelled and ported as usual —
-  and the subgraph takes the direction round it once a member links out,
-  a member links to its own subgraph, or an edge reaches a subgraph nested
-  in it. Members with no links among them keep the row across the flow
-  they already had. `Validating` is now a 413 × 92 row and the canvas 535 ×
+  and the subgraph takes the direction round it once an edge crosses its
+  border to or from a member, a member links to its own subgraph, or an
+  edge reaches a subgraph nested in it. Members with no links among them
+  keep the line they already had across the flow round them. `Validating` is now a 413 × 92 row and the canvas 535 ×
   873 (mermaid: 459 × 109 in 649 × 886); a fork or join bar in such a
   block lies across the block's own flow. `route()` and `route_partial()`
   route each block in its own direction too, then the drawing round it
@@ -52,6 +84,74 @@ project adheres to [Semantic Versioning](https://semver.org/).
   edges running on top of each other 76 -> 106 of them, mostly in hub
   fans to blocks), and the canvas grows a median 22 % (a row where there
   was a column).
+
+### Documentation
+
+- **README reorganised.** A table of contents and a diagram-type table
+  (header, example file, whether it can be dragged) up front; one section
+  per diagram type in the same shape (example, then a "Supported subset"
+  list), with new sections for user journeys, git graphs and architecture
+  diagrams, which had only a roadmap line; the flowchart syntax split
+  into subsections (shapes, metadata, labels, edges, edge ids, subgraphs,
+  styling, links, accessibility) instead of paragraphs of up to 4 900
+  characters; the interactive API gathered in one place; and the roadmap
+  reduced to a checklist (`$$math$$` was listed three times).
+- **README corrections.** The pipeline overview names what the layout
+  does today (cycle breakers from the walk that reverses fewer edges,
+  subgraph seating, narrowing, compound blocks, the edge-finishing
+  stages) and no longer says hosts must hit-test themselves or that long
+  edges bow sideways. The swimlane text-DSL example now renders: it had a
+  trailing `#` comment, and comments are whole lines only. The
+  sub-element example is now complete.
+- **README claims checked against the code.** An independent review of
+  every claim corrected overclaims that had built up:
+  - not every mermaid 12.2 header gets the "not supported yet" error
+    (some newer ones, such as `ishikawa` or the short form `xychart`, are
+    read as flowchart text, and `-beta` previews such as `venn-beta` or
+    `railroad-beta` give a generic parse error);
+  - sequence diagrams have eight arrows, not all of mermaid's;
+  - per-item `<title>`s exist in flowchart, state, journey and sankey
+    diagrams only;
+  - the 3:1 / 4.5:1 contrast holds for the mermaid themes, with two
+    named exceptions; those themes, not the default `flowmaid` one,
+    re-ink text on a `style` or `classDef` fill their ink would not read
+    on;
+  - an unknown theme name falls back to `flowmaid`;
+  - flowchart edge labels draw `<br/>` as a space;
+  - timeline labels keep entity codes as written;
+  - sankey's default `justify` puts every sink in the last column;
+  - the text DSL takes no `auto` port, and JSON edge styles read `color`,
+    not `stroke`;
+  - git lanes repeat colours past eight;
+  - `bench-75` has 21 nodes and 75 edges, not 75 nodes;
+  - the `--compact` example now folds;
+  - the `gitGraph` and `architecture-beta` version tags are corrected
+    (0.21.0 and 0.23.0);
+  - mermaid.js 12.2.0 is about 5.5 MB minified (1.6 MB gzipped), not
+    2.5 MB, and the 200 px wrapping default is mermaid 11's (12.2 wraps
+    at 120);
+  - `advanced.mmd` covers most shapes and link types, not all;
+  - in the swimlane text DSL, `<br/>` in edge labels and lane titles is
+    kept in the parsed diagram and `AdvanceScene` but drawn on one line
+    in the SVG;
+  - a `Scene` edge is its `bezier` only when its `waypoints` are empty
+    and it sets no mermaid `curve`; long edges, back-edge lanes and
+    rerouted edges are drawn through their `waypoints`;
+  - the second cycle-breaking walk runs only on graphs of up to 400 nodes
+    plus edges, and narrowing runs once the drawing is placed and is
+    skipped above 600;
+  - an edge from outside into a member also makes a block take the
+    direction round it, not only a member linking out;
+  - a sankey with a cycle (which mermaid rejects) is drawn, its closing
+    links running back leftwards;
+  - a block whose members have no links among them ignores its own
+    `direction`: its members lie side by side across the flow round it,
+    where mermaid lays the block out in its own direction (a
+    `direction LR` block in a `TB` chart is a row in flowmaid and a
+    column in mermaid).
+- **Benchmark re-measured on 0.37.0:** about 126× faster than mermaid
+  12.2.0 (geometric mean over 25 diagrams; the 0.34.0 table said 105×),
+  SVG 1.5–23× smaller.
 
 ## [0.36.0] - 2026-11-09
 
