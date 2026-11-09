@@ -9,6 +9,55 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **Flowchart and state edges are drawn on the axes, with rounded corners**
+  (report §2.1, B1, M2, M5, P0 #14), as mermaid 12.2's ELK renderer draws
+  them, where they were S-shaped cubics, bowed twins and splines through a
+  long edge's dummies. A new stage (`ortho`) runs after the ports are
+  placed and before the router: an edge between adjacent ranks is a Z (an
+  L into a side port) whose step runs across the gap, its label on that
+  run; a long edge runs down its layout column, stepping across a gap
+  where the column moves; a labelled twin bulges clear of its twin's line
+  where the two would run together; a straight edge stays a straight
+  cubic. Each gap's steps sit on tracks a pitch apart (12.5 px, 6.5 px in
+  a gap too shallow for that), ordered as libavoid orders a channel so
+  their turns do not cross; the steps of a fan going either way from a
+  node fork apart on their own tracks, and a step that carries its label
+  keeps the label's half and its gap off the tracks beside it. The layout
+  grows a gap by the tracks its steps need (two at the plain gap, one
+  more per further step one way). `route()` and the drag path
+  (`route_partial`) draw the same idiom; an end a drag holds on a hub
+  starts where the base had it even across sides, so the redrawn step
+  matches the kept ones. The path comes as `SceneEdge::waypoints` (each
+  corner flanked by points 14 px either side, which the painter's spline
+  turns through as a curve of about 8 px radius),
+  `bezier` the chord through its corners, so pick == render as before.
+  Explicit `curve:` / `linkStyle … interpolate`, state note card links,
+  self-loops, back-edge lanes and class / ER scenes are unchanged. The
+  router weighs a lateral run as `route()` does in the static scene too
+  (`H_WEIGHT` 1.0), prices a forward edge's run along a node's flank, and
+  takes a second pass over pairs still drawn on top of each other. The
+  ports stage steers a Z or an L by the chord through its corners and
+  slides an end's leg along with it (an end moved round a diamond's corner
+  no longer kinks back to its old line); the label stage keeps a long
+  edge's label in its dummy's slot when the edge runs straight, restacks a
+  compact branch point's fan whose labels crowd each other, and a
+  nearly-on label lands on its new line. Two-point straight paths are
+  drawn as straight cubics; an end sunk into a drum's lid along an axis is
+  brought back to its outline. Measured over the quality fixtures
+  (static | routed): defects 57 | 90 -> 48 | 46, S-cubics 61 | 80 -> 0 | 0,
+  splines 21 | 22 -> 0 | 0, bows 2 | 1 -> 0 | 0, askew ends 7 | 11 -> 0 | 0,
+  end kinks 53 | 69 -> 1 | 0, routed drawn crossings 504 -> 496,
+  fanout-frames 3 -> 1 drawn crossings; bench-75 defects 15 | 39 -> 3 | 2 and its
+  drags 15 -> 12 jumps. Known costs: parallel cables (a channel's tracks)
+  94 | 104 -> 115 | 142 pairs, static drawn crossings 499 -> 533 (bench-75's
+  square steps 349 -> 389, still above mermaid's 222 there, which the
+  layout's ordering bounds), static sideways wiggles 16 -> 22 (long edges
+  stepping between dummy columns), dense-lr's LR fan labels over a
+  neighbouring step (static label-over-line 1 -> 6) and two more of its
+  edges through a frame, dense-td drags 3 -> 4 jumps, and on bench-75
+  `route()` now takes `job1 -> svc1`'s lane round the other side from the
+  static layout (its planner reads gap depths in px).
+
 - **A subgraph fed from outside every subgraph starts below its feeder**
   (report §2.9, B8b P1). 0.35.0 started a subgraph's edge-less members on
   its first row, but read that row off the members that link out of the

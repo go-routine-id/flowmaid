@@ -3986,6 +3986,65 @@ fn place(
         }
         need
     };
+    // Per lower layer: the least gap above it for the steps the edges
+    // crossing it take (report B1, §2.1): every edge is drawn on the axes
+    // (`crate::ortho`), each step across a gap on a track of its own, and
+    // the steps whose spans overlap stack one track pitch apart between
+    // a row's clearance above and a head's straight run below. A gap
+    // holds two tracks at the plain [`GAP_L`]; a fan of three or more
+    // steps one way grows it by a pitch per further track (flowchart and
+    // state drawings only; the spans are read off the node and dummy
+    // centres, which the ports spread a little).
+    let track_need: Vec<f64> = {
+        let mut need = vec![0.0f64; nlayers];
+        if g.edge_paint_width.is_none() {
+            let mut spans: Vec<Vec<(f64, f64)>> = vec![Vec::new(); nlayers];
+            for (ei, e) in g.edges.iter().enumerate() {
+                if e.from == e.to || matches!(e.kind, EdgeKind::Invisible) {
+                    continue;
+                }
+                let chain = &edge_chain[ei];
+                let path: Vec<usize> = if alayer[e.from] <= alayer[e.to] {
+                    std::iter::once(e.from)
+                        .chain(chain.iter().copied())
+                        .chain(std::iter::once(e.to))
+                        .collect()
+                } else {
+                    std::iter::once(e.to)
+                        .chain(chain.iter().rev().copied())
+                        .chain(std::iter::once(e.from))
+                        .collect()
+                };
+                for w in path.windows(2) {
+                    let (a, b) = (w[0], w[1]);
+                    if alayer[b] != alayer[a] + 1 || (bpos[a] - bpos[b]).abs() <= 1.0 {
+                        continue;
+                    }
+                    spans[alayer[b]].push((bpos[a].min(bpos[b]), bpos[a].max(bpos[b])));
+                }
+            }
+            for (li, sp) in spans.iter_mut().enumerate() {
+                // The most spans over one point: the tracks the gap needs.
+                let mut ev: Vec<(f64, i32)> = Vec::with_capacity(2 * sp.len());
+                for &(a, b) in sp.iter() {
+                    ev.push((a, 1));
+                    ev.push((b, -1));
+                }
+                ev.sort_by(|x, y| x.0.total_cmp(&y.0).then(x.1.cmp(&y.1)));
+                let (mut cur, mut most) = (0i32, 0i32);
+                for (_, d) in ev {
+                    cur += d;
+                    most = most.max(cur);
+                }
+                if most >= 1 {
+                    need[li] = crate::ortho::ROW_CLEAR
+                        + crate::ortho::HEAD_LEG
+                        + (most - 1) as f64 * crate::ortho::TRACK_PITCH;
+                }
+            }
+        }
+        need
+    };
     // The layer lines and the depth they span. `judged`: as the layout
     // search judges a candidate (crossings, node hits, the ribbon tests)
     // — a title strip's slot grown on both sides, a labelled gap only as
@@ -4099,6 +4158,10 @@ fn place(
             }
             if !judged && li > 0 && cross_need[li] > 0.0 {
                 cursor = cursor.max(lcoord[li - 1] + cross_need[li] - before);
+            }
+            if !judged && li > 0 && track_need[li] > 0.0 {
+                let prev = lcoord[li - 1] + prev_after;
+                cursor = cursor.max(prev + track_need[li]);
             }
             prev_after = after;
             lcoord[li] = cursor + before;
@@ -5808,7 +5871,10 @@ mod tests {
         for id in ["g2", "g4"] {
             assert!(frame(id).y > first_row, "{id} not wrapped below g1");
         }
-        assert!(sc.width < 2.0 * sc.height, "{} x {}", sc.width, sc.height);
+        // (2.0 : 1 before B10: the long edge into g2 now runs down its
+        // dummy's column beyond the row, where its spline only approached
+        // it — 1 120 -> 1 163 px wide, the layout unchanged.)
+        assert!(sc.width < 2.1 * sc.height, "{} x {}", sc.width, sc.height);
     }
 
     /// The narrowing guards (report M11) read edge length both ways:

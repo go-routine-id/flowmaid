@@ -629,6 +629,25 @@ fn place_weighted(d: &[f64], w: &[f64], s: f64, lo: f64, hi: f64) -> Vec<f64> {
 fn end_and_steer(sc: &Scene, i: usize, src: bool, side: Option<Side>) -> (Pt, Pt) {
     let e = &sc.edges[i];
     let w = &e.waypoints;
+    // A Z or an L on the axes (the ortho stage's, or one the router
+    // rerouted that way: [`crate::ortho`]) heads along the chord through
+    // its corners, as the single curve it replaced headed — whichever
+    // stage drew it, so a side's order (and a second pass over it) stays
+    // as the curves set it.
+    let chord = (w.len() >= 2 && crate::scene::single_run(e))
+        .then(|| crate::router::ortho_corners(e))
+        .flatten()
+        .filter(|c| c.len() >= 3);
+    if let Some(c) = chord {
+        let n = c.len();
+        let b = [c[0], c[1], c[n - 2], c[n - 1]];
+        let p = if src { w[0] } else { w[w.len() - 1] };
+        let q = (
+            (b[0].0 + 3.0 * b[1].0 + 3.0 * b[2].0 + b[3].0) / 8.0,
+            (b[0].1 + 3.0 * b[1].1 + 3.0 * b[2].1 + b[3].1) / 8.0,
+        );
+        return (p, q);
+    }
     if w.len() >= 2 {
         let p = if src { w[0] } else { w[w.len() - 1] };
         // The first waypoint off the end's straight stub (else the far
@@ -702,7 +721,7 @@ fn keep_parallel_order(ports: &mut [PortEnd], cx: &Ctx, sc: &Scene) {
 /// or the other way when both are drawn as single curves (a 2-cycle
 /// across one gap).
 fn same_pair(cx: &Ctx, sc: &Scene, a: usize, b: usize) -> bool {
-    let curve = |i: usize| sc.edges.get(i).is_some_and(|e| e.waypoints.is_empty());
+    let curve = |i: usize| sc.edges.get(i).is_some_and(crate::scene::single_run);
     match (
         cx.ends.get(a).copied().flatten(),
         cx.ends.get(b).copied().flatten(),
@@ -1240,9 +1259,19 @@ fn around_kept(
     let at = |p: &PortEnd| split(side, p.at).0;
     let mut taken: Vec<f64> = ports.iter().filter(|p| kept(p)).map(at).collect();
     taken.sort_by(f64::total_cmp);
-    if taken.windows(2).any(|w| w[1] - w[0] < s - SETTLE_EPS) {
+    // Kept ends the base spaced tighter than this side's spacing (its
+    // router, respacing and nudge settled them after the ports stage):
+    // the redrawn ones fit round them at that tighter pitch, down to the
+    // least a crowded side keeps, rather than the side being spaced
+    // afresh (dense-td's hub threw its fan 10-40 px on a 1 px drag).
+    let tight = taken
+        .windows(2)
+        .map(|w| w[1] - w[0])
+        .fold(f64::INFINITY, f64::min);
+    if tight < PORT_MIN_SPACING - SETTLE_EPS {
         return None;
     }
+    let s = s.min(tight);
     let (lo, hi) = (lo.min(taken[0]), hi.max(taken[taken.len() - 1]));
     let on_span = |t: f64| t >= lo - SETTLE_EPS && t <= hi + SETTLE_EPS;
     let mut x = vec![0.0; ports.len()];
@@ -1770,6 +1799,24 @@ fn move_end(e: &mut SceneEdge, src: bool, old: Pt, delta: Pt, side: Side, back: 
     }
     let n = e.waypoints.len();
     let wi = if src { 0 } else { n - 1 };
+    // A leg on the axes off a slanted or round outline (a diamond's end
+    // on its lower right face, its side the right one by quadrant, its
+    // leg straight down) follows across its own axis, not the side's:
+    // read the side's axis off the leg, so the leg stays on its axis
+    // instead of kinking from the moved end to its old line.
+    let side = if n >= 2 {
+        let (a, b) = (e.waypoints[wi], e.waypoints[if src { 1 } else { n - 2 }]);
+        let (dx, dy) = ((a.0 - b.0).abs(), (a.1 - b.1).abs());
+        if dx < STUB_EPS && dy >= STUB_EPS {
+            Side::Bottom
+        } else if dy < STUB_EPS && dx >= STUB_EPS {
+            Side::Left
+        } else {
+            side
+        }
+    } else {
+        side
+    };
     add(&mut e.waypoints[wi]);
     // The straight leg out of the end follows along the side: the stub
     // and, on a rerouted lattice path, every later point still on that
@@ -1867,6 +1914,28 @@ fn turn_end(e: &mut SceneEdge, src: bool, old: Pt, new: Pt, side: Side, back: bo
     let n = e.waypoints.len();
     let wi = if src { 0 } else { n - 1 };
     e.waypoints[wi] = new;
+    // A leg on the axes out of the end slides across its axis with it,
+    // up to its corner, so the path stays on the axes (an orthogonal
+    // path's end turned round a diamond's corner kinked from the new
+    // end back to its old line).
+    let at = |k: usize| if src { k } else { n - 1 - k };
+    if n >= 3 {
+        let b = e.waypoints[at(1)];
+        let vertical = (b.0 - old.0).abs() < STUB_EPS && (b.1 - old.1).abs() >= STUB_EPS;
+        let level = (b.1 - old.1).abs() < STUB_EPS && (b.0 - old.0).abs() >= STUB_EPS;
+        let mut k = 1;
+        while k + 1 < n && (vertical || level) {
+            let q = &mut e.waypoints[at(k)];
+            if vertical && (q.0 - old.0).abs() < STUB_EPS {
+                q.0 = new.0;
+            } else if level && (q.1 - old.1).abs() < STUB_EPS {
+                q.1 = new.1;
+            } else {
+                break;
+            }
+            k += 1;
+        }
+    }
     if same(e.bezier[pi], old) {
         if same(e.bezier[ci], old) {
             e.bezier[ci] = new;
@@ -2042,8 +2111,18 @@ mod tests {
                     .edges
                     .iter()
                     .filter(|e| e.from == "c" && e.to == "B")
-                    .inspect(|e| assert!(e.waypoints.is_empty(), "{dir} {what}: rerouted"))
                     .map(edge_polyline)
+                    // Into B's facing border head-on, not round into its
+                    // side (a twin's bulge is fine).
+                    .inspect(|p| {
+                        let (a, b) = (p[p.len() - 2], p[p.len() - 1]);
+                        let along = if matches!(dir, "TB" | "BT") {
+                            (a.0 - b.0).abs()
+                        } else {
+                            (a.1 - b.1).abs()
+                        };
+                        assert!(along < 0.5, "{dir} {what}: rerouted into B's side");
+                    })
                     .collect();
                 let (a, b) = (&twins[0], &twins[1]);
                 let crossed = a
@@ -2379,8 +2458,13 @@ mod tests {
 
     #[test]
     fn assigning_twice_changes_nothing() {
-        let mut src = String::from("flowchart TD\nhub{hub}\n");
-        for i in 0..12 {
+        // A 20-end hub whose sides hold their ends at the edge spacing.
+        // (Drawn on the axes, the legs off an over-full side — 24 ends on
+        // a 55 px box or a diamond — run closer than the spacing, and the
+        // router reroutes one: a second pass then meets it in the middle
+        // of its target's side, as the first pass did not.)
+        let mut src = String::from("flowchart TD\nhub[a hub with a longer name]\n");
+        for i in 0..10 {
             src.push_str(&format!("n{i} --> hub\nhub --> m{i}\n"));
         }
         let g = parse(&src).unwrap();

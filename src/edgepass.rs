@@ -106,6 +106,16 @@ pub(crate) struct Ctx {
     /// them 20-45 px. All `false` (but where `fixed`) outside
     /// `route_partial`.
     pub held: Vec<bool>,
+    /// Index-parallel with `sc.edges`: the edge was drawn down a long
+    /// edge's dummy chain ([`crate::ortho::orthogonalize`]); the router
+    /// accepts such channels before the other edges, so a shorter edge
+    /// yields to them.
+    pub chain: Vec<bool>,
+    /// Index-parallel with `sc.edges`: the edge's path is shaped round
+    /// its label (a labelled twin's bulge, [`crate::ortho`]): the channel
+    /// nudge leaves it as drawn (it only fences the others), as merging
+    /// its steps would draw it on top of its twin, its label off it.
+    pub shaped: Vec<bool>,
 }
 
 /// Build the shared context. `sc.edges` holds `g.edges` first, then the
@@ -232,6 +242,8 @@ pub(crate) fn ctx(g: &Graph, sc: &Scene) -> Ctx {
         .collect();
     let fixed = vec![false; sc.edges.len()];
     let held = fixed.clone();
+    let chain = fixed.clone();
+    let shaped = fixed.clone();
     Ctx {
         ends,
         node_frames,
@@ -240,6 +252,8 @@ pub(crate) fn ctx(g: &Graph, sc: &Scene) -> Ctx {
         drawn,
         fixed,
         held,
+        chain,
+        shaped,
     }
 }
 
@@ -339,6 +353,9 @@ pub(crate) fn finish_held(g: &Graph, sc: &mut Scene, mode: Mode, fixed: &[bool],
     }
     let mut moved = vec![false; sc.edges.len()];
     crate::ports::assign(g, sc, &cx, mode, &mut moved);
+    // Every edge on the axes, its corners rounded (report §2.1): from the
+    // ends the ports stage settled, before the router judges them.
+    crate::ortho::orthogonalize(g, sc, &mut cx, mode);
     crate::router::repair(g, sc, &cx, mode, &mut moved);
     // A rerouted end may have switched to another side of its node and
     // landed on a port another edge already holds: space those groups
@@ -354,6 +371,7 @@ pub(crate) fn finish_held(g: &Graph, sc: &mut Scene, mode: Mode, fixed: &[bool],
     // nothing else (G4).
     crate::router::spread_close(g, sc, &cx, mode, &mut moved);
     glyph_stubs(sc, &cx, &mut moved);
+    straight_cubics(sc, &cx);
     snap_ends(sc, &cx);
     let budget = match mode {
         Mode::Static => crate::labels::LABEL_STATIC_WORK,
@@ -363,6 +381,31 @@ pub(crate) fn finish_held(g: &Graph, sc: &mut Scene, mode: Mode, fixed: &[bool],
     // A scene whose painter strokes its own width (ER, class) is drawn
     // on its canvas as-is; a flowchart's is fitted like its SVG.
     refit(sc, mode, g.edge_paint_width.is_none());
+}
+
+/// A path the stages drew as one straight leg (two waypoints on an
+/// axis: the nudge's step merged away, a reroute's straight drop) as the
+/// straight cubic it is: a two-point polyline's head box and the
+/// samples the label stage and the casing read reached back over the
+/// whole leg (dense-td's `n2 -> n7` label read as on its own head, the
+/// leg 72 px long). Drawn alike.
+fn straight_cubics(sc: &mut Scene, cx: &Ctx) {
+    for (i, e) in sc.edges.iter_mut().enumerate() {
+        if e.waypoints.len() != 2 || !cx.drawn.get(i).copied().unwrap_or(false) {
+            continue;
+        }
+        let (a, b) = (e.waypoints[0], e.waypoints[1]);
+        if (a.0 - b.0).abs() > 1e-9 && (a.1 - b.1).abs() > 1e-9 {
+            continue;
+        }
+        e.bezier = [
+            a,
+            (a.0 + (b.0 - a.0) / 3.0, a.1 + (b.1 - a.1) / 3.0),
+            (a.0 + 2.0 * (b.0 - a.0) / 3.0, a.1 + 2.0 * (b.1 - a.1) / 3.0),
+            b,
+        ];
+        e.waypoints.clear();
+    }
 }
 
 /// How far (px) out of its end the straight stub [`glyph_stubs`] gives a
@@ -394,7 +437,14 @@ fn glyph_stubs(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
         let (Some((from, to)), true) = (cx.ends[i], cx.drawn[i]) else {
             continue;
         };
-        if e.waypoints.len() < 2 || e.paint_width.is_some() || e.meta.curve.is_some() {
+        // (A path on the axes runs straight into its ends already, its
+        // corner a head clear of them where its legs allow
+        // ([`crate::ortho`]); a stub would cut a diagonal across it.)
+        if e.waypoints.len() < 2
+            || e.paint_width.is_some()
+            || e.meta.curve.is_some()
+            || crate::router::ortho_corners(e).is_some()
+        {
             continue;
         }
         let glyphs = (
@@ -597,7 +647,26 @@ fn snapped_end(
     } else {
         side
     };
-    crate::scene::outline_along(n, p, run).or_else(|| crate::scene::outline_along(n, p, side))
+    crate::scene::outline_along(n, p, run)
+        .or_else(|| crate::scene::outline_along(n, p, side))
+        .or_else(|| {
+            // An end inside its box, deeper than a sunk end, on a run
+            // along an axis: a nudge slid it along a lid at the depth
+            // its old place met the lid (a Z drawn straight onto a drum
+            // 25 px off its centre). Back to the box side along the run,
+            // then onto the outline from there.
+            let axis = out.0 == 0.0 || out.1 == 0.0;
+            let inside = gx < 0.0 && gy < 0.0;
+            if !axis || !inside || (out.0 == 0.0 && out.1 == 0.0) {
+                return None;
+            }
+            let q = if out.0 == 0.0 {
+                (p.0, if out.1 < 0.0 { rect.1 } else { rect.3 })
+            } else {
+                (if out.0 < 0.0 { rect.0 } else { rect.2 }, p.1)
+            };
+            crate::scene::outline_along(n, q, out)
+        })
 }
 
 /// Least cosine between an end's run and its side's outward normal for
@@ -996,9 +1065,15 @@ mod tests {
     /// stays a fixed point of `finish`.
     #[test]
     fn long_edges_run_straight_into_their_arrowheads() {
+        // A spline through a dummy chain, as the builder draws it before
+        // the edge stages put it on the axes (B10; a chain the ortho stage
+        // leaves gets its stub the same way).
         let src = "flowchart TD\nA --> B --> C --> D\nA --> D";
         let g = parse(src).unwrap();
-        let sc = scene(&g);
+        let mut sc = crate::scene::built(&g);
+        let cx = ctx(&g, &sc);
+        let mut moved = vec![false; sc.edges.len()];
+        glyph_stubs(&mut sc, &cx, &mut moved);
         let mut seen = 0;
         // The dummy chain A -> D past B and C (a router path keeps its
         // own stub, a corner one clearance out).
@@ -1031,8 +1106,12 @@ mod tests {
     #[test]
     fn a_stub_never_crowds_a_node_or_an_edge_its_curve_kept_clear_of() {
         let g = parse("flowchart TD\nA --> B --> C --> D\nA --> D").unwrap();
-        let sc = scene(&g);
+        // The builder's spline through the dummy chain, stubbed (see
+        // above).
+        let mut sc = crate::scene::built(&g);
         let cx = ctx(&g, &sc);
+        let mut moved = vec![false; sc.edges.len()];
+        glyph_stubs(&mut sc, &cx, &mut moved);
         let i = (0..sc.edges.len())
             .find(|&i| sc.edges[i].from == "A" && sc.edges[i].to == "D")
             .unwrap();

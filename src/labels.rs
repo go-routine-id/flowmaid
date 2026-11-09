@@ -1668,13 +1668,14 @@ pub(crate) fn avoid_label_overlaps(
 /// a hard obstacle or is crossed by another edge's stroke, now that
 /// every edge is drawn for good. The canvas is refitted by the
 /// pipeline's next stage.
-pub(crate) fn relabel(_g: &Graph, sc: &mut Scene, _cx: &Ctx, moved: &[bool], budget: usize) {
-    place(
+pub(crate) fn relabel(_g: &Graph, sc: &mut Scene, cx: &Ctx, moved: &[bool], budget: usize) {
+    place_long(
         &sc.nodes,
         &sc.clusters,
         &mut sc.edges,
         Pass::Changed(moved),
         budget,
+        &cx.chain,
     );
 }
 
@@ -1685,6 +1686,56 @@ fn place(
     pass: Pass,
     budget: usize,
 ) -> Vec<usize> {
+    place_long(nodes, frames, edges, pass, budget, &[])
+}
+
+/// How far (px) a row of nodes keeps clear of both ends of an edge
+/// [`place_long`] counts as long for passing it: about half the least
+/// gap between ranks.
+const ROW_APART: f64 = 12.0;
+
+/// [`place`] knowing which edges are long ones the ortho stage drew
+/// through their dummies' columns (index-parallel with `edges`; missing
+/// entries are `false`): one whose columns lined up runs straight, but
+/// its label keeps the slot its dummy reserved, as on a long edge's
+/// polyline. A labelled edge whose ends lie a whole row of nodes apart
+/// along its run counts as long too, whoever flagged it.
+fn place_long(
+    nodes: &[SceneNode],
+    frames: &[SceneCluster],
+    edges: &mut [SceneEdge],
+    pass: Pass,
+    budget: usize,
+    long: &[bool],
+) -> Vec<usize> {
+    let spans_row = |e: &SceneEdge| {
+        let (a, b) = match (e.waypoints.first(), e.waypoints.last()) {
+            (Some(&a), Some(&b)) if e.waypoints.len() >= 2 => (a, b),
+            _ => (e.bezier[0], e.bezier[3]),
+        };
+        let vertical = (b.1 - a.1).abs() >= (b.0 - a.0).abs();
+        let (lo, hi) = if vertical {
+            (a.1.min(b.1), a.1.max(b.1))
+        } else {
+            (a.0.min(b.0), a.0.max(b.0))
+        };
+        nodes.iter().any(|n| {
+            let (c, half) = if vertical {
+                (n.y, n.h / 2.0)
+            } else {
+                (n.x, n.w / 2.0)
+            };
+            // (A rank's gap clear of either end: a drag that lays a
+            // node just past its siblings' row draws no long edge.)
+            c - half > lo + ROW_APART && c + half < hi - ROW_APART
+        })
+    };
+    let long: Vec<bool> = edges
+        .iter()
+        .enumerate()
+        .map(|(i, e)| long.get(i).copied().unwrap_or(false) || e.label.is_some() && spans_row(e))
+        .collect();
+    let long = |i: usize| long[i];
     if edges.iter().all(|e| e.label.is_none()) {
         return Vec::new();
     }
@@ -1779,8 +1830,9 @@ fn place(
         .collect();
     let fan: Vec<Option<bool>> = edges
         .iter()
-        .map(|e| {
-            if !e.waypoints.is_empty() {
+        .enumerate()
+        .map(|(i, e)| {
+            if !crate::scene::single_run(e) || long(i) {
                 // A long edge's label keeps the slot its layout dummy
                 // reserved mid-channel.
                 return None;
@@ -1858,7 +1910,7 @@ fn place(
             // drawn as a cable of near-parallel curves), the label keeps
             // to the far half, where the fan has spread.
             let twin = pairs.get(&pair(e)).is_some_and(|&k| k > 1);
-            let across = e.paint_width.is_none() && e.waypoints.is_empty() && !twin;
+            let across = e.paint_width.is_none() && crate::scene::single_run(e) && !twin;
             let mid_clear = || {
                 let (Some(pts), Some((_, _, w))) = (&lines[ei], &e.label) else {
                     return false;
@@ -1938,6 +1990,7 @@ fn place(
         if rect_line_dist((at.0, at.1, at.0, at.1), pts) > FAN_ON_LINE
             || field.strokes_matter && field.strokes().count(r, ei, 0) > 0
             || near_hub(&mut tracks, ei, *at, *w)
+            || crowds_a_sibling(nodes, edges, &fan, ei, point)
         {
             restack.insert(point.clone());
         }
@@ -2148,7 +2201,8 @@ fn place(
             if !changed.get(ei).copied().unwrap_or(false)
                 || e.from == e.to
                 || e.paint_width.is_some()
-                || !e.waypoints.is_empty()
+                || !crate::scene::single_run(e)
+                || long(ei)
                 || fan[ei].is_some()
                 || hub[ei].1 > 0
                 || stacked[ei]
@@ -2392,6 +2446,49 @@ fn one_gap_down(e: &SceneEdge, nodes: &[SceneNode]) -> bool {
 /// [`FAN_SIBLING_GAP`] apart. A label with no pick keeps its spot (the
 /// caller re-places it). `tracks` holds every flagged label's track.
 /// Returns the edges whose label moved.
+/// Whether edge `ei`'s label (of `point`'s fan, `fan` as [`place`]
+/// reads it) lies side by side with a sibling's across the fan's flow
+/// nearer than [`FAN_SIBLING_GAP`]: a drag's redrawn branch, its label
+/// on its new line at the builder's spot, set beside a kept sibling's
+/// row. Its fan is stacked again as a whole.
+fn crowds_a_sibling(
+    nodes: &[SceneNode],
+    edges: &[SceneEdge],
+    fan: &[Option<bool>],
+    ei: usize,
+    point: &str,
+) -> bool {
+    let Some(c) = nodes.iter().find(|n| n.id == point).map(|n| (n.x, n.y)) else {
+        return false;
+    };
+    let Some((_, at, w)) = &edges[ei].label else {
+        return false;
+    };
+    // The flow: from the point to this label (as `stack_fans` reads it
+    // from the far ends, near enough for one test).
+    let tb = (at.1 - c.1).abs() >= (at.0 - c.0).abs();
+    let a = label_rect(*at, *w);
+    edges.iter().enumerate().any(|(j, f)| {
+        if j == ei || fan[j].is_none() {
+            return false;
+        }
+        let mine = if fan[j] == Some(true) { &f.from } else { &f.to };
+        let Some((_, bt, bw)) = &f.label else {
+            return false;
+        };
+        if mine != point {
+            return false;
+        }
+        let b = label_rect(*bt, *bw);
+        let (along, across) = if tb {
+            (a.1 < b.3 && b.1 < a.3, (b.0 - a.2).max(a.0 - b.2))
+        } else {
+            (a.0 < b.2 && b.0 < a.2, (b.1 - a.3).max(a.1 - b.3))
+        };
+        along && across < FAN_SIBLING_GAP - 0.01
+    })
+}
+
 fn stack_fans(
     field: &Field,
     nodes: &[SceneNode],
@@ -3538,7 +3635,8 @@ note for Map~K,V~ \"generic\"
 
     /// Checks every label of a compact branch point's fan in `sc` (the
     /// point named `point`, flowing along y when `tb`, else along x):
-    /// in the far half of its own line, crossed by no other stroke, and
+    /// in the far half of its own line (or on its step across the flow),
+    /// crossed by no other stroke, and
     /// FAN_SIBLING_GAP clear across the flow of any sibling beside it.
     fn assert_fan_labels_read_as_their_own(sc: &Scene, point: &str, tb: bool, what: &str) {
         let lines: Vec<_> = sc.edges.iter().map(|e| Some(edge_polyline(e))).collect();
@@ -3571,7 +3669,22 @@ note for Map~K,V~ \"generic\"
             let on = rect_line_dist((c.0, c.1, c.0, c.1), lines[ei].as_ref().unwrap());
             assert!(on < 0.5, "{what}: '{text}' {on:.1}px off its line");
             let share = arc[k] / arc[pts.len() - 1];
-            assert!(share >= 0.5, "{what}: '{text}' at {share:.2} of its line");
+            // Or on its step's run across the flow (an orthogonal Z's
+            // middle, since B10), which no sibling shares: in an LR fan
+            // that run lies nearer the point than the target.
+            let across = (1..pts.len()).any(|j| {
+                let (a, b) = (pts[j - 1], pts[j]);
+                let (along, off) = if tb {
+                    ((a.1 - b.1).abs(), (a.1 - c.1).abs() + (b.1 - c.1).abs())
+                } else {
+                    ((a.0 - b.0).abs(), (a.0 - c.0).abs() + (b.0 - c.0).abs())
+                };
+                along < 0.5 && off < 1.0
+            });
+            assert!(
+                share >= 0.5 || across && share >= 0.3,
+                "{what}: '{text}' at {share:.2} of its line"
+            );
             boxes.push((text.clone(), r));
         }
         assert!(boxes.len() >= 2, "{what}: a labelled fan");
@@ -3878,7 +3991,14 @@ note for Map~K,V~ \"generic\"
                 // the builder does: neither detours round the other.
                 if k < 2 {
                     for e in s.edges.iter().filter(|e| e.from == "c" && e.to == "B") {
-                        assert!(e.waypoints.is_empty(), "{what}: a twin was rerouted");
+                        // (Drawn on the axes since B10, a twin keeps the
+                        // ortho stage's bulge round its label, its corners
+                        // in `bezier`, or runs straight; a detour leaves
+                        // `bezier` a chord of a path that turns.)
+                        let chord = e.bezier[1] == e.bezier[0] && e.bezier[2] == e.bezier[3];
+                        let turns = crate::router::ortho_corners(e).map_or(true, |c| c.len() > 2);
+                        let rerouted = chord && turns;
+                        assert!(!rerouted, "{what}: a twin was rerouted");
                     }
                 }
             }
@@ -4122,8 +4242,20 @@ note for Map~K,V~ \"generic\"
         let (own, _) = label_dists(&sc.edges, 0);
         assert!(own <= TOUCH_EPS, "label left {own}px off its line");
         assert_ne!(sc.edges[0].label, before[0]);
+        // An unmoved edge keeps its label — unless the redrawn edge now
+        // runs within its keep-out (every edge on the axes since B10:
+        // edge 0, shifted aside, runs down past 'y' a px off its chip).
+        let line0 = edge_polyline(&sc.edges[0]);
         for (i, b) in before.iter().enumerate().skip(1) {
-            assert_eq!(&sc.edges[i].label, b, "unmoved edge {i} kept its label");
+            let crossed = b
+                .as_ref()
+                .is_some_and(|(_, c, w)| rect_line_dist(label_rect(*c, *w), &line0) <= LABEL_KEEP);
+            if !crossed {
+                assert_eq!(&sc.edges[i].label, b, "unmoved edge {i} kept its label");
+            } else {
+                let (own, _) = label_dists(&sc.edges, i);
+                assert!(own <= TOUCH_EPS, "label {i} left {own}px off its line");
+            }
         }
     }
 

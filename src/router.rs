@@ -57,8 +57,9 @@
 //!    in the order their paths head ([`reorder`]).
 //! 5. **Smooth.** Corners get two extra points either side, so the
 //!    `curveBasis` spline the painter draws through the waypoints rounds
-//!    them: [`CORNER_R`] while searching, up to [`CORNER_MAX`] on the
-//!    finished path where the room allows.
+//!    them: [`CORNER_R`], while searching and on the finished path alike
+//!    (every flowchart edge is orthogonal, [`crate::ortho`], so one
+//!    corner style serves the static scene and every drag frame).
 //!
 //! Every candidate is scored the same way as the original and replaces
 //! it only when it is strictly better, and every nudge is kept only when
@@ -150,9 +151,17 @@ const FRAME_COST: f64 = 30.0;
 /// twice the clearance still leave a (priced) channel between them.
 const BAND_COST: f64 = 12.0;
 /// What leaving or entering a node by a side the builder did not
-/// choose costs a back-edge (px): two bends' worth, so the chosen side
-/// wins unless the other is clearly shorter.
+/// choose costs (px): two bends' worth, so the chosen side wins unless
+/// the other is clearly shorter.
 const SIDE_SWITCH_COST: f64 = 2.0 * BEND_COST;
+/// What a forward edge pays in the static scene to leave or enter a
+/// node by a side facing across the flow (report M5, §2.4): four bends'
+/// worth. Every edge
+/// between two ranks is drawn from flow side to flow side ([`crate::ortho`]);
+/// at [`SIDE_SWITCH_COST`] a reroute round a cramped run took a flank
+/// whenever that saved two bends, and dense-td's forward edges left 11
+/// of its boxes by their sides.
+const FORWARD_FLANK_COST: f64 = 4.0 * BEND_COST;
 /// What ending on a plain stub costs at a glyph end whose head grew
 /// longer than it ([`stub_len`]): two bends' worth, so the long stub
 /// wins unless it needs a clearly longer way round.
@@ -226,11 +235,18 @@ const ROUTE_WINDOW: f64 = 160.0;
 /// bounding box grown by this (px); the static scene's searches the
 /// whole drawing.
 const ROUTE_WALLS_WINDOW: f64 = 480.0;
-/// Weight on the A\* distance heuristic. Above 1 the search is greedy
-/// towards the goal: it settles for a path at most this much costlier
-/// than the cheapest, in return for popping far fewer states — the
-/// priced crossings and runs make the plain distance a weak bound.
+/// Weight on the A\* distance heuristic in [`crate::scene::route`]. Above
+/// 1 the search is greedy towards the goal: it settles for a path at
+/// most this much costlier than the cheapest, in return for popping far
+/// fewer states — the priced crossings and runs make the plain distance
+/// a weak bound. A drag frame cannot afford the wider hunt.
 const H_WEIGHT: f64 = 1.5;
+/// The weight in the static scene (report M5, §2.1): admissible, so the
+/// search finds the cheapest path. At [`H_WEIGHT`] it settled for one up
+/// to half again as costly: fanout-frames' `n0 -> g3` took a 972 px
+/// route over a free L of 924 px, and through a channel past the frames
+/// where a 40 px gap held a straight run.
+const H_WEIGHT_STATIC: f64 = 1.0;
 /// Above this many edges the pass leaves the drawing as built: its
 /// clearance scoring (outside the work budget) grows with the square of
 /// the edges meeting at one hub, and a diagram that large is past
@@ -240,10 +256,6 @@ const ROUTE_MAX_EDGES: usize = 400;
 /// Corner rounding distance (px) of a candidate while it is searched
 /// and scored, capped at half the shorter leg.
 pub(crate) const CORNER_R: f64 = 14.0;
-/// The widest corner rounding (px) a finished path gets where its legs
-/// and the free room round the corner allow (one soft-orthogonal style
-/// next to the builder's free curves).
-const CORNER_MAX: f64 = 36.0;
 /// A stair step (two opposite corners) shorter than this (px) is a
 /// micro-jog: merged into one leg when that stays clear (G8 taste).
 const JOG_MIN: f64 = 2.0 * CORNER_R;
@@ -511,18 +523,6 @@ impl Score {
     /// Node, frame and chip hits together: what makes an edge broken.
     fn hard(&self) -> usize {
         self.node + self.frame + self.chip
-    }
-
-    /// The part scored against the scene alone (what
-    /// [`World::score`] gives without the accepted edges).
-    fn scene(self) -> Score {
-        Score {
-            overlap: 0,
-            head: 0,
-            cross: 0,
-            tight: 0,
-            ..self
-        }
     }
 }
 
@@ -2325,6 +2325,8 @@ struct Work {
     /// [`detour`] units left, apart from `left`: a hard edge still gets
     /// its channel detour once the searches have spent `left`.
     detour: usize,
+    /// The A\* heuristic's weight ([`H_WEIGHT`], [`H_WEIGHT_STATIC`]).
+    h_weight: f64,
 }
 
 impl Work {
@@ -2353,6 +2355,7 @@ impl Work {
                 max_cells: STATIC_MAX_CELLS,
                 walls_reach: f64::INFINITY,
                 detour: DETOUR_TOTAL_WORK,
+                h_weight: H_WEIGHT_STATIC,
             },
             Mode::Routed => Work {
                 left: ROUTE_TOTAL_WORK,
@@ -2360,6 +2363,7 @@ impl Work {
                 max_cells: ROUTE_MAX_CELLS,
                 walls_reach: ROUTE_WALLS_WINDOW,
                 detour: ROUTE_DETOUR_WORK,
+                h_weight: H_WEIGHT,
             },
         }
     }
@@ -2486,7 +2490,7 @@ fn search(
         }
     }
     let live = |sc: &Scratch, i: usize, j: usize| prune.is_none() || sc.live[j * nx + i];
-    let hw = if soft { H_WEIGHT_GREEDY } else { H_WEIGHT };
+    let hw = if soft { H_WEIGHT_GREEDY } else { work.h_weight };
     let budget = work.per_search;
     let h = |i: usize, j: usize| {
         goals
@@ -2788,6 +2792,7 @@ fn free_slot(
 /// [`PORT_SPACING`] from every end in `taken` there but edge `me`'s (so
 /// two reroutes never land on one port, G9). Each stub reaches `len` px
 /// out of its side ([`stub_len`]).
+#[allow(clippy::too_many_arguments)]
 fn terms(
     w: &World,
     end: EndRef,
@@ -2796,9 +2801,19 @@ fn terms(
     len: f64,
     taken: &[(EndRef, Pt, usize)],
     me: usize,
+    forward: bool,
 ) -> Vec<Term> {
     let rect = w.end_rect(end);
     let side = side_of(rect, port);
+    // A side across the flow (TD / BT: left, right; LR / RL: top,
+    // bottom).
+    let flank = |s: Side| {
+        let horizontal = matches!(
+            w.dir,
+            crate::model::Direction::LR | crate::model::Direction::RL
+        );
+        matches!(s, Side::Left | Side::Right) != horizontal
+    };
     let mut v = vec![Term {
         port,
         stub: stub_of(rect, side, port, len),
@@ -2815,7 +2830,11 @@ fn terms(
                 port: p,
                 stub: stub_of(rect, s, p, len),
                 out: side_move(s),
-                cost: SIDE_SWITCH_COST,
+                cost: if forward && flank(s) {
+                    FORWARD_FLANK_COST
+                } else {
+                    SIDE_SWITCH_COST
+                },
             });
         }
     }
@@ -2897,15 +2916,19 @@ fn route_edge(
     // that is longer than the plain one, the plain stubs come too, at
     // [`SHORT_STUB_COST`]: the long stub wins where it costs about the
     // same, never by a long way round.
+    // A forward edge in the static scene pays more for a flank
+    // ([`FORWARD_FLANK_COST`]); a drag's small window often has no other
+    // way round (G13).
+    let forward = !info.back && env.tracks;
     let end_terms = |end: EndRef, port: Pt, glyph: bool| {
         let (plain, len) = (clear + STUB_EXTRA, stub_len(e, glyph, clear));
-        let mut found: Vec<Term> = terms(w, end, port, t.alt, len, env.taken, me)
+        let mut found: Vec<Term> = terms(w, end, port, t.alt, len, env.taken, me, forward)
             .into_iter()
             .filter(usable)
             .collect();
         if len > plain {
             found.extend(
-                terms(w, end, port, t.alt, plain, env.taken, me)
+                terms(w, end, port, t.alt, plain, env.taken, me, forward)
                     .into_iter()
                     .filter(usable)
                     .map(|t| Term {
@@ -3874,7 +3897,7 @@ fn straight_between_ports(
 
 /// The corner list of an edge drawn as an orthogonal path (every leg of
 /// its waypoints axis-aligned, its ports' included), else `None`.
-fn ortho_corners(e: &crate::scene::SceneEdge) -> Option<Vec<Pt>> {
+pub(crate) fn ortho_corners(e: &crate::scene::SceneEdge) -> Option<Vec<Pt>> {
     if e.waypoints.len() < 2 {
         return None;
     }
@@ -3888,9 +3911,8 @@ fn ortho_corners(e: &crate::scene::SceneEdge) -> Option<Vec<Pt>> {
 /// Stages 4 and 5 of [`crate::edgepass::finish`], after the ports were
 /// spaced again: the channel nudge over every orthogonal path (rerouted or
 /// drawn so by the builder), ports included ([`spread`], G1/G4); then
-/// each path's stair steps under [`JOG_MIN`] merged and its corners
-/// rounded up to [`CORNER_MAX`] where the room allows (one soft
-/// orthogonal style). Every change of an edge is kept only when it
+/// each path's stair steps under [`JOG_MIN`] merged, its corners rounded
+/// at [`CORNER_R`]. Every change of an edge is kept only when it
 /// scores no worse against the scene and the other edges as drawn by
 /// then. Sets `moved[i]` for each edge it redraws.
 pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut [bool]) {
@@ -3917,7 +3939,9 @@ pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut
     let mut routes: Vec<Option<Vec<Pt>>> = (0..ne)
         .map(|i| {
             infos[i].as_ref()?;
-            if cx.fixed.get(i).copied().unwrap_or(false) {
+            if cx.fixed.get(i).copied().unwrap_or(false)
+                || cx.shaped.get(i).copied().unwrap_or(false)
+            {
                 return None;
             }
             ortho_corners(&sc.edges[i])
@@ -4011,8 +4035,6 @@ pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut
         let mut cur = old.clone();
         let mut pts = polys[i].clone();
         let mut redraw = false;
-        // The score of `pts` when it is known.
-        let mut known: Option<Score> = None;
         // Scored against the others only when the path may change.
         let nudged_i = routes[i].as_ref().zip(nudged[i].clone());
         if nudged_i.is_some() || merge_jog(&f, &kept, i, 0).is_some() {
@@ -4041,46 +4063,13 @@ pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut
                     skip += 1;
                 }
             }
-            known = Some(s_cur);
         }
-        // The wider rounding only cuts its corners: kept when the scene
-        // scores it no worse. A path with no inner corner has nothing to
-        // round: a straight builder edge keeps its waypoints, and its
-        // label its spot.
-        // In `route()` only a path this stage redraws anyway: the others
-        // keep the router's corners, unjudged (G13). A state note card's
-        // link keeps them in either mode: `route()` would draw it with
-        // the router's, so a drag that leaves its ends put would round
-        // its corners afresh (verify g26: 36 px corners in `scene()`,
-        // 14 px in every drag frame).
-        let note = crate::ports::note_link(sc, cx, i);
-        let wide = (cur.len() > 2 && !note && (redraw || mode == Mode::Static))
-            .then(|| {
-                let narrow = drawn_with(e, &smooth(&cur, CORNER_R));
-                let wide = drawn_with(e, &smooth(&cur, CORNER_MAX));
-                // Legs too short for a wider corner: nothing to score.
-                if wide == narrow {
-                    return None;
-                }
-                let s_narrow = match known {
-                    Some(s) if pts == narrow => s.scene(),
-                    _ => w.score(info, i, &narrow, None),
-                };
-                (w.score(info, i, &wide, None) <= s_narrow).then_some(wide)
-            })
-            .flatten();
-        let r = if let Some(wide) = wide {
-            (pts, redraw) = (wide, true);
-            CORNER_MAX
-        } else {
-            CORNER_R
-        };
         match acc.as_mut() {
             Some(a) => accept(a, i, info.ends, &pts),
             None => held[i] = Some(pts),
         }
         if redraw {
-            let wps = smooth(&cur, r);
+            let wps = smooth(&cur, CORNER_R);
             let e = &mut sc.edges[i];
             if e.waypoints != wps {
                 let (p0, p3) = (wps[0], wps[wps.len() - 1]);
@@ -4406,11 +4395,7 @@ fn close_moves(e: &crate::scene::SceneEdge, other: &[Pt]) -> Vec<([Pt; 4], Vec<P
     };
     let n = c.len();
     // Corners rounded as the nudge left them.
-    let r = if e.waypoints == smooth(&c, CORNER_MAX) {
-        CORNER_MAX
-    } else {
-        CORNER_R
-    };
+    let r = CORNER_R;
     // The inner leg (both its corners off the ends) nearest `other`.
     let Some(k) = (1..n.saturating_sub(2))
         .map(|k| {
@@ -4761,6 +4746,45 @@ fn narrow_px(w: &World, info: &Info, pts: &[Pt]) -> f64 {
 /// Accept edge `i` as `pts` for the edges searched after it: its
 /// simplified polyline goes into the segment index, which later
 /// lattices are priced from.
+/// The length (px) of `a`'s legs running on top of `b` (within
+/// [`EDGE_SPACING`] and parallel to one of its legs): what two paths
+/// share as one stroke.
+fn on_top(a: &[Pt], b: &[Pt]) -> f64 {
+    let mut run = 0.0;
+    for p in a.windows(2) {
+        let (p0, p1) = (p[0], p[1]);
+        let l = dist(p0, p1);
+        if l < EPS {
+            continue;
+        }
+        let u = ((p1.0 - p0.0) / l, (p1.1 - p0.1) / l);
+        for q in b.windows(2) {
+            let (q0, q1) = (q[0], q[1]);
+            let m = dist(q0, q1);
+            if m < EPS {
+                continue;
+            }
+            let v = ((q1.0 - q0.0) / m, (q1.1 - q0.1) / m);
+            if (u.0 * v.0 + u.1 * v.1).abs() < PARALLEL_COS {
+                continue;
+            }
+            // How far `q` lies off `p`'s line, and how much of `p` it
+            // spans.
+            if seg_dist(q0, p0, p1).min(seg_dist(q1, p0, p1)) > EDGE_SPACING
+                && seg_dist(p0, q0, q1).min(seg_dist(p1, q0, q1)) > EDGE_SPACING
+            {
+                continue;
+            }
+            let t = |r: Pt| (r.0 - p0.0) * u.0 + (r.1 - p0.1) * u.1;
+            let (a0, a1) = (t(q0).min(t(q1)).max(0.0), t(q0).max(t(q1)).min(l));
+            if a1 > a0 {
+                run += a1 - a0;
+            }
+        }
+    }
+    run
+}
+
 fn accept(acc: &mut Accepted, i: usize, ends: (EndRef, EndRef), pts: &[Pt]) {
     acc.put(i, ends, &simplify(pts));
 }
@@ -4804,7 +4828,8 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
     // static drawing crossed 17 more edges).
     let channel = |i: usize| {
         let e = &sc.edges[i];
-        !e.waypoints.is_empty() && ortho_corners(e).is_none()
+        cx.chain.get(i).copied().unwrap_or(false)
+            || !e.waypoints.is_empty() && ortho_corners(e).is_none()
     };
     let lane =
         |i: usize| infos[i].as_ref().is_some_and(|f| f.back) && !sc.edges[i].waypoints.is_empty();
@@ -5188,6 +5213,119 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
             _ => {}
         }
     }
+    // A second pass over the runs still on top of each other (report P0
+    // #14, static only): of two edges that each scored clean when
+    // accepted, the later one was searched and kept its course when no
+    // reroute beat it, and the earlier one, accepted clean, was never
+    // searched at all — dense-td's solid and dashed lines merged for 30 to
+    // 200 px. Each edge still running on top of another now has its
+    // partner searched too (one not rerouted already, not in a lane;
+    // a label follows its rerouted line in the label stage), against
+    // everything as drawn by now, and taken only when
+    // the pair's runs on top of each other shrink and nothing else gets
+    // worse for it.
+    if mode == Mode::Static && work.left > 0 {
+        let drawn_now = |routes: &[Option<Vec<Pt>>], k: usize| -> Vec<Pt> {
+            match routes[k].as_ref() {
+                Some(c) => drawn_with(&sc.edges[k], &smooth(c, CORNER_R)),
+                None => polys[k].clone(),
+            }
+        };
+        let mut tried = vec![false; ne];
+        for &(class, i) in &bad {
+            if class != 0 || alone[i].hard() > 0 || work.left == 0 {
+                continue;
+            }
+            let info = infos[i].as_ref().expect("filtered");
+            let pi = simplify(&drawn_now(&routes, i));
+            for j in 0..ne {
+                if j == i || tried[j] || fixed(j) || routes[j].is_some() || lane(j) {
+                    continue;
+                }
+                let Some(jinfo) = infos[j].as_ref() else {
+                    continue;
+                };
+                let pj = simplify(&polys[j]);
+                if on_top(&pi, &pj) < MIN_OVERLAP_RUN {
+                    continue;
+                }
+                tried[j] = true;
+                let base_i = w.against(
+                    info,
+                    i,
+                    &pi,
+                    &mut accepted,
+                    w.score(info, i, &pi, None),
+                    true,
+                );
+                let base_j = w.score(jinfo, j, &polys[j], Some(&mut accepted));
+                let mut built: Built = Vec::new();
+                let mut best: Option<(Score, Vec<Pt>, Vec<Pt>)> = None;
+                for t in [
+                    Try {
+                        lat: 0,
+                        alt: true,
+                        soft: false,
+                        soft_walls: false,
+                        reach: ROUTE_WINDOW,
+                    },
+                    Try {
+                        lat: 1,
+                        alt: true,
+                        soft: false,
+                        soft_walls: false,
+                        reach: ROUTE_WINDOW,
+                    },
+                ] {
+                    if work.left == 0 {
+                        break;
+                    }
+                    let mut env = Env {
+                        w: &w,
+                        taken: &taken,
+                        tracks: true,
+                        acc: &mut accepted,
+                        built: &mut built,
+                        work: &mut work,
+                        sc: &mut scratch,
+                    };
+                    let Some(corners) = route_edge(&mut env, jinfo, j, &sc.edges[j], t) else {
+                        continue;
+                    };
+                    let pts = drawn_with(&sc.edges[j], &smooth(&corners, CORNER_R));
+                    let s = w.score(jinfo, j, &pts, Some(&mut accepted));
+                    let _ = work.take(w.spent());
+                    if s < base_j && best.as_ref().map_or(true, |b| s < b.0) {
+                        best = Some((s, corners, pts));
+                    }
+                }
+                let Some((s, corners, pts)) = best else {
+                    continue;
+                };
+                // The pair's runs on top of each other must shrink, the
+                // partner's own score no worse and nothing hard added.
+                let old = polys[j].clone();
+                accept(&mut accepted, j, jinfo.ends, &pts);
+                let now_i = w.against(
+                    info,
+                    i,
+                    &pi,
+                    &mut accepted,
+                    w.score(info, i, &pi, None),
+                    true,
+                );
+                if s.hard() <= base_j.hard() && now_i.overlap < base_i.overlap {
+                    let ends = [corners[0], corners[corners.len() - 1]];
+                    for (t, p) in taken.iter_mut().filter(|t| t.2 == j).zip(ends) {
+                        t.1 = p;
+                    }
+                    routes[j] = Some(corners);
+                } else {
+                    accept(&mut accepted, j, jinfo.ends, &old);
+                }
+            }
+        }
+    }
     // The rescue: every edge still through a node (the searches, the
     // channel detour or their budgets gave out) gets a detour that may
     // cross frames but keeps clear of every node and chip, the edge
@@ -5275,6 +5413,7 @@ mod tests {
             max_cells: usize::MAX,
             walls_reach: f64::INFINITY,
             detour: usize::MAX,
+            h_weight: H_WEIGHT,
         }
     }
 

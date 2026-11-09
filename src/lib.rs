@@ -52,6 +52,7 @@ pub mod layout;
 mod markdown;
 pub mod mindmap;
 pub mod model;
+mod ortho;
 pub mod parser;
 pub mod pie;
 mod ports;

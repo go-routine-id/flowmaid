@@ -24,15 +24,22 @@ const CEILINGS: &[(&str, Ceil, Ceil)] = &[
     // integrated round-2 pipeline; routed 36 -> 39 (one frame entry)
     // when a reroute lying on another edge stopped beating a curve that
     // only crosses a frame (G1 over G6).
-    ("bench-75", (0, 2, 15), (0, 1, 39)),
+    // B10 (report B1, M2, M5: every edge on the axes, the gaps grown
+    // for their steps): static 15 -> 3, routed 39 -> 2.
+    ("bench-75", (0, 1, 3), (0, 1, 2)),
     // The dense fixtures and fanout-frames come from
     // `examples/fixture_gen.rs` (seeded: their own nesting, fan-outs
     // and edges, nested frames crossed by long edges), measured on the
     // round-2 pipeline when they replaced the hand-made ones.
     // Routed edge_node 2 / 3 -> 0 once an edge the searches leave
     // through nodes gets the rescue detour (frames crossed, nodes not).
-    ("dense-lr", (0, 11, 13), (0, 13, 20)),
-    ("dense-td", (0, 28, 42), (0, 28, 47)),
+    // B10: dense-td 42 | 47 -> 30 | 29 defects (frame pairs 28 -> 26 |
+    // 27), dense-lr routed 20 -> 15. dense-lr static 11 -> 13 frame pairs
+    // and 13 -> 15 defects: hub `n12`'s fan steps across the gap its
+    // frames g6 / g7 stand in as tracks a pitch apart, where its curves
+    // fanned out past their corners (two more edge-frame crossings).
+    ("dense-lr", (0, 13, 15), (0, 13, 15)),
+    ("dense-td", (0, 26, 30), (0, 27, 29)),
     ("fanout-frames", (0, 0, 0), (0, 0, 0)),
     ("wide-labels", (0, 0, 0), (0, 0, 0)), // (0,0,6) (0,0,8)
 ];
@@ -44,7 +51,7 @@ const CEILINGS: &[(&str, Ceil, Ceil)] = &[
 const GAP_FLOORS: &[(&str, f64, f64)] = &[
     ("back-edge", 40.0, 40.0),
     // Static 3.4 before the channel nudge spread parallel legs apart.
-    ("bench-75", 5.9, 2.1),
+    ("bench-75", 9.0, 9.0),
     // The generated dense fixtures, as first measured. dense-lr static
     // 9.6 -> 9.5 (report M7): its one label past the 200 px wrapping
     // width (`n32`, 204 px) now wraps to two lines, the drawing grows
@@ -70,7 +77,13 @@ const GAP_FLOORS: &[(&str, f64, f64)] = &[
     // keeps its border off the lateral runs crossing it (`layout`'s
     // `cross_need`): dense-td static 10.50 -> 13.04, dense-lr 11.74 ->
     // 14.50, ratcheted to 12.0.
-    ("dense-lr", 12.0, 12.0),
+    //
+    // B10 (report B1: every edge on the axes, a channel's steps a track
+    // pitch apart): dense-lr routed 12.06 -> 10.86, two of hub `n12`'s
+    // steps in the shared channel past g6, between `TRACK_PITCH` (12.5)
+    // and the least pitch a crowded channel closes to; bench-75 opened
+    // 5.9 | 2.1 -> 9.0 | 9.06, ratcheted.
+    ("dense-lr", 12.0, 10.8),
     ("dense-td", 12.1, 12.0),
     ("fanout-frames", 40.0, 40.0),
     ("wide-labels", 40.0, 40.0),
@@ -255,7 +268,13 @@ fn every_fixture_has_a_ceiling() {
 /// cable of three curves that leaves hub `n12`'s over-full side (its
 /// lone far ends now meet their targets in the middle), its box's edge
 /// over the neighbour `n12 -> n36`; no spot along the cable is clear.
-const LBL_EDGE_MAX: (usize, usize) = (1, 4);
+/// B10 (report B1, M2: every edge on the axes) 1 -> 6 static, a known
+/// regression: in LR a labelled Z's label rides its step across the
+/// flow, and hub `n12`'s fan steps a track pitch apart in one channel,
+/// so four of dense-lr's fan labels (and `n25 -> n38`'s) sit over a
+/// neighbouring step where no spot along their short runs is clear;
+/// routed stays 4 (dense-lr 2 -> 3, dense-td 2 -> 1).
+const LBL_EDGE_MAX: (usize, usize) = (6, 4);
 
 /// Most hard label hits (node, label, chip or arrowhead) over all
 /// fixtures, per mode (static, routed). None: a spot covering an
@@ -607,22 +626,39 @@ fn channels_keep_edges_apart_and_off_chips() {
 /// 51 550 (fanout-frames 268 | 114 -> 396 | 352). Its static drawing
 /// sheds a border hug (212 px), a tight run, a sideways wiggle and
 /// three end kinks, its canvas 34 % narrower and 9 % smaller.
+///
+/// B10 (report §2.1, B1, M2, M5, P0 #14): every flowchart and state edge
+/// is drawn on the axes with rounded corners (`crate::ortho`), a gap
+/// grows by the steps it holds and the router weighs lateral runs as it
+/// does in `route()`. Lowered: idiom_scubic 61 | 80 -> 0 | 0,
+/// idiom_spline 21 | 22 -> 0 | 0, idiom_bow 2 | 1 -> 0 | 0, end_tilt
+/// 7 | 11 -> 0 | 0, end_tilt_max 76.8 | 128.4 -> 0.3 | 0.6, end_kink
+/// 53 | 69 -> 1 | 0, lat_wiggles routed 16 -> 6, lat_backtrack routed
+/// 667 -> 456, x_drawn routed 504 -> 496. Raised: band_pairs 94 | 104 ->
+/// 115 | 142 and band_len 45 930 | 51 550 -> 65 750 | 70 222 — a
+/// channel's steps and legs run parallel a track pitch apart where the
+/// curves fanned (bench-75 47 | 55 -> 51 | 89 pairs, dense-td's fans
+/// 22 924 -> 25 892 px static); lat_wiggles static 16 -> 22 and
+/// lat_backtrack static 1 814 -> 2 203, bench-75's long edges stepping
+/// across from one dummy column to the next (11 -> 16 wiggles); x_drawn
+/// static 499 -> 533, bench-75's square steps crossing where its curves
+/// slipped past each other (349 -> 389; dense-td 92 -> 86).
 const DEFECT_BASELINE: [(&str, f64, f64); 16] = [
-    ("end_tilt", 7.0, 11.0),
-    ("end_tilt_max", 76.8, 128.4),
+    ("end_tilt", 0.0, 0.0),
+    ("end_tilt_max", 0.3, 0.6),
     ("end_gaps", 0.0, 0.0),
     ("end_gap_max", 0.1, 0.1),
-    ("lat_wiggles", 16.0, 16.0),
-    ("lat_backtrack", 1_814.2, 667.0),
+    ("lat_wiggles", 22.0, 6.0),
+    ("lat_backtrack", 2_203.0, 456.0),
     ("own_frame_x", 0.0, 0.0),
     ("own_frame_len", 0.0, 0.0),
-    ("band_pairs", 94.0, 104.0),
-    ("band_len", 45_930.0, 51_550.0),
-    ("idiom_scubic", 61.0, 80.0),
-    ("idiom_spline", 21.0, 22.0),
-    ("idiom_bow", 2.0, 1.0),
-    ("x_drawn", 499.0, 504.0),
-    ("end_kink", 53.0, 69.0),
+    ("band_pairs", 115.0, 142.0),
+    ("band_len", 65_750.0, 70_222.0),
+    ("idiom_scubic", 0.0, 0.0),
+    ("idiom_spline", 0.0, 0.0),
+    ("idiom_bow", 0.0, 0.0),
+    ("x_drawn", 533.0, 496.0),
+    ("end_kink", 1.0, 0.0),
     ("ink_out", 0.0, 0.0),
 ];
 
@@ -826,10 +862,16 @@ fn long_labels_wrap_and_dense_labels_do_not_tower() {
 /// beside it threw it 22 px (`notes/near-drag` = verify g44, 1 -> 0).
 /// Such an edge now holds its ends (`Ctx::held`) and is rerouted only
 /// for what it hits: dense-td 17 -> 3, bench-75 18 -> 15.
+///
+/// B10 (report B1: every edge on the axes): bench-75 15 -> 12; dense-td
+/// 3 -> 4, a drag of `n44` redraws its edges as `route()` plans them
+/// (steps where the static scene ran down a long edge's dummy column),
+/// and the kept 2-cycle `n16 <-> n43` and `n4 -> n43` beside them are
+/// rerouted off the new steps (`n17`'s drag still throws `n16 -> n41`).
 const DRAG_JUMPS_MAX: &[(&str, usize)] = &[
     ("quality/dense-lr", 0),
-    ("quality/dense-td", 3),
-    ("quality/bench-75", 15),
+    ("quality/dense-td", 4),
+    ("quality/bench-75", 12),
     ("notes/spread-face", 0),
     ("notes/fork-twins", 0),
     ("notes/near-drag", 0),
