@@ -43,6 +43,9 @@ use crate::model::{Direction, Graph};
 use crate::scene::{Scene, SceneEdge, ARROW_MARKER_PX};
 
 type Pt = (f64, f64);
+/// A box `(x0, y0, x1, y1)`, or in flow coordinates (breadth lo, hi, flow
+/// lo, hi).
+type Rect = (f64, f64, f64, f64);
 
 /// How far past a separation a placed jog goes, so one placed at
 /// exactly [`NODE_SEP`] / [`EDGE_SEP`] is clear of the harness's strict
@@ -141,6 +144,10 @@ struct Jog {
     /// under its label), else 0: the tracks beside it keep that, and the
     /// label's gap, off its run.
     label_half: f64,
+    /// Where along the flow the runs either side of it start: the run
+    /// into it from the low flow side at `lo_at`, the run on from it to
+    /// the high side at `hi_at` (what [`uncross`] counts crossings on).
+    runs: (f64, f64),
 }
 
 impl Jog {
@@ -233,6 +240,29 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
         .map(|c| flow_rect(dir, (c.x, c.y, c.x + c.w, c.y + c.h)))
         .collect();
     let load = std::cell::RefCell::new(vec![Vec::new(); gaps.len()]);
+    // Every drawn edge's line (flow coordinates), simplified to its
+    // corners where it has them: what a long run's gap is judged by
+    // (`plan_jog`): a long run with no dummy columns to follow (every
+    // long edge in `route()`) chooses its gap.
+    let lines: Vec<Vec<Pt>> = if gaps.len() >= 2 {
+        sc.edges
+            .iter()
+            .enumerate()
+            .map(|(i, e)| {
+                if !cx.drawn.get(i).copied().unwrap_or(false) {
+                    return Vec::new();
+                }
+                let pts = match crate::router::ortho_corners(e) {
+                    Some(c) => c,
+                    None if e.waypoints.len() >= 2 => e.waypoints.clone(),
+                    None => crate::scene::sample_cubic(&e.bezier, 8),
+                };
+                pts.into_iter().map(|p| to_flow(dir, p)).collect()
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
     let mut jogs: Vec<Jog> = Vec::new();
     let mut plans: Vec<(usize, Vec<Corner>)> = Vec::new();
     // The edges between one pair of ends, either way round (twins): a
@@ -244,10 +274,73 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
     };
     let pairs: Vec<Option<(EndRef, EndRef)>> = (0..sc.edges.len()).map(pair_of).collect();
     let mut bulged = vec![false; sc.edges.len()];
+    // Per labelled twin drawn plain where its bulge would cross other
+    // ends' legs: the breadth its label's middle keeps beyond (towards
+    // `.1`), clear of its twin's line, and the twin (`.2`).
+    let mut beside: Vec<Option<(f64, f64, usize)>> = vec![None; sc.edges.len()];
+    // Every long edge's dummy columns as the layout placed them, and
+    // every label box (flow coordinates): what a column kept apart from
+    // as it is straightened ([`straighten`]).
+    let columns: Vec<(usize, Pt)> = if mode == Mode::Static {
+        sc.edges
+            .iter()
+            .enumerate()
+            .filter(|(i, e)| {
+                e.waypoints.len() >= 3
+                    && cx.drawn.get(*i).copied().unwrap_or(false)
+                    && crate::router::ortho_corners(e).is_none()
+            })
+            .flat_map(|(i, e)| {
+                e.waypoints[1..e.waypoints.len() - 1]
+                    .iter()
+                    .map(move |&p| (i, to_flow(dir, p)))
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    // The runs along the flow of the paths on the axes already (a
+    // back-edge's lane above all): (breadth, flow span). A column keeps
+    // off them as it does off another column, or the lane the layout
+    // planned beside a dummy would run on top of the straightened chain.
+    let lane_runs: Vec<(f64, (f64, f64))> = if columns.is_empty() {
+        Vec::new()
+    } else {
+        sc.edges
+            .iter()
+            .filter_map(crate::router::ortho_corners)
+            .flat_map(|c| {
+                c.windows(2)
+                    .filter_map(|w| {
+                        let (a, b) = (to_flow(dir, w[0]), to_flow(dir, w[1]));
+                        ((a.0 - b.0).abs() < EPS && (a.1 - b.1).abs() > EPS)
+                            .then_some((a.0, (a.1.min(b.1), a.1.max(b.1))))
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect()
+    };
+    let label_boxes: Vec<(usize, Rect)> = if columns.is_empty() {
+        Vec::new()
+    } else {
+        sc.edges
+            .iter()
+            .enumerate()
+            .filter_map(|(i, e)| {
+                let (_, c, w) = e.label.as_ref()?;
+                let h = crate::layout::LABEL_BOX_H / 2.0;
+                Some((
+                    i,
+                    flow_rect(dir, (c.0 - w / 2.0, c.1 - h, c.0 + w / 2.0, c.1 + h)),
+                ))
+            })
+            .collect()
+    };
     // The steps of the edges this stage leaves as they are (a drag's kept
     // edges, lanes, paths on the axes already): (along the flow, span
     // across it). A new step keeps a track's pitch off them.
     let mut kept: Vec<(f64, (f64, f64))> = Vec::new();
+    let mut kept_lines: Vec<Vec<Pt>> = Vec::new();
     for i in 0..sc.edges.len() {
         let e = &sc.edges[i];
         let Some((from, to)) = cx.ends.get(i).copied().flatten() else {
@@ -275,6 +368,20 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
             || crate::ports::note_link(sc, cx, i)
         {
             steps_of(e, &mut kept);
+            // A curve this stage leaves (a note card's link, an author's
+            // `curve:`): the steps keep from crossing it where their room
+            // allows ([`uncross`]).
+            if from != to
+                && cx.drawn.get(i).copied().unwrap_or(false)
+                && crate::router::ortho_corners(e).is_none()
+            {
+                kept_lines.push(
+                    crate::scene::edge_polyline(e)
+                        .into_iter()
+                        .map(|p| to_flow(dir, p))
+                        .collect(),
+                );
+            }
             continue;
         }
         let is_chain = e.waypoints.len() >= 3;
@@ -339,10 +446,27 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
         // step (and spread over the gaps between, instead of all in the
         // one past the first frame).
         let cols: Vec<Pt> = if is_chain && mode == Mode::Static {
-            e.waypoints[1..e.waypoints.len() - 1]
+            let cols: Vec<Pt> = e.waypoints[1..e.waypoints.len() - 1]
                 .iter()
                 .map(|&p| to_flow(dir, p))
-                .collect()
+                .collect();
+            if e.label.is_some() {
+                // (A labelled edge's label keeps the slot its dummy
+                // reserved, its column with it.)
+                cols
+            } else {
+                let room = ColumnRoom {
+                    rows: &merged,
+                    boxes: &boxes,
+                    frames: &frames,
+                    columns: &columns,
+                    runs: &lane_runs,
+                    labels: &label_boxes,
+                    own: [ends_of(from), ends_of(to)],
+                    edge: i,
+                };
+                straighten(&room, f0.0, &cols, f3.0)
+            }
         } else {
             Vec::new()
         };
@@ -364,6 +488,7 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
             load: &load,
             own,
             head_leg,
+            lines: &lines,
         };
         // The label's spot along the flow and its half extent there.
         let label = e.label.as_ref().map(|(_, c, w)| {
@@ -375,7 +500,7 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
         });
         // A labelled twin bulges clear of its twin's line.
         if let (Some((_, _, w)), Some(key)) = (&e.label, pairs[i]) {
-            let twin = (0..sc.edges.len())
+            let nearest = (0..sc.edges.len())
                 .filter(|&j| j != i && pairs[j] == Some(key))
                 .map(|j| {
                     let f = &sc.edges[j];
@@ -384,12 +509,13 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
                     } else {
                         (f.bezier[0], f.bezier[3])
                     };
-                    (to_flow(dir, a).0 + to_flow(dir, b).0) / 2.0
+                    (j, (to_flow(dir, a).0 + to_flow(dir, b).0) / 2.0)
                 })
                 .min_by(|x, y| {
                     let me = (f0.0 + f3.0) / 2.0;
-                    (x - me).abs().total_cmp(&(y - me).abs())
+                    (x.1 - me).abs().total_cmp(&(y.1 - me).abs())
                 });
+            let twin = nearest.map(|t| t.1);
             let across = match dir {
                 Direction::TD | Direction::BT => w / 2.0,
                 Direction::LR | Direction::RL => crate::layout::LABEL_BOX_H / 2.0,
@@ -398,10 +524,49 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
                 if let Some(plan) =
                     twin_bulge((f0, n0, glyph.0), (f3, n3, glyph.1), tb, across, head_leg)
                 {
-                    bulged[i] = true;
-                    plans.push((i, plan));
-                    continue;
+                    // The bulge steps out across the ends beside its own
+                    // on either side it leaves or enters, and crossed
+                    // each of their legs (stress's thick `A ==> D` at
+                    // Source's bottom, wide-labels' `health probe` at
+                    // Client's flank). With such an end in its way the
+                    // twin is drawn plain instead, its label set beside
+                    // its run off its twin's line.
+                    let run = match plan[2] {
+                        Corner::At(p) => p.0,
+                        Corner::Jog(..) => f0.0,
+                    };
+                    let swept = |end: EndRef, p: Pt, n: Pt| {
+                        (0..sc.edges.len()).filter(|&j| j != i).any(|j| {
+                            let Some((a, b)) = cx.ends.get(j).copied().flatten() else {
+                                return false;
+                            };
+                            let f = &sc.edges[j];
+                            let (q0, q3) = if f.waypoints.len() >= 2 {
+                                (f.waypoints[0], f.waypoints[f.waypoints.len() - 1])
+                            } else {
+                                (f.bezier[0], f.bezier[3])
+                            };
+                            [(a, q0), (b, q3)].into_iter().any(|(at, q)| {
+                                let q = to_flow(dir, q);
+                                at == end
+                                    && flow_normal(dir, side(end, from_flow(dir, q))) == n
+                                    && (q.0 - p.0) * (run - p.0) > EPS
+                                    && (q.0 - run).abs() + (q.0 - p.0).abs()
+                                        <= (run - p.0).abs() + EPS
+                            })
+                        })
+                    };
+                    if !swept(from, f0, n0) && !swept(to, f3, n3) {
+                        bulged[i] = true;
+                        plans.push((i, plan));
+                        continue;
+                    }
                 }
+                // Drawn plain: its label goes onto its own line, off its
+                // twin's where that covers it (after the loop below).
+                let away = if (f0.0 + f3.0) / 2.0 >= tb { 1.0 } else { -1.0 };
+                let j = nearest.map_or(i, |t| t.0);
+                beside[i] = Some((tb + away * (across + TWIN_AIR), away, j));
             }
         }
         let plan = flow_path(
@@ -433,6 +598,7 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
         plans.push((i, plan));
     }
     place_tracks(&mut jogs, &kept);
+    uncross(&mut jogs, &kept_lines);
 
     for (i, plan) in plans {
         let corners: Vec<Pt> = plan
@@ -478,6 +644,7 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
         } else {
             relabel(e, &screen, rides.then_some(dir));
         }
+
         let n = screen.len();
         if n == 2 {
             // A long edge whose columns line up: one straight run.
@@ -494,8 +661,110 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
         e.bezier = [screen[0], screen[1], screen[n - 2], screen[n - 1]];
         e.waypoints = crate::router::smooth(&screen, crate::router::CORNER_R);
     }
+    // A plain twin's label goes onto its own line; where it covers its
+    // twin there, or comes within the label stage's keep-out of another
+    // stroke, it moves along one of its own runs along the flow to a
+    // spot clear of every stroke and box (its spot along the flow kept
+    // where the run allows, else the nearest that keeps the label off
+    // the boxes at the run's ends), else steps beside its run, off the
+    // twin.
+    if beside.iter().any(Option::is_some) {
+        let lines: Vec<Vec<Pt>> = sc.edges.iter().map(crate::scene::edge_polyline).collect();
+        for (i, b) in beside.iter().enumerate() {
+            let Some((edge, away, _)) = *b else { continue };
+            let own: Vec<Pt> = match crate::router::ortho_corners(&sc.edges[i]) {
+                Some(c) => c,
+                None => vec![sc.edges[i].bezier[0], sc.edges[i].bezier[3]],
+            };
+            let Some((_, at, w)) = sc.edges[i].label.as_mut() else {
+                continue;
+            };
+            // (Onto its own line: the builder's offset bowed it off its
+            // twin's curve, which this line no longer follows.)
+            *at = nearest_on(&own, *at);
+            let h = crate::layout::LABEL_BOX_H / 2.0;
+            let w = *w;
+            let rect = |c: Pt| (c.0 - w / 2.0, c.1 - h, c.0 + w / 2.0, c.1 + h);
+            let keep = crate::labels::LABEL_GAP + crate::labels::STROKE_PAD;
+            let grown = |r: (f64, f64, f64, f64), d: f64| (r.0 - d, r.1 - d, r.2 + d, r.3 + d);
+            let off_boxes = |r: (f64, f64, f64, f64)| {
+                sc.nodes.iter().all(|n| {
+                    r.2 <= n.x - n.w / 2.0
+                        || r.0 >= n.x + n.w / 2.0
+                        || r.3 <= n.y - n.h / 2.0
+                        || r.1 >= n.y + n.h / 2.0
+                })
+            };
+            let clear = |c: Pt| {
+                let r = rect(c);
+                let near = grown(r, keep);
+                off_boxes(grown(r, crate::labels::LABEL_GAP))
+                    && lines.iter().enumerate().all(|(k, l)| {
+                        k == i || !l.windows(2).any(|s| seg_hits_rect(s[0], s[1], near))
+                    })
+            };
+            if clear(*at) {
+                continue;
+            }
+            let f = to_flow(dir, *at);
+            // The label's half extent along the flow.
+            let half = match dir {
+                Direction::TD | Direction::BT => h,
+                Direction::LR | Direction::RL => w / 2.0,
+            };
+            // Spots along its own legs (flow coordinates), each also slid
+            // along the flow while the label still covers its leg: on a
+            // run along the flow the label slides along it, on a step
+            // across it the step stays inside the label. The nearest
+            // clear one to where the label was wins.
+            let mut spot: Option<(f64, Pt)> = None;
+            for seg in own.windows(2) {
+                let (a, b) = (to_flow(dir, seg[0]), to_flow(dir, seg[1]));
+                let len = (b.0 - a.0).abs() + (b.1 - a.1).abs();
+                let n = ((len / SPOT_STEP).ceil() as usize).clamp(1, SPOT_MAX);
+                let step_across = (a.1 - b.1).abs() < EPS;
+                let slides: Vec<f64> = if step_across {
+                    let k = ((half / SPOT_STEP) as i64).min(SPOT_MAX as i64);
+                    (-k..=k).map(|m| m as f64 * SPOT_STEP).collect()
+                } else {
+                    vec![0.0]
+                };
+                for q in 0..=n {
+                    let t = q as f64 / n as f64;
+                    let p = (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t);
+                    for &dx in &slides {
+                        let c = (p.0, p.1 + dx);
+                        let d = (c.0 - f.0).abs() + (c.1 - f.1).abs();
+                        if spot.is_some_and(|(best, _)| best <= d) {
+                            continue;
+                        }
+                        let s = from_flow(dir, c);
+                        if clear(s) {
+                            spot = Some((d, s));
+                        }
+                    }
+                }
+            }
+            let spot = spot.map(|s| s.1);
+            match spot {
+                Some(c) => *at = c,
+                None if (edge - f.0) * away > 0.0 => *at = from_flow(dir, (edge, f.1)),
+                None => {}
+            }
+        }
+    }
     cx.chain = chain;
     cx.shaped = bulged;
+}
+
+/// Whether segment `a`-`b` meets the rect `(x0, y0, x1, y1)`.
+fn seg_hits_rect(a: Pt, b: Pt, r: (f64, f64, f64, f64)) -> bool {
+    let inside = |p: Pt| p.0 >= r.0 && p.0 <= r.2 && p.1 >= r.1 && p.1 <= r.3;
+    if inside(a) || inside(b) {
+        return true;
+    }
+    let c = [(r.0, r.1), (r.2, r.1), (r.2, r.3), (r.0, r.3)];
+    (0..4).any(|k| segs_cross(a, b, c[k], c[(k + 1) % 4]))
 }
 
 /// What a step keeps clear of across the flow: a span along the breadth
@@ -518,6 +787,9 @@ struct Along<'a> {
     /// The straight run (px) it keeps into an end glyph: [`HEAD_LEG`], or
     /// a head grown under a wide stroke and a corner's rounding.
     head_leg: f64,
+    /// Every edge's line as the stage found it (flow coordinates; empty
+    /// where none is judged), for the gap a long run steps across in.
+    lines: &'a [Vec<Pt>],
 }
 
 impl Along<'_> {
@@ -668,6 +940,139 @@ fn flow_path(
     Some(out)
 }
 
+/// Room (px) a straightened column keeps from a box, a frame's border or
+/// a label it runs past: the layout's own room between a dummy and the
+/// box beside it ([`crate::layout::GAP_B`] less half a dummy's breadth),
+/// halved — still clear of the boxes by a good deal more than a
+/// reroute keeps ([`ROW_CLEAR`]).
+const COLUMN_CLEAR: f64 = 21.0;
+
+/// What [`straighten`] reads (flow coordinates).
+struct ColumnRoom<'a> {
+    /// The rows of boxes along the flow.
+    rows: &'a [(f64, f64)],
+    boxes: &'a [(f64, f64, f64, f64)],
+    frames: &'a [(f64, f64, f64, f64)],
+    /// Every long edge's dummy columns: (edge, point).
+    columns: &'a [(usize, Pt)],
+    /// The runs along the flow of the paths on the axes already:
+    /// (breadth, flow span).
+    runs: &'a [(f64, (f64, f64))],
+    /// Every label box: (edge, box).
+    labels: &'a [(usize, Rect)],
+    /// The edge's own end nodes.
+    own: [Option<usize>; 2],
+    edge: usize,
+}
+
+impl ColumnRoom<'_> {
+    /// The breadth a straight run through column `q` may take: the free
+    /// span round the dummy, [`COLUMN_CLEAR`] off the boxes, frame
+    /// borders and labels beside it along its row, and half way to the
+    /// next long edge's column there less half a track (two columns
+    /// straightened towards each other stay a track apart, in the
+    /// layout's order).
+    fn slot(&self, q: Pt) -> (f64, f64) {
+        let band = self
+            .rows
+            .iter()
+            .find(|r| q.1 >= r.0 - EPS && q.1 <= r.1 + EPS)
+            .copied()
+            .unwrap_or((q.1, q.1));
+        let (mut lo, mut hi) = (f64::NEG_INFINITY, f64::INFINITY);
+        let mut fence = |a: f64, b: f64, clear: f64| {
+            if b <= q.0 {
+                lo = lo.max(b + clear);
+            } else if a >= q.0 {
+                hi = hi.min(a - clear);
+            } else {
+                // The dummy lies in it (a label over its own column):
+                // nowhere to go.
+                lo = lo.max(q.0);
+                hi = hi.min(q.0);
+            }
+        };
+        let meets = |r: &(f64, f64, f64, f64)| r.3 > band.0 - EPS && r.2 < band.1 + EPS;
+        for (k, r) in self.boxes.iter().enumerate() {
+            if !self.own.contains(&Some(k)) && meets(r) {
+                fence(r.0, r.1, COLUMN_CLEAR);
+            }
+        }
+        for (j, r) in self.labels {
+            if *j != self.edge && meets(r) {
+                fence(r.0, r.1, COLUMN_CLEAR);
+            }
+        }
+        for r in self.frames.iter().filter(|r| meets(r)) {
+            for b in [r.0, r.1] {
+                fence(b, b, COLUMN_CLEAR);
+            }
+        }
+        for &(j, c) in self.columns {
+            if j != self.edge && c.1 >= band.0 - EPS && c.1 <= band.1 + EPS {
+                let mid = (q.0 + c.0) / 2.0;
+                fence(mid, mid, TRACK_PITCH / 2.0);
+            }
+        }
+        for &(b, (l0, l1)) in self.runs {
+            if l1 > band.0 - EPS && l0 < band.1 + EPS {
+                let mid = (q.0 + b) / 2.0;
+                fence(mid, mid, TRACK_PITCH / 2.0);
+            }
+        }
+        (lo.min(q.0), hi.max(q.0))
+    }
+}
+
+/// A long edge's dummy columns (flow coordinates) straightened: each
+/// moved within its [`ColumnRoom::slot`] so that runs of columns whose
+/// slots share a breadth take one straight run (the fewest steps), at
+/// the breadth nearest the run before it — the source's port for the
+/// first — or the target's port for the last. The layout spreads a
+/// dummy chain a whole box gap off its neighbours and drifts it from
+/// layer to layer; on the axes each drift is a step, and a chain the
+/// layout ordered past a row's last box ran its gap's width out beyond
+/// it, widening the drawing.
+fn straighten(room: &ColumnRoom, from: f64, cols: &[Pt], to: f64) -> Vec<Pt> {
+    let slots: Vec<(f64, f64)> = cols.iter().map(|&q| room.slot(q)).collect();
+    let mut out: Vec<Pt> = cols.to_vec();
+    let mut prev = from;
+    let mut s = 0;
+    while s < cols.len() {
+        let (mut lo, mut hi) = slots[s];
+        let mut t = s + 1;
+        while t < cols.len() && slots[t].0 <= hi.min(slots[t].1) && slots[t].1 >= lo.max(slots[t].0)
+        {
+            (lo, hi) = (lo.max(slots[t].0), hi.min(slots[t].1));
+            t += 1;
+        }
+        let last = t == cols.len();
+        let b = if prev >= lo && prev <= hi {
+            prev
+        } else if last && to >= lo && to <= hi {
+            to
+        } else if last {
+            // Nearest the stretch between the run before and the target.
+            let (a, c) = (prev.min(to), prev.max(to));
+            if hi < a {
+                hi
+            } else if lo > c {
+                lo
+            } else {
+                prev.max(lo).min(hi)
+            }
+        } else {
+            prev.max(lo).min(hi)
+        };
+        for q in &mut out[s..t] {
+            q.0 = b;
+        }
+        prev = b;
+        s = t;
+    }
+    out
+}
+
 /// The jog of `edge` between `u` (point, a port or a column, a glyph on
 /// it) and `v`, the run heading `h` along the flow: the gap it steps
 /// in, the room it has there and where it would go.
@@ -747,14 +1152,42 @@ fn plan_jog(
                 });
                 (taken + 1).saturating_sub(room)
             };
+            // The other edges' lines its three legs would cross there (as
+            // drawn when the stage began: a long run stepping across in
+            // a gap the rest fan through crossed each of them, where the
+            // free curve it replaced slipped past most).
+            let crossed = |t: f64| {
+                let legs = [
+                    ((bu, u.0 .1), (bu, t)),
+                    ((bu, t), (bv, t)),
+                    ((bv, t), (bv, v.0 .1)),
+                ];
+                cx.lines
+                    .iter()
+                    .enumerate()
+                    .filter(|&(j, _)| j != edge)
+                    .map(|(_, l)| {
+                        legs.iter()
+                            .filter(|&&(a, b)| l.windows(2).any(|w| segs_cross(a, b, w[0], w[1])))
+                            .count()
+                    })
+                    .sum::<usize>()
+            };
             let mut best = cands[0];
-            let mut key = (usize::MAX, usize::MAX, usize::MAX, f64::INFINITY);
+            let mut key = (
+                usize::MAX,
+                usize::MAX,
+                usize::MAX,
+                usize::MAX,
+                f64::INFINITY,
+            );
             for &(k, (a, b)) in &cands {
                 let t = (a + b) / 2.0;
                 let n = hits(bu, u.0 .1, t) + hits(bv, t, v.0 .1);
-                let k2 = (n, foreign(t), over(k, a, b), (t - mid).abs());
-                if (k2.0, k2.1, k2.2) < (key.0, key.1, key.2)
-                    || (k2.0, k2.1, k2.2) == (key.0, key.1, key.2) && k2.3 < key.3 - EPS
+                let k2 = (n, foreign(t), crossed(t), over(k, a, b), (t - mid).abs());
+                if (k2.0, k2.1, k2.2, k2.3) < (key.0, key.1, key.2, key.3)
+                    || (k2.0, k2.1, k2.2, k2.3) == (key.0, key.1, key.2, key.3)
+                        && k2.4 < key.4 - EPS
                 {
                     key = k2;
                     best = (k, (a, b));
@@ -850,6 +1283,7 @@ fn plan_jog(
         above_label,
         plain,
         label_half: label.map_or(0.0, |l| l.1),
+        runs: (l0, l1),
     }
 }
 
@@ -894,13 +1328,9 @@ fn twin_bulge(
     } else {
         run.min(p0.0 - step).min(p3.0 - step)
     };
-    let lead = |glyph: bool| {
-        if glyph {
-            head_leg
-        } else {
-            BARE_LEG.max(ROW_CLEAR)
-        }
-    };
+    // (Out of a bare end just a corner's half: the bulge's leg there is
+    // a stroke a wide label in the gap must clear.)
+    let lead = |glyph: bool| if glyph { head_leg } else { BARE_LEG };
     let (t1, t2) = (p0.1 + h * lead(g0), p3.1 - h * lead(g3));
     if (t2 - t1) * h < 2.0 * crate::router::CORNER_R {
         return None;
@@ -1138,6 +1568,123 @@ fn place_tracks(jogs: &mut [Jog], kept: &[(f64, (f64, f64))]) {
     }
 }
 
+/// The three legs of jog `j` with its step at `t` (flow coordinates):
+/// the run in from the low flow side, the step, the run on.
+fn jog_legs(j: &Jog, t: f64) -> [(Pt, Pt); 3] {
+    [
+        ((j.lo_at, j.runs.0), (j.lo_at, t)),
+        ((j.lo_at, t), (j.hi_at, t)),
+        ((j.hi_at, t), (j.hi_at, j.runs.1)),
+    ]
+}
+
+/// Whether segments `a`-`b` and `c`-`d` properly cross.
+fn segs_cross(a: Pt, b: Pt, c: Pt, d: Pt) -> bool {
+    let side = |p: Pt, q: Pt, r: Pt| (q.0 - p.0) * (r.1 - p.1) - (q.1 - p.1) * (r.0 - p.0);
+    let (d1, d2) = (side(c, d, a), side(c, d, b));
+    let (d3, d4) = (side(a, b, c), side(a, b, d));
+    d1 * d2 < 0.0 && d3 * d4 < 0.0
+}
+
+/// Off the curves this stage leaves ([`orthogonalize`]'s `kept_lines`:
+/// a note card's link, an author's `curve:`) and off each other: a jog
+/// whose legs cross one of those lines or another jog's legs moves to
+/// the place in its room where its legs cross the fewest of them,
+/// nearest where it was, never within [`TRACK_PITCH_MIN`] of another
+/// step of its gap it overlaps. (A branch from a state to the row below
+/// its note card stepped down across the gap mid-way and crossed the
+/// card's link, which its curve had passed under; a hub's branch to the
+/// far box of a frame stepped below its neighbour's step, its label's
+/// room squeezing the channel's order, and crossed its leg.)
+fn uncross(jogs: &mut [Jog], lines: &[Vec<Pt>]) {
+    if jogs.is_empty() {
+        return;
+    }
+    // A jog's extent with its step at `t` (breadth lo, hi, flow lo, hi).
+    let extent = |j: &Jog, t: f64| {
+        let (b0, b1) = j.span();
+        let (l0, l1) = (j.runs.0.min(j.runs.1).min(t), j.runs.0.max(j.runs.1).max(t));
+        (b0, b1, l0, l1)
+    };
+    let meets = |a: (f64, f64, f64, f64), b: (f64, f64, f64, f64)| {
+        a.0 <= b.1 && b.0 <= a.1 && a.2 <= b.3 && b.2 <= a.3
+    };
+    let line_box: Vec<(f64, f64, f64, f64)> = lines
+        .iter()
+        .map(|l| {
+            l.iter().fold(
+                (
+                    f64::INFINITY,
+                    f64::NEG_INFINITY,
+                    f64::INFINITY,
+                    f64::NEG_INFINITY,
+                ),
+                |r, p| (r.0.min(p.0), r.1.max(p.0), r.2.min(p.1), r.3.max(p.1)),
+            )
+        })
+        .collect();
+    let hits = |jogs: &[Jog], k: usize, t: f64| -> usize {
+        let legs = jog_legs(&jogs[k], t);
+        let me = extent(&jogs[k], t);
+        let on_lines = lines
+            .iter()
+            .zip(&line_box)
+            .filter(|(_, b)| meets(me, **b))
+            .map(|(l, _)| {
+                legs.iter()
+                    .filter(|&&(a, b)| l.windows(2).any(|w| segs_cross(a, b, w[0], w[1])))
+                    .count()
+            })
+            .sum::<usize>();
+        let on_jogs = jogs
+            .iter()
+            .enumerate()
+            .filter(|&(m, o)| m != k && o.edge != jogs[k].edge && meets(me, extent(o, o.at)))
+            .map(|(_, o)| {
+                let other = jog_legs(o, o.at);
+                legs.iter()
+                    .filter(|&&(a, b)| other.iter().any(|&(c, d)| segs_cross(a, b, c, d)))
+                    .count()
+            })
+            .sum::<usize>();
+        on_lines + on_jogs
+    };
+    // Within a least pitch of another step of its gap that it overlaps.
+    let crowds = |jogs: &[Jog], k: usize, t: f64| {
+        let (s0, s1) = jogs[k].span();
+        jogs.iter().enumerate().any(|(m, o)| {
+            let (o0, o1) = o.span();
+            m != k
+                && o.gap == jogs[k].gap
+                && o0 < s1 + TRACK_PITCH
+                && s0 < o1 + TRACK_PITCH
+                && (o.at - t).abs() < TRACK_PITCH_MIN - EPS
+        })
+    };
+    for k in 0..jogs.len() {
+        let at = jogs[k].at;
+        let now = hits(jogs, k, at);
+        if now == 0 {
+            continue;
+        }
+        let (lo, hi) = jogs[k].room;
+        let mut best = (now, 0.0f64, at);
+        let n = ((hi - lo) / (TRACK_PITCH / 2.0)).ceil().clamp(1.0, 64.0) as usize;
+        for step in 0..=n {
+            let t = lo + (hi - lo) * step as f64 / n as f64;
+            if crowds(jogs, k, t) {
+                continue;
+            }
+            let h = hits(jogs, k, t);
+            let d = (t - at).abs();
+            if h < best.0 || h == best.0 && d < best.1 - EPS {
+                best = (h, d, t);
+            }
+        }
+        jogs[k].at = best.2;
+    }
+}
+
 /// Drop repeated points and the middle of three on one axis-aligned
 /// line.
 fn collapse(pts: Vec<Pt>) -> Vec<Pt> {
@@ -1206,6 +1753,11 @@ fn relabel(e: &mut SceneEdge, corners: &[Pt], rides: Option<Direction>) {
         *at = on;
     }
 }
+
+/// Pitch (px) of the spots along a twin's own legs its label tries, and
+/// the most it tries per leg and slide (see [`orthogonalize`]).
+const SPOT_STEP: f64 = 4.0;
+const SPOT_MAX: usize = 48;
 
 /// How far (px) off its new line [`relabel`] still sets a label onto it.
 const LABEL_SNAP: f64 = 2.0;

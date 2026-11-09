@@ -5871,10 +5871,7 @@ mod tests {
         for id in ["g2", "g4"] {
             assert!(frame(id).y > first_row, "{id} not wrapped below g1");
         }
-        // (2.0 : 1 before B10: the long edge into g2 now runs down its
-        // dummy's column beyond the row, where its spline only approached
-        // it — 1 120 -> 1 163 px wide, the layout unchanged.)
-        assert!(sc.width < 2.1 * sc.height, "{} x {}", sc.width, sc.height);
+        assert!(sc.width < 2.0 * sc.height, "{} x {}", sc.width, sc.height);
     }
 
     /// The narrowing guards (report M11) read edge length both ways:

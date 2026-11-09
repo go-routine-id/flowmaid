@@ -155,6 +155,13 @@ const BAND_COST: f64 = 12.0;
 /// choose costs (px): two bends' worth, so the chosen side wins unless
 /// the other is clearly shorter.
 const SIDE_SWITCH_COST: f64 = 2.0 * BEND_COST;
+/// Crossings (with other edges) from which a static flowchart edge is
+/// searched for a way round them (see [`repair`]).
+const CROSS_SEARCH: usize = 4;
+/// How many other ends a side of a shape without straight sides (a
+/// diamond's vertex) takes before a reroute no longer lands there (see
+/// [`terms`]).
+const VERTEX_ENDS: usize = 2;
 /// What a forward edge pays in the static scene to leave or enter a
 /// node by a side facing across the flow (report M5, §2.4): four bends'
 /// worth. Every edge
@@ -2852,6 +2859,29 @@ fn terms(
                 continue;
             }
             let p = free_slot(w, end, rect, s, taken, me);
+            // A flowchart's side of a shape without straight sides (a
+            // diamond's vertex) holding [`VERTEX_ENDS`] other ends is no
+            // terminal: every
+            // reroute landed on its middle, the respacing then packed
+            // them under the edge spacing, legs side by side for hundreds
+            // of px (a 24-end diamond hub's left vertex took six), and
+            // the next pass rerouted them again.
+            let flat = matches!(end, EndRef::Node(v) if flat_shape(w.nodes[v].1));
+            let crowded = w.flow
+                && !flat
+                && taken
+                    .iter()
+                    .filter(|t| {
+                        t.0 == end
+                            && t.2 != me
+                            && w.end_side(end, t.1) == s
+                            && dist(t.1, p) < EDGE_SEP
+                    })
+                    .count()
+                    >= VERTEX_ENDS;
+            if crowded {
+                continue;
+            }
             v.push(Term {
                 port: p,
                 stub: stub_of(rect, s, p, len),
@@ -4919,6 +4949,44 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
             accept(&mut built_acc, i, info.ends, &polys[i]);
         }
     }
+    // A flowchart edge on the axes that crosses [`CROSS_SEARCH`] others
+    // or more is searched too in the static scene (report §2.1): a
+    // dummy chain or a step across a busy gap now runs where the layout
+    // put it, square through every edge there, where the builder's
+    // spline used to hit something and get rerouted round the crowd
+    // (bench-75's `svc3 -> objects` dropped across 21 edges on its first
+    // step). The reroute is kept only when it scores better (fewer
+    // crossings at no harder cost).
+    let simple_all: Vec<Vec<Pt>> = if mode == Mode::Static && w.flow {
+        polys.iter().map(|p| simplify(p)).collect()
+    } else {
+        Vec::new()
+    };
+    let crossed = |i: usize| {
+        // (Not a back-edge's lane: planned round the outside on purpose,
+        // `crate::lanes`, as `route()` plans it too.)
+        if simple_all.is_empty() || sc.edges[i].label.is_some() || lane(i) {
+            return false;
+        }
+        let a = &simple_all[i];
+        let mut n = 0;
+        for (j, b) in simple_all.iter().enumerate() {
+            if j == i || infos[j].is_none() {
+                continue;
+            }
+            for u in a.windows(2) {
+                for v in b.windows(2) {
+                    if seg_cross(u[0], u[1], v[0], v[1]).is_some() {
+                        n += 1;
+                        if n >= CROSS_SEARCH {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        false
+    };
     for &i in order.iter().filter(|&&i| !fixed(i)) {
         let info = infos[i].as_ref().expect("filtered");
         alone[i] = w.score(info, i, &polys[i], None);
@@ -4957,7 +5025,7 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
                         && w.against(info, i, &simple, &mut built_acc, alone[i], true)
                             .tight
                             > 0);
-            if s.near > 0 || soft {
+            if s.near > 0 || soft || crossed(i) {
                 bad.push((1, i));
             }
             accept(&mut accepted, i, info.ends, &polys[i]);

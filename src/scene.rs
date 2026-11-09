@@ -8154,11 +8154,60 @@ fn route_backs(g: &Graph, flow: &[Placed]) -> Vec<Back> {
             }
         })
         .collect();
+    // Each frame's extent (flow coordinates: breadth lo, hi, along lo,
+    // hi), from its members and the frame's padding, as `route()` wraps
+    // it round them.
+    let frame_boxes: Vec<(f64, f64, f64, f64)> = (0..g.subgraphs.len())
+        .map(|si| {
+            let (mut r, pad) = (
+                (
+                    f64::INFINITY,
+                    f64::NEG_INFINITY,
+                    f64::INFINITY,
+                    f64::NEG_INFINITY,
+                ),
+                crate::layout::FRAME_PAD,
+            );
+            for (v, p) in flow.iter().enumerate() {
+                if node_cluster.get(v).is_some_and(|nc| nc.contains(&si)) {
+                    r = (
+                        r.0.min(p.b - p.bsize / 2.0 - pad),
+                        r.1.max(p.b + p.bsize / 2.0 + pad),
+                        r.2.min(p.l - p.lsize / 2.0 - pad),
+                        r.3.max(p.l + p.lsize / 2.0 + pad),
+                    );
+                }
+            }
+            r
+        })
+        .collect();
     let lanes = plan(&wants, |i, x, placed| {
         let e = &g.edges[backs[i]];
         let (a, b) = (&flow[e.from], &flow[e.to]);
         let (s0, s3) = legs(a, b, &Lane::plain(0.0));
         let path = judged_path(x, wants[i].spans, a.l, b.l, s0, s3);
+        // Each border of a frame holding neither end the lane's path
+        // crosses counts as a crossing (report §2.1, B10): a leg run
+        // across a whole frame on its way to a far lane cut it twice,
+        // which the router then charged it for, where the static layout
+        // (frames laid out as boxes, or kept out of by the channels)
+        // took the other side (bench-75's `job1 -> svc1`).
+        let borders = frame_boxes
+            .iter()
+            .enumerate()
+            .filter(|&(si, r)| {
+                r.0 <= r.1
+                    && ![e.from, e.to]
+                        .iter()
+                        .any(|&v| node_cluster.get(v).is_some_and(|nc| nc.contains(&si)))
+            })
+            .map(|(_, r)| {
+                let inside = |p: (f64, f64)| p.0 > r.0 && p.0 < r.1 && p.1 > r.2 && p.1 < r.3;
+                path.windows(2)
+                    .filter(|w| inside(w[0]) != inside(w[1]))
+                    .count()
+            })
+            .sum::<usize>();
         // The lanes planned so far, as the layout judges them too
         // (`layout::back_lanes`), so both pick the same side.
         let planned = crate::lanes::planned_skeletons(&wants, placed, i, |j, xj| {
@@ -8170,6 +8219,7 @@ fn route_backs(g: &Graph, flow: &[Placed]) -> Vec<Back> {
         let ends = (e.from, e.to);
         crossings(&path, ends, wants[i].spans, &skeletons)
             + crossings(&path, ends, wants[i].spans, &planned)
+            + borders
     });
     for (&ei, lane) in backs.iter().zip(lanes) {
         out[ei] = lane.map_or(Back::Direct, Back::Lane);
@@ -11805,14 +11855,6 @@ mod tests {
                     && line
                         .windows(2)
                         .any(|a| other.windows(2).any(|b| cross(a[0], a[1], b[0], b[1])));
-                // B10 trade-off (every edge on the axes): `S -> T2`, a
-                // branch to the row below the card, steps down across
-                // the gap the link crosses, where its S-curve dipped
-                // past the card's corner; one square crossing of that
-                // step is left (the elbow rule is unchanged).
-                if hit && o.from == "S" && o.to == "T2" && single_run(o) {
-                    continue;
-                }
                 assert!(!hit, "{what}: the link crosses {} -> {}", o.from, o.to);
             }
         }
@@ -14545,18 +14587,16 @@ mod tests {
                 jobs.x
             );
         }
-        // Known B10 regression: the layout's gaps now grow by the steps
-        // they hold (report B1), and `route()`'s lane planner, which
-        // reads its reaches in px off the centres where the static one
-        // reads layers, takes `job1 -> svc1` up past the hub's row
-        // instead of round below (1857 vs 479 px): the same lane on the
-        // other side, square at both ends as checked above. Until the
-        // route planner reads layers too, only its leg stays checked.
         let lane_y = |sc: &Scene| {
             let w = &the_edge(sc, "job1", "svc1").waypoints;
             w[w.len() / 2].1
         };
-        let _ = (lane_y(&s), lane_y(&r));
+        assert!(
+            (lane_y(&s) - lane_y(&r)).abs() < 1.0,
+            "{} vs {}",
+            lane_y(&s),
+            lane_y(&r)
+        );
     }
 
     #[test]
@@ -14827,27 +14867,20 @@ mod tests {
             "flowchart RL\n  A[Alpha] -->|forward| B[Beta]\n  A -->|parallel| B\n  A --> B\n  \
                    B --> C[Gamma]\n  C --> A\n  B --> B\n  C -.->|long back label here| A\n  \
                    C --> D[Delta] --> E[Epsilon]\n  E --> C";
-        // B10 trade-off (every edge on the axes; a known regression,
-        // none before B10): the labelled twins' runs and the lanes' legs
-        // share Alpha's side, `parallel` bulged up clear of its twins
-        // takes the top port and the lanes' legs come in between the
-        // twins, so in the static layout both labels touch a leg there
-        // (`parallel` by 0.4 px), their spots along their own short runs
-        // the only ones off their twins.
         for sc in static_and_routed(src) {
-            let mut over = Vec::new();
             for lbl in sc
                 .edges
                 .iter()
                 .filter(|e| e.label.is_some() && e.from == "A")
             {
                 for lane in sc.edges.iter().filter(|e| e.from == "C" && e.to == "A") {
-                    if crosses_label(lbl, &edge_polyline(lane)) {
-                        over.push(lbl.label.clone());
-                    }
+                    assert!(
+                        !crosses_label(lbl, &edge_polyline(lane)),
+                        "{:?} over a lane",
+                        lbl.label
+                    );
                 }
             }
-            assert!(over.len() <= 2, "{over:?} over a lane");
         }
     }
 

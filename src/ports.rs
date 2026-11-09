@@ -41,6 +41,9 @@ const PORT_MIN_SPACING: f64 = 6.0;
 const PARALLEL_SLANT_MAX: f64 = 8.0;
 /// Tolerance (px) when checking whether a group is already placed.
 const SETTLE_EPS: f64 = 1e-6;
+/// The least pitch (px) at which a side whose every end a finished
+/// path holds counts as settled (see `assign`): two strokes apart.
+const FINISHED_PITCH: f64 = crate::clearance::EDGE_SPACING / 2.0;
 /// Spacing (px) below which even back-edge ends spill round a corner.
 const PORT_HARD_SPACING: f64 = 5.0;
 /// How far (px) the control point of an end moved round a corner is
@@ -994,9 +997,31 @@ fn place_ports(
             // a 1 px drag of a node none of its edges touch.
             x
         } else {
+            // In `assign`, a side whose every end a finished path holds
+            // (on the axes before the ortho stage ran: a previous pass's
+            // router, respacing and nudge spaced them after this stage,
+            // as close as the room of a crowded side allows, and spilled
+            // them round its corners) is settled while its strokes stay
+            // apart, so a second pass leaves it as drawn (a 24-end
+            // diamond hub's sides were spaced afresh and every leg
+            // redrawn). The respacing after the router spaces the ends
+            // it moved by the plain rule.
+            let finished = spill_over
+                && judge.is_none()
+                && ports.iter().all(|p| {
+                    let e = &sc.edges[p.edge];
+                    e.paint_width.is_none() && crate::router::ortho_corners(e).is_some()
+                });
+            // (Wherever along the outline they sit: the nudge may have
+            // slid one past the span this stage keeps to.)
+            let (pitch, a, b) = if finished {
+                (s.min(FINISHED_PITCH), f64::NEG_INFINITY, f64::INFINITY)
+            } else {
+                (s, lo, hi)
+            };
             if !shaded
-                && ports.iter().all(|p| p.spilled.is_none())
-                && settled(&ports, side, s, lo, hi, crossed)
+                && (finished || ports.iter().all(|p| p.spilled.is_none()))
+                && settled(&ports, side, pitch, a, b, crossed)
             {
                 continue;
             }
@@ -2460,20 +2485,24 @@ mod tests {
 
     #[test]
     fn assigning_twice_changes_nothing() {
-        // A 20-end hub whose sides hold their ends at the edge spacing.
-        // (Drawn on the axes, the legs off an over-full side — 24 ends on
-        // a 55 px box or a diamond — run closer than the spacing, and the
-        // router reroutes one: a second pass then meets it in the middle
-        // of its target's side, as the first pass did not.)
-        let mut src = String::from("flowchart TD\nhub[a hub with a longer name]\n");
-        for i in 0..10 {
-            src.push_str(&format!("n{i} --> hub\nhub --> m{i}\n"));
-        }
-        let g = parse(&src).unwrap();
-        for sc in both(&src) {
-            let mut again = sc.clone();
-            finish(&g, &mut again, Mode::Routed);
-            assert_eq!(format!("{:?}", sc.edges), format!("{:?}", again.edges));
+        // A 24-end diamond hub (an over-full side, its legs on the axes
+        // closer than the spacing), and a 20-end box whose sides hold
+        // their ends at the edge spacing.
+        let diamond = (String::from("flowchart TD\nhub{hub}\n"), 12);
+        let wide = (
+            String::from("flowchart TD\nhub[a hub with a longer name]\n"),
+            10,
+        );
+        for (mut src, n) in [diamond, wide] {
+            for i in 0..n {
+                src.push_str(&format!("n{i} --> hub\nhub --> m{i}\n"));
+            }
+            let g = parse(&src).unwrap();
+            for sc in both(&src) {
+                let mut again = sc.clone();
+                finish(&g, &mut again, Mode::Routed);
+                assert_eq!(format!("{:?}", sc.edges), format!("{:?}", again.edges));
+            }
         }
     }
 }

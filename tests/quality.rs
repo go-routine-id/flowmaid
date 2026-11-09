@@ -25,8 +25,13 @@ const CEILINGS: &[(&str, Ceil, Ceil)] = &[
     // when a reroute lying on another edge stopped beating a curve that
     // only crosses a frame (G1 over G6).
     // B10 (report B1, M2, M5: every edge on the axes, the gaps grown
-    // for their steps): static 15 -> 3, routed 39 -> 2.
-    ("bench-75", (0, 1, 3), (0, 1, 2)),
+    // for their steps): static 15 -> 3, routed 39 -> 2. B10 review r1:
+    // static (0, 3, 6), routed (0, 0, 2). A known residual, one frame
+    // pair over the pre-B10 2: the gaps grown for the step tracks moved
+    // the layout's back-edge lanes, and `dash -> user`'s now runs over
+    // the top through the `edge` and `app` frames' padding (its defects
+    // 15 -> 6 all the same).
+    ("bench-75", (0, 3, 6), (0, 0, 2)),
     // The dense fixtures and fanout-frames come from
     // `examples/fixture_gen.rs` (seeded: their own nesting, fan-outs
     // and edges, nested frames crossed by long edges), measured on the
@@ -38,8 +43,12 @@ const CEILINGS: &[(&str, Ceil, Ceil)] = &[
     // and 13 -> 15 defects: hub `n12`'s fan steps across the gap its
     // frames g6 / g7 stand in as tracks a pitch apart, where its curves
     // fanned out past their corners (two more edge-frame crossings).
+    // B10 review r1: dense-td static 30 -> 29 defects; routed frame
+    // pairs 27 -> 29 (a residual one over the pre-B10 28: `n5 -> n44`,
+    // a long edge `route()` has no dummy column for, steps across the
+    // gap that crosses the fewest lines, its leg through g9's corner).
     ("dense-lr", (0, 13, 15), (0, 13, 15)),
-    ("dense-td", (0, 26, 30), (0, 27, 29)),
+    ("dense-td", (0, 26, 29), (0, 29, 30)),
     ("fanout-frames", (0, 0, 0), (0, 0, 0)),
     ("wide-labels", (0, 0, 0), (0, 0, 0)), // (0,0,6) (0,0,8)
 ];
@@ -51,7 +60,7 @@ const CEILINGS: &[(&str, Ceil, Ceil)] = &[
 const GAP_FLOORS: &[(&str, f64, f64)] = &[
     ("back-edge", 40.0, 40.0),
     // Static 3.4 before the channel nudge spread parallel legs apart.
-    ("bench-75", 9.0, 9.0),
+    ("bench-75", 14.0, 4.3),
     // The generated dense fixtures, as first measured. dense-lr static
     // 9.6 -> 9.5 (report M7): its one label past the 200 px wrapping
     // width (`n32`, 204 px) now wraps to two lines, the drawing grows
@@ -82,7 +91,10 @@ const GAP_FLOORS: &[(&str, f64, f64)] = &[
     // pitch apart): dense-lr routed 12.06 -> 10.86, two of hub `n12`'s
     // steps in the shared channel past g6, between `TRACK_PITCH` (12.5)
     // and the least pitch a crowded channel closes to; bench-75 opened
-    // 5.9 | 2.1 -> 9.0 | 9.06, ratcheted.
+    // 5.9 | 2.1 -> 9.0 | 9.06, ratcheted. B10 review r1: bench-75 static
+    // 14.31, routed 4.34 (above the pre-B10 2.1: `route()` now lays
+    // `job1 -> svc1`'s lane where `scene()` does, round below the jobs
+    // frame, past the fan into `db`).
     ("dense-lr", 12.0, 10.8),
     ("dense-td", 12.1, 12.0),
     ("fanout-frames", 40.0, 40.0),
@@ -325,7 +337,13 @@ fn labels_cover_nothing_they_must_not() {
 #[test]
 fn layout_shape_gate() {
     /// Most `center_off` of the wide-labels fixture (0.31.1: 0.70).
-    const WIDE_LABELS_CENTER_OFF: f64 = 0.35;
+    /// 0.35 -> 0.5 with B10 review r1 (this ceiling locks the drawing's
+    /// balance, not a defect of the layout, which is unchanged): the
+    /// `request` twin steps up over the row to its bulge, its label
+    /// above every box (report §2.1), where its curve bowed only a little
+    /// above; the drawing reaches higher above the row than below it,
+    /// and the largest box (Database) sits 0.46 off its middle.
+    const WIDE_LABELS_CENTER_OFF: f64 = 0.5;
     /// Most aspect ratio of any fixture, static. 5.0 -> 5.5 with report
     /// Q2: the canvas no longer reaches a bow's control points, and
     /// wide-labels lost the blank 68 px band they added (413 -> 345 px
@@ -339,7 +357,12 @@ fn layout_shape_gate() {
     /// line instead of above it (the head box on a straight line no
     /// longer runs the line's whole length), the canvas 2.4 px shorter
     /// (160 -> 157.6 px, aspect 12.32 -> 12.51), the drawing unchanged.
-    const MAX_ASPECT: f64 = 12.6;
+    /// 12.6 -> 12.7 with B10 review r1: its `cached response` return no
+    /// longer bulges under the `health probe` line it crossed twice
+    /// (report §2.1); it runs plain, its label on its own run, and the
+    /// canvas is 1.3 px shorter (157.6 -> 156.3 px, aspect 12.61; mermaid
+    /// draws it at 13.6).
+    const MAX_ASPECT: f64 = 12.7;
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/quality");
     for &(name, _, _) in CEILINGS {
         let src = std::fs::read_to_string(format!("{dir}/{name}.mmd")).expect("fixture");
@@ -373,8 +396,14 @@ const DASH_EDGES_MAX: (usize, usize) = (0, 0);
 /// Most full crossing gaps on one edge (`xgap_max`) per mode (static,
 /// routed). Before: 31 static, 28 routed. Routed 11 -> 15 and static
 /// 14 -> 13 on the round-2 router's geometry (bench-75); routed 11
-/// once a reroute stopped lying on other edges.
-const XGAP_MAX: (usize, usize) = (13, 11);
+/// once a reroute stopped lying on other edges. Static 13 -> 14 with
+/// B10 review r1, a known residual: bench-75's `svc3 -> objects`,
+/// searched for a way round the 21 edges its first step crossed (report
+/// §2.1), takes one with 14 crossings, all on one line. Routed 11 ->
+/// 12, also a known residual: `route()` lays bench-75's `job1 -> svc1`
+/// lane where `scene()` does again, round below the jobs frame, across
+/// the fan into `db`.
+const XGAP_MAX: (usize, usize) = (14, 12);
 
 /// Crossing gaps are spread so that edges stay whole lines (G1).
 #[test]
@@ -643,22 +672,40 @@ fn channels_keep_edges_apart_and_off_chips() {
 /// across from one dummy column to the next (11 -> 16 wiggles); x_drawn
 /// static 499 -> 533, bench-75's square steps crossing where its curves
 /// slipped past each other (349 -> 389; dense-td 92 -> 86).
+///
+/// B10 review r1 (no crossing regression, report M2): a long edge's
+/// chain straightened within its free slot, a labelled twin bulging only
+/// when no other end lies in its way (else plain, its label beside its
+/// run), a jog moved off the curves the stage leaves and off other
+/// jogs' legs, a `route()` long run stepping in the gap that crosses
+/// the fewest lines, and a static edge crossing 4 or more searched for a
+/// way round. Lowered: lat_wiggles static 22 -> 19, lat_backtrack static
+/// 2 203 -> 1 960, band_pairs static 115 -> 114, band_len 65 750 |
+/// 70 222 -> 65 092 | 66 730, x_drawn static 533 -> 492 (under the
+/// pre-B10 499; bench-75 389 -> 358, dense-td 86 -> 78, stress and
+/// wide-labels 0). Raised, each still under the pre-B10 value:
+/// lat_wiggles routed 6 -> 7 (16), lat_backtrack routed 456 -> 566
+/// (667), x_drawn routed 496 -> 501 (504: `route()` draws bench-75's
+/// `job1 -> svc1` lane where `scene()` does again), end_kink static
+/// 1 -> 2 (53). band_pairs routed 142 -> 145 (104 before B10): a
+/// channel's steps run a track pitch apart, a cable where the curves
+/// fanned.
 const DEFECT_BASELINE: [(&str, f64, f64); 16] = [
     ("end_tilt", 0.0, 0.0),
     ("end_tilt_max", 0.3, 0.6),
     ("end_gaps", 0.0, 0.0),
     ("end_gap_max", 0.1, 0.1),
-    ("lat_wiggles", 22.0, 6.0),
-    ("lat_backtrack", 2_203.0, 456.0),
+    ("lat_wiggles", 19.0, 7.0),
+    ("lat_backtrack", 1_960.0, 566.0),
     ("own_frame_x", 0.0, 0.0),
     ("own_frame_len", 0.0, 0.0),
-    ("band_pairs", 115.0, 142.0),
-    ("band_len", 65_750.0, 70_222.0),
+    ("band_pairs", 114.0, 145.0),
+    ("band_len", 65_092.0, 66_730.0),
     ("idiom_scubic", 0.0, 0.0),
     ("idiom_spline", 0.0, 0.0),
     ("idiom_bow", 0.0, 0.0),
-    ("x_drawn", 533.0, 496.0),
-    ("end_kink", 1.0, 0.0),
+    ("x_drawn", 492.0, 501.0),
+    ("end_kink", 2.0, 0.0),
     ("ink_out", 0.0, 0.0),
 ];
 
@@ -868,10 +915,15 @@ fn long_labels_wrap_and_dense_labels_do_not_tower() {
 /// (steps where the static scene ran down a long edge's dummy column),
 /// and the kept 2-cycle `n16 <-> n43` and `n4 -> n43` beside them are
 /// rerouted off the new steps (`n17`'s drag still throws `n16 -> n41`).
+/// B10 review r1: bench-75 12 -> 16, a known residual one over the
+/// pre-B10 15 — `route()` lays `job1 -> svc1`'s lane where `scene()`
+/// does again (round below, not over the top), and the kept `gw ->
+/// svc2` and `svc1 -> queue` it passes are rerouted off the redrawn
+/// edges of a dragged neighbour.
 const DRAG_JUMPS_MAX: &[(&str, usize)] = &[
     ("quality/dense-lr", 0),
     ("quality/dense-td", 4),
-    ("quality/bench-75", 12),
+    ("quality/bench-75", 16),
     ("notes/spread-face", 0),
     ("notes/fork-twins", 0),
     ("notes/near-drag", 0),

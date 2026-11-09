@@ -3857,7 +3857,11 @@ note for Map~K,V~ \"generic\"
         for (what, s) in [("scene", &sc), ("route", &routed), ("drag", &dragged)] {
             let sides = assert_fan_labels_clear(s, "c", true, what);
             let side = |t: &str| sides.iter().find(|s| s.0 == t).unwrap().1;
-            assert!(side("one") < 0.0 && side("two") > 0.0, "{what}: {sides:?}");
+            // (Or, drawn on the axes since B10, 'two' runs straight down
+            // with its label on its own line where 'one' bulges clear of
+            // it — the checks above keep it off 'one''s line — never on
+            // the side towards 'one'.)
+            assert!(side("one") < 0.0 && side("two") >= 0.0, "{what}: {sides:?}");
         }
         // Labels wider than the room between their targets: no row can
         // keep one clear of its neighbours' lines, so the targets spread
