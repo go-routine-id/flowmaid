@@ -260,7 +260,7 @@ const H_WEIGHT_STATIC: f64 = 1.0;
 /// the edges meeting at one hub, and a diagram that large is past
 /// interactive editing anyway. The cut-off is abrupt: one edge more
 /// turns the whole repair off.
-const ROUTE_MAX_EDGES: usize = 400;
+pub(crate) const ROUTE_MAX_EDGES: usize = 400;
 /// Corner rounding distance (px) of a candidate while it is searched
 /// and scored, capped at half the shorter leg.
 pub(crate) const CORNER_R: f64 = 14.0;
@@ -620,11 +620,19 @@ struct Accepted {
     cell: f64,
     nx: usize,
     ny: usize,
-    cells: Vec<Vec<u32>>,
+    /// Per cell: its newest entry (an index into `entries`), or
+    /// [`NO_ENTRY`]: each cell's segments as a list threaded through one
+    /// array, with no allocation per cell.
+    head: Vec<u32>,
+    /// (segment id, the cell's previous entry or [`NO_ENTRY`]).
+    entries: Vec<(u32, u32)>,
     /// Per segment: the query generation that last returned it.
     seen: Vec<u32>,
     gen: u32,
 }
+
+/// The end of a cell's list in [`Accepted`].
+const NO_ENTRY: u32 = u32::MAX;
 
 impl Accepted {
     fn new(ne: usize, outer: R) -> Accepted {
@@ -641,15 +649,18 @@ impl Accepted {
             cell,
             nx,
             ny,
-            cells: vec![Vec::new(); nx * ny],
+            head: vec![NO_ENTRY; nx * ny],
+            entries: Vec::new(),
             seen: Vec::new(),
             gen: 0,
         }
     }
 
     fn cell_range(&self, r: R) -> (std::ops::Range<usize>, std::ops::Range<usize>) {
-        let ix = |x: f64| (((x - self.x0) / self.cell).floor().max(0.0) as usize).min(self.nx - 1);
-        let iy = |y: f64| (((y - self.y0) / self.cell).floor().max(0.0) as usize).min(self.ny - 1);
+        // (Clamped at 0 before the cast, which truncates: the floor of
+        // what is left, without the library call `floor` costs.)
+        let ix = |x: f64| (((x - self.x0) / self.cell).max(0.0) as usize).min(self.nx - 1);
+        let iy = |y: f64| (((y - self.y0) / self.cell).max(0.0) as usize).min(self.ny - 1);
         (ix(r.0)..ix(r.2) + 1, iy(r.1)..iy(r.3) + 1)
     }
 
@@ -668,7 +679,9 @@ impl Accepted {
             let (xr, yr) = self.cell_range(bounds(w));
             for y in yr {
                 for x in xr.clone() {
-                    self.cells[y * self.nx + x].push(id);
+                    let c = y * self.nx + x;
+                    self.entries.push((id, self.head[c]));
+                    self.head[c] = (self.entries.len() - 1) as u32;
                 }
             }
         }
@@ -686,8 +699,11 @@ impl Accepted {
         let mut out = Vec::new();
         for y in yr {
             for x in xr.clone() {
-                let cell = &self.cells[y * self.nx + x];
-                for &id in cell {
+                // (Newest first: the ids are sorted below.)
+                let mut at = self.head[y * self.nx + x];
+                while at != NO_ENTRY {
+                    let (id, next) = self.entries[at as usize];
+                    at = next;
                     let s = &self.segs[id as usize];
                     if s.3 && s.0 != me && self.seen[id as usize] != self.gen {
                         self.seen[id as usize] = self.gen;
@@ -855,6 +871,21 @@ impl World {
     /// Score the drawn polyline `pts` of edge `me` against the scene
     /// and, when given, the accepted edges.
     fn score(&self, info: &Info, me: usize, pts: &[Pt], acc: Option<&mut Accepted>) -> Score {
+        if pts.len() < 2 {
+            return Score::default();
+        }
+        self.score_with(info, me, pts, &simplify(pts), acc)
+    }
+
+    /// [`World::score`] with `simple` = `simplify(pts)` already at hand.
+    fn score_with(
+        &self,
+        info: &Info,
+        me: usize,
+        pts: &[Pt],
+        simple: &[Pt],
+        acc: Option<&mut Accepted>,
+    ) -> Score {
         let mut s = Score::default();
         if pts.len() < 2 {
             return s;
@@ -959,7 +990,6 @@ impl World {
         // own business. Not looked at for a path through a node: its
         // border rides are moot (the last tie-break) and, in a crowded
         // drag, every node is near it.
-        let simple = simplify(pts);
         let own: Vec<R> = ends.iter().flatten().map(|&v| self.nodes[v].0).collect();
         let end_frames = [info.ends.0, info.ends.1].map(|e| match e {
             EndRef::Frame(f) => Some(f),
@@ -982,7 +1012,7 @@ impl World {
         for r in sides.filter(|_| s.node == 0) {
             if overlaps(probe, grow(r, EPS)) {
                 self.look(simple.len());
-                s.hug += side_run(r, &simple, &own).round() as usize;
+                s.hug += side_run(r, simple, &own).round() as usize;
             }
         }
         // Backtracking along the flow, both ways, as the harness counts.
@@ -1001,7 +1031,7 @@ impl World {
         let Some(acc) = acc else { return s };
         // The tests against other edges run on the few segments that
         // stay within [`SIMPLIFY_TOL`] of the drawn curve.
-        self.against(info, me, &simple, acc, s, true)
+        self.against(info, me, simple, acc, s, true)
     }
 
     /// `s` (a scene score) with the parts scored against the accepted
@@ -2648,9 +2678,14 @@ fn search(
 /// Drop the middle of three points on one axis-aligned line when it lies
 /// between the other two, and repeated points.
 fn collapse(pts: Vec<Pt>) -> Vec<Pt> {
+    collapse_from(&pts)
+}
+
+/// [`collapse`] of a borrowed path (no copy of it first).
+fn collapse_from(pts: &[Pt]) -> Vec<Pt> {
     let between = |a: f64, b: f64, c: f64| (a - b) * (c - b) <= EPS;
     let mut out: Vec<Pt> = Vec::with_capacity(pts.len());
-    for p in pts {
+    for &p in pts {
         if out.last().is_some_and(|&q| dist(p, q) < EPS) {
             continue;
         }
@@ -3431,8 +3466,100 @@ fn spread(f: &Fences, routes: &mut [Option<Vec<Pt>>], work: &mut usize) {
             return; // the other groups stay where they are (G13)
         };
         *work = left;
+        if grp.len() == 1 && single_stays(f, routes, &segs, grp[0]) {
+            continue;
+        }
         place_group(f, routes, &segs, grp);
     }
+}
+
+/// How near (px) a fence of [`place_group`] may come to a lone leg's
+/// line before [`single_stays`] leaves the leg to it: far above the
+/// float slack of its slab's bounds.
+const STAYS_NEAR: f64 = 1e-3;
+
+/// Whether [`place_group`] leaves the lone leg `segs[s]` (a group of
+/// one) where it is, decided without placing it: the leg stays inside
+/// the first slab round it that is free, and it is placed afresh only
+/// where some fence of that slab — a node, a frame's border, a title
+/// chip, another leg or a free curve, each at the clearance
+/// [`place_group`] keeps from it, or its port's slide range — reaches
+/// its line over its span. Most legs the ortho stage placed are clear,
+/// and the static nudge places every lone leg (twice), each a pass over
+/// the scene and every leg ([`crate::ortho`], report §2.1).
+fn single_stays(f: &Fences, routes: &[Option<Vec<Pt>>], segs: &[Seg], s: usize) -> bool {
+    let w = f.w;
+    let sg = segs[s];
+    let (axis, at, lo, hi) = (sg.axis, sg.at, sg.lo, sg.hi);
+    let pts = routes[sg.edge].as_ref().expect("routed");
+    let info = f.infos[sg.edge].as_ref().expect("routed");
+    let n = pts.len();
+    // (As `place_group`'s fences: across `c_lo..c_hi`, over `s_lo..s_hi`
+    // along, met only where that overlaps the leg's span.)
+    let reaches = |c_lo: f64, c_hi: f64, s_lo: f64, s_hi: f64| {
+        !(s_hi <= lo + EPS || s_lo >= hi - EPS) && c_lo < at + STAYS_NEAR && c_hi > at - STAYS_NEAR
+    };
+    let rect = |r: R| {
+        if axis == 0 {
+            (r.1, r.3, r.0, r.2)
+        } else {
+            (r.0, r.2, r.1, r.3)
+        }
+    };
+    // The ends its port legs leave from: no fence to them.
+    let own = |e: EndRef| (sg.k == 0 && info.ends.0 == e) || (sg.k + 2 == n && info.ends.1 == e);
+    let clear = (NODE_SEP + SEP_AIR, FRAME_SEP + SEP_AIR, CHIP_SEP + SEP_AIR);
+    for (v, &(r, _)) in w.nodes.iter().enumerate() {
+        let (a, b, l0, l1) = rect(grow(r, clear.0));
+        if !own(EndRef::Node(w.owner[v])) && reaches(a, b, l0, l1) {
+            return false;
+        }
+    }
+    for (k, &r) in w.frames.iter().enumerate() {
+        if own(EndRef::Frame(k)) {
+            continue;
+        }
+        let (a, b, s_lo, s_hi) = rect(r);
+        let c = clear.1;
+        let hit = if at > a && at < b && hi > s_lo && lo < s_hi {
+            reaches(a - c, a + c, s_lo, s_hi) || reaches(b - c, b + c, s_lo, s_hi)
+        } else {
+            reaches(a - c, b + c, s_lo - c, s_hi + c)
+        };
+        if hit {
+            return false;
+        }
+    }
+    for &r in &w.chips {
+        let (a, b, l0, l1) = rect(grow(r, clear.2));
+        if reaches(a, b, l0, l1) {
+            return false;
+        }
+    }
+    let gap = EDGE_SEP + SEP_AIR;
+    for (k, o) in segs.iter().enumerate() {
+        if k != s && o.axis == axis && reaches(o.at - gap, o.at + gap, o.lo, o.hi) {
+            return false;
+        }
+    }
+    for k in f.par_at[axis].meeting(lo, hi) {
+        let (j, c0, c1, l0, l1) = f.par[axis][k];
+        if j != sg.edge && reaches(c0 - gap, c1 + gap, l0, l1) {
+            return false;
+        }
+    }
+    // A port leg stays on its side's range. (The legs next to a port
+    // leg keep it no nearer than they are: no fence across the line.)
+    for (end, port) in [(info.ends.0, 0), (info.ends.1, n - 1)] {
+        if sg.k == port.min(n - 2) {
+            if let Some((_, a, b)) = slide_range(w, end, pts[port], axis) {
+                if at - a < STAYS_NEAR || b - at < STAYS_NEAR {
+                    return false;
+                }
+            }
+        }
+    }
+    true
 }
 
 /// Place one group of legs sharing a channel (see [`spread`]).
@@ -3964,7 +4091,7 @@ pub(crate) fn ortho_corners(e: &crate::scene::SceneEdge) -> Option<Vec<Pt>> {
     {
         return None;
     }
-    let c = collapse(e.waypoints.clone());
+    let c = collapse_from(&e.waypoints);
     let aligned = c
         .windows(2)
         .all(|q| (q[0].0 - q[1].0).abs() < EPS || (q[0].1 - q[1].1).abs() < EPS);
@@ -4017,10 +4144,14 @@ pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut
         return;
     }
     let polys: Vec<Vec<Pt>> = sc.edges.iter().map(edge_polyline).collect();
+    // Each drawn polyline simplified once, when first asked for (the
+    // index, the scoring and the curves below all price it so).
+    let simple: Vec<std::cell::OnceCell<Vec<Pt>>> = vec![std::cell::OnceCell::new(); ne];
+    let simple_of = |i: usize| simple[i].get_or_init(|| simplify(&polys[i]));
     let curves: Vec<Vec<Pt>> = (0..ne)
         .map(|i| {
             if routes[i].is_none() && infos[i].is_some() {
-                simplify(&polys[i])
+                simple_of(i).clone()
             } else {
                 Vec::new()
             }
@@ -4046,8 +4177,14 @@ pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut
         Mode::Static => (usize::MAX, usize::MAX),
         Mode::Routed => (SPREAD_ROUTE_WORK, NUDGE_ROUTE_WORK),
     };
-    for _ in 0..NUDGE_ROUNDS {
+    for round in 0..NUDGE_ROUNDS {
+        // A round that moved nothing leaves the next one the same paths
+        // to place the same way: done.
+        let was = (round + 1 < NUDGE_ROUNDS).then(|| routes.clone());
         spread(&f, &mut routes, &mut spread_work);
+        if was.is_some_and(|was| was == routes) {
+            break;
+        }
     }
     // Each edge is judged against where the others were nudged to (and
     // put back where it is not kept).
@@ -4067,8 +4204,10 @@ pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut
         let mut a = Accepted::new(ne, w.outer);
         for (i, info) in infos.iter().enumerate() {
             if let Some(info) = info {
-                let pts = held[i].as_ref().or(nudged[i].as_ref()).unwrap_or(&polys[i]);
-                accept(&mut a, i, info.ends, pts);
+                match held[i].as_ref().or(nudged[i].as_ref()) {
+                    Some(pts) => accept(&mut a, i, info.ends, pts),
+                    None => a.put(i, info.ends, simple_of(i)),
+                }
             }
         }
         a
@@ -4105,7 +4244,11 @@ pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut
         let nudged_i = routes[i].as_ref().zip(nudged[i].clone());
         if nudged_i.is_some() || merge_jog(&f, &kept, i, 0).is_some() {
             let acc = acc.get_or_insert_with(|| index(&held));
-            let mut s_cur = w.score(info, i, &pts, Some(&mut *acc));
+            let mut s_cur = if pts.len() < 2 {
+                Score::default()
+            } else {
+                w.score_with(info, i, &pts, simple_of(i), Some(&mut *acc))
+            };
             if let Some((new, p)) = nudged_i {
                 let s = w.score(info, i, &p, Some(&mut *acc));
                 if s <= s_cur {
@@ -4161,6 +4304,7 @@ pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut
             CORNER_R
         };
         match acc.as_mut() {
+            Some(a) if !redraw => a.put(i, info.ends, simple_of(i)),
             Some(a) => accept(a, i, info.ends, &pts),
             None => held[i] = Some(pts),
         }
@@ -4277,8 +4421,19 @@ pub(crate) fn spread_close(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, move
     if !near_some.contains(&true) {
         return;
     }
+    // Only an edge whose hull comes within reach of such an edge's —
+    // the spacing, plus the farthest slide [`close_moves`] tries — is
+    // ever measured against one, moved or not: the others stay out of
+    // the grid (which keeps its cells where every path would put them).
+    let reach = CLOSE_SHIFTS.iter().fold(0.0f64, |m, d| m.max(d.abs())) + EDGE_SEP + 1.0;
+    let within = |p: R, q: R| {
+        p.0 <= q.2 + reach && q.0 <= p.2 + reach && p.1 <= q.3 + reach && q.1 <= p.3 + reach
+    };
+    let gridded: Vec<bool> = (0..ne)
+        .map(|k| infos[k].is_some() && (0..ne).any(|m| near_some[m] && within(hulls[k], hulls[m])))
+        .collect();
     let mut polys: Vec<Vec<Pt>> = sc.edges.iter().map(edge_polyline).collect();
-    let mut grid = SegGrid::new(&polys, |k| infos[k].is_some());
+    let mut grid = SegGrid::new(&polys, |k| gridded[k]);
     // The drawn ends of edges `m` and `k` on the ends they share, where
     // related edges converge (their spacing there is the ports').
     let shared = |sc: &Scene, m: usize, k: usize| -> Vec<Pt> {
@@ -4412,6 +4567,17 @@ impl SegGrid {
             ny,
             cells: vec![Vec::new(); nx * ny],
         };
+        // Each cell sized once (a count, then the segments in the order
+        // `add` files them), not grown a push at a time.
+        let mut count = vec![0u32; nx * ny];
+        for (k, pts) in polys.iter().enumerate() {
+            if keep(k) {
+                grid.each_cell(pts, |c, _| count[c] += 1);
+            }
+        }
+        for (cell, &n) in grid.cells.iter_mut().zip(&count) {
+            cell.reserve_exact(n as usize);
+        }
         for (k, pts) in polys.iter().enumerate() {
             if keep(k) {
                 grid.add(k, pts);
@@ -4428,20 +4594,28 @@ impl SegGrid {
         (b..=d).flat_map(move |y| (a..=c).map(move |x| y * self.nx + x))
     }
 
-    fn add(&mut self, k: usize, pts: &[Pt]) {
+    /// Calls `f(cell, segment index)` for every cell each segment of
+    /// `pts` is filed in: the cells of [`SegGrid::cells_of`] its box
+    /// grown by [`EDGE_SEP`] meets, walked in place (a densely sampled
+    /// rounded path has hundreds of segments).
+    fn each_cell(&self, pts: &[Pt], mut f: impl FnMut(usize, usize)) {
         let (x0, y0, nx, ny) = (self.x0, self.y0, self.nx, self.ny);
         let ix = |x: f64| (((x - x0) / SEG_CELL).max(0.0) as usize).min(nx - 1);
         let iy = |y: f64| (((y - y0) / SEG_CELL).max(0.0) as usize).min(ny - 1);
         for (s, q) in pts.windows(2).enumerate() {
-            // (The cells of [`SegGrid::cells_of`], walked in place: a
-            // densely sampled rounded path has hundreds of segments.)
             let r = grow(bounds(q), EDGE_SEP);
             for y in iy(r.1)..=iy(r.3) {
                 for x in ix(r.0)..=ix(r.2) {
-                    self.cells[y * nx + x].push((k as u32, s as u32));
+                    f(y * nx + x, s);
                 }
             }
         }
+    }
+
+    fn add(&mut self, k: usize, pts: &[Pt]) {
+        let mut cells = std::mem::take(&mut self.cells);
+        self.each_cell(pts, |c, s| cells[c].push((k as u32, s as u32)));
+        self.cells = cells;
     }
 
     /// Edge `k` drawn along `new` instead of `old`.

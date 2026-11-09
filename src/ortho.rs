@@ -171,7 +171,16 @@ enum Corner {
 /// edge's channel), which the router accepts before the others as it
 /// did the splines, and [`Ctx::shaped`] for each labelled twin's bulge.
 pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
-    if g.edge_paint_width.is_some() || sc.edges.is_empty() {
+    // Past [`crate::router::ROUTE_MAX_EDGES`] the router and its nudge
+    // leave a drawing as built, so the builders' curves stay too: drawn
+    // on the axes there, every edge's rounded corners were sampled into
+    // waypoints no later stage spaces, `route()` of a 531-edge chart
+    // took 25-30 ms instead of 2.4-2.9 and picking walked 4.6x the
+    // points (B10 review r3 #8).
+    if g.edge_paint_width.is_some()
+        || sc.edges.is_empty()
+        || sc.edges.len() > crate::router::ROUTE_MAX_EDGES
+    {
         return;
     }
     if mode != Mode::Static {
@@ -2299,6 +2308,36 @@ mod tests {
             plain: (room, want),
             label_half: 0.0,
             runs: (room.0 - 20.0, room.1 + 20.0),
+        }
+    }
+
+    #[test]
+    fn a_drawing_past_the_routers_cap_keeps_the_builders_curves() {
+        // 20 sources each linked to 21 targets: 420 edges, past
+        // `ROUTE_MAX_EDGES`, where the router leaves a drawing as built.
+        let mut src = String::from("flowchart TD\n");
+        for a in 0..20 {
+            for b in 0..21 {
+                src.push_str(&format!("s{a} --> t{b}\n"));
+            }
+        }
+        let g = parse(&src).unwrap();
+        assert!(g.edges.len() > crate::router::ROUTE_MAX_EDGES);
+        let sc = scene(&g);
+        let pos: Vec<Pt> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        for s in [sc, crate::scene::route(&g, &pos)] {
+            let squared = s
+                .edges
+                .iter()
+                .filter(|e| crate::router::ortho_corners(e).is_some_and(|c| c.len() >= 3))
+                .count();
+            // (Only the few S-cubics a rounding or two across, which the
+            // last stage squares whatever the size, come out as Zs.)
+            assert!(
+                squared * 20 < s.edges.len(),
+                "{squared} of {} edges drawn on the axes past the cap",
+                s.edges.len()
+            );
         }
     }
 

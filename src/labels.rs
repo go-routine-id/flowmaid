@@ -225,13 +225,29 @@ impl Hasher for CellHasher {
 
 type CellMap<V> = HashMap<(i64, i64), Vec<V>, BuildHasherDefault<CellHasher>>;
 
+/// `v.floor() as i64` for every `v` (NaN to 0, saturating past the
+/// range), without the library call `f64::floor` costs on x86-64's
+/// baseline target (no SSE4.1 rounding): the label stage files every
+/// sampled stroke segment by four of these, a few thousand a scene.
+#[inline]
+fn floor_i64(v: f64) -> i64 {
+    // `as` truncates towards zero (and saturates, NaN to 0): one below
+    // that for a negative non-integer.
+    let t = v as i64;
+    if (t as f64) > v {
+        t.saturating_sub(1)
+    } else {
+        t
+    }
+}
+
 /// Cell range (inclusive) a rect touches on a `cell`-sized grid, or
 /// None when not finite.
 fn cell_span(r: Rect, cell: f64) -> Option<(i64, i64, i64, i64)> {
     if !(r.0.is_finite() && r.1.is_finite() && r.2.is_finite() && r.3.is_finite()) {
         return None;
     }
-    let c = |v: f64| (v / cell).floor() as i64;
+    let c = |v: f64| floor_i64(v / cell);
     Some((c(r.0), c(r.1), c(r.2), c(r.3)))
 }
 
@@ -248,7 +264,7 @@ fn span_cells((x0, y0, x1, y1): (i64, i64, i64, i64)) -> Option<i64> {
 /// which a walk over the query's cells meets `r`? Then a rect filed in
 /// several cells is counted once, with no set to dedupe in.
 fn first_cell(r: &Rect, q0: (i64, i64), c: (i64, i64)) -> bool {
-    let k = |v: f64| (v / OBSTACLE_CELL).floor() as i64;
+    let k = |v: f64| floor_i64(v / OBSTACLE_CELL);
     c == (k(r.0).max(q0.0), k(r.1).max(q0.1))
 }
 
@@ -701,7 +717,7 @@ impl StrokeGrid {
             (0.0, 0.0, 0.0, 0.0)
         };
         let cell = STROKE_CELL.max((x1 - x0).max(y1 - y0) / STROKE_GRID_SIDE);
-        let k = |v: f64| (v / cell).floor() as i64;
+        let k = |v: f64| floor_i64(v / cell);
         let org = (k(x0), k(y0));
         let dim = (k(x1) - org.0 + 1, k(y1) - org.1 + 1);
         let mut g = StrokeGrid {
@@ -3238,6 +3254,36 @@ pub(crate) fn label_clashes(nodes: &[SceneNode], edges: &[SceneEdge]) -> Vec<boo
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn floor_i64_is_the_floor_cast_everywhere() {
+        let mut vs = vec![
+            0.0,
+            -0.0,
+            0.5,
+            -0.5,
+            1.0,
+            -1.0,
+            2.999_999_999,
+            -2.000_000_001,
+            1e15 + 0.5,
+            -1e15 - 0.5,
+            9.3e18,
+            -9.3e18,
+            1e300,
+            -1e300,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+            f64::NAN,
+            f64::MIN_POSITIVE,
+            -f64::MIN_POSITIVE,
+        ];
+        // And a sweep of cell coordinates as the grids file them.
+        vs.extend((-2000..2000).map(|k| k as f64 * 0.37 / 64.0));
+        for v in vs {
+            assert_eq!(floor_i64(v), v.floor() as i64, "{v}");
+        }
+    }
 
     #[test]
     fn seg_hits_rect_clips() {
