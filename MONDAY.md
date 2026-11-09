@@ -4,6 +4,8 @@
 
 Written 2026-11-04 by the session that ran phase B (CLI session `cac93b13…`, claude.ai `session_01JGDFJkgB3ttBJtcTtc6aL5`). §2 records the state at the pause and gets updated as the pause completes.
 
+> **Update 2026-11-09:** resumed. Live run `wf_5b4ccf67-c1e` (task `wyf69sgs1`, script phaseB-continue.js, `{from: "b8b-leftovers"}`): B8b (B8 leftovers) → B9 → B10 → B11 → c-leftovers. The hourly task is re-enabled. To resume after a restart in this session, use `Workflow({scriptPath: "<S>/phaseB-continue.js", resumeFromRunId: "wf_5b4ccf67-c1e"})`, and don't edit prompts before resuming.
+
 ## 1. First five minutes: find out where things stand
 Run this as one Bash call:
 ```bash
