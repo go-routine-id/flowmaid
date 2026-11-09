@@ -1870,6 +1870,49 @@ fn segs_cross(a: Pt, b: Pt, c: Pt, d: Pt) -> bool {
 /// with the control point (for a `back`-edge, so its bow's apex stays)
 /// or stub waypoint next to it, so the edge still leaves the border the
 /// way it did.
+/// A flowchart path on the axes that [`move_end`] left with a corner whose
+/// neighbouring waypoint on a leg lies farther than [`SWOOP_REACH`] from
+/// it — the slid leg's corner moved away from the point before it, or
+/// that point was dropped with the leg's folded part — gets the
+/// rounding point on that leg back, [`crate::router::CORNER_R`] (at
+/// most half the way to that neighbour) from the corner, as
+/// [`crate::router::smooth`] puts it: a host's spline through the
+/// waypoints then turns there as a rounded corner instead of sweeping
+/// over the leg (bench-75's `svc6 --> ext` sagged over 270 px, `svc3 -->
+/// metrics` 42 px, B10 review r3 #5). Its other points stay. Run once
+/// the paths are final ([`crate::edgepass::finish`], before the labels):
+/// the ports stage reads where a path heads off its waypoints.
+pub(crate) fn reround(e: &mut SceneEdge) {
+    if e.paint_width.is_some() {
+        return;
+    }
+    let Some(c) = crate::router::ortho_corners(e) else {
+        return;
+    };
+    for m in c[1..c.len() - 1].iter().rev() {
+        let w = &mut e.waypoints;
+        let Some(j) = w.iter().rposition(|q| q == m) else {
+            continue;
+        };
+        // After it, then before it (the index stays put).
+        for (k, at) in [(j + 1, j + 1), (j.wrapping_sub(1), j)] {
+            let Some(&q) = w.get(k) else {
+                continue;
+            };
+            let d = (q.0 - m.0).hypot(q.1 - m.1);
+            if d > SWOOP_REACH {
+                let r = crate::router::CORNER_R.min(d / 2.0);
+                w.insert(at, (m.0 + (q.0 - m.0) / d * r, m.1 + (q.1 - m.1) / d * r));
+            }
+        }
+    }
+}
+
+/// How far (px) from a corner of a flowchart path on the axes the
+/// waypoint before or after it may lie and the corner still turn as a
+/// rounded one: two corner roundings ([`crate::router::CORNER_R`]).
+const SWOOP_REACH: f64 = 2.0 * crate::router::CORNER_R;
+
 fn move_end(e: &mut SceneEdge, src: bool, old: Pt, delta: Pt, side: Side, back: bool) {
     let add = |p: &mut Pt| {
         p.0 += delta.0;
@@ -2067,6 +2110,67 @@ fn same(a: Pt, b: Pt) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_corner_left_far_from_its_rounding_point_is_rounded_again() {
+        // bench-75's `svc6 --> ext` after its end slid: the corner at
+        // (2104.975, 768) kept its point after it, the one before was
+        // dropped with the folded leg, and the spline swept 270 px.
+        let base = scene(&parse("flowchart LR\nA --> B").unwrap()).edges[0].clone();
+        let mut e = base.clone();
+        e.waypoints = vec![
+            (490.6, 768.0),
+            (2104.975, 768.0),
+            (2104.975, 782.0),
+            (2104.975, 1103.4),
+        ];
+        reround(&mut e);
+        let r = crate::router::CORNER_R;
+        assert_eq!(e.waypoints.len(), 5);
+        assert!((e.waypoints[1].0 - (2104.975 - r)).abs() < 1e-9 && e.waypoints[1].1 == 768.0);
+        // Rounded already (every corner's neighbours within reach): kept.
+        let c = [(0.0, 0.0), (0.0, 100.0), (200.0, 100.0), (200.0, 300.0)];
+        let mut f = base;
+        f.waypoints = crate::router::smooth(&c, r);
+        let before = f.waypoints.clone();
+        reround(&mut f);
+        assert_eq!(f.waypoints, before);
+        // Every fixture's and example's flowchart edges come out with
+        // each corner's rounding point within reach, in `scene()` and
+        // `route()`.
+        let root = env!("CARGO_MANIFEST_DIR");
+        for d in ["tests/fixtures/quality", "examples"] {
+            for f in std::fs::read_dir(format!("{root}/{d}")).unwrap() {
+                let p = f.unwrap().path();
+                if p.extension().map_or(true, |x| x != "mmd") {
+                    continue;
+                }
+                let src = std::fs::read_to_string(&p).unwrap();
+                let g = match crate::parser::parse_document(&src) {
+                    Ok(crate::model::Document::Flowchart(g) | crate::model::Document::State(g)) => {
+                        g
+                    }
+                    _ => continue,
+                };
+                let s = crate::scene::scene(&g);
+                let pos: Vec<Pt> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+                for sc in [s.clone(), crate::scene::route(&g, &pos)] {
+                    for e in &sc.edges {
+                        let mut t = e.clone();
+                        reround(&mut t);
+                        assert_eq!(
+                            t.waypoints,
+                            e.waypoints,
+                            "{}: {} -> {}",
+                            p.display(),
+                            e.from,
+                            e.to
+                        );
+                    }
+                }
+            }
+        }
+    }
     use crate::edgepass::{finish, Mode};
     use crate::parser::parse;
     use crate::scene::{edge_polyline, route, scene};

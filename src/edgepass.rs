@@ -389,6 +389,13 @@ pub(crate) fn finish_held(g: &Graph, sc: &mut Scene, mode: Mode, fixed: &[bool],
     straight_cubics(sc, &cx);
     square_s_cubics(sc, &cx);
     snap_ends(sc, &cx);
+    // A corner a moved end left far from its rounding point turns as a
+    // rounded corner again (see `ports::reround`).
+    for (i, e) in sc.edges.iter_mut().enumerate() {
+        if cx.drawn.get(i).copied().unwrap_or(false) {
+            crate::ports::reround(e);
+        }
+    }
     let budget = match mode {
         Mode::Static => crate::labels::LABEL_STATIC_WORK,
         Mode::Routed => crate::labels::LABEL_ROUTE_WORK,
