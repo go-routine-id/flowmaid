@@ -2791,6 +2791,10 @@ pub(crate) fn basis_sample(pts: &[(f64, f64)]) -> Vec<(f64, f64)> {
     basis_sample_with(pts, false)
 }
 
+/// Length (px) of control polygon per sample [`basis_sample_with`]
+/// takes on a short span of a flowchart edge's spline.
+const CORNER_SAMPLE_PX: f64 = 4.0;
+
 /// [`basis_sample`], with `lines` (as [`spline_segs`] takes it) a
 /// stretch on one axis sampled by its end alone: the samples between
 /// would only lie on the line (a flowchart edge's straight legs, dozens
@@ -2822,12 +2826,24 @@ pub(crate) fn basis_sample_with(pts: &[(f64, f64)], lines: bool) -> Vec<(f64, f6
             ((a.0 + 4.0 * b.0 + p.0) / 6.0, (a.1 + 4.0 * b.1 + p.1) / 6.0),
         ];
         // A stretch on one axis (an orthogonal path's straight leg) is
-        // its end alone: the samples between would only lie on it.
+        // its end alone: the samples between would only lie on it. With
+        // `lines`, a short span (a rounded corner's) gets a sample per
+        // [`CORNER_SAMPLE_PX`] of its control polygon: within a tenth of
+        // a px of the span, where six each piled up hundreds of samples
+        // on a drawing of Zs for every stage that walks them.
         if lines && axis_run(&seg) {
             out.push(seg[3]);
         } else {
-            for k in 1..=6 {
-                out.push(cubic_at(&seg, k as f64 / 6.0));
+            let k = if lines {
+                let poly = (seg[1].0 - seg[0].0).hypot(seg[1].1 - seg[0].1)
+                    + (seg[2].0 - seg[1].0).hypot(seg[2].1 - seg[1].1)
+                    + (seg[3].0 - seg[2].0).hypot(seg[3].1 - seg[2].1);
+                ((poly / CORNER_SAMPLE_PX).ceil() as usize).clamp(1, 6)
+            } else {
+                6
+            };
+            for j in 1..=k {
+                out.push(cubic_at(&seg, j as f64 / k as f64));
             }
         }
         *cur = seg[3];

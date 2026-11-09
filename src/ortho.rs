@@ -320,6 +320,28 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
             })
             .collect()
     };
+    let loop_boxes: Vec<(usize, Rect)> = if columns.is_empty() {
+        Vec::new()
+    } else {
+        sc.edges
+            .iter()
+            .filter(|e| e.from == e.to)
+            .filter_map(|e| {
+                let v = sc.nodes.iter().position(|n| n.id == e.from)?;
+                let pts = crate::scene::edge_polyline(e);
+                let (mut a, mut b) = (
+                    (f64::INFINITY, f64::INFINITY),
+                    (f64::NEG_INFINITY, f64::NEG_INFINITY),
+                );
+                for p in pts {
+                    a = (a.0.min(p.0), a.1.min(p.1));
+                    b = (b.0.max(p.0), b.1.max(p.1));
+                }
+                a.0.is_finite()
+                    .then(|| (v, flow_rect(dir, (a.0, a.1, b.0, b.1))))
+            })
+            .collect()
+    };
     let label_boxes: Vec<(usize, Rect)> = if columns.is_empty() {
         Vec::new()
     } else {
@@ -458,6 +480,7 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
                 let room = ColumnRoom {
                     rows: &merged,
                     boxes: &boxes,
+                    loops: &loop_boxes,
                     frames: &frames,
                     columns: &columns,
                     runs: &lane_runs,
@@ -952,6 +975,9 @@ struct ColumnRoom<'a> {
     /// The rows of boxes along the flow.
     rows: &'a [(f64, f64)],
     boxes: &'a [(f64, f64, f64, f64)],
+    /// Every self-loop's box with its node: drawn beside the node, in
+    /// a column's way as much as the node (the router's rule).
+    loops: &'a [(usize, Rect)],
     frames: &'a [(f64, f64, f64, f64)],
     /// Every long edge's dummy columns: (edge, point).
     columns: &'a [(usize, Pt)],
@@ -1000,6 +1026,11 @@ impl ColumnRoom<'_> {
         }
         for (j, r) in self.labels {
             if *j != self.edge && meets(r) {
+                fence(r.0, r.1, COLUMN_CLEAR);
+            }
+        }
+        for (v, r) in self.loops {
+            if !self.own.contains(&Some(*v)) && meets(r) {
                 fence(r.0, r.1, COLUMN_CLEAR);
             }
         }

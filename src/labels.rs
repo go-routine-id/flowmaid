@@ -751,7 +751,13 @@ impl StrokeGrid {
             // Not finite: it touches no cell.
             return true;
         };
-        if span.2 - span.0 <= 1 && span.3 - span.1 <= 1 {
+        // A short one, or one on an axis (an orthogonal path's leg): the
+        // cells of its box, which are the ones [`seg_cells`] walks to,
+        // without its list.
+        let axis = a.0 == b.0 || a.1 == b.1;
+        if span.2 - span.0 <= 1 && span.3 - span.1 <= 1
+            || axis && span_cells(span).is_some_and(|n| n >= 0 && n as usize <= SEG_MAX_CELLS)
+        {
             for cx in span.0..=span.2 {
                 for cy in span.1..=span.3 {
                     if let Some(c) = self.index((cx, cy)) {

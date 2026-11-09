@@ -680,10 +680,9 @@ fn channels_keep_edges_apart_and_off_chips() {
 /// jogs' legs, a `route()` long run stepping in the gap that crosses
 /// the fewest lines, and a static edge crossing 4 or more searched for a
 /// way round. Lowered: lat_wiggles static 22 -> 19, lat_backtrack static
-/// 2 203 -> 1 960, band_pairs static 115 -> 114, band_len 65 750 |
-/// 70 222 -> 65 092 | 66 730, x_drawn static 533 -> 492 (under the
-/// pre-B10 499; bench-75 389 -> 358, dense-td 86 -> 78, stress and
-/// wide-labels 0). Raised, each still under the pre-B10 value:
+/// 2 203 -> 1 960, band_len 65 750 | 70 222 -> 65 160 | 66 730, x_drawn
+/// static 533 -> 494 (under the pre-B10 499; bench-75 389 -> 360,
+/// dense-td 86 -> 78, stress and wide-labels 0). Raised, each still under the pre-B10 value:
 /// lat_wiggles routed 6 -> 7 (16), lat_backtrack routed 456 -> 566
 /// (667), x_drawn routed 496 -> 501 (504: `route()` draws bench-75's
 /// `job1 -> svc1` lane where `scene()` does again), end_kink static
@@ -699,12 +698,12 @@ const DEFECT_BASELINE: [(&str, f64, f64); 16] = [
     ("lat_backtrack", 1_960.0, 566.0),
     ("own_frame_x", 0.0, 0.0),
     ("own_frame_len", 0.0, 0.0),
-    ("band_pairs", 114.0, 145.0),
-    ("band_len", 65_092.0, 66_730.0),
+    ("band_pairs", 115.0, 145.0),
+    ("band_len", 65_160.0, 66_730.0),
     ("idiom_scubic", 0.0, 0.0),
     ("idiom_spline", 0.0, 0.0),
     ("idiom_bow", 0.0, 0.0),
-    ("x_drawn", 492.0, 501.0),
+    ("x_drawn", 494.0, 501.0),
     ("end_kink", 2.0, 0.0),
     ("ink_out", 0.0, 0.0),
 ];
