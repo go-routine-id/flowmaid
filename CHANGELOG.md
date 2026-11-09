@@ -38,8 +38,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
   when the edges it changes cross fewer lines. A breadth side whose starts
   would run along their own row through a box (a `<<choice>>` fan spilled
   round the diamond's corners, past the note cards beside it) leaves on
-  stubs nested by their order along the flow and steps in the gap
-  instead. A long run in `route()` steps in the gap whose legs cross the
+  stubs planned nested by their order along the flow and steps in the gap
+  instead (the channel nudge may still order two such steps by where their
+  far ends turn when one of them is rerouted: bench-75's `svc1 --> queue`
+  and `svc1 --> db` cross once either way, and the nudge puts that
+  crossing under `svc1`). A long run in `route()` steps in the gap whose legs cross the
   fewest lines. The layout grows a gap by the
   tracks its steps need (two at the plain gap, one more per further step
   one way). A state composite's edge to one of its own states leaves the
@@ -49,6 +52,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
   step matches the kept ones, and a single cubic that a later spacing
   slid a few px off its line (a choice's two ends spread, a drag frame
   respacing a kept end) is squared again — straight under a px, else a Z.
+  A corner whose rounding point a moved end slid away from or dropped (the
+  spline swept such a corner over up to 1 600 px: bench-75's `svc6 -->
+  ext`) gets it back, 14 px from the corner. Past the router's 400-edge
+  cap, where the router and its nudge leave a drawing as built, the
+  builders' curves stay too (a 531-edge chart's `route()` 25.7 -> 2.6 ms).
   The path comes as `SceneEdge::waypoints` (each corner flanked by points
   14 px either side, which the painter's spline turns through as a curve
   of about 8 px radius), `bezier` the chord through its corners, so
@@ -77,16 +85,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
   a few chords (its legs as lines) for hit-testing and the label stage,
   which keeps the static scene within 1.7x its pre-B10 time on the corpus.
   Measured over the 14 corpus drawings against 0.35.0 (static | routed):
-  defects 57 | 90 -> 48 | 46, S-cubics 92 | 112 -> 0 | 0, splines 23 | 24
+  defects 57 | 90 -> 47 | 46, S-cubics 92 | 112 -> 0 | 0, splines 23 | 24
   -> 0 | 0, bows 2 | 2 -> 0 | 0, end kinks 74 | 94 -> 2 | 1, edges on a
   frame border 11 | 20 -> 0 | 7, drawn crossings 499 | 504 -> 428 | 494
   (bench-75 349 | 375 -> 302 | 361, fanout-frames 3 | 3 -> 0 | 1,
   dense-td 92 | 73 -> 80 | 83); bench-75 defects 5 | 27 -> 4 | 1. Over 964
-  generated state diagrams: drawn crossings 762 | 1 021 -> 708 | 826,
+  generated state diagrams: drawn crossings 762 | 1 021 -> 712 | 826,
   defects 633 | 558 -> 616 | 537, pairs of edges out of one node crossing
   each other twice 20 | 17 -> 14 | 16, edges through a node 45 | 55 -> 32
   | 39; over 303 generated flowcharts: crossings 2 902 | 2 988 -> 2 874 |
-  2 774, defects 404 | 331 -> 87 | 88. Known costs: parallel cables (a
+  2 775, defects 404 | 331 -> 87 | 91. Known costs: parallel cables (a
   channel's tracks, a fan's bundled stubs) 97 | 107 -> 128 | 143 pairs
   on the corpus; bench-75's static crossings still above mermaid's 222
   (its layout's node order bounds them); one more edge-frame pair there
@@ -95,10 +103,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
   dense-td's `route()` crossings 73 -> 83; plain twins' labels over a line
   in narrow composites; and on bench-75 `route()` takes `job1 -> svc1`'s
   lane round the other side from the static layout (its planner reads gap
-  depths in px). Static `scene()` takes 1.6-1.9x its time from before
-  this release's layout and edge work on the small corpus drawings
-  (advanced 2.2x); `route()` and drags take less than before on the
-  large ones (bench-75 drag 20.2 -> 14.6 ms).
+  depths in px); a 1 px drag throws one more unrelated end on dense-td
+  and on bench-75 (the re-rounded corners change where the ports stage
+  reads a kept path heading). Static `scene()` takes 1.4-1.7x its time
+  from before this release's layout and edge work on the small corpus
+  drawings (fastest of interleaved runs; advanced 2.0x, its labels,
+  ports and nudge over 18 squared paths); `route()` and drags take less
+  than before on the large ones (bench-75 drag 20.2 -> 13.0 ms).
 
 - **A subgraph fed from outside every subgraph starts below its feeder**
   (report §2.9, B8b P1). 0.35.0 started a subgraph's edge-less members on
