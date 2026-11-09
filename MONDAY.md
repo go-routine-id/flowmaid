@@ -200,3 +200,8 @@ Engine work, not in the 0.37.0 release (README now states the current behaviour)
 7. Advance JSON README example: the label chip covers the arrowhead and the diamond clips the label text.
 8. Advance text DSL README example: `a --> b` and `c --> b:top` share the last 12.5 px into b and their arrowheads coincide.
 9. Contrast: chip/ER-row hairlines and amber accent #d99114 on white are under 3:1 (documented exceptions).
+
+## 12. USER DECISION 2026-11-09 17:20 UTC — B10 is the last package this week
+"setelah b10 selesai kita cukup untuk minggu ini! cukup rilis dulu b10! minggu depan kita lanjutkan".
+- At push:b10-orthogonal: TaskStop wyf69sgs1 (do not let B11 run). Integrate B10 → dev (README hand-port into the new layout), release 0.38.0, main → dev, ff work branch to dev, back up, disable the hourly task trig_019VQH3TYG4ijXR8niHxK13z (its prompt was rewritten for this).
+- NEXT WEEK resume: Workflow({scriptPath: <scratchpad>/phaseB-continue.js, args: {from: "b11-hops-comb"}}) on the work branch = dev; then c-leftovers (narrowed class/state spec, repro files restored from wsbackup/verify); release 0.39.0 = B11 + c-leftovers; then propose the §11 "c-polish" package.
