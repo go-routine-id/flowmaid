@@ -1455,6 +1455,20 @@ fn snap_straight_pairs(
     deltas: &mut [[Pt; 2]],
     moved: &mut [bool],
 ) {
+    // Only a single curve whose ends lie a port's slack to
+    // [`STRAIGHT_SNAP`] apart across one axis is snapped (the test below,
+    // on whichever axis its sides face along): with none such (after the
+    // ortho stage, every other edge is a path), the sides are not
+    // grouped at all.
+    let near = |d: f64| (PORT_EPS..=STRAIGHT_SNAP).contains(&d);
+    if !sc.edges.iter().enumerate().any(|(i, e)| {
+        let [p0, .., p3] = e.bezier;
+        e.waypoints.is_empty()
+            && cx.drawn.get(i).copied().unwrap_or(false)
+            && (near((p3.0 - p0.0).abs()) || near((p3.1 - p0.1).abs()))
+    }) {
+        return;
+    }
     let mut groups = side_groups(sc, cx);
     let mut key_of: BTreeMap<(usize, bool), (EndRef, Side)> = BTreeMap::new();
     for (key, ports) in &groups {
