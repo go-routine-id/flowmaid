@@ -689,6 +689,12 @@ fn channels_keep_edges_apart_and_off_chips() {
 /// 1 -> 2 (53). band_pairs routed 142 -> 145 (104 before B10): a
 /// channel's steps run a track pitch apart, a cable where the curves
 /// fanned.
+///
+/// B10 review r1 #7: the static reorder (G9) judges two squared paths
+/// off one side over their whole corners, not only a port's reach, so
+/// two Ls of a fan turning the same way nest (fanout-frames' `n0 -->
+/// g6` crossed `n0 --> n21` 750 px down). Lowered: x_drawn static
+/// 494 -> 489 (fanout-frames 1 -> 0), band_len static 65 160 -> 64 940.
 const DEFECT_BASELINE: [(&str, f64, f64); 16] = [
     ("end_tilt", 0.0, 0.0),
     ("end_tilt_max", 0.3, 0.6),
@@ -699,11 +705,11 @@ const DEFECT_BASELINE: [(&str, f64, f64); 16] = [
     ("own_frame_x", 0.0, 0.0),
     ("own_frame_len", 0.0, 0.0),
     ("band_pairs", 115.0, 145.0),
-    ("band_len", 65_160.0, 66_730.0),
+    ("band_len", 64_940.0, 66_730.0),
     ("idiom_scubic", 0.0, 0.0),
     ("idiom_spline", 0.0, 0.0),
     ("idiom_bow", 0.0, 0.0),
-    ("x_drawn", 494.0, 501.0),
+    ("x_drawn", 489.0, 501.0),
     ("end_kink", 2.0, 0.0),
     ("ink_out", 0.0, 0.0),
 ];

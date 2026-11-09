@@ -587,7 +587,22 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
                             })
                         })
                     };
-                    if !swept(from, f0, n0) && !swept(to, f3, n3) {
+                    // Nor does it leave a frame holding both ends: its
+                    // run kept a corner's two roundings off the ends, and
+                    // in a narrow composite that put it on the frame's
+                    // border, its label outside the frame (x3_state's
+                    // `Saving --> Dirty : conflict` 2 px past `Editing`).
+                    let held = |end: EndRef| match end {
+                        EndRef::Node(v) => cx.node_frames.get(v).cloned().unwrap_or_default(),
+                        EndRef::Frame(c) => cx.frame_anc.get(c).cloned().unwrap_or_default(),
+                    };
+                    let (hf, ht) = (held(from), held(to));
+                    let inside = hf.iter().filter(|k| ht.contains(k)).all(|&k| {
+                        frames.get(k).map_or(true, |r| {
+                            run - across > r.0 + BORDER_CLEAR && run + across < r.1 - BORDER_CLEAR
+                        })
+                    });
+                    if inside && !swept(from, f0, n0) && !swept(to, f3, n3) {
                         bulged[i] = true;
                         plans.push((i, plan));
                         continue;

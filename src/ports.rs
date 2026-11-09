@@ -1813,6 +1813,23 @@ fn settled(
 /// Whether the drawn legs of two ends (each edge's polyline from its
 /// end out to [`PORT_LEG_REACH`]) cross.
 fn legs_cross(sc: &Scene, a: &PortEnd, b: &PortEnd) -> bool {
+    // Two flowchart paths on the axes from one side: their whole square
+    // corners (a handful of legs). Two Ls of a fan turning the same way
+    // cross where the one turning first runs across the other's long
+    // first leg, far past the reach (fanout-frames' `n0 --> g6` over
+    // `n0 --> n21`, 750 px down).
+    let square = |p: &PortEnd| {
+        let e = &sc.edges[p.edge];
+        if e.paint_width.is_some() || e.waypoints.is_empty() {
+            return None;
+        }
+        crate::router::ortho_corners(e)
+    };
+    if let (Some(ca), Some(cb)) = (square(a), square(b)) {
+        return ca
+            .windows(2)
+            .any(|u| cb.windows(2).any(|v| segs_cross(u[0], u[1], v[0], v[1])));
+    }
     let leg = |p: &PortEnd| {
         let mut pts = edge_polyline(&sc.edges[p.edge]);
         if !p.src {
@@ -2579,5 +2596,29 @@ mod tests {
         sc.edges[0].paint_width = Some(2.0);
         let (_, q) = end_and_steer(&sc, 0, true, Some(Side::Bottom));
         assert_ne!(q, chord);
+    }
+
+    /// B10 review r1 #7 (report M5: fanout-frames 2 -> 0 crossings): the
+    /// static reorder (G9) sees two squared paths off one side cross
+    /// over their whole corners, so two Ls of a fan turning the same way
+    /// nest — the one turning later outside — where the crossing lies
+    /// far past a port's reach (`n0 --> g6` ran across `n0 --> n21`'s
+    /// long first leg 750 px down its column of frames).
+    #[test]
+    fn a_fans_square_paths_nest_off_their_side() {
+        let src = include_str!("../tests/fixtures/quality/fanout-frames.mmd");
+        let sc = scene(&parse(src).unwrap());
+        let polys: Vec<Vec<Pt>> = sc.edges.iter().map(edge_polyline).collect();
+        for i in 0..polys.len() {
+            for j in i + 1..polys.len() {
+                let crossed = polys[i].windows(2).any(|u| {
+                    polys[j]
+                        .windows(2)
+                        .any(|v| segs_cross(u[0], u[1], v[0], v[1]))
+                });
+                let (a, b) = (&sc.edges[i], &sc.edges[j]);
+                assert!(!crossed, "{}->{} x {}->{}", a.from, a.to, b.from, b.to);
+            }
+        }
     }
 }

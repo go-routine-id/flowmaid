@@ -17335,4 +17335,34 @@ mod tests {
             }
         }
     }
+
+    /// B10 review r1 #8: a labelled twin inside a narrow composite does
+    /// not bulge out of it. Its bulge kept a corner's two roundings off
+    /// its ends, which put `Saving --> Dirty : conflict` on the
+    /// `Editing` frame's border (2 px outside it) with its label outside
+    /// the composite; with no room inside it is drawn plain, its label
+    /// on its own line.
+    #[test]
+    fn a_labelled_twin_stays_inside_its_composite() {
+        let st = "stateDiagram-v2\n    [*] --> Idle\n    Idle --> Loading : fetch\n    \
+                  Loading --> Ready : ok\n    Loading --> Error : fail\n    Error --> Idle : reset\n    \
+                  Ready --> Editing : edit\n    state Editing {\n        [*] --> Dirty\n        \
+                  Dirty --> Saving : save\n        Saving --> Clean : done\n        \
+                  Saving --> Dirty : conflict\n        Clean --> [*]\n    }\n    \
+                  Editing --> Ready : close\n    state check <<choice>>\n    Ready --> check\n    \
+                  check --> Idle : stale\n    check --> Ready : fresh\n    \
+                  note right of Error : shown to user\n    Ready --> [*]";
+        let g = state_graph(st);
+        let s = scene(&g);
+        let c: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+        for sc in [&s, &route(&g, &c)] {
+            let f = sc.clusters.iter().find(|c| c.id == "Editing").unwrap();
+            let e = the_edge(sc, "Saving", "Dirty");
+            for p in edge_polyline(e) {
+                assert!(p.0 > f.x + 2.0 && p.0 < f.x + f.w - 2.0, "{p:?} {f:?}");
+            }
+            let (_, at, _) = e.label.as_ref().unwrap();
+            assert!(at.0 > f.x && at.0 < f.x + f.w, "{at:?} {f:?}");
+        }
+    }
 }
