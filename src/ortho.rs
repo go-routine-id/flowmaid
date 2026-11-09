@@ -171,10 +171,264 @@ enum Corner {
 /// edge's channel), which the router accepts before the others as it
 /// did the splines, and [`Ctx::shaped`] for each labelled twin's bulge.
 pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
-    let mut chain = vec![false; sc.edges.len()];
     if g.edge_paint_width.is_some() || sc.edges.is_empty() {
         return;
     }
+    if mode != Mode::Static {
+        ortho_pass(g, sc, cx, mode);
+        return;
+    }
+    let before = sc.edges.clone();
+    ortho_pass(g, sc, cx, mode);
+    // The ports stage orders a side's ends by where their edges head,
+    // which suits the builders' curves; drawn on the axes, two ends of a
+    // side whose paths turn the same way cross twice when the one turning
+    // later lies outside (y2_state_nested: `Off --> decide`'s L round the
+    // outside of `Off --> On`'s Z), and an end beyond a note card's link
+    // on its side runs across the link's elbow. Such ends move (two
+    // swap places, one beyond a link goes to the link's other side) and
+    // the stage draws again, kept only when the edges it changed cross
+    // fewer lines.
+    let moves = untangle(sc, cx, &before);
+    if moves.is_empty() {
+        return;
+    }
+    let first = std::mem::replace(&mut sc.edges, before);
+    let kept = (cx.chain.clone(), cx.shaped.clone());
+    for (i, src, to) in moves {
+        shift_end(&mut sc.edges[i], src, to);
+    }
+    ortho_pass(g, sc, cx, mode);
+    let changed: Vec<usize> = (0..sc.edges.len())
+        .filter(|&i| {
+            let (a, b) = (&sc.edges[i], &first[i]);
+            a.waypoints != b.waypoints || a.bezier != b.bezier
+        })
+        .collect();
+    if crossings_of(&sc.edges, &changed) >= crossings_of(&first, &changed) {
+        sc.edges = first;
+        (cx.chain, cx.shaped) = kept;
+    }
+}
+
+/// Move the start (`src`) or end of a path the stage has yet to draw to
+/// `to`, with the handle or stub next to it, so the stage plans it from
+/// there.
+fn shift_end(e: &mut SceneEdge, src: bool, to: Pt) {
+    let (pi, ci) = if src { (0, 1) } else { (3, 2) };
+    let old = e.bezier[pi];
+    let d = (to.0 - old.0, to.1 - old.1);
+    e.bezier[pi] = to;
+    e.bezier[ci] = (e.bezier[ci].0 + d.0, e.bezier[ci].1 + d.1);
+    if let Some(w) = if src {
+        e.waypoints.first_mut()
+    } else {
+        e.waypoints.last_mut()
+    } {
+        *w = to;
+    }
+}
+
+/// An edge's line as drawn, by its corners where it runs on the axes,
+/// for counting crossings.
+fn line_of(e: &SceneEdge) -> Vec<Pt> {
+    match crate::router::ortho_corners(e) {
+        Some(c) => c,
+        None if e.waypoints.len() >= 2 => e.waypoints.clone(),
+        None => crate::scene::sample_cubic(&e.bezier, 12),
+    }
+}
+
+/// How many times two lines properly cross.
+fn lines_cross(a: &[Pt], b: &[Pt]) -> usize {
+    a.windows(2)
+        .map(|u| {
+            b.windows(2)
+                .filter(|v| segs_cross(u[0], u[1], v[0], v[1]))
+                .count()
+        })
+        .sum()
+}
+
+/// The crossings of the edges in `which` with every other edge (each
+/// pair once).
+fn crossings_of(edges: &[SceneEdge], which: &[usize]) -> usize {
+    let lines: Vec<Vec<Pt>> = edges.iter().map(line_of).collect();
+    let mut n = 0;
+    for (k, &i) in which.iter().enumerate() {
+        for j in 0..lines.len() {
+            if j == i || which[..k].contains(&j) {
+                continue;
+            }
+            n += lines_cross(&lines[i], &lines[j]);
+        }
+    }
+    n
+}
+
+/// The end moves [`orthogonalize`] tries on the paths of its first
+/// pass (`sc`; `before` holds what that pass started from), as (edge,
+/// its start?, new point): per side of a node or frame, two ends whose
+/// paths cross each other twice swap places, and an end whose path
+/// crosses a note card's link out of the same side, lying on the side
+/// of the link's end the card is, goes to the mirror place on the link's
+/// other side where that stays on the side, a port's pitch from every
+/// other end. Only ends of paths the stage itself planned move (never a
+/// drag's kept ones, a lane's, an authored curve's or a note link's).
+fn untangle(sc: &Scene, cx: &Ctx, before: &[SceneEdge]) -> Vec<(usize, bool, Pt)> {
+    struct End {
+        edge: usize,
+        src: bool,
+        at: Pt,
+        movable: bool,
+        note: bool,
+    }
+    let ends_at = |e: &SceneEdge| {
+        if e.waypoints.len() >= 2 {
+            (e.waypoints[0], e.waypoints[e.waypoints.len() - 1])
+        } else {
+            (e.bezier[0], e.bezier[3])
+        }
+    };
+    let flat = |end: EndRef| match end {
+        EndRef::Frame(_) => true,
+        EndRef::Node(v) => !matches!(
+            sc.nodes[v].shape,
+            crate::model::Shape::Diamond
+                | crate::model::Shape::Circle
+                | crate::model::Shape::DoubleCircle
+                | crate::model::Shape::StateStart
+                | crate::model::Shape::StateEnd
+                | crate::model::Shape::ForkBar
+        ),
+    };
+    let side = |end: EndRef, p: Pt| match end {
+        EndRef::Node(v) => crate::ports::outline_side(sc.nodes[v].shape, end_rect(sc, end), p),
+        EndRef::Frame(_) => side_of(end_rect(sc, end), p),
+    };
+    let card = |end: EndRef| match end {
+        EndRef::Node(v) => {
+            let n = &sc.nodes[v];
+            crate::style::is_note_card(&n.id, n.shape, &n.style)
+        }
+        EndRef::Frame(_) => false,
+    };
+    let mut groups: Vec<((EndRef, Side), Vec<End>)> = Vec::new();
+    let mut any_note = false;
+    for (i, e) in sc.edges.iter().enumerate() {
+        let Some((from, to)) = cx.ends.get(i).copied().flatten() else {
+            continue;
+        };
+        if from == to || !cx.drawn.get(i).copied().unwrap_or(false) || e.paint_width.is_some() {
+            continue;
+        }
+        let note = crate::ports::note_link(sc, cx, i);
+        let movable = !note
+            && !cx.fixed.get(i).copied().unwrap_or(false)
+            && !cx.held.get(i).copied().unwrap_or(false)
+            && e.meta.curve.is_none()
+            && before
+                .get(i)
+                .is_some_and(|b| crate::router::ortho_corners(b).is_none());
+        any_note |= note;
+        let (p0, p3) = ends_at(e);
+        for (src, end, at) in [(true, from, p0), (false, to, p3)] {
+            if note && card(end) {
+                continue;
+            }
+            let key = (end, side(end, at));
+            let item = End {
+                edge: i,
+                src,
+                at,
+                movable,
+                note,
+            };
+            match groups.iter_mut().find(|g| g.0 == key) {
+                Some(g) => g.1.push(item),
+                None => groups.push((key, vec![item])),
+            }
+        }
+    }
+    let mut moves: Vec<(usize, bool, Pt)> = Vec::new();
+    let mut lines: Vec<Option<Vec<Pt>>> = vec![None; sc.edges.len()];
+    let mut line = |i: usize| -> Vec<Pt> {
+        lines[i]
+            .get_or_insert_with(|| line_of(&sc.edges[i]))
+            .clone()
+    };
+    let tangent = |s: Side, p: Pt| match s {
+        Side::Top | Side::Bottom => p.0,
+        Side::Left | Side::Right => p.1,
+    };
+    let along = |s: Side, p: Pt, t: f64| match s {
+        Side::Top | Side::Bottom => (t, p.1),
+        Side::Left | Side::Right => (p.0, t),
+    };
+    for ((end, s), ends) in &groups {
+        if ends.len() < 2 {
+            continue;
+        }
+        let taken = |moves: &[(usize, bool, Pt)], e: &End| {
+            moves.iter().any(|m| m.0 == e.edge && m.1 == e.src)
+        };
+        // Two of the stage's paths crossing each other twice: swapped.
+        for a in 0..ends.len() {
+            for b in a + 1..ends.len() {
+                let (x, y) = (&ends[a], &ends[b]);
+                if !x.movable || !y.movable || x.edge == y.edge {
+                    continue;
+                }
+                if taken(&moves, x) || taken(&moves, y) {
+                    continue;
+                }
+                if lines_cross(&line(x.edge), &line(y.edge)) >= 2 {
+                    moves.push((x.edge, x.src, y.at));
+                    moves.push((y.edge, y.src, x.at));
+                }
+            }
+        }
+        if !any_note || !flat(*end) {
+            continue;
+        }
+        // An end beyond a note card's link: to the link's other side.
+        let r = end_rect(sc, *end);
+        let (lo, hi) = match s {
+            Side::Top | Side::Bottom => (r.0, r.2),
+            Side::Left | Side::Right => (r.1, r.3),
+        };
+        let inset = crate::ports::PORT_INSET;
+        for pin in ends.iter().filter(|e| e.note) {
+            let l = line(pin.edge);
+            let far = if pin.src { l[l.len() - 1] } else { l[0] };
+            let t0 = tangent(*s, pin.at);
+            let d = tangent(*s, far) - t0;
+            if d.abs() < 1.0 {
+                continue;
+            }
+            for e in ends.iter().filter(|e| e.movable) {
+                let t = tangent(*s, e.at);
+                if (t - t0) * d <= 0.0 || taken(&moves, e) || lines_cross(&line(e.edge), &l) == 0 {
+                    continue;
+                }
+                let m = 2.0 * t0 - t;
+                let clear = ends.iter().all(|o| {
+                    std::ptr::eq(o, e)
+                        || (tangent(*s, o.at) - m).abs() >= crate::ports::PORT_SPACING - EPS
+                });
+                if m >= lo + inset - EPS && m <= hi - inset + EPS && clear {
+                    moves.push((e.edge, e.src, along(*s, e.at, m)));
+                }
+            }
+        }
+    }
+    moves
+}
+
+/// One pass of [`orthogonalize`] over the scene as the ports stage left
+/// it (or with the ends [`untangle`] moved).
+fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
+    let mut chain = vec![false; sc.edges.len()];
     let dir = g.direction;
     // The rows of boxes along the flow, and the free gaps between them.
     let mut rows: Vec<(f64, f64)> = sc
@@ -263,6 +517,7 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
     } else {
         Vec::new()
     };
+    let stubs = breadth_stubs(sc, cx, dir, &boxes);
     let mut jogs: Vec<Jog> = Vec::new();
     let mut plans: Vec<(usize, Vec<Corner>)> = Vec::new();
     // The edges between one pair of ends, either way round (twins): a
@@ -622,6 +877,7 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
             &cols,
             (f3, n3, glyph.1),
             label,
+            stubs.get(i).copied().flatten(),
             &mut jogs,
         );
         let Some(plan) = plan else { continue };
@@ -854,6 +1110,120 @@ impl Along<'_> {
     }
 }
 
+/// Per edge, the breadth (flow coordinates) of the stub its start takes
+/// off a breadth side whose ends would turn onto their runs through a
+/// box of the node's own row ([`flow_path`]): a `<<choice>>` diamond's
+/// fan spilled round its left and right corners ran along the diamond's
+/// row to each target's column, through the note cards beside it, and
+/// the router rerouted the lot across each other (B10 review r2 #2: a
+/// state set's 8-way labelled fan with notes, 3 crossings as curves, 15
+/// so, 2 now). Once one start of a side would, every start leaving that
+/// side goes out a stub past the side's outermost port and takes its
+/// step in a gap instead, each stub a track longer for every start
+/// further along the flow on that side, so their runs along the flow
+/// nest instead of crossing the others' stubs. (An end turning into a
+/// breadth side is a diamond's vertex or a lone port: the router reroutes
+/// the rare one blocked, which stubbing every such end cost more boxes
+/// shared and runs crowded than it saved, on the 964-file state set.)
+fn breadth_stubs(sc: &Scene, cx: &Ctx, dir: Direction, boxes: &[Rect]) -> Vec<Option<f64>> {
+    struct Start {
+        edge: usize,
+        end: EndRef,
+        side: Side,
+        /// Along the flow, and the way the run heads along it.
+        at: f64,
+        way: f64,
+        /// Its run across to its first column hits a box.
+        blocked: bool,
+        /// The port's breadth, and the side's outward normal across the
+        /// flow.
+        port: f64,
+        out: f64,
+    }
+    let mut starts: Vec<Start> = Vec::new();
+    let clear = EDGE_SEP / 2.0;
+    for (i, e) in sc.edges.iter().enumerate() {
+        let Some((from, to)) = cx.ends.get(i).copied().flatten() else {
+            continue;
+        };
+        if !cx.drawn.get(i).copied().unwrap_or(false)
+            || cx.fixed.get(i).copied().unwrap_or(false)
+            || e.meta.curve.is_some()
+            || from == to
+            || crate::ports::note_link(sc, cx, i)
+            || crate::edgepass::holds_other(cx, from, to)
+            || (!e.waypoints.is_empty() && crate::router::ortho_corners(e).is_some())
+        {
+            continue;
+        }
+        let (p0, p3) = if e.waypoints.len() >= 2 {
+            (e.waypoints[0], e.waypoints[e.waypoints.len() - 1])
+        } else {
+            (e.bezier[0], e.bezier[3])
+        };
+        let (f0, f3) = (to_flow(dir, p0), to_flow(dir, p3));
+        let way = (f3.1 - f0.1).signum();
+        let side = match from {
+            EndRef::Node(v) => {
+                crate::ports::outline_side(sc.nodes[v].shape, end_rect(sc, from), p0)
+            }
+            EndRef::Frame(_) => side_of(end_rect(sc, from), p0),
+        };
+        let n = flow_normal(dir, side);
+        if way == 0.0 || n.1 != 0.0 || n.0 == 0.0 {
+            continue;
+        }
+        // The column the run passes first (a dummy chain's), and its
+        // run across to it, turning onto the flow ahead of the side.
+        let first = if e.waypoints.len() >= 3 {
+            to_flow(dir, e.waypoints[1]).0
+        } else {
+            f3.0
+        };
+        let own = [from, to].map(|r| match r {
+            EndRef::Node(v) => Some(v),
+            EndRef::Frame(_) => None,
+        });
+        let (b0, b1) = (f0.0.min(first), f0.0.max(first));
+        let blocked = (first - f0.0) * n.0 > 0.0
+            && boxes.iter().enumerate().any(|(k, r)| {
+                !own.contains(&Some(k))
+                    && f0.1 > r.2 - clear
+                    && f0.1 < r.3 + clear
+                    && b1 > r.0 - clear
+                    && b0 < r.1 + clear
+            });
+        starts.push(Start {
+            edge: i,
+            end: from,
+            side,
+            at: f0.1,
+            way,
+            blocked,
+            port: f0.0,
+            out: n.0,
+        });
+    }
+    let mut out = vec![None; sc.edges.len()];
+    for m in &starts {
+        let group = || starts.iter().filter(|o| o.end == m.end && o.side == m.side);
+        if !group().any(|o| o.blocked) {
+            continue;
+        }
+        // Past the side's outermost port (a diamond's vertex lies beyond
+        // the ports on its faces).
+        let edge = group()
+            .map(|o| o.port * m.out)
+            .fold(f64::NEG_INFINITY, f64::max)
+            * m.out;
+        let rank = group()
+            .filter(|o| o.way == m.way && (o.at - m.at) * m.way > EPS)
+            .count();
+        out[m.edge] = Some(edge + m.out * (ROW_CLEAR + rank as f64 * TRACK_PITCH));
+    }
+    out
+}
+
 /// The corners of an edge from `a` (point, its side's outward normal,
 /// a glyph on it; flow coordinates) through each column of `cols` (a
 /// dummy chain's points) to `b`: along the flow, with a jog in a gap
@@ -863,6 +1233,7 @@ impl Along<'_> {
 /// where the run's first (last) column passes it. `None` when no such
 /// path fits the ends' sides (one would have to leave its side
 /// backwards).
+#[allow(clippy::too_many_arguments)]
 fn flow_path(
     cx: &Along,
     edge: usize,
@@ -870,6 +1241,7 @@ fn flow_path(
     cols: &[Pt],
     b: (Pt, Pt, bool),
     label: Option<(f64, f64)>,
+    stub: Option<f64>,
     jogs: &mut Vec<Jog>,
 ) -> Option<Vec<Corner>> {
     let ((p0, n0, g0), (p3, n3, g3)) = (a, b);
@@ -912,6 +1284,16 @@ fn flow_path(
                 }
             } else {
                 p0.0 + n0.0 * lead(g0)
+            }
+        } else if let Some(x) = stub {
+            // Its side's run across to the first column would pass
+            // through a box of its own row: out a stub
+            // ([`breadth_stubs`]), then along the flow to a gap.
+            let least = p0.0 + n0.0 * lead(g0);
+            if n0.0 > 0.0 {
+                x.max(least)
+            } else {
+                x.min(least)
             }
         } else if ahead(p0.0, first_b, n0.0) {
             first_b
@@ -1463,17 +1845,6 @@ fn place_tracks(jogs: &mut [Jog], kept: &[(f64, (f64, f64))]) {
         if group.len() == 1 {
             continue;
         }
-        // A step drawn above its label nests with the others only when
-        // every step of its channel does: one under its label among steps
-        // in the middle of the gap would leave the order that keeps their
-        // turns from crossing.
-        if group.iter().any(|&k| !jogs[k].above_label) {
-            for &k in &group {
-                let j = &mut jogs[k];
-                (j.room, j.want, j.above_label) = (j.plain.0, j.plain.1, false);
-                j.at = j.want;
-            }
-        }
         let lo = group
             .iter()
             .map(|&k| jogs[k].span().0)
@@ -1494,14 +1865,44 @@ fn place_tracks(jogs: &mut [Jog], kept: &[(f64, (f64, f64))]) {
                 (a + b) - (lo + hi)
             }
         };
-        let mut order = group.clone();
-        order.sort_by(|&x, &y| {
-            key(&jogs[x])
-                .total_cmp(&key(&jogs[y]))
-                .then(jogs[x].want.total_cmp(&jogs[y].want))
-                .then(jogs[x].edge.cmp(&jogs[y].edge))
-                .then(x.cmp(&y))
-        });
+        let ordered = |jogs: &[Jog]| {
+            let mut order = group.clone();
+            order.sort_by(|&x, &y| {
+                key(&jogs[x])
+                    .total_cmp(&key(&jogs[y]))
+                    .then(jogs[x].want.total_cmp(&jogs[y].want))
+                    .then(jogs[x].edge.cmp(&jogs[y].edge))
+                    .then(x.cmp(&y))
+            });
+            order
+        };
+        // A step drawn above its label nests with the others only when
+        // every step of its channel does, and when their rooms hold the
+        // channel's order at the least pitch: one under its label among
+        // steps in the middle of the gap would leave the order that keeps
+        // their turns from crossing, and a room that ends above the
+        // place its order asks for clamped two steps onto one track, which
+        // the router then rerouted one by one, across each other
+        // (x1_hub_td: `H -->|beta| B` and `H -->|gamma long label here| C`
+        // crossed twice, the labelled fan's longest label ending its
+        // step's room a track above the two before it).
+        let mut order = ordered(jogs);
+        let holds = |order: &[usize], jogs: &[Jog]| {
+            let mut last = f64::NEG_INFINITY;
+            order.iter().all(|&k| {
+                let (lo, hi) = jogs[k].room;
+                last = lo.max(last + TRACK_PITCH_MIN);
+                last <= hi + EPS
+            })
+        };
+        if group.iter().any(|&k| !jogs[k].above_label) || !holds(&order, jogs) {
+            for &k in &group {
+                let j = &mut jogs[k];
+                (j.room, j.want, j.above_label) = (j.plain.0, j.plain.1, false);
+                j.at = j.want;
+            }
+            order = ordered(jogs);
+        }
         // The span the channel's tracks share: from the lowest room's
         // start to the highest room's end, each track then kept in its
         // own jog's room.
@@ -2047,6 +2448,176 @@ mod tests {
             "{}",
             off[0].at
         );
+    }
+
+    #[test]
+    fn a_channel_whose_label_rooms_cannot_hold_its_order_steps_under_its_labels() {
+        // B10 review r2 #1 (x1_hub_td): three steps of a labelled fan
+        // turning the same way, each above its label; the longest label
+        // ends the last step's room a track above where the order puts
+        // it. Clamped into those rooms two steps shared a track and the
+        // router rerouted them across each other; under their labels
+        // (their plain rooms) they keep the order, a pitch apart.
+        let above = |edge: usize, lo_at: f64, hi_at: f64, room: (f64, f64)| {
+            let mut j = jog(edge, 0, lo_at, hi_at, room, (room.0 + room.1) / 2.0);
+            j.above_label = true;
+            j.plain = ((105.0, 167.0), 140.0);
+            j.label_half = 10.0;
+            // (From the hub's side down to the targets' row.)
+            j.runs = (80.0, 215.0);
+            j
+        };
+        let mut jogs = vec![
+            above(0, 371.0, 110.0, (105.0, 145.0)),
+            above(1, 383.0, 240.0, (105.0, 167.0)),
+            above(2, 396.0, 346.0, (99.6, 108.8)),
+        ];
+        place_tracks(&mut jogs, &[]);
+        for (i, a) in jogs.iter().enumerate() {
+            assert!(!a.above_label, "{i}");
+            assert!(a.at >= 105.0 - EPS && a.at <= 167.0 + EPS, "{i}: {}", a.at);
+            for b in &jogs[i + 1..] {
+                assert!(
+                    (a.at - b.at).abs() >= TRACK_PITCH_MIN - EPS,
+                    "{} {}",
+                    a.at,
+                    b.at
+                );
+                assert!(!jogs_cross(a, b), "{} {}", a.at, b.at);
+            }
+        }
+        // (The one turning nearest its side, the furthest across, first.)
+        assert!(jogs[0].at < jogs[1].at && jogs[1].at < jogs[2].at);
+        // Rooms that hold the order keep the steps above their labels.
+        let mut fits = vec![
+            above(0, 371.0, 110.0, (105.0, 145.0)),
+            above(1, 383.0, 240.0, (105.0, 167.0)),
+        ];
+        place_tracks(&mut fits, &[]);
+        assert!(fits.iter().all(|j| j.above_label));
+    }
+
+    /// Pairs of edges out of one node (or into one) whose drawn lines
+    /// cross twice or more, as "a b" ids.
+    fn double_crossings(sc: &Scene) -> Vec<String> {
+        let lines: Vec<Vec<Pt>> = sc.edges.iter().map(crate::scene::edge_polyline).collect();
+        let mut out = Vec::new();
+        for i in 0..sc.edges.len() {
+            for j in i + 1..sc.edges.len() {
+                let (a, b) = (&sc.edges[i], &sc.edges[j]);
+                if a.from == a.to || b.from == b.to || (a.from != b.from && a.to != b.to) {
+                    continue;
+                }
+                if lines_cross(&lines[i], &lines[j]) >= 2 {
+                    out.push(format!("{}->{} {}->{}", a.from, a.to, b.from, b.to));
+                }
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn steps_out_of_one_side_turning_one_way_never_cross_twice() {
+        // B10 review r2 #1. x1_hub_td: `H -->|beta| B` and `H -->|gamma
+        // long label here| C` crossed twice in `scene()` (the label rooms
+        // above; `route()` drew them nested). y2_state_nested: `Off -->
+        // decide`'s L ran round the outside of `Off --> On`'s Z and crossed
+        // it twice; the ends swap places (`untangle`) and cross once.
+        let hub = "flowchart TD\n    H{Route?} -->|alpha| A[Alpha service]\n    \
+                   H -->|beta| B[Beta]\n    H -->|gamma long label here| C[Gamma]\n    \
+                   H --> D[Delta]\n    H -.->|epsilon| E[(Epsilon store)]\n    H ==> F[Phi]\n    \
+                   A --> Z[Sink]\n    B --> Z\n    C --> Z\n    D --> Z\n    E --> Z\n    \
+                   F --> Z\n    Start([Start]) --> H\n    Start --> Z\n    Z -->|retry| Start\n    \
+                   subgraph grp [Group]\n      B\n      C\n    end\n";
+        let state = "stateDiagram-v2\n    [*] --> Off\n    Off --> On : power\n    state On {\n        \
+                     direction LR\n        [*] --> Idle\n        Idle --> Busy : job\n        \
+                     Busy --> Idle : done\n        state Busy {\n            [*] --> Fetch\n            \
+                     Fetch --> Exec\n            Exec --> Write\n            Write --> [*]\n        }\n        \
+                     Busy --> Fault : error\n        Fault --> Idle : clear\n    }\n    \
+                     state fork_state <<fork>>\n    On --> fork_state\n    fork_state --> LogA\n    \
+                     fork_state --> LogB\n    state join_state <<join>>\n    LogA --> join_state\n    \
+                     LogB --> join_state\n    join_state --> Off\n    On --> Off : shutdown\n    \
+                     note right of Off : cold start\n    state decide <<choice>>\n    Off --> decide\n    \
+                     decide --> On : warm\n    decide --> [*] : cold\n";
+        for src in [hub, state] {
+            let g = match crate::parser::parse_document(src).unwrap() {
+                crate::model::Document::Flowchart(g) | crate::model::Document::State(g) => g,
+                _ => unreachable!(),
+            };
+            let sc = scene(&g);
+            assert_eq!(double_crossings(&sc), Vec::<String>::new());
+            let at: Vec<Pt> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+            assert_eq!(
+                double_crossings(&crate::scene::route(&g, &at)),
+                Vec::<String>::new()
+            );
+        }
+        let g = parse(hub).unwrap();
+        let sc = scene(&g);
+        let line = |to: &str| {
+            let e = sc
+                .edges
+                .iter()
+                .find(|e| e.from == "H" && e.to == to)
+                .unwrap();
+            crate::scene::edge_polyline(e)
+        };
+        assert_eq!(lines_cross(&line("B"), &line("C")), 0);
+    }
+
+    #[test]
+    fn a_fan_off_a_diamonds_corners_steps_clear_of_its_rows_note_cards() {
+        // B10 review r2 #2: an 8-way labelled `<<choice>>` fan with notes
+        // beside the hub, the choice and two targets. The fan spilled
+        // round the diamond's corners ran along the diamond's row through
+        // the note cards and the router rerouted the lot across each
+        // other: 15 crossings, against 3 as the builders' curves. Its
+        // starts now stub out of the corners and step in the gap below.
+        let src = "stateDiagram-v2\nstate c <<choice>>\n[*] --> Hub\nHub --> c\n\
+                   c --> A : alpha\nc --> B : beta\nc --> C : gamma\nc --> D : delta\n\
+                   c --> E : epsilon\nc --> F : zeta\nc --> G : eta\nc --> H : theta\n\
+                   note right of Hub : the hub\nnote left of A : a note\nnote right of D : d note\n\
+                   note left of H : h note\nnote right of c : choice note\n";
+        let g = match crate::parser::parse_document(src).unwrap() {
+            crate::model::Document::State(g) => g,
+            _ => unreachable!(),
+        };
+        let sc = scene(&g);
+        let lines: Vec<Vec<Pt>> = sc.edges.iter().map(crate::scene::edge_polyline).collect();
+        let mut n = 0;
+        for i in 0..lines.len() {
+            for j in i + 1..lines.len() {
+                n += lines_cross(&lines[i], &lines[j]);
+            }
+        }
+        assert!(n <= 3, "{n} crossings");
+        assert_eq!(double_crossings(&sc), Vec::<String>::new());
+        // No branch out of the diamond runs through a box.
+        for e in sc.edges.iter().filter(|e| e.from == "c") {
+            let pts = crate::scene::edge_polyline(e);
+            for nd in sc
+                .nodes
+                .iter()
+                .filter(|nd| nd.id != e.from && nd.id != e.to)
+            {
+                let r = (
+                    nd.x - nd.w / 2.0,
+                    nd.y - nd.h / 2.0,
+                    nd.x + nd.w / 2.0,
+                    nd.y + nd.h / 2.0,
+                );
+                let inside = |p: Pt| {
+                    p.0 > r.0 + 1.0 && p.0 < r.2 - 1.0 && p.1 > r.1 + 1.0 && p.1 < r.3 - 1.0
+                };
+                assert!(
+                    !pts.iter().any(|&p| inside(p)),
+                    "{} -> {} through {}",
+                    e.from,
+                    e.to,
+                    nd.id
+                );
+            }
+        }
     }
 
     #[test]

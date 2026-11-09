@@ -24,13 +24,23 @@ project adheres to [Semantic Versioning](https://semver.org/).
   is drawn plain and its label goes onto its own line, off its twin's; a
   straight edge stays a straight cubic. Each gap's steps sit on tracks a
   pitch apart (12.5 px, 6.5 px in a gap too shallow for that), ordered as
-  libavoid orders a channel so their turns do not cross; the steps of a
+  libavoid orders a channel so their turns do not cross (a labelled fan's
+  steps go under their labels when the room above them cannot hold that
+  order at the least pitch, rather than two sharing a track); the steps of a
   fan going either way from a node fork apart on their own tracks, a step
   that carries its label keeps the label's half and its gap off the
   tracks beside it, and a step whose legs would cross a curve the stage
   leaves (a note card's link) or another step moves to the nearest place
-  in its room that crosses fewest. A long run in `route()` steps in the
-  gap whose legs cross the fewest lines. The layout grows a gap by the
+  in its room that crosses fewest. In the static scene, two ends of one
+  side whose paths still cross each other twice swap places (an L round
+  the outside of a Z off the same side), and an end lying between a note
+  card's link and its card goes to the link's other side, each kept only
+  when the edges it changes cross fewer lines. A breadth side whose starts
+  would run along their own row through a box (a `<<choice>>` fan spilled
+  round the diamond's corners, past the note cards beside it) leaves on
+  stubs nested by their order along the flow and steps in the gap
+  instead. A long run in `route()` steps in the gap whose legs cross the
+  fewest lines. The layout grows a gap by the
   tracks its steps need (two at the plain gap, one more per further step
   one way). A state composite's edge to one of its own states leaves the
   composite's border from inside, straight into the state. `route()` and
@@ -49,7 +59,9 @@ project adheres to [Semantic Versioning](https://semver.org/).
   the static scene too (`H_WEIGHT` 1.0), prices a forward edge's run
   along a node's flank, takes a second pass over pairs still drawn on top
   of each other, searches a way round for a static unlabelled edge
-  crossing four or more others, and the static reorder (G9) compares two
+  crossing four or more others — and, in both modes, for an edge crossing
+  a note card's link out of a node it shares (in the static scene also one
+  crossing an edge out of a node it shares twice) — and the static reorder (G9) compares two
   squared paths off one side over their whole corners, so a fan's Ls
   turning the same way nest. The ports stage steers a Z or an L by the
   chord through its corners and slides an end's leg along with it (an end

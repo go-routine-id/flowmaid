@@ -3954,7 +3954,14 @@ fn straight_between_ports(
 /// The corner list of an edge drawn as an orthogonal path (every leg of
 /// its waypoints axis-aligned, its ports' included), else `None`.
 pub(crate) fn ortho_corners(e: &crate::scene::SceneEdge) -> Option<Vec<Pt>> {
-    if e.waypoints.len() < 2 {
+    // (Every leg on an axis before the copy: most paths that are not
+    // fail on their first leg.)
+    if e.waypoints.len() < 2
+        || !e
+            .waypoints
+            .windows(2)
+            .all(|q| (q[0].0 - q[1].0).abs() < EPS || (q[0].1 - q[1].1).abs() < EPS)
+    {
         return None;
     }
     let c = collapse(e.waypoints.clone());
@@ -4377,11 +4384,17 @@ impl SegGrid {
     }
 
     fn add(&mut self, k: usize, pts: &[Pt]) {
+        let (x0, y0, nx, ny) = (self.x0, self.y0, self.nx, self.ny);
+        let ix = |x: f64| (((x - x0) / SEG_CELL).max(0.0) as usize).min(nx - 1);
+        let iy = |y: f64| (((y - y0) / SEG_CELL).max(0.0) as usize).min(ny - 1);
         for (s, q) in pts.windows(2).enumerate() {
+            // (The cells of [`SegGrid::cells_of`], walked in place: a
+            // densely sampled rounded path has hundreds of segments.)
             let r = grow(bounds(q), EDGE_SEP);
-            let cells: Vec<usize> = self.cells_of(r).collect();
-            for c in cells {
-                self.cells[c].push((k as u32, s as u32));
+            for y in iy(r.1)..=iy(r.3) {
+                for x in ix(r.0)..=ix(r.2) {
+                    self.cells[y * nx + x].push((k as u32, s as u32));
+                }
             }
         }
     }
@@ -4957,7 +4970,21 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
     // (bench-75's `svc3 -> objects` dropped across 21 edges on its first
     // step). The reroute is kept only when it scores better (fewer
     // crossings at no harder cost).
-    let simple_all: Vec<Vec<Pt>> = if mode == Mode::Static && w.flow {
+    //
+    // So is one that crosses a note card's link out of a node it shares
+    // (in both modes), or in the static scene an edge out of a node it
+    // shares twice: a path on the axes out of the wrong place on its
+    // side, across the link's elbow where the builder's curve leaned
+    // past it, or square across its sibling's run and back (B10 review
+    // r2 #2: on the 964-file state set the pairs of edges out of one
+    // node crossing twice were 20 | 17 as curves, 48 | 51 on the axes,
+    // 14 | 14 with this). `route()`, which has no budget for the whole
+    // count, counts note links only, and only where there are any (its
+    // siblings crossing twice were searched too, but a second pass of
+    // the stages then found new ones on a 24-end hub: no longer
+    // idempotent).
+    let searched = mode == Mode::Static || (0..ne).any(|j| crate::ports::note_link(sc, cx, j));
+    let simple_all: Vec<Vec<Pt>> = if w.flow && searched {
         polys.iter().map(|p| simplify(p)).collect()
     } else {
         Vec::new()
@@ -4965,24 +4992,40 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
     let crossed = |i: usize| {
         // (Not a back-edge's lane: planned round the outside on purpose,
         // `crate::lanes`, as `route()` plans it too.)
-        if simple_all.is_empty() || sc.edges[i].label.is_some() || lane(i) {
+        if simple_all.is_empty() || lane(i) {
             return false;
         }
+        let many = mode == Mode::Static && sc.edges[i].label.is_none();
         let a = &simple_all[i];
+        let ends = |k: usize| cx.ends.get(k).copied().flatten();
+        let shares = |j: usize| match (ends(i), ends(j)) {
+            (Some((a, b)), Some((c, d))) => a == c || a == d || b == c || b == d,
+            _ => false,
+        };
         let mut n = 0;
         for (j, b) in simple_all.iter().enumerate() {
             if j == i || infos[j].is_none() {
                 continue;
             }
+            let sibling = shares(j);
+            if !many && !sibling {
+                continue;
+            }
+            let mut here = 0;
             for u in a.windows(2) {
                 for v in b.windows(2) {
                     if seg_cross(u[0], u[1], v[0], v[1]).is_some() {
                         n += 1;
-                        if n >= CROSS_SEARCH {
+                        here += 1;
+                        if many && n >= CROSS_SEARCH {
                             return true;
                         }
                     }
                 }
+            }
+            let twice = here >= 2 && mode == Mode::Static;
+            if sibling && (twice || here > 0 && crate::ports::note_link(sc, cx, j)) {
+                return true;
             }
         }
         false
@@ -6631,6 +6674,49 @@ mod tests {
             wps.contains(&(0.0, 6.0)) && wps.contains(&(6.0, 12.0)),
             "{wps:?}"
         );
+    }
+
+    #[test]
+    fn an_edge_across_its_states_note_link_is_searched_round_it() {
+        // B10 review r2 #2: `B2 --> K1_0` entered K1_0's side square
+        // across the elbow of K1_0's note card link, twice (the builder's
+        // curve had leaned past it); an edge crossing a note card's link
+        // out of a node it shares is searched in both modes and keeps a
+        // way that crosses fewer lines (once at most here: the link's
+        // card sits between the two).
+        let src = "stateDiagram-v2\ndirection LR\n[*] --> A\nstate K0 {\n  [*] --> K0_0\n  \
+                   note right of K0_0 : in750\n  note right of K0_0 : in221\n}\nstate K1 {\n  \
+                   [*] --> K1_0\n  note left of K1_0 : in889\n  note left of K1_0 : in661\n  \
+                   K1_0 --> [*]\n}\nA --> K0\nA --> K1\nA --> B0\nK0 --> B1 : g4\nA --> B2\n\
+                   K1_0 --> K0 : out\nB2 --> K1_0\nnote left of K0 : on549\n";
+        let g = match crate::parser::parse_document(src).unwrap() {
+            crate::model::Document::State(g) => g,
+            _ => unreachable!(),
+        };
+        let sc = crate::scene::scene(&g);
+        let at: Vec<Pt> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        for sc in [sc.clone(), crate::scene::route(&g, &at)] {
+            let line = |pick: &dyn Fn(&crate::scene::SceneEdge) -> bool| {
+                edge_polyline(sc.edges.iter().find(|e| pick(e)).expect("edge"))
+            };
+            let edge = line(&|e| e.from == "B2" && e.to == "K1_0");
+            for note in sc
+                .edges
+                .iter()
+                .filter(|e| e.to == "K1_0" && e.from.starts_with("__note"))
+            {
+                let link = edge_polyline(note);
+                let n = edge
+                    .windows(2)
+                    .map(|u| {
+                        link.windows(2)
+                            .filter(|v| seg_cross(u[0], u[1], v[0], v[1]).is_some())
+                            .count()
+                    })
+                    .sum::<usize>();
+                assert!(n <= 1, "B2 -> K1_0 across {} {n} times", note.from);
+            }
+        }
     }
 
     #[test]

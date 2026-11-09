@@ -1316,8 +1316,11 @@ mod tests {
     /// (every edge on the axes, report §2.1): 76 | 99 -> 44 | 100, the
     /// static drawings' crossings fewer and square; one more routed
     /// pattern on bench-75, whose drag-built steps cross a lane's legs
-    /// where the curve ran beside them.
-    const OPPOSITE_MAX: (usize, usize) = (44, 100);
+    /// where the curve ran beside them. B10 review r2: 44 | 100 -> 57 |
+    /// 67, bench-75's service fans leaving as bundles (359 -> 302 static
+    /// crossings): its fewer crossings come closer together along the
+    /// bundles' lines.
+    const OPPOSITE_MAX: (usize, usize) = (57, 67);
 
     /// Most fixture lines shorter than [`SHORT_LINE`] cut twice or more,
     /// static and routed: 3 | 2 before short lines handed their extra

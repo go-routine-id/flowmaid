@@ -30,8 +30,12 @@ const CEILINGS: &[(&str, Ceil, Ceil)] = &[
     // pair over the pre-B10 2: the gaps grown for the step tracks moved
     // the layout's back-edge lanes, and `dash -> user`'s now runs over
     // the top through the `edge` and `app` frames' padding (its defects
-    // 15 -> 6 all the same).
-    ("bench-75", (0, 3, 6), (0, 0, 2)),
+    // 15 -> 6 all the same). B10 review r2: static (0, 3, 6) -> (0, 4,
+    // 4): the service fans' stubbed bundles (`ortho::breadth_stubs`,
+    // 359 -> 302 crossings) shift the lanes once more, and `alerts ->
+    // gw`'s now runs over the top through the `app` frame (its defects
+    // 6 -> 4).
+    ("bench-75", (0, 4, 4), (0, 0, 2)),
     // The dense fixtures and fanout-frames come from
     // `examples/fixture_gen.rs` (seeded: their own nesting, fan-outs
     // and edges, nested frames crossed by long edges), measured on the
@@ -695,22 +699,38 @@ fn channels_keep_edges_apart_and_off_chips() {
 /// two Ls of a fan turning the same way nest (fanout-frames' `n0 -->
 /// g6` crossed `n0 --> n21` 750 px down). Lowered: x_drawn static
 /// 494 -> 489 (fanout-frames 1 -> 0), band_len static 65 160 -> 64 940.
+///
+/// B10 review r2 (#1, #2): a breadth side whose starts would run across
+/// to their columns through a box of their own row takes stubs out and
+/// steps in the gap (`ortho::breadth_stubs`): bench-75's `svc1`,
+/// `svc3` and `svc5` fans down to the data zone leave their bottom sides
+/// as bundles instead of running along their row past the next service
+/// box and getting rerouted. Lowered: x_drawn static 489 -> 428
+/// (bench-75 359 -> 302, under the pre-B10 349; dense-lr 50 -> 46),
+/// x_drawn routed 501 -> 494, lat_wiggles 19 | 7 -> 15 | 5,
+/// lat_backtrack 1 960 | 566 -> 1 870 | 440, band_pairs routed 145 ->
+/// 139, end_kink static 2 -> 1. Raised: band_pairs static 115 -> 124
+/// and band_len 64 940 | 66 730 -> 71 210 | 68 660 — those bundles are
+/// cables a track pitch apart where the fans' steps had crossed each
+/// other's legs (bench-75 static 56 -> 60 pairs, 22 158 -> 25 854 px;
+/// dense-lr 26 -> 31 pairs; routed bench-75 30 746 -> 31 540 px from the
+/// shifted layout).
 const DEFECT_BASELINE: [(&str, f64, f64); 16] = [
     ("end_tilt", 0.0, 0.0),
     ("end_tilt_max", 0.3, 0.6),
     ("end_gaps", 0.0, 0.0),
     ("end_gap_max", 0.1, 0.1),
-    ("lat_wiggles", 19.0, 7.0),
-    ("lat_backtrack", 1_960.0, 566.0),
+    ("lat_wiggles", 15.0, 5.0),
+    ("lat_backtrack", 1_870.0, 440.0),
     ("own_frame_x", 0.0, 0.0),
     ("own_frame_len", 0.0, 0.0),
-    ("band_pairs", 115.0, 145.0),
-    ("band_len", 64_940.0, 66_730.0),
+    ("band_pairs", 124.0, 139.0),
+    ("band_len", 71_210.0, 68_660.0),
     ("idiom_scubic", 0.0, 0.0),
     ("idiom_spline", 0.0, 0.0),
     ("idiom_bow", 0.0, 0.0),
-    ("x_drawn", 489.0, 501.0),
-    ("end_kink", 2.0, 0.0),
+    ("x_drawn", 428.0, 494.0),
+    ("end_kink", 1.0, 0.0),
     ("ink_out", 0.0, 0.0),
 ];
 
