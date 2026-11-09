@@ -188,3 +188,15 @@ When a package's push lands on `origin/ccr-ccc6d89a-5cxd7e`, the hourly task (or
 4. Deferred cleanup: delete `layout::wrap_text` / `lines_at` and `wrap::RETIRED_GREEDY_WRAP` (dead since c1-nonflow) in the final integration at the end of phase B.
 
 **PAR track** (c1-nonflow): it ends by itself after its push. PR `ccr-ccc6d89a-5cxd7e-par` → dev, merge (no CHANGELOG conflict: its text is in `par/CHANGELOG-c1.md`).
+
+## 11. Follow-ups found by the README review (2026-11-09, run wf_ced7df68-569; result in rvreadme/result.json)
+Engine work, not in the 0.37.0 release (README now states the current behaviour). Candidate "c-polish" package after phase B:
+1. Parser: recognise mermaid 12.2 headers as explicit "not supported yet": short `xychart`, `block`, `requirement`, `info`, `ishikawa(-beta)`, `eventmodeling`, `venn-beta`, `treeView-beta`, `usecase-beta`, `wardley-beta`, `cynefin-beta`, `railroad*-beta`, `agentflow-beta` (today: flowchart text / '-beta' edge error). Then README can say "every" again.
+2. Compound (B9 parity gap): a `direction` block whose members have no links among them is NOT laid out on its own (flowmaid: row in TB/LR); mermaid lays it out in its own direction (column for LR in TB). Decide + implement.
+3. flowmaid theme: `style` fill without `color` keeps the dark ink on a dark fill (mermaid themes re-ink via Palette::ink_on_fill). Re-ink in the flowmaid theme too?
+4. Flowchart edge labels: `<br/>` is drawn as a space (mermaid breaks the line).
+5. Sequence: mermaid's two-way `<<->>` / `<<-->>` and half-arrows are parse errors.
+6. Advance SVG: `<br/>` in edge labels and lane titles drawn on one line (chip 18px high).
+7. Advance JSON README example: the label chip covers the arrowhead and the diamond clips the label text.
+8. Advance text DSL README example: `a --> b` and `c --> b:top` share the last 12.5 px into b and their arrowheads coincide.
+9. Contrast: chip/ER-row hairlines and amber accent #d99114 on white are under 3:1 (documented exceptions).
