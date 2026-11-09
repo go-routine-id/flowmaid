@@ -627,6 +627,19 @@ fn place_weighted(d: &[f64], w: &[f64], s: f64, lo: f64, hi: f64) -> Vec<f64> {
     out
 }
 
+/// The drawn end of edge `i` (its start when `src`): what
+/// [`end_and_steer`] returns first, without reading where it heads.
+fn end_point(sc: &Scene, i: usize, src: bool) -> Pt {
+    let e = &sc.edges[i];
+    let w = &e.waypoints;
+    match (w.len() >= 2, src) {
+        (true, true) => w[0],
+        (true, false) => w[w.len() - 1],
+        (false, true) => e.bezier[0],
+        (false, false) => e.bezier[3],
+    }
+}
+
 /// The drawn end point of edge `i` (`src` = its start) and the point
 /// the edge steers towards from there.
 fn end_and_steer(sc: &Scene, i: usize, src: bool, side: Option<Side>) -> (Pt, Pt) {
@@ -934,7 +947,7 @@ fn place_ports(
             .windows(2)
             .filter(|w| sibling(&w[0], &w[1]))
             .map(|w| {
-                let far = end_and_steer(sc, w[0].edge, !w[0].src, None).0;
+                let far = end_point(sc, w[0].edge, !w[0].src);
                 let (f, a) = (split(side, far), split(side, w[0].at));
                 let (t, n) = ((f.0 - a.0).abs(), (f.1 - a.1).abs());
                 // A free curve leaves and enters along the normal, so
@@ -1147,7 +1160,7 @@ fn side_groups(sc: &Scene, cx: &Ctx) -> BTreeMap<(EndRef, Side), Vec<PortEnd>> {
         };
         let e = &sc.edges[i];
         for (src, end) in [(true, from), (false, to)] {
-            let (p, _) = end_and_steer(sc, i, src, None);
+            let p = end_point(sc, i, src);
             let side = end_side(sc, end, p);
             let (p, q) = end_and_steer(sc, i, src, Some(side));
             let glyph = if src {
@@ -1257,7 +1270,7 @@ fn facing(a: Side, b: Side) -> bool {
 fn straight_partner(sc: &Scene, cx: &Ctx, p: &PortEnd, side: Side) -> Option<f64> {
     let (from, to) = cx.ends.get(p.edge).copied().flatten()?;
     let other = if p.src { to } else { from };
-    let q = end_and_steer(sc, p.edge, !p.src, None).0;
+    let q = end_point(sc, p.edge, !p.src);
     if !facing(side, end_side(sc, other, q)) {
         return None;
     }

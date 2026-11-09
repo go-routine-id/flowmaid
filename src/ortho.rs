@@ -178,7 +178,15 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
         ortho_pass(g, sc, cx, mode);
         return;
     }
-    let before = sc.edges.clone();
+    // (What a pass changes of an edge: its curve, its waypoints and its
+    // label's spot.)
+    let snap = |edges: &[SceneEdge]| -> Vec<Geo> {
+        edges
+            .iter()
+            .map(|e| (e.bezier, e.waypoints.clone(), e.label.as_ref().map(|l| l.1)))
+            .collect()
+    };
+    let before = snap(&sc.edges);
     ortho_pass(g, sc, cx, mode);
     // The ports stage orders a side's ends by where their edges head,
     // which suits the builders' curves; drawn on the axes, two ends of a
@@ -193,21 +201,54 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
     if moves.is_empty() {
         return;
     }
-    let first = std::mem::replace(&mut sc.edges, before);
+    let first = snap(&sc.edges);
+    restore(&mut sc.edges, before);
     let kept = (cx.chain.clone(), cx.shaped.clone());
     for (i, src, to) in moves {
         shift_end(&mut sc.edges[i], src, to);
     }
+    let lines_first: Vec<Vec<Pt>> = first
+        .iter()
+        .zip(&sc.edges)
+        .map(|(f, e)| {
+            let mut e = e.clone();
+            (e.bezier, e.waypoints) = (f.0, f.1.clone());
+            line_of(&e)
+        })
+        .collect();
     ortho_pass(g, sc, cx, mode);
     let changed: Vec<usize> = (0..sc.edges.len())
         .filter(|&i| {
             let (a, b) = (&sc.edges[i], &first[i]);
-            a.waypoints != b.waypoints || a.bezier != b.bezier
+            a.waypoints != b.1 || a.bezier != b.0
         })
         .collect();
-    if crossings_of(&sc.edges, &changed) >= crossings_of(&first, &changed) {
-        sc.edges = first;
+    let lines_now: Vec<Vec<Pt>> = sc.edges.iter().map(line_of).collect();
+    if crossings_of(&lines_now, &changed) >= crossings_of(&lines_first, &changed) {
+        restore(&mut sc.edges, first);
         (cx.chain, cx.shaped) = kept;
+    }
+}
+
+/// Whether waypoints `w` run on the axes (as
+/// [`crate::router::ortho_corners`] finds a path).
+fn on_axes(w: &[Pt]) -> bool {
+    w.len() >= 2
+        && w.windows(2)
+            .all(|q| (q[0].0 - q[1].0).abs() < EPS || (q[0].1 - q[1].1).abs() < EPS)
+}
+
+/// An edge's geometry as a pass of [`orthogonalize`] may change it:
+/// curve, waypoints, label spot.
+type Geo = ([Pt; 4], Vec<Pt>, Option<Pt>);
+
+/// Put back what [`orthogonalize`] snapped of every edge.
+fn restore(edges: &mut [SceneEdge], geo: Vec<Geo>) {
+    for (e, (b, w, l)) in edges.iter_mut().zip(geo) {
+        (e.bezier, e.waypoints) = (b, w);
+        if let (Some(lab), Some(at)) = (e.label.as_mut(), l) {
+            lab.1 = at;
+        }
     }
 }
 
@@ -250,10 +291,9 @@ fn lines_cross(a: &[Pt], b: &[Pt]) -> usize {
         .sum()
 }
 
-/// The crossings of the edges in `which` with every other edge (each
+/// The crossings of the lines in `which` with every other line (each
 /// pair once).
-fn crossings_of(edges: &[SceneEdge], which: &[usize]) -> usize {
-    let lines: Vec<Vec<Pt>> = edges.iter().map(line_of).collect();
+fn crossings_of(lines: &[Vec<Pt>], which: &[usize]) -> usize {
     let mut n = 0;
     for (k, &i) in which.iter().enumerate() {
         for j in 0..lines.len() {
@@ -275,7 +315,7 @@ fn crossings_of(edges: &[SceneEdge], which: &[usize]) -> usize {
 /// other side where that stays on the side, a port's pitch from every
 /// other end. Only ends of paths the stage itself planned move (never a
 /// drag's kept ones, a lane's, an authored curve's or a note link's).
-fn untangle(sc: &Scene, cx: &Ctx, before: &[SceneEdge]) -> Vec<(usize, bool, Pt)> {
+fn untangle(sc: &Scene, cx: &Ctx, before: &[Geo]) -> Vec<(usize, bool, Pt)> {
     struct End {
         edge: usize,
         src: bool,
@@ -327,9 +367,7 @@ fn untangle(sc: &Scene, cx: &Ctx, before: &[SceneEdge]) -> Vec<(usize, bool, Pt)
             && !cx.fixed.get(i).copied().unwrap_or(false)
             && !cx.held.get(i).copied().unwrap_or(false)
             && e.meta.curve.is_none()
-            && before
-                .get(i)
-                .is_some_and(|b| crate::router::ortho_corners(b).is_none());
+            && before.get(i).is_some_and(|b| !on_axes(&b.1));
         any_note |= note;
         let (p0, p3) = ends_at(e);
         for (src, end, at) in [(true, from, p0), (false, to, p3)] {

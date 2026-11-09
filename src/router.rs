@@ -4224,8 +4224,6 @@ pub(crate) fn spread_close(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, move
         return;
     }
     let infos: Vec<Option<Info>> = (0..ne).map(|i| info_of(g, &w, cx, i)).collect();
-    let mut polys: Vec<Vec<Pt>> = sc.edges.iter().map(edge_polyline).collect();
-    let mut grid = SegGrid::new(&polys, |k| infos[k].is_some());
     let movable = |sc: &Scene, i: usize| {
         let e = &sc.edges[i];
         infos[i].as_ref().is_some_and(|f| !f.back)
@@ -4234,6 +4232,53 @@ pub(crate) fn spread_close(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, move
             && !crate::ports::note_link(sc, cx, i)
             && (e.waypoints.is_empty() || ortho_corners(e).is_some_and(|c| c.len() >= 4))
     };
+    // First the cheap test: two edges come within the spacing only where
+    // the boxes round their points (a cubic and a B-spline stay inside
+    // their controls' hull; an authored curve is sampled) grown by it
+    // meet. Most small drawings have no unrelated pair that close, and
+    // skip sampling every path and gridding it.
+    let hull = |e: &crate::scene::SceneEdge| {
+        if e.meta.curve.is_some() {
+            return grow(bounds(&edge_polyline(e)), EDGE_SEP / 2.0);
+        }
+        let mut r = (
+            f64::INFINITY,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+            f64::NEG_INFINITY,
+        );
+        for p in e.bezier.iter().chain(&e.waypoints) {
+            r = (r.0.min(p.0), r.1.min(p.1), r.2.max(p.0), r.3.max(p.1));
+        }
+        grow(r, EDGE_SEP / 2.0)
+    };
+    let hulls: Vec<R> = sc.edges.iter().map(hull).collect();
+    let related = |a: &Info, b: &Info| {
+        a.ends.0 == b.ends.0 || a.ends.0 == b.ends.1 || a.ends.1 == b.ends.0 || a.ends.1 == b.ends.1
+    };
+    // (Per edge: in such a pair. Only those are measured below.)
+    let mut near_some = vec![false; ne];
+    for i in 0..ne {
+        let Some(a) = infos[i].as_ref() else { continue };
+        for j in i + 1..ne {
+            let (p, q) = (hulls[i], hulls[j]);
+            if infos[j].as_ref().is_some_and(|b| !related(a, b))
+                && p.0 <= q.2
+                && q.0 <= p.2
+                && p.1 <= q.3
+                && q.1 <= p.3
+                && (movable(sc, i) || movable(sc, j))
+            {
+                near_some[i] = true;
+                near_some[j] = true;
+            }
+        }
+    }
+    if !near_some.contains(&true) {
+        return;
+    }
+    let mut polys: Vec<Vec<Pt>> = sc.edges.iter().map(edge_polyline).collect();
+    let mut grid = SegGrid::new(&polys, |k| infos[k].is_some());
     // The drawn ends of edges `m` and `k` on the ends they share, where
     // related edges converge (their spacing there is the ports').
     let shared = |sc: &Scene, m: usize, k: usize| -> Vec<Pt> {
@@ -4256,7 +4301,7 @@ pub(crate) fn spread_close(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, move
     // The unrelated pairs to clear, closest first.
     let mut pairs: Vec<(f64, usize, usize)> = Vec::new();
     for i in 0..ne {
-        if infos[i].is_none() {
+        if infos[i].is_none() || !near_some[i] {
             continue;
         }
         for (j, d) in grid.near(&polys, &polys[i], i, |k| shared(sc, i, k)) {
@@ -4944,7 +4989,7 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
     };
     let lane =
         |i: usize| infos[i].as_ref().is_some_and(|f| f.back) && !sc.edges[i].waypoints.is_empty();
-    order.sort_by_key(|&i| (!lane(i), !channel(i), i));
+    order.sort_by_cached_key(|&i| (!lane(i), !channel(i), i));
     let mut bad: Vec<(usize, usize)> = Vec::new(); // (class, edge): 0 hard, 1 soft
                                                    // Per edge: its score against the scene alone.
     let mut alone: Vec<Score> = vec![Score::default(); ne];
@@ -5039,11 +5084,19 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
         }
         // In `route()` only a run on top of an accepted edge matters
         // here (the quick test).
-        let simple = simplify(&polys[i]);
+        // (Simplified once, for the crossing count too, where that runs.)
+        let own;
+        let simple: &[Pt] = match simple_all.get(i) {
+            Some(p) => p,
+            None => {
+                own = simplify(&polys[i]);
+                &own
+            }
+        };
         let s = w.against(
             info,
             i,
-            &simple,
+            simple,
             &mut accepted,
             alone[i],
             mode == Mode::Static,
@@ -5065,15 +5118,15 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
                 && (sc.edges[i].label.is_none() || s.hug as f64 > HUG_TRADE)
                 && (s.hug > 0
                     || s.tight > 0
-                        && w.against(info, i, &simple, &mut built_acc, alone[i], true)
+                        && w.against(info, i, simple, &mut built_acc, alone[i], true)
                             .tight
                             > 0);
             if s.near > 0 || soft || crossed(i) {
                 bad.push((1, i));
             }
-            accept(&mut accepted, i, info.ends, &polys[i]);
+            accepted.put(i, info.ends, simple);
             if ortho_corners(&sc.edges[i]).is_none() {
-                accept(&mut built_acc, i, info.ends, &polys[i]);
+                built_acc.put(i, info.ends, simple);
             }
         }
     }
