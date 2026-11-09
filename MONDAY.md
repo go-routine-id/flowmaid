@@ -164,15 +164,25 @@ Notes:
 ## 10. Release at every big package (user decision 2026-11-09)
 Plan: **0.36.0** = B8b + c1-nonflow (whichever is in dev), **0.37.0** = B9, **0.38.0** = B10, **0.39.0** = B11 + c-leftovers. The user tags and runs `cargo publish` for each.
 
-**Boundary procedure.** Run it when the MAIN run reaches `"label":"push:<pkg>"` in its journal; a background watcher wakes the session.
-1. Stop the main task right away (`TaskStop`), before the next package's implementation does real work. Make sure the push landed (`git ls-remote`); if it did not, push.
-2. On the work branch, run `git merge origin/dev`. CHANGELOG: keep dev's sections; the package's new entries go under `## [Unreleased]`, taken from `git diff <pre> <pkg head> -- CHANGELOG.md`. Run guard, commit the merge, push.
-3. Resume the main run: `Workflow({scriptPath: "<S>/phaseB-continue.js", resumeFromRunId: "wf_5b4ccf67-c1e"})`. Earlier agents come from cache, and the next package's `pre` is taken fresh, so it includes the merge. **Never edit `implPrompt`, `verifyPrompt` or `COMMON` before resuming.**
-4. Meanwhile, without touching the work branch:
-   - PR the work branch → dev; merge when green.
-   - Release X from dev (§7): version, CHANGELOG `[X]` with Highlights (plus `par/CHANGELOG-c1.md` entries for 0.36.0), README version mentions, compare PNGs (`FM_VERSION=X`), re-measured large-graph table and flowmaid timings, guard, PR → main, merge.
+**Boundary procedure (revised 2026-11-09 03:00 UTC — never stop the main run).**
+When a package's push lands on `origin/ccr-ccc6d89a-5cxd7e`, the hourly task (or I) do the following. Meanwhile the main workflow simply continues with the next package.
+1. Try PR `ccr-ccc6d89a-5cxd7e` → dev.
+   - If it is mergeable, merge it once green.
+   - If it conflicts (after a release, usually only CHANGELOG), use the **integration branch** `ccr-ccc6d89a-5cxd7e-par` (permission granted):
+     1. `git fetch origin`, then check out `ccr-ccc6d89a-5cxd7e-par` in a scratch worktree.
+     2. `git merge --ff-only origin/dev` (it is an ancestor of dev; if not, use a normal merge).
+     3. `git merge <package push sha>` (the sha, not the moving branch tip, so a later package's commits are not swept in).
+     4. Resolve CHANGELOG: take dev's sections and add the package's new entries under `## [Unreleased]`. The entries come from `git diff <pre> <pkg sha> -- CHANGELOG.md`, where pre is the package's `pre:` sha in the journal.
+     5. Run guard, push, PR → dev, and merge once green.
+   - Never touch the work branch while a package is in progress.
+2. Release the next version from dev (§7):
+   - Version bump.
+   - CHANGELOG `[X]` + Highlights. For 0.36.0, also add `par/CHANGELOG-c1.md` and its README follow-ups.
+   - README mentions, compare PNGs (`FM_VERSION=X`), re-measured tables.
+   - Guard, then PR → main, merge.
    - PR main → dev, merge.
-   - Tell the user the merge sha for tag + publish.
-5. Arm the watcher for the next `push:<pkg>`.
+   - Give the user the merge sha.
+3. Bring the work branch up to date with dev only when the main run is stopped or finished (end of phase B, or a user pause). Until then it lacks the release commits, which is harmless.
+4. Deferred cleanup: delete `layout::wrap_text` / `lines_at` and `wrap::RETIRED_GREEDY_WRAP` (dead since c1-nonflow) in the final integration at the end of phase B.
 
 **PAR track** (c1-nonflow): it ends by itself after its push. PR `ccr-ccc6d89a-5cxd7e-par` → dev, merge (no CHANGELOG conflict: its text is in `par/CHANGELOG-c1.md`).
