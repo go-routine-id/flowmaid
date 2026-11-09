@@ -77,24 +77,28 @@ project adheres to [Semantic Versioning](https://semver.org/).
   a few chords (its legs as lines) for hit-testing and the label stage,
   which keeps the static scene within 1.7x its pre-B10 time on the corpus.
   Measured over the 14 corpus drawings against 0.35.0 (static | routed):
-  defects 57 | 90 -> 50 | 47, S-cubics 92 | 112 -> 0 | 0, splines 23 | 24
-  -> 0 | 0, bows 2 | 2 -> 0 | 0, end kinks 74 | 94 -> 3 | 1, edges on a
-  frame border 11 | 20 -> 0 | 7, drawn crossings 499 | 504 -> 489 | 501
-  (fanout-frames 3 | 3 -> 0 | 1, dense-td 92 | 73 -> 80 | 83); bench-75
-  defects 5 | 27 -> 6 | 2. Over 250 generated state diagrams: drawn
-  crossings 219 | 309 -> 231 | 275, edges through a node 11 | 17 -> 7 | 8,
-  S-cubics 2 188 | 2 379 -> 457 | 514 (the rest note card links, kept by
-  design); over 303 generated flowcharts: crossings 2 902 | 2 988 ->
-  2 892 | 2 778, defects 404 | 331 -> 86 | 91. Known costs: parallel
-  cables (a channel's tracks) 97 | 107 -> 119 | 149 pairs, static sideways
-  wiggles 16 -> 20 (long edges stepping between dummy columns), bench-75's
-  static crossings 349 -> 359 (still above mermaid's 222 there, which the
-  layout's ordering bounds), the static state diagrams' crossings above,
-  dense-lr's LR fan labels over a neighbouring step (static
-  label-over-line 1 -> 6), plain twins' labels over a line in narrow
-  composites (state bulk 27 | 20 -> 28 | 27), and on bench-75 `route()`
-  takes `job1 -> svc1`'s lane round the other side from the static layout
-  (its planner reads gap depths in px).
+  defects 57 | 90 -> 48 | 46, S-cubics 92 | 112 -> 0 | 0, splines 23 | 24
+  -> 0 | 0, bows 2 | 2 -> 0 | 0, end kinks 74 | 94 -> 2 | 1, edges on a
+  frame border 11 | 20 -> 0 | 7, drawn crossings 499 | 504 -> 428 | 494
+  (bench-75 349 | 375 -> 302 | 361, fanout-frames 3 | 3 -> 0 | 1,
+  dense-td 92 | 73 -> 80 | 83); bench-75 defects 5 | 27 -> 4 | 1. Over 964
+  generated state diagrams: drawn crossings 762 | 1 021 -> 708 | 826,
+  defects 633 | 558 -> 616 | 537, pairs of edges out of one node crossing
+  each other twice 20 | 17 -> 14 | 16, edges through a node 45 | 55 -> 32
+  | 39; over 303 generated flowcharts: crossings 2 902 | 2 988 -> 2 874 |
+  2 774, defects 404 | 331 -> 87 | 88. Known costs: parallel cables (a
+  channel's tracks, a fan's bundled stubs) 97 | 107 -> 128 | 143 pairs
+  on the corpus; bench-75's static crossings still above mermaid's 222
+  (its layout's node order bounds them); one more edge-frame pair there
+  (`alerts -> gw`'s lane over the top through `app`); dense-lr's LR fan
+  labels over a neighbouring step (static label-over-line 1 -> 5);
+  dense-td's `route()` crossings 73 -> 83; plain twins' labels over a line
+  in narrow composites; and on bench-75 `route()` takes `job1 -> svc1`'s
+  lane round the other side from the static layout (its planner reads gap
+  depths in px). Static `scene()` takes 1.6-1.9x its time from before
+  this release's layout and edge work on the small corpus drawings
+  (advanced 2.2x); `route()` and drags take less than before on the
+  large ones (bench-75 drag 20.2 -> 14.6 ms).
 
 - **A subgraph fed from outside every subgraph starts below its feeder**
   (report §2.9, B8b P1). 0.35.0 started a subgraph's edge-less members on

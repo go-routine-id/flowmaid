@@ -64,7 +64,7 @@ const CEILINGS: &[(&str, Ceil, Ceil)] = &[
 const GAP_FLOORS: &[(&str, f64, f64)] = &[
     ("back-edge", 40.0, 40.0),
     // Static 3.4 before the channel nudge spread parallel legs apart.
-    ("bench-75", 14.0, 4.3),
+    ("bench-75", 14.7, 10.6),
     // The generated dense fixtures, as first measured. dense-lr static
     // 9.6 -> 9.5 (report M7): its one label past the 200 px wrapping
     // width (`n32`, 204 px) now wraps to two lines, the drawing grows
@@ -98,8 +98,11 @@ const GAP_FLOORS: &[(&str, f64, f64)] = &[
     // 5.9 | 2.1 -> 9.0 | 9.06, ratcheted. B10 review r1: bench-75 static
     // 14.31, routed 4.34 (above the pre-B10 2.1: `route()` now lays
     // `job1 -> svc1`'s lane where `scene()` does, round below the jobs
-    // frame, past the fan into `db`).
-    ("dense-lr", 12.0, 10.8),
+    // frame, past the fan into `db`). B10 review r2: bench-75 14.74 |
+    // 10.69 (its service fans leave as bundles a track apart, and
+    // `route()`'s lane past `db` keeps off them), dense-lr routed 12.5,
+    // back at its pre-B10 floor: ratcheted.
+    ("dense-lr", 12.0, 12.0),
     ("dense-td", 12.1, 12.0),
     ("fanout-frames", 40.0, 40.0),
     ("wide-labels", 40.0, 40.0),
@@ -406,8 +409,10 @@ const DASH_EDGES_MAX: (usize, usize) = (0, 0);
 /// §2.1), takes one with 14 crossings, all on one line. Routed 11 ->
 /// 12, also a known residual: `route()` lays bench-75's `job1 -> svc1`
 /// lane where `scene()` does again, round below the jobs frame, across
-/// the fan into `db`.
-const XGAP_MAX: (usize, usize) = (14, 12);
+/// the fan into `db`. B10 review r2: static 14 -> 9, under the
+/// pre-B10 13 (bench-75's service fans leave as bundles and step in the
+/// gap; the most gaps on one of its lines is now 9).
+const XGAP_MAX: (usize, usize) = (9, 12);
 
 /// Crossing gaps are spread so that edges stay whole lines (G1).
 #[test]
@@ -944,11 +949,12 @@ fn long_labels_wrap_and_dense_labels_do_not_tower() {
 /// pre-B10 15 — `route()` lays `job1 -> svc1`'s lane where `scene()`
 /// does again (round below, not over the top), and the kept `gw ->
 /// svc2` and `svc1 -> queue` it passes are rerouted off the redrawn
-/// edges of a dragged neighbour.
+/// edges of a dragged neighbour. B10 review r2: bench-75 16 -> 15, the
+/// pre-B10 value again.
 const DRAG_JUMPS_MAX: &[(&str, usize)] = &[
     ("quality/dense-lr", 0),
     ("quality/dense-td", 4),
-    ("quality/bench-75", 16),
+    ("quality/bench-75", 15),
     ("notes/spread-face", 0),
     ("notes/fork-twins", 0),
     ("notes/near-drag", 0),
