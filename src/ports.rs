@@ -634,7 +634,9 @@ fn end_and_steer(sc: &Scene, i: usize, src: bool, side: Option<Side>) -> (Pt, Pt
     // its corners, as the single curve it replaced headed — whichever
     // stage drew it, so a side's order (and a second pass over it) stays
     // as the curves set it.
-    let chord = (w.len() >= 2 && crate::scene::single_run(e))
+    // (A flowchart edge's: a class or ER scene's paths steer as they
+    // always did.)
+    let chord = (e.paint_width.is_none() && w.len() >= 2 && crate::scene::single_run(e))
         .then(|| crate::router::ortho_corners(e))
         .flatten()
         .filter(|c| c.len() >= 3);
@@ -1804,7 +1806,7 @@ fn move_end(e: &mut SceneEdge, src: bool, old: Pt, delta: Pt, side: Side, back: 
     // leg straight down) follows across its own axis, not the side's:
     // read the side's axis off the leg, so the leg stays on its axis
     // instead of kinking from the moved end to its old line.
-    let side = if n >= 2 {
+    let side = if n >= 2 && e.paint_width.is_none() {
         let (a, b) = (e.waypoints[wi], e.waypoints[if src { 1 } else { n - 2 }]);
         let (dx, dy) = ((a.0 - b.0).abs(), (a.1 - b.1).abs());
         if dx < STUB_EPS && dy >= STUB_EPS {
@@ -1919,7 +1921,7 @@ fn turn_end(e: &mut SceneEdge, src: bool, old: Pt, new: Pt, side: Side, back: bo
     // path's end turned round a diamond's corner kinked from the new
     // end back to its old line).
     let at = |k: usize| if src { k } else { n - 1 - k };
-    if n >= 3 {
+    if n >= 3 && e.paint_width.is_none() {
         let b = e.waypoints[at(1)];
         let vertical = (b.0 - old.0).abs() < STUB_EPS && (b.1 - old.1).abs() >= STUB_EPS;
         let level = (b.1 - old.1).abs() < STUB_EPS && (b.0 - old.0).abs() >= STUB_EPS;

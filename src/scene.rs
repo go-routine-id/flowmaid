@@ -664,7 +664,7 @@ pub(crate) fn edge_polyline(e: &SceneEdge) -> Vec<(f64, f64)> {
         return curve_sample(start, &segs);
     }
     if e.waypoints.len() >= 2 {
-        return basis_sample(&e.waypoints);
+        return basis_sample_with(&e.waypoints, e.paint_width.is_none());
     }
     sample_cubic(&e.bezier, 24)
 }
@@ -674,10 +674,13 @@ pub(crate) fn edge_polyline(e: &SceneEdge) -> Vec<(f64, f64)> {
 /// [`crate::ortho`]) — the shapes every edge between two ranks is drawn
 /// in, which the label and port rules for a single curve go by. A long
 /// edge down its channel, a back-edge in its lane or a reroute round
-/// what it met has more corners.
+/// what it met has more corners. A class or ER edge with waypoints is
+/// never one.
 pub(crate) fn single_run(e: &SceneEdge) -> bool {
-    if e.waypoints.is_empty() {
-        return true;
+    // (A class or ER edge is a single run only as its builder's curve:
+    // their stages read a router path as a path, whatever its corners.)
+    if e.waypoints.is_empty() || e.paint_width.is_some() {
+        return e.waypoints.is_empty();
     }
     let mut corners = 0;
     let w = &e.waypoints;
@@ -1176,7 +1179,7 @@ fn plain_segs(e: &SceneEdge, t: impl Fn((f64, f64)) -> (f64, f64)) -> ((f64, f64
         (t(start), segs.iter().map(|s| s.map(&t)).collect())
     } else if e.waypoints.len() >= 2 {
         let q: Vec<(f64, f64)> = e.waypoints.iter().map(|&p| t(p)).collect();
-        spline_segs(&q)
+        spline_segs(&q, e.paint_width.is_none())
     } else {
         let q = e.bezier.map(&t);
         (q[0], vec![Seg::C(q[1], q[2], q[3])])
@@ -2196,8 +2199,11 @@ fn tail_samples(
 /// uses) through `pts` (>= 2 points): starts and ends exactly at the
 /// endpoints while only *approximating* the channel waypoints, so a
 /// routed edge flows in gentle lanes instead of ballooning through every
-/// point the way an interpolating spline would.
-fn spline_segs(pts: &[(f64, f64)]) -> ((f64, f64), Vec<Seg>) {
+/// point the way an interpolating spline would. With `lines` (a
+/// flowchart or state edge: every one is on the axes, [`crate::ortho`])
+/// a stretch that runs straight along one axis is drawn as the line it
+/// is; a class or ER painter's commands stay cubics throughout.
+fn spline_segs(pts: &[(f64, f64)], lines: bool) -> ((f64, f64), Vec<Seg>) {
     let n = pts.len();
     if n < 3 {
         return (pts[0], vec![Seg::L(pts[n - 1])]);
@@ -2215,7 +2221,7 @@ fn spline_segs(pts: &[(f64, f64)]) -> ((f64, f64), Vec<Seg>) {
             ((a.0 + 4.0 * b.0 + p.0) / 6.0, (a.1 + 4.0 * b.1 + p.1) / 6.0),
         ];
         // An orthogonal path's straight leg: a line (`axis_run`).
-        if axis_run(&seg) {
+        if lines && axis_run(&seg) {
             Seg::L(seg[3])
         } else {
             Seg::C(seg[1], seg[2], seg[3])
@@ -2782,6 +2788,14 @@ fn axis_run(seg: &[(f64, f64); 4]) -> bool {
 /// Densely sample the same open-uniform B-spline (`curveBasis`) that
 /// [`spline_segs`] draws through `pts`, so hit geometry == drawn geometry.
 pub(crate) fn basis_sample(pts: &[(f64, f64)]) -> Vec<(f64, f64)> {
+    basis_sample_with(pts, false)
+}
+
+/// [`basis_sample`], with `lines` (as [`spline_segs`] takes it) a
+/// stretch on one axis sampled by its end alone: the samples between
+/// would only lie on the line (a flowchart edge's straight legs, dozens
+/// of them down a long edge's channel).
+pub(crate) fn basis_sample_with(pts: &[(f64, f64)], lines: bool) -> Vec<(f64, f64)> {
     let n = pts.len();
     if n < 3 {
         return vec![pts[0], pts[n - 1]];
@@ -2809,7 +2823,7 @@ pub(crate) fn basis_sample(pts: &[(f64, f64)]) -> Vec<(f64, f64)> {
         ];
         // A stretch on one axis (an orthogonal path's straight leg) is
         // its end alone: the samples between would only lie on it.
-        if axis_run(&seg) {
+        if lines && axis_run(&seg) {
             out.push(seg[3]);
         } else {
             for k in 1..=6 {
@@ -9788,6 +9802,38 @@ mod tests {
         }
     }
 
+    /// B10 review r1 #1: a flowchart edge's straight legs are drawn as
+    /// lines and sampled by their ends (every one of its edges is on the
+    /// axes); a class or ER edge's path keeps the cubics and the six
+    /// samples per span it always had, so those drawings stay byte for
+    /// byte as they were.
+    #[test]
+    fn class_and_er_paths_keep_their_cubics_and_samples() {
+        let wps = crate::router::smooth(
+            &[(0.0, 0.0), (0.0, 120.0), (160.0, 120.0)],
+            crate::router::CORNER_R,
+        );
+        let mut e = routed_edge((0.0, 0.0), (160.0, 120.0), wps.clone());
+        let lines = |d: &str| d.matches('L').count();
+        let (flow_d, flow_pts) = (edge_path_d(&e, |p| p), edge_polyline(&e));
+        e.paint_width = Some(1.5);
+        let (cls_d, cls_pts) = (edge_path_d(&e, |p| p), edge_polyline(&e));
+        assert!(lines(&flow_d) > lines(&cls_d), "{flow_d}\n{cls_d}");
+        let (start, segs) = spline_segs(&wps, false);
+        assert_eq!(cls_d, curve_d(start, &segs, |p| p));
+        assert_eq!(cls_pts, basis_sample(&wps));
+        assert!(flow_pts.len() < cls_pts.len());
+        // One geometry either way: every flowchart sample lies on the
+        // class path's samples' line.
+        for p in &flow_pts {
+            let d = cls_pts
+                .windows(2)
+                .map(|w| point_seg_dist(p.0, p.1, w[0], w[1]))
+                .fold(f64::INFINITY, f64::min);
+            assert!(d < 0.5, "{p:?} {d}");
+        }
+    }
+
     /// Report P0 #6: class / ER painters stroked `bezier` alone, so a
     /// rerouted edge (route in `waypoints`, chord in `bezier`) was
     /// drawn straight through the boxes. The shared builder draws the
@@ -9797,7 +9843,7 @@ mod tests {
         let wps = vec![(0.0, 0.0), (0.0, 50.0), (80.0, 50.0)];
         let e = routed_edge((0.0, 0.0), (80.0, 50.0), wps.clone());
         let spline_d = |pts: &[(f64, f64)]| {
-            let (start, segs) = spline_segs(pts);
+            let (start, segs) = spline_segs(pts, true);
             curve_d(start, &segs, |p| p)
         };
         assert_eq!(edge_path_d(&e, |p| p), spline_d(&wps));

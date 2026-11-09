@@ -35,7 +35,7 @@
 use crate::clearance::{CLEAR_GAP, CRAMP_NODE_GAP, EDGE_SPACING, FRAME_INSET};
 use crate::model::{Direction, End, Graph};
 use crate::scene::{
-    basis_sample, edge_drawn, edge_polyline, grow_canvas, own_box_targets, sample_cubic,
+    basis_sample_with, edge_drawn, edge_polyline, grow_canvas, own_box_targets, sample_cubic,
     shift_scene, Bbox, Scene, ARROW_MARKER_PX, MARGIN,
 };
 
@@ -388,10 +388,14 @@ pub(crate) fn finish_held(g: &Graph, sc: &mut Scene, mode: Mode, fixed: &[bool],
 /// straight cubic it is: a two-point polyline's head box and the
 /// samples the label stage and the casing read reached back over the
 /// whole leg (dense-td's `n2 -> n7` label read as on its own head, the
-/// leg 72 px long). Drawn alike.
+/// leg 72 px long). Drawn alike. (A flowchart or state edge's: a class
+/// or ER painter draws its own.)
 fn straight_cubics(sc: &mut Scene, cx: &Ctx) {
     for (i, e) in sc.edges.iter_mut().enumerate() {
-        if e.waypoints.len() != 2 || !cx.drawn.get(i).copied().unwrap_or(false) {
+        if e.waypoints.len() != 2
+            || e.paint_width.is_some()
+            || !cx.drawn.get(i).copied().unwrap_or(false)
+        {
             continue;
         }
         let (a, b) = (e.waypoints[0], e.waypoints[1]);
@@ -655,9 +659,10 @@ fn snapped_end(
             // its old place met the lid (a Z drawn straight onto a drum
             // 25 px off its centre). Back to the box side along the run,
             // then onto the outline from there.
+            // (A flowchart edge's: class and ER ends stay as they were.)
             let axis = out.0 == 0.0 || out.1 == 0.0;
             let inside = gx < 0.0 && gy < 0.0;
-            if !axis || !inside || (out.0 == 0.0 && out.1 == 0.0) {
+            if e.paint_width.is_some() || !axis || !inside || (out.0 == 0.0 && out.1 == 0.0) {
                 return None;
             }
             let q = if out.0 == 0.0 {
@@ -693,7 +698,7 @@ const SNAP_REACH: f64 = 0.5;
 /// (`scene::square_end`).
 fn stub_keeps_clear(sc: &Scene, cx: &Ctx, i: usize, new: &[Pt], stubbed: &[usize]) -> bool {
     let old = &edge_polyline(&sc.edges[i]);
-    let fresh = basis_sample(new);
+    let fresh = basis_sample_with(new, sc.edges[i].paint_width.is_none());
     // The stubs replace waypoints only near the ends, so the curves share
     // their samples away from them (the spline is local): the stretch of
     // each between its shared head and tail (a sample either side).

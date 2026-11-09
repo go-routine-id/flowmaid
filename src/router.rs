@@ -57,9 +57,10 @@
 //!    in the order their paths head ([`reorder`]).
 //! 5. **Smooth.** Corners get two extra points either side, so the
 //!    `curveBasis` spline the painter draws through the waypoints rounds
-//!    them: [`CORNER_R`], while searching and on the finished path alike
-//!    (every flowchart edge is orthogonal, [`crate::ortho`], so one
-//!    corner style serves the static scene and every drag frame).
+//!    them: [`CORNER_R`], while searching and on a flowchart's finished
+//!    path alike (every flowchart edge is orthogonal, [`crate::ortho`],
+//!    so one corner style serves the static scene and every drag frame);
+//!    a class or ER path up to [`CORNER_MAX`] where the room allows.
 //!
 //! Every candidate is scored the same way as the original and replaces
 //! it only when it is strictly better, and every nudge is kept only when
@@ -256,6 +257,12 @@ const ROUTE_MAX_EDGES: usize = 400;
 /// Corner rounding distance (px) of a candidate while it is searched
 /// and scored, capped at half the shorter leg.
 pub(crate) const CORNER_R: f64 = 14.0;
+/// The widest corner rounding (px) a finished class or ER path gets
+/// where its legs and the free room round the corner allow (one
+/// soft-orthogonal style next to their builders' free curves). A
+/// flowchart's paths keep [`CORNER_R`]: every one of its edges is on the
+/// axes ([`crate::ortho`]), in one corner style.
+const CORNER_MAX: f64 = 36.0;
 /// A stair step (two opposite corners) shorter than this (px) is a
 /// micro-jog: merged into one leg when that stays clear (G8 taste).
 const JOG_MIN: f64 = 2.0 * CORNER_R;
@@ -524,11 +531,29 @@ impl Score {
     fn hard(&self) -> usize {
         self.node + self.frame + self.chip
     }
+
+    /// The part scored against the scene alone (what
+    /// [`World::score`] gives without the accepted edges).
+    fn scene(self) -> Score {
+        Score {
+            overlap: 0,
+            head: 0,
+            cross: 0,
+            tight: 0,
+            ..self
+        }
+    }
 }
 
 /// The fixed geometry of the scene every edge is routed against.
 struct World {
     dir: crate::model::Direction,
+    /// A flowchart or state scene (not a class or ER one, whose painters
+    /// stroke their own width): the B10 tuning (report M5, P0 #14) —
+    /// the admissible heuristic, the forward flank price and the second
+    /// pass over runs on top of each other — applies to it alone, so a
+    /// class or ER drawing stays as it was.
+    flow: bool,
     /// How close (px) a path may pass a title chip that is not its own
     /// frame's before it counts as through it: [`CHIP_SEP`] in the
     /// static scene (G6, G11); in `route()` only a touch
@@ -742,6 +767,7 @@ impl World {
             .collect();
         World {
             dir: g.direction,
+            flow: g.edge_paint_width.is_none(),
             chip_reach: CHIP_SEP,
             nodes,
             owner,
@@ -2919,7 +2945,7 @@ fn route_edge(
     // A forward edge in the static scene pays more for a flank
     // ([`FORWARD_FLANK_COST`]); a drag's small window often has no other
     // way round (G13).
-    let forward = !info.back && env.tracks;
+    let forward = !info.back && env.tracks && w.flow;
     let end_terms = |end: EndRef, port: Pt, glyph: bool| {
         let (plain, len) = (clear + STUB_EXTRA, stub_len(e, glyph, clear));
         let mut found: Vec<Term> = terms(w, end, port, t.alt, len, env.taken, me, forward)
@@ -3912,7 +3938,8 @@ pub(crate) fn ortho_corners(e: &crate::scene::SceneEdge) -> Option<Vec<Pt>> {
 /// spaced again: the channel nudge over every orthogonal path (rerouted or
 /// drawn so by the builder), ports included ([`spread`], G1/G4); then
 /// each path's stair steps under [`JOG_MIN`] merged, its corners rounded
-/// at [`CORNER_R`]. Every change of an edge is kept only when it
+/// at [`CORNER_R`] (a class or ER path's up to [`CORNER_MAX`] where the
+/// room allows). Every change of an edge is kept only when it
 /// scores no worse against the scene and the other edges as drawn by
 /// then. Sets `moved[i]` for each edge it redraws.
 pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut [bool]) {
@@ -4035,6 +4062,8 @@ pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut
         let mut cur = old.clone();
         let mut pts = polys[i].clone();
         let mut redraw = false;
+        // The score of `pts` when it is known.
+        let mut known: Option<Score> = None;
         // Scored against the others only when the path may change.
         let nudged_i = routes[i].as_ref().zip(nudged[i].clone());
         if nudged_i.is_some() || merge_jog(&f, &kept, i, 0).is_some() {
@@ -4063,13 +4092,43 @@ pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut
                     skip += 1;
                 }
             }
+            known = Some(s_cur);
         }
+        // A class or ER path's wider rounding only cuts its corners: kept
+        // when the scene scores it no worse. A path with no inner corner
+        // has nothing to round: a straight builder edge keeps its
+        // waypoints, and its label its spot.
+        // In `route()` only a path this stage redraws anyway: the others
+        // keep the router's corners, unjudged (G13). (A flowchart's
+        // paths keep [`CORNER_R`], see [`CORNER_MAX`].)
+        let note = crate::ports::note_link(sc, cx, i);
+        let wide = (!w.flow && cur.len() > 2 && !note && (redraw || mode == Mode::Static))
+            .then(|| {
+                let narrow = drawn_with(e, &smooth(&cur, CORNER_R));
+                let wide = drawn_with(e, &smooth(&cur, CORNER_MAX));
+                // Legs too short for a wider corner: nothing to score.
+                if wide == narrow {
+                    return None;
+                }
+                let s_narrow = match known {
+                    Some(s) if pts == narrow => s.scene(),
+                    _ => w.score(info, i, &narrow, None),
+                };
+                (w.score(info, i, &wide, None) <= s_narrow).then_some(wide)
+            })
+            .flatten();
+        let r = if let Some(wide) = wide {
+            (pts, redraw) = (wide, true);
+            CORNER_MAX
+        } else {
+            CORNER_R
+        };
         match acc.as_mut() {
             Some(a) => accept(a, i, info.ends, &pts),
             None => held[i] = Some(pts),
         }
         if redraw {
-            let wps = smooth(&cur, CORNER_R);
+            let wps = smooth(&cur, r);
             let e = &mut sc.edges[i];
             if e.waypoints != wps {
                 let (p0, p3) = (wps[0], wps[wps.len() - 1]);
@@ -4394,8 +4453,13 @@ fn close_moves(e: &crate::scene::SceneEdge, other: &[Pt]) -> Vec<([Pt; 4], Vec<P
         return out;
     };
     let n = c.len();
-    // Corners rounded as the nudge left them.
-    let r = CORNER_R;
+    // Corners rounded as the nudge left them (a class or ER path's up
+    // to [`CORNER_MAX`]).
+    let r = if e.waypoints == smooth(&c, CORNER_MAX) {
+        CORNER_MAX
+    } else {
+        CORNER_R
+    };
     // The inner leg (both its corners off the ends) nearest `other`.
     let Some(k) = (1..n.saturating_sub(2))
         .map(|k| {
@@ -4743,9 +4807,6 @@ fn narrow_px(w: &World, info: &Info, pts: &[Pt]) -> f64 {
     px
 }
 
-/// Accept edge `i` as `pts` for the edges searched after it: its
-/// simplified polyline goes into the segment index, which later
-/// lattices are priced from.
 /// The length (px) of `a`'s legs running on top of `b` (within
 /// [`EDGE_SPACING`] and parallel to one of its legs): what two paths
 /// share as one stroke.
@@ -4785,6 +4846,9 @@ fn on_top(a: &[Pt], b: &[Pt]) -> f64 {
     run
 }
 
+/// Accept edge `i` as `pts` for the edges searched after it: its
+/// simplified polyline goes into the segment index, which later
+/// lattices are priced from.
 fn accept(acc: &mut Accepted, i: usize, ends: (EndRef, EndRef), pts: &[Pt]) {
     acc.put(i, ends, &simplify(pts));
 }
@@ -4814,6 +4878,10 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
         cx.fixed.iter().filter(|&&f| !f).count() as f64 / ne as f64
     };
     let mut work = Work::of(mode, free);
+    // (A class or ER scene keeps the drag's weight: see [`World::flow`].)
+    if !w.flow {
+        work.h_weight = H_WEIGHT;
+    }
     let fixed = |i: usize| cx.fixed.get(i).copied().unwrap_or(false);
     // Obstacle score alone, then accept the clean edges — channel edges
     // (with waypoints) first, so a free curve yields to them.
@@ -5224,7 +5292,7 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
     // everything as drawn by now, and taken only when
     // the pair's runs on top of each other shrink and nothing else gets
     // worse for it.
-    if mode == Mode::Static && work.left > 0 {
+    if mode == Mode::Static && w.flow && work.left > 0 {
         let drawn_now = |routes: &[Option<Vec<Pt>>], k: usize| -> Vec<Pt> {
             match routes[k].as_ref() {
                 Some(c) => drawn_with(&sc.edges[k], &smooth(c, CORNER_R)),
@@ -6024,6 +6092,7 @@ mod tests {
     fn bare(nodes: &[R], frames: &[R], outer: R) -> World {
         World {
             dir: crate::model::Direction::LR,
+            flow: true,
             chip_reach: CHIP_SEP,
             nodes: nodes.iter().map(|&r| (r, Shape::Rect)).collect(),
             owner: (0..nodes.len()).collect(),
@@ -6523,5 +6592,37 @@ mod tests {
             .filter(|d| d.starts_with("svc4->logs border") || d.starts_with("svc4->logs hug"))
             .collect();
         assert!(rides.is_empty(), "{rides:?}");
+    }
+
+    /// B10 review r1 #1: the B10 tuning (every flowchart edge on the
+    /// axes in one corner style, the admissible heuristic, the forward
+    /// flank price, the second overlap pass) is the flowchart's alone. A
+    /// class relation the router reroutes keeps the wider rounding its
+    /// soft-orthogonal style had (`A ..> C` here, round the inheritance
+    /// fan), and a class scene's world knows it is no flowchart.
+    #[test]
+    fn a_class_route_keeps_its_wide_corners() {
+        let src = "classDiagram\n    direction RL\n    class A {\n      +int x\n    }\n    \
+                   A \"1\" --> \"0..*\" B : owns\n    B \"1\" --> \"1\" C : uses\n    \
+                   C ..> A : calls back\n    C --> C : self\n    A <|-- D\n    A <|-- E\n    \
+                   A <|-- F\n    D o-- E : agg\n    B -- D\n";
+        let Ok(crate::Document::Class(d)) = crate::parser::parse_document(src) else {
+            panic!("a class diagram");
+        };
+        let cs = crate::class::scene(&d);
+        let wide = cs.scene.edges.iter().any(|e| {
+            ortho_corners(e).is_some_and(|c| {
+                c.len() > 2
+                    && e.waypoints == smooth(&c, CORNER_MAX)
+                    && e.waypoints != smooth(&c, CORNER_R)
+            })
+        });
+        assert!(wide, "no relation rounded wider than CORNER_R");
+        let g = crate::parser::parse("flowchart TD\nA --> B").unwrap();
+        let sc = crate::scene::scene(&g);
+        assert!(World::new(&g, &sc).flow);
+        let mut g = g;
+        g.edge_paint_width = Some(1.5);
+        assert!(!World::new(&g, &sc).flow);
     }
 }

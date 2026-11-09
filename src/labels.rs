@@ -1733,7 +1733,10 @@ fn place_long(
     let long: Vec<bool> = edges
         .iter()
         .enumerate()
-        .map(|(i, e)| long.get(i).copied().unwrap_or(false) || e.label.is_some() && spans_row(e))
+        .map(|(i, e)| {
+            long.get(i).copied().unwrap_or(false)
+                || e.paint_width.is_none() && e.label.is_some() && spans_row(e)
+        })
         .collect();
     let long = |i: usize| long[i];
     if edges.iter().all(|e| e.label.is_none()) {
@@ -1990,7 +1993,7 @@ fn place_long(
         if rect_line_dist((at.0, at.1, at.0, at.1), pts) > FAN_ON_LINE
             || field.strokes_matter && field.strokes().count(r, ei, 0) > 0
             || near_hub(&mut tracks, ei, *at, *w)
-            || crowds_a_sibling(nodes, edges, &fan, ei, point)
+            || edges[ei].paint_width.is_none() && crowds_a_sibling(nodes, edges, &fan, ei, point)
         {
             restack.insert(point.clone());
         }
@@ -2430,22 +2433,6 @@ fn one_gap_down(e: &SceneEdge, nodes: &[SceneNode]) -> bool {
     lo < hi && nodes.iter().all(|n| n.y <= lo || n.y >= hi)
 }
 
-/// Stacks the labels of the compact branch points' fans flagged in
-/// `lift` (a fan is flagged whole) in rows across the far half of their
-/// lines, the way the layout packs them: it sizes the gap for rows past
-/// [`FAN_FAR`] (see `layout::fan_rows_gap`), and the rest of the half
-/// absorbs its estimate's error (a label stacked short of FAN_FAR is
-/// stacked afresh by each later pass, to the same spot while nothing
-/// near it moved). Row 0 lies as near the far ends as every label of
-/// the point can sit (clear of the arrowheads), each further row a
-/// label box plus the layout's row room (`LABEL_CLEAR`) back along the
-/// flow. A label's candidates are the rows where its spot on its own
-/// line is open of the fixed obstacles, clear of every other label and
-/// crossed by no other stroke; [`fan_rows`] picks one per label, in
-/// reading order across the flow, siblings side by side
-/// [`FAN_SIBLING_GAP`] apart. A label with no pick keeps its spot (the
-/// caller re-places it). `tracks` holds every flagged label's track.
-/// Returns the edges whose label moved.
 /// Whether edge `ei`'s label (of `point`'s fan, `fan` as [`place`]
 /// reads it) lies side by side with a sibling's across the fan's flow
 /// nearer than [`FAN_SIBLING_GAP`]: a drag's redrawn branch, its label
@@ -2489,6 +2476,22 @@ fn crowds_a_sibling(
     })
 }
 
+/// Stacks the labels of the compact branch points' fans flagged in
+/// `lift` (a fan is flagged whole) in rows across the far half of their
+/// lines, the way the layout packs them: it sizes the gap for rows past
+/// [`FAN_FAR`] (see `layout::fan_rows_gap`), and the rest of the half
+/// absorbs its estimate's error (a label stacked short of FAN_FAR is
+/// stacked afresh by each later pass, to the same spot while nothing
+/// near it moved). Row 0 lies as near the far ends as every label of
+/// the point can sit (clear of the arrowheads), each further row a
+/// label box plus the layout's row room (`LABEL_CLEAR`) back along the
+/// flow. A label's candidates are the rows where its spot on its own
+/// line is open of the fixed obstacles, clear of every other label and
+/// crossed by no other stroke; [`fan_rows`] picks one per label, in
+/// reading order across the flow, siblings side by side
+/// [`FAN_SIBLING_GAP`] apart. A label with no pick keeps its spot (the
+/// caller re-places it). `tracks` holds every flagged label's track.
+/// Returns the edges whose label moved.
 fn stack_fans(
     field: &Field,
     nodes: &[SceneNode],
