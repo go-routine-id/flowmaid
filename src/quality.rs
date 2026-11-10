@@ -1528,6 +1528,8 @@ pub fn measure(g: &Graph, sc: &Scene) -> Metrics {
         for (j, me) in edges.iter().enumerate() {
             if j != i && me.pts.windows(2).any(|s| r.hits_seg(s[0], s[1])) {
                 m.lbl_edge += 1;
+                m.details
+                    .push(format!("{owner} lbl_edge {}->{}", me.e.from, me.e.to));
             }
             if me.e.ends.end_marker(me.e.kind).is_some() {
                 let n = me.pts.len();

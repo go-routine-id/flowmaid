@@ -530,12 +530,26 @@ impl PickTarget for PickRect {
     }
 }
 
+/// How far (px) off its axis a leg may lie for [`HopPick`]'s quick
+/// tests to take it for a level or plumb run: more loosely than
+/// [`crate::hops`] takes its legs (to a float's noise — a routed leg
+/// from `y = 203.00000000000003` to `y = 203.0` is level there, and
+/// hops), so a test never rules out a hop the painter draws.
+const HOP_PICK_AXIS: f64 = 1e-3;
+/// Slack (px) on the reach of [`HopPick`]'s quick tests, which only
+/// rule out where no hop can be: the stretch of path a hop leaves out
+/// lies up to [`HOP_ON_LINE`] off the hop's own line (just past a
+/// corner's rounding), so a target that far beyond the hop's reach may
+/// still be on that stretch, which is not painted.
+const HOP_PICK_SLACK: f64 = HOP_ON_LINE + 0.5;
+
 /// Picking's view of the crossing hops `to_svg` paints (report M15,
 /// [`crate::hops`]): a hop's arc lies up to its radius off the edge's
 /// own path, so a pointer on it is on the stroke without being on the
 /// path. The hops are worked out at most once per pick, and only when
 /// the target comes within a hop's reach of an edge that may hop without
-/// touching its path.
+/// touching its path — by the painter's own rule from the same legs
+/// ([`crate::hops::Legs::of`]), so a pick answers the hops as painted.
 struct HopPick<'a> {
     sc: &'a Scene,
     /// The scene draws hops at all (see [`crate::hops::legs`]).
@@ -565,10 +579,10 @@ impl<'a> HopPick<'a> {
         // A hop reaches its radius past the line it crosses; the lines
         // under one bridge stand no further apart than two radii and
         // the gap they join over.
-        let dx = reach + 2.0 * HOP_R_MAX + HOP_JOIN;
-        let dy = reach + HOP_R_MAX;
+        let dx = reach + 2.0 * HOP_R_MAX + HOP_JOIN + HOP_PICK_SLACK;
+        let dy = reach + HOP_R_MAX + HOP_PICK_SLACK;
         let run = |a: (f64, f64), b: (f64, f64)| {
-            a.0 == b.0
+            (a.0 - b.0).abs() < HOP_PICK_AXIS
                 && a.0 >= x0 - dx
                 && a.0 <= x1 + dx
                 && a.1.min(b.1) <= y1 + dy
@@ -611,12 +625,13 @@ impl<'a> HopPick<'a> {
         // of this edge.
         let r = crate::hops::HOP_R_MAX;
         let (x0, y0, x1, y1) = target.bounds();
+        let reach_s = reach + HOP_PICK_SLACK;
         let level = |a: (f64, f64), b: (f64, f64)| {
-            a.1 == b.1
-                && y0 <= a.1 + reach
-                && y1 >= a.1 - r - reach
-                && x0 <= a.0.max(b.0) + reach
-                && x1 >= a.0.min(b.0) - reach
+            (a.1 - b.1).abs() < HOP_PICK_AXIS
+                && y0 <= a.1 + reach_s
+                && y1 >= a.1 - r - reach_s
+                && x0 <= a.0.max(b.0) + reach_s
+                && x1 >= a.0.min(b.0) - reach_s
         };
         let beside = if e.waypoints.len() >= 2 {
             e.waypoints.windows(2).any(|w| level(w[0], w[1]))
@@ -632,7 +647,7 @@ impl<'a> HopPick<'a> {
         let hops = legs.of(i);
         let near = hops.iter().any(|h| {
             let (lo, hi) = h.span();
-            target.box_gap(lo, h.y - h.r, hi, h.y) <= reach
+            target.box_gap(lo, h.y - h.r, hi, h.y) <= reach_s
         });
         if !near {
             return d;
@@ -11277,10 +11292,9 @@ mod tests {
         // whose painted stroke covers the same point (a shared trunk, a
         // crossing). A middle routed waypoint or a bezier midpoint is NOT
         // such a point: the spline through the waypoints cuts corners.
-        const TOL: f64 = 0.0;
-        // The SVG writes coordinates to 0.1, so the curve parsed back out
-        // of it sits up to ~0.07 off the one edge_at measures.
-        const SVG_PRECISION: f64 = 0.1;
+        // A flowchart or state fixture is walked as laid out, as
+        // `route()` draws it and under a drag (`route_partial`), where
+        // edges come to lie on one another (B11 review r1 #2).
         let root = env!("CARGO_MANIFEST_DIR");
         let mut files: Vec<std::path::PathBuf> = ["tests/fixtures/quality", "examples"]
             .iter()
@@ -11289,118 +11303,174 @@ mod tests {
             .filter(|p| p.extension().is_some_and(|x| x == "mmd"))
             .collect();
         files.sort();
+        // Undo to_svg's margin shift to get back to scene units.
+        let shift_of = |s: &Scene| {
+            let mut bb = Bbox::new();
+            grow_canvas(&mut bb, &s.nodes, &s.edges, &s.clusters);
+            let (minx, _, miny, _) = bb.finish();
+            (MARGIN - minx, MARGIN - miny)
+        };
         let (mut graphs, mut probes, mut hopped) = (0, 0, 0);
         for f in &files {
             let src = std::fs::read_to_string(f).unwrap();
+            let name = f.file_name().unwrap().to_string_lossy().to_string();
             use crate::model::Document;
-            let (s, svg, (tx, ty)) = match crate::parser::parse_document(&src) {
-                Ok(Document::Flowchart(g) | Document::State(g)) => {
-                    let s = scene(&g);
-                    let svg = to_svg(&s);
-                    // Undo to_svg's margin shift to get back to scene units.
-                    let mut bb = Bbox::new();
-                    grow_canvas(&mut bb, &s.nodes, &s.edges, &s.clusters);
-                    let (minx, _, miny, _) = bb.finish();
-                    (s, svg, (MARGIN - minx, MARGIN - miny))
-                }
-                // ER and class scenes pick through this same edge_at, and
-                // their painters stroke edge_path_d in scene units.
-                Ok(Document::Er(d)) => {
-                    let es = crate::er::scene(&d);
-                    let svg = crate::er::to_svg(&es);
-                    (es.scene, svg, (0.0, 0.0))
-                }
-                Ok(Document::Class(d)) => {
-                    let cs = crate::class::scene(&d);
-                    let svg = crate::class::to_svg(&cs);
-                    (cs.scene, svg, (0.0, 0.0))
-                }
-                _ => continue,
-            };
-            graphs += 1;
-            // The hops the flowchart painter draws at crossings (none in
-            // an ER or class scene): painted, so picked.
-            let hops = crate::hops::find(&s);
-            hopped += hops.iter().flatten().count();
-            let curves: Vec<Option<Vec<(f64, f64)>>> = s
-                .edges
-                .iter()
-                .zip(&hops)
-                .map(|(e, hops)| {
-                    edge_drawn(e).then(|| {
-                        // The stroke as painted, cut short under an
-                        // arrowhead; the head inks that stretch, so the
-                        // whole curve is what a pick must cover.
-                        let shift = |p: (f64, f64)| (p.0 + tx, p.1 + ty);
-                        let painted = painted_path_hops(e, &painted_edge(e), shift, hops).0;
-                        assert!(
-                            svg.contains(&format!("<path d=\"{painted}\"")),
-                            "{f:?}: {painted} not painted"
-                        );
-                        let (start, segs) = drawn_segs(e, shift);
-                        let hops: Vec<crate::hops::Hop> = hops
-                            .iter()
-                            .map(|h| crate::hops::Hop {
-                                y: h.y + ty,
-                                x0: h.x0 + tx,
-                                x1: h.x1 + tx,
-                                ..*h
+            let scenes: Vec<(String, Scene, String, (f64, f64))> =
+                match crate::parser::parse_document(&src) {
+                    Ok(Document::Flowchart(g) | Document::State(g)) => {
+                        let s = scene(&g);
+                        let base: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+                        let mut all = vec![(name.clone(), s.clone())];
+                        all.push((format!("{name} route()"), route(&g, &base)));
+                        // The busiest node, dragged across the drawing.
+                        let mut deg = vec![0usize; g.nodes.len()];
+                        for e in &g.edges {
+                            deg[e.from] += 1;
+                            deg[e.to] += 1;
+                        }
+                        if let Some(v) =
+                            (0..deg.len()).max_by_key(|&v| (deg[v], std::cmp::Reverse(v)))
+                        {
+                            let mut c = base.clone();
+                            c[v] = (c[v].0 + 180.0, c[v].1 + 140.0);
+                            let part = route_partial(&g, &c, &s, &base);
+                            all.push((format!("{name} route_partial()"), part));
+                        }
+                        all.into_iter()
+                            .map(|(what, s)| {
+                                let (svg, t) = (to_svg(&s), shift_of(&s));
+                                (what, s, svg, t)
                             })
-                            .collect();
-                        let d = hopped_d(start, &segs, &hops);
-                        assert_eq!(hops.is_empty(), !d.contains(" A "), "{f:?}: {d}");
-                        path_d_points(&d, 2.0)
-                            .into_iter()
-                            .map(|p| (p.0 - tx, p.1 - ty))
                             .collect()
-                    })
-                })
-                .collect();
-            let covers = |j: usize, p: (f64, f64)| {
-                let c = curves[j].as_ref().expect("picked edge is painted");
-                let d = c
-                    .windows(2)
-                    .map(|w| point_seg_dist(p.0, p.1, w[0], w[1]))
-                    .fold(f64::INFINITY, f64::min);
-                d - edge_stroke_width(&s.edges[j]) / 2.0
-            };
-            let in_chip = |p: (f64, f64)| {
-                s.edges.iter().any(|e| {
-                    e.label.as_ref().is_some_and(|(text, m, w)| {
-                        let lines = 1 + text.matches("<br").count() + text.matches('\n').count();
-                        (p.0 - m.0).abs() <= w / 2.0 + 2.0
-                            && (p.1 - m.1).abs()
-                                <= LABEL_BOX_H / 2.0 + LINE_H * (lines - 1) as f64 + 2.0
-                    })
-                })
-            };
-            for (i, c) in curves.iter().enumerate() {
-                let Some(c) = c else { continue };
-                for &p in c {
-                    if s.node_at(p.0, p.1).is_some() || in_chip(p) {
-                        continue;
                     }
-                    probes += 1;
-                    let got = s.edge_at(p.0, p.1, TOL);
-                    // How far outside a painted stroke the pick lands.
-                    let off = match got {
-                        Some(j) if j == i => 0.0,
-                        Some(j) => covers(j, p),
-                        None => covers(i, p),
-                    };
-                    assert!(
-                        got.is_some() && off <= SVG_PRECISION,
-                        "{f:?}: edge {i} ({} -> {}) at {p:?} picked {got:?}, {off:.3} off its stroke",
-                        s.edges[i].from,
-                        s.edges[i].to
-                    );
-                }
+                    // ER and class scenes pick through this same edge_at, and
+                    // their painters stroke edge_path_d in scene units.
+                    Ok(Document::Er(d)) => {
+                        let es = crate::er::scene(&d);
+                        let svg = crate::er::to_svg(&es);
+                        vec![(name, es.scene, svg, (0.0, 0.0))]
+                    }
+                    Ok(Document::Class(d)) => {
+                        let cs = crate::class::scene(&d);
+                        let svg = crate::class::to_svg(&cs);
+                        vec![(name, cs.scene, svg, (0.0, 0.0))]
+                    }
+                    _ => continue,
+                };
+            graphs += 1;
+            for (what, s, svg, t) in &scenes {
+                let (p, h) = assert_picks_match_paint(what, s, svg, *t);
+                probes += p;
+                hopped += h;
             }
         }
         assert!(
-            graphs >= 15 && probes > 1000 && hopped > 100,
+            graphs >= 15 && probes > 3000 && hopped > 300,
             "{graphs} graphs, {probes} probes, {hopped} hops"
         );
+    }
+
+    /// pick == render on one scene `s` painted as `svg`, its drawing
+    /// shifted by `(tx, ty)` there: every point of every painted edge
+    /// stroke — hops included — outside the nodes and the label chips
+    /// picks that edge at no tolerance, or another whose painted stroke
+    /// covers the point. Returns how many points it probed and how many
+    /// hops the scene paints.
+    fn assert_picks_match_paint(
+        what: &str,
+        s: &Scene,
+        svg: &str,
+        (tx, ty): (f64, f64),
+    ) -> (usize, usize) {
+        const TOL: f64 = 0.0;
+        // The SVG writes coordinates to 0.1, so the curve parsed back out
+        // of it sits up to ~0.07 off the one edge_at measures.
+        const SVG_PRECISION: f64 = 0.1;
+        // The hops the flowchart painter draws at crossings (none in
+        // an ER or class scene): painted, so picked.
+        let hops = crate::hops::find(s);
+        let hopped = hops.iter().flatten().count();
+        let curves: Vec<Option<Vec<(f64, f64)>>> = s
+            .edges
+            .iter()
+            .zip(&hops)
+            .map(|(e, hops)| {
+                edge_drawn(e).then(|| {
+                    // The stroke as painted, cut short under an
+                    // arrowhead; the head inks that stretch, so the
+                    // whole curve is what a pick must cover.
+                    let shift = |p: (f64, f64)| (p.0 + tx, p.1 + ty);
+                    let painted = painted_path_hops(e, &painted_edge(e), shift, hops).0;
+                    assert!(
+                        svg.contains(&format!("<path d=\"{painted}\"")),
+                        "{what}: {painted} not painted"
+                    );
+                    let (start, segs) = drawn_segs(e, shift);
+                    let hops: Vec<crate::hops::Hop> = hops
+                        .iter()
+                        .map(|h| crate::hops::Hop {
+                            y: h.y + ty,
+                            x0: h.x0 + tx,
+                            x1: h.x1 + tx,
+                            ..*h
+                        })
+                        .collect();
+                    let d = hopped_d(start, &segs, &hops);
+                    assert_eq!(hops.is_empty(), !d.contains(" A "), "{what}: {d}");
+                    assert_eq!(
+                        painted.matches(" A ").count(),
+                        d.matches(" A ").count(),
+                        "{what}: the stroke cut under its heads hops as the whole one"
+                    );
+                    path_d_points(&d, 2.0)
+                        .into_iter()
+                        .map(|p| (p.0 - tx, p.1 - ty))
+                        .collect()
+                })
+            })
+            .collect();
+        let covers = |j: usize, p: (f64, f64)| {
+            let c = curves[j].as_ref().expect("picked edge is painted");
+            let d = c
+                .windows(2)
+                .map(|w| point_seg_dist(p.0, p.1, w[0], w[1]))
+                .fold(f64::INFINITY, f64::min);
+            d - edge_stroke_width(&s.edges[j]) / 2.0
+        };
+        let in_chip = |p: (f64, f64)| {
+            s.edges.iter().any(|e| {
+                e.label.as_ref().is_some_and(|(text, m, w)| {
+                    let lines = 1 + text.matches("<br").count() + text.matches('\n').count();
+                    (p.0 - m.0).abs() <= w / 2.0 + 2.0
+                        && (p.1 - m.1).abs()
+                            <= LABEL_BOX_H / 2.0 + LINE_H * (lines - 1) as f64 + 2.0
+                })
+            })
+        };
+        let mut probes = 0;
+        for (i, c) in curves.iter().enumerate() {
+            let Some(c) = c else { continue };
+            for &p in c {
+                if s.node_at(p.0, p.1).is_some() || in_chip(p) {
+                    continue;
+                }
+                probes += 1;
+                let got = s.edge_at(p.0, p.1, TOL);
+                // How far outside a painted stroke the pick lands.
+                let off = match got {
+                    Some(j) if j == i => 0.0,
+                    Some(j) => covers(j, p),
+                    None => covers(i, p),
+                };
+                assert!(
+                    got.is_some() && off <= SVG_PRECISION,
+                    "{what}: edge {i} ({} -> {}) at {p:?} picked {got:?}, {off:.3} off its stroke",
+                    s.edges[i].from,
+                    s.edges[i].to
+                );
+            }
+        }
+        (probes, hopped)
     }
 
     /// One straight stroke of [`strokes`]: `(from, to, arrow)`.
@@ -11554,6 +11624,69 @@ mod tests {
         assert_eq!(svg.matches("<mask").count(), 1, "{svg}");
         assert_eq!(svg.matches("fill=\"#000\"/>").count(), 1);
         assert_eq!(crate::casing::crossings(&sc).len(), 1);
+    }
+
+    /// B11 review r1 #1, #2: a pick answers the hops as painted where
+    /// its quick tests used to rule them out or its legs came in another
+    /// order than the painter's — a routed leg level to a float's noise
+    /// (`y = 203.00000000000003` to `y = 203.0`: the painter drew its
+    /// hop, a pick on the arc found nothing and one on the line under it
+    /// found the edge), and two plumb strokes on one line, one of them
+    /// ending by the level stroke (painted one bridge or two hops by the
+    /// order of the edges, picked the other way).
+    #[test]
+    fn picking_follows_the_hops_through_float_noise_and_ties() {
+        use crate::hops::HOP_R;
+        let shift_of = |s: &Scene| {
+            let mut bb = Bbox::new();
+            grow_canvas(&mut bb, &s.nodes, &s.edges, &s.clusters);
+            let (minx, _, miny, _) = bb.finish();
+            (MARGIN - minx, MARGIN - miny)
+        };
+        let up = HOP_R * std::f64::consts::FRAC_1_SQRT_2;
+        let mut sc = strokes(&[
+            ((0.0, 203.0), (300.0, 203.0), "-->"),
+            ((120.0, 100.0), (120.0, 300.0), "-->"),
+        ]);
+        let (a, b) = ((0.0, 203.00000000000003), (300.0, 203.0));
+        sc.edges[0].waypoints = vec![a, b];
+        sc.edges[0].bezier = [a, a, b, b];
+        let svg = to_svg(&sc);
+        assert_eq!(svg.matches(" A 5.0 5.0 0 0 1 ").count(), 2, "{svg}");
+        assert_eq!(sc.edge_at(120.0 - up, 203.0 - up, 0.0), Some(0));
+        assert_eq!(sc.edge_at(120.0 + up, 203.0 - up, 0.3), Some(0));
+        assert_eq!(sc.edge_at(122.5, 203.0, 0.0), None, "under the hop");
+        assert_eq!(sc.edge_at(120.0, 203.0, 0.0), Some(1));
+        let crown = sc.hits_in_rect(119.0, 197.5, 121.0, 198.5);
+        assert_eq!(crown, vec![Hit::Edge(0), Hit::Edge(1)]);
+        let (probes, hops) = assert_picks_match_paint("noise", &sc, &svg, shift_of(&sc));
+        assert!(probes > 100 && hops == 1);
+
+        // The tie, in several orders of its edges: the level stroke
+        // steps over the stroke at x = 78 alone (the one ending 4 px
+        // above the line at x = 100 bars a hop there), and every point
+        // of the painted strokes picks as painted.
+        let lines: [Stroked; 4] = [
+            ((100.0, 46.0), (100.0, 100.0), "---"),
+            ((0.0, 50.0), (200.0, 50.0), "---"),
+            ((78.0, 0.0), (78.0, 100.0), "---"),
+            ((100.0, 0.0), (100.0, 100.0), "---"),
+        ];
+        for order in [[0, 1, 2, 3], [3, 1, 2, 0], [1, 0, 3, 2], [2, 3, 0, 1]] {
+            let sc = strokes(&order.map(|k| lines[k]));
+            let level = order.iter().position(|&k| k == 1).unwrap();
+            let svg = to_svg(&sc);
+            assert_eq!(svg.matches(" A ").count(), 2, "{order:?}: {svg}");
+            assert_eq!(
+                sc.edge_at(78.0 - up, 50.0 - up, 0.0),
+                Some(level),
+                "{order:?}"
+            );
+            assert_eq!(sc.edge_at(80.0, 50.0, 0.0), None, "{order:?}: under it");
+            assert_eq!(sc.edge_at(90.0, 50.0, 0.0), Some(level), "{order:?}");
+            assert_eq!(sc.edge_at(90.0, 45.0, 0.5), None, "{order:?}: no bridge");
+            assert_picks_match_paint("tie", &sc, &svg, shift_of(&sc));
+        }
     }
 
     #[test]

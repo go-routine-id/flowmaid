@@ -15,7 +15,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
   do (`quality::FAN_MIN`); `fan_uneven`, such sides whose neighbouring
   ports are not one pitch apart (`quality::FAN_PITCH_TOL`; a side holding
   the end of an edge drawn straight across is not counted, that end stays
-  where its partner lies).
+  where its partner lies). `Metrics::details` lists each label a stroke
+  runs through (`lbl_edge`).
 
 ### Changed
 
@@ -31,19 +32,29 @@ project adheres to [Semantic Versioning](https://semver.org/).
   after comparing dense-td, dense-lr, bench-75 and fanout rendered each
   way: with gaps every third line of bench-75 came out chopped (up to 9
   cuts on one line), while hops leave each line one stroke and read the
-  same everywhere. A hop needs both strokes straight where they cross, so
+  same everywhere. A hop needs both strokes straight where they cross and
+  room for its arc: a line is stepped over from 12 px past its corner on
+  (the hop's crown that far below a corner above it), and an edge whose
+  end leg its shape's outline tilts a few px takes part like any other;
   a crossing in a corner's rounding, next to an arrowhead or a node, under
-  another level line a few px above, or on an edge with its own `curve:`
-  keeps the casing's gap (never within a head of an end, and spread so no
-  line reads as dashed), and a drawing of more than 400 edges still draws
-  its crossings plain. Over the 14 corpus drawings (static | routed)
-  351 | 406 of the 410 | 478 crossings are hops; the most gaps cut into
-  one line fell from 9 | 12 to 2 | 3, and bench-75's SVG from 66.6 to
-  63.8 kB (272 mask holes -> 37). Hops are paint: `Scene` keeps the
+  another level line a few px above, where the arc would touch a label
+  chip, a frame's border or its title or a curve passing by, right beside
+  another crossing that takes no hop, or on an edge with its own `curve:`
+  keeps the casing's gap (never within a head of an end, spread so no
+  line reads as dashed, and never in a short jog it would take whole).
+  Next to a hop the gap is cut into the line that does not hop there, so
+  no line steps over one crossing and is cut at the next (where both hop,
+  the crossing is drawn plain). A drawing of more than 400 edges still
+  draws its crossings plain. Over the 14 corpus drawings (static | routed)
+  366 | 422 of the 409 | 471 crossings are hops; the most gaps cut into
+  one line fell from 9 | 12 to 2 | 2, and bench-75's SVG from 66.6 to
+  61.9 kB (272 mask holes -> 29). Hops are paint: `Scene` keeps the
   plain paths, which is what a host draws from, `to_svg` strokes them, and
   picking follows the paint — `Scene::edge_at` and `hits_in_rect` cover a
   hop's arc, and at the crossing under a hop they answer the line that is
-  stepped over, not the one stepping over it.
+  stepped over, not the one stepping over it. The painter and a pick work
+  the hops out by one rule from the same legs, read in one order, in
+  `scene()`, `route()` and under a drag alike.
 - **A fan is drawn as a comb** (report B4). A new last path stage (`comb`)
   puts each box side's ends in one order: its teeth take the side's ports
   in the order of their turns, and the tracks of the teeth stepping one
@@ -101,10 +112,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
   time: `scene()` takes 4-8 % longer on the dense drawings, `route()`
   about 10 % on dense-td and dense-lr (5.6 -> 6.1 ms, 3.6 -> 4.1 ms) and
   15 % on bench-75 (7.8 -> 9.0 ms, 46 sides judged per call); the drag
-  budget holds on every corpus file. A pick takes up to a tenth longer (fanout
-  2.9 -> 3.2 us per `hit_test`, bench-75 28 -> 28 us), for looking up the
-  hops near the pointer; `to_svg` of bench-75 takes a quarter less time
-  (4.0 -> 3.0 ms, fewer masks).
+  budget holds on every corpus file. A pick on a line takes up to a
+  quarter longer (bench-75 26 -> 33 us per `hit_test` along its edges,
+  dense-lr 12 -> 14, fanout 4.5 -> 5.2), for working out the hops near
+  the pointer; `to_svg` of bench-75 takes a fifth less time
+  (4.1 -> 3.2 ms, fewer masks).
 
 ## [0.38.0] - 2026-11-10
 

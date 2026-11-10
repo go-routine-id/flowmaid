@@ -11,6 +11,14 @@
 //! Which edge goes under is chosen per crossing, so that no edge
 //! collects a run of closely spaced gaps: a stroke cut every few dozen
 //! px reads as dashed, and a dashed edge means `-.->` in mermaid.
+//!
+//! Since report M15 most crossings of flowchart edges are no gaps but
+//! hops ([`crate::hops`]: a level leg steps over a plumb one, and
+//! neither stroke is cut); the casing takes the crossings a hop cannot.
+//! Next to a hop the choice is made for it: the line that steps over a
+//! crossing a few px on goes over here as well ([`Hit::over`]), so no
+//! line hops and is cut in one breath. Nor is a gap cut into a jog it
+//! would take whole.
 
 use crate::labels::seg_cells;
 use crate::scene::{
@@ -318,17 +326,41 @@ fn crossings_in(
                 }
                 let v = hits.entry((ka, kb)).or_default();
                 if v.iter().all(|h| dist(p, h.p) >= CROSS_MERGE) {
+                    let at = [
+                        starts[ka][sa] + dist(wa[0], p),
+                        starts[kb][sb] + dist(pb[sb], p),
+                    ];
+                    // A line that steps over a crossing a few px on, or
+                    // jogs right here, is the over-line (see
+                    // [`Hit::over`]).
+                    let over = |k: usize, seg: usize, at: f64| {
+                        hops.get(idx[k])
+                            .is_some_and(|hs| hs.iter().any(|h| h.gap(p) < CROSS_CLUSTER))
+                            || turning(lines[k], &starts[k], seg, at) >= JOG_TURN
+                    };
                     v.push(Hit {
                         p,
-                        at: [
-                            starts[ka][sa] + dist(wa[0], p),
-                            starts[kb][sb] + dist(pb[sb], p),
-                        ],
+                        at,
+                        over: [over(ka, sa, at[0]), over(kb, sb, at[1])],
                     });
                 }
             }
         }
     }
+
+    // A crossing both of whose lines hop next to it is drawn plain:
+    // either gap would cut a line beside its own hop.
+    let mut plain = Vec::new();
+    for (&(ka, kb), v) in hits.iter_mut() {
+        v.retain(|h| {
+            let both = h.over == [true, true];
+            if both {
+                plain.push((idx[ka], idx[kb], h.p, Cut::Plain));
+            }
+            !both
+        });
+    }
+    hits.retain(|_, v| !v.is_empty());
 
     let mut a_under = choose_under(&hits, &back, &length).into_iter();
     let mut out = Vec::new();
@@ -347,6 +379,7 @@ fn crossings_in(
     for (x, kind) in out.iter_mut().zip(cut_kinds(&gaps)) {
         x.3 = kind;
     }
+    out.extend(plain);
     out
 }
 
@@ -364,6 +397,59 @@ fn gap_reach(a: &crate::scene::SceneEdge, b: &crate::scene::SceneEdge) -> f64 {
 struct Hit {
     p: Pt,
     at: [f64; 2],
+    /// Whether `a` and `b` are not to be cut here. A line that steps
+    /// over another crossing on a hop within [`CROSS_CLUSTER`] of this
+    /// one (report M15, [`crate::hops`]) is the over-line here as well,
+    /// so it never hops at one crossing and is cut at the next a few px
+    /// on, which reads as a chopped line. So is a line that jogs here —
+    /// turns one way and back within a gap's length ([`JOG_TURN`]): the
+    /// gap would take the whole jog and leave its two ends apart. The
+    /// gap goes to the other line ([`Ctx::pin`]); where neither is to
+    /// be cut, the crossing is drawn plain.
+    over: [bool; 2],
+}
+
+/// Reach (px) either way along a line within which [`turning`] adds up
+/// its turns: a little over a gap's radius, the stretch a gap takes out
+/// and what must be left either side of it to read as a line.
+const JOG_REACH: f64 = 12.0;
+/// How far (rad) a stroke turns within [`JOG_REACH`] of a crossing for
+/// it to be a jog there: two rounded corners back to back (a step of
+/// under two roundings between two long legs, half a turn in 30 px of
+/// stroke), where one corner's rounding alone is a quarter turn at
+/// most.
+const JOG_TURN: f64 = 2.0;
+
+/// How far (rad) the stroke `pts` turns, left and right added up,
+/// within [`JOG_REACH`] of the point `at` px along it on its segment
+/// `seg` (`starts`: where each segment starts along the stroke).
+fn turning(pts: &[Pt], starts: &[f64], seg: usize, at: f64) -> f64 {
+    let dir = |i: usize| {
+        let (a, b) = (pts[i], pts[i + 1]);
+        (b.1 - a.1).atan2(b.0 - a.0)
+    };
+    let long = |i: usize| dist(pts[i], pts[i + 1]) > 1e-9;
+    let n = starts.len();
+    let lo = (0..=seg)
+        .rev()
+        .take_while(|&i| i == seg || starts[i + 1] > at - JOG_REACH)
+        .last()
+        .unwrap_or(seg);
+    let hi = (seg..n)
+        .take_while(|&i| i == seg || starts[i] < at + JOG_REACH)
+        .last()
+        .unwrap_or(seg);
+    let mut sum = 0.0;
+    let mut prev: Option<f64> = None;
+    for i in (lo..=hi).filter(|&i| long(i)) {
+        let d = dir(i);
+        if let Some(p) = prev {
+            let turn = (d - p).abs();
+            sum += turn.min(std::f64::consts::TAU - turn);
+        }
+        prev = Some(d);
+    }
+    sum
 }
 
 /// Gaps of one edge in a row, each closer than [`GAP_PERIOD`] to the
@@ -429,6 +515,17 @@ fn choose_under(
         .flat_map(|(&(a, b), v)| v.iter().map(move |_| [a, b]))
         .collect();
     let at: Vec<[f64; 2]> = hits.values().flatten().map(|h| h.at).collect();
+    // The lower line goes under where the higher one hops close by,
+    // over where it hops itself.
+    let pin: Vec<Option<bool>> = hits
+        .values()
+        .flatten()
+        .map(|h| match h.over {
+            [false, true] => Some(true),
+            [true, false] => Some(false),
+            _ => None,
+        })
+        .collect();
     let mut members = vec![Vec::new(); back.len()];
     for (c, p) in pair.iter().enumerate() {
         members[p[0]].push(c);
@@ -437,6 +534,7 @@ fn choose_under(
     let ctx = Ctx {
         pair: &pair,
         at: &at,
+        pin: &pin,
         members: &members,
         back,
         length,
@@ -458,6 +556,9 @@ struct Ctx<'a> {
     pair: &'a [[usize; 2]],
     /// Where each crossing falls along its lower and its higher line.
     at: &'a [[f64; 2]],
+    /// The crossings whose under-line is given ([`Hit::over`]): whether
+    /// the lower line takes the gap. The search leaves them alone.
+    pin: &'a [Option<bool>],
     /// The crossings of each line.
     members: &'a [Vec<usize>],
     /// Which lines run against the flow.
@@ -470,6 +571,11 @@ impl Ctx<'_> {
     /// Where crossing `c` falls along line `e` (one of its two).
     fn at_on(&self, c: usize, e: usize) -> f64 {
         self.at[c][usize::from(e != self.pair[c][0])]
+    }
+
+    /// Whether crossing `c`'s under-line is given ([`Ctx::pin`]).
+    fn pinned(&self, c: usize) -> bool {
+        self.pin[c].is_some()
     }
 }
 
@@ -580,7 +686,16 @@ impl<'a> Assign<'a> {
             add_gap(&mut h, x);
             greedy_cost(&h) - greedy_cost(g)
         };
+        // The given ones first, so every choice sees their gaps.
+        for c in (0..pair.len()).filter(|&c| ctx.pinned(c)) {
+            self.under_a[c] = ctx.pin[c] == Some(true);
+            let side = usize::from(!self.under_a[c]);
+            self.put(pair[c][side], at[c][side], c);
+        }
         for c in order {
+            if ctx.pinned(c) {
+                continue;
+            }
             let [a, b] = pair[c];
             let (ga, gb) = (&self.gaps[a], &self.gaps[b]);
             let (la, lb) = (ctx.length[a], ctx.length[b]);
@@ -631,6 +746,7 @@ impl<'a> Assign<'a> {
         let chained: Vec<usize> = (0..mine.len())
             .filter(|&i| (i > 0 && near(i, i - 1)) || (i + 1 < mine.len() && near(i, i + 1)))
             .map(|i| mine[i])
+            .filter(|&c| !ctx.pinned(c))
             .collect();
         let every_other: Vec<usize> = chained.iter().copied().skip(1).step_by(2).collect();
         let kicks = std::iter::once(every_other).chain(chained.iter().map(|&c| vec![c]));
@@ -674,7 +790,7 @@ impl<'a> Assign<'a> {
         for line in lines {
             for i in 0..ctx.members[line].len() {
                 let c = ctx.members[line][i];
-                if self.under_line(c) != line {
+                if self.under_line(c) != line || ctx.pinned(c) {
                     continue;
                 }
                 let other = ctx.pair[c][usize::from(ctx.pair[c][0] == line)];
@@ -738,6 +854,9 @@ impl<'a> Assign<'a> {
                         .copied()
                         .filter(|&c| (self.under_line(c) == line) != under)
                         .collect();
+                    if flips.iter().any(|&c| ctx.pinned(c)) {
+                        continue;
+                    }
                     let mut touched: Vec<usize> = flips
                         .iter()
                         .flat_map(|&c| ctx.pair[c])
@@ -779,6 +898,9 @@ impl<'a> Assign<'a> {
             for c in mine {
                 if self.gaps[line].len() <= 1 {
                     break;
+                }
+                if ctx.pinned(c) {
+                    continue;
                 }
                 let other = ctx.pair[c][usize::from(ctx.pair[c][0] == line)];
                 // A back-edge keeps its gaps (it goes under by preference).
@@ -940,7 +1062,7 @@ impl<'a> Assign<'a> {
     /// Keeps the first chain that lowers the cost, with its crossings in
     /// `chain`, and says so; otherwise undoes every flip.
     fn eject(&mut self, c: usize, delta: i64, chain: &mut Vec<usize>) -> bool {
-        if self.budget == 0 {
+        if self.budget == 0 || self.ctx.pinned(c) {
             return false;
         }
         self.budget -= 1;
@@ -1312,6 +1434,131 @@ mod tests {
         }
     }
 
+    /// A scene of `n` edges drawn along the given corners (a straight
+    /// stroke for two, a rounded orthogonal path for more), its nodes
+    /// out of the way.
+    fn drawn(paths: &[&[Pt]]) -> Scene {
+        let src: String = std::iter::once("flowchart TD".to_string())
+            .chain((0..paths.len()).map(|k| format!("a{k} --- b{k}")))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let mut sc = scene(&parse(&src).unwrap());
+        for (e, c) in sc.edges.iter_mut().zip(paths) {
+            let (a, b) = (c[0], c[c.len() - 1]);
+            let at = |t: f64| (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t);
+            e.bezier = [a, at(1.0 / 3.0), at(2.0 / 3.0), b];
+            e.waypoints = if c.len() > 2 {
+                crate::router::smooth(c, crate::router::CORNER_R)
+            } else {
+                Vec::new()
+            };
+        }
+        for n in &mut sc.nodes {
+            (n.x, n.y) = (-1000.0, -1000.0);
+        }
+        sc
+    }
+
+    /// B11 review r1 #3: a line that steps over one crossing on a hop
+    /// is not cut at the next a few px on — hop, gap, hop read as a
+    /// chopped line. The gap goes to the other line; where that one hops
+    /// right there too, the crossing is drawn plain.
+    #[test]
+    fn a_line_is_not_cut_next_to_its_own_hop() {
+        // A plumb line at x = 100; a level one that steps over it, the
+        // shorter and later-drawn of the two below — the one the search
+        // cuts, left to itself; and a long slanted one (no hop for that)
+        // crossing the level line 20 px past the hop, or 300 px on.
+        let plumb: &[Pt] = &[(100.0, 0.0), (100.0, 100.0)];
+        let level: &[Pt] = &[(60.0, 50.0), (460.0, 50.0)];
+        let slanted = |x: f64| [(x - 40.0, -450.0), (x + 40.0, 550.0)];
+        for (x, by_hop) in [(120.0, true), (400.0, false)] {
+            let sc = drawn(&[plumb, &slanted(x), level]);
+            let hops = crate::hops::find(&sc);
+            assert_eq!(hops[2].len(), 1, "{hops:?}");
+            let xs = crossings(&sc);
+            assert_eq!(xs.len(), 1, "{xs:?}");
+            // By its hop the level line goes over; away from it the
+            // search decides as it always did.
+            let (under, over) = if by_hop { (1, 2) } else { (2, 1) };
+            assert_eq!((xs[0].0, xs[0].1), (under, over), "at {x}: {xs:?}");
+            assert_eq!(to_svg(&sc).matches("<mask").count(), 1);
+        }
+        // Both lines hop by the crossing: a path down x = 130 that turns
+        // level at y = 80 (the level line crosses it in its corner's
+        // rounding, where no hop is drawn) and there steps over a plumb
+        // line at x = 152, which the level line steps over as well.
+        let turn: &[Pt] = &[(130.0, -100.0), (130.0, 80.0), (400.0, 80.0)];
+        let level: &[Pt] = &[(-600.0, 70.0), (600.0, 70.0)];
+        let (p1, p2): (&[Pt], &[Pt]) = (
+            &[(110.0, 0.0), (110.0, 200.0)],
+            &[(152.0, 0.0), (152.0, 200.0)],
+        );
+        let sc = drawn(&[level, turn, p1, p2]);
+        let hops = crate::hops::find(&sc);
+        assert_eq!((hops[0].len(), hops[1].len()), (2, 1), "{hops:?}");
+        assert!(crossings(&sc).is_empty(), "{:?}", crossings(&sc));
+        assert!(!to_svg(&sc).contains("<mask"));
+        // Without the turning path's own hop the gap is its.
+        let sc = drawn(&[level, turn, p1]);
+        let xs = crossings(&sc);
+        assert_eq!(xs.len(), 1, "{xs:?}");
+        assert_eq!((xs[0].0, xs[0].1), (1, 0), "{xs:?}");
+    }
+
+    /// B11 review r1 #4: a gap is not cut into a jog — a step of a few
+    /// px between two rounded corners, which the gap would take whole,
+    /// leaving the edge in two pieces (a generated state diagram's
+    /// `C0 --> S0 : back`, crossed on its 19 px step). The line crossing
+    /// it is cut instead.
+    #[test]
+    fn a_gap_is_not_cut_into_a_jog() {
+        // Down, a step to the right, down again; crossed mid-step by a
+        // long slanted line (no hop for that), drawn first. Left to the
+        // search, the shorter, later line — the stepped one — is cut.
+        let stepped = |step: f64| [(0.0, 0.0), (0.0, 100.0), (step, 100.0), (step, 200.0)];
+        let across = |x: f64| [(x - 40.0, -400.0), (x + 40.0, 600.0)];
+        for (step, jog) in [(19.0, true), (22.0, true), (80.0, false)] {
+            let sc = drawn(&[&across(step / 2.0), &stepped(step)]);
+            assert!(crate::hops::find(&sc).iter().all(Vec::is_empty));
+            let xs = crossings(&sc);
+            assert_eq!(xs.len(), 1, "step {step}: {xs:?}");
+            let under = usize::from(!jog);
+            assert_eq!((xs[0].0, xs[0].1), (under, 1 - under), "step {step}");
+        }
+        // What makes a jog: how far the stroke turns round the crossing.
+        let turn_at = |pts: &[Pt], p: Pt| {
+            let line = crate::scene::edge_painted_polyline(&drawn(&[pts]).edges[0]);
+            let mut acc = 0.0;
+            let starts: Vec<f64> = line
+                .windows(2)
+                .map(|w| {
+                    let at = acc;
+                    acc += dist(w[0], w[1]);
+                    at
+                })
+                .collect();
+            let (seg, _) = line
+                .windows(2)
+                .enumerate()
+                .map(|(i, w)| {
+                    let mid = ((w[0].0 + w[1].0) / 2.0, (w[0].1 + w[1].1) / 2.0);
+                    (i, dist(mid, p))
+                })
+                .min_by(|a, b| a.1.total_cmp(&b.1))
+                .unwrap();
+            let at = starts[seg] + dist(line[seg], line[seg + 1]) / 2.0;
+            turning(&line, &starts, seg, at)
+        };
+        assert!(turn_at(&stepped(19.0), (9.5, 100.0)) >= JOG_TURN);
+        // In the middle of a long step, on a straight leg, and in one
+        // corner's rounding: no jog.
+        assert!(turn_at(&stepped(80.0), (40.0, 100.0)) < 0.1);
+        assert!(turn_at(&stepped(80.0), (0.0, 50.0)) < 0.1);
+        let corner = turn_at(&stepped(80.0), (3.0, 97.0));
+        assert!(corner > 1.0 && corner < JOG_TURN, "{corner}");
+    }
+
     /// Pairs of cut crossings on one line within [`CROSS_CLUSTER`] of
     /// each other where that line goes under at one and over at the
     /// other (report Q15: the line reads as broken), as (line, point).
@@ -1353,8 +1600,14 @@ mod tests {
     /// bundles' lines. B11 (report M15): 57 | 67 -> 2 | 2 — a level
     /// leg steps over a plumb one on a hop and neither line is cut, so
     /// what is left are the few crossings in a corner's rounding or
-    /// next to a head (bench-75's).
-    const OPPOSITE_MAX: (usize, usize) = (2, 2);
+    /// next to a head (bench-75's). B11 review r1 (#3): 2 | 2 -> 1 | 3,
+    /// as many in all — next to a hop the gap goes to the line that
+    /// does not hop there, whatever its role a few px on: in `route()`
+    /// bench-75's `svc5 -> logs` runs down across four level lines 7 to
+    /// 20 px apart (too close under one another to hop), over three of
+    /// them and under `svc3 -> cache`, which steps over the line beside
+    /// it.
+    const OPPOSITE_MAX: (usize, usize) = (1, 3);
 
     /// Most fixture lines shorter than [`SHORT_LINE`] cut twice or more,
     /// static and routed: 3 | 2 before short lines handed their extra
@@ -1612,6 +1865,7 @@ mod tests {
             hits.entry((a, b)).or_default().push(Hit {
                 p: (sa, sb),
                 at: [sa, sb],
+                over: [false, false],
             });
         }
         hits

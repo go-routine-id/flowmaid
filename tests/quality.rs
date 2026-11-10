@@ -424,8 +424,12 @@ const DASH_EDGES_MAX: (usize, usize) = (0, 0);
 /// §2.10): 9 | 12 -> 2 | 3 — where a level leg crosses a plumb one it
 /// steps over on a hop and neither stroke is cut (351 | 406 of the
 /// fixtures' 410 | 478 crossings); a gap is left only to the crossings
-/// in a corner's rounding or next to a head.
-const XGAP_MAX: (usize, usize) = (2, 3);
+/// in a corner's rounding or next to a head. B11 review r1 (#3): 2 | 2
+/// — a line is stepped over from just past its corner on, and an edge
+/// whose end leg the outline snap tilted takes part (366 | 422 of the
+/// 409 | 471 crossings are hops); the gap next to a hop is cut into the
+/// line that does not hop there.
+const XGAP_MAX: (usize, usize) = (2, 2);
 
 /// Crossing gaps are spread so that edges stay whole lines (G1).
 #[test]
