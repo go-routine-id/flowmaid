@@ -1224,8 +1224,11 @@ mod tests {
     /// Measured: 142 of 248 (57%). A layout change that moves crossings
     /// can shift this; re-measure before loosening it. Re-measured with
     /// B7 (report M3, M8: lone ends centred, combs, head room, no dead
-    /// strip under a box's first row): 79 of 161 (49%).
-    const BACK_UNDER_SHARE: (usize, usize) = (12, 25);
+    /// strip under a box's first row): 79 of 161 (49%). Re-measured with
+    /// B10 (every edge on the axes, report §2.1: a forward edge's steps
+    /// cross a lane's long legs square, where its S-curve passed beside
+    /// them): 83 of 183 (45%).
+    const BACK_UNDER_SHARE: (usize, usize) = (11, 25);
 
     /// A line crossed every 20 px: never more than [`CUTS_PER_WINDOW`]
     /// cuts (gaps or notches) within any [`CUT_WINDOW`]; the rest are
@@ -1309,8 +1312,15 @@ mod tests {
     /// crossings (report Q15). What is left sits on bench-75's busiest
     /// lines, where the one role would chain gaps into a dashed look or
     /// pile more gaps on a line than any held (dense-lr 6 | 6 -> 1 | 0,
-    /// dense-td 13 | 16 -> 2 | 1, bench-75 90 | 116 -> 73 | 98).
-    const OPPOSITE_MAX: (usize, usize) = (76, 99);
+    /// dense-td 13 | 16 -> 2 | 1, bench-75 90 | 116 -> 73 | 98). B10
+    /// (every edge on the axes, report §2.1): 76 | 99 -> 44 | 100, the
+    /// static drawings' crossings fewer and square; one more routed
+    /// pattern on bench-75, whose drag-built steps cross a lane's legs
+    /// where the curve ran beside them. B10 review r2: 44 | 100 -> 57 |
+    /// 67, bench-75's service fans leaving as bundles (359 -> 302 static
+    /// crossings): its fewer crossings come closer together along the
+    /// bundles' lines.
+    const OPPOSITE_MAX: (usize, usize) = (57, 67);
 
     /// Most fixture lines shorter than [`SHORT_LINE`] cut twice or more,
     /// static and routed: 3 | 2 before short lines handed their extra

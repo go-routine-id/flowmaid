@@ -24,15 +24,35 @@ const CEILINGS: &[(&str, Ceil, Ceil)] = &[
     // integrated round-2 pipeline; routed 36 -> 39 (one frame entry)
     // when a reroute lying on another edge stopped beating a curve that
     // only crosses a frame (G1 over G6).
-    ("bench-75", (0, 2, 15), (0, 1, 39)),
+    // B10 (report B1, M2, M5: every edge on the axes, the gaps grown
+    // for their steps): static 15 -> 3, routed 39 -> 2. B10 review r1:
+    // static (0, 3, 6), routed (0, 0, 2). A known residual, one frame
+    // pair over the pre-B10 2: the gaps grown for the step tracks moved
+    // the layout's back-edge lanes, and `dash -> user`'s now runs over
+    // the top through the `edge` and `app` frames' padding (its defects
+    // 15 -> 6 all the same). B10 review r2: static (0, 3, 6) -> (0, 4,
+    // 4): the service fans' stubbed bundles (`ortho::breadth_stubs`,
+    // 359 -> 302 crossings) shift the lanes once more, and `alerts ->
+    // gw`'s now runs over the top through the `app` frame (its defects
+    // 6 -> 4).
+    ("bench-75", (0, 4, 4), (0, 0, 2)),
     // The dense fixtures and fanout-frames come from
     // `examples/fixture_gen.rs` (seeded: their own nesting, fan-outs
     // and edges, nested frames crossed by long edges), measured on the
     // round-2 pipeline when they replaced the hand-made ones.
     // Routed edge_node 2 / 3 -> 0 once an edge the searches leave
     // through nodes gets the rescue detour (frames crossed, nodes not).
-    ("dense-lr", (0, 11, 13), (0, 13, 20)),
-    ("dense-td", (0, 28, 42), (0, 28, 47)),
+    // B10: dense-td 42 | 47 -> 30 | 29 defects (frame pairs 28 -> 26 |
+    // 27), dense-lr routed 20 -> 15. dense-lr static 11 -> 13 frame pairs
+    // and 13 -> 15 defects: hub `n12`'s fan steps across the gap its
+    // frames g6 / g7 stand in as tracks a pitch apart, where its curves
+    // fanned out past their corners (two more edge-frame crossings).
+    // B10 review r1: dense-td static 30 -> 29 defects; routed frame
+    // pairs 27 -> 29 (a residual one over the pre-B10 28: `n5 -> n44`,
+    // a long edge `route()` has no dummy column for, steps across the
+    // gap that crosses the fewest lines, its leg through g9's corner).
+    ("dense-lr", (0, 13, 15), (0, 13, 15)),
+    ("dense-td", (0, 26, 29), (0, 29, 30)),
     ("fanout-frames", (0, 0, 0), (0, 0, 0)),
     ("wide-labels", (0, 0, 0), (0, 0, 0)), // (0,0,6) (0,0,8)
 ];
@@ -44,7 +64,7 @@ const CEILINGS: &[(&str, Ceil, Ceil)] = &[
 const GAP_FLOORS: &[(&str, f64, f64)] = &[
     ("back-edge", 40.0, 40.0),
     // Static 3.4 before the channel nudge spread parallel legs apart.
-    ("bench-75", 5.9, 2.1),
+    ("bench-75", 14.7, 10.6),
     // The generated dense fixtures, as first measured. dense-lr static
     // 9.6 -> 9.5 (report M7): its one label past the 200 px wrapping
     // width (`n32`, 204 px) now wraps to two lines, the drawing grows
@@ -70,6 +90,18 @@ const GAP_FLOORS: &[(&str, f64, f64)] = &[
     // keeps its border off the lateral runs crossing it (`layout`'s
     // `cross_need`): dense-td static 10.50 -> 13.04, dense-lr 11.74 ->
     // 14.50, ratcheted to 12.0.
+    //
+    // B10 (report B1: every edge on the axes, a channel's steps a track
+    // pitch apart): dense-lr routed 12.06 -> 10.86, two of hub `n12`'s
+    // steps in the shared channel past g6, between `TRACK_PITCH` (12.5)
+    // and the least pitch a crowded channel closes to; bench-75 opened
+    // 5.9 | 2.1 -> 9.0 | 9.06, ratcheted. B10 review r1: bench-75 static
+    // 14.31, routed 4.34 (above the pre-B10 2.1: `route()` now lays
+    // `job1 -> svc1`'s lane where `scene()` does, round below the jobs
+    // frame, past the fan into `db`). B10 review r2: bench-75 14.74 |
+    // 10.69 (its service fans leave as bundles a track apart, and
+    // `route()`'s lane past `db` keeps off them), dense-lr routed 12.5,
+    // back at its pre-B10 floor: ratcheted.
     ("dense-lr", 12.0, 12.0),
     ("dense-td", 12.1, 12.0),
     ("fanout-frames", 40.0, 40.0),
@@ -255,7 +287,13 @@ fn every_fixture_has_a_ceiling() {
 /// cable of three curves that leaves hub `n12`'s over-full side (its
 /// lone far ends now meet their targets in the middle), its box's edge
 /// over the neighbour `n12 -> n36`; no spot along the cable is clear.
-const LBL_EDGE_MAX: (usize, usize) = (1, 4);
+/// B10 (report B1, M2: every edge on the axes) 1 -> 6 static, a known
+/// regression: in LR a labelled Z's label rides its step across the
+/// flow, and hub `n12`'s fan steps a track pitch apart in one channel,
+/// so four of dense-lr's fan labels (and `n25 -> n38`'s) sit over a
+/// neighbouring step where no spot along their short runs is clear;
+/// routed stays 4 (dense-lr 2 -> 3, dense-td 2 -> 1).
+const LBL_EDGE_MAX: (usize, usize) = (6, 4);
 
 /// Most hard label hits (node, label, chip or arrowhead) over all
 /// fixtures, per mode (static, routed). None: a spot covering an
@@ -306,7 +344,13 @@ fn labels_cover_nothing_they_must_not() {
 #[test]
 fn layout_shape_gate() {
     /// Most `center_off` of the wide-labels fixture (0.31.1: 0.70).
-    const WIDE_LABELS_CENTER_OFF: f64 = 0.35;
+    /// 0.35 -> 0.5 with B10 review r1 (this ceiling locks the drawing's
+    /// balance, not a defect of the layout, which is unchanged): the
+    /// `request` twin steps up over the row to its bulge, its label
+    /// above every box (report §2.1), where its curve bowed only a little
+    /// above; the drawing reaches higher above the row than below it,
+    /// and the largest box (Database) sits 0.46 off its middle.
+    const WIDE_LABELS_CENTER_OFF: f64 = 0.5;
     /// Most aspect ratio of any fixture, static. 5.0 -> 5.5 with report
     /// Q2: the canvas no longer reaches a bow's control points, and
     /// wide-labels lost the blank 68 px band they added (413 -> 345 px
@@ -320,7 +364,12 @@ fn layout_shape_gate() {
     /// line instead of above it (the head box on a straight line no
     /// longer runs the line's whole length), the canvas 2.4 px shorter
     /// (160 -> 157.6 px, aspect 12.32 -> 12.51), the drawing unchanged.
-    const MAX_ASPECT: f64 = 12.6;
+    /// 12.6 -> 12.7 with B10 review r1: its `cached response` return no
+    /// longer bulges under the `health probe` line it crossed twice
+    /// (report §2.1); it runs plain, its label on its own run, and the
+    /// canvas is 1.3 px shorter (157.6 -> 156.3 px, aspect 12.61; mermaid
+    /// draws it at 13.6).
+    const MAX_ASPECT: f64 = 12.7;
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/quality");
     for &(name, _, _) in CEILINGS {
         let src = std::fs::read_to_string(format!("{dir}/{name}.mmd")).expect("fixture");
@@ -354,8 +403,16 @@ const DASH_EDGES_MAX: (usize, usize) = (0, 0);
 /// Most full crossing gaps on one edge (`xgap_max`) per mode (static,
 /// routed). Before: 31 static, 28 routed. Routed 11 -> 15 and static
 /// 14 -> 13 on the round-2 router's geometry (bench-75); routed 11
-/// once a reroute stopped lying on other edges.
-const XGAP_MAX: (usize, usize) = (13, 11);
+/// once a reroute stopped lying on other edges. Static 13 -> 14 with
+/// B10 review r1, a known residual: bench-75's `svc3 -> objects`,
+/// searched for a way round the 21 edges its first step crossed (report
+/// §2.1), takes one with 14 crossings, all on one line. Routed 11 ->
+/// 12, also a known residual: `route()` lays bench-75's `job1 -> svc1`
+/// lane where `scene()` does again, round below the jobs frame, across
+/// the fan into `db`. B10 review r2: static 14 -> 9, under the
+/// pre-B10 13 (bench-75's service fans leave as bundles and step in the
+/// gap; the most gaps on one of its lines is now 9).
+const XGAP_MAX: (usize, usize) = (9, 12);
 
 /// Crossing gaps are spread so that edges stay whole lines (G1).
 #[test]
@@ -607,22 +664,85 @@ fn channels_keep_edges_apart_and_off_chips() {
 /// 51 550 (fanout-frames 268 | 114 -> 396 | 352). Its static drawing
 /// sheds a border hug (212 px), a tight run, a sideways wiggle and
 /// three end kinks, its canvas 34 % narrower and 9 % smaller.
+///
+/// B10 (report §2.1, B1, M2, M5, P0 #14): every flowchart and state edge
+/// is drawn on the axes with rounded corners (`crate::ortho`), a gap
+/// grows by the steps it holds and the router weighs lateral runs as it
+/// does in `route()`. Lowered: idiom_scubic 61 | 80 -> 0 | 0,
+/// idiom_spline 21 | 22 -> 0 | 0, idiom_bow 2 | 1 -> 0 | 0, end_tilt
+/// 7 | 11 -> 0 | 0, end_tilt_max 76.8 | 128.4 -> 0.3 | 0.6, end_kink
+/// 53 | 69 -> 1 | 0, lat_wiggles routed 16 -> 6, lat_backtrack routed
+/// 667 -> 456, x_drawn routed 504 -> 496. Raised: band_pairs 94 | 104 ->
+/// 115 | 142 and band_len 45 930 | 51 550 -> 65 750 | 70 222 — a
+/// channel's steps and legs run parallel a track pitch apart where the
+/// curves fanned (bench-75 47 | 55 -> 51 | 89 pairs, dense-td's fans
+/// 22 924 -> 25 892 px static); lat_wiggles static 16 -> 22 and
+/// lat_backtrack static 1 814 -> 2 203, bench-75's long edges stepping
+/// across from one dummy column to the next (11 -> 16 wiggles); x_drawn
+/// static 499 -> 533, bench-75's square steps crossing where its curves
+/// slipped past each other (349 -> 389; dense-td 92 -> 86).
+///
+/// B10 review r1 (no crossing regression, report M2): a long edge's
+/// chain straightened within its free slot, a labelled twin bulging only
+/// when no other end lies in its way (else plain, its label beside its
+/// run), a jog moved off the curves the stage leaves and off other
+/// jogs' legs, a `route()` long run stepping in the gap that crosses
+/// the fewest lines, and a static edge crossing 4 or more searched for a
+/// way round. Lowered: lat_wiggles static 22 -> 19, lat_backtrack static
+/// 2 203 -> 1 960, band_len 65 750 | 70 222 -> 65 160 | 66 730, x_drawn
+/// static 533 -> 494 (under the pre-B10 499; bench-75 389 -> 360,
+/// dense-td 86 -> 78, stress and wide-labels 0). Raised, each still under the pre-B10 value:
+/// lat_wiggles routed 6 -> 7 (16), lat_backtrack routed 456 -> 566
+/// (667), x_drawn routed 496 -> 501 (504: `route()` draws bench-75's
+/// `job1 -> svc1` lane where `scene()` does again), end_kink static
+/// 1 -> 2 (53). band_pairs routed 142 -> 145 (104 before B10): a
+/// channel's steps run a track pitch apart, a cable where the curves
+/// fanned.
+///
+/// B10 review r1 #7: the static reorder (G9) judges two squared paths
+/// off one side over their whole corners, not only a port's reach, so
+/// two Ls of a fan turning the same way nest (fanout-frames' `n0 -->
+/// g6` crossed `n0 --> n21` 750 px down). Lowered: x_drawn static
+/// 494 -> 489 (fanout-frames 1 -> 0), band_len static 65 160 -> 64 940.
+///
+/// B10 review r2 (#1, #2): a breadth side whose starts would run across
+/// to their columns through a box of their own row takes stubs out and
+/// steps in the gap (`ortho::breadth_stubs`): bench-75's `svc1`,
+/// `svc3` and `svc5` fans down to the data zone leave their bottom sides
+/// as bundles instead of running along their row past the next service
+/// box and getting rerouted. Lowered: x_drawn static 489 -> 428
+/// (bench-75 359 -> 302, under the pre-B10 349; dense-lr 50 -> 46),
+/// x_drawn routed 501 -> 494, lat_wiggles 19 | 7 -> 15 | 5,
+/// lat_backtrack 1 960 | 566 -> 1 870 | 440, band_pairs routed 145 ->
+/// 139, end_kink static 2 -> 1. Raised: band_pairs static 115 -> 124
+/// and band_len 64 940 | 66 730 -> 71 210 | 68 660 — those bundles are
+/// cables a track pitch apart where the fans' steps had crossed each
+/// other's legs (bench-75 static 56 -> 60 pairs, 22 158 -> 25 854 px;
+/// dense-lr 26 -> 31 pairs; routed bench-75 30 746 -> 31 540 px from the
+/// shifted layout).
+///
+/// B10 review r3 (#5): a corner a moved end left without its rounding
+/// point turns as a rounded corner again (`ports::reround`); where its
+/// spline had swept over hundreds of px (bench-75's `svc6 --> ext`,
+/// `alerts --> gw`; dense-td's `n43 --> n16`) the leg now runs straight
+/// to the corner beside its neighbours, a track pitch apart: band_len
+/// 71 210 | 68 660 -> 71 360 | 69 110 (same pairs).
 const DEFECT_BASELINE: [(&str, f64, f64); 16] = [
-    ("end_tilt", 7.0, 11.0),
-    ("end_tilt_max", 76.8, 128.4),
+    ("end_tilt", 0.0, 0.0),
+    ("end_tilt_max", 0.3, 0.6),
     ("end_gaps", 0.0, 0.0),
     ("end_gap_max", 0.1, 0.1),
-    ("lat_wiggles", 16.0, 16.0),
-    ("lat_backtrack", 1_814.2, 667.0),
+    ("lat_wiggles", 15.0, 5.0),
+    ("lat_backtrack", 1_870.0, 440.0),
     ("own_frame_x", 0.0, 0.0),
     ("own_frame_len", 0.0, 0.0),
-    ("band_pairs", 94.0, 104.0),
-    ("band_len", 45_930.0, 51_550.0),
-    ("idiom_scubic", 61.0, 80.0),
-    ("idiom_spline", 21.0, 22.0),
-    ("idiom_bow", 2.0, 1.0),
-    ("x_drawn", 499.0, 504.0),
-    ("end_kink", 53.0, 69.0),
+    ("band_pairs", 124.0, 139.0),
+    ("band_len", 71_360.0, 69_110.0),
+    ("idiom_scubic", 0.0, 0.0),
+    ("idiom_spline", 0.0, 0.0),
+    ("idiom_bow", 0.0, 0.0),
+    ("x_drawn", 428.0, 494.0),
+    ("end_kink", 1.0, 0.0),
     ("ink_out", 0.0, 0.0),
 ];
 
@@ -826,10 +946,28 @@ fn long_labels_wrap_and_dense_labels_do_not_tower() {
 /// beside it threw it 22 px (`notes/near-drag` = verify g44, 1 -> 0).
 /// Such an edge now holds its ends (`Ctx::held`) and is rerouted only
 /// for what it hits: dense-td 17 -> 3, bench-75 18 -> 15.
+///
+/// B10 (report B1: every edge on the axes): bench-75 15 -> 12; dense-td
+/// 3 -> 4, a drag of `n44` redraws its edges as `route()` plans them
+/// (steps where the static scene ran down a long edge's dummy column),
+/// and the kept 2-cycle `n16 <-> n43` and `n4 -> n43` beside them are
+/// rerouted off the new steps (`n17`'s drag still throws `n16 -> n41`).
+/// B10 review r1: bench-75 12 -> 16, a known residual one over the
+/// pre-B10 15 — `route()` lays `job1 -> svc1`'s lane where `scene()`
+/// does again (round below, not over the top), and the kept `gw ->
+/// svc2` and `svc1 -> queue` it passes are rerouted off the redrawn
+/// edges of a dragged neighbour. B10 review r2: bench-75 16 -> 15, the
+/// pre-B10 value again. B10 review r3 (#5): dense-td 4 -> 5, bench-75
+/// 15 -> 16 — the corners `ports::reround` rounds again in the base
+/// scene change where the ports stage reads its kept paths heading
+/// (the first point off a stub), so a drag of `n5` re-places `n16 ->
+/// n41`'s end on `n16`'s crowded side 27.7 px over, and a drag of `logs`
+/// `dash -> user`'s 40.4 px; the scene's own corners are no longer
+/// swept over hundreds of px.
 const DRAG_JUMPS_MAX: &[(&str, usize)] = &[
     ("quality/dense-lr", 0),
-    ("quality/dense-td", 3),
-    ("quality/bench-75", 15),
+    ("quality/dense-td", 5),
+    ("quality/bench-75", 16),
     ("notes/spread-face", 0),
     ("notes/fork-twins", 0),
     ("notes/near-drag", 0),

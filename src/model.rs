@@ -435,6 +435,12 @@ pub struct Graph {
     /// painter will not draw: no straight glyph stubs, no arrow trims.
     /// `None` = a flowchart (or state) graph.
     pub(crate) edge_paint_width: Option<f64>,
+    /// The edges the scene built from this graph draws, where that is
+    /// not `edges.len()`: a clustered scene's layout graph holds a
+    /// stand-in for each edge to a box that has one, while the scene
+    /// draws every edge to a box with members, stand-in or not. The
+    /// layout reads it against the router's cap ([`Graph::drawn_edge_count`]).
+    pub(crate) drawn_edges: Option<usize>,
     /// The width node labels wrap at when not [`crate::layout::WRAP_WIDTH`]
     /// (`flowchart.wrappingWidth` from an init directive or the
     /// frontmatter); see [`Graph::wrapping_width`].
@@ -790,6 +796,12 @@ impl Graph {
             meta: EdgeMeta::default(),
             end_room: (0.0, 0.0),
         });
+    }
+
+    /// The edges a scene built from this graph draws (see
+    /// [`Graph::drawn_edges`]).
+    pub(crate) fn drawn_edge_count(&self) -> usize {
+        self.drawn_edges.unwrap_or(self.edges.len())
     }
 
     /// Index of an existing node by id, without creating it.
