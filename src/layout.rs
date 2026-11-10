@@ -3996,11 +3996,12 @@ fn place(
     // state drawings only; the spans are read off the node and dummy
     // centres, which the ports spread a little). Past the router's cap
     // the ortho stage keeps the builders' curves, so no gap takes tracks
-    // there (a clustered scene's graph counts a stand-in for each edge
-    // to a box, as the scene counts the edge it draws).
+    // there: the count is the scene's ([`Graph::drawn_edge_count`]), as
+    // the ortho stage counts it, and each part of a compound layout
+    // counts its own, as its own scene does.
     let track_need: Vec<f64> = {
         let mut need = vec![0.0f64; nlayers];
-        if g.edge_paint_width.is_none() && g.edges.len() <= crate::router::ROUTE_MAX_EDGES {
+        if g.edge_paint_width.is_none() && g.drawn_edge_count() <= crate::router::ROUTE_MAX_EDGES {
             let mut spans: Vec<Vec<(f64, f64)>> = vec![Vec::new(); nlayers];
             for (ei, e) in g.edges.iter().enumerate() {
                 if e.from == e.to || matches!(e.kind, EdgeKind::Invisible) {

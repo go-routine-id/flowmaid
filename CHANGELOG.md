@@ -24,7 +24,8 @@ or changed.
   turns cross as little as possible. A straight edge stays straight; an
   edge with an explicit `curve:` / `linkStyle … interpolate`, note links
   and self-loops keep their curves, as do the edges of a drawing with more
-  than 400 edges (past the router's cap), but for an S whose ends lie
+  than 400 edges (past the router's cap; counted per part, each subgraph
+  laid out on its own in its `direction` and the rest round them), but for an S whose ends lie
   under 28 px apart across, which is squared there too; back-edge lanes,
   on the axes already, are not redrawn, though a lane can now take the
   other side (bench-75's static `dash -> user` runs over the top through
@@ -87,8 +88,8 @@ or changed.
   and `svc1 --> db` cross once either way, and the nudge puts that
   crossing under `svc1`). A long run in `route()` steps in the gap whose legs cross the
   fewest lines. The layout grows a gap by the
-  tracks its steps need, in a drawing of at most 400 edges (two at the
-  plain gap, one more per further step one way).
+  tracks its steps need, in a drawing, or a part laid out on its own,
+  of at most 400 edges (two at the plain gap, one more per further step one way).
   A state composite's edge to one of its own states leaves the
   composite's border from inside, straight into the state. `route()` and
   the drag path (`route_partial`) draw the same idiom; an end a drag holds
@@ -101,7 +102,8 @@ or changed.
   1 600 px: bench-75's `svc6 --> ext`) gets it back, 14 px from the
   corner; `route_partial` does the same for the edges it redraws, not for
   an edge it keeps whose end the ports stage respaces (see Known costs). Past the router's
-  400-edge cap, where the router and its nudge leave a drawing as built,
+  400-edge cap (counted per part a `direction` lays out on its own),
+  where the router and its nudge leave a drawing as built,
   the builders' curves stay too and no gap grows for tracks (a 531-edge
   chart's `route()` 25.7 -> 2.6 ms), but for an S under 28 px across,
   which the last stage squares whatever the size.
@@ -109,9 +111,11 @@ or changed.
   14 px either side, or half the shorter adjoining leg where a leg is
   under 28 px, which the painter's spline turns through as a curve of
   about 8 px radius, tighter at such a corner), `bezier` only a fallback
-  (a cubic between its ends with its first and last corners as
-  controls, or the straight line between them for an edge the router
-  or its nudge redrew), so pick == render as before. Explicit
+  whose controls only roughly follow the path (a cubic between its ends,
+  its controls where the axis stage put the first and last corners, or
+  the straight line between the ends for an edge the router, its nudge or
+  its spacing pass redrew; rely on its ends only), so pick == render as
+  before. Explicit
   `curve:` / `linkStyle … interpolate`, state note card links,
   self-loops, invisible `~~~` links and class / ER scenes are unchanged
   (class and ER output is byte-identical). Back-edge lanes are not
