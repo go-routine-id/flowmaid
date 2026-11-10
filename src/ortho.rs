@@ -2324,6 +2324,23 @@ mod tests {
         let g = parse(&src).unwrap();
         assert!(g.edges.len() > crate::router::ROUTE_MAX_EDGES);
         let sc = scene(&g);
+        // Nor does the layout grow the gap for tracks no edge takes: the
+        // rows sit the plain gap apart (0.37.0's depth), not the 21
+        // tracks the steps would need on the axes.
+        let row_gap = {
+            let bottom = |p: &str| {
+                sc.nodes
+                    .iter()
+                    .filter(|n| n.id.starts_with(p))
+                    .map(|n| (n.y - n.h / 2.0, n.y + n.h / 2.0))
+                    .fold((f64::MAX, f64::MIN), |a, b| (a.0.min(b.0), a.1.max(b.1)))
+            };
+            bottom("t").0 - bottom("s").1
+        };
+        assert!(
+            row_gap < crate::layout::GAP_L + 2.0 * TRACK_PITCH,
+            "rows {row_gap} px apart past the cap"
+        );
         let pos: Vec<Pt> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
         for s in [sc, crate::scene::route(&g, &pos)] {
             let squared = s

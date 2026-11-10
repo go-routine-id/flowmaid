@@ -140,20 +140,27 @@ pub struct SceneEdge {
     pub from: String,
     /// Target-endpoint id (node id, or subgraph id for sub-edges).
     pub to: String,
-    /// Bezier points: start, control1, control2, end. This is the
-    /// single-curve form used when `waypoints` is empty (adjacent
-    /// layers, free-routed edges) and as the fallback everywhere. The
-    /// ends lie on the node borders; on a forward, side-by-side or nested
+    /// Bezier points: start, control1, control2, end. With `waypoints`
+    /// empty this single cubic is the edge: a straight edge, a self-loop,
+    /// or a builder's curve between adjacent ranks that no later stage
+    /// redraws (one with its own `curve`, an ER edge the router leaves as
+    /// built, any such edge in a drawing past the router's 400-edge cap).
+    /// With `waypoints` set it is only a fallback that does not follow
+    /// the path. The ends lie on the node borders; on a forward, side-by-side or nested
     /// curve the controls lie on the sides' normals, so a head drawn
     /// along the end tangent points square in.
     /// flowmaid's own SVG ends a curve still turning there in a straight
     /// run along that tangent, bending into it within a px of this curve
     /// outside the arrowhead, and stops the stroke under its arrowhead.
     pub bezier: [(f64, f64); 4],
-    /// Routed polyline (final coords) a long edge threads through — its
-    /// node-boundary start, the per-layer channel points, and its end.
+    /// Routed polyline (final coords) from the edge's node-boundary start
+    /// to its end: a flowchart or state edge drawn on the axes (each
+    /// corner flanked by the points a spline rounds it through), a
+    /// back-edge's lane, a route the router or a class or ER stage drew,
+    /// or a long edge's channel points where its curve is kept (an
+    /// explicit `curve`, a drawing past the router's 400-edge cap).
     /// Empty = draw `bezier`. A painter splines a smooth curve through
-    /// these so the edge stays in its channel instead of cutting across.
+    /// these so the edge stays on its path instead of cutting across.
     pub waypoints: Vec<(f64, f64)>,
     pub kind: EdgeKind,
     /// Cross / circle / two-way end glyphs layered over `kind` (see
