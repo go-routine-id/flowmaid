@@ -332,16 +332,23 @@ fn crossings_in(
                     ];
                     // A line that steps over a crossing a few px on, or
                     // jogs right here, is the over-line (see
-                    // [`Hit::over`]).
-                    let over = |k: usize, seg: usize, at: f64| {
+                    // [`Hit::over`]); one that turns here is the
+                    // over-line where the other runs straight
+                    // ([`Hit::turn`]).
+                    let turn = [
+                        turning(lines[ka], &starts[ka], sa, at[0]),
+                        turning(lines[kb], &starts[kb], sb, at[1]),
+                    ];
+                    let over = |k: usize, turn: f64| {
                         hops.get(idx[k])
                             .is_some_and(|hs| hs.iter().any(|h| h.gap(p) < CROSS_CLUSTER))
-                            || turning(lines[k], &starts[k], seg, at) >= JOG_TURN
+                            || turn >= JOG_TURN
                     };
                     v.push(Hit {
                         p,
                         at,
-                        over: [over(ka, sa, at[0]), over(kb, sb, at[1])],
+                        over: [over(ka, turn[0]), over(kb, turn[1])],
+                        turn: turn.map(|t| t >= CORNER_TURN),
                     });
                 }
             }
@@ -407,6 +414,12 @@ struct Hit {
     /// gap goes to the other line ([`Ctx::pin`]); where neither is to
     /// be cut, the crossing is drawn plain.
     over: [bool; 2],
+    /// Whether `a` and `b` turn here ([`CORNER_TURN`]): the crossing
+    /// lies in a corner's rounding of the line, where a hop is never
+    /// drawn and a gap would cut the corner off its leg. The gap goes
+    /// to the other line where that runs straight and takes it without
+    /// harm ([`Assign::spare_corners`]).
+    turn: [bool; 2],
 }
 
 /// Reach (px) either way along a line within which [`turning`] adds up
@@ -419,6 +432,14 @@ const JOG_REACH: f64 = 12.0;
 /// stroke), where one corner's rounding alone is a quarter turn at
 /// most.
 const JOG_TURN: f64 = 2.0;
+/// How far (rad) a stroke turns within [`JOG_REACH`] of a crossing for
+/// the crossing to lie in its corner: a gap there takes a piece of the
+/// rounding, and the corner reads as cut off its leg (B11 review r2 #4:
+/// `a1 --> b3` of the reviewer's bottom-up chart, cut 16 px under its
+/// corner where the line across ran straight). A rounding turns a
+/// quarter turn in all, most of it in its last third; a crossing two
+/// px past the rounding still has a fifth of a radian of it in reach.
+const CORNER_TURN: f64 = 0.2;
 
 /// How far (rad) the stroke `pts` turns, left and right added up,
 /// within [`JOG_REACH`] of the point `at` px along it on its segment
@@ -526,6 +547,7 @@ fn choose_under(
             _ => None,
         })
         .collect();
+    let turn: Vec<[bool; 2]> = hits.values().flatten().map(|h| h.turn).collect();
     let mut members = vec![Vec::new(); back.len()];
     for (c, p) in pair.iter().enumerate() {
         members[p[0]].push(c);
@@ -535,6 +557,7 @@ fn choose_under(
         pair: &pair,
         at: &at,
         pin: &pin,
+        turn: &turn,
         members: &members,
         back,
         length,
@@ -559,6 +582,9 @@ struct Ctx<'a> {
     /// The crossings whose under-line is given ([`Hit::over`]): whether
     /// the lower line takes the gap. The search leaves them alone.
     pin: &'a [Option<bool>],
+    /// Whether the lower and the higher line of each crossing turn
+    /// there ([`Hit::turn`]).
+    turn: &'a [[bool; 2]],
     /// The crossings of each line.
     members: &'a [Vec<usize>],
     /// Which lines run against the flow.
@@ -626,6 +652,7 @@ impl<'a> Assign<'a> {
         st.balance();
         st.unify();
         st.spare_short();
+        st.spare_corners();
         st
     }
 
@@ -981,6 +1008,38 @@ impl<'a> Assign<'a> {
     /// The line that takes crossing `c`'s gap.
     fn under_line(&self, c: usize) -> usize {
         self.ctx.pair[c][usize::from(!self.under_a[c])]
+    }
+
+    /// Last, a gap cut into a line's corner ([`Hit::turn`]) moves to
+    /// the line across where that one runs straight there: the turning
+    /// line keeps its corner on its leg, and the straight one reads as
+    /// passing beneath. Not to a line with as many gaps as any has, nor
+    /// where the gap would stand in a row with another of that line
+    /// ([`chain_with`]) or mix a line's roles within a cluster
+    /// ([`Self::unify`]), nor out of a back-edge into a forward one (it
+    /// goes under by preference).
+    fn spare_corners(&mut self) {
+        let ctx = self.ctx;
+        // (No line ends up with more gaps than the most cut one has.)
+        let most = self.gaps.iter().map(Vec::len).max().unwrap_or(0);
+        for c in 0..ctx.pair.len() {
+            let under = usize::from(!self.under_a[c]);
+            if ctx.pinned(c) || !ctx.turn[c][under] || ctx.turn[c][1 - under] {
+                continue;
+            }
+            let (line, other) = (ctx.pair[c][under], ctx.pair[c][1 - under]);
+            if self.gaps[other].len() >= most
+                || (ctx.back[line] && !ctx.back[other])
+                || chain_with(&self.gaps[other], ctx.at_on(c, other)) > 1
+            {
+                continue;
+            }
+            let before = self.mixed(line) + self.mixed(other);
+            let delta = self.flip_quiet(c);
+            if delta > 0 || self.mixed(line) + self.mixed(other) > before {
+                self.flip_quiet(c);
+            }
+        }
     }
 
     /// Summed [`chain_cost`] of every line.
@@ -1459,6 +1518,48 @@ mod tests {
         sc
     }
 
+    /// B11 review r2 #4: a crossing in a corner's rounding takes no hop
+    /// and keeps its gap — cut into the line that runs straight there,
+    /// not into the turning one, whose corner the gap would cut off its
+    /// leg (the reviewer's bottom-up chart, `a1 --> b3` cut right under
+    /// its corner). Whichever of the two is drawn first.
+    #[test]
+    fn a_gap_is_not_cut_into_a_corner() {
+        // A short path up x = 100 that turns level at y = 100, and a
+        // long level line across its plumb leg `below` px under the
+        // corner (the longer line of two is the one the search spares).
+        let turn: &[Pt] = &[(100.0, 220.0), (100.0, 100.0), (220.0, 100.0)];
+        let across = |below: f64| [(-500.0, 100.0 + below), (700.0, 100.0 + below)];
+        // In the rounding and just past it: no hop yet, and the gap is
+        // the straight line's.
+        for below in [8.0, 12.0, 16.0] {
+            let level = across(below);
+            for (paths, turning) in [([turn, &level[..]], 0), ([&level[..], turn], 1)] {
+                let sc = drawn(&paths);
+                assert!(
+                    crate::hops::find(&sc).iter().all(Vec::is_empty),
+                    "{below} px under the corner: no hop"
+                );
+                let xs = crossings(&sc);
+                assert_eq!(xs.len(), 1, "{below}: {xs:?}");
+                assert_eq!(
+                    (xs[0].0, xs[0].1),
+                    (1 - turning, turning),
+                    "{below} px under the corner: the straight line goes under"
+                );
+            }
+        }
+        // Well past the rounding the level line steps over, and nothing
+        // is cut.
+        let level = across(60.0);
+        let sc = drawn(&[turn, &level]);
+        assert_eq!(crate::hops::find(&sc)[1].len(), 1);
+        assert!(crossings(&sc).is_empty());
+        // Two corners crossing each other: one of them is cut, as ever.
+        let other: &[Pt] = &[(-500.0, 110.0), (112.0, 110.0), (112.0, 700.0)];
+        assert_eq!(crossings(&drawn(&[turn, other])).len(), 1);
+    }
+
     /// B11 review r1 #3: a line that steps over one crossing on a hop
     /// is not cut at the next a few px on — hop, gap, hop read as a
     /// chopped line. The gap goes to the other line; where that one hops
@@ -1866,6 +1967,7 @@ mod tests {
                 p: (sa, sb),
                 at: [sa, sb],
                 over: [false, false],
+                turn: [false, false],
             });
         }
         hits

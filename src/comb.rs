@@ -24,12 +24,24 @@
 //! - its teeth this stage may redraw (see [`Comb`]) take the side's
 //!   ports — those they already hold, so the side keeps the even band
 //!   the ports stage spread ([`crate::ports::PORT_EVEN_MAX`]) — in the
-//!   order of their turns;
+//!   order of their turns ([`Order::Turn`]);
 //! - the tracks of the teeth stepping one way are put in the same order,
 //!   moving as few as that takes ([`Deal::Anchored`]: a tooth out of
 //!   order gets a track of its own between its new neighbours'), or, where
 //!   the gap has no room for that, dealing the fan's own tracks out again
-//!   ([`Deal::Pooled`]), or leaving them be ([`Deal::Keep`]).
+//!   ([`Deal::Pooled`]);
+//! - where the tracks cannot follow the turns — a hub whose leaves wrap
+//!   onto two rows steps to the near row in the gap in front of it and
+//!   to the far row in the gap beyond, whatever the turns — the ports
+//!   follow the gaps instead: the teeth of each gap nest among
+//!   themselves ([`Order::Rows`]), and of the teeth stepping one way
+//!   those in the gap nearest the side leave from the outermost ports,
+//!   so no tooth's track runs across the stub of one that steps further
+//!   out (fan047 of the hub-fan set: `hub --> l4` to the near row left
+//!   from a port inside that of `hub --> l1` to the far row, across its
+//!   stub) — or, where the tracks of a gap cannot be dealt afresh, the
+//!   ports simply follow the tracks as they lie ([`Order::Track`]);
+//! - or the ports alone take the order of the turns ([`Deal::Keep`]).
 //!
 //! A side's new comb is kept only when its edges cross fewer lines than
 //! before and hit no more boxes, frame borders, title chips or labels,
@@ -166,6 +178,39 @@ impl Comb {
     }
 }
 
+/// The order a side's ports are dealt to its teeth in.
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum Order {
+    /// The order of their turns: with the tracks in the same order the
+    /// teeth nest.
+    Turn,
+    /// Row by row ([`rows`]: the teeth whose tracks share a gap), in
+    /// the order of their turns within each: the teeth stepping low
+    /// first, from the row nearest the side, then those stepping high,
+    /// down to it. The teeth of a row nest like a side's under
+    /// [`Order::Turn`], and no track runs across the stub of a tooth
+    /// that steps in a row further out. Each tooth keeps stepping the
+    /// way it does.
+    Rows,
+    /// The order of the tracks they hold, likewise: no track then runs
+    /// across the stub of a tooth stepping the same way, whatever the
+    /// turns.
+    Track,
+}
+
+/// The ways a side is combed, the first that has an answer and leaves
+/// the drawing better ([`keeps`]) being taken: the ports by the turns
+/// with the tracks put in that order — over the whole side, then row by
+/// row —, then by the tracks as they lie, then by the turns alone.
+const DEALS: [(Order, Deal); 6] = [
+    (Order::Turn, Deal::Anchored),
+    (Order::Turn, Deal::Pooled),
+    (Order::Rows, Deal::Anchored),
+    (Order::Rows, Deal::Pooled),
+    (Order::Track, Deal::Keep),
+    (Order::Turn, Deal::Keep),
+];
+
 /// How a side's tracks are put in the order of its ports.
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum Deal {
@@ -292,13 +337,61 @@ fn ends_of(e: &SceneEdge) -> (Pt, Pt) {
     }
 }
 
-/// Every drawn end by the side it lies on — (its edge, the edge's
-/// start?) — with how many of the side's ends this stage may move.
-type Sides = BTreeMap<(EndRef, Side), (Vec<(usize, bool)>, usize)>;
+/// The ends on each side this stage combs — (its edge, the edge's
+/// start?) — in edge order.
+type Sides = BTreeMap<(EndRef, Side), Vec<(usize, bool)>>;
 
 /// What [`keeps`] measures of one pair of lines: (edge, other edge, the
 /// edge's line, the other's).
 type PairFn<'a> = &'a mut dyn FnMut(usize, usize, &[Pt], &[Pt]);
+
+/// Under a drag ([`Ctx::held`]: a [`crate::scene::route_partial`]
+/// frame), the judging one frame may spend ([`Budget`]): pairs of a
+/// redrawn edge and a line near the legs that change ([`pair_count`]).
+/// A hub's fan in a dense drawing costs most to judge — a dozen long
+/// teeth against every line they pass, a tenth of a millisecond and
+/// more a deal — in the very frame that already redraws most of the
+/// drawing (bench-75's `gw` and dense-td's `n16` dragged across it: 113
+/// to 152 pairs a deal). Such a side is left as the stages before drew
+/// it, on the axes like any other, until a full [`crate::scene::route`]
+/// combs it; a fan of a few teeth (some 30 to 45 pairs a deal in those
+/// drawings, fewer in a sparser one) is combed under a drag as there.
+const DRAG_WORK: usize = 96;
+
+/// What judging may still cost in this call ([`DRAG_WORK`]; no limit
+/// outside a drag).
+struct Budget(Option<usize>);
+
+impl Budget {
+    /// Whether `plan` may be judged, taking its cost if so.
+    fn take(&mut self, w: &World, plan: &[Redraw]) -> bool {
+        let Some(left) = self.0.as_mut() else {
+            return true;
+        };
+        let cost = pair_count(w, plan);
+        if cost > *left {
+            return false;
+        }
+        *left -= cost;
+        true
+    }
+}
+
+/// How many pairs of lines [`keeps`] measures for `plan` at its widest
+/// reach.
+fn pair_count(w: &World, plan: &[Redraw]) -> usize {
+    let mut n = plan.len() * plan.len().saturating_sub(1) / 2;
+    for p in plan {
+        n += (0..w.lines.len())
+            .filter(|&j| {
+                w.drawn[j]
+                    && p.changed.near(w.bounds[j], CLEAR_GAP)
+                    && plan.iter().all(|q| q.edge != j)
+            })
+            .count();
+    }
+    n
+}
 
 /// Comb every fanned side of every box (see the module docs). Sets
 /// `moved[i]` for each edge it redraws, so the label stage looks at
@@ -307,37 +400,53 @@ pub(crate) fn comb(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
     if sc.edges.len() < PAIR || sc.edges.len() > crate::router::ROUTE_MAX_EDGES {
         return;
     }
-    // Every drawn end by the side it lies on (its edge, its start?), and
-    // how many of each side's ends this stage may move.
-    let mut sides: Sides = BTreeMap::new();
-    for i in 0..sc.edges.len() {
-        let Some((from, to)) = cx.ends.get(i).copied().flatten() else {
-            continue;
-        };
-        if from == to || !cx.drawn.get(i).copied().unwrap_or(false) {
-            continue;
+    let drawn = |i: usize| cx.drawn.get(i).copied().unwrap_or(false);
+    // The two ends of edge `i` — (the edge's start?, where it ends, the
+    // side it lies on) — if it is drawn between two ends.
+    let ends = |sc: &Scene, i: usize| -> Option<[(bool, EndRef, Side); 2]> {
+        let (from, to) = cx.ends.get(i).copied().flatten()?;
+        if from == to || !drawn(i) {
+            return None;
         }
-        let e = &sc.edges[i];
-        let on_axes = ortho_corners(e).is_some() && free(sc, cx, i);
-        let (p0, p3) = ends_of(e);
-        for (src, end, p) in [(true, from, p0), (false, to, p3)] {
+        let (p0, p3) = ends_of(&sc.edges[i]);
+        let side = |end: EndRef, p: Pt| {
             let r = end_rect(sc, end);
-            let side = match end {
+            match end {
                 EndRef::Node(v) => crate::ports::outline_side(sc.nodes[v].shape, r, p),
                 EndRef::Frame(_) => side_of(r, p),
-            };
-            let g = sides.entry((end, side)).or_default();
-            g.0.push((i, src));
-            g.1 += usize::from(on_axes);
+            }
+        };
+        Some([(true, from, side(from, p0)), (false, to, side(to, p3))])
+    };
+    // The sides holding ends this stage may move, [`PAIR`] or more of
+    // them (under a drag most edges are kept and few sides do)...
+    let mut movable: BTreeMap<(EndRef, Side), usize> = BTreeMap::new();
+    for i in 0..sc.edges.len() {
+        if !free(sc, cx, i) || ortho_corners(&sc.edges[i]).is_none() {
+            continue;
+        }
+        for (_, end, side) in ends(sc, i).into_iter().flatten() {
+            *movable.entry((end, side)).or_default() += 1;
         }
     }
-    sides.retain(|k, g| g.1 >= PAIR && straight_side(sc, k.0));
-    if sides.is_empty() {
+    movable.retain(|k, n| *n >= PAIR && straight_side(sc, k.0));
+    if movable.is_empty() {
         return;
     }
-    // The drawn lines, for judging a side's new comb.
-    let mut world = World::new(sc, cx);
-    for ((end, side), (members, _)) in sides {
+    // ...and every drawn end on each of them.
+    let mut sides: Sides = movable.into_keys().map(|k| (k, Vec::new())).collect();
+    for i in 0..sc.edges.len() {
+        for (src, end, side) in ends(sc, i).into_iter().flatten() {
+            if let Some(members) = sides.get_mut(&(end, side)) {
+                members.push((i, src));
+            }
+        }
+    }
+    // The drawn lines, for judging a side's new comb: read once a side
+    // has one to judge.
+    let mut world: Option<World> = None;
+    let mut budget = Budget(cx.held.iter().any(|&h| h).then_some(DRAG_WORK));
+    for ((end, side), members) in sides {
         let fr = Frame::of(side);
         let r = end_rect(sc, end);
         // The box side's own line, out of the box.
@@ -346,23 +455,41 @@ pub(crate) fn comb(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
         let teeth = teeth_of(sc, cx, &members, fr, line_n);
         let mut tried: Vec<Vec<Redraw>> = Vec::new();
         let mut combed = false;
-        for deal in [Deal::Anchored, Deal::Pooled, Deal::Keep] {
-            let Some(plan) = plan_side(sc, &teeth, fr, deal) else {
+        // (Looked at once a deal has an answer: most sides are in order.)
+        let mut crossed: Option<bool> = None;
+        // (A side past the frame's budget is left as the stages before
+        // drew it, its ports evened neither.)
+        let mut afford = true;
+        for (order, deal) in DEALS {
+            let Some(plan) = plan_side(sc, &teeth, fr, order, deal) else {
                 continue;
             };
             if plan.is_empty() {
                 // In order under the gentlest deal that has an answer.
                 break;
             }
+            // Where nothing crosses the legs a deal redraws, none leaves
+            // the side with fewer crossings.
+            let world = world.get_or_insert_with(|| World::new(sc, cx));
+            if !*crossed.get_or_insert_with(|| is_crossed(world, &teeth, fr)) {
+                break;
+            }
             if tried.iter().any(|p| same_plan(p, &plan)) {
                 continue;
             }
-            if keeps(sc, &world, &plan, &members, true) {
-                apply(sc, &mut world, moved, &plan);
+            afford = budget.take(world, &plan);
+            if !afford {
+                break;
+            }
+            if keeps(sc, world, &plan, &members, true) {
+                apply(sc, world, moved, &plan);
                 combed = true;
                 break;
             }
             tried.push(plan);
+        }
+        if !afford {
+            continue;
         }
         // Then its ports one pitch apart (report B4, §2.4: a hub's ports
         // in one even band), where the stages after the ports stage
@@ -373,8 +500,9 @@ pub(crate) fn comb(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
             teeth
         };
         if let Some(plan) = plan_even(sc, &teeth, fr) {
-            if keeps(sc, &world, &plan, &members, false) {
-                apply(sc, &mut world, moved, &plan);
+            let world = world.get_or_insert_with(|| World::new(sc, cx));
+            if budget.take(world, &plan) && keeps(sc, world, &plan, &members, false) {
+                apply(sc, world, moved, &plan);
             }
         }
     }
@@ -403,8 +531,9 @@ fn teeth_of(sc: &Scene, cx: &Ctx, members: &[(usize, bool)], fr: Frame, line_n: 
             let e = &sc.edges[i];
             let (p0, p3) = ends_of(e);
             let p = fr.local(if src { p0 } else { p3 });
-            let comb = ortho_corners(e)
+            let comb = Some(e)
                 .filter(|_| free(sc, cx, i) && (p.1 - line_n).abs() < SIDE_SLACK)
+                .and_then(ortho_corners)
                 .and_then(|c| {
                     let local: Vec<Pt> = if src {
                         c.iter().map(|&q| fr.local(q)).collect()
@@ -456,8 +585,62 @@ struct Redraw {
     edge: usize,
     /// Its new path's corners (screen), from its start.
     corners: Vec<Pt>,
+    /// The legs that change — its stub, its track and the leg on past
+    /// its turn, as they were and as they will be; past them the path
+    /// stays as it is.
+    changed: Changed,
+    /// How far (px) its port moves along the side.
+    shift: f64,
     /// Its label's new spot, when the label rode a moved leg.
     label: Option<Pt>,
+}
+
+/// The legs of a redrawn tooth that change ([`Redraw::changed`]): the
+/// bounds of each, as it was and as it will be, and of them all.
+#[derive(Clone, Copy)]
+struct Changed {
+    legs: [Rect; 6],
+    count: usize,
+    all: Rect,
+}
+
+impl Changed {
+    /// Of a tooth's first legs as they were (`old`) and as they will be
+    /// (`new`, both in the side coordinates of `fr`): those between its
+    /// first `corners` corners, as many as the path has.
+    fn of(fr: Frame, old: &[Pt], new: &[Pt], corners: usize) -> Changed {
+        let mut out = Changed {
+            legs: [(0.0, 0.0, 0.0, 0.0); 6],
+            count: 0,
+            all: (
+                f64::INFINITY,
+                f64::INFINITY,
+                f64::NEG_INFINITY,
+                f64::NEG_INFINITY,
+            ),
+        };
+        let old = old[..old.len().min(4)].windows(2);
+        let new = new[..new.len().min(corners)].windows(2);
+        for leg in old.chain(new) {
+            let (a, b) = (fr.screen(leg[0]), fr.screen(leg[1]));
+            let r = (a.0.min(b.0), a.1.min(b.1), a.0.max(b.0), a.1.max(b.1));
+            out.legs[out.count] = r;
+            out.count += 1;
+            let all = out.all;
+            out.all = (
+                all.0.min(r.0),
+                all.1.min(r.1),
+                all.2.max(r.2),
+                all.3.max(r.3),
+            );
+        }
+        out
+    }
+
+    /// Whether a changed leg comes within `gap` of the bounds `r`.
+    fn near(&self, r: Rect, gap: f64) -> bool {
+        near(self.all, r, gap) && self.legs[..self.count].iter().any(|&l| near(l, r, gap))
+    }
 }
 
 /// Whether two plans redraw the same edges alike.
@@ -472,31 +655,80 @@ fn same_plan(a: &[Redraw], b: &[Redraw]) -> bool {
 /// redrawn edges, empty when the side is combed already, `None` when
 /// the deal has no answer here — a track would leave its tooth's range,
 /// or a step across come out shorter than [`STEP_MIN`].
-fn plan_side(sc: &Scene, teeth: &[Tooth], fr: Frame, deal: Deal) -> Option<Vec<Redraw>> {
+fn plan_side(
+    sc: &Scene,
+    teeth: &[Tooth],
+    fr: Frame,
+    order: Order,
+    deal: Deal,
+) -> Option<Vec<Redraw>> {
     let movable: Vec<usize> = (0..teeth.len())
         .filter(|&k| teeth[k].comb.is_some())
         .collect();
     let comb = |k: usize| teeth[k].comb.as_ref().expect("movable tooth");
     // The movable ports, low to high, go to the teeth in the order of
-    // their turns.
-    let mut by_turn = movable.clone();
-    by_turn.sort_by(|&a, &b| {
+    // their turns; or of their rows or tracks: those stepping low from
+    // the one nearest the side, then those stepping high down to it.
+    let by_turn = |a: usize, b: usize| {
         comb(a)
             .turn
             .total_cmp(&comb(b).turn)
             .then(teeth[a].t.total_cmp(&teeth[b].t))
             .then(teeth[a].edge.cmp(&teeth[b].edge))
-    });
+    };
+    let steps_low = |k: usize| comb(k).turn < teeth[k].t;
+    let mut seq = movable.clone();
+    match order {
+        Order::Turn => seq.sort_by(|&a, &b| by_turn(a, b)),
+        Order::Rows => {
+            let mut row = vec![0; teeth.len()];
+            for low in [true, false] {
+                let way: Vec<usize> = movable
+                    .iter()
+                    .copied()
+                    .filter(|&k| steps_low(k) == low)
+                    .collect();
+                for (k, r) in rows(teeth, &way) {
+                    row[k] = r;
+                }
+            }
+            seq.sort_by(|&a, &b| {
+                let (la, lb) = (steps_low(a), steps_low(b));
+                lb.cmp(&la)
+                    .then(if la {
+                        row[a].cmp(&row[b])
+                    } else {
+                        row[b].cmp(&row[a])
+                    })
+                    .then(by_turn(a, b))
+            });
+        }
+        Order::Track => seq.sort_by(|&a, &b| {
+            let (la, lb) = (steps_low(a), steps_low(b));
+            let (da, db) = (comb(a).depth, comb(b).depth);
+            lb.cmp(&la)
+                .then(if la {
+                    da.total_cmp(&db)
+                } else {
+                    db.total_cmp(&da)
+                })
+                .then(by_turn(a, b))
+        }),
+    }
     let mut port = vec![0.0; teeth.len()];
-    for (j, &k) in by_turn.iter().enumerate() {
+    for (j, &k) in seq.iter().enumerate() {
         port[k] = teeth[movable[j]].t;
     }
     // A tooth whose turn is its new port drops straight; one that steps
-    // across steps at least [`STEP_MIN`].
+    // across steps at least [`STEP_MIN`], and under an order that goes
+    // by the way it steps, that way still.
     let step = |k: usize| comb(k).turn - port[k];
     let straight = |k: usize| step(k).abs() <= EPS;
     for &k in &movable {
         let c = comb(k);
+        if order != Order::Turn && (step(k) < 0.0) != steps_low(k) {
+            return None;
+        }
         if straight(k) {
             // (Only a tooth that runs on outwards past its turn.)
             if c.pinned() || c.path.len() < 4 {
@@ -509,12 +741,8 @@ fn plan_side(sc: &Scene, teeth: &[Tooth], fr: Frame, deal: Deal) -> Option<Vec<R
     // The teeth stepping low (their turn below their port), from the
     // track nearest the side: the lowest port first; those stepping
     // high, the highest port first.
-    let low: Vec<usize> = by_turn
-        .iter()
-        .copied()
-        .filter(|&k| step(k) < -EPS)
-        .collect();
-    let high: Vec<usize> = by_turn
+    let low: Vec<usize> = seq.iter().copied().filter(|&k| step(k) < -EPS).collect();
+    let high: Vec<usize> = seq
         .iter()
         .rev()
         .copied()
@@ -566,13 +794,49 @@ fn plan_side(sc: &Scene, teeth: &[Tooth], fr: Frame, deal: Deal) -> Option<Vec<R
             .label
             .as_ref()
             .and_then(|(_, at, _)| relabel(&c.path, &local, fr, *at, straight(k)));
+        let legs = if straight(k) { 2 } else { 4 };
         out.push(Redraw {
             edge: tooth.edge,
             corners,
+            changed: Changed::of(fr, &c.path, &local, legs),
+            shift: (port[k] - tooth.t).abs(),
             label,
         });
     }
     Some(out)
+}
+
+/// The rows of the teeth `way` (stepping one way): `(tooth, row)`, the
+/// row nearest the side 0. Read off the tracks from the side outwards,
+/// a tooth whose track lies beyond what every tooth before it could
+/// take ([`Comb::hi`]: where its path runs on past its turn) starts a
+/// new row — a hub's leaves on two rows are stepped to in the gap in
+/// front of the hub and in the gap between the rows, and no tooth to
+/// the near row has a track in the far gap.
+fn rows(teeth: &[Tooth], way: &[usize]) -> Vec<(usize, usize)> {
+    let comb = |k: usize| teeth[k].comb.as_ref().expect("movable tooth");
+    let mut by_depth = way.to_vec();
+    by_depth.sort_by(|&a, &b| {
+        comb(a)
+            .depth
+            .total_cmp(&comb(b).depth)
+            .then(teeth[a].edge.cmp(&teeth[b].edge))
+    });
+    let (mut row, mut reach) = (0, f64::NEG_INFINITY);
+    by_depth
+        .into_iter()
+        .enumerate()
+        .map(|(j, k)| {
+            let c = comb(k);
+            if j > 0 && c.depth > reach + EPS {
+                row += 1;
+                reach = c.hi;
+            } else {
+                reach = reach.max(c.hi);
+            }
+            (k, row)
+        })
+        .collect()
 }
 
 /// The ports of one side (`teeth` in port order) spread one pitch
@@ -616,6 +880,8 @@ fn plan_even(sc: &Scene, teeth: &[Tooth], fr: Frame) -> Option<Vec<Redraw>> {
         out.push(Redraw {
             edge: tooth.edge,
             corners,
+            changed: Changed::of(fr, &c.path, &local, 4),
+            shift: (port - tooth.t).abs(),
             label,
         });
     }
@@ -862,6 +1128,27 @@ impl World {
     }
 }
 
+/// Whether any line crosses the legs a deal redraws ([`Redraw::changed`])
+/// of a tooth of `teeth` (in the side coordinates of `fr`).
+fn is_crossed(w: &World, teeth: &[Tooth], fr: Frame) -> bool {
+    teeth.iter().any(|t| {
+        let Some(c) = &t.comb else {
+            return false;
+        };
+        let legs: Vec<Pt> = c.path[..c.path.len().min(4)]
+            .iter()
+            .map(|&q| fr.screen(q))
+            .collect();
+        let bb = bounds_of(&legs);
+        (0..w.lines.len()).any(|j| {
+            j != t.edge
+                && w.drawn[j]
+                && near(bb, w.bounds[j], 0.0)
+                && cross_count(&legs, &w.lines[j]) > 0
+        })
+    })
+}
+
 /// Whether the redrawn edges `plan` cross fewer lines than they do now
 /// (no more, unless `fewer`) and hit nothing more: boxes (but their
 /// own, and no nearer one than they came), frame borders, title chips
@@ -875,35 +1162,50 @@ impl World {
 /// them, and are not held against the comb ([`stub_of`]) — unless they
 /// come to lie on top of each other.
 fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fan: &[(usize, bool)], fewer: bool) -> bool {
-    // The changed edges as (edge, line now, bounds now).
-    let new: Vec<(usize, &[Pt], Rect)> = plan
+    // The changed edges as (edge, line now, bounds now, the legs that
+    // change). What lies clear of those legs, before and after, an edge
+    // meets alike either way: every count below is taken of the two
+    // states alike, so it is left out of both.
+    type State<'a> = [(usize, &'a [Pt], Rect, &'a Changed)];
+    let new: Vec<(usize, &[Pt], Rect, &Changed)> = plan
         .iter()
-        .map(|p| (p.edge, p.corners.as_slice(), bounds_of(&p.corners)))
+        .map(|p| {
+            (
+                p.edge,
+                p.corners.as_slice(),
+                bounds_of(&p.corners),
+                &p.changed,
+            )
+        })
         .collect();
-    let old: Vec<(usize, &[Pt], Rect)> = plan
+    let old: Vec<(usize, &[Pt], Rect, &Changed)> = plan
         .iter()
-        .map(|p| (p.edge, w.lines[p.edge].as_slice(), w.bounds[p.edge]))
+        .map(|p| {
+            (
+                p.edge,
+                w.lines[p.edge].as_slice(),
+                w.bounds[p.edge],
+                &p.changed,
+            )
+        })
         .collect();
     // Every pair of a changed edge and another drawn edge, each pair
     // once, the other edge as drawn in the same state.
-    let pairs = |state: &[(usize, &[Pt], Rect)], gap: f64, f: PairFn| {
-        for (k, &(i, a, ba)) in state.iter().enumerate() {
-            for j in 0..w.lines.len() {
-                if j == i || !w.drawn[j] {
-                    continue;
-                }
-                let (b, bb) = match state.iter().position(|s| s.0 == j) {
-                    Some(q) if q < k => continue,
-                    Some(q) => (state[q].1, state[q].2),
-                    None => (w.lines[j].as_slice(), w.bounds[j]),
-                };
+    let pairs = |state: &State, gap: f64, f: PairFn| {
+        for (k, &(i, a, ba, ca)) in state.iter().enumerate() {
+            for &(j, b, bb, _) in &state[k + 1..] {
                 if near(ba, bb, gap) {
                     f(i, j, a, b);
                 }
             }
+            for j in 0..w.lines.len() {
+                if w.drawn[j] && ca.near(w.bounds[j], gap) && plan.iter().all(|p| p.edge != j) {
+                    f(i, j, a, &w.lines[j]);
+                }
+            }
         }
     };
-    let crossings = |state: &[(usize, &[Pt], Rect)]| {
+    let crossings = |state: &State| {
         let mut n = 0;
         pairs(state, 0.0, &mut |_, _, a, b| n += cross_count(a, b));
         n
@@ -913,9 +1215,9 @@ fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fan: &[(usize, bool)], fewer: b
         return false;
     }
     // Boxes, frame borders, title chips and labels.
-    let hits = |state: &[(usize, &[Pt], Rect)]| {
+    let hits = |state: &State| {
         let mut n = 0;
-        for &(i, line, bb) in state {
+        for &(i, line, _, ch) in state {
             let own = w.ends[i];
             for (v, nd) in sc.nodes.iter().enumerate() {
                 let r = (
@@ -925,7 +1227,7 @@ fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fan: &[(usize, bool)], fewer: b
                     nd.y + nd.h / 2.0,
                 );
                 let end = EndRef::Node(v);
-                if own.is_some_and(|(a, b)| a == end || b == end) || !near(bb, r, NODE_SEP) {
+                if own.is_some_and(|(a, b)| a == end || b == end) || !ch.near(r, NODE_SEP) {
                     continue;
                 }
                 // Through or grazing a box it does not end on (the
@@ -946,7 +1248,7 @@ fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fan: &[(usize, bool)], fewer: b
             }
             for c in &sc.clusters {
                 let r = (c.x, c.y, c.x + c.w, c.y + c.h);
-                if near(bb, r, 0.0) {
+                if ch.near(r, 0.0) {
                     n += NODE_CRAMP
                         * line
                             .windows(2)
@@ -955,7 +1257,7 @@ fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fan: &[(usize, bool)], fewer: b
                 }
             }
             for &h in &w.heads {
-                if near(bb, h, 0.0) {
+                if ch.near(h, 0.0) {
                     n += line
                         .windows(2)
                         .filter(|s| seg_hits_rect(s[0], s[1], h))
@@ -968,7 +1270,7 @@ fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fan: &[(usize, bool)], fewer: b
     // Labels over lines: a changed line through any label, any line
     // through a changed edge's label (moved with its leg) — how often
     // each label is crossed, in edge order.
-    let labels = |state: &[(usize, &[Pt], Rect)], after: bool| -> Vec<usize> {
+    let labels = |state: &State, after: bool| -> Vec<usize> {
         let mut out = Vec::new();
         for (j, e) in sc.edges.iter().enumerate() {
             let Some((_, c, lw)) = &e.label else {
@@ -985,12 +1287,21 @@ fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fan: &[(usize, bool)], fewer: b
             let mut n = 0;
             if own.is_some() {
                 for (i, l) in w.lines.iter().enumerate() {
-                    if i != j && w.drawn[i] {
-                        n += through(state.iter().find(|s| s.0 == i).map_or(l, |s| s.1));
+                    if i == j || !w.drawn[i] {
+                        continue;
+                    }
+                    let (l, bb) = state
+                        .iter()
+                        .find(|s| s.0 == i)
+                        .map_or((l.as_slice(), w.bounds[i]), |s| (s.1, s.2));
+                    if near(bb, r, 0.0) {
+                        n += through(l);
                     }
                 }
             } else {
-                for &(_, line, bb) in state {
+                // (By the whole line's bounds: a label counts as it was
+                // once any line crosses it, see below.)
+                for &(_, line, bb, _) in state {
                     if near(bb, r, 0.0) {
                         n += through(line);
                     }
@@ -1014,32 +1325,40 @@ fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fan: &[(usize, bool)], fewer: b
     if hits(&new) + lbl_now > hits(&old) + lbl_was.iter().sum::<usize>() {
         return false;
     }
-    // Nor do the changed lines run beside another closer than the
-    // spacing clear ([`CLEAR_GAP`]) — or closer than two strokes read as
-    // two ([`EDGE_SPACING`]) — for longer than they did: pairs over the
-    // yardstick's least run, and their length.
-    for (gap, least) in [(EDGE_SPACING, MIN_OVERLAP_RUN), (CLEAR_GAP, TIGHT_RUN_MIN)] {
-        let close = |state: &[(usize, &[Pt], Rect)]| {
-            let (mut n, mut len) = (0usize, 0.0);
-            pairs(state, gap, &mut |i, j, a, b| {
-                // (Round an end the two share they run in side by side,
-                // as its ports space them: the yardstick's port zone.)
-                let zones: Vec<Rect> = match (w.ends[i], w.ends[j]) {
-                    (Some((a0, a1)), Some((b0, b1))) => [a0, a1]
-                        .into_iter()
-                        .filter(|&x| x == b0 || x == b1)
-                        .map(|x| {
-                            let r = end_rect(sc, x);
-                            (
-                                r.0 - PORT_ZONE,
-                                r.1 - PORT_ZONE,
-                                r.2 + PORT_ZONE,
-                                r.3 + PORT_ZONE,
-                            )
-                        })
-                        .collect(),
-                    _ => Vec::new(),
-                };
+    // Nor do the changed lines run beside another closer than two
+    // strokes read as two ([`EDGE_SPACING`]) — or closer than the spacing
+    // clear ([`CLEAR_GAP`]) — for longer than they did: pairs over the
+    // yardstick's least run, and their length, for each of the two.
+    const GAPS: [(f64, f64); 2] = [(EDGE_SPACING, MIN_OVERLAP_RUN), (CLEAR_GAP, TIGHT_RUN_MIN)];
+    let close = |state: &State| {
+        let mut out = [(0usize, 0.0); 2];
+        pairs(state, CLEAR_GAP, &mut |i, j, a, b| {
+            // (Most pairs whose bounds come that near run nowhere beside
+            // each other: nothing to measure. A changed edge's line is
+            // all axis legs, so what runs beside it, it runs beside.)
+            if !comes_beside(a, b, CLEAR_GAP) {
+                return;
+            }
+            // (Round an end the two share they run in side by side, as
+            // its ports space them: the yardstick's port zone.)
+            let mut zones = [(0.0, 0.0, 0.0, 0.0); 2];
+            let mut shared = 0;
+            if let (Some((a0, a1)), Some((b0, b1))) = (w.ends[i], w.ends[j]) {
+                for x in [a0, a1] {
+                    if x == b0 || x == b1 {
+                        let r = end_rect(sc, x);
+                        zones[shared] = (
+                            r.0 - PORT_ZONE,
+                            r.1 - PORT_ZONE,
+                            r.2 + PORT_ZONE,
+                            r.3 + PORT_ZONE,
+                        );
+                        shared += 1;
+                    }
+                }
+            }
+            let zones = &zones[..shared];
+            for (k, (gap, least)) in GAPS.into_iter().enumerate() {
                 // (Beside, not on top of each other: less what two
                 // stubs of the combed side run side by side. A fan whose
                 // ports stand closer than the spacing clear has them run
@@ -1049,30 +1368,40 @@ fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fan: &[(usize, bool)], fewer: b
                 // fan could be put in order.)
                 let stubs = match (stub_of(fan, i, a), stub_of(fan, j, b)) {
                     (Some(sa), Some(sb)) if gap > EDGE_SPACING => {
-                        beside(&sa, &sb, gap, &zones).max(beside(&sb, &sa, gap, &zones))
+                        beside(&sa, &sb, gap, zones).max(beside(&sb, &sa, gap, zones))
                     }
                     _ => 0.0,
                 };
-                let l = beside(a, b, gap, &zones).max(beside(b, a, gap, &zones)) - stubs;
-                n += usize::from(l > least);
-                len += l.max(0.0);
-            });
-            (n, len)
-        };
-        let (was, now) = (close(&old), close(&new));
-        if now.0 > was.0 || now.1 > was.1 + 1.0 {
-            return false;
-        }
+                let l = beside(a, b, gap, zones).max(beside(b, a, gap, zones)) - stubs;
+                out[k].0 += usize::from(l > least);
+                out[k].1 += l.max(0.0);
+            }
+        });
+        out
+    };
+    let (was, now) = (close(&old), close(&new));
+    // (A tooth whose port moves along its side has its track that much
+    // longer or shorter, and runs that much longer beside whatever line
+    // it ran beside within the spacing clear: that is no new pair of
+    // lines side by side, and not held against the comb — fan073 of the
+    // hub-fan set, where two ports changing places to undo a crossing
+    // lengthened by their pitch the run of two tracks 10 px apart in
+    // the gap between the leaves' rows. On top of each other is another
+    // matter, whatever the length.)
+    let shifts: f64 = plan.iter().map(|p| p.shift).sum();
+    let slack = [1.0, 1.0 + shifts];
+    if (0..GAPS.len()).any(|k| now[k].0 > was[k].0 || now[k].1 > was[k].1 + slack[k]) {
+        return false;
     }
     // Nor along a frame's border.
-    let along = |state: &[(usize, &[Pt], Rect)]| -> f64 {
+    let along = |state: &State| -> f64 {
         state
             .iter()
-            .map(|&(_, line, bb)| {
+            .map(|&(_, line, _, ch)| {
                 sc.clusters
                     .iter()
                     .map(|c| (c.x, c.y, c.x + c.w, c.y + c.h))
-                    .filter(|&r| near(bb, r, CLEAR_GAP))
+                    .filter(|&r| ch.near(r, CLEAR_GAP))
                     .map(|r| border_run(line, r))
                     .sum::<f64>()
             })
@@ -1165,6 +1494,27 @@ fn border_run(line: &[Pt], r: Rect) -> f64 {
 /// curve's sample) while that keeps within `gap` of the leg's line.
 fn beside(a: &[Pt], b: &[Pt], gap: f64, zones: &[Rect]) -> f64 {
     let mut len = 0.0;
+    runs_beside(a, b, gap, |vertical, c, lo, hi| {
+        len += outside(vertical, c, lo, hi, zones);
+        true
+    });
+    len
+}
+
+/// Whether an axis leg of `a` runs beside `b` closer than `gap` at all
+/// ([`beside`], with no zones, is more than nothing).
+fn comes_beside(a: &[Pt], b: &[Pt], gap: f64) -> bool {
+    let mut any = false;
+    runs_beside(a, b, gap, |_, _, _, _| {
+        any = true;
+        false
+    });
+    any
+}
+
+/// The runs [`beside`] measures, each handed to `f` as (the leg is
+/// vertical?, its line, the run's span along it) until `f` says stop.
+fn runs_beside(a: &[Pt], b: &[Pt], gap: f64, mut f: impl FnMut(bool, f64, f64, f64) -> bool) {
     for u in a.windows(2) {
         let Some((au, cu, u0, u1)) = axis_leg(u[0], u[1]) else {
             continue;
@@ -1186,19 +1536,21 @@ fn beside(a: &[Pt], b: &[Pt], gap: f64, zones: &[Rect]) -> f64 {
                 (at(t0).min(at(t1)), at(t0).max(at(t1)))
             };
             let (lo, hi) = (lo.max(u0), hi.min(u1));
-            if hi > lo {
-                len += outside(au, cu, lo, hi, zones);
+            if hi > lo && !f(au, cu, lo, hi) {
+                return;
             }
         }
     }
-    len
 }
 
 /// The length of the run `lo..hi` along the axis line at `c` (a
-/// vertical one when `vertical`) that lies in none of the `zones`.
+/// vertical one when `vertical`) that lies in none of the `zones` (two
+/// at most: the ends two edges share).
 fn outside(vertical: bool, c: f64, lo: f64, hi: f64, zones: &[Rect]) -> f64 {
-    let mut runs = vec![(lo, hi)];
-    for z in zones {
+    // (Each zone cuts a run in two at most.)
+    let mut runs = [(lo, hi), (0.0, 0.0), (0.0, 0.0), (0.0, 0.0)];
+    let mut n = 1;
+    for z in zones.iter().take(2) {
         let (c0, c1, z0, z1) = if vertical {
             (z.0, z.2, z.1, z.3)
         } else {
@@ -1207,13 +1559,19 @@ fn outside(vertical: bool, c: f64, lo: f64, hi: f64, zones: &[Rect]) -> f64 {
         if c < c0 || c > c1 {
             continue;
         }
-        runs = runs
-            .into_iter()
-            .flat_map(|(a, b)| [(a, b.min(z0)), (a.max(z1), b)])
-            .filter(|r| r.1 > r.0)
-            .collect();
+        let mut cut = [(0.0, 0.0); 4];
+        let mut m = 0;
+        for &(a, b) in &runs[..n] {
+            for r in [(a, b.min(z0)), (a.max(z1), b)] {
+                if r.1 > r.0 {
+                    cut[m] = r;
+                    m += 1;
+                }
+            }
+        }
+        (runs, n) = (cut, m);
     }
-    runs.iter().map(|r| (r.1 - r.0).max(0.0)).sum()
+    runs[..n].iter().map(|r| r.1 - r.0).sum()
 }
 
 /// An axis leg as (vertical?, its line, span low, span high).
@@ -1239,7 +1597,17 @@ pub(crate) fn label_box(e: &SceneEdge, c: Pt, w: f64) -> Rect {
 fn cross_count(a: &[Pt], b: &[Pt]) -> usize {
     let mut n = 0;
     for u in a.windows(2) {
+        let (x0, x1) = (u[0].0.min(u[1].0), u[0].0.max(u[1].0));
+        let (y0, y1) = (u[0].1.min(u[1].1), u[0].1.max(u[1].1));
         for v in b.windows(2) {
+            // (Two segments whose bounds lie apart cross nowhere.)
+            if v[0].0.max(v[1].0) < x0
+                || v[0].0.min(v[1].0) > x1
+                || v[0].1.max(v[1].1) < y0
+                || v[0].1.min(v[1].1) > y1
+            {
+                continue;
+            }
             n += usize::from(segs_cross(u[0], u[1], v[0], v[1]));
         }
     }
@@ -1410,7 +1778,7 @@ mod tests {
             tooth(&sc, 2, &z(28.0, 40.0, 200.0)),
         ];
         let fr = Frame::of(Side::Bottom);
-        let plan = plan_side(&sc, &teeth, fr, Deal::Anchored).expect("a plan");
+        let plan = plan_side(&sc, &teeth, fr, Order::Turn, Deal::Anchored).expect("a plan");
         let port = |edge: usize| {
             plan.iter()
                 .find(|r| r.edge == edge)
@@ -1443,7 +1811,8 @@ mod tests {
             .collect();
         let mut again = again;
         again.sort_by(|a, b| a.t.total_cmp(&b.t));
-        assert!(plan_side(&sc, &again, fr, Deal::Anchored).is_some_and(|p| p.is_empty()));
+        let settled = plan_side(&sc, &again, fr, Order::Turn, Deal::Anchored);
+        assert!(settled.is_some_and(|p| p.is_empty()));
     }
 
     #[test]
@@ -1727,5 +2096,230 @@ mod tests {
             assert_eq!(changed, 0, "{name}");
             assert!(moved.iter().all(|m| !m), "{name}");
         }
+    }
+
+    /// The three hub fans of the reviewer's set used below: one hub, its
+    /// leaves wrapped onto two rows.
+    const FAN047: &str = "flowchart TB\n  hub[\"hub node\"]\n\
+        hub --> l0[\"iota theta kappa zeta<br/>eta kappa\"]\n\
+        hub --> l1[\"lambda alpha beta alpha<br/>mu iota\"]\n\
+        hub --> l2[\"kappa eta delta<br/>zeta theta delta\"]\n\
+        hub --> l3(\"zeta mu mu zeta kappa\")\n  hub --> l4[\"nu xi\"]\n\
+        hub --> l5([\"zeta beta\"])\n";
+    const FAN073: &str = "flowchart TB\n  hub[\"hub node\"]\n\
+        hub --> l0([\"theta kappa gamma theta epsilon\"])\n\
+        hub --> l1[\"iota iota delta theta<br/>eta nu\"]\n\
+        hub --> l2([\"zeta iota eta theta\"])\n  hub --> l3(\"xi alpha\")\n\
+        hub --> l4{\"theta\"}\n  hub --> l5[\"gamma delta alpha<br/>omicron epsilon\"]\n";
+    const FAN085: &str = "flowchart TD\n  hub[\"hub node\"]\n\
+        hub --> l0([\"xi beta zeta omicron delta<br/>kappa delta\"])\n\
+        hub --> l1([\"xi xi iota delta nu\"])\n\
+        hub --> l2([\"eta beta alpha lambda iota<br/>kappa lambda\"])\n\
+        hub --> l3{\"lambda delta lambda xi<br/>mu beta\"}\n  hub --> l4(\"alpha eta\")\n\
+        hub --> l5{\"xi\"}\n  hub --> l6(\"alpha epsilon<br/>xi\")\n\
+        hub --> l7{\"eta iota nu<br/>delta\"}\n  hub --> l8[\"nu epsilon<br/>beta gamma\"]\n\
+        hub --> l9[\"zeta delta gamma\"]\n  hub --> l10(\"eta iota nu\")\n\
+        hub --> l11{\"gamma xi\"}\n  hub --> l12[\"epsilon gamma iota<br/>mu lambda\"]\n\
+        hub --> l13{\"iota gamma iota iota iota\"}\n  hub --> l14([\"kappa mu\"])\n\
+        hub --> l15([\"kappa lambda lambda<br/>eta kappa lambda\"])\n  src[source] --> hub\n";
+
+    /// B11 review r2 #3: a hub whose leaves wrap onto two rows steps to
+    /// the near row in the gap in front of it and to the far row in the
+    /// gap beyond, so its tracks cannot follow its turns, and the first
+    /// rounds left such a fan as it came: fan047, `hub --> l4` to the
+    /// near row across the stub of `hub --> l1` to the far row (byte
+    /// for byte the drawing from before the package); fan085, 14
+    /// crossings under its hub. The ports follow the rows.
+    #[test]
+    fn a_two_row_fan_is_a_comb_in_scene_and_route() {
+        for (name, src) in [("fan047", FAN047), ("fan073", FAN073), ("fan085", FAN085)] {
+            let g = parse(src).unwrap();
+            let sc = scene(&g);
+            let at: Vec<Pt> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+            for (mode, s) in [("scene", &sc), ("route", &route(&g, &at))] {
+                let (x, ports) = fan(s, "hub", Side::Bottom);
+                assert!(ports.len() >= 5, "{name} {mode}: {} ends", ports.len());
+                assert_eq!(x, 0, "{name} {mode}: crossings inside the fan");
+                let m = crate::quality::measure(&g, s);
+                assert_eq!(
+                    (m.fan_x, m.overlap_pairs, m.edge_node_pairs),
+                    (0, 0, 0),
+                    "{name} {mode}: {:?}",
+                    m.details
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn the_ports_follow_the_rows_where_the_tracks_cannot_follow_the_turns() {
+        // Five teeth stepping low off a side at n = 0: three to a near
+        // row (their paths run on to 62 and 71 px out), two to a far one
+        // with their tracks in the gap beyond it. The fourth port's
+        // tooth, to the near row, steps across the stub of the third's,
+        // to the far row (fan047's `hub --> l4` and `hub --> l1`).
+        let sc = plain(5);
+        let z =
+            |t: f64, d: f64, turn: f64, far: f64| vec![(t, 0.0), (t, d), (turn, d), (turn, far)];
+        let teeth = vec![
+            tooth(&sc, 0, &z(0.0, 20.0, -380.0, 62.0)),
+            tooth(&sc, 1, &z(14.0, 33.0, -195.0, 62.0)),
+            tooth(&sc, 2, &z(28.0, 136.0, -374.0, 177.0)),
+            tooth(&sc, 3, &z(42.0, 45.0, -64.0, 71.0)),
+            tooth(&sc, 4, &z(56.0, 148.5, -170.0, 186.0)),
+        ];
+        let line = |k: usize| teeth[k].comb.as_ref().unwrap().path.clone();
+        assert_eq!(cross_count(&line(2), &line(3)), 1);
+        let fr = Frame::of(Side::Bottom);
+        // By the turns the far row's teeth would take the second and the
+        // fourth port, and no deal has tracks for that: a tooth to the
+        // near row cannot step in the far gap.
+        assert!(plan_side(&sc, &teeth, fr, Order::Turn, Deal::Anchored).is_none());
+        assert!(plan_side(&sc, &teeth, fr, Order::Turn, Deal::Pooled).is_none());
+        // The rows: a track beyond what every tooth before it could
+        // take starts a new one.
+        let mut by_tooth = rows(&teeth, &[0, 1, 2, 3, 4]);
+        by_tooth.sort_unstable();
+        assert_eq!(by_tooth, vec![(0, 0), (1, 0), (2, 1), (3, 0), (4, 1)]);
+        // Row by row — and by the tracks as they lie, which here is the
+        // same — the two change ports, every track stays, and no tooth
+        // crosses another.
+        for (order, deal) in [(Order::Rows, Deal::Anchored), (Order::Track, Deal::Keep)] {
+            let plan = plan_side(&sc, &teeth, fr, order, deal).expect("a plan");
+            let mut moved: Vec<(usize, Pt)> = plan.iter().map(|r| (r.edge, r.corners[1])).collect();
+            moved.sort_by_key(|m| m.0);
+            assert_eq!(
+                moved,
+                vec![(2, (42.0, 136.0)), (3, (28.0, 45.0))],
+                "{order:?}"
+            );
+            assert!(plan.iter().all(|r| r.shift == 14.0), "{order:?}");
+            let now = |k: usize| {
+                plan.iter()
+                    .find(|r| r.edge == k)
+                    .map_or_else(|| line(k), |r| r.corners.clone())
+            };
+            for a in 0..5 {
+                for b in a + 1..5 {
+                    assert_eq!(cross_count(&now(a), &now(b)), 0, "{order:?}: {a} x {b}");
+                }
+            }
+        }
+        // A tooth that would have to step the other way keeps the side
+        // out of these orders: its turn lies between the ports.
+        let mut inside = teeth;
+        inside[3] = tooth(&sc, 3, &z(42.0, 45.0, 35.0, 71.0));
+        assert!(plan_side(&sc, &inside, fr, Order::Rows, Deal::Anchored).is_none());
+        assert!(plan_side(&sc, &inside, fr, Order::Track, Deal::Keep).is_none());
+    }
+
+    /// B11 review r2 #1: under a drag the judging works to a budget
+    /// ([`DRAG_WORK`]), counted in the pairs of lines a plan has
+    /// [`keeps`] measure; outside a drag there is none.
+    #[test]
+    fn a_drag_frame_judges_to_a_budget() {
+        let g = parse("flowchart TD\n  a0 --- b0\n  a1 --- b1\n  a2 --- b2\n  a3 --- b3").unwrap();
+        let sc = scene(&g);
+        let cx = crate::edgepass::ctx(&g, &sc);
+        let w = World::new(&sc, &cx);
+        let fr = Frame::of(Side::Bottom);
+        // A redrawn edge with a changed leg right across the drawing —
+        // every other line comes near it — and one changed far away.
+        let plan = |legs: &[Pt]| {
+            vec![Redraw {
+                edge: 0,
+                corners: w.lines[0].clone(),
+                changed: Changed::of(fr, legs, legs, 4),
+                shift: 0.0,
+                label: None,
+            }]
+        };
+        let mid = (w.bounds[1].1 + w.bounds[1].3) / 2.0;
+        let wide = plan(&[(-1e4, mid), (1e4, mid)]);
+        let far = plan(&[(9e5, 9e5), (9e5, 9.1e5)]);
+        assert_eq!((pair_count(&w, &wide), pair_count(&w, &far)), (3, 0));
+        // (Two redrawn edges are a pair themselves.)
+        let mut two = plan(&[(9e5, 9e5), (9e5, 9.1e5)]);
+        two.extend(plan(&[(9e5, 9e5), (9e5, 9.1e5)]));
+        two[1].edge = 1;
+        assert_eq!(pair_count(&w, &two), 1);
+        let mut free = Budget(None);
+        assert!((0..100).all(|_| free.take(&w, &wide)));
+        // A plan past what is left is not judged and costs nothing; a
+        // cheaper one after it still is.
+        let mut drag = Budget(Some(4));
+        assert!(drag.take(&w, &wide));
+        assert!(!drag.take(&w, &wide));
+        assert_eq!(drag.0, Some(1));
+        assert!(drag.take(&w, &two) && drag.take(&w, &far));
+        assert_eq!(drag.0, Some(0));
+    }
+
+    /// A fan of a few teeth is combed under a drag as in `route()` (the
+    /// budget is for the hubs of dense drawings); a hub past it is left
+    /// as the stages before drew it, every tooth on the axes.
+    #[test]
+    fn zz_probe_drag() {
+        for (name, src) in [("fan047", FAN047), ("fan073", FAN073), ("fan085", FAN085)] {
+            let g = parse(src).unwrap();
+            let sc = scene(&g);
+            let base: Vec<Pt> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let mut out = String::new();
+            for who in ["hub", "l1", "l4", "l0", "l3"] {
+                let v = sc.nodes.iter().position(|n| n.id == who).unwrap();
+                for d in [(1.0, 0.0), (40.0, 0.0), (0.0, 30.0), (0.0, -20.0), (100.0, 0.0), (-30.0, 0.0), (-100.0, 20.0), (15.0, 15.0), (200.0, 0.0), (-200.0, 0.0), (0.0, 60.0)] {
+                    let mut at = base.clone();
+                    at[v] = (at[v].0 + d.0, at[v].1 + d.1);
+                    let part = crate::scene::route_partial(&g, &at, &sc, &base);
+                    out.push_str(&format!("{who}{d:?}={} ", fan(&part, "hub", Side::Bottom).0));
+                }
+            }
+            eprintln!("PROBE {name}: {out}");
+        }
+    }
+
+    #[test]
+    fn a_small_fan_is_combed_under_a_drag_and_a_big_hub_stays_on_the_axes() {
+        for (name, src) in [("fan047", FAN047), ("fan073", FAN073)] {
+            let g = parse(src).unwrap();
+            let sc = scene(&g);
+            let base: Vec<Pt> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let hub = sc.nodes.iter().position(|n| n.id == "hub").unwrap();
+            for d in [(1.0, 0.0), (40.0, 0.0)] {
+                let mut at = base.clone();
+                at[hub] = (at[hub].0 + d.0, at[hub].1 + d.1);
+                let part = crate::scene::route_partial(&g, &at, &sc, &base);
+                assert_eq!(
+                    fan(&part, "hub", Side::Bottom).0,
+                    0,
+                    "{name} dragged {d:?}: crossings inside the fan"
+                );
+            }
+        }
+        // dense-td's hub dragged across the drawing: twelve long teeth
+        // against every line they pass, past the frame's budget.
+        let g = fixture("dense-td");
+        let sc = scene(&g);
+        let base: Vec<Pt> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let hub = sc.nodes.iter().position(|n| n.id == "n16").unwrap();
+        let mut at = base.clone();
+        at[hub] = (at[hub].0 + 180.0, at[hub].1 + 140.0);
+        let part = crate::scene::route_partial(&g, &at, &sc, &base);
+        let mut teeth = 0;
+        for e in part
+            .edges
+            .iter()
+            .filter(|e| e.from == "n16" || e.to == "n16")
+        {
+            let straight = e.waypoints.is_empty();
+            assert!(
+                straight || ortho_corners(e).is_some_and(|c| c.len() >= 2),
+                "{} -> {}: on the axes",
+                e.from,
+                e.to
+            );
+            teeth += 1;
+        }
+        assert!(teeth >= 12, "{teeth} ends on the hub");
     }
 }

@@ -53,6 +53,18 @@ pub(crate) const HOP_JOIN: f64 = HOP_R;
 /// Room (px) a hop keeps past a corner's rounding ([`CORNER_R`]) on its
 /// own leg, so its arcs spring from the straight stretch.
 const HOP_CORNER_AIR: f64 = 2.0;
+/// On a long leg the stroke leaves its line sooner before a corner: the
+/// spline through a path's waypoints turns over the whole stretch from
+/// the leg's far end, and lies 0.3 px off the line a 50th of the leg
+/// and [`HOP_LONG_AIR`] before the corner — the room of a rounding and
+/// its air on a leg of 470 px, 42 px on one of 1 800 px. A foot keeps
+/// that far from the corner, so both its arcs spring from the line and
+/// come out the quarter circles they are (B11 review r2 #5: dense-td's
+/// `n16 -> n23`, a foot 24 px before the corner of a leg 1 792 px long
+/// stood 0.5 px off its line).
+const HOP_LONG_LEG: f64 = 50.0;
+/// See [`HOP_LONG_LEG`].
+const HOP_LONG_AIR: f64 = 6.5;
 /// Least distance (px) of a hop from a corner of the line it steps
 /// over — of its line where the corner lies below it, of its crown
 /// where the corner lies above: from there on that line's stroke runs
@@ -277,10 +289,11 @@ pub(crate) fn legs_for_pick(sc: &Scene) -> Legs {
             };
             // What each end of the leg keeps clear: for its own hops'
             // feet, and for the middle of a hop over it.
+            let long = ((p.0 - q.0).abs() + (p.1 - q.1).abs()) / HOP_LONG_LEG + HOP_LONG_AIR;
             let clear = |at_start: bool| -> (f64, f64) {
                 let g = glyph[usize::from(!at_start)];
                 match (is_end(at_start), g) {
-                    (false, _) => (CORNER_R + HOP_CORNER_AIR, HOP_OVER_CORNER),
+                    (false, _) => ((CORNER_R + HOP_CORNER_AIR).max(long), HOP_OVER_CORNER),
                     (true, true) => (head + HOP_HEAD_AIR, head + HOP_R + 1.0),
                     (true, false) => (HOP_END_AIR, HOP_R + 2.0),
                 }
@@ -447,7 +460,10 @@ impl Legs {
         };
         // Neighbouring hops join into bridges (none across a crossing
         // that bars one); a bridge whose feet find no straight stretch
-        // gives up its outermost crossings until they do.
+        // gives up its outermost crossings until they do. A crossing
+        // given up takes no hop, so the foot keeps as clear of it as of
+        // any other that takes none: the next one within a foot and a
+        // join of it is given up as well.
         let mut out = Vec::new();
         let mut k = 0;
         while k < xs.len() {
@@ -458,23 +474,25 @@ impl Legs {
                 }
                 (end, r) = (end + 1, r.max(rn));
             }
-            let (mut a, mut b) = (k, end);
-            while a <= b && xs[a].0 - r < leg.ok_lo - EPS {
-                a += 1;
-            }
-            while b >= a && b > 0 && xs[b].0 + r > leg.ok_hi + EPS {
-                b -= 1;
-            }
-            if a <= b && xs[b].0 + r <= leg.ok_hi + EPS {
-                let hop = Hop {
-                    y: leg.at,
-                    x0: xs[a].0,
-                    x1: xs[b].0,
-                    r,
-                    over: b - a + 1,
-                };
-                if !cramped(hop.x0, hop.x1, r) && self.clear(leg, &hop) {
-                    out.push(hop);
+            let reach = r + HOP_JOIN;
+            let low = (k..=end).find(|&a| {
+                xs[a].0 - r >= leg.ok_lo - EPS && (a == k || xs[a].0 - xs[a - 1].0 > reach)
+            });
+            let high = (k..=end).rev().find(|&b| {
+                xs[b].0 + r <= leg.ok_hi + EPS && (b == end || xs[b + 1].0 - xs[b].0 > reach)
+            });
+            if let (Some(a), Some(b)) = (low, high) {
+                if a <= b {
+                    let hop = Hop {
+                        y: leg.at,
+                        x0: xs[a].0,
+                        x1: xs[b].0,
+                        r,
+                        over: b - a + 1,
+                    };
+                    if !cramped(hop.x0, hop.x1, r) && self.clear(leg, &hop) {
+                        out.push(hop);
+                    }
                 }
             }
             k = end + 1;
@@ -814,6 +832,89 @@ mod tests {
             let sc = paths(&[level, trunk, &turn]);
             assert_eq!(find(&sc)[0].len(), hops, "turning at {x}");
             assert_pick_is_paint(&sc, "cramped");
+        }
+    }
+
+    /// B11 review r2 #2: a bridge that gives up its outermost crossing —
+    /// the foot would stand in the level leg's own corner room — keeps
+    /// its foot a join clear of that crossing like of any other that
+    /// takes no hop. Before, the hop over the next line was drawn with
+    /// its foot on the one given up, which then got neither hop nor gap
+    /// and read as joined to the level line (fan085 of the hub-fan set;
+    /// the reviewer's bipartite input in `route()`, `a1 --> b4` at
+    /// `a4 --> b1`).
+    #[test]
+    fn a_foot_keeps_clear_of_a_crossing_its_bridge_gave_up() {
+        // A path turning into its level leg at x = 100: a foot stands
+        // no nearer the corner than the rounding and its air.
+        let level: &[Pt] = &[(100.0, 0.0), (100.0, 50.0), (400.0, 50.0)];
+        let room = 100.0 + CORNER_R + HOP_CORNER_AIR;
+        // Too near the corner for a hop of its own.
+        let near = room + HOP_R - 3.0;
+        let plumb = |x: f64| [(x, 0.0), (x, 100.0)];
+        for (gap, hops) in [
+            // Right beside it (the reviewer's 4.6 px): the foot of a hop
+            // here would stand on the line given up.
+            (4.6, 0),
+            (HOP_R + HOP_JOIN, 0),
+            // A foot and a join on: a hop of its own, clear of it.
+            (HOP_R + HOP_JOIN + 1.0, 1),
+        ] {
+            let (first, second) = (plumb(near), plumb(near + gap));
+            let sc = paths(&[level, &first, &second]);
+            let found = find(&sc);
+            assert_eq!(found[0].len(), hops, "{gap} px on: {:?}", found[0]);
+            if let Some(h) = found[0].first() {
+                assert_eq!((h.x0, h.x1, h.over), (near + gap, near + gap, 1));
+                assert!(h.span().0 - near > HOP_JOIN, "{:?}", h.span());
+            }
+            assert_pick_is_paint(&sc, "given up");
+        }
+        // Three lines in one bridge, the first given up: the hop spans
+        // the other two only where its foot is clear of the first.
+        for (gap, over) in [(7.0, 0), (11.0, 2)] {
+            let (a, b, c) = (plumb(near), plumb(near + gap), plumb(near + gap + 9.0));
+            let sc = paths(&[level, &a, &b, &c]);
+            let found = find(&sc);
+            let n: usize = found[0].iter().map(|h| h.over).sum();
+            assert_eq!(n, over, "{gap} px on: {:?}", found[0]);
+            assert_pick_is_paint(&sc, "bridge");
+        }
+        // The same at the far end of the leg, mirrored.
+        let level: &[Pt] = &[(0.0, 50.0), (300.0, 50.0), (300.0, 0.0)];
+        let near = 300.0 - CORNER_R - HOP_CORNER_AIR - HOP_R + 3.0;
+        for (gap, hops) in [(4.6, 0), (HOP_R + HOP_JOIN + 1.0, 1)] {
+            let (first, second) = (plumb(near), plumb(near - gap));
+            let sc = paths(&[level, &first, &second]);
+            assert_eq!(find(&sc)[0].len(), hops, "{gap} px before");
+            assert_pick_is_paint(&sc, "given up, far end");
+        }
+    }
+
+    /// B11 review r2 #5: on a long leg the stroke leaves its line well
+    /// before the corner's rounding, and a foot keeps that much further
+    /// from the corner ([`HOP_LONG_LEG`]) — on dense-td's `n16 -> n23`
+    /// a foot 24 px before the corner of a 1 792 px leg stood 0.5 px off
+    /// the line, and its arc came out 5.5 px high.
+    #[test]
+    fn a_foot_keeps_further_from_the_corner_of_a_long_leg() {
+        let plumb = |x: f64| [(x, 0.0), (x, 100.0)];
+        for (len, room) in [
+            (300.0, CORNER_R + HOP_CORNER_AIR),
+            (1800.0, 1800.0 / HOP_LONG_LEG + HOP_LONG_AIR),
+        ] {
+            // A level leg `len` long that turns down at its far end.
+            let level: &[Pt] = &[(0.0, 50.0), (len, 50.0), (len, 300.0)];
+            for (before, hop) in [(room + HOP_R - 1.0, false), (room + HOP_R + 1.0, true)] {
+                let line = plumb(len - before);
+                let sc = paths(&[level, &line]);
+                assert_eq!(
+                    find(&sc)[0].len(),
+                    usize::from(hop),
+                    "a {len} px leg, {before} px before its corner"
+                );
+                assert_pick_is_paint(&sc, "long leg");
+            }
         }
     }
 
