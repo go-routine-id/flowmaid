@@ -339,6 +339,19 @@ pub(crate) fn along(dir: Direction, p: (f64, f64)) -> f64 {
 /// only while its reroutes come out clean: an edge it improved but left
 /// still touching something is searched again on a second run, and may
 /// move.
+
+fn dbg_stage(sc: &Scene, tag: &str) {
+    let Ok(node) = std::env::var("FMDBG") else { return };
+    for (i, e) in sc.edges.iter().enumerate() {
+        if e.from != node && e.to != node { continue; }
+        let pts: Vec<String> = match crate::router::ortho_corners(e) {
+            Some(c) => c.iter().map(|p| format!("({:.1},{:.1})", p.0, p.1)).collect(),
+            None => e.bezier.iter().map(|p| format!("~({:.1},{:.1})", p.0, p.1)).collect(),
+        };
+        eprintln!("[{tag}] E{i} {}->{} {}", e.from, e.to, pts.join(" "));
+    }
+}
+
 pub(crate) fn finish(g: &Graph, sc: &mut Scene, mode: Mode) {
     finish_fixed(g, sc, mode, &[]);
 }
@@ -368,10 +381,13 @@ pub(crate) fn finish_held(g: &Graph, sc: &mut Scene, mode: Mode, fixed: &[bool],
     }
     let mut moved = vec![false; sc.edges.len()];
     crate::ports::assign(g, sc, &cx, mode, &mut moved);
+    dbg_stage(sc, "assign");
     // Every edge on the axes, its corners rounded (report §2.1): from the
     // ends the ports stage settled, before the router judges them.
     crate::ortho::orthogonalize(g, sc, &mut cx, mode);
+    dbg_stage(sc, "ortho");
     crate::router::repair(g, sc, &cx, mode, &mut moved);
+    dbg_stage(sc, "repair");
     // A rerouted end may have switched to another side of its node and
     // landed on a port another edge already holds: space those groups
     // again. Groups the router left alone are already spaced and stay
@@ -381,10 +397,15 @@ pub(crate) fn finish_held(g: &Graph, sc: &mut Scene, mode: Mode, fixed: &[bool],
     // keeps) the final ends; in the static scene it ends by putting each
     // side's ends in the order their paths now head (G9).
     crate::router::nudge(g, sc, &cx, mode, &mut moved);
+    dbg_stage(sc, "nudge");
     // Then two unrelated edges the nudge (or the builder) left side by
     // side under the spacing get one moved clear, where that costs
     // nothing else (G4).
     crate::router::spread_close(g, sc, &cx, mode, &mut moved);
+    // A fan's teeth nest: its ports, tracks and turns in one order
+    // (report B4, see `comb`).
+    crate::comb::comb(sc, &cx, &mut moved);
+    dbg_stage(sc, "comb");
     glyph_stubs(sc, &cx, &mut moved);
     straight_cubics(sc, &cx);
     square_s_cubics(sc, &cx);

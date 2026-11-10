@@ -36,6 +36,7 @@
 pub mod advance;
 pub mod architecture;
 mod casing;
+mod comb;
 pub mod class;
 pub(crate) mod clearance;
 mod compound;
