@@ -1,0 +1,12 @@
+flowchart TD
+    subgraph A[A]
+        a1 --> a2
+    end
+    A -->|self| A
+    a2 --> a1
+    subgraph E[members without edges]
+        e1
+        e2
+        e3
+    end
+    a2 --> e2

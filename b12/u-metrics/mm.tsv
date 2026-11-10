@@ -1,0 +1,9 @@
+name	engine	dir	W	H	area	aspect	nodes	edges	frames	top_frames	compact_mean	compact_max	compact_max_id	span_max	span_max_id	sib_pairs	sib_side	sib_stacked	sib_stagger	frame_overlap	frame_foreign_nodes	xframe_runs	xframe_len	xframe_edges	node_hits	crossings	hops	edge_len	straight_max	straight_max_edge	bends	lbl_n	lbl_off_mean	lbl_off_max	lbl_endpx_mean	lbl_endpx_max	lbl_detach_max	lbl_lbl	lbl_node	lbl_struck	membership	edge_ends	warn
+advanced	mermaid	TD	906	1484	1344164	0.61	14	19	3	2	5.33	8.24	Platform	0.428	Platform	1	0	1	0	0	0	0	0	0	0	0	0	5024	862	Rollback>[Platform]	31	4	0.214	0.327	55	89	0.2	0	0	0	struct	id	0
+bench-75	mermaid	LR	4327	1058	4577611	4.09	21	75	5	5	5.33	9.88	edge	0.161	ops	10	0	10	0	0	0	0	0	0	0	228	168	106034	3914	user>ext	352	0	NA	NA	NA	NA	NA	0	0	0	struct	id	0
+dense-lr	mermaid	LR	4959	3858	19132164	1.29	52	42	11	5	3.74	6.92	g1	0.195	g1	11	1	10	0	0	0	0	0	0	0	10	9	78383	3001	n17>n47	160	21	0.182	0.370	767	2656	0.5	0	0	0	struct	id	0
+dense-td	mermaid	TD	4131	4378	18085549	0.94	46	47	10	3	8.77	15.12	g8	0.308	g1	4	0	4	0	0	0	0	0	0	0	68	60	142183	3237	n46>[g9]	246	21	0.184	0.410	1276	2484	2.5	0	0	0	struct	id	0
+fanout-frames	mermaid	LR	648	2271	1472859	0.29	22	7	6	6	2.24	2.66	g5	0.618	g1	15	15	0	0	0	0	0	0	0	0	0	0	4253	1207	n0>[g1]	12	0	NA	NA	NA	NA	NA	0	0	0	struct	id	0
+infra-overview	mermaid	TD	2199	2358	5184964	0.93	22	27	5	5	3.25	4.59	PROD	0.308	PROD	10	2	8	0	0	0	0	0	0	0	16	16	30835	1236	R2>[STG]	100	20	0.130	0.329	558	986	0.5	0	0	0	struct	id	0
+state	mermaid	TD	649	886	574666	0.73	15	16	1	1	4.78	4.78	Validating	0.123	Validating	0	0	0	0	0	0	0	0	0	0	0	0	2139	361	Rejected>Idle	13	5	0.104	0.288	100	233	0.5	0	0	0	struct+5geom	id+geom	0
+subgraph	mermaid	TD	466	749	349034	0.62	8	8	2	1	5.08	5.82	platform	0.590	platform	0	0	0	0	0	0	0	0	0	0	0	0	843	94	GW>Auth	8	0	NA	NA	NA	NA	NA	0	0	0	struct	id	0

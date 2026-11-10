@@ -1,0 +1,10 @@
+flowchart TD
+    A[Source A] --> M1
+    B[Source B] --> M2
+    subgraph S["A long block title that covers the first member · region one<br/>second line of the title"]
+        M1[first member]
+        M2[second member]
+        M1 --> M3[third]
+        M2 --> M3
+    end
+    M3 --> Z[Sink]

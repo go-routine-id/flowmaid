@@ -1,0 +1,11 @@
+flowchart BT
+    subgraph A[A long title for block A that is wide]
+        a1[a1] --> a2[a2]
+    end
+    subgraph B[Another long title for block B]
+        b1[b1] --> b2[b2]
+    end
+    x([x]) --> a1
+    x --> b1
+    a2 --> b1
+    b2 --> a1

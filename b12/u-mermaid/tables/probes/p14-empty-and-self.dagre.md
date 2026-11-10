@@ -1,0 +1,47 @@
+#### p14-empty-and-self.dagre.svg  (canvas 780 x 372, flow axis y)
+
+Blocks (cluster rectangles):
+
+| block | depth | parent | x | y | w | h | share of flow extent | member nodes | inner layers (nodes per layer, in flow order) |
+|---|---|---|---|---|---|---|---|---|---|
+| A | 0 | - | 210 | 8 | 527 | 190 | 51% | 2 (2 incl. nested) | 1 / 1 |
+| E | 0 | - | 8 | 269 | 626 | 95 | 26% | 3 (3 incl. nested) | 3 |
+
+Bands of top-level items along the flow (a band = items whose flow intervals overlap; `[X]` = block):
+
+| band | from | to | size | items in cross-axis order | gap to next band |
+|---|---|---|---|---|---|
+| 0 | 8 | 198 | 190 | [A] | 71 |
+| 1 | 269 | 364 | 95 | [E] | - |
+
+Top-level blocks: 2; bands: 2; staggered bands (items chained by partial overlap, no flow coordinate common to all of them - i.e. not one layer): none.
+
+Sides of block frames crossed by inter-block edges: enters via top: 1, leaves via bottom: 1.
+
+Edges: 4 total, 3 with both ends in the same top-level block (intra) and 1 between different top-level items (inter); 1 have a block (not a node) as an end.
+
+Where the cross-flow runs (the "bus" segments, >= 8 px) of inter-block edges lie:
+
+| place | edges with a run here | total run length | distinct lanes (flow coordinates) |
+|---|---|---|---|
+
+| inter-block edge | from (block) | to (block) | bands | cross-flow runs |
+|---|---|---|---|---|
+| L_a2_e2_0 | a2 (A) | e2 (E) | 0 -> 1 | straight |
+
+Edges drawn through a block they do not belong to: none.
+
+Edges drawn over a node that is not their end: none.
+
+Edges drawn over a block title: L_a2_e2_0 over title of [E].
+
+Edge labels:
+
+| label of edge | size | place | off its own line | path distance to nearer end | fraction along path | overlaps |
+|---|---|---|---|---|---|---|
+| L_A_A_0 | 22x21 | band 0 beside blocks | 11 | 0 | 0.00 | - |
+
+Labels: 1; more than 12 px off their own line: 0; more than 300 px of path from the nearer end: 0; overlapping something: 0.
+
+Totals: canvas area 0.29 Mpx2, edge length 559 px, bends 7, edge crossings (drawn polylines) 0.
+

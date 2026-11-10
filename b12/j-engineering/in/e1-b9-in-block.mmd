@@ -1,0 +1,17 @@
+flowchart TD
+    u([user]) --> a1
+    subgraph A[Outer block with border edges]
+        a1[entry] --> a2[middle]
+        subgraph R[Row block]
+            direction LR
+            r1[one] --> r2[two] --> r3[three]
+        end
+        a2 --> R
+        R --> a3[exit]
+    end
+    subgraph B[Second block]
+        b1[b one] --> b2[b two]
+    end
+    a3 --> b1
+    b2 --> a1
+    u --> b2

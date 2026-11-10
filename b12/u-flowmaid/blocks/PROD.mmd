@@ -1,0 +1,8 @@
+flowchart TD
+ARGO[deploy controller · secrets operator<br/>metrics, logs and dashboards · network plugin]
+TR1[ingress proxy :80/:443]
+VAULT[host services: secret store · web frontend<br/>VPN · firewall · backups]
+LANE[product A production lane<br/>account x3 · general x3 · invoice x3<br/>ocr x3 · tools x1 · mail worker x1]
+PG[database · object store<br/>cache · message queue]
+TR1 --> LANE
+LANE --> PG

@@ -1,0 +1,522 @@
+--- d-global/tree/src/layout.rs	2026-11-10 16:21:46.640602074 +0000
++++ spec/tree/src/layout.rs	2026-11-10 18:17:16.459853037 +0000
+@@ -2435,6 +2435,24 @@
+     // B12 PROTOTYPE (d-global): block-aware layering. Every subgraph is
+     // one unit of its parent level and takes a contiguous layer interval.
+     if let Some(nc) = node_cluster {
++        B12_QUIET.with(|q| q.set(false));
++        if b12_mode() > 0 {
++            let bl = block_layers(g, nc, rank_only);
++            // SPEC EXPERIMENT: the trigger. Block layers equal to the flat
++            // layers and no drawn edge turned: leave the 0.38 path alone.
++            if std::env::var("FM_B12_TRIG").is_ok() {
++                let same = bl == layer
++                    && g.edges.iter().enumerate().all(|(ei, e)| {
++                        ei >= ne || e.from == e.to || (bl[e.to] < bl[e.from]) == back[ei]
++                    });
++                if std::env::var("FM_B12_DUMP").is_ok() {
++                    eprintln!("B12 trigger: same={same}");
++                }
++                if same {
++                    B12_QUIET.with(|q| q.set(true));
++                }
++            }
++        }
+         if b12_mode() > 0 {
+             let bl = block_layers(g, nc, rank_only);
+             for (ei, e) in g.edges.iter().enumerate() {
+@@ -2478,7 +2496,13 @@
+ /// B12 prototype switch: `FM_B12` = 0 (off), 1 (block layers, reversed
+ /// edges as lanes), 2 (block layers, reversed inter-block edges in
+ /// channels; the default).
++thread_local! {
++    static B12_QUIET: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
++}
+ pub(crate) fn b12_mode() -> u8 {
++    if B12_QUIET.with(|q| q.get()) {
++        return 0;
++    }
+     match std::env::var("FM_B12").ok().as_deref() {
+         Some("0") => 0,
+         Some("1") => 1,
+@@ -3572,26 +3596,98 @@
+     // When clustered, each round finishes by regrouping every layer so
+     // subgraph members stay contiguous, and the crossing count (hence
+     // keep-best) is measured on that contiguous ordering.
++    // SPEC EXPERIMENT: several starts (the written order, then seeded
++    // shuffles), each ordered level-first; the fewest layered crossings
++    // win, the earlier start on a tie.
++    let nstarts: u64 = if clustered && b12_mode() > 0 {
++        std::env::var("FM_B12_STARTS").ok().and_then(|s| s.parse().ok()).unwrap_or(1)
++    } else {
++        1
++    };
++    let seed0: u64 = std::env::var("FM_B12_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or(0);
++    let orig_layers = layers.clone();
++    let mut overall: Option<(usize, Vec<Vec<usize>>)> = None;
++    for start in 0..nstarts {
++    layers = orig_layers.clone();
++    let seed = seed0 + start;
++    if seed > 0 {
++        let mut st = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
++        for lv in layers.iter_mut() {
++            for i in (1..lv.len()).rev() {
++                st = st.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
++                let j = ((st >> 33) as usize) % (i + 1);
++                lv.swap(i, j);
++            }
++        }
++    }
+     let mut pos = vec![0.0f64; na];
+     for lv in &layers {
+         for (i, &v) in lv.iter().enumerate() {
+             pos[v] = i as f64;
+         }
+     }
+-    if clustered {
+-        let keys = cluster_keys(&layers, &apath, &border_side);
+-        for lv in layers.iter_mut() {
+-            enforce_contiguity(lv, &apath, &border_side, &mut pos, &keys);
++    let lvl_pin: Option<LvlKeys> =
++        if clustered && b12_mode() > 0 && std::env::var("FM_B12_LVL").is_ok() {
++            Some(level_order(&layers, &succs, &alayer, &apath, nlayers))
++        } else {
++            None
++        };
++    let regroup = |layers: &mut Vec<Vec<usize>>, pos: &mut Vec<f64>| {
++        let base = cluster_keys(layers, &apath, &border_side);
++        for (li, lv) in layers.iter_mut().enumerate() {
++            if let Some(pin) = &lvl_pin {
++                let mut keys = (base.0.clone(), base.1.clone());
++                for (&(kind, id), &k) in &pin[li] {
++                    if kind == 0 {
++                        keys.1.insert(id, k);
++                    } else {
++                        keys.0[id] = k + 0.5 * base.0[id];
++                    }
++                }
++                enforce_contiguity(lv, &apath, &border_side, pos, &keys);
++            } else {
++                enforce_contiguity(lv, &apath, &border_side, pos, &base);
++            }
+         }
++    };
++    if clustered {
++        regroup(&mut layers, &mut pos);
+     }
+     let mut best_layers = layers.clone();
+     let mut best_cross = count_crossings(&layers, &succs, &alayer, nlayers);
+-    for _ in 0..8 {
++    let rounds = if lvl_pin.is_some() { 16 } else { 8 };
++    for _ in 0..rounds {
+         for li in 1..nlayers {
+             reorder(&mut layers[li], &preds, &mut pos);
++            if lvl_pin.is_some() {
++                regroup(&mut layers, &mut pos);
++            }
++        }
++        if lvl_pin.is_some() {
++            // Judge the downward half of the round too.
++            let mut cand = layers.clone();
++            let mut cpos = pos.clone();
++            transpose(
++                &mut cand,
++                &preds,
++                &succs,
++                &mut cpos,
++                nlayers,
++                Some(&apath),
++                Some(&border_side),
++            );
++            regroup(&mut cand, &mut cpos);
++            let c = count_crossings(&cand, &succs, &alayer, nlayers);
++            if c < best_cross {
++                best_cross = c;
++                best_layers = cand;
++            }
+         }
+         for li in (0..nlayers.saturating_sub(1)).rev() {
+             reorder(&mut layers[li], &succs, &mut pos);
++            if lvl_pin.is_some() {
++                regroup(&mut layers, &mut pos);
++            }
+         }
+         transpose(
+             &mut layers,
+@@ -3603,10 +3699,7 @@
+             if clustered { Some(&border_side) } else { None },
+         );
+         if clustered {
+-            let keys = cluster_keys(&layers, &apath, &border_side);
+-            for lv in layers.iter_mut() {
+-                enforce_contiguity(lv, &apath, &border_side, &mut pos, &keys);
+-            }
++            regroup(&mut layers, &mut pos);
+         }
+         let c = count_crossings(&layers, &succs, &alayer, nlayers);
+         if c < best_cross {
+@@ -3617,7 +3710,160 @@
+             break;
+         }
+     }
++    if overall.as_ref().map_or(true, |o| best_cross < o.0) {
++        overall = Some((best_cross, best_layers));
++    }
++    }
++    let (mut best_cross, best_layers) = overall.unwrap();
++    let mut pos = vec![0.0f64; na];
++    let lvl_pin: Option<LvlKeys> = if clustered && b12_mode() > 0 && std::env::var("FM_B12_LVL").is_ok() {
++        Some(Vec::new())
++    } else {
++        None
++    };
+     layers = best_layers;
++    if std::env::var("FM_B12_DUMP").is_ok() {
++        let mut ipos = vec![0usize; alayer.len()];
++        for lv in &layers {
++            for (i, &v) in lv.iter().enumerate() {
++                ipos[v] = i;
++            }
++        }
++        let per: Vec<usize> = (0..nlayers.saturating_sub(1))
++            .map(|li| gap_crossings(&layers[li], &succs, &alayer, li, &ipos))
++            .collect();
++        eprintln!("B12 sweep: layered crossings {best_cross} per gap {per:?}");
++        for (li, lv) in layers.iter().enumerate() {
++            let names: Vec<String> = lv
++                .iter()
++                .map(|&v| {
++                    if v < n {
++                        g.nodes[v].id.clone()
++                    } else if border_side.get(v).copied().unwrap_or(0) != 0 {
++                        format!("|{}", apath[v].last().copied().unwrap_or(99))
++                    } else {
++                        format!("d{}{:?}", v - n, apath.get(v).map(|p| p.as_slice()).unwrap_or(&[]))
++                    }
++                })
++                .collect();
++            eprintln!("B12 order {li}: {}", names.join(" "));
++        }
++    }
++    // SPEC EXPERIMENT: block-level order search. Swap the keys of two
++    // sibling blocks that share a layer, let the sweeps settle, keep the
++    // order when the layered crossing count drops.
++    if clustered && b12_mode() > 0 && std::env::var("FM_B12_BT").is_ok() {
++        use std::collections::BTreeMap;
++        let mut parent: BTreeMap<usize, Option<usize>> = BTreeMap::new();
++        let mut span: BTreeMap<usize, (usize, usize)> = BTreeMap::new();
++        for v in 0..na {
++            for (i, &c) in apath[v].iter().enumerate() {
++                parent.insert(c, if i == 0 { None } else { Some(apath[v][i - 1]) });
++                let l = alayer[v];
++                let e = span.entry(c).or_insert((l, l));
++                e.0 = e.0.min(l);
++                e.1 = e.1.max(l);
++            }
++        }
++        let cl: Vec<usize> = parent.keys().copied().collect();
++        let mut pairs = Vec::new();
++        for (i, &a) in cl.iter().enumerate() {
++            for &b in &cl[i + 1..] {
++                if parent[&a] == parent[&b] && span[&a].0 <= span[&b].1 && span[&b].0 <= span[&a].1 {
++                    pairs.push((a, b));
++                }
++            }
++        }
++        let dump = std::env::var("FM_B12_DUMP").is_ok();
++        if dump {
++            eprintln!("B12 BT: start crossings {best_cross}, pairs {pairs:?}");
++        }
++        let mut pinned: BTreeMap<usize, f64> = BTreeMap::new();
++        for _round in 0..3 {
++            let mut any = false;
++            for &(a, b) in &pairs {
++                let mut cand = layers.clone();
++                let mut cpos = vec![0.0f64; na];
++                for lv in &cand {
++                    for (i, &v) in lv.iter().enumerate() {
++                        cpos[v] = i as f64;
++                    }
++                }
++                let keys0 = cluster_keys(&cand, &apath, &border_side);
++                let (Some(&ka), Some(&kb)) = (keys0.1.get(&a), keys0.1.get(&b)) else {
++                    continue;
++                };
++                let (ka, kb) = (
++                    pinned.get(&a).copied().unwrap_or(ka),
++                    pinned.get(&b).copied().unwrap_or(kb),
++                );
++                let mut cpin = pinned.clone();
++                cpin.insert(a, kb);
++                cpin.insert(b, ka);
++                let regroup = |cand: &mut Vec<Vec<usize>>, cpos: &mut Vec<f64>| {
++                    let mut keys = cluster_keys(cand, &apath, &border_side);
++                    for (&c, &k) in &cpin {
++                        keys.1.insert(c, k);
++                    }
++                    for lv in cand.iter_mut() {
++                        enforce_contiguity(lv, &apath, &border_side, cpos, &keys);
++                    }
++                };
++                regroup(&mut cand, &mut cpos);
++                let mut cbest = cand.clone();
++                let mut cbc = count_crossings(&cand, &succs, &alayer, nlayers);
++                for _ in 0..8 {
++                    for li in 1..nlayers {
++                        reorder(&mut cand[li], &preds, &mut cpos);
++                    }
++                    for li in (0..nlayers.saturating_sub(1)).rev() {
++                        reorder(&mut cand[li], &succs, &mut cpos);
++                    }
++                    transpose(
++                        &mut cand,
++                        &preds,
++                        &succs,
++                        &mut cpos,
++                        nlayers,
++                        Some(&apath),
++                        Some(&border_side),
++                    );
++                    regroup(&mut cand, &mut cpos);
++                    let c = count_crossings(&cand, &succs, &alayer, nlayers);
++                    if c < cbc {
++                        cbc = c;
++                        cbest = cand.clone();
++                    }
++                }
++                if dump {
++                    eprintln!("B12 BT: swap {a} {b} -> {cbc}");
++                }
++                let forced = std::env::var("FM_B12_FORCE")
++                    .ok()
++                    .is_some_and(|f| f.split(';').any(|p| p == format!("{a},{b}")));
++                if std::env::var("FM_B12_FORCE").is_ok() {
++                    if forced && _round == 0 {
++                        best_cross = cbc;
++                        layers = cbest;
++                        pinned = cpin;
++                    }
++                    continue;
++                }
++                if cbc < best_cross {
++                    best_cross = cbc;
++                    layers = cbest;
++                    pinned = cpin;
++                    any = true;
++                }
++            }
++            if !any {
++                break;
++            }
++        }
++        if dump {
++            eprintln!("B12 BT: end crossings {best_cross}");
++        }
++    }
+     // A note card beside a fork/join bar goes past the bar's branches
+     // in its layer, on its own side (after them for `right of`, before
+     // them for `left of`): between two branches it would push them
+@@ -3653,7 +3899,7 @@
+     }
+     // A subgraph [`centre_largest`] moves: its key changes, every layer
+     // regroups around it.
+-    if let (true, Some((c, key))) = (clustered, opts.hint) {
++    if let (true, Some((c, key)), true) = (clustered, opts.hint, lvl_pin.is_none()) {
+         let mut keys = cluster_keys(&layers, &apath, &border_side);
+         keys.1.insert(c, key);
+         for lv in layers.iter_mut() {
+@@ -5931,6 +6177,194 @@
+     boundaries as f64 * CLUSTER_PAD
+ }
+ 
++/// SPEC EXPERIMENT: level-first ordering of the root level. Every
++/// top-level block is one unit per layer, every free node or dummy its
++/// own; links are collapsed to unit pairs with their multiplicity, and a
++/// block is tied to itself across its layers by a heavy link. Weighted
++/// barycentre sweeps + adjacent exchanges from a few starts; the order
++/// with the least weighted crossings comes back as per-layer keys.
++type LvlKeys = Vec<std::collections::BTreeMap<(u8, usize), f64>>;
++fn level_order(
++    layers: &[Vec<usize>],
++    succs: &[Vec<usize>],
++    alayer: &[usize],
++    apath: &[Vec<usize>],
++    nlayers: usize,
++) -> LvlKeys {
++    use std::collections::BTreeMap;
++    type U = (u8, usize);
++    const TIE: f64 = 1000.0;
++    let unit = |v: usize| -> U {
++        if apath[v].is_empty() {
++            (1, v)
++        } else {
++            (0, apath[v][0])
++        }
++    };
++    let mut lu: Vec<Vec<U>> = Vec::with_capacity(nlayers);
++    for lv in layers {
++        let mut us: Vec<U> = Vec::new();
++        for &v in lv {
++            let u = unit(v);
++            if !us.contains(&u) {
++                us.push(u);
++            }
++        }
++        lu.push(us);
++    }
++    let mut gaps: Vec<Vec<(U, U, f64)>> = Vec::new();
++    for li in 0..nlayers.saturating_sub(1) {
++        let mut w: BTreeMap<(U, U), f64> = BTreeMap::new();
++        for &u in &layers[li] {
++            for &v in &succs[u] {
++                if alayer[v] == li + 1 {
++                    let (a, b) = (unit(u), unit(v));
++                    if a != b {
++                        *w.entry((a, b)).or_insert(0.0) += 1.0;
++                    }
++                }
++            }
++        }
++        for &u in &lu[li] {
++            if u.0 == 0 && lu[li + 1].contains(&u) {
++                w.insert((u, u), TIE);
++            }
++        }
++        gaps.push(w.into_iter().map(|((a, b), x)| (a, b, x)).collect());
++    }
++    let index = |ord: &[Vec<U>]| -> Vec<BTreeMap<U, usize>> {
++        ord.iter()
++            .map(|l| l.iter().enumerate().map(|(i, &u)| (u, i)).collect())
++            .collect()
++    };
++    let gap_cost = |ord: &[Vec<U>], li: usize| -> f64 {
++        let ix = index(ord);
++        let es: Vec<(usize, usize, f64)> = gaps[li]
++            .iter()
++            .map(|&(a, b, x)| (ix[li][&a], ix[li + 1][&b], x))
++            .collect();
++        let mut c = 0.0;
++        for i in 0..es.len() {
++            for j in (i + 1)..es.len() {
++                let (p, q) = (es[i], es[j]);
++                if (p.0 < q.0 && p.1 > q.1) || (p.0 > q.0 && p.1 < q.1) {
++                    c += p.2 * q.2;
++                }
++            }
++        }
++        c
++    };
++    let cost = |ord: &[Vec<U>]| -> f64 { (0..gaps.len()).map(|li| gap_cost(ord, li)).sum() };
++    let bary = |ord: &mut Vec<Vec<U>>, li: usize, down: bool| {
++        let ix = index(ord);
++        let mut keyed: Vec<(f64, usize, U)> = Vec::new();
++        for (i, &u) in ord[li].iter().enumerate() {
++            let (mut sw, mut sx) = (0.0, 0.0);
++            if down && li > 0 {
++                for &(a, b, x) in &gaps[li - 1] {
++                    if b == u {
++                        sw += x;
++                        sx += x * ix[li - 1][&a] as f64 / ord[li - 1].len().max(1) as f64;
++                    }
++                }
++            }
++            if !down && li + 1 < ord.len() {
++                for &(a, b, x) in &gaps[li] {
++                    if a == u {
++                        sw += x;
++                        sx += x * ix[li + 1][&b] as f64 / ord[li + 1].len().max(1) as f64;
++                    }
++                }
++            }
++            let key = if sw > 0.0 {
++                sx / sw
++            } else {
++                i as f64 / ord[li].len().max(1) as f64
++            };
++            keyed.push((key, i, u));
++        }
++        keyed.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
++        ord[li] = keyed.into_iter().map(|k| k.2).collect();
++    };
++    let exchange = |ord: &mut Vec<Vec<U>>| {
++        for _ in 0..10 {
++            let mut any = false;
++            for li in 0..ord.len() {
++                for i in 0..ord[li].len().saturating_sub(1) {
++                    let around = |ord: &Vec<Vec<U>>| -> f64 {
++                        let mut c = 0.0;
++                        if li > 0 {
++                            c += gap_cost(ord, li - 1);
++                        }
++                        if li + 1 < ord.len() {
++                            c += gap_cost(ord, li);
++                        }
++                        c
++                    };
++                    let before = around(ord);
++                    ord[li].swap(i, i + 1);
++                    if around(ord) + 1e-9 < before {
++                        any = true;
++                    } else {
++                        ord[li].swap(i, i + 1);
++                    }
++                }
++            }
++            if !any {
++                break;
++            }
++        }
++    };
++    let mut starts: Vec<Vec<Vec<U>>> = vec![lu.clone()];
++    starts.push(lu.iter().map(|l| l.iter().rev().copied().collect()).collect());
++    let mut best = lu.clone();
++    let mut best_c = f64::INFINITY;
++    for start in starts {
++        let mut ord = start;
++        for _ in 0..12 {
++            for li in 1..ord.len() {
++                bary(&mut ord, li, true);
++            }
++            exchange(&mut ord);
++            let c = cost(&ord);
++            if c + 1e-9 < best_c {
++                best_c = c;
++                best = ord.clone();
++            }
++            for li in (0..ord.len().saturating_sub(1)).rev() {
++                bary(&mut ord, li, false);
++            }
++            exchange(&mut ord);
++            let c = cost(&ord);
++            if c + 1e-9 < best_c {
++                best_c = c;
++                best = ord.clone();
++            }
++        }
++    }
++    if std::env::var("FM_B12_DUMP").is_ok() {
++        eprintln!("B12 LVL: root cost {best_c}");
++    }
++    // Keys: a block's ordinal among the blocks of its layer; a free
++    // node's slot (the number of blocks left of it). The order of the
++    // free nodes inside one slot stays with the flat sweeps.
++    best.iter()
++        .map(|l| {
++            let mut k = 0usize;
++            l.iter()
++                .map(|&u| {
++                    if u.0 == 0 {
++                        k += 1;
++                        (u, (k - 1) as f64 + 0.75)
++                    } else {
++                        (u, k as f64)
++                    }
++                })
++                .collect()
++        })
++        .collect()
++}
++
+ /// Ordering keys shared by every layer: per node its normalised in-layer
+ /// position `(i + 0.5) / len`, and per cluster the mean of that over all
+ /// its non-wall members on ALL layers.

@@ -1,0 +1,15 @@
+flowchart LR
+    A[/Source one/] --> H{{Hub hexagon}}
+    B[\Source two\] --> H
+    C[(Source db)] --> H
+    E([Source pill]) --> H
+    H --> P[/Out one/]
+    H --> Q[\Out two\]
+    H --> R[(Out db)]
+    H --> S((Out))
+    P --> Z[(Sink)]
+    Q --> Z
+    R --> Z
+    S --> Z
+    Z --> W{Done?}
+    W -->|no| H

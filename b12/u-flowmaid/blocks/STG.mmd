@@ -1,0 +1,9 @@
+flowchart TD
+TR2[ingress proxy :80/:443]
+PSPROD[PRODUCTION product B<br/>web · queue · scheduler + database<br/>b.example.org]
+LANES4[4 lanes: product A dev/staging<br/>product C dev/staging]
+GITLAB[Git server + registry.example.org<br/>log search + tracing · mail server<br/>databases · object store · cache · queue]
+TR2 --> PSPROD
+TR2 --> LANES4
+LANES4 --> GITLAB
+PSPROD --> GITLAB

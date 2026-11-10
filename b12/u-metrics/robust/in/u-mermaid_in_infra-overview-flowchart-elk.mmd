@@ -1,0 +1,66 @@
+flowchart-elk TD
+    U1([Users of product A<br/>browser])
+    T1([Dev / QA / Ops team])
+    U2([Users of product B<br/>mobile app])
+
+    subgraph GH[Code hosting]
+        R1[org/release-repo<br/>GitOps prod · branch main]
+        R2[org/ops-repo<br/>provisioning for all three servers]
+    end
+
+    subgraph EXT[External services]
+        GW[Mail provider<br/>MX smtp.example.com · SPF]
+        DNS[DNS provider<br/>NS a.ns.example.net<br/>app records: DNS only]
+        TG[Chat bot<br/>alerts]
+        OAI[LLM API<br/>small model for OCR]
+        AZ[Blob storage<br/>credentials live in the app<br/>usage not verified yet]
+    end
+
+    subgraph DR["STANDBY + DEV of product B · server-c · 203.0.113.8<br/>small shared machine<br/>hosts many unrelated sites too"]
+        SITE[public website, apex domain<br/>hosted on this server]
+        DRAPP["standby stack · compose file<br/>database replica + mirrored object store<br/>app ready but switched OFF"]
+        PSDEV[product B DEV<br/>web server + runtime + database<br/>b.dev.example.org]
+    end
+
+    subgraph PROD["PROD · server-a · 203.0.113.177 · region one<br/>large machine<br/>single-node cluster"]
+        ARGO[deploy controller · secrets operator<br/>metrics, logs and dashboards · network plugin]
+        TR1[ingress proxy :80/:443]
+        VAULT[host services: secret store · web frontend<br/>VPN · firewall · backups]
+        LANE[product A production lane<br/>account x3 · general x3 · invoice x3<br/>ocr x3 · tools x1 · mail worker x1]
+        PG[database · object store<br/>cache · message queue]
+    end
+
+    subgraph STG["DEV/STAGING + PROD of product B · server-b · 203.0.113.36 · region two<br/>medium machine<br/>job scheduler · 60 jobs"]
+        TR2[ingress proxy :80/:443]
+        PSPROD[PRODUCTION product B<br/>web · queue · scheduler + database<br/>b.example.org]
+        LANES4[4 lanes: product A dev/staging<br/>product C dev/staging]
+        GITLAB[Git server + registry.example.org<br/>log search + tracing · mail server<br/>databases · object store · cache · queue]
+    end
+
+    U1 -->|a.example.org · *.a.example.org| DNS
+    T1 -->|*.dev · *.staging · *.product · ops dashboards| DNS
+    U2 -->|b.example.org| DNS
+    R1 -->|deploy controller pull| ARGO
+    R2 -->|provisioning| STG
+    R2 -->|playbooks/standby.yml| DR
+    R2 -->|provisioning from a laptop| PROD
+    DNS -->|A 203.0.113.36| TR2
+    DNS -->|b A 203.0.113.36| PSPROD
+    DNS -.->|only on failover: A record changed by hand| DRAPP
+    DNS -->|b.dev A 203.0.113.8| PSDEV
+    DNS -->|example.org proxied| SITE
+    DNS -->|A 203.0.113.177| TR1
+    DRAPP -->|standby-check| TG
+    ARGO -->|alert manager| TG
+    PSPROD -.->|backup failed: on failure| TG
+    TR1 --> LANE
+    LANE --> PG
+    LANE -->|HTTPS| OAI
+    LANE -.-> AZ
+    LANE -->|SMTP mail.example.org| GITLAB
+    ARGO -->|pull image| GITLAB
+    PG -->|SSH tunnel: streaming replication + mirror every 15 min| DRAPP
+    TR2 --> PSPROD
+    TR2 --> LANES4
+    LANES4 --> GITLAB
+    PSPROD --> GITLAB

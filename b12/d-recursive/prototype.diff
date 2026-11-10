@@ -1,0 +1,1447 @@
+diff -ruN tree/src/blocks.rs /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/d-recursive/tree/src/blocks.rs
+--- tree/src/blocks.rs	1970-01-01 00:00:00.000000000 +0000
++++ /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/d-recursive/tree/src/blocks.rs	2026-11-10 16:42:27.340919671 +0000
+@@ -0,0 +1,1223 @@
++//! PROTOTYPE (B12, design "d-recursive"): every subgraph is a block.
++//!
++//! Each subgraph is laid out on its own, bottom-up, by the whole
++//! pipeline; in its parent it is one node the size of its footprint.
++//! An edge across a block's border is cut at the border: inside the
++//! block it runs between its member and a *gate* (a 2 px node the
++//! block's own layout places on the flow-facing side the edge leaves
++//! through), outside it runs between gates. The pieces are joined into
++//! one scene edge.
++//!
++//! Prototype shortcuts (see design-recursive.md): the level pieces of a
++//! level with child blocks are drawn by the position-driven pipeline
++//! (`route_labelled`) between pins, block-level orientation is read off
++//! a first gate-less pass, `direction` blocks (B9) are left to
++//! `compound.rs`.
++
++use crate::edgepass::{along, refit, Mode};
++use crate::model::{
++    Direction, Edge, EdgeEnds, EdgeKind, EdgeMeta, End, Graph, Node, NodeStyle, PartNode, Shape,
++    Subgraph,
++};
++use crate::scene::{Scene, SceneCluster, SceneEdge, SceneNode};
++
++type Pt = (f64, f64);
++type Rect = (f64, f64, f64, f64);
++
++/// Side of a gate / pin node (px).
++const GATE: f64 = 2.0;
++/// How far a proxy is drawn in from its footprint along the flow in the
++/// pin pass, so a pin on the footprint's border lies clear of it.
++const SHRINK: f64 = 3.0;
++
++fn fl(dir: Direction, p: Pt) -> Pt {
++    match dir {
++        Direction::TD => p,
++        Direction::BT => (p.0, -p.1),
++        Direction::LR => (p.1, p.0),
++        Direction::RL => (p.1, -p.0),
++    }
++}
++
++fn unfl(dir: Direction, p: Pt) -> Pt {
++    match dir {
++        Direction::TD => p,
++        Direction::BT => (p.0, -p.1),
++        Direction::LR => (p.1, p.0),
++        Direction::RL => (-p.1, p.0),
++    }
++}
++
++/// `(x0, y0, x1, y1)` as (breadth lo, breadth hi, flow lo, flow hi).
++fn flrect(dir: Direction, r: Rect) -> Rect {
++    let (a, b) = (fl(dir, (r.0, r.1)), fl(dir, (r.2, r.3)));
++    (a.0.min(b.0), a.0.max(b.0), a.1.min(b.1), a.1.max(b.1))
++}
++
++fn grow(r: &mut Rect, p: Pt) {
++    r.0 = r.0.min(p.0);
++    r.1 = r.1.min(p.1);
++    r.2 = r.2.max(p.0);
++    r.3 = r.3.max(p.1);
++}
++
++thread_local! {
++    /// PROTOTYPE: the pinned ends of the level graph about to be laid
++    /// out: (edge, its start?, proxy node, offset from the proxy's
++    /// top-left corner).
++    static PIN_REQ: std::cell::RefCell<Vec<(usize, bool, usize, f64, f64)>> = const { std::cell::RefCell::new(Vec::new()) };
++}
++
++/// The pinned ends of the level scene `sc`, in its coordinates.
++pub(crate) fn take_pins(sc: &Scene) -> Vec<(usize, bool, Pt)> {
++    PIN_REQ.with(|r| {
++        r.borrow_mut()
++            .drain(..)
++            .filter_map(|(e, src, k, dx, dy)| {
++                let n = sc.nodes.get(k)?;
++                Some((e, src, (n.x - n.w / 2.0 + dx, n.y - n.h / 2.0 + dy)))
++            })
++            .collect()
++    })
++}
++
++thread_local! {
++    /// PROTOTYPE: how far each frame's title is slid along its top side
++    /// (by subgraph id), off the columns edges enter the frame in.
++    static TITLE_DX: std::cell::RefCell<Vec<(String, f64)>> = const { std::cell::RefCell::new(Vec::new()) };
++}
++
++/// The slide of frame `id`'s title (0 = top-left as ever).
++pub(crate) fn title_dx(id: &str) -> f64 {
++    TITLE_DX.with(|t| t.borrow().iter().find(|(k, _)| k == id).map_or(0.0, |(_, d)| *d))
++}
++
++/// A level's frame: its title slides right to the first stretch of the
++/// top side that no gate column above the frame crosses (TD / BT).
++pub(crate) fn slide_titles(g: &Graph, sc: &Scene) {
++    if !matches!(g.direction, Direction::TD | Direction::BT) || std::env::var_os("FMB_NOSLIDE").is_some() {
++        return;
++    }
++    const CLEAR: f64 = 14.0;
++    for (ci, c) in sc.clusters.iter().enumerate() {
++        TITLE_DX.with(|t| t.borrow_mut().retain(|(k, _)| k != &c.id));
++        let chip = crate::scene::title_head(&sc.clusters, ci, f64::INFINITY);
++        let w = chip.2 - chip.0;
++        let mut cols: Vec<f64> = sc
++            .nodes
++            .iter()
++            .filter(|n| n.w <= 2.5 && n.y < c.y && n.x > c.x && n.x < c.x + c.w)
++            .map(|n| n.x)
++            .collect();
++        if !cols.iter().any(|x| *x > chip.0 - CLEAR && *x < chip.2 + CLEAR) {
++            continue;
++        }
++        cols.sort_by(f64::total_cmp);
++        let mut stops = vec![chip.0 - CLEAR];
++        stops.extend(cols);
++        stops.push(c.x + c.w - 6.0 + CLEAR);
++        let mut best: Option<(f64, f64)> = None;
++        for q in stops.windows(2) {
++            let room = q[1] - q[0] - 2.0 * CLEAR;
++            if room >= w {
++                best = Some((q[0] + CLEAR, room));
++                break;
++            }
++            if best.map_or(true, |b| room > b.1) {
++                best = Some((q[0] + CLEAR, room));
++            }
++        }
++        if let Some((x, room)) = best {
++            if room >= w * 0.6 {
++                let dx = x - chip.0;
++                TITLE_DX.with(|t| t.borrow_mut().push((c.id.clone(), dx)));
++            }
++        }
++    }
++}
++
++/// One edge or sub-edge of the graph.
++#[derive(Clone)]
++struct X {
++    sub: Option<usize>,
++    idx: usize,
++    a: End,
++    b: End,
++    from_id: String,
++    to_id: String,
++    label: Option<String>,
++    kind: EdgeKind,
++    ends: EdgeEnds,
++    meta: EdgeMeta,
++    /// Subgraph chains strictly round each end, outermost first.
++    pa: Vec<usize>,
++    pb: Vec<usize>,
++    /// Their common prefix.
++    k: usize,
++    skip: bool,
++}
++
++impl X {
++    fn lca(&self) -> Option<usize> {
++        self.k.checked_sub(1).map(|i| self.pa[i])
++    }
++    fn invisible(&self) -> bool {
++        matches!(self.kind, EdgeKind::Invisible)
++    }
++}
++
++/// A piece of an edge that crosses the block's border: from its inner
++/// end to the gate.
++struct Open {
++    x: usize,
++    src: bool,
++    pts: Vec<Pt>,
++    gate: Pt,
++}
++
++struct Block {
++    nodes: Vec<(usize, SceneNode)>,
++    clusters: Vec<(usize, SceneCluster)>,
++    done: Vec<(usize, SceneEdge)>,
++    open: Vec<Open>,
++    /// Footprint: frame and gates.
++    bbox: Rect,
++    frame: Option<Rect>,
++}
++
++impl Block {
++    fn shift(&mut self, dx: f64, dy: f64) {
++        let mv = |p: &mut Pt| *p = (p.0 + dx, p.1 + dy);
++        for (_, n) in &mut self.nodes {
++            n.x += dx;
++            n.y += dy;
++        }
++        for (_, c) in &mut self.clusters {
++            c.x += dx;
++            c.y += dy;
++        }
++        for (_, e) in &mut self.done {
++            e.bezier.iter_mut().for_each(mv);
++            e.waypoints.iter_mut().for_each(mv);
++            if let Some((_, m, _)) = &mut e.label {
++                mv(m);
++            }
++        }
++        for o in &mut self.open {
++            o.pts.iter_mut().for_each(mv);
++            mv(&mut o.gate);
++        }
++        let b = &mut self.bbox;
++        *b = (b.0 + dx, b.1 + dy, b.2 + dx, b.3 + dy);
++        if let Some(f) = &mut self.frame {
++            *f = (f.0 + dx, f.1 + dy, f.2 + dx, f.3 + dy);
++        }
++    }
++}
++
++struct Cx<'a> {
++    g: &'a Graph,
++    sizes: &'a [(f64, f64)],
++    labels: &'a [String],
++    xs: Vec<X>,
++    back: Vec<bool>,
++    chains: Vec<Vec<usize>>,
++    owner: Vec<Option<usize>>,
++    kids: Vec<Vec<usize>>,
++    tops: Vec<usize>,
++    first: Vec<usize>,
++    pass: u8,
++    /// Pass 1's place of every node and frame (breadth, flow).
++    pos1: Vec<Pt>,
++    sub1: Vec<Pt>,
++}
++
++fn open_kind(k: EdgeKind) -> EdgeKind {
++    match k {
++        EdgeKind::Arrow => EdgeKind::Open,
++        EdgeKind::Dotted => EdgeKind::DottedOpen,
++        EdgeKind::Thick => EdgeKind::ThickOpen,
++        o => o,
++    }
++}
++
++fn plain(id: String) -> Node {
++    Node {
++        id,
++        label: String::new(),
++        shape: Shape::Rect,
++        style: NodeStyle::default(),
++    }
++}
++
++/// An edge's path as points a spline through them redraws.
++fn points(e: &SceneEdge) -> Vec<Pt> {
++    if e.waypoints.len() >= 2 {
++        return e.waypoints.clone();
++    }
++    let b = &e.bezier;
++    let cross = |p: Pt| ((b[3].0 - b[0].0) * (p.1 - b[0].1) - (b[3].1 - b[0].1) * (p.0 - b[0].0)).abs();
++    if cross(b[1]) < 1e-3 && cross(b[2]) < 1e-3 {
++        vec![b[0], b[3]]
++    } else {
++        crate::scene::sample_cubic(b, 16)
++    }
++}
++
++fn join(parts: &[&[Pt]]) -> Vec<Pt> {
++    let mut out: Vec<Pt> = Vec::new();
++    for p in parts {
++        for &q in *p {
++            match out.last() {
++                Some(l) if (l.0 - q.0).abs() < 0.25 && (l.1 - q.1).abs() < 0.25 => {}
++                _ => out.push(q),
++            }
++        }
++    }
++    out
++}
++
++fn mk_edge(x: &X, pts: Vec<Pt>, label: Option<(String, Pt, f64)>) -> SceneEdge {
++    let n = pts.len();
++    SceneEdge {
++        from: x.from_id.clone(),
++        to: x.to_id.clone(),
++        bezier: [pts[0], pts[n / 3], pts[(2 * n / 3).min(n - 1)], pts[n - 1]],
++        waypoints: pts,
++        kind: x.kind,
++        ends: x.ends,
++        meta: x.meta.clone(),
++        label,
++        paint_width: None,
++    }
++}
++
++impl Cx<'_> {
++    /// The unit an end is at the level whose contents lie `d` subgraphs
++    /// deep: a child block it lies inside (`true`), or itself.
++    fn unit(end: End, path: &[usize], d: usize) -> (End, bool) {
++        if path.len() > d {
++            (End::Sub(path[d]), true)
++        } else {
++            (end, false)
++        }
++    }
++
++    fn level(&mut self, f: Option<usize>) -> Option<Block> {
++        let g = self.g;
++        let dir = g.direction;
++        let d = f.map_or(0, |s| self.chains[s].len());
++        let kids: Vec<usize> = match f {
++            Some(s) => self.kids[s].clone(),
++            None => self.tops.clone(),
++        };
++        let mut kid_blocks: Vec<Block> = Vec::with_capacity(kids.len());
++        for &c in &kids {
++            kid_blocks.push(self.level(Some(c))?);
++        }
++        let mut members: Vec<usize> = (0..g.nodes.len())
++            .filter(|&v| self.owner[v] == f)
++            .collect();
++        members.sort_unstable();
++
++        // Units in declaration order.
++        #[derive(Clone, Copy)]
++        enum U {
++            N(usize),
++            B(usize),
++        }
++        let mut units: Vec<(usize, U)> = members.iter().map(|&v| (v, U::N(v))).collect();
++        units.extend(kids.iter().enumerate().map(|(k, &c)| (self.first[c], U::B(k))));
++        units.sort_by_key(|u| (u.0, matches!(u.1, U::N(_))));
++        // Pass 2 seeds the order across the flow with where each unit's
++        // edges out of the block lead (pass 1): a unit with none keeps
++        // its place among its neighbours.
++        if let (Some(s), 2, true) = (f, self.pass, std::env::var_os("FMB_SEED").is_some()) {
++            let mut sum = vec![0.0f64; units.len()];
++            let mut cnt = vec![0usize; units.len()];
++            let unit_of = |end: End, path: &[usize]| -> Option<usize> {
++                let (u, _) = Self::unit(end, path, d);
++                units.iter().position(|x| match (x.1, u) {
++                    (U::N(v), End::Node(w)) => v == w,
++                    (U::B(kk), End::Sub(c)) => kids[kk] == c,
++                    _ => false,
++                })
++            };
++            let far = |end: End| match end {
++                End::Node(v) => self.pos1[v].0,
++                End::Sub(c) => self.sub1[c].0,
++            };
++            for x in &self.xs {
++                if x.skip || x.invisible() {
++                    continue;
++                }
++                if x.pa[x.k..].contains(&s) {
++                    if let Some(u) = unit_of(x.a, &x.pa) {
++                        sum[u] += far(x.b);
++                        cnt[u] += 1;
++                    }
++                }
++                if x.pb[x.k..].contains(&s) {
++                    if let Some(u) = unit_of(x.b, &x.pb) {
++                        sum[u] += far(x.a);
++                        cnt[u] += 1;
++                    }
++                }
++            }
++            if cnt.iter().any(|&c| c > 0) {
++                let all: f64 = sum.iter().sum::<f64>() / cnt.iter().sum::<usize>() as f64;
++                let mut keyed: Vec<(f64, usize, (usize, U))> = units
++                    .iter()
++                    .enumerate()
++                    .map(|(i, u)| (if cnt[i] > 0 { sum[i] / cnt[i] as f64 } else { all }, i, *u))
++                    .collect();
++                keyed.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
++                units = keyed.into_iter().map(|k| k.2).collect();
++            }
++        }
++        let nu = units.len();
++
++        // Gates: (edge, source end?, upstream side?).
++        let mut gates: Vec<(usize, bool, bool)> = Vec::new();
++        if let (Some(s), 2) = (f, self.pass) {
++            for (xi, x) in self.xs.iter().enumerate() {
++                if x.skip || x.invisible() {
++                    continue;
++                }
++                if x.pa[x.k..].contains(&s) {
++                    gates.push((xi, true, self.back[xi]));
++                }
++                if x.pb[x.k..].contains(&s) {
++                    gates.push((xi, false, !self.back[xi]));
++                }
++            }
++        }
++
++        // Gates of one side in the order of their far ends across the
++        // flow (pass 1), so the pieces outside fan out without crossing.
++        {
++            let far = |&(xi, src, _): &(usize, bool, bool)| -> f64 {
++                let x = &self.xs[xi];
++                match if src { x.b } else { x.a } {
++                    End::Node(v) => self.pos1[v].0,
++                    End::Sub(c) => self.sub1[c].0,
++                }
++            };
++            gates.sort_by(|a, b| far(a).total_cmp(&far(b)).then(a.0.cmp(&b.0)));
++        }
++        let mut node_at: Vec<Option<usize>> = vec![None; g.nodes.len()];
++        let mut kid_at = vec![0usize; kids.len()];
++        let mut lsizes: Vec<(f64, f64)> = Vec::new();
++        let mut llabels: Vec<String> = Vec::new();
++        let build_parts = |node_at: &mut Vec<Option<usize>>, kid_at: &mut Vec<usize>| {
++            let mut parts: Vec<PartNode> = Vec::new();
++            for (k, (_, u)) in units.iter().enumerate() {
++                match *u {
++                    U::N(v) => {
++                        node_at[v] = Some(k);
++                        parts.push(PartNode::Of(v));
++                    }
++                    U::B(kk) => {
++                        kid_at[kk] = k;
++                        parts.push(PartNode::New(plain(format!("__blk{}", kids[kk]))));
++                    }
++                }
++            }
++            for gi in 0..gates.len() {
++                parts.push(PartNode::New(plain(format!("__gate{gi}"))));
++            }
++            parts
++        };
++        let parts = build_parts(&mut node_at, &mut kid_at);
++        for (_, u) in &units {
++            match *u {
++                U::N(v) => {
++                    lsizes.push(self.sizes[v]);
++                    llabels.push(self.labels[v].clone());
++                }
++                U::B(kk) => {
++                    let b = kid_blocks[kk].bbox;
++                    lsizes.push((b.2 - b.0, b.3 - b.1));
++                    llabels.push(String::new());
++                }
++            }
++        }
++        for _ in 0..gates.len() {
++            lsizes.push((GATE, GATE));
++            llabels.push(String::new());
++        }
++        let gate_at = |gi: usize| nu + gi;
++        let mut lg = g.part(dir, &parts);
++        lg.block_part = true;
++        lg.flat_leaves = true;
++        if let Some(s) = f {
++            lg.subgraphs.push(Subgraph {
++                id: g.subgraphs[s].id.clone(),
++                title: g.subgraphs[s].title.clone(),
++                nodes: (0..nu).collect(),
++                parent: None,
++                direction: None,
++            });
++        }
++        let lg_of = |u: End| -> Option<usize> {
++            match u {
++                End::Node(v) => node_at[v],
++                End::Sub(c) => kids.iter().position(|&k| k == c).map(|kk| kid_at[kk]),
++            }
++        };
++
++        // Level edges.
++        #[derive(Clone, Copy)]
++        enum Role {
++            Whole(usize),
++            Open(usize),
++            Aux,
++        }
++        let mut roles: Vec<Role> = Vec::new();
++        let mut has_out = vec![false; nu];
++        for (xi, x) in self.xs.iter().enumerate() {
++            if x.skip || x.lca() != f {
++                continue;
++            }
++            let (ua, _) = Self::unit(x.a, &x.pa, d);
++            let (ub, _) = Self::unit(x.b, &x.pb, d);
++            let (Some(ia), Some(ib)) = (lg_of(ua), lg_of(ub)) else {
++                continue;
++            };
++            if ia != ib && !x.invisible() {
++                has_out[ia] = true;
++            }
++            lg.edges.push(Edge {
++                from: ia,
++                to: ib,
++                label: x.label.clone(),
++                kind: x.kind,
++                ends: x.ends,
++                meta: x.meta.clone(),
++                end_room: (0.0, 0.0),
++            });
++            roles.push(if x.invisible() { Role::Aux } else { Role::Whole(xi) });
++        }
++        for (gi, &(xi, src, up)) in gates.iter().enumerate() {
++            let x = &self.xs[xi];
++            let (u, descends) = if src {
++                Self::unit(x.a, &x.pa, d)
++            } else {
++                Self::unit(x.b, &x.pb, d)
++            };
++            let iu = lg_of(u)?;
++            // The head lies on this piece's inner end when that is the
++            // edge's own target.
++            let head = !src && !descends;
++            let (from, to, kind, ends) = if up {
++                let (k, e) = if head {
++                    (x.kind, EdgeEnds { start: None, end: x.ends.end })
++                } else {
++                    (open_kind(x.kind), EdgeEnds::default())
++                };
++                (gate_at(gi), iu, k, e)
++            } else {
++                let e = if head {
++                    EdgeEnds { start: x.ends.end_marker(x.kind), end: None }
++                } else {
++                    EdgeEnds::default()
++                };
++                (iu, gate_at(gi), open_kind(x.kind), e)
++            };
++            lg.edges.push(Edge {
++                from,
++                to,
++                label: None,
++                kind,
++                ends,
++                meta: EdgeMeta::default(),
++                end_room: (0.0, 0.0),
++            });
++            roles.push(Role::Open(gi));
++        }
++        // A gate on the downstream side lies below every unit.
++        for (gi, &(_, _, up)) in gates.iter().enumerate() {
++            if up {
++                continue;
++            }
++            for (u, out) in has_out.iter().enumerate() {
++                if !*out {
++                    lg.edges.push(Edge {
++                        from: u,
++                        to: gate_at(gi),
++                        label: None,
++                        kind: EdgeKind::Invisible,
++                        ends: EdgeEnds::default(),
++                        meta: EdgeMeta::default(),
++                        end_room: (0.0, 0.0),
++                    });
++                    roles.push(Role::Aux);
++                }
++            }
++        }
++        // ... and one on the upstream side above every unit.
++        for (gi, &(_, _, up)) in gates.iter().enumerate() {
++            if !up {
++                continue;
++            }
++            let mut fed = vec![false; nu];
++            for e in &lg.edges {
++                if e.to < nu && e.from < nu && e.from != e.to && !matches!(e.kind, EdgeKind::Invisible) {
++                    fed[e.to] = true;
++                }
++            }
++            for (u, fed) in fed.iter().enumerate() {
++                if !*fed {
++                    lg.edges.push(Edge {
++                        from: gate_at(gi),
++                        to: u,
++                        label: None,
++                        kind: EdgeKind::Invisible,
++                        ends: EdgeEnds::default(),
++                        meta: EdgeMeta::default(),
++                        end_room: (0.0, 0.0),
++                    });
++                    roles.push(Role::Aux);
++                }
++            }
++        }
++
++        // Pins: an end on a child block lies where the child's own layout
++        // put its gate (or, for an edge to the block itself, on its frame).
++        struct Pin {
++            edge: usize,
++            at_from: bool,
++            kk: usize,
++            /// In the child's coordinates, before it is moved.
++            at: Pt,
++            /// Inside the child, inner end → pin; `None` = the child's
++            /// open piece of (`x`, `src`).
++            inner: Option<Vec<Pt>>,
++            x: usize,
++            src: bool,
++        }
++        let mut pins: Vec<Pin> = Vec::new();
++        if self.pass == 2 && std::env::var_os("FMB_ROUTEPASS").is_none() {
++            let frame_pin = |kk: usize, downstream: bool| -> (Pt, Vec<Pt>) {
++                let kb = &kid_blocks[kk];
++                let fr = flrect(dir, kb.frame.unwrap_or(kb.bbox));
++                let bb = flrect(dir, kb.bbox);
++                let (edge_f, bb_f) = if downstream { (fr.3, bb.3) } else { (fr.2, bb.2) };
++                let mut xs: Vec<f64> = kb
++                    .open
++                    .iter()
++                    .map(|o| fl(dir, o.gate))
++                    .filter(|p| (p.1 > (fr.2 + fr.3) / 2.0) == downstream)
++                    .map(|p| p.0)
++                    .collect();
++                let lo = if !downstream && fr.1 - fr.0 > 260.0 { fr.0 + (fr.1 - fr.0) * 0.45 } else { fr.0 + 16.0 };
++                xs.retain(|x| *x > lo && *x < fr.1 - 16.0);
++                xs.push(lo);
++                xs.push(fr.1 - 16.0);
++                xs.sort_by(f64::total_cmp);
++                let mut best = (xs[0], xs[0]);
++                for w in xs.windows(2) {
++                    if w[1] - w[0] > best.1 - best.0 + 1e-6 {
++                        best = (w[0], w[1]);
++                    }
++                }
++                let b = (best.0 + best.1) / 2.0;
++                let pin = unfl(dir, (b, bb_f));
++                let inner = if (edge_f - bb_f).abs() > 0.5 {
++                    vec![unfl(dir, (b, edge_f)), unfl(dir, (b, bb_f))]
++                } else {
++                    Vec::new()
++                };
++                (pin, inner)
++            };
++            for (ei, role) in roles.iter().enumerate() {
++                let le = &lg.edges[ei];
++                // Per end of the level edge: (unit, the edge's end it
++                // stands for, runs on inside?, a whole-block end's side).
++                let ends: [(usize, bool, bool, bool); 2] = match *role {
++                    Role::Aux => continue,
++                    Role::Whole(xi) => {
++                        let x = &self.xs[xi];
++                        let (_, da) = Self::unit(x.a, &x.pa, d);
++                        let (_, db) = Self::unit(x.b, &x.pb, d);
++                        let back = self.back[xi];
++                        [(le.from, true, da, !back), (le.to, false, db, back)]
++                    }
++                    Role::Open(gi) => {
++                        let (xi, src, up) = gates[gi];
++                        let x = &self.xs[xi];
++                        let (_, desc) = if src {
++                            Self::unit(x.a, &x.pa, d)
++                        } else {
++                            Self::unit(x.b, &x.pb, d)
++                        };
++                        [(le.from, src, desc, !up), (le.to, src, desc, !up)]
++                    }
++                };
++                let xi = match *role {
++                    Role::Whole(xi) => xi,
++                    Role::Open(gi) => gates[gi].0,
++                    Role::Aux => continue,
++                };
++                for (which, &(unit, src, desc, downstream)) in ends.iter().enumerate() {
++                    if unit >= nu {
++                        continue;
++                    }
++                    let U::B(kk) = units[unit].1 else { continue };
++                    if desc {
++                        let o = kid_blocks[kk].open.iter().find(|o| o.x == xi && o.src == src)?;
++                        // On the footprint's border, square to the gate.
++                        let bb = flrect(dir, kid_blocks[kk].bbox);
++                        let gp = fl(dir, o.gate);
++                        let f = if (gp.1 - bb.2).abs() < (gp.1 - bb.3).abs() { bb.2 } else { bb.3 };
++                        let at = unfl(dir, (gp.0, f));
++                        pins.push(Pin { edge: ei, at_from: which == 0, kk, at, inner: None, x: xi, src });
++                    } else {
++                        let (at, inner) = frame_pin(kk, downstream);
++                        pins.push(Pin { edge: ei, at_from: which == 0, kk, at, inner: Some(inner), x: xi, src });
++                    }
++                }
++            }
++            let req: Vec<(usize, bool, usize, f64, f64)> = pins
++                .iter()
++                .map(|p| {
++                    let b = kid_blocks[p.kk].bbox;
++                    (p.edge, p.at_from, kid_at[p.kk], p.at.0 - b.0, p.at.1 - b.1)
++                })
++                .collect();
++            PIN_REQ.with(|r| *r.borrow_mut() = req);
++        }
++        let sc = crate::scene::scene_labelled(&lg, &lsizes, &llabels);
++        PIN_REQ.with(|r| r.borrow_mut().clear());
++        if sc.nodes.len() != lg.nodes.len() || sc.edges.len() < lg.edges.len() {
++            return None;
++        }
++        if let Some(dir) = std::env::var_os("FMB_DUMP") {
++            let name = f.map_or("root".to_string(), |s| g.subgraphs[s].id.clone());
++            let p = std::path::Path::new(&dir).join(format!("lg{}-{}.svg", self.pass, name));
++            let _ = std::fs::write(p, crate::scene::to_svg(&sc));
++        }
++        let at = |k: usize| (sc.nodes[k].x, sc.nodes[k].y);
++        let nbox = |k: usize| -> Rect {
++            let n = &sc.nodes[k];
++            (n.x - n.w / 2.0, n.y - n.h / 2.0, n.x + n.w / 2.0, n.y + n.h / 2.0)
++        };
++
++        // Pass 1: which level edges run against the flow.
++        if self.pass == 1 {
++            let mut upd = Vec::new();
++            for (xi, x) in self.xs.iter().enumerate() {
++                if x.skip || x.lca() != f {
++                    continue;
++                }
++                let (ua, _) = Self::unit(x.a, &x.pa, d);
++                let (ub, _) = Self::unit(x.b, &x.pb, d);
++                if let (Some(ia), Some(ib)) = (lg_of(ua), lg_of(ub)) {
++                    upd.push((xi, along(dir, at(ib)) < along(dir, at(ia)) - 0.5));
++                }
++            }
++            for (xi, b) in upd {
++                self.back[xi] = b;
++            }
++        }
++
++        let mut out = Block {
++            nodes: Vec::new(),
++            clusters: Vec::new(),
++            done: Vec::new(),
++            open: Vec::new(),
++            bbox: (f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY),
++            frame: None,
++        };
++        for &v in &members {
++            if let Some(k) = node_at[v] {
++                out.nodes.push((v, sc.nodes[k].clone()));
++            }
++        }
++        let mut kid_shift: Vec<Pt> = Vec::new();
++        for (kk, kb) in kid_blocks.iter_mut().enumerate() {
++            let b = nbox(kid_at[kk]);
++            kid_shift.push((b.0 - kb.bbox.0, b.1 - kb.bbox.1));
++            kb.shift(b.0 - kb.bbox.0, b.1 - kb.bbox.1);
++        }
++        if let Some(s) = f {
++            let c = sc.clusters.iter().find(|c| c.id == g.subgraphs[s].id)?;
++            out.frame = Some((c.x, c.y, c.x + c.w, c.y + c.h));
++            out.clusters.push((s, c.clone()));
++            grow(&mut out.bbox, (c.x, c.y));
++            grow(&mut out.bbox, (c.x + c.w, c.y + c.h));
++        } else {
++            for k in 0..nu {
++                let b = nbox(k);
++                grow(&mut out.bbox, (b.0, b.1));
++                grow(&mut out.bbox, (b.2, b.3));
++            }
++        }
++        for gi in 0..gates.len() {
++            let b = nbox(gate_at(gi));
++            grow(&mut out.bbox, (b.0, b.1));
++            grow(&mut out.bbox, (b.2, b.3));
++        }
++
++        if self.pass == 1 {
++            for kb in kid_blocks {
++                out.nodes.extend(kb.nodes);
++                out.clusters.extend(kb.clusters);
++            }
++            return Some(out);
++        }
++
++        let need_pins = std::env::var_os("FMB_ROUTEPASS").is_some()
++            && lg
++                .edges
++                .iter()
++                .zip(&roles)
++                .any(|(e, r)| !matches!(r, Role::Aux) && [e.from, e.to].iter().any(|&k| k < nu && matches!(units[k].1, U::B(_))));
++
++        if !need_pins {
++            // The piece inside a child at an end of level edge `ei`, inner
++            // end → pin.
++            let inner_of = |ei: usize, at_from: bool| -> Vec<Pt> {
++                let Some(p) = pins.iter().find(|p| p.edge == ei && p.at_from == at_from) else {
++                    return Vec::new();
++                };
++                match &p.inner {
++                    Some(pts) => {
++                        let (dx, dy) = kid_shift[p.kk];
++                        pts.iter().map(|q| (q.0 + dx, q.1 + dy)).collect()
++                    }
++                    None => kid_blocks[p.kk]
++                        .open
++                        .iter()
++                        .find(|o| o.x == p.x && o.src == p.src)
++                        .map_or(Vec::new(), |o| o.pts.clone()),
++                }
++            };
++            for (ei, role) in roles.iter().enumerate() {
++                if matches!(role, Role::Aux) {
++                    continue;
++                }
++                let mid = points(&sc.edges[ei]);
++                let s_in = inner_of(ei, true);
++                let mut t_in = inner_of(ei, false);
++                t_in.reverse();
++                let plain_edge = s_in.is_empty() && t_in.is_empty();
++                let full = join(&[&s_in, &mid, &t_in]);
++                match *role {
++                    Role::Whole(xi) => {
++                        let x = &self.xs[xi];
++                        let e = if plain_edge {
++                            let mut e = sc.edges[ei].clone();
++                            e.from.clone_from(&x.from_id);
++                            e.to.clone_from(&x.to_id);
++                            (e.kind, e.ends) = (x.kind, x.ends);
++                            e
++                        } else {
++                            mk_edge(x, full, sc.edges[ei].label.clone())
++                        };
++                        out.done.push((xi, e));
++                    }
++                    Role::Open(gi) => {
++                        let (xi, src, up) = gates[gi];
++                        let mut pts = full;
++                        if up {
++                            pts.reverse();
++                        }
++                        out.open.push(Open { x: xi, src, pts, gate: at(gate_at(gi)) });
++                    }
++                    Role::Aux => {}
++                }
++            }
++        } else {
++            // The pin pass: every level piece between its pins, the
++            // child blocks plain boxes in the way.
++            let mut node_at2 = vec![None; g.nodes.len()];
++            let mut kid_at2 = vec![0usize; kids.len()];
++            let mut sparts = build_parts(&mut node_at2, &mut kid_at2);
++            let mut centres: Vec<Pt> = (0..lg.nodes.len()).map(at).collect();
++            let mut ssizes = lsizes.clone();
++            for (k, (_, u)) in units.iter().enumerate() {
++                if matches!(u, U::B(_)) {
++                    let s = fl(dir, ssizes[k]);
++                    let s = (s.0.abs(), (s.1.abs() - 2.0 * SHRINK).max(1.0));
++                    let s = unfl(dir, s);
++                    ssizes[k] = (s.0.abs(), s.1.abs());
++                }
++            }
++            let mut slabels = llabels.clone();
++            // Pins: SG node, the piece inside the child (inner end → pin).
++            let mut pin_inner: Vec<Vec<Pt>> = Vec::new();
++            let mut pin_nodes: Vec<usize> = Vec::new();
++            let mut add_pin = |at: Pt, inner: Vec<Pt>, sparts: &mut Vec<PartNode>, centres: &mut Vec<Pt>, ssizes: &mut Vec<(f64, f64)>, slabels: &mut Vec<String>| -> (usize, usize) {
++                let k = sparts.len();
++                sparts.push(PartNode::New(plain(format!("__pin{}", pin_nodes.len()))));
++                centres.push(at);
++                ssizes.push((GATE, GATE));
++                slabels.push(String::new());
++                pin_nodes.push(k);
++                pin_inner.push(inner);
++                (k, pin_nodes.len() - 1)
++            };
++            // A whole-block end: a pin on the footprint's border, on the
++            // side facing the other unit, in the middle of the widest
++            // stretch of the frame's side no gate holds.
++            let frame_pin = |kk: usize, downstream: bool| -> (Pt, Vec<Pt>) {
++                let kb = &kid_blocks[kk];
++                let fr = flrect(dir, kb.frame.unwrap_or(kb.bbox));
++                let bb = flrect(dir, kb.bbox);
++                let (edge_f, bb_f) = if downstream { (fr.3, bb.3) } else { (fr.2, bb.2) };
++                let mut xs: Vec<f64> = kb
++                    .open
++                    .iter()
++                    .map(|o| fl(dir, o.gate))
++                    .filter(|p| (p.1 - bb_f).abs() < GATE * 2.0 || (p.1 - edge_f).abs() < 80.0 && ((p.1 > edge_f) == downstream))
++                    .map(|p| p.0)
++                    .collect();
++                // Keep clear of the title chip on the upstream side of a
++                // TD / LR frame.
++                let lo = if !downstream && fr.1 - fr.0 > 260.0 { fr.0 + (fr.1 - fr.0) * 0.45 } else { fr.0 + 16.0 };
++                xs.retain(|x| *x > lo && *x < fr.1 - 16.0);
++                xs.push(lo);
++                xs.push(fr.1 - 16.0);
++                xs.sort_by(f64::total_cmp);
++                let mut best = (xs[0], xs[0]);
++                for w in xs.windows(2) {
++                    if w[1] - w[0] > best.1 - best.0 + 1e-6 {
++                        best = (w[0], w[1]);
++                    }
++                }
++                let b = (best.0 + best.1) / 2.0;
++                let pin = unfl(dir, (b, if downstream { bb_f - GATE / 2.0 } else { bb_f + GATE / 2.0 }));
++                let inner = if (edge_f - bb_f).abs() > GATE {
++                    vec![unfl(dir, (b, edge_f)), unfl(dir, (b, if downstream { bb_f - GATE } else { bb_f + GATE }))]
++                } else {
++                    Vec::new()
++                };
++                (pin, inner)
++            };
++
++            struct SE {
++                role: Role,
++                rev: bool,
++                pin_s: Option<usize>,
++                pin_t: Option<usize>,
++            }
++            let mut ses: Vec<SE> = Vec::new();
++            let mut sg_edges: Vec<Edge> = Vec::new();
++            for (ei, role) in roles.iter().enumerate() {
++                let le = &lg.edges[ei];
++                // Logical start / end units (LG indices), the edge, and
++                // whether each end runs on inside a child.
++                let (xi, s_unit, t_unit, s_src, s_desc, t_desc, label) = match *role {
++                    Role::Aux => continue,
++                    Role::Whole(xi) => {
++                        let x = &self.xs[xi];
++                        let (_, da) = Self::unit(x.a, &x.pa, d);
++                        let (_, db) = Self::unit(x.b, &x.pb, d);
++                        (xi, le.from, le.to, true, da, db, x.label.clone())
++                    }
++                    Role::Open(gi) => {
++                        let (xi, src, up) = gates[gi];
++                        let x = &self.xs[xi];
++                        let (_, desc) = if src {
++                            Self::unit(x.a, &x.pa, d)
++                        } else {
++                            Self::unit(x.b, &x.pb, d)
++                        };
++                        let inner = if up { le.to } else { le.from };
++                        (xi, inner, gate_at(gi), src, desc, false, None)
++                    }
++                };
++                let x = &self.xs[xi];
++                if s_unit == t_unit {
++                    // A self-loop of the level: as the level drew it.
++                    if let Role::Whole(xi) = *role {
++                        let mut e = sc.edges[ei].clone();
++                        e.from.clone_from(&x.from_id);
++                        e.to.clone_from(&x.to_id);
++                        out.done.push((xi, e));
++                    }
++                    continue;
++                }
++                let s_down = along(dir, at(t_unit)) >= along(dir, at(s_unit));
++                let mut end = |unit: usize, desc: bool, is_src: bool, toward_down: bool, sparts: &mut Vec<PartNode>, centres: &mut Vec<Pt>, ssizes: &mut Vec<(f64, f64)>, slabels: &mut Vec<String>| -> Option<(usize, Option<usize>)> {
++                    if unit >= nu {
++                        return Some((unit, None));
++                    }
++                    match units[unit].1 {
++                        U::N(_) => Some((unit, None)),
++                        U::B(kk) => {
++                            let (p, inner) = if desc {
++                                let o = kid_blocks[kk].open.iter().find(|o| o.x == xi && o.src == is_src)?;
++                                (o.gate, o.pts.clone())
++                            } else {
++                                frame_pin(kk, toward_down)
++                            };
++                            let (k, pi) = add_pin(p, inner, sparts, centres, ssizes, slabels);
++                            Some((k, Some(pi)))
++                        }
++                    }
++                };
++                let is_whole = matches!(role, Role::Whole(_));
++                let (ns, pin_s) = end(s_unit, s_desc, if is_whole { true } else { s_src }, s_down, &mut sparts, &mut centres, &mut ssizes, &mut slabels)?;
++                let (nt, pin_t) = end(t_unit, t_desc, false, !s_down, &mut sparts, &mut centres, &mut ssizes, &mut slabels)?;
++                let rev = along(dir, centres[nt]) < along(dir, centres[ns]) - 0.5;
++                // The node the edge's head lies on, when it is drawn here.
++                let head: Option<usize> = match *role {
++                    Role::Whole(_) if !t_desc => Some(nt),
++                    Role::Open(gi) if !gates[gi].1 && !s_desc => Some(ns),
++                    _ => None,
++                };
++                let (from, to) = if rev { (nt, ns) } else { (ns, nt) };
++                let (kind, ends) = if head == Some(to) {
++                    (x.kind, EdgeEnds { start: None, end: x.ends.end })
++                } else if head == Some(from) {
++                    (open_kind(x.kind), EdgeEnds { start: x.ends.end_marker(x.kind), end: None })
++                } else {
++                    (open_kind(x.kind), EdgeEnds::default())
++                };
++                sg_edges.push(Edge {
++                    from,
++                    to,
++                    label,
++                    kind,
++                    ends,
++                    meta: EdgeMeta::default(),
++                    end_room: (0.0, 0.0),
++                });
++                ses.push(SE { role: *role, rev, pin_s, pin_t });
++            }
++            let mut sg = g.part(dir, &sparts);
++            sg.block_part = true;
++            sg.edges = sg_edges;
++            if let Some(s) = f {
++                let mut nodes: Vec<usize> = (0..nu).collect();
++                nodes.extend(pin_nodes.iter().copied());
++                sg.subgraphs.push(Subgraph {
++                    id: g.subgraphs[s].id.clone(),
++                    title: g.subgraphs[s].title.clone(),
++                    nodes,
++                    parent: None,
++                    direction: None,
++                });
++            }
++            let rs = if std::env::var_os("FMB_STATIC").is_some() {
++                let mut rs = crate::scene::route_labelled_static(&sg, &centres, &ssizes, &slabels);
++                if let (Some(n), Some(c)) = (rs.nodes.first(), centres.first()) {
++                    let (dx, dy) = (c.0 - n.x, c.1 - n.y);
++                    crate::scene::shift_scene(&mut rs, dx, dy);
++                }
++                rs
++            } else {
++                crate::scene::route_labelled(&sg, &centres, &ssizes, &slabels)
++            };
++            if let Some(dir) = std::env::var_os("FMB_DUMP") {
++                let name = f.map_or("root".to_string(), |s| g.subgraphs[s].id.clone());
++                let p = std::path::Path::new(&dir).join(format!("sg-{}.svg", name));
++                let _ = std::fs::write(p, crate::scene::to_svg(&rs));
++            }
++            if rs.edges.len() < sg.edges.len() {
++                return None;
++            }
++            for (k, se) in ses.iter().enumerate() {
++                let mut mid = points(&rs.edges[k]);
++                if se.rev {
++                    mid.reverse();
++                }
++                let empty: Vec<Pt> = Vec::new();
++                let s_in = se.pin_s.map_or(&empty, |p| &pin_inner[p]);
++                let mut t_in = se.pin_t.map_or(empty.clone(), |p| pin_inner[p].clone());
++                t_in.reverse();
++                let full = join(&[s_in, &mid, &t_in]);
++                match se.role {
++                    Role::Whole(xi) => {
++                        out.done.push((xi, mk_edge(&self.xs[xi], full, rs.edges[k].label.clone())));
++                    }
++                    Role::Open(gi) => {
++                        let (xi, src, _) = gates[gi];
++                        out.open.push(Open { x: xi, src, pts: full, gate: at(gate_at(gi)) });
++                    }
++                    Role::Aux => {}
++                }
++            }
++        }
++        for kb in kid_blocks {
++            out.nodes.extend(kb.nodes);
++            out.clusters.extend(kb.clusters);
++            out.done.extend(kb.done);
++        }
++        Some(out)
++    }
++}
++
++/// The scene of `g` with every subgraph laid out as a block, or `None`
++/// when the prototype does not cover the graph.
++pub(crate) fn scene(g: &Graph, sizes: &[(f64, f64)], labels: &[String]) -> Option<Scene> {
++    let ns = g.subgraphs.len();
++    TITLE_DX.with(|t| t.borrow_mut().clear());
++    let chains: Vec<Vec<usize>> = (0..ns)
++        .map(|s| {
++            let mut c = Vec::new();
++            let mut cur = Some(s);
++            for _ in 0..ns {
++                let Some(x) = cur.filter(|&x| x < ns) else { break };
++                c.push(x);
++                cur = g.subgraphs[x].parent;
++            }
++            c.reverse();
++            c
++        })
++        .collect();
++    let mut owner = vec![None; g.nodes.len()];
++    for (si, s) in g.subgraphs.iter().enumerate() {
++        for &v in &s.nodes {
++            if let Some(o) = owner.get_mut(v) {
++                *o = Some(si);
++            }
++        }
++    }
++    let mut first = vec![usize::MAX; ns];
++    for (v, o) in owner.iter().enumerate() {
++        if let Some(s) = o {
++            for &c in &chains[*s] {
++                first[c] = first[c].min(v);
++            }
++        }
++    }
++    let live = |s: usize| first[s] != usize::MAX;
++    let mut kids = vec![Vec::new(); ns];
++    let mut tops = Vec::new();
++    for s in 0..ns {
++        if !live(s) {
++            continue;
++        }
++        match chains[s].len().checked_sub(2).map(|i| chains[s][i]) {
++            Some(p) => kids[p].push(s),
++            None => tops.push(s),
++        }
++    }
++    let path = |end: End| -> Vec<usize> {
++        match end {
++            End::Node(v) => owner.get(v).copied().flatten().map_or(Vec::new(), |s| chains[s].clone()),
++            End::Sub(s) => chains.get(s).map_or(Vec::new(), |c| c[..c.len() - 1].to_vec()),
++        }
++    };
++    let id = |end: End| match end {
++        End::Node(v) => g.nodes[v].id.clone(),
++        End::Sub(s) => g.subgraphs[s].id.clone(),
++    };
++    let mut xs: Vec<X> = Vec::new();
++    let mut push = |sub: Option<usize>, idx: usize, a: End, b: End, oa: End, ob: End, label: &Option<String>, kind: EdgeKind, ends: EdgeEnds, meta: &EdgeMeta, skip: bool| {
++        let (pa, pb) = (path(a), path(b));
++        let k = pa.iter().zip(&pb).take_while(|(x, y)| x == y).count();
++        xs.push(X {
++            sub,
++            idx,
++            a,
++            b,
++            from_id: id(oa),
++            to_id: id(ob),
++            label: label.clone(),
++            kind,
++            ends,
++            meta: meta.clone(),
++            pa,
++            pb,
++            k,
++            skip,
++        });
++    };
++    for (i, e) in g.edges.iter().enumerate() {
++        let (a, b) = (End::Node(e.from), End::Node(e.to));
++        push(None, i, a, b, a, b, &e.label, e.kind, e.ends, &e.meta, false);
++    }
++    let targets = crate::scene::own_box_targets(g);
++    for (j, e) in g.sub_edges.iter().enumerate() {
++        let mut b = e.to;
++        if let Some(m) = targets[j] {
++            b = End::Node(m);
++        }
++        let dead = |x: End| matches!(x, End::Sub(s) if !live(s));
++        let holds = |x: End, y: End| matches!(x, End::Sub(s) if path(y).contains(&s) || y == x);
++        let skip = dead(e.from) || dead(b) || holds(e.from, b) || holds(b, e.from);
++        push(Some(j), j, e.from, b, e.from, e.to, &e.label, e.kind, e.ends, &e.meta, skip);
++    }
++    let n = xs.len();
++    let mut cx = Cx {
++        g,
++        sizes,
++        labels,
++        xs,
++        back: vec![false; n],
++        chains,
++        owner,
++        kids,
++        tops,
++        first,
++        pass: 1,
++        pos1: vec![(0.0, 0.0); g.nodes.len()],
++        sub1: vec![(0.0, 0.0); ns],
++    };
++    let r1 = cx.level(None)?;
++    for (v, nd) in &r1.nodes {
++        cx.pos1[*v] = fl(g.direction, (nd.x, nd.y));
++    }
++    for (s, c) in &r1.clusters {
++        cx.sub1[*s] = fl(g.direction, (c.x + c.w / 2.0, c.y + c.h / 2.0));
++    }
++    cx.pass = 2;
++    let root = cx.level(None)?;
++
++    let mut nodes: Vec<Option<SceneNode>> = vec![None; g.nodes.len()];
++    for (v, nd) in root.nodes {
++        nodes[v] = Some(nd);
++    }
++    let nodes = nodes.into_iter().collect::<Option<Vec<_>>>()?;
++    let mut edges: Vec<Option<SceneEdge>> = vec![None; g.edges.len()];
++    let mut subs: Vec<Option<SceneEdge>> = vec![None; g.sub_edges.len()];
++    for (xi, e) in root.done {
++        let x = &cx.xs[xi];
++        match x.sub {
++            None => edges[x.idx] = Some(e),
++            Some(j) => subs[j] = Some(e),
++        }
++    }
++    // Invisible links and anything left: a straight stand-in.
++    for x in &cx.xs {
++        if x.sub.is_none() && edges[x.idx].is_none() {
++            let (End::Node(a), End::Node(b)) = (x.a, x.b) else { continue };
++            let pts = vec![(nodes[a].x, nodes[a].y), (nodes[b].x, nodes[b].y)];
++            let mut e = mk_edge(x, pts, None);
++            e.waypoints.clear();
++            if !x.invisible() {
++                eprintln!("blocks: edge {} -> {} not drawn", x.from_id, x.to_id);
++            }
++            edges[x.idx] = Some(e);
++        }
++    }
++    let mut edges = edges.into_iter().collect::<Option<Vec<_>>>()?;
++    edges.extend(subs.into_iter().flatten());
++    let mut clusters: Vec<(usize, SceneCluster)> = root
++        .clusters
++        .into_iter()
++        .map(|(si, c)| {
++            (
++                si,
++                SceneCluster {
++                    depth: cx.chains[si].len() - 1,
++                    ..c
++                },
++            )
++        })
++        .collect();
++    clusters.sort_by_key(|(si, c)| (c.depth, *si));
++    let mut out = Scene {
++        nodes,
++        edges,
++        clusters: clusters.into_iter().map(|(_, c)| c).collect(),
++        width: 0.0,
++        height: 0.0,
++    };
++    refit(&mut out, Mode::Static, true);
++    Some(out)
++}
+diff -ruN tree/src/edgepass.rs /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/d-recursive/tree/src/edgepass.rs
+--- tree/src/edgepass.rs	2026-11-10 15:14:40.659647776 +0000
++++ /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/d-recursive/tree/src/edgepass.rs	2026-11-10 16:38:20.123548657 +0000
+@@ -359,6 +359,19 @@
+ /// with `sc.edges`, a superset of `fixed`; missing entries are `false`)
+ /// holding their ends: see [`Ctx::held`].
+ pub(crate) fn finish_held(g: &Graph, sc: &mut Scene, mode: Mode, fixed: &[bool], held: &[bool]) {
++    finish_pinned(g, sc, mode, fixed, held, &[]);
++}
++
++/// PROTOTYPE (B12): [`finish_held`] with the ends in `pins` (edge, its
++/// start?, point) put on their pins once the ports stage has run.
++pub(crate) fn finish_pinned(
++    g: &Graph,
++    sc: &mut Scene,
++    mode: Mode,
++    fixed: &[bool],
++    held: &[bool],
++    pins: &[(usize, bool, Pt)],
++) {
+     let mut cx = ctx(g, sc);
+     for (f, &x) in cx.fixed.iter_mut().zip(fixed) {
+         *f = x;
+@@ -368,9 +381,25 @@
+     }
+     let mut moved = vec![false; sc.edges.len()];
+     crate::ports::assign(g, sc, &cx, mode, &mut moved);
++    for &(i, src, p) in pins {
++        if let Some(e) = sc.edges.get_mut(i) {
++            crate::ortho::shift_end(e, src, p);
++        }
++        // From here on the edge's ends hold their places.
++        if std::env::var_os("FMB_NOHOLD").is_none() {
++            if let Some(h) = cx.held.get_mut(i) {
++                *h = true;
++            }
++        }
++    }
+     // Every edge on the axes, its corners rounded (report §2.1): from the
+     // ends the ports stage settled, before the router judges them.
+     crate::ortho::orthogonalize(g, sc, &mut cx, mode);
++    if std::env::var_os("FMB_DEBUG").is_some() && !pins.is_empty() {
++        for (i, e) in sc.edges.iter().enumerate() {
++            eprintln!("after ortho: edge {i} {}->{} wp={} axes={}", e.from, e.to, e.waypoints.len(), crate::router::ortho_corners(e).is_some());
++        }
++    }
+     crate::router::repair(g, sc, &cx, mode, &mut moved);
+     // A rerouted end may have switched to another side of its node and
+     // landed on a port another edge already holds: space those groups
+@@ -402,6 +431,11 @@
+         Mode::Static => crate::labels::LABEL_STATIC_WORK,
+         Mode::Routed => crate::labels::LABEL_ROUTE_WORK,
+     };
++    if std::env::var_os("FMB_DEBUG").is_some() && !pins.is_empty() {
++        for (i, e) in sc.edges.iter().enumerate() {
++            eprintln!("at end: edge {i} {}->{} wp={} axes={}", e.from, e.to, e.waypoints.len(), crate::router::ortho_corners(e).is_some());
++        }
++    }
+     crate::labels::relabel(g, sc, &cx, &moved, budget);
+     // A scene whose painter strokes its own width (ER, class) is drawn
+     // on its canvas as-is; a flowchart's is fitted like its SVG.
+diff -ruN tree/src/labels.rs /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/d-recursive/tree/src/labels.rs
+--- tree/src/labels.rs	2026-11-10 15:14:40.879647789 +0000
++++ /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/d-recursive/tree/src/labels.rs	2026-11-10 16:31:06.942855558 +0000
+@@ -1059,7 +1059,7 @@
+ pub(crate) fn chip_rect(clusters: &[SceneCluster], ci: usize, canvas_right: f64) -> Rect {
+     let c = &clusters[ci];
+     let title = fit_cluster_title(clusters, ci, canvas_right);
+-    let (x, y) = (c.x + CHIP_INSET_X, c.y + CHIP_INSET_Y);
++    let (x, y) = (c.x + CHIP_INSET_X + crate::blocks::title_dx(&c.id), c.y + CHIP_INSET_Y);
+     (
+         x,
+         y,
+diff -ruN tree/src/layout.rs /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/d-recursive/tree/src/layout.rs
+--- tree/src/layout.rs	2026-11-10 15:14:40.883647789 +0000
++++ /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/d-recursive/tree/src/layout.rs	2026-11-10 16:24:28.275896700 +0000
+@@ -5385,7 +5385,8 @@
+     border: Option<&[u8]>,
+     header_b: Option<&[f64]>,
+ ) -> f64 {
+-    let half = |v: usize| if v < n { GAP_B / 2.0 } else { EDGE_GAP / 2.0 };
++    // PROTOTYPE (B12): a gate (a 2 px node of `crate::blocks`) packs like an edge dummy.
++    let half = |v: usize| if v < n && absize[v] > 2.5 { GAP_B / 2.0 } else { EDGE_GAP / 2.0 };
+     // Widen the gap across a subgraph boundary so each box gets its
+     // padding and cross-cluster channels have room.
+     let cgap = apath.map_or(0.0, |p| cluster_gap(&p[u], &p[v]));
+diff -ruN tree/src/lib.rs /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/d-recursive/tree/src/lib.rs
+--- tree/src/lib.rs	2026-11-10 15:14:40.883647789 +0000
++++ /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/d-recursive/tree/src/lib.rs	2026-11-10 16:24:28.266677028 +0000
+@@ -38,6 +38,7 @@
+ mod casing;
+ pub mod class;
+ pub(crate) mod clearance;
++mod blocks;
+ mod compound;
+ mod edgepass;
+ pub mod emit;
+diff -ruN tree/src/model.rs /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/d-recursive/tree/src/model.rs
+--- tree/src/model.rs	2026-11-10 15:14:40.891647790 +0000
++++ /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/d-recursive/tree/src/model.rs	2026-11-10 16:24:28.269856794 +0000
+@@ -441,6 +441,8 @@
+     /// draws every edge to a box with members, stand-in or not. The
+     /// layout reads it against the router's cap ([`Graph::drawn_edge_count`]).
+     pub(crate) drawn_edges: Option<usize>,
++    /// PROTOTYPE (B12): a level graph of `crate::blocks`, never cut into blocks again.
++    pub(crate) block_part: bool,
+     /// The width node labels wrap at when not [`crate::layout::WRAP_WIDTH`]
+     /// (`flowchart.wrappingWidth` from an init directive or the
+     /// frontmatter); see [`Graph::wrapping_width`].
+diff -ruN tree/src/ortho.rs /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/d-recursive/tree/src/ortho.rs
+--- tree/src/ortho.rs	2026-11-10 15:14:40.891647790 +0000
++++ /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/d-recursive/tree/src/ortho.rs	2026-11-10 16:37:23.457171832 +0000
+@@ -264,7 +264,7 @@
+ /// Move the start (`src`) or end of a path the stage has yet to draw to
+ /// `to`, with the handle or stub next to it, so the stage plans it from
+ /// there.
+-fn shift_end(e: &mut SceneEdge, src: bool, to: Pt) {
++pub(crate) fn shift_end(e: &mut SceneEdge, src: bool, to: Pt) {
+     let (pi, ci) = if src { (0, 1) } else { (3, 2) };
+     let old = e.bezier[pi];
+     let d = (to.0 - old.0, to.1 - old.1);
+@@ -927,7 +927,12 @@
+             stubs.get(i).copied().flatten(),
+             &mut jogs,
+         );
+-        let Some(plan) = plan else { continue };
++        let Some(plan) = plan else {
++            if std::env::var_os("FMB_DEBUG").is_some() {
++                eprintln!("ortho: no plan for edge {i} {} -> {} n0={n0:?} n3={n3:?} f0={f0:?} f3={f3:?} cols={}", e.from, e.to, cols.len());
++            }
++            continue;
++        };
+         // Only a plain Z's one step carries its label on its run.
+         let steps: Vec<usize> = plan
+             .iter()
+diff -ruN tree/src/scene.rs /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/d-recursive/tree/src/scene.rs
+--- tree/src/scene.rs	2026-11-10 15:14:41.387647819 +0000
++++ /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/d-recursive/tree/src/scene.rs	2026-11-10 16:34:34.211932719 +0000
+@@ -2890,7 +2890,7 @@
+     use crate::clearance::{CHIP_H, CHIP_INSET_X, CHIP_INSET_Y, CHIP_PAD_W};
+     let c = &clusters[ci];
+     let title = fit_cluster_title(clusters, ci, canvas_right);
+-    let (x, y) = (c.x + CHIP_INSET_X, c.y + CHIP_INSET_Y);
++    let (x, y) = (c.x + CHIP_INSET_X + crate::blocks::title_dx(&c.id), c.y + CHIP_INSET_Y);
+     (
+         x,
+         c.y,
+@@ -3054,6 +3054,17 @@
+         "number of sizes must match number of nodes"
+     );
+     let sizes = sane_sizes(sizes);
++    // PROTOTYPE (B12): every subgraph a block.
++    if !g.block_part
++        && g.edge_paint_width.is_none()
++        && g.subgraphs.iter().any(|s| !s.nodes.is_empty())
++        && std::env::var_os("FM_NOBLOCKS").is_none()
++        && !crate::compound::blocks(g).contains(&true)
++    {
++        if let Some(sc) = crate::blocks::scene(g, &sizes, labels) {
++            return sc;
++        }
++    }
+     // Before the bars are fitted: each part fits its own across its flow.
+     if let Some(split) = crate::compound::split(g) {
+         if let Some(sc) = crate::compound::scene(g, &split, &sizes, labels) {
+@@ -3066,6 +3077,14 @@
+     } else {
+         scene_clustered(g, sizes, labels)
+     };
++    if g.block_part {
++        crate::blocks::slide_titles(g, &sc);
++        let pins = crate::blocks::take_pins(&sc);
++        if !pins.is_empty() {
++            crate::edgepass::finish_pinned(g, &mut sc, crate::edgepass::Mode::Static, &[], &[], &pins);
++            return sc;
++        }
++    }
+     crate::edgepass::finish(g, &mut sc, crate::edgepass::Mode::Static);
+     sc
+ }
+@@ -4427,6 +4446,21 @@
+     sc
+ }
+ 
++/// PROTOTYPE (B12): [`route_labelled`] finished with the static scene's
++/// budgets (the canvas is normalised: the caller shifts it back).
++pub(crate) fn route_labelled_static(
++    g: &Graph,
++    centers: &[(f64, f64)],
++    sizes: &[(f64, f64)],
++    labels: &[String],
++) -> Scene {
++    let sizes = sane_sizes(sizes);
++    let sizes = &fit_bars(g, &sizes)[..];
++    let mut sc = route_built(g, centers, sizes, labels, true);
++    crate::edgepass::finish(g, &mut sc, crate::edgepass::Mode::Static);
++    sc
++}
++
+ /// The scene [`route_sized`] draws before the edge stages: free curves
+ /// and cross-cluster channels for the current boxes, frames wrapped
+ /// round the current nodes, and (when `place_labels`) labels slid off
+@@ -6494,7 +6528,7 @@
+         cluster_titles.push_str(&format!(
+             "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{}\" rx=\"4\" \
+              fill=\"{}\" fill-opacity=\"0.9\"/>\n",
+-            x + 6.0,
++            x + 6.0 + crate::blocks::title_dx(&c.id),
+             y + 5.0,
+             tw + 8.0,
+             {
+@@ -6512,7 +6546,7 @@
+             cluster_titles.push_str(&format!(
+                 "<text x=\"{:.1}\" y=\"{:.1}\" font-size=\"{}\" font-weight=\"bold\" \
+                  fill=\"{}\">{}</text>\n",
+-                x + 10.0,
++                x + 10.0 + crate::blocks::title_dx(&c.id),
+                 y + 17.0 + k as f64 * TITLE_LINE_H,
+                 crate::layout::TITLE_FONT,
+                 pal.cluster_title,

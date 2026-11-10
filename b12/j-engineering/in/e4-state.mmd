@@ -1,0 +1,19 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Working : go
+    state Working {
+        [*] --> Fetch
+        Fetch --> Parse : ok
+        Parse --> [*]
+        note left of Fetch : lead note
+    }
+    state Review {
+        [*] --> Check
+        Check --> Approve
+        Check --> Reject
+    }
+    Working --> Review : done
+    Review --> Working : redo
+    Reject --> Fetch : retry
+    Review --> [*]
+    note right of Idle : waiting

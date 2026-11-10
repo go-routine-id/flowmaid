@@ -1,0 +1,15 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Work : go
+    state Work {
+        [*] --> A
+        A --> B : step
+        B --> [*]
+    }
+    Work --> Done : ok
+    Work --> Idle : cancel
+    state Review {
+        R1 --> R2
+    }
+    Done --> Review
+    Review --> [*]

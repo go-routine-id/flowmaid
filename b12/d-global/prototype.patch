@@ -1,0 +1,514 @@
+--- tree/src/layout.rs	2026-11-10 15:14:40.883647789 +0000
++++ d-global/tree/src/layout.rs	2026-11-10 16:21:46.640602074 +0000
+@@ -2432,6 +2432,42 @@
+     }
+ 
+     layer.truncate(n);
++    // B12 PROTOTYPE (d-global): block-aware layering. Every subgraph is
++    // one unit of its parent level and takes a contiguous layer interval.
++    if let Some(nc) = node_cluster {
++        if b12_mode() > 0 {
++            let bl = block_layers(g, nc, rank_only);
++            for (ei, e) in g.edges.iter().enumerate() {
++                let rev = bl[e.to] < bl[e.from];
++                // Mode 2: a reversed edge between two blocks keeps a
++                // channel (a dummy chain walked upstream); only a
++                // reversed edge between plain siblings is a lane.
++                let lane = if b12_mode() >= 2 { nc[e.from] == nc[e.to] } else { true };
++                back[ei] = e.from == e.to || (rev && lane);
++            }
++            for b in back.iter_mut().skip(ne) {
++                *b = false;
++            }
++            if std::env::var("FM_B12_DUMP").is_ok() {
++                let top = bl.iter().copied().max().unwrap_or(0);
++                for l in 0..=top {
++                    let ids: Vec<&str> = (0..n)
++                        .filter(|&v| bl[v] == l)
++                        .map(|v| g.nodes[v].id.as_str())
++                        .collect();
++                    eprintln!("B12 layer {l}: {}", ids.join(" "));
++                }
++                let rev: Vec<String> = g
++                    .edges
++                    .iter()
++                    .filter(|e| bl[e.to] < bl[e.from])
++                    .map(|e| format!("{}->{}", g.nodes[e.from].id, g.nodes[e.to].id))
++                    .collect();
++                eprintln!("B12 upstream edges: {}", rev.join(" "));
++            }
++            layer = bl;
++        }
++    }
+     Ranking {
+         back,
+         group_eid,
+@@ -2439,6 +2475,193 @@
+     }
+ }
+ 
++/// B12 prototype switch: `FM_B12` = 0 (off), 1 (block layers, reversed
++/// edges as lanes), 2 (block layers, reversed inter-block edges in
++/// channels; the default).
++pub(crate) fn b12_mode() -> u8 {
++    match std::env::var("FM_B12").ok().as_deref() {
++        Some("0") => 0,
++        Some("1") => 1,
++        _ => 2,
++    }
++}
++
++/// B12 prototype: one layer per node from a block-aware layering. Levels
++/// are the root and every subgraph; a level's units are its direct
++/// member nodes and its direct child subgraphs. Per level, deepest
++/// first: collapse every link to the pair of units it joins, break the
++/// cycles of that unit graph (DFS from the sources, units and their
++/// links in declaration order), then longest path where a unit `u` of
++/// height `h(u)` layers pushes its successors `h(u)` layers down. A
++/// source block (and a lead note) sinks to just above its nearest
++/// successor. A node's layer = the starts of its chain of blocks + its
++/// own start.
++fn block_layers(g: &Graph, nc: &[Vec<usize>], rank_only: &[RankGroup]) -> Vec<usize> {
++    let n = g.nodes.len();
++    let ns = g.subgraphs.len();
++    // Unit ids: node v, block n + s. Level ids: 0 root, s + 1.
++    let mut key = vec![usize::MAX; n + ns];
++    let mut parent_level = vec![0usize; ns];
++    let mut depth = vec![0usize; ns];
++    for v in 0..n {
++        key[v] = v;
++        for (i, &s) in nc[v].iter().enumerate() {
++            key[n + s] = key[n + s].min(v);
++            parent_level[s] = if i == 0 { 0 } else { nc[v][i - 1] + 1 };
++            depth[s] = i + 1;
++        }
++    }
++    let mut links: Vec<(usize, usize)> = g
++        .edges
++        .iter()
++        .filter(|e| e.from != e.to)
++        .map(|e| (e.from, e.to))
++        .collect();
++    for (from, to) in rank_only {
++        for &a in from {
++            for &b in to {
++                if a != b {
++                    links.push((a, b));
++                }
++            }
++        }
++    }
++    let mut lev_edges: Vec<Vec<(usize, usize)>> = vec![Vec::new(); ns + 1];
++    for &(u, v) in &links {
++        let cp = nc[u].iter().zip(&nc[v]).take_while(|(a, b)| a == b).count();
++        let lev = if cp == 0 { 0 } else { nc[u][cp - 1] + 1 };
++        let cu = if nc[u].len() == cp { u } else { n + nc[u][cp] };
++        let cv = if nc[v].len() == cp { v } else { n + nc[v][cp] };
++        if cu != cv {
++            lev_edges[lev].push((cu, cv));
++        }
++    }
++    let mut lev_units: Vec<Vec<usize>> = vec![Vec::new(); ns + 1];
++    for v in 0..n {
++        let lev = nc[v].last().map_or(0, |&s| s + 1);
++        lev_units[lev].push(v);
++    }
++    for s in 0..ns {
++        if key[n + s] != usize::MAX {
++            lev_units[parent_level[s]].push(n + s);
++        }
++    }
++    let mut is_lead = vec![false; n + ns];
++    for &l in g.lead_nodes.iter().filter(|&&l| l < n) {
++        is_lead[l] = true;
++    }
++    let mut h = vec![1usize; n + ns];
++    let mut start = vec![0usize; n + ns];
++    // Deepest levels first, the root last.
++    let mut order: Vec<usize> = (0..ns).filter(|&s| key[n + s] != usize::MAX).collect();
++    order.sort_by_key(|&s| (std::cmp::Reverse(depth[s]), s));
++    let mut levels: Vec<usize> = order.iter().map(|&s| s + 1).collect();
++    levels.push(0);
++    for &lev in &levels {
++        let mut units = lev_units[lev].clone();
++        units.sort_by_key(|&u| (key[u], u));
++        let k = units.len();
++        let mut idx = std::collections::BTreeMap::new();
++        for (i, &u) in units.iter().enumerate() {
++            idx.insert(u, i);
++        }
++        // Deduplicated adjacency in declaration order of the target.
++        let mut adj: Vec<Vec<usize>> = vec![Vec::new(); k];
++        for &(a, b) in &lev_edges[lev] {
++            let (a, b) = (idx[&a], idx[&b]);
++            if !adj[a].contains(&b) {
++                adj[a].push(b);
++            }
++        }
++        for l in adj.iter_mut() {
++            l.sort_unstable();
++        }
++        let mut indeg0 = vec![0usize; k];
++        for l in &adj {
++            for &b in l {
++                indeg0[b] += 1;
++            }
++        }
++        // Cycle breakers: DFS, the sources first.
++        let mut roots: Vec<usize> = (0..k).filter(|&i| indeg0[i] == 0).collect();
++        roots.extend((0..k).filter(|&i| indeg0[i] != 0));
++        let mut state = vec![0u8; k];
++        let mut dag: Vec<Vec<usize>> = vec![Vec::new(); k];
++        for &r in &roots {
++            if state[r] != 0 {
++                continue;
++            }
++            state[r] = 1;
++            let mut stack = vec![(r, 0usize)];
++            while let Some(&(u, ci)) = stack.last() {
++                if ci < adj[u].len() {
++                    stack.last_mut().unwrap().1 += 1;
++                    let v = adj[u][ci];
++                    match state[v] {
++                        0 => {
++                            dag[u].push(v);
++                            state[v] = 1;
++                            stack.push((v, 0));
++                        }
++                        1 => {
++                            if !dag[v].contains(&u) {
++                                dag[v].push(u); // reversed
++                            }
++                        }
++                        _ => dag[u].push(v),
++                    }
++                } else {
++                    state[u] = 2;
++                    stack.pop();
++                }
++            }
++        }
++        for l in dag.iter_mut() {
++            l.sort_unstable();
++            l.dedup();
++        }
++        let mut indeg = vec![0usize; k];
++        for l in &dag {
++            for &b in l {
++                indeg[b] += 1;
++            }
++        }
++        let src: Vec<bool> = indeg.iter().map(|&d| d == 0).collect();
++        let mut st = vec![0usize; k];
++        let mut q: VecDeque<usize> = (0..k).filter(|&i| indeg[i] == 0).collect();
++        let mut topo = Vec::with_capacity(k);
++        while let Some(u) = q.pop_front() {
++            topo.push(u);
++            for &v in &dag[u] {
++                st[v] = st[v].max(st[u] + h[units[u]]);
++                indeg[v] -= 1;
++                if indeg[v] == 0 {
++                    q.push_back(v);
++                }
++            }
++        }
++        // A source block (or lead card) sinks to its nearest successor.
++        for &u in topo.iter().rev() {
++            let sinks = units[u] >= n || is_lead[units[u]];
++            if src[u] && sinks {
++                if let Some(m) = dag[u].iter().map(|&v| st[v]).min() {
++                    st[u] = st[u].max(m.saturating_sub(h[units[u]]));
++                }
++            }
++        }
++        let height = (0..k).map(|i| st[i] + h[units[i]]).max().unwrap_or(1);
++        for (i, &u) in units.iter().enumerate() {
++            start[u] = st[i];
++        }
++        if lev > 0 {
++            h[n + lev - 1] = height.max(1);
++        }
++    }
++    (0..n)
++        .map(|v| start[v] + nc[v].iter().map(|&s| start[n + s]).sum::<usize>())
++        .collect()
++}
++
+ /// Seat every box fed from outside the boxes below its feeders (report
+ /// §2.9, B8 review r1 #1 and B8b P1). Longest-path layering parks each
+ /// member nothing ranks into on the first layer: a hub fanning out into
+@@ -3517,7 +3740,24 @@
+             None
+         },
+     );
+-    if opts.compact {
++    if clustered && b12_mode() > 0 && std::env::var("FM_B12_PACK").is_err() {
++        block_compact(
++            n,
++            &layers,
++            preds_c,
++            succs_c,
++            &alayer,
++            bsep,
++            &apath,
++            &border_side,
++            if horizontal {
++                Some(header.as_slice())
++            } else {
++                None
++            },
++            &mut bpos,
++        );
++    } else if opts.compact {
+         compact_breadth(
+             n,
+             &layers,
+@@ -4445,7 +4685,11 @@
+     let backs: Vec<usize> = (0..g.edges.len())
+         .filter(|&ei| {
+             let e = &g.edges[ei];
+-            drawn(e) && at[e.to].layer < at[e.from].layer && !card(e.from) && !card(e.to)
++            drawn(e)
++                && at[e.to].layer < at[e.from].layer
++                && !card(e.from)
++                && !card(e.to)
++                && edge_chain.get(ei).map_or(true, |c| c.is_empty())
+         })
+         .collect();
+     if backs.is_empty() {
+@@ -4456,7 +4700,11 @@
+         .edges
+         .iter()
+         .enumerate()
+-        .filter(|(_, e)| drawn(e) && at[e.to].layer >= at[e.from].layer)
++        .filter(|(ei, e)| {
++            drawn(e)
++                && (at[e.to].layer >= at[e.from].layer
++                    || edge_chain.get(*ei).is_some_and(|c| !c.is_empty()))
++        })
+         .map(|(ei, e)| {
+             let mut pts = vec![(at[e.from].b, at[e.from].l)];
+             pts.extend(edge_chain.get(ei).into_iter().flatten().map(|&d| dummy(d)));
+@@ -4913,6 +5161,22 @@
+         }
+     }
+ 
++    // B12 prototype: a long edge's chain bends where it crosses a block
++    // border (in the gap before the block), instead of pulling the walls
++    // of the block out to wherever its outer run happens to be.
++    if let (Some(ap), Some(bd)) = (apath, border) {
++        if b12_mode() > 0 && std::env::var("FM_B12_ALIGN").is_err() {
++            let edge_dummy = |v: usize| v >= n && bd[v] == 0;
++            for v in 0..na {
++                if !edge_dummy(v) {
++                    continue;
++                }
++                up[v].retain(|&u| !(edge_dummy(u) && ap[u] != ap[v]));
++                down[v].retain(|&w| !(edge_dummy(w) && ap[w] != ap[v]));
++            }
++        }
++    }
++
+     // Position of each node within its layer (natural, un-adjusted).
+     let mut order0 = vec![0usize; na];
+     for lay in layers {
+@@ -5350,6 +5614,199 @@
+             }
+         }
+     }
++}
++
++/// B12 prototype: hierarchical breadth assignment. Deepest block first,
++/// every block is packed on its own: its direct items and its (already
++/// packed, now rigid) child blocks are packed leftmost between its two
++/// walls, which fixes the block's least breadth, then relaxed towards
++/// the weighted median of their links INSIDE the block. A packed block
++/// is one rigid unit of its parent level; the root level packs and
++/// relaxes the top-level blocks, loose nodes and outer channel dummies.
++#[allow(clippy::too_many_arguments)]
++fn block_compact(
++    n: usize,
++    layers: &[Vec<usize>],
++    preds: &[Vec<usize>],
++    succs: &[Vec<usize>],
++    alayer: &[usize],
++    absize: &[f64],
++    apath: &[Vec<usize>],
++    border: &[u8],
++    header_b: Option<&[f64]>,
++    bpos: &mut [f64],
++) {
++    let na = bpos.len();
++    let nsub = apath.iter().flatten().copied().max().map_or(0, |m| m + 1);
++    let sep = |u: usize, v: usize| pair_sep(u, v, n, absize, Some(apath), Some(border), header_b);
++    let mut slot = vec![0usize; na];
++    for lv in layers {
++        for (i, &v) in lv.iter().enumerate() {
++            slot[v] = i;
++        }
++    }
++    let weight = |u: usize, v: usize| match (u < n, v < n) {
++        (true, true) => 1.0,
++        (false, false) => COMPACT_DUMMY_WEIGHT,
++        _ => COMPACT_MIXED_WEIGHT,
++    };
++    // Depth of each block (1 = top level), from the paths.
++    let mut depth = vec![0usize; nsub];
++    for p in apath {
++        for (i, &c) in p.iter().enumerate() {
++            depth[c] = i + 1;
++        }
++    }
++    let mut order: Vec<usize> = (0..nsub).filter(|&c| depth[c] > 0).collect();
++    order.sort_by_key(|&c| (std::cmp::Reverse(depth[c]), c));
++    let mut levels: Vec<Option<usize>> = order.into_iter().map(Some).collect();
++    levels.push(None);
++    // Breadth of each node relative to the origin of the rigid unit it
++    // is part of so far (a packed block's left wall).
++    let mut rel = vec![0.0f64; na];
++    let (wl, wr) = (na + nsub, na + nsub + 1);
++    let nu = na + nsub + 2;
++    for lev in levels {
++        let d = lev.map_or(0, |c| depth[c]);
++        let inside = |v: usize| lev.map_or(true, |c| apath[v].get(d - 1) == Some(&c));
++        let unit = |v: usize| -> usize {
++            if apath[v].len() > d {
++                na + apath[v][d]
++            } else if border[v] != 0 && lev.is_some() {
++                if border[v] == 1 {
++                    wl
++                } else {
++                    wr
++                }
++            } else {
++                v
++            }
++        };
++        let off = |v: usize| if apath[v].len() > d { rel[v] } else { 0.0 };
++        let mem: Vec<usize> = (0..na).filter(|&v| inside(v)).collect();
++        if mem.is_empty() {
++            continue;
++        }
++        let mut members: Vec<Vec<usize>> = vec![Vec::new(); nu];
++        for &v in &mem {
++            members[unit(v)].push(v);
++        }
++        // 1. Leftmost packing: longest path over the left-of relation.
++        let mut next: Vec<Vec<(usize, f64)>> = vec![Vec::new(); nu];
++        let mut indeg = vec![0usize; nu];
++        for lv in layers {
++            let row: Vec<usize> = lv.iter().copied().filter(|&v| inside(v)).collect();
++            for w in row.windows(2) {
++                let (a, b) = (w[0], w[1]);
++                let (ua, ub) = (unit(a), unit(b));
++                if ua != ub {
++                    next[ua].push((ub, off(a) + sep(a, b) - off(b)));
++                    indeg[ub] += 1;
++                }
++            }
++        }
++        let mut x = vec![0.0f64; nu];
++        let used: Vec<usize> = (0..nu).filter(|&u| !members[u].is_empty()).collect();
++        let mut q: VecDeque<usize> = used.iter().copied().filter(|&u| indeg[u] == 0).collect();
++        // Root level: the first item of a layer starts half its size in.
++        if lev.is_none() {
++            for &u in &q {
++                x[u] = members[u]
++                    .iter()
++                    .map(|&m| absize[m] / 2.0 - off(m))
++                    .fold(0.0, f64::max);
++            }
++        }
++        while let Some(u) = q.pop_front() {
++            for &(v, w) in &next[u] {
++                x[v] = x[v].max(x[u] + w);
++                indeg[v] -= 1;
++                if indeg[v] == 0 {
++                    q.push_back(v);
++                }
++            }
++        }
++        let right = mem
++            .iter()
++            .map(|&m| x[unit(m)] + off(m) + absize[m] / 2.0)
++            .fold(0.0, f64::max);
++        // 2. Relax towards the links inside this level.
++        let mut seen = vec![usize::MAX; nu];
++        for round in 0..COMPACT_SWEEPS {
++            let down = round % 2 == 0;
++            let rightwards = round % 4 < 2;
++            let lorder: Vec<usize> = if down {
++                (0..layers.len()).collect()
++            } else {
++                (0..layers.len()).rev().collect()
++            };
++            for li in lorder {
++                let row: Vec<usize> = layers[li].iter().copied().filter(|&v| inside(v)).collect();
++                let idx: Vec<usize> = if rightwards {
++                    (0..row.len()).collect()
++                } else {
++                    (0..row.len()).rev().collect()
++                };
++                for i in idx {
++                    let u = unit(row[i]);
++                    if seen[u] == round || u == wl || u == wr {
++                        continue;
++                    }
++                    seen[u] = round;
++                    let (mut lo, mut hi) = (f64::NEG_INFINITY, f64::INFINITY);
++                    let mut pull: Vec<(f64, f64)> = Vec::new();
++                    for &m in &members[u] {
++                        let lay = &layers[alayer[m]];
++                        let s = slot[m];
++                        let left = (s > 0).then(|| lay[s - 1]).filter(|&l| inside(l));
++                        let rgt = lay.get(s + 1).copied().filter(|&r| inside(r));
++                        match left {
++                            Some(l) if unit(l) != u => {
++                                lo = lo.max(x[unit(l)] + off(l) + sep(l, m) - off(m));
++                            }
++                            None => lo = lo.max(absize[m] / 2.0 - off(m)),
++                            _ => {}
++                        }
++                        match rgt {
++                            Some(r) if unit(r) != u => {
++                                hi = hi.min(x[unit(r)] + off(r) - sep(m, r) - off(m));
++                            }
++                            None => hi = hi.min(right - absize[m] / 2.0 - off(m)),
++                            _ => {}
++                        }
++                        if border[m] != 0 {
++                            continue;
++                        }
++                        for &w in preds[m].iter().chain(&succs[m]) {
++                            if border[w] == 0
++                                && inside(w)
++                                && unit(w) != u
++                                && alayer[w].abs_diff(alayer[m]) == 1
++                            {
++                                pull.push((x[unit(w)] + off(w) - off(m), weight(m, w)));
++                            }
++                        }
++                    }
++                    if lo > hi || pull.is_empty() {
++                        continue;
++                    }
++                    let want = weighted_median(&mut pull);
++                    let nx = want.max(lo).min(hi);
++                    if nx.is_finite() {
++                        x[u] = nx;
++                    }
++                }
++            }
++        }
++        let out: Vec<(usize, f64)> = mem.iter().map(|&v| (v, x[unit(v)] + off(v))).collect();
++        for (v, b) in out {
++            if lev.is_some() {
++                rel[v] = b;
++            } else {
++                bpos[v] = b;
++            }
++        }
++    }
+ }
+ 
+ /// The point that halves the total weight of `(position, weight)`

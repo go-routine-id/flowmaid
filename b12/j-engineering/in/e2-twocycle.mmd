@@ -1,0 +1,13 @@
+flowchart TD
+    subgraph A[Alpha]
+        a1 --> a2
+        a3
+    end
+    subgraph B[Beta]
+        b1 --> b2
+        b3
+    end
+    a2 -->|down| b1
+    b2 -->|up| a1
+    a3 -->|down 2| b3
+    b3 -->|up 2| a3

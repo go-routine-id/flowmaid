@@ -1,0 +1,26 @@
+flowchart TD
+    src([source]) -->|to innermost| k1
+    subgraph L1[Level one title that is rather long]
+        m1[level one node]
+        subgraph L2[Level two]
+            n1[level two node]
+            subgraph L3[Level three with a long title here]
+                k1[innermost] --> k2[innermost two]
+            end
+            n1 --> k1
+        end
+        m1 --> n1
+        k2 --> m2[level one exit]
+    end
+    subgraph S[Sibling]
+        s1[sibling one] --> s2[sibling two]
+    end
+    k2 -->|out to sibling| s1
+    s2 -->|back up| m1
+    src --> S
+    L3 --> S
+    m2 --> L1
+    S --> S
+    subgraph Z[Empty]
+    end
+    src --> Z

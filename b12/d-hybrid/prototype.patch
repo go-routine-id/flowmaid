@@ -1,0 +1,581 @@
+diff -ru ../../tree/src/layout.rs src/layout.rs
+--- ../../tree/src/layout.rs	2026-11-10 15:14:40.883647789 +0000
++++ src/layout.rs	2026-11-10 17:01:51.656030054 +0000
+@@ -1560,6 +1560,7 @@
+     let search = within_search_budget(g);
+     let plain = Opts {
+         judge: search,
++        compact: node_cluster.is_some() && b12_on() && b12_opt("COMPACT"),
+         ..Opts::default()
+     };
+     // Cycle breakers from whichever walk reverses fewer edges (B8 review
+@@ -2267,6 +2268,10 @@
+ struct Ranking {
+     /// Per ranking link (real edges, then hub links): a cycle breaker.
+     back: Vec<bool>,
++    /// B12 prototype: per ranking link, a link turned round by the
++    /// BLOCK order (its blocks stack the other way). A `back` link too,
++    /// but one that keeps a channel ([`place`]).
++    up: Vec<bool>,
+     /// Rank-only group `k`'s first hub link id.
+     group_eid: Vec<usize>,
+     /// Longest-path layer per REAL node.
+@@ -2398,9 +2403,14 @@
+     }
+ 
+     // --- 3. A box's sources down to its first row.
++    let mut up = vec![false; nlinks];
+     if let Some(nc) = node_cluster {
+-        let stacks_from = group_eid.get(drawn).copied().unwrap_or(nlinks);
+-        seat_box_sources(nc, &g.lead_nodes, &adj, &back, stacks_from, &mut layer);
++        if b12_on() {
++            block_rank(g, nc, &adj, n, &mut back, &mut up, &mut layer);
++        } else {
++            let stacks_from = group_eid.get(drawn).copied().unwrap_or(nlinks);
++            seat_box_sources(nc, &g.lead_nodes, &adj, &back, stacks_from, &mut layer);
++        }
+     }
+ 
+     // --- 4. Lead nodes (a state `note left of X`) one layer before
+@@ -2434,11 +2444,374 @@
+     layer.truncate(n);
+     Ranking {
+         back,
++        up,
+         group_eid,
+         layer,
+     }
+ }
+ 
++/// B12 prototype switch: block ranking is on unless `FMB12=0`.
++pub(crate) fn b12_on() -> bool {
++    std::env::var("FMB12").map_or(true, |v| v != "0")
++}
++
++/// B12 prototype option `name` (`FMB12_<name>=1`).
++pub(crate) fn b12_opt(name: &str) -> bool {
++    std::env::var(format!("FMB12_{name}")).map_or(false, |v| v == "1")
++}
++
++/// B12 prototype: NESTED ("block") ranking. Every subgraph is one unit
++/// of the level it lives in: a level's units (its direct member nodes
++/// and its direct child subgraphs) are layered by longest path over the
++/// links between them, a subgraph counting as many rows as its own
++/// inside needs; a node's layer is the sum of its ancestors' starts and
++/// its own. So a subgraph's members take CONSECUTIVE layers, and two
++/// sibling subgraphs a link joins never share a layer.
++///
++/// A level whose links between units close a cycle is broken by a DFS
++/// over its units in declaration order (sources first), each unit's
++/// links followed in the declaration order of their targets: the links
++/// into a unit still on the stack are turned round (`back` and `up`).
++fn block_rank(
++    g: &Graph,
++    nc: &[Vec<usize>],
++    adj: &[Vec<(usize, usize)>],
++    n: usize,
++    back: &mut [bool],
++    up: &mut [bool],
++    layer: &mut [usize],
++) {
++    let ns = g.subgraphs.len();
++    let nx = adj.len();
++    let root = ns;
++    // Each subgraph's parent level and depth, from the member paths (an
++    // empty subgraph is on no path: no unit).
++    let mut parent = vec![usize::MAX; ns];
++    let mut depth = vec![0usize; ns];
++    let mut first = vec![usize::MAX; ns];
++    for (v, path) in nc.iter().enumerate() {
++        for (i, &c) in path.iter().enumerate() {
++            if first[c] == usize::MAX {
++                first[c] = v;
++                parent[c] = if i == 0 { root } else { path[i - 1] };
++                depth[c] = i;
++            }
++        }
++    }
++    // Unit ids: node v = v, subgraph c = n + c. Declaration key of a
++    // unit: its (first) node.
++    let key = |u: usize| if u < n { u } else { first[u - n] };
++    // The level a link belongs to and its two units there.
++    let split = |a: usize, b: usize| -> (usize, usize, usize) {
++        let (pa, pb) = (&nc[a], &nc[b]);
++        let k = pa.iter().zip(pb.iter()).take_while(|(x, y)| x == y).count();
++        let lvl = if k == 0 { root } else { pa[k - 1] };
++        let ua = if pa.len() > k { n + pa[k] } else { a };
++        let ub = if pb.len() > k { n + pb[k] } else { b };
++        (lvl, ua, ub)
++    };
++    // Node-level links: real edges and each rank-only group's from x to
++    // pairs, with the ranking links they stand for.
++    let mut links: Vec<(usize, usize, Vec<usize>)> = Vec::new();
++    for u in 0..n {
++        for &(v, ei) in &adj[u] {
++            if v < n {
++                if u != v && !back[ei] {
++                    links.push((u, v, vec![ei]));
++                }
++            }
++        }
++    }
++    for h in n..nx {
++        let ins: Vec<(usize, usize)> = (0..n)
++            .flat_map(|a| {
++                adj[a]
++                    .iter()
++                    .filter(move |&&(t, _)| t == h)
++                    .map(move |&(_, ei)| (a, ei))
++            })
++            .collect();
++        for &(a, ein) in &ins {
++            for &(b, eout) in &adj[h] {
++                if a != b && b < n && !back[ein] && !back[eout] {
++                    links.push((a, b, vec![ein, eout]));
++                }
++            }
++        }
++    }
++    // Per level: its links between units.
++    let mut level_links: Vec<Vec<(usize, usize, usize)>> = vec![Vec::new(); ns + 1];
++    for (li, &(a, b, _)) in links.iter().enumerate() {
++        let (lvl, ua, ub) = split(a, b);
++        level_links[lvl].push((ua, ub, li));
++    }
++    // Per level: its units.
++    let mut units: Vec<Vec<usize>> = vec![Vec::new(); ns + 1];
++    for v in 0..n {
++        units[nc[v].last().copied().unwrap_or(root)].push(v);
++    }
++    for c in 0..ns {
++        if first[c] != usize::MAX {
++            units[parent[c]].push(n + c);
++        }
++    }
++    // Deepest levels first, the root last.
++    let mut order: Vec<usize> = (0..ns).filter(|&c| first[c] != usize::MAX).collect();
++    order.sort_by_key(|&c| (std::cmp::Reverse(depth[c]), c));
++    order.push(root);
++    // Rows a unit takes, and its start within its level.
++    let mut rows = vec![1usize; n + ns];
++    let mut rel = vec![0usize; n + ns];
++    let mut turned = vec![false; links.len()];
++    let tight = b12_opt("TIGHT");
++    for &lvl in &order {
++        let us = &mut units[lvl];
++        us.sort_by_key(|&u| (key(u), u));
++        let us: &Vec<usize> = us;
++        let m = us.len();
++        let at = |u: usize| us.binary_search_by_key(&(key(u), u), |&x| (key(x), x)).unwrap();
++        let mut out: Vec<Vec<(usize, usize)>> = vec![Vec::new(); m];
++        let mut indeg = vec![0usize; m];
++        for &(ua, ub, li) in &level_links[lvl] {
++            out[at(ua)].push((at(ub), li));
++            indeg[at(ub)] += 1;
++        }
++        for l in out.iter_mut() {
++            l.sort_unstable();
++        }
++        // Cycle breakers of the level: two walks over its units, one
++        // from its sources first, one in plain declaration order; the
++        // one turning fewer links wins, the sources' walk on a tie.
++        let walk = |roots: Vec<usize>| -> Vec<usize> {
++            let mut state = vec![0u8; m];
++            let mut cut = Vec::new();
++            for s in roots {
++                if state[s] != 0 {
++                    continue;
++                }
++                state[s] = 1;
++                let mut stack: Vec<(usize, usize)> = vec![(s, 0)];
++                while let Some(&(u, ci)) = stack.last() {
++                    if ci < out[u].len() {
++                        stack.last_mut().unwrap().1 += 1;
++                        let (v, li) = out[u][ci];
++                        match state[v] {
++                            0 => {
++                                state[v] = 1;
++                                stack.push((v, 0));
++                            }
++                            1 => cut.push(li),
++                            _ => {}
++                        }
++                    } else {
++                        state[u] = 2;
++                        stack.pop();
++                    }
++                }
++            }
++            cut
++        };
++        let cost = |cut: &[usize]| cut.iter().filter(|&&li| links[li].2.len() == 1).count();
++        let from_sources = walk((0..m).filter(|&i| indeg[i] == 0).chain(0..m).collect());
++        let declared = walk((0..m).collect());
++        let two = std::env::var("FMB12_ORDER").map_or(true, |v| v != "model");
++        let cut = if two && cost(&declared) < cost(&from_sources) {
++            declared
++        } else {
++            from_sources
++        };
++        for li in cut {
++            turned[li] = true;
++        }
++        // The fewest links against the flow (exact, by subsets, up to
++        // 12 units a level; ties to declaration order), taken instead of
++        // the walk's when the walk turns over twice as many (`half`) or
++        // always (`fas`).
++        let mode = std::env::var("FMB12_ORDER").unwrap_or_default();
++        if (mode == "fas" || mode == "half") && m >= 2 && m <= 12 {
++            let weight = |li: usize| -> u64 {
++                if links[li].2.len() == 1 {
++                    1000
++                } else {
++                    1
++                }
++            };
++            let mut w = vec![vec![0u64; m]; m];
++            for i in 0..m {
++                for &(j, li) in &out[i] {
++                    w[i][j] += weight(li);
++                }
++            }
++            let walk_cost: u64 = (0..m)
++                .flat_map(|i| out[i].iter())
++                .filter(|&&(_, li)| turned[li])
++                .map(|&(_, li)| weight(li))
++                .sum();
++            let full = (1usize << m) - 1;
++            let mut f = vec![0u64; full + 1];
++            for set in (0..full).rev() {
++                let mut best = u64::MAX;
++                for j in 0..m {
++                    if set & (1 << j) != 0 {
++                        continue;
++                    }
++                    let c: u64 = (0..m)
++                        .filter(|&i| i != j && set & (1 << i) == 0)
++                        .map(|i| w[i][j])
++                        .sum();
++                    best = best.min(c + f[set | (1 << j)]);
++                }
++                f[set] = best;
++            }
++            if mode == "fas" || 2 * f[0] + 1000 < walk_cost {
++                let mut pos = vec![0usize; m];
++                let mut set = 0usize;
++                for k in 0..m {
++                    for j in 0..m {
++                        if set & (1 << j) != 0 {
++                            continue;
++                        }
++                        let c: u64 = (0..m)
++                            .filter(|&i| i != j && set & (1 << i) == 0)
++                            .map(|i| w[i][j])
++                            .sum();
++                        if c + f[set | (1 << j)] == f[set] {
++                            pos[j] = k;
++                            set |= 1 << j;
++                            break;
++                        }
++                    }
++                }
++                for i in 0..m {
++                    for &(j, li) in &out[i] {
++                        turned[li] = pos[i] > pos[j];
++                    }
++                }
++            }
++        }
++        // Longest path, a unit as deep as its rows.
++        let h: Vec<usize> = us.iter().map(|&u| rows[u]).collect();
++        let mut cons: Vec<(usize, usize)> = Vec::new();
++        for i in 0..m {
++            for &(j, li) in &out[i] {
++                cons.push(if turned[li] { (j, i) } else { (i, j) });
++            }
++        }
++        cons.sort_unstable();
++        cons.dedup();
++        let relax = |cons: &[(usize, usize)]| -> Vec<usize> {
++            let mut start = vec![0usize; m];
++            // Bellman-Ford style: the constraint graph is acyclic.
++            for _ in 0..=m {
++                let mut moved = false;
++                for &(i, j) in cons {
++                    if start[i] + h[i] > start[j] {
++                        start[j] = start[i] + h[i];
++                        moved = true;
++                    }
++                }
++                if !moved {
++                    break;
++                }
++            }
++            start
++        };
++        let mut start = relax(&cons);
++        // Two sibling blocks never interleave: where their rows overlap
++        // without one holding the other's, the later one starts below.
++        if !b12_opt("NOBAND") {
++            for _ in 0..m * m {
++                let mut add = None;
++                'find: for i in 0..m {
++                    for j in 0..m {
++                        if i == j || us[i] < n || us[j] < n {
++                            continue;
++                        }
++                        let (a0, a1) = (start[i], start[i] + h[i]);
++                        let (b0, b1) = (start[j], start[j] + h[j]);
++                        if a0 < b0 && b0 < a1 && a1 < b1 {
++                            add = Some((i, j));
++                            break 'find;
++                        }
++                    }
++                }
++                let Some(c) = add else { break };
++                cons.push(c);
++                start = relax(&cons);
++            }
++        }
++        // A source block starts just above its nearest successor.
++        if tight {
++            for i in 0..m {
++                if us[i] < n && !b12_opt("TIGHTALL") {
++                    continue;
++                }
++                if cons.iter().any(|&(_, j)| j == i) {
++                    continue;
++                }
++                let near = cons
++                    .iter()
++                    .filter(|&&(a, _)| a == i)
++                    .map(|&(_, j)| start[j])
++                    .min();
++                if let Some(near) = near {
++                    if near >= h[i] {
++                        start[i] = near - h[i];
++                    }
++                }
++            }
++        }
++        for (i, &u) in us.iter().enumerate() {
++            rel[u] = start[i];
++        }
++        if lvl != root {
++            rows[n + lvl] = (0..m).map(|i| start[i] + h[i]).max().unwrap_or(1).max(1);
++        }
++    }
++    // Absolute layers, outermost first.
++    let mut abs = vec![0usize; ns + 1];
++    let mut down: Vec<usize> = (0..ns).filter(|&c| first[c] != usize::MAX).collect();
++    down.sort_by_key(|&c| (depth[c], c));
++    for c in down {
++        abs[c] = abs[parent[c]] + rel[n + c];
++    }
++    for v in 0..n {
++        layer[v] = abs[nc[v].last().copied().unwrap_or(root)] + rel[v];
++    }
++    for (li, (_, _, ids)) in links.iter().enumerate() {
++        if turned[li] {
++            for &ei in ids {
++                back[ei] = true;
++                up[ei] = true;
++            }
++        }
++    }
++    // Hubs: one layer below their sources.
++    for h in n..nx {
++        let mut l = 0;
++        for a in 0..n {
++            if adj[a].iter().any(|&(t, ei)| t == h && !back[ei]) {
++                l = l.max(layer[a] + 1);
++            }
++        }
++        layer[h] = l;
++    }
++    if std::env::var("FMB12_DUMP").is_ok() {
++        let mut by: std::collections::BTreeMap<usize, Vec<&str>> = Default::default();
++        for v in 0..n {
++            by.entry(layer[v]).or_default().push(&g.nodes[v].id);
++        }
++        for (l, ids) in by {
++            eprintln!("B12 layer {l}: {}", ids.join(" "));
++        }
++        for (li, (a, b, _)) in links.iter().enumerate() {
++            if turned[li] {
++                eprintln!("B12 turned: {} -> {}", g.nodes[*a].id, g.nodes[*b].id);
++            }
++        }
++    }
++}
++
+ /// Seat every box fed from outside the boxes below its feeders (report
+ /// §2.9, B8 review r1 #1 and B8b P1). Longest-path layering parks each
+ /// member nothing ranks into on the first layer: a hub fanning out into
+@@ -3105,7 +3478,8 @@
+         // the former must not inflate the canvas, and a back-edge routed
+         // up the middle would cross every forward edge — it keeps the
+         // sideways bow instead. Both still influence ordering directly.
+-        if matches!(e.kind, EdgeKind::Invisible) || back[ei] {
++        let up_chain = rk.up.get(ei).copied().unwrap_or(false) && !b12_opt("LANES");
++        if matches!(e.kind, EdgeKind::Invisible) || (back[ei] && !up_chain) {
+             succs[lo].push(hi);
+             preds[hi].push(lo);
+             continue;
+@@ -3340,6 +3714,28 @@
+         Vec::new()
+     };
+ 
++    // B12 prototype: per augmented node, the run of its channel it
++    // belongs to (consecutive dummies of one edge with one cluster path).
++    let runs: Vec<usize> = if clustered && b12_on() && !b12_opt("NORUN") {
++        let mut r = vec![usize::MAX; na];
++        let mut next = 0;
++        for chain in &edge_chain {
++            let mut prev: Option<usize> = None;
++            for &d in chain {
++                match prev {
++                    Some(p) if apath[p] == apath[d] => r[d] = r[p],
++                    _ => {
++                        r[d] = next;
++                        next += 1;
++                    }
++                }
++                prev = Some(d);
++            }
++        }
++        r
++    } else {
++        Vec::new()
++    };
+     // --- 3. Reduce crossings: dagre-style ordering. Weighted-median
+     // sweeps (down via preds, up via succs) followed by a local
+     // adjacent-swap transpose each round. The median heuristic can
+@@ -3356,7 +3752,7 @@
+         }
+     }
+     if clustered {
+-        let keys = cluster_keys(&layers, &apath, &border_side);
++        let keys = cluster_keys(&layers, &apath, &border_side, &runs);
+         for lv in layers.iter_mut() {
+             enforce_contiguity(lv, &apath, &border_side, &mut pos, &keys);
+         }
+@@ -3380,7 +3776,7 @@
+             if clustered { Some(&border_side) } else { None },
+         );
+         if clustered {
+-            let keys = cluster_keys(&layers, &apath, &border_side);
++            let keys = cluster_keys(&layers, &apath, &border_side, &runs);
+             for lv in layers.iter_mut() {
+                 enforce_contiguity(lv, &apath, &border_side, &mut pos, &keys);
+             }
+@@ -3423,7 +3819,7 @@
+         }
+     }
+     if clustered && !bar_cards(g).is_empty() {
+-        let keys = cluster_keys(&layers, &apath, &border_side);
++        let keys = cluster_keys(&layers, &apath, &border_side, &runs);
+         for lv in layers.iter_mut() {
+             enforce_contiguity(lv, &apath, &border_side, &mut pos, &keys);
+         }
+@@ -3431,7 +3827,7 @@
+     // A subgraph [`centre_largest`] moves: its key changes, every layer
+     // regroups around it.
+     if let (true, Some((c, key))) = (clustered, opts.hint) {
+-        let mut keys = cluster_keys(&layers, &apath, &border_side);
++        let mut keys = cluster_keys(&layers, &apath, &border_side, &runs);
+         keys.1.insert(c, key);
+         for lv in layers.iter_mut() {
+             enforce_contiguity(lv, &apath, &border_side, &mut pos, &keys);
+@@ -4166,6 +4562,15 @@
+             if !judged && li > 0 && track_need[li] > 0.0 {
+                 let prev = lcoord[li - 1] + prev_after;
+                 cursor = cursor.max(prev + track_need[li]);
++                // B12 prototype: between two bands of blocks the tracks
++                // lie between the FRAMES, not between the rows of boxes.
++                if clustered && b12_on() && !b12_opt("NOGAP") {
++                    let at = lcoord[li - 1]
++                        + reach_of(li - 1, 1)
++                        + track_need[li]
++                        + reach_of(li, 0);
++                    cursor = cursor.max(at - before);
++                }
+             }
+             prev_after = after;
+             lcoord[li] = cursor + before;
+@@ -4235,7 +4640,7 @@
+         (0, 0, (0.0, 0.0))
+     };
+     let mut ckeys: Vec<(usize, f64)> = if clustered {
+-        cluster_keys(&layers, &apath, &border_side)
++        cluster_keys(&layers, &apath, &border_side, &runs)
+             .1
+             .into_iter()
+             .collect()
+@@ -4445,7 +4850,11 @@
+     let backs: Vec<usize> = (0..g.edges.len())
+         .filter(|&ei| {
+             let e = &g.edges[ei];
+-            drawn(e) && at[e.to].layer < at[e.from].layer && !card(e.from) && !card(e.to)
++            drawn(e)
++                && at[e.to].layer < at[e.from].layer
++                && !card(e.from)
++                && !card(e.to)
++                && edge_chain.get(ei).map_or(true, |c| c.is_empty())
+         })
+         .collect();
+     if backs.is_empty() {
+@@ -4456,7 +4865,11 @@
+         .edges
+         .iter()
+         .enumerate()
+-        .filter(|(_, e)| drawn(e) && at[e.to].layer >= at[e.from].layer)
++        .filter(|(ei, e)| {
++            drawn(e)
++                && (at[e.to].layer >= at[e.from].layer
++                    || edge_chain.get(*ei).map_or(false, |c| !c.is_empty()))
++        })
+         .map(|(ei, e)| {
+             let mut pts = vec![(at[e.from].b, at[e.from].l)];
+             pts.extend(edge_chain.get(ei).into_iter().flatten().map(|&d| dummy(d)));
+@@ -5484,7 +5897,12 @@
+ /// (dagre gets the same guarantee from its subgraph constraint graph).
+ /// Ordering each layer by its own mean let two siblings swap sides
+ /// between layers, which crosses their frames.
+-fn cluster_keys(layers: &[Vec<usize>], apath: &[Vec<usize>], border: &[u8]) -> OrderKeys {
++fn cluster_keys(
++    layers: &[Vec<usize>],
++    apath: &[Vec<usize>],
++    border: &[u8],
++    runs: &[usize],
++) -> OrderKeys {
+     let mut nkey = vec![0.0f64; apath.len()];
+     let mut acc: std::collections::HashMap<usize, (f64, f64)> = std::collections::HashMap::new();
+     for lv in layers {
+@@ -5501,6 +5919,26 @@
+             }
+         }
+     }
++    // B12 prototype: a channel's dummies that lie in one box (or
++    // outside every box) on consecutive layers share ONE key, the mean
++    // of theirs, as a subgraph's members do: the channel then passes
++    // every box of those layers on the same side instead of changing
++    // sides between two of a box's rows (and so crossing its frame).
++    if !runs.is_empty() {
++        let nr = runs.iter().filter(|&&r| r != usize::MAX).max().map_or(0, |m| m + 1);
++        let mut sum = vec![(0.0f64, 0.0f64); nr];
++        for (v, &r) in runs.iter().enumerate() {
++            if r != usize::MAX {
++                sum[r].0 += nkey[v];
++                sum[r].1 += 1.0;
++            }
++        }
++        for (v, &r) in runs.iter().enumerate() {
++            if r != usize::MAX {
++                nkey[v] = sum[r].0 / sum[r].1;
++            }
++        }
++    }
+     let ckey = acc.into_iter().map(|(c, (s, k))| (c, s / k)).collect();
+     (nkey, ckey)
+ }

@@ -1,0 +1,18 @@
+flowchart LR
+    U([user])
+    subgraph EXT[External services with a long title]
+        DNS[dns] 
+        BOT[bot]
+    end
+    subgraph P[Prod]
+        in[ingress] --> app[app] --> db[(db)]
+    end
+    subgraph Q[Staging]
+        in2[ingress] --> app2[app]
+    end
+    U -->|lookup| DNS
+    DNS -->|A| in
+    DNS -->|A2| in2
+    app -->|alert| BOT
+    app2 -.->|alert| BOT
+    db -->|replicate| app2

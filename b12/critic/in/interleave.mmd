@@ -1,0 +1,11 @@
+flowchart TD
+    N0[start]
+    subgraph S[Source block]
+        s1 --> s2
+    end
+    subgraph T[Tall block]
+        t1 --> t2 --> t3
+    end
+    N0 --> t1
+    N0 --> P1 --> P2 --> P3 --> P4 --> P5 --> Q[sink]
+    s2 --> Q

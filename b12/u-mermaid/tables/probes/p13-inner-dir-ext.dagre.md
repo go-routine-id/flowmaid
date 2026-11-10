@@ -1,0 +1,40 @@
+#### p13-inner-dir-ext.dagre.svg  (canvas 642 x 376, flow axis x)
+
+Blocks (cluster rectangles):
+
+| block | depth | parent | x | y | w | h | share of flow extent | member nodes | inner layers (nodes per layer, in flow order) |
+|---|---|---|---|---|---|---|---|---|---|
+| S | 0 | - | 210 | 8 | 222 | 360 | 35% | 3 (3 incl. nested) | 3 |
+
+Bands of top-level items along the flow (a band = items whose flow intervals overlap; `[X]` = block):
+
+| band | from | to | size | items in cross-axis order | gap to next band |
+|---|---|---|---|---|---|
+| 0 | 8 | 160 | 152 | x | 50 |
+| 1 | 210 | 432 | 222 | [S] | 50 |
+| 2 | 482 | 634 | 152 | y | - |
+
+Top-level blocks: 1; bands: 3; staggered bands (items chained by partial overlap, no flow coordinate common to all of them - i.e. not one layer): none.
+
+Sides of block frames crossed by inter-block edges: enters via left: 1, leaves via right: 1.
+
+Edges: 4 total, 2 with both ends in the same top-level block (intra) and 2 between different top-level items (inter); 2 have a block (not a node) as an end.
+
+Where the cross-flow runs (the "bus" segments, >= 8 px) of inter-block edges lie:
+
+| place | edges with a run here | total run length | distinct lanes (flow coordinates) |
+|---|---|---|---|
+
+| inter-block edge | from (block) | to (block) | bands | cross-flow runs |
+|---|---|---|---|---|
+| L_x_S_0 | x (x) | S (S) | 0 -> 1 | straight |
+| L_S_y_0 | S (S) | y (y) | 1 -> 2 | straight |
+
+Edges drawn through a block they do not belong to: none.
+
+Edges drawn over a node that is not their end: none.
+
+Edges drawn over a block title: none.
+
+Totals: canvas area 0.24 Mpx2, edge length 234 px, bends 4, edge crossings (drawn polylines) 0.
+
