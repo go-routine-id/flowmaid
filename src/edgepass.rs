@@ -35,7 +35,7 @@
 use crate::clearance::{CLEAR_GAP, CRAMP_NODE_GAP, EDGE_SPACING, FRAME_INSET};
 use crate::model::{Direction, End, Graph};
 use crate::scene::{
-    basis_sample, edge_drawn, edge_polyline, grow_canvas, own_box_targets, sample_cubic,
+    basis_sample_with, edge_drawn, edge_polyline, grow_canvas, own_box_targets, sample_cubic,
     shift_scene, Bbox, Scene, ARROW_MARKER_PX, MARGIN,
 };
 
@@ -106,6 +106,16 @@ pub(crate) struct Ctx {
     /// them 20-45 px. All `false` (but where `fixed`) outside
     /// `route_partial`.
     pub held: Vec<bool>,
+    /// Index-parallel with `sc.edges`: the edge was drawn down a long
+    /// edge's dummy chain ([`crate::ortho::orthogonalize`]); the router
+    /// accepts such channels before the other edges, so a shorter edge
+    /// yields to them.
+    pub chain: Vec<bool>,
+    /// Index-parallel with `sc.edges`: the edge's path is shaped round
+    /// its label (a labelled twin's bulge, [`crate::ortho`]): the channel
+    /// nudge leaves it as drawn (it only fences the others), as merging
+    /// its steps would draw it on top of its twin, its label off it.
+    pub shaped: Vec<bool>,
 }
 
 /// Build the shared context. `sc.edges` holds `g.edges` first, then the
@@ -232,6 +242,8 @@ pub(crate) fn ctx(g: &Graph, sc: &Scene) -> Ctx {
         .collect();
     let fixed = vec![false; sc.edges.len()];
     let held = fixed.clone();
+    let chain = fixed.clone();
+    let shaped = fixed.clone();
     Ctx {
         ends,
         node_frames,
@@ -240,6 +252,8 @@ pub(crate) fn ctx(g: &Graph, sc: &Scene) -> Ctx {
         drawn,
         fixed,
         held,
+        chain,
+        shaped,
     }
 }
 
@@ -265,6 +279,21 @@ pub(crate) fn end_rect(sc: &Scene, e: EndRef) -> (f64, f64, f64, f64) {
             let c = &sc.clusters[ci];
             (c.x, c.y, c.x + c.w, c.y + c.h)
         }
+    }
+}
+
+/// Whether `end` is the frame of a cluster holding `other` (a state
+/// composite's edge to one of its own states, or a subgraph's to a
+/// nested one): such an end leaves or enters its border from inside.
+pub(crate) fn holds_other(cx: &Ctx, end: EndRef, other: EndRef) -> bool {
+    match (end, other) {
+        (EndRef::Frame(c), EndRef::Node(v)) => {
+            cx.node_frames.get(v).is_some_and(|f| f.contains(&c))
+        }
+        (EndRef::Frame(c), EndRef::Frame(d)) => {
+            c != d && cx.frame_anc.get(d).is_some_and(|f| f.contains(&c))
+        }
+        _ => false,
     }
 }
 
@@ -339,6 +368,9 @@ pub(crate) fn finish_held(g: &Graph, sc: &mut Scene, mode: Mode, fixed: &[bool],
     }
     let mut moved = vec![false; sc.edges.len()];
     crate::ports::assign(g, sc, &cx, mode, &mut moved);
+    // Every edge on the axes, its corners rounded (report §2.1): from the
+    // ends the ports stage settled, before the router judges them.
+    crate::ortho::orthogonalize(g, sc, &mut cx, mode);
     crate::router::repair(g, sc, &cx, mode, &mut moved);
     // A rerouted end may have switched to another side of its node and
     // landed on a port another edge already holds: space those groups
@@ -354,7 +386,18 @@ pub(crate) fn finish_held(g: &Graph, sc: &mut Scene, mode: Mode, fixed: &[bool],
     // nothing else (G4).
     crate::router::spread_close(g, sc, &cx, mode, &mut moved);
     glyph_stubs(sc, &cx, &mut moved);
+    straight_cubics(sc, &cx);
+    square_s_cubics(sc, &cx);
     snap_ends(sc, &cx);
+    // A corner a moved end left far from its rounding point turns as a
+    // rounded corner again (see `ports::reround`). An edge a drag keeps
+    // ([`Ctx::fixed`]) keeps its geometry, whoever drew it (a fold's
+    // turns).
+    for (i, e) in sc.edges.iter_mut().enumerate() {
+        if cx.drawn.get(i).copied().unwrap_or(false) && !cx.fixed.get(i).copied().unwrap_or(false) {
+            crate::ports::reround(e);
+        }
+    }
     let budget = match mode {
         Mode::Static => crate::labels::LABEL_STATIC_WORK,
         Mode::Routed => crate::labels::LABEL_ROUTE_WORK,
@@ -363,6 +406,137 @@ pub(crate) fn finish_held(g: &Graph, sc: &mut Scene, mode: Mode, fixed: &[bool],
     // A scene whose painter strokes its own width (ER, class) is drawn
     // on its canvas as-is; a flowchart's is fitted like its SVG.
     refit(sc, mode, g.edge_paint_width.is_none());
+}
+
+/// A path the stages drew as one straight leg (two waypoints on an
+/// axis: the nudge's step merged away, a reroute's straight drop) as the
+/// straight cubic it is: a two-point polyline's head box and the
+/// samples the label stage and the casing read reached back over the
+/// whole leg (dense-td's `n2 -> n7` label read as on its own head, the
+/// leg 72 px long). Drawn alike. (A flowchart or state edge's: a class
+/// or ER painter draws its own.)
+fn straight_cubics(sc: &mut Scene, cx: &Ctx) {
+    for (i, e) in sc.edges.iter_mut().enumerate() {
+        if e.waypoints.len() != 2
+            || e.paint_width.is_some()
+            || !cx.drawn.get(i).copied().unwrap_or(false)
+        {
+            continue;
+        }
+        let (a, b) = (e.waypoints[0], e.waypoints[1]);
+        if (a.0 - b.0).abs() > 1e-9 && (a.1 - b.1).abs() > 1e-9 {
+            continue;
+        }
+        e.bezier = [
+            a,
+            (a.0 + (b.0 - a.0) / 3.0, a.1 + (b.1 - a.1) / 3.0),
+            (a.0 + 2.0 * (b.0 - a.0) / 3.0, a.1 + 2.0 * (b.1 - a.1) / 3.0),
+            b,
+        ];
+        e.waypoints.clear();
+    }
+}
+
+/// How far (px) across its run a free cubic between facing sides may
+/// stray and be drawn straight by sliding one end along its side
+/// ([`square_s_cubics`]): a sub-pixel S is a rounding's leftover.
+const SQUARE_SLIDE: f64 = 1.0;
+
+/// Report §2.1, B1: a flowchart or state edge the stages after the
+/// ortho stage left as an S — a single cubic between two sides facing
+/// each other along one axis, its handles along that axis, its ends a
+/// little apart across it — drawn on the axes: within [`SQUARE_SLIDE`]
+/// straight (the end on a flat side slides onto the other's line, the
+/// target's where both are), else, up to a corner's two roundings
+/// across, a Z whose step lies midway (or a head's run short of a glyph
+/// end) with rounded corners. The ortho stage draws such an edge
+/// straight or as a Z, but the spacing after the router slides ends it
+/// moved (a choice's two ends on one point), a drag frame respaces a
+/// kept edge's end beside a redrawn one, and the S came back: `x3_state`'s
+/// `Ready --> check` 6 px across, `x6_rl`'s `C --> D` under a 1 px drag
+/// of `E`. Note card links, authored curves and self-loops keep their
+/// curves, and class and ER painters draw their own. Idempotent: what it
+/// draws has waypoints or is straight.
+fn square_s_cubics(sc: &mut Scene, cx: &Ctx) {
+    for i in 0..sc.edges.len() {
+        let Some((from, to)) = cx.ends[i] else {
+            continue;
+        };
+        let e = &sc.edges[i];
+        if !cx.drawn[i]
+            || from == to
+            || !e.waypoints.is_empty()
+            || e.paint_width.is_some()
+            || e.meta.curve.is_some()
+            || crate::ports::note_link(sc, cx, i)
+        {
+            continue;
+        }
+        let [p0, c1, c2, p3] = e.bezier;
+        // In (breadth, along) coordinates of the axis the handles run on.
+        let vertical = if c1.0 == p0.0 && c2.0 == p3.0 && c1.1 != p0.1 {
+            true
+        } else if c1.1 == p0.1 && c2.1 == p3.1 && c1.0 != p0.0 {
+            false
+        } else {
+            continue;
+        };
+        let flip = |p: Pt| if vertical { p } else { (p.1, p.0) };
+        let (a, h1, h2, b) = (flip(p0), flip(c1), flip(c2), flip(p3));
+        let run = b.1 - a.1;
+        let off = (b.0 - a.0).abs();
+        if !(1e-9..2.0 * crate::router::CORNER_R).contains(&off)
+            || (h1.1 - a.1) * run <= 0.0
+            || (b.1 - h2.1) * run <= 0.0
+        {
+            continue;
+        }
+        let flat = |end: EndRef| match end {
+            EndRef::Frame(_) => true,
+            EndRef::Node(v) => !matches!(
+                sc.nodes[v].shape,
+                crate::model::Shape::Circle
+                    | crate::model::Shape::DoubleCircle
+                    | crate::model::Shape::StateStart
+                    | crate::model::Shape::StateEnd
+                    | crate::model::Shape::Diamond
+            ),
+        };
+        let e = &mut sc.edges[i];
+        if off <= SQUARE_SLIDE {
+            // Slide one end onto the other's line.
+            let (a, b) = if flat(to) || !flat(from) {
+                (a, (a.0, b.1))
+            } else {
+                ((b.0, a.1), b)
+            };
+            let (p0, p3) = (flip(a), flip(b));
+            e.bezier = [
+                p0,
+                (p0.0 + (p3.0 - p0.0) / 3.0, p0.1 + (p3.1 - p0.1) / 3.0),
+                (
+                    p0.0 + 2.0 * (p3.0 - p0.0) / 3.0,
+                    p0.1 + 2.0 * (p3.1 - p0.1) / 3.0,
+                ),
+                p3,
+            ];
+            continue;
+        }
+        let glyph = (
+            e.ends.start_marker(e.kind).is_some(),
+            e.ends.end_marker(e.kind).is_some(),
+        );
+        let len = run.abs();
+        let head = crate::ortho::HEAD_LEG.min(len - crate::router::CORNER_R);
+        let t = match glyph {
+            (false, true) => b.1 - run.signum() * (len / 2.0).max(head),
+            (true, false) => a.1 + run.signum() * (len / 2.0).max(head),
+            _ => a.1 + run / 2.0,
+        };
+        let corners: Vec<Pt> = [a, (a.0, t), (b.0, t), b].into_iter().map(flip).collect();
+        e.bezier = [corners[0], corners[1], corners[2], corners[3]];
+        e.waypoints = crate::router::smooth(&corners, crate::router::CORNER_R);
+    }
 }
 
 /// How far (px) out of its end the straight stub [`glyph_stubs`] gives a
@@ -394,7 +568,14 @@ fn glyph_stubs(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
         let (Some((from, to)), true) = (cx.ends[i], cx.drawn[i]) else {
             continue;
         };
-        if e.waypoints.len() < 2 || e.paint_width.is_some() || e.meta.curve.is_some() {
+        // (A path on the axes runs straight into its ends already, its
+        // corner a head clear of them where its legs allow
+        // ([`crate::ortho`]); a stub would cut a diagonal across it.)
+        if e.waypoints.len() < 2
+            || e.paint_width.is_some()
+            || e.meta.curve.is_some()
+            || crate::router::ortho_corners(e).is_some()
+        {
             continue;
         }
         let glyphs = (
@@ -597,7 +778,27 @@ fn snapped_end(
     } else {
         side
     };
-    crate::scene::outline_along(n, p, run).or_else(|| crate::scene::outline_along(n, p, side))
+    crate::scene::outline_along(n, p, run)
+        .or_else(|| crate::scene::outline_along(n, p, side))
+        .or_else(|| {
+            // An end inside its box, deeper than a sunk end, on a run
+            // along an axis: a nudge slid it along a lid at the depth
+            // its old place met the lid (a Z drawn straight onto a drum
+            // 25 px off its centre). Back to the box side along the run,
+            // then onto the outline from there.
+            // (A flowchart edge's: class and ER ends stay as they were.)
+            let axis = out.0 == 0.0 || out.1 == 0.0;
+            let inside = gx < 0.0 && gy < 0.0;
+            if e.paint_width.is_some() || !axis || !inside || (out.0 == 0.0 && out.1 == 0.0) {
+                return None;
+            }
+            let q = if out.0 == 0.0 {
+                (p.0, if out.1 < 0.0 { rect.1 } else { rect.3 })
+            } else {
+                (if out.0 < 0.0 { rect.0 } else { rect.2 }, p.1)
+            };
+            crate::scene::outline_along(n, q, out)
+        })
 }
 
 /// Least cosine between an end's run and its side's outward normal for
@@ -624,7 +825,7 @@ const SNAP_REACH: f64 = 0.5;
 /// (`scene::square_end`).
 fn stub_keeps_clear(sc: &Scene, cx: &Ctx, i: usize, new: &[Pt], stubbed: &[usize]) -> bool {
     let old = &edge_polyline(&sc.edges[i]);
-    let fresh = basis_sample(new);
+    let fresh = basis_sample_with(new, sc.edges[i].paint_width.is_none());
     // The stubs replace waypoints only near the ends, so the curves share
     // their samples away from them (the spline is local): the stretch of
     // each between its shared head and tail (a sample either side).
@@ -996,9 +1197,15 @@ mod tests {
     /// stays a fixed point of `finish`.
     #[test]
     fn long_edges_run_straight_into_their_arrowheads() {
+        // A spline through a dummy chain, as the builder draws it before
+        // the edge stages put it on the axes (B10; a chain the ortho stage
+        // leaves gets its stub the same way).
         let src = "flowchart TD\nA --> B --> C --> D\nA --> D";
         let g = parse(src).unwrap();
-        let sc = scene(&g);
+        let mut sc = crate::scene::built(&g);
+        let cx = ctx(&g, &sc);
+        let mut moved = vec![false; sc.edges.len()];
+        glyph_stubs(&mut sc, &cx, &mut moved);
         let mut seen = 0;
         // The dummy chain A -> D past B and C (a router path keeps its
         // own stub, a corner one clearance out).
@@ -1031,8 +1238,12 @@ mod tests {
     #[test]
     fn a_stub_never_crowds_a_node_or_an_edge_its_curve_kept_clear_of() {
         let g = parse("flowchart TD\nA --> B --> C --> D\nA --> D").unwrap();
-        let sc = scene(&g);
+        // The builder's spline through the dummy chain, stubbed (see
+        // above).
+        let mut sc = crate::scene::built(&g);
         let cx = ctx(&g, &sc);
+        let mut moved = vec![false; sc.edges.len()];
+        glyph_stubs(&mut sc, &cx, &mut moved);
         let i = (0..sc.edges.len())
             .find(|&i| sc.edges[i].from == "A" && sc.edges[i].to == "D")
             .unwrap();
@@ -1154,5 +1365,131 @@ mod tests {
             }
             assert!(sc.width >= base.width - 500.0);
         }
+    }
+
+    /// The vertical scene edge `A --> B` (TD) and its context.
+    fn plain_pair() -> (Graph, Scene, Ctx) {
+        let g = parse("flowchart TD\nA --> B").unwrap();
+        let sc = scene(&g);
+        let cx = ctx(&g, &sc);
+        (g, sc, cx)
+    }
+
+    /// A two-point path on an axis (the nudge's step merged away) is
+    /// drawn as the straight cubic it is, its head box no longer the
+    /// whole leg's (B10); a class or ER painter's path stays.
+    #[test]
+    fn a_two_point_axis_path_becomes_a_straight_cubic() {
+        let (_, mut sc, cx) = plain_pair();
+        let a = sc.edges[0].bezier[0];
+        let b = (a.0, sc.edges[0].bezier[3].1);
+        sc.edges[0].waypoints = vec![a, b];
+        let mut class = sc.clone();
+        straight_cubics(&mut sc, &cx);
+        let e = &sc.edges[0];
+        assert!(e.waypoints.is_empty(), "{e:?}");
+        assert_eq!(e.bezier[0], a);
+        assert_eq!(e.bezier[3], b);
+        assert!(e.bezier.iter().all(|p| p.0 == a.0), "{e:?}");
+        class.edges[0].paint_width = Some(2.0);
+        let before = format!("{:?}", class.edges[0]);
+        straight_cubics(&mut class, &cx);
+        assert_eq!(format!("{:?}", class.edges[0]), before);
+    }
+
+    /// B10: an end the nudge slid along a drum's lid at the depth its
+    /// old place met the lid — deep inside the box, on a run along an
+    /// axis — comes back out along the run onto the outline (a Z drawn
+    /// straight onto a drum 25 px off its centre ended inside it). A
+    /// class or ER end stays where it is.
+    #[test]
+    fn an_end_sunk_into_a_drums_lid_comes_back_to_its_outline() {
+        let g = parse("flowchart TD\nA --> DB[(Store)]").unwrap();
+        let sc = scene(&g);
+        let n = sc.nodes.iter().find(|n| n.id == "DB").unwrap();
+        let (x, top) = (n.x + n.w / 4.0, n.y - n.h / 2.0);
+        let mut e = sc.edges[0].clone();
+        let (a, b) = ((x, top - 40.0), (x, top + 25.0));
+        e.waypoints = vec![a, b];
+        e.bezier = [a, a, b, b];
+        let q = snapped_end(n, &e, false).expect("brought back");
+        assert_eq!(q.0, x);
+        assert!(q.1 >= top - 0.5 && q.1 < top + 25.0, "{q:?}");
+        // On the outline: nothing left to snap there.
+        let mut on = e.clone();
+        on.waypoints[1] = q;
+        on.bezier[3] = q;
+        if let Some(r) = snapped_end(n, &on, false) {
+            assert!((r.0 - q.0).hypot(r.1 - q.1) < 1e-6, "{q:?} -> {r:?}");
+        }
+        e.paint_width = Some(2.0);
+        assert!(snapped_end(n, &e, false).is_none());
+    }
+
+    /// [`square_s_cubics`]: a single cubic between facing sides a few
+    /// px across its run comes out as a rounded Z whose step leaves its
+    /// head's run into the target; under a px, straight with the end
+    /// slid; a class path stays; idempotent.
+    #[test]
+    fn an_s_left_between_facing_sides_is_squared() {
+        let (_, sc0, cx) = plain_pair();
+        let a = sc0.edges[0].bezier[0];
+        let b = sc0.edges[0].bezier[3];
+        let s_cubic = |sc: &mut Scene, dx: f64| {
+            let b2 = (a.0 + dx, b.1);
+            let m = (a.1 + b2.1) / 2.0;
+            sc.edges[0].waypoints.clear();
+            sc.edges[0].bezier = [a, (a.0, m), (b2.0, m), b2];
+            b2
+        };
+        let mut sc = sc0.clone();
+        let b2 = s_cubic(&mut sc, 6.0);
+        square_s_cubics(&mut sc, &cx);
+        let c = crate::router::ortho_corners(&sc.edges[0]).expect("on the axes");
+        assert_eq!(c.len(), 4, "{c:?}");
+        assert_eq!((c[0], c[3]), (a, b2));
+        let len = b2.1 - a.1;
+        assert!(b2.1 - c[2].1 >= len / 2.0 - 1e-9, "{c:?}");
+        let once = format!("{:?}", sc.edges[0]);
+        square_s_cubics(&mut sc, &cx);
+        assert_eq!(format!("{:?}", sc.edges[0]), once);
+
+        let mut sc = sc0.clone();
+        s_cubic(&mut sc, 0.6);
+        square_s_cubics(&mut sc, &cx);
+        let e = &sc.edges[0];
+        assert!(e.waypoints.is_empty());
+        assert!(e.bezier.iter().all(|p| p.0 == a.0), "{e:?}");
+
+        let mut sc = sc0.clone();
+        s_cubic(&mut sc, 6.0);
+        sc.edges[0].paint_width = Some(2.0);
+        let before = format!("{:?}", sc.edges[0]);
+        square_s_cubics(&mut sc, &cx);
+        assert_eq!(format!("{:?}", sc.edges[0]), before);
+    }
+
+    /// [`holds_other`]: a composite's frame holds its own states and its
+    /// nested composites, not itself, its parent or a state outside it.
+    #[test]
+    fn a_frame_holds_its_own_states_and_nested_frames() {
+        let src =
+            "stateDiagram-v2\nstate Outer {\n  [*] --> A\n  state Inner {\n    [*] --> B\n  }\n  \
+                   A --> Inner\n}\nX --> Outer\nOuter --> A";
+        let g = match crate::parser::parse_document(src).unwrap() {
+            crate::model::Document::State(g) => g,
+            _ => unreachable!(),
+        };
+        let sc = scene(&g);
+        let cx = ctx(&g, &sc);
+        let frame = |id: &str| EndRef::Frame(sc.clusters.iter().position(|c| c.id == id).unwrap());
+        let node = |id: &str| EndRef::Node(sc.nodes.iter().position(|n| n.id == id).unwrap());
+        assert!(holds_other(&cx, frame("Outer"), node("A")));
+        assert!(holds_other(&cx, frame("Outer"), node("B")));
+        assert!(holds_other(&cx, frame("Outer"), frame("Inner")));
+        assert!(!holds_other(&cx, frame("Inner"), frame("Outer")));
+        assert!(!holds_other(&cx, frame("Outer"), frame("Outer")));
+        assert!(!holds_other(&cx, frame("Outer"), node("X")));
+        assert!(!holds_other(&cx, node("A"), frame("Outer")));
     }
 }

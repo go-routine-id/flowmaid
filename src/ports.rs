@@ -41,6 +41,9 @@ const PORT_MIN_SPACING: f64 = 6.0;
 const PARALLEL_SLANT_MAX: f64 = 8.0;
 /// Tolerance (px) when checking whether a group is already placed.
 const SETTLE_EPS: f64 = 1e-6;
+/// The least pitch (px) at which a side whose every end a finished
+/// path holds counts as settled (see `assign`): two strokes apart.
+const FINISHED_PITCH: f64 = crate::clearance::EDGE_SPACING / 2.0;
 /// Spacing (px) below which even back-edge ends spill round a corner.
 const PORT_HARD_SPACING: f64 = 5.0;
 /// How far (px) the control point of an end moved round a corner is
@@ -624,11 +627,45 @@ fn place_weighted(d: &[f64], w: &[f64], s: f64, lo: f64, hi: f64) -> Vec<f64> {
     out
 }
 
+/// The drawn end of edge `i` (its start when `src`): what
+/// [`end_and_steer`] returns first, without reading where it heads.
+fn end_point(sc: &Scene, i: usize, src: bool) -> Pt {
+    let e = &sc.edges[i];
+    let w = &e.waypoints;
+    match (w.len() >= 2, src) {
+        (true, true) => w[0],
+        (true, false) => w[w.len() - 1],
+        (false, true) => e.bezier[0],
+        (false, false) => e.bezier[3],
+    }
+}
+
 /// The drawn end point of edge `i` (`src` = its start) and the point
 /// the edge steers towards from there.
 fn end_and_steer(sc: &Scene, i: usize, src: bool, side: Option<Side>) -> (Pt, Pt) {
     let e = &sc.edges[i];
     let w = &e.waypoints;
+    // A Z or an L on the axes (the ortho stage's, or one the router
+    // rerouted that way: [`crate::ortho`]) heads along the chord through
+    // its corners, as the single curve it replaced headed — whichever
+    // stage drew it, so a side's order (and a second pass over it) stays
+    // as the curves set it.
+    // (A flowchart edge's: a class or ER scene's paths steer as they
+    // always did.)
+    let chord = (e.paint_width.is_none() && w.len() >= 2 && crate::scene::single_run(e))
+        .then(|| crate::router::ortho_corners(e))
+        .flatten()
+        .filter(|c| c.len() >= 3);
+    if let Some(c) = chord {
+        let n = c.len();
+        let b = [c[0], c[1], c[n - 2], c[n - 1]];
+        let p = if src { w[0] } else { w[w.len() - 1] };
+        let q = (
+            (b[0].0 + 3.0 * b[1].0 + 3.0 * b[2].0 + b[3].0) / 8.0,
+            (b[0].1 + 3.0 * b[1].1 + 3.0 * b[2].1 + b[3].1) / 8.0,
+        );
+        return (p, q);
+    }
     if w.len() >= 2 {
         let p = if src { w[0] } else { w[w.len() - 1] };
         // The first waypoint off the end's straight stub (else the far
@@ -662,6 +699,11 @@ fn end_and_steer(sc: &Scene, i: usize, src: bool, side: Option<Side>) -> (Pt, Pt
         (p, q)
     }
 }
+
+/// The order key of an end heading into the frame it is on (past any
+/// heading's, which lie in -2..2), and its place's weight in that key.
+const INWARD_KEY: f64 = 3.0;
+const INWARD_ORDER: f64 = 1e-6;
 
 /// The key a group of ends is sorted by: heading, then outgoing before
 /// incoming, then edge index.
@@ -702,7 +744,7 @@ fn keep_parallel_order(ports: &mut [PortEnd], cx: &Ctx, sc: &Scene) {
 /// or the other way when both are drawn as single curves (a 2-cycle
 /// across one gap).
 fn same_pair(cx: &Ctx, sc: &Scene, a: usize, b: usize) -> bool {
-    let curve = |i: usize| sc.edges.get(i).is_some_and(|e| e.waypoints.is_empty());
+    let curve = |i: usize| sc.edges.get(i).is_some_and(crate::scene::single_run);
     match (
         cx.ends.get(a).copied().flatten(),
         cx.ends.get(b).copied().flatten(),
@@ -905,7 +947,7 @@ fn place_ports(
             .windows(2)
             .filter(|w| sibling(&w[0], &w[1]))
             .map(|w| {
-                let far = end_and_steer(sc, w[0].edge, !w[0].src, None).0;
+                let far = end_point(sc, w[0].edge, !w[0].src);
                 let (f, a) = (split(side, far), split(side, w[0].at));
                 let (t, n) = ((f.0 - a.0).abs(), (f.1 - a.1).abs());
                 // A free curve leaves and enters along the normal, so
@@ -973,9 +1015,31 @@ fn place_ports(
             // a 1 px drag of a node none of its edges touch.
             x
         } else {
+            // In `assign`, a side whose every end a finished path holds
+            // (on the axes before the ortho stage ran: a previous pass's
+            // router, respacing and nudge spaced them after this stage,
+            // as close as the room of a crowded side allows, and spilled
+            // them round its corners) is settled while its strokes stay
+            // apart, so a second pass leaves it as drawn (a 24-end
+            // diamond hub's sides were spaced afresh and every leg
+            // redrawn). The respacing after the router spaces the ends
+            // it moved by the plain rule.
+            let finished = spill_over
+                && judge.is_none()
+                && ports.iter().all(|p| {
+                    let e = &sc.edges[p.edge];
+                    e.paint_width.is_none() && crate::router::ortho_corners(e).is_some()
+                });
+            // (Wherever along the outline they sit: the nudge may have
+            // slid one past the span this stage keeps to.)
+            let (pitch, a, b) = if finished {
+                (s.min(FINISHED_PITCH), f64::NEG_INFINITY, f64::INFINITY)
+            } else {
+                (s, lo, hi)
+            };
             if !shaded
-                && ports.iter().all(|p| p.spilled.is_none())
-                && settled(&ports, side, s, lo, hi, crossed)
+                && (finished || ports.iter().all(|p| p.spilled.is_none()))
+                && settled(&ports, side, pitch, a, b, crossed)
             {
                 continue;
             }
@@ -1096,7 +1160,7 @@ fn side_groups(sc: &Scene, cx: &Ctx) -> BTreeMap<(EndRef, Side), Vec<PortEnd>> {
         };
         let e = &sc.edges[i];
         for (src, end) in [(true, from), (false, to)] {
-            let (p, _) = end_and_steer(sc, i, src, None);
+            let p = end_point(sc, i, src);
             let side = end_side(sc, end, p);
             let (p, q) = end_and_steer(sc, i, src, Some(side));
             let glyph = if src {
@@ -1119,6 +1183,47 @@ fn side_groups(sc: &Scene, cx: &Ctx) -> BTreeMap<(EndRef, Side), Vec<PortEnd>> {
                 back: cx.back.get(i).copied().unwrap_or(false),
                 weight: 1.0,
             });
+        }
+    }
+    // A flowchart edge from a frame's border into the frame (a state
+    // composite's edge to one of its own states) heads inside: its
+    // heading says nothing about the outside edges on that border, which
+    // it never crosses, so it takes the end of the side nearer where it
+    // lies (by the outside ends' places), in place order among its kind.
+    // Ordered as heading straight back in, it went last and was spread
+    // to the far end of the border, 137 px from the state above it.
+    for ((end, _), ports) in groups.iter_mut() {
+        let inward = |p: &PortEnd| {
+            sc.edges[p.edge].paint_width.is_none()
+                && cx
+                    .ends
+                    .get(p.edge)
+                    .copied()
+                    .flatten()
+                    .is_some_and(|(f, t)| {
+                        let other = if p.src { t } else { f };
+                        crate::edgepass::holds_other(cx, *end, other)
+                    })
+        };
+        if !ports.iter().any(inward) {
+            continue;
+        }
+        let outside: Vec<f64> = ports
+            .iter()
+            .filter(|p| !inward(p))
+            .map(|p| p.want)
+            .collect();
+        for p in ports.iter_mut() {
+            if inward(p) {
+                let before = outside.iter().filter(|&&w| w < p.want).count();
+                let after = outside.len() - before;
+                let end = if before <= after {
+                    -INWARD_KEY
+                } else {
+                    INWARD_KEY
+                };
+                p.key = end + p.want * INWARD_ORDER;
+            }
         }
     }
     groups
@@ -1165,7 +1270,7 @@ fn facing(a: Side, b: Side) -> bool {
 fn straight_partner(sc: &Scene, cx: &Ctx, p: &PortEnd, side: Side) -> Option<f64> {
     let (from, to) = cx.ends.get(p.edge).copied().flatten()?;
     let other = if p.src { to } else { from };
-    let q = end_and_steer(sc, p.edge, !p.src, None).0;
+    let q = end_point(sc, p.edge, !p.src);
     if !facing(side, end_side(sc, other, q)) {
         return None;
     }
@@ -1240,9 +1345,19 @@ fn around_kept(
     let at = |p: &PortEnd| split(side, p.at).0;
     let mut taken: Vec<f64> = ports.iter().filter(|p| kept(p)).map(at).collect();
     taken.sort_by(f64::total_cmp);
-    if taken.windows(2).any(|w| w[1] - w[0] < s - SETTLE_EPS) {
+    // Kept ends the base spaced tighter than this side's spacing (its
+    // router, respacing and nudge settled them after the ports stage):
+    // the redrawn ones fit round them at that tighter pitch, down to the
+    // least a crowded side keeps, rather than the side being spaced
+    // afresh (dense-td's hub threw its fan 10-40 px on a 1 px drag).
+    let tight = taken
+        .windows(2)
+        .map(|w| w[1] - w[0])
+        .fold(f64::INFINITY, f64::min);
+    if tight < PORT_MIN_SPACING - SETTLE_EPS {
         return None;
     }
+    let s = s.min(tight);
     let (lo, hi) = (lo.min(taken[0]), hi.max(taken[taken.len() - 1]));
     let on_span = |t: f64| t >= lo - SETTLE_EPS && t <= hi + SETTLE_EPS;
     let mut x = vec![0.0; ports.len()];
@@ -1340,6 +1455,20 @@ fn snap_straight_pairs(
     deltas: &mut [[Pt; 2]],
     moved: &mut [bool],
 ) {
+    // Only a single curve whose ends lie a port's slack to
+    // [`STRAIGHT_SNAP`] apart across one axis is snapped (the test below,
+    // on whichever axis its sides face along): with none such (after the
+    // ortho stage, every other edge is a path), the sides are not
+    // grouped at all.
+    let near = |d: f64| (PORT_EPS..=STRAIGHT_SNAP).contains(&d);
+    if !sc.edges.iter().enumerate().any(|(i, e)| {
+        let [p0, .., p3] = e.bezier;
+        e.waypoints.is_empty()
+            && cx.drawn.get(i).copied().unwrap_or(false)
+            && (near((p3.0 - p0.0).abs()) || near((p3.1 - p0.1).abs()))
+    }) {
+        return;
+    }
     let mut groups = side_groups(sc, cx);
     let mut key_of: BTreeMap<(usize, bool), (EndRef, Side)> = BTreeMap::new();
     for (key, ports) in &groups {
@@ -1711,6 +1840,23 @@ fn settled(
 /// Whether the drawn legs of two ends (each edge's polyline from its
 /// end out to [`PORT_LEG_REACH`]) cross.
 fn legs_cross(sc: &Scene, a: &PortEnd, b: &PortEnd) -> bool {
+    // Two flowchart paths on the axes from one side: their whole square
+    // corners (a handful of legs). Two Ls of a fan turning the same way
+    // cross where the one turning first runs across the other's long
+    // first leg, far past the reach (fanout-frames' `n0 --> g6` over
+    // `n0 --> n21`, 750 px down).
+    let square = |p: &PortEnd| {
+        let e = &sc.edges[p.edge];
+        if e.paint_width.is_some() || e.waypoints.is_empty() {
+            return None;
+        }
+        crate::router::ortho_corners(e)
+    };
+    if let (Some(ca), Some(cb)) = (square(a), square(b)) {
+        return ca
+            .windows(2)
+            .any(|u| cb.windows(2).any(|v| segs_cross(u[0], u[1], v[0], v[1])));
+    }
     let leg = |p: &PortEnd| {
         let mut pts = edge_polyline(&sc.edges[p.edge]);
         if !p.src {
@@ -1738,6 +1884,49 @@ fn segs_cross(a: Pt, b: Pt, c: Pt, d: Pt) -> bool {
 /// with the control point (for a `back`-edge, so its bow's apex stays)
 /// or stub waypoint next to it, so the edge still leaves the border the
 /// way it did.
+/// A flowchart path on the axes that [`move_end`] left with a corner whose
+/// neighbouring waypoint on a leg lies farther than [`SWOOP_REACH`] from
+/// it — the slid leg's corner moved away from the point before it, or
+/// that point was dropped with the leg's folded part — gets the
+/// rounding point on that leg back, [`crate::router::CORNER_R`] (at
+/// most half the way to that neighbour) from the corner, as
+/// [`crate::router::smooth`] puts it: a host's spline through the
+/// waypoints then turns there as a rounded corner instead of sweeping
+/// over the leg (bench-75's `svc6 --> ext` sagged over 270 px, `svc3 -->
+/// metrics` 42 px, B10 review r3 #5). Its other points stay. Run once
+/// the paths are final ([`crate::edgepass::finish`], before the labels):
+/// the ports stage reads where a path heads off its waypoints.
+pub(crate) fn reround(e: &mut SceneEdge) {
+    if e.paint_width.is_some() {
+        return;
+    }
+    let Some(c) = crate::router::ortho_corners(e) else {
+        return;
+    };
+    for m in c[1..c.len() - 1].iter().rev() {
+        let w = &mut e.waypoints;
+        let Some(j) = w.iter().rposition(|q| q == m) else {
+            continue;
+        };
+        // After it, then before it (the index stays put).
+        for (k, at) in [(j + 1, j + 1), (j.wrapping_sub(1), j)] {
+            let Some(&q) = w.get(k) else {
+                continue;
+            };
+            let d = (q.0 - m.0).hypot(q.1 - m.1);
+            if d > SWOOP_REACH {
+                let r = crate::router::CORNER_R.min(d / 2.0);
+                w.insert(at, (m.0 + (q.0 - m.0) / d * r, m.1 + (q.1 - m.1) / d * r));
+            }
+        }
+    }
+}
+
+/// How far (px) from a corner of a flowchart path on the axes the
+/// waypoint before or after it may lie and the corner still turn as a
+/// rounded one: two corner roundings ([`crate::router::CORNER_R`]).
+const SWOOP_REACH: f64 = 2.0 * crate::router::CORNER_R;
+
 fn move_end(e: &mut SceneEdge, src: bool, old: Pt, delta: Pt, side: Side, back: bool) {
     let add = |p: &mut Pt| {
         p.0 += delta.0;
@@ -1770,6 +1959,24 @@ fn move_end(e: &mut SceneEdge, src: bool, old: Pt, delta: Pt, side: Side, back: 
     }
     let n = e.waypoints.len();
     let wi = if src { 0 } else { n - 1 };
+    // A leg on the axes off a slanted or round outline (a diamond's end
+    // on its lower right face, its side the right one by quadrant, its
+    // leg straight down) follows across its own axis, not the side's:
+    // read the side's axis off the leg, so the leg stays on its axis
+    // instead of kinking from the moved end to its old line.
+    let side = if n >= 2 && e.paint_width.is_none() {
+        let (a, b) = (e.waypoints[wi], e.waypoints[if src { 1 } else { n - 2 }]);
+        let (dx, dy) = ((a.0 - b.0).abs(), (a.1 - b.1).abs());
+        if dx < STUB_EPS && dy >= STUB_EPS {
+            Side::Bottom
+        } else if dy < STUB_EPS && dx >= STUB_EPS {
+            Side::Left
+        } else {
+            side
+        }
+    } else {
+        side
+    };
     add(&mut e.waypoints[wi]);
     // The straight leg out of the end follows along the side: the stub
     // and, on a rerouted lattice path, every later point still on that
@@ -1867,6 +2074,28 @@ fn turn_end(e: &mut SceneEdge, src: bool, old: Pt, new: Pt, side: Side, back: bo
     let n = e.waypoints.len();
     let wi = if src { 0 } else { n - 1 };
     e.waypoints[wi] = new;
+    // A leg on the axes out of the end slides across its axis with it,
+    // up to its corner, so the path stays on the axes (an orthogonal
+    // path's end turned round a diamond's corner kinked from the new
+    // end back to its old line).
+    let at = |k: usize| if src { k } else { n - 1 - k };
+    if n >= 3 && e.paint_width.is_none() {
+        let b = e.waypoints[at(1)];
+        let vertical = (b.0 - old.0).abs() < STUB_EPS && (b.1 - old.1).abs() >= STUB_EPS;
+        let level = (b.1 - old.1).abs() < STUB_EPS && (b.0 - old.0).abs() >= STUB_EPS;
+        let mut k = 1;
+        while k + 1 < n && (vertical || level) {
+            let q = &mut e.waypoints[at(k)];
+            if vertical && (q.0 - old.0).abs() < STUB_EPS {
+                q.0 = new.0;
+            } else if level && (q.1 - old.1).abs() < STUB_EPS {
+                q.1 = new.1;
+            } else {
+                break;
+            }
+            k += 1;
+        }
+    }
     if same(e.bezier[pi], old) {
         if same(e.bezier[ci], old) {
             e.bezier[ci] = new;
@@ -1895,6 +2124,67 @@ fn same(a: Pt, b: Pt) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_corner_left_far_from_its_rounding_point_is_rounded_again() {
+        // bench-75's `svc6 --> ext` after its end slid: the corner at
+        // (2104.975, 768) kept its point after it, the one before was
+        // dropped with the folded leg, and the spline swept 270 px.
+        let base = scene(&parse("flowchart LR\nA --> B").unwrap()).edges[0].clone();
+        let mut e = base.clone();
+        e.waypoints = vec![
+            (490.6, 768.0),
+            (2104.975, 768.0),
+            (2104.975, 782.0),
+            (2104.975, 1103.4),
+        ];
+        reround(&mut e);
+        let r = crate::router::CORNER_R;
+        assert_eq!(e.waypoints.len(), 5);
+        assert!((e.waypoints[1].0 - (2104.975 - r)).abs() < 1e-9 && e.waypoints[1].1 == 768.0);
+        // Rounded already (every corner's neighbours within reach): kept.
+        let c = [(0.0, 0.0), (0.0, 100.0), (200.0, 100.0), (200.0, 300.0)];
+        let mut f = base;
+        f.waypoints = crate::router::smooth(&c, r);
+        let before = f.waypoints.clone();
+        reround(&mut f);
+        assert_eq!(f.waypoints, before);
+        // Every fixture's and example's flowchart edges come out with
+        // each corner's rounding point within reach, in `scene()` and
+        // `route()`.
+        let root = env!("CARGO_MANIFEST_DIR");
+        for d in ["tests/fixtures/quality", "examples"] {
+            for f in std::fs::read_dir(format!("{root}/{d}")).unwrap() {
+                let p = f.unwrap().path();
+                if p.extension().map_or(true, |x| x != "mmd") {
+                    continue;
+                }
+                let src = std::fs::read_to_string(&p).unwrap();
+                let g = match crate::parser::parse_document(&src) {
+                    Ok(crate::model::Document::Flowchart(g) | crate::model::Document::State(g)) => {
+                        g
+                    }
+                    _ => continue,
+                };
+                let s = crate::scene::scene(&g);
+                let pos: Vec<Pt> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+                for sc in [s.clone(), crate::scene::route(&g, &pos)] {
+                    for e in &sc.edges {
+                        let mut t = e.clone();
+                        reround(&mut t);
+                        assert_eq!(
+                            t.waypoints,
+                            e.waypoints,
+                            "{}: {} -> {}",
+                            p.display(),
+                            e.from,
+                            e.to
+                        );
+                    }
+                }
+            }
+        }
+    }
     use crate::edgepass::{finish, Mode};
     use crate::parser::parse;
     use crate::scene::{edge_polyline, route, scene};
@@ -2042,8 +2332,18 @@ mod tests {
                     .edges
                     .iter()
                     .filter(|e| e.from == "c" && e.to == "B")
-                    .inspect(|e| assert!(e.waypoints.is_empty(), "{dir} {what}: rerouted"))
                     .map(edge_polyline)
+                    // Into B's facing border head-on, not round into its
+                    // side (a twin's bulge is fine).
+                    .inspect(|p| {
+                        let (a, b) = (p[p.len() - 2], p[p.len() - 1]);
+                        let along = if matches!(dir, "TB" | "BT") {
+                            (a.0 - b.0).abs()
+                        } else {
+                            (a.1 - b.1).abs()
+                        };
+                        assert!(along < 0.5, "{dir} {what}: rerouted into B's side");
+                    })
                     .collect();
                 let (a, b) = (&twins[0], &twins[1]);
                 let crossed = a
@@ -2379,15 +2679,77 @@ mod tests {
 
     #[test]
     fn assigning_twice_changes_nothing() {
-        let mut src = String::from("flowchart TD\nhub{hub}\n");
-        for i in 0..12 {
-            src.push_str(&format!("n{i} --> hub\nhub --> m{i}\n"));
+        // A 24-end diamond hub (an over-full side, its legs on the axes
+        // closer than the spacing), and a 20-end box whose sides hold
+        // their ends at the edge spacing.
+        let diamond = (String::from("flowchart TD\nhub{hub}\n"), 12);
+        let wide = (
+            String::from("flowchart TD\nhub[a hub with a longer name]\n"),
+            10,
+        );
+        for (mut src, n) in [diamond, wide] {
+            for i in 0..n {
+                src.push_str(&format!("n{i} --> hub\nhub --> m{i}\n"));
+            }
+            let g = parse(&src).unwrap();
+            for sc in both(&src) {
+                let mut again = sc.clone();
+                finish(&g, &mut again, Mode::Routed);
+                assert_eq!(format!("{:?}", sc.edges), format!("{:?}", again.edges));
+            }
         }
-        let g = parse(&src).unwrap();
-        for sc in both(&src) {
-            let mut again = sc.clone();
-            finish(&g, &mut again, Mode::Routed);
-            assert_eq!(format!("{:?}", sc.edges), format!("{:?}", again.edges));
+    }
+
+    /// B10: a Z or an L on the axes steers its ends by the chord through
+    /// its corners (as the single curve it replaced did), so a side's
+    /// order — and a second pass over it — stays as the curves set it;
+    /// stepping off the straight stub instead read a Z's square first
+    /// corner as heading straight across. A class or ER path steers as
+    /// it always did.
+    #[test]
+    fn a_square_path_steers_its_ends_by_its_corners_chord() {
+        let mut sc = scene(&parse("flowchart TD\nA --> B").unwrap());
+        let a = sc.edges[0].bezier[0];
+        let b = (a.0 + 40.0, sc.edges[0].bezier[3].1);
+        let m = (a.1 + b.1) / 2.0;
+        let c = [a, (a.0, m), (b.0, m), b];
+        sc.edges[0].waypoints = crate::router::smooth(&c, crate::router::CORNER_R);
+        sc.edges[0].bezier = c;
+        let chord = (
+            (c[0].0 + 3.0 * c[1].0 + 3.0 * c[2].0 + c[3].0) / 8.0,
+            (c[0].1 + 3.0 * c[1].1 + 3.0 * c[2].1 + c[3].1) / 8.0,
+        );
+        for src in [true, false] {
+            let (p, q) = end_and_steer(&sc, 0, src, Some(Side::Bottom));
+            assert_eq!(p, if src { a } else { b });
+            assert_eq!(q, chord, "src {src}");
+        }
+        sc.edges[0].paint_width = Some(2.0);
+        let (_, q) = end_and_steer(&sc, 0, true, Some(Side::Bottom));
+        assert_ne!(q, chord);
+    }
+
+    /// B10 review r1 #7 (report M5: fanout-frames 2 -> 0 crossings): the
+    /// static reorder (G9) sees two squared paths off one side cross
+    /// over their whole corners, so two Ls of a fan turning the same way
+    /// nest — the one turning later outside — where the crossing lies
+    /// far past a port's reach (`n0 --> g6` ran across `n0 --> n21`'s
+    /// long first leg 750 px down its column of frames).
+    #[test]
+    fn a_fans_square_paths_nest_off_their_side() {
+        let src = include_str!("../tests/fixtures/quality/fanout-frames.mmd");
+        let sc = scene(&parse(src).unwrap());
+        let polys: Vec<Vec<Pt>> = sc.edges.iter().map(edge_polyline).collect();
+        for i in 0..polys.len() {
+            for j in i + 1..polys.len() {
+                let crossed = polys[i].windows(2).any(|u| {
+                    polys[j]
+                        .windows(2)
+                        .any(|v| segs_cross(u[0], u[1], v[0], v[1]))
+                });
+                let (a, b) = (&sc.edges[i], &sc.edges[j]);
+                assert!(!crossed, "{}->{} x {}->{}", a.from, a.to, b.from, b.to);
+            }
         }
     }
 }
