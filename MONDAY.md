@@ -14,11 +14,21 @@
 | Contributor PR #105 | arifintahu, fixes #106 (a `\|` inside a double-quoted edge label). User chose to ship it in 0.38.0: merged into `release/0.38.0` as 003c2a7 (CHANGELOG entry under [0.38.0] › Fixed, credited); thank-you comment posted. PR #105 shows merged and #106 closes when PR #108 reaches `main` (check; close #106 by hand if it stays open). |
 | Follow-ups | §8 (large-graph perf package), §11 (c-polish candidates from the README review), and the 0.38.0 review notes in `rvrel38/` (fixcheck #4 done; nothing left open). |
 
+### 0a. USER DECISION 2026-11-10 ~04:40 UTC — new package B12 "subgraphs as blocks", AFTER B11
+The user compared flowmaid 0.38.0 with mermaid 12.2 in the flowmaid-web playground on their private architecture diagram (`01-overview.mmd`, folder ARCHITECTURE-CURRENT; screenshots in the session) and said mermaid is "masih jauh lebih rapi". Diagnosis:
+- mermaid (very likely the ELK layout, since its edges are orthogonal; to be confirmed from the source) lays every subgraph out as ONE BLOCK and stacks the blocks in flow order: users → external services (one row) → DR → PROD → DEV/STAGING; edges into the external-services block come up from below.
+- flowmaid ranks each node on its own: the "Layanan pihak luar" frame spans the whole drawing height (DNS/Google on top, Telegram middle, OpenAI/Azure bottom); DR/PROD/STAGING frames sit side by side, so long horizontal runs cross the PROD frame (SMTP, pull image, dump gagal, tunnel SSH); ~8 parallel lines leave GitHub/DNS through one corridor with labels far from both ends.
+- B9 (compound.rs) already lays a subgraph out on its own, but only one with `direction` and no edge across its border.
+Decisions: **order = B11 → c-leftovers → release 0.39.0 → B12** ("Minggu depan, setelah B11"; option text said the plan B11 → c-leftovers → 0.39.0 stays, then this package). **Scope = default for ALL diagrams with subgraphs** (not only `flowchart-elk` / `layout: elk`); diagrams without subgraphs unchanged.
+B12 sketch (write its spec into phaseB-continue.js before running): each subgraph laid out recursively as a block (members' internal edges only), blocks placed as single nodes in the parent layering with block-level cycle breaking (more out-edges → earlier), cross-block edges routed orthogonally between blocks with ports on block borders, labels near their edge's middle; keep route()/route_partial()/picking consistent and the drag budget; class/ER untouched; state composites follow the same rule (mermaid/ELK does). Measure on the corpus + a sanitized copy of the user's diagram (crossings, frame strikes, area, label-to-edge distance) against 0.38.0 and against mermaid renders.
+TODO with the user: ask for the text of `01-overview.mmd` (they did not paste it yet). It holds private infrastructure (IPs, domains): never commit it as is — commit only a copy with names/IPs replaced.
+
 **Resume next week (after the user's go):**
 1. `cd /home/user/flowmaid && git fetch -q origin && git checkout ccr-ccc6d89a-5cxd7e && git merge --ff-only origin/dev` (push if it moved).
 2. `Workflow({scriptPath: "<S>/phaseB-continue.js", args: {from: "b11-hops-comb"}})` (in a fresh container: §6 first, and update `BR` / the commit trailer per §3).
 3. At `push:b11-hops-comb`, integrate B11 → dev (§10). c-leftovers runs next; at its push, integrate and release **0.39.0** = B11 + c-leftovers (§7).
-4. Then propose the §11 "c-polish" package and the §8 large-graph performance package to the user.
+4. Then **B12 subgraphs as blocks** (§0a, user decision): write its spec, get the user's go, run it, release.
+5. Then propose the §11 "c-polish" package and the §8 large-graph performance package to the user.
 
 Written 2026-11-04 by the session that ran phase B (CLI session `cac93b13…`, claude.ai `session_01JGDFJkgB3ttBJtcTtc6aL5`). §2 records the state at the pause and gets updated as the pause completes.
 
