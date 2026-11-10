@@ -7,7 +7,7 @@
 
 A small Mermaid-like diagram engine written in pure std Rust with zero external dependencies. It takes Mermaid-syntax text and produces SVG — or live, draggable geometry for interactive apps. Twelve diagram types today: flowcharts, state, UML class, entity-relationship, sequence, pie, user-journey, git graphs, mindmap, timeline, sankey, and architecture-beta diagrams.
 
-**Website:** https://go-routine-id.github.io/flowmaid/ · **Playground:** https://go-routine-id.github.io/flowmaid-web/ · **Desktop editor:** [flowmaid-desktop](https://github.com/go-routine-id/flowmaid-desktop) · **Terminal:** [flowcli](https://github.com/go-routine-id/flowcli)
+**Website:** https://go-routine-id.github.io/flowmaid/ · **Playground:** https://go-routine-id.github.io/flowmaid-web/ · **Desktop editor:** [flowmaid-desktop](https://github.com/go-routine-id/flowmaid-desktop) · **Terminal:** [flowcli](https://github.com/go-routine-id/flowcli) · Crate :  [Flowmaid Crate](https://crates.io/crates/flowmaid)
 
 **Why flowmaid?**
 
