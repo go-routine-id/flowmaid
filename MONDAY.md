@@ -1,6 +1,24 @@
 # flowmaid: resuming on Monday (START HERE)
 
-> **Ringkasan (ID):** Fase B dijeda setelah B8 atas permintaan user ("kalau b8 selesai mohon rilis aja dulu, nanti kita lanjutkan di hari senin"). Senin: (1) cek keadaan dengan §1, (2) pilih jalur A/B/C/D, (3) **tunggu aba-aba user** sebelum workflow jalan lagi. Semua bahan kerja ada di branch `backup/parity-workspace` (folder ini). File lain di sini (HANDOFF.md, README.md lama, phaseB.draft.js) adalah riwayat. Kalau ada yang bertentangan, MONDAY.md yang benar.
+> **Ringkasan (ID) — JEDA 2026-11-10 (yang berlaku sekarang):** B10 lolos dan rilis **0.38.0** (PR #108). Atas permintaan user ("setelah b10 selesai kita cukup untuk minggu ini! ... minggu depan kita lanjutkan") B11 **belum** dijalankan. Minggu depan: (1) jalankan cek §1 di bawah, lalu ikuti **§0** (bukan jalur A–D, yang itu riwayat jeda B8), (2) **tunggu aba-aba user**, (3) lanjut B11 → c-leftovers → rilis 0.39.0. Semua bahan kerja ada di branch `backup/parity-workspace` (folder ini). Kalau ada yang bertentangan, §0 dan §12 yang benar.
+
+## 0. State at the 2026-11-10 pause (CURRENT — read this first)
+| Thing | Value |
+|---|---|
+| Releases | 0.36.0 `main` b2d6d0c (PR #99), 0.37.0 `main` 8e3553b (PR #102), **0.38.0 `main` 56b0bdd (PR #108, merged 2026-11-10 03:2x UTC; includes contributor PR #105)**. The user tags and publishes each (§7 step 7); ask whether `v0.36.0` / `v0.37.0` / `v0.38.0` are tagged and on crates.io. 0.38.0 went through four review rounds (rvrel38/, wf_224da1be-a8f, wf_54ad3715-c76): 18 → 9 → 5 → 2 findings, all fixed. |
+| Phase B | Done through **B10**. Next: **B11** (`b11-hops-comb`: M15 semicircle hops at crossings + B4 comb bundling / even hub port band), then **c-leftovers** (narrowed class/state spec; repro files restored from wsbackup/verify), then the wrap-up. |
+| B11 WIP | Started before the pause and cut off by a container restart: `backup/b11-hops-comb-wip` **662eea3** (also a local `git stash` in /home/user/flowmaid, gone if the container is new). It never passed verification. The workflow re-implements B11 from scratch; look at the WIP only for ideas. |
+| Work branch | `ccr-ccc6d89a-5cxd7e` = `dev` = **dc05e8c** (PR #109 main → dev merged 2026-11-10 03:27 UTC; contains main 56b0bdd = 0.38.0). Clean, nothing unpushed. The B11 WIP stash in /home/user/flowmaid is only a copy of `backup/b11-hops-comb-wip` 662eea3. |
+| Workflow | No run is active. Old run `wf_5b4ccf67-c1e` was lost in the restart; do **not** resume it. |
+| Hourly task | `trig_019VQH3TYG4ijXR8niHxK13z` **disabled** at the pause. Re-enable it (update_trigger enabled=true, rewrite its prompt for B11) or create a new one in a new session (§5). |
+| Contributor PR #105 | arifintahu, fixes #106 (a `\|` inside a double-quoted edge label). User chose to ship it in 0.38.0: merged into `release/0.38.0` as 003c2a7 (CHANGELOG entry under [0.38.0] › Fixed, credited); thank-you comment posted. PR #105 shows merged and #106 closes when PR #108 reaches `main` (check; close #106 by hand if it stays open). |
+| Follow-ups | §8 (large-graph perf package), §11 (c-polish candidates from the README review), and the 0.38.0 review notes in `rvrel38/` (fixcheck #4 done; nothing left open). |
+
+**Resume next week (after the user's go):**
+1. `cd /home/user/flowmaid && git fetch -q origin && git checkout ccr-ccc6d89a-5cxd7e && git merge --ff-only origin/dev` (push if it moved).
+2. `Workflow({scriptPath: "<S>/phaseB-continue.js", args: {from: "b11-hops-comb"}})` (in a fresh container: §6 first, and update `BR` / the commit trailer per §3).
+3. At `push:b11-hops-comb`, integrate B11 → dev (§10). c-leftovers runs next; at its push, integrate and release **0.39.0** = B11 + c-leftovers (§7).
+4. Then propose the §11 "c-polish" package and the §8 large-graph performance package to the user.
 
 Written 2026-11-04 by the session that ran phase B (CLI session `cac93b13…`, claude.ai `session_01JGDFJkgB3ttBJtcTtc6aL5`). §2 records the state at the pause and gets updated as the pause completes.
 
@@ -201,7 +219,12 @@ Engine work, not in the 0.37.0 release (README now states the current behaviour)
 8. Advance text DSL README example: `a --> b` and `c --> b:top` share the last 12.5 px into b and their arrowheads coincide.
 9. Contrast: chip/ER-row hairlines and amber accent #d99114 on white are under 3:1 (documented exceptions).
 
-## 12. USER DECISION 2026-11-09 17:20 UTC — B10 is the last package this week
+### 11b. Follow-ups from the 0.38.0 release reviews (rvrel38/, wf_224da1be-a8f, wf_54ad3715-c76)
+1. **SceneEdge::bezier fallback ends drift off the path's ends** (docs now say so; no SVG effect, the painter draws waypoints). 25 scene() / 49 route() edges over 17k corpus files have an end >3 px off (fork→join in f2j_lr.mmd: 105 px; q18 `n12 ==> n8`: 53 px). Cause: ports::move_end / turn_end move bezier[pi] only `if same(e.bezier[pi], old)`, and ortho.rs:731 re-smooths a route() channel's waypoints without touching bezier. Fix (not just translating controls, which keeps a 45° tangent): at the very end of edgepass::finish_held, for flowchart/state edges with waypoints only, set `bezier = [w0, w0 + k*(w1-w0), wn + k*(w(n-1)-wn), wn]` with k capped by the leg length; then confirm class/ER byte-identical (class.rs:403/415 read bezier) and flowchart SVGs unchanged. Then the README/CHANGELOG "usually but not always at the path's ends" wording can be tightened.
+2. Optional regression test: a 401+-edge drawing with a `direction` block laid out on its own — the rest part's edges keep curves only when the rest alone is over 400 (per-part cap).
+
+## 12. USER DECISION 2026-11-09 17:20 UTC — B10 is the last package this week (DONE 2026-11-10)
+**Status:** B10 integrated (PR #107 → dev 0862621); 0.38.0 released (PR #108 → main 56b0bdd); main → dev sync PR #109 → dev dc05e8c; work branch fast-forwarded to dc05e8c and pushed; hourly task disabled; workflow not running.
 "setelah b10 selesai kita cukup untuk minggu ini! cukup rilis dulu b10! minggu depan kita lanjutkan".
 - At push:b10-orthogonal: TaskStop wyf69sgs1 (do not let B11 run). Integrate B10 → dev (README hand-port into the new layout), release 0.38.0, main → dev, ff work branch to dev, back up, disable the hourly task trig_019VQH3TYG4ijXR8niHxK13z (its prompt was rewritten for this).
 - NEXT WEEK resume: Workflow({scriptPath: <scratchpad>/phaseB-continue.js, args: {from: "b11-hops-comb"}}) on the work branch = dev; then c-leftovers (narrowed class/state spec, repro files restored from wsbackup/verify); release 0.39.0 = B11 + c-leftovers; then propose the §11 "c-polish" package.

@@ -1,0 +1,117 @@
+{
+  "summary": "Check that the five final-review fixes in 2eae88d landed correctly and add no new false claim",
+  "agentCount": 3,
+  "logs": [],
+  "result": {
+    "checked": "Fixes 1, 3 and 5 landed correctly and completely. I found two non-blocking problems in text the commit adds (above); nothing blocking.\n\nFix 1/5 (the gate):\n- **Counts match.** I added a probe recording the count the layout gate reads and comparing it with sc.edges.len() at the start of ortho::orthogonalize, in the static scene. Over 17,434 flowchart and state files from the scratchpad corpora there were 0 mismatches and 0 panics. Every compound part's own scene_labelled → layout → finish was covered.\n- **Edge cases hold.** 20 handcrafted inputs also matched: state notes on composites and inside them, invisible `~~~` links to boxes, labelled sub-edges (own-member and external), `K --> K`, nested boxes sharing members, empty boxes, a box holding only an empty box, empty-to-empty edges, direction blocks via compound::scene (nested blocks, a non-block box holding a block, state composites with `direction`, notes on blocks).\n- **The probe works.** Making ga.drawn_edges = g.edges.len() produced mismatches as expected.\n- **No stale values.** Graph::part builds from Graph::default() (None). fold bands use Graph::default(). The own.edges.truncate clone at scene.rs:8884 only feeds own_box_targets (no layout). layout.rs has no Graph clone, and every place() call gets the same g. drawn_edges is read only at layout.rs:4004, so route() and route_partial do not depend on it.\n- **Per-part claim is true.** A 300-edge LR block plus a 301-edge rest: 599 of 601 edges on the axes. The same edges without `direction`: 4 of 601. A 401-edge block: curves in the block only.\n- **Renders unchanged.** SVG output is byte-identical between the 5691dc7 and 2eae88d CLIs on 2,254 files (rv38gate boundary inputs, flowcorpus, bulkst, bulkfc, my cases). The two apparent diffs (grid_399, grid_400) were timeouts under load and match when re-run.\n\nTests:\n- **Cap test.** Reverting the gate to g.edges.len() makes it fail on the boxed input (rows 2525 px apart). It takes 0.21 s in debug.\n- **New scene test.** It would catch both a naive all-sub-edges count and the stand-in count. It takes 0.01 s.\n- **Lint and docs.** cargo clippy --all-targets -D warnings is clean, and cargo doc with -D warnings is clean.\n\nDocs (fixes 3 and 4):\n- The [Subgraphs](#subgraphs) anchor resolves to `### Subgraphs` at README:280.\n- The cap wording is in README:269 and :806, CHANGELOG Highlights and Changed, and both scene.rs rustdoc spots. Backticks are balanced in every changed line.\n- The bezier controls do sit where the wording says: ortho.rs:1019, router.rs:4317/5770/2779, and lane_geometry for back-edge lanes.\n\nFix 2 is mostly right: 2 650 px / 210 tracks is correct for the flat input, but the comment's loop also covers `boxed` (the second finding).\n\nCopy of the worktree with the probes restored out: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rv2eae/fm. The probe sources are in /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rv2eae/probes. I deleted the scratch CARGO_TARGET_DIR.",
+    "confirmed": [
+      {
+        "where": "README.md:752 (Scene, drag and re-route, `scene::scene` bullet) and CHANGELOG.md:111-116 ([0.38.0] Changed, B10 entry)",
+        "claim": "The new fallback wording says `SceneEdge::bezier` is \"a cubic from the path's start to its end\" (CHANGELOG: \"a cubic between its ends\") and tells hosts to \"rely on its ends only\". That is false for some on-axis edges: bezier[0]/bezier[3] can sit tens of px away from waypoints[0]/waypoints.last(). The ends do land on the right nodes' outlines, but not at the drawn path's ends. So a host that follows the advice draws the fallback from different ports than the path and its arrowhead.",
+        "evidence": "Built from 2eae88d plus a read-only scene probe. (1) scene() of /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/a3-state/r6in/f2j_lr.mmd, a 9-edge `stateDiagram-v2` with `direction LR`, fork f, join j, `f --> Alpha/Beta/Gamma`, `f --> j`, `Alpha/Beta/Gamma --> j`. Edge f->j has waypoints [(110,292),(210.35,292),(310.7,292)] and bezier [(110,187),(170.2,247),(250.5,247),(310.7,187)]: both ends are 105 px off. (2) route(&g, scene positions) of /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b7fix/qflow/b3r4__all__r4_rnd_q18.mmd (27 edges), edge `n12 ==> n8`: the path ends are (357.84,102.5) and (297.84,266.8); the bezier ends are (357.84,109.5) and (255.98,233.92), 53 px off. route() of /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b8r1/gen2/h034.mmd, edge `m1 --> m3`: 7 px off. Across 17,424 corpus flowchart and state files I counted only in-scope edges (drawing of 400 or fewer edges, no `curve`, not invisible, not a self-loop) with an end more than 3 px off. That gave 25 edges in scene() (all fork->join) and 49 in route(). Cause: ports::move_end and turn_end move bezier[pi] only `if same(e.bezier[pi], old)`, and ortho.rs:731 re-smooths a route() channel's waypoints without touching bezier, so an end that has drifted once stays off. The geometry did not change in this commit (SVG byte-identical on 2,254 files); only the doc's promise is new.",
+        "severity": "non-blocking",
+        "fix": "Doc-only fix for the release: say the fallback's ends lie on the end nodes' outlines but need not be the path's ends, and that a host wanting the drawn ends should read waypoints[0] and waypoints.last(). Also drop the self-contradicting \"does not follow the path (... whose controls only roughly follow it\". Code alternative, after the release: at the end of edgepass::finish_held, for every edge with waypoints, set bezier[0]=waypoints[0] and bezier[3]=*waypoints.last(), moving the adjacent control along. The SVG is unaffected because to_svg paints the waypoints.",
+        "verdict": {
+          "refuted": false,
+          "reason": "I could not refute it; the problem is real. I built a scene/route probe from a copy of 2eae88d (target dir since deleted) and got the checker's numbers exactly.\n(1) scene() of verify/a3-state/r6in/f2j_lr.mmd, edge f->j: waypoints [(110,292),(210.35,292),(310.7,292)], bezier [(110,187),(170.21,247),(250.49,247),(310.7,187)]. Both ends are 105 px from the path's ends. They sit on the bars' sides at bar-centre height, while the drawn path runs at y=292.\n(2) route() of b7fix/qflow/b3r4__all__r4_rnd_q18.mmd, edge n12 ==> n8: the path ends at the diamond's right vertex (297.84,266.8). bezier[3] is (255.98,233.92), which is on the diamond's upper-right face (I checked it against the outline line), 53.2 px away. The start is 7 px off on n12's left side.\n(3) h034 m1->m3 in route(): 7 px and 4 px off.\nA scan of 5,427 corpus files gave the same kind of result: 14 scene() and 28 route() edges with an end more than 3 px off. The scene() cases are not only fork->join: verify/b10-orthogonal/r4/inputs/r065.mmd n14 --o n16 is 32 px off in scene().\nFor every off-path end of a drawn edge, the bezier end does lie on the end node's outline (a point 1 px inward is inside the node, 1 px outward is outside). The only exception I found is an invisible link: route() of b8r1/bulkfc/5ab6dd7b...mmd, Users ~~~ Mon, puts bezier[0] at (291.875,977.5) on the bottom of the cylinder's bounding box, outside the painted outline.\nSo README.md:752 (\"a cubic from the path's start to its end ... rely on its ends only\") and CHANGELOG.md:111-116 (\"a cubic between its ends ... rely on its ends only\") are false for these edges. \"rely on its ends only\" is new in 2eae88d (5691dc7 does not have it). The code means the ends to match: ports.rs:2042 has the comment \"Keep the fallback curve's matching end on the drawn end\", but the move happens only `if same(e.bezier[pi], old)`. Internal code already takes the drawn ends from waypoints when there are any (class.rs edge_ends).\nSeverity is non-blocking: the SVG paints the waypoints, and no example or flowcorpus file is affected.",
+          "fix_ok": true,
+          "better_fix": "The doc-only fix is right for the release. Three refinements:\n(a) Scope the outline promise to drawn edges, e.g. \"on a drawn edge its ends lie on the end nodes' outlines, usually but not always at the path's ends (a fork-to-join edge, or an end a later stage moved, can sit tens of px along the side); read waypoints[0] and waypoints.last() for the drawn ends, and the first and last legs for the end tangents and arrowhead direction\". Use the same wording in the CHANGELOG B10 entry.\n(b) Apply the same correction to the rustdoc of SceneEdge::bezier (src/scene.rs:149-152). Its claim \"on a forward, side-by-side or nested curve the controls lie on the sides' normals, so a head drawn along the end tangent points square in\" is also false for f->j, a forward edge: c1-p0 = (60.2, 60), 45 degrees off the bar side's normal, so a head drawn from the fallback would not point square in. This line predates 2eae88d.\n(c) Dropping \"does not follow the path (... controls only roughly follow it\" is optional cleanup, not a defect.\nFor the code fix after the release, simply translating the adjacent control keeps wrong tangents like f->j's 45-degree one. Rebuild the end controls along the path's first and last legs instead: bezier = [w0, w0 + k*(w1-w0), wn + k*(w(n-1)-wn), wn] with k capped by the leg length. Do it only for flowchart/state edges with waypoints, at the very end of edgepass::finish_held (after refit). finish_held also runs for class and ER scenes, whose code reads bezier (class.rs:403/415). Then confirm class/ER output is byte-identical and the flowchart SVGs are unchanged."
+        }
+      },
+      {
+        "where": "src/ortho.rs:2338-2341 (test a_drawing_past_the_routers_cap_keeps_the_builders_curves)",
+        "claim": "The corrected comment \"not the 2 650 px the busiest point's 210 tracks would take on the axes\" now sits inside `for src in [flat, boxed]`. It is right for `flat` and wrong for `boxed`, whose busiest point takes 200 tracks (2 525 px).",
+        "evidence": "With the gate forced open (drawn_edge_count() <= 100000), the flat 420-edge input fails with \"rows 2650 px apart past the cap\". With the old gate (g.edges.len()), the boxed 399+2 input fails with \"rows 2525 px apart past the cap\".",
+        "severity": "non-blocking",
+        "fix": "Give both numbers: \"(2 650 px for `flat`'s 210 tracks, 2 525 px for `boxed`'s 200)\", or attach the figure to `flat` only.",
+        "verdict": {
+          "refuted": false,
+          "reason": "I could not refute the claim. I patched the test in a scratch copy of 2eae88d to print each input's row gap, with no assertion, and ran it under three versions of the track-room gate in src/layout.rs:4004:\n- Current gate (`drawn_edge_count()`): flat 60 px, boxed 60 px.\n- Gate forced open: flat 2650 px, boxed 2525 px.\n- Old gate (`g.edges.len()`): flat 60 px, boxed 2525 px (the boxed layout graph has 399 edges, while the scene draws 401).\n\nThe gap is need = ROW_CLEAR + HEAD_LEG + (most - 1) * TRACK_PITCH:\n- ROW_CLEAR = 12.5 and HEAD_LEG = 11 + 14 = 25, so the first two terms add up to 37.5.\n- TRACK_PITCH = 12 + 0.5 = 12.5.\n- For flat: 2650 = 37.5 + 209 * 12.5, so 210 tracks.\n- For boxed: 2525 = 37.5 + 199 * 12.5, so 200 tracks.\n\nThe comment at src/ortho.rs:2338-2341 runs once per item of `for src in [flat, boxed]`, and its \"2 650 px ... 210 tracks\" fits flat only. This is only a comment, so it does not block the release. Nothing else in src, the README, the CHANGELOG or docs uses these figures. I deleted the scratch copy and its target dir afterwards.",
+          "fix_ok": true,
+          "better_fix": "The proposed fix is correct: either give both figures or tie the figure to `flat` only. One possible wording: \"not the 2 650 px (`flat`, 210 tracks at the busiest point) or 2 525 px (`boxed`, 200) the axes would take.\" `boxed` is the input that needs the new gate (the old gate let 2 525 px through), so its figure is the more useful of the two to keep if only one stays."
+        }
+      }
+    ],
+    "refuted": []
+  },
+  "workflowProgress": [
+    {
+      "type": "workflow_phase",
+      "index": 1,
+      "title": "Check"
+    },
+    {
+      "type": "workflow_phase",
+      "index": 2,
+      "title": "Verify"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 1,
+      "label": "fixcheck",
+      "phaseIndex": 1,
+      "phaseTitle": "Check",
+      "agentId": "a83b35bb16b9abdda",
+      "model": "claude-opus-5-5",
+      "state": "done",
+      "startedAt": 1794278416113,
+      "queuedAt": 1794278416091,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "Fixes 1, 3 and 5 landed correctly and completely. I found t…",
+      "promptPreview": "Worktree /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/wt/rel38b (Rust crate flowmaid, branch release/0.38.0 at 2eae88d). Do not edit, commit or push there; copy it (without target/) to your own scratch dir for experiments, with a CARGO_TARGET_DIR there (one only, delete it when done; disk is limited). A release CLI built from 2eae88d is at /tmp/claude-0/-home-u…",
+      "promptFramed": true,
+      "lastProgressAt": 1794280324967,
+      "tokens": 307724,
+      "toolCalls": 106,
+      "durationMs": 1908854,
+      "resultPreview": "{\"findings\":[{\"where\":\"README.md:752 (Scene, drag and re-route, `scene::scene` bullet) and CHANGELOG.md:111-116 ([0.38.0] Changed, B10 entry)\",\"claim\":\"The new fallback wording says `SceneEdge::bezier` is \\\"a cubic from the path's start to its end\\\" (CHANGELOG: \\\"a cubic between its ends\\\") and tells hosts to \\\"rely on its ends only\\\". That is false for some on-axis edges: bezier[0]/bezier[3] can …"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 2,
+      "label": "verify#0",
+      "phaseIndex": 2,
+      "phaseTitle": "Verify",
+      "agentId": "a789d08c28b9af90b",
+      "model": "claude-opus-5-5",
+      "state": "done",
+      "startedAt": 1794280324996,
+      "queuedAt": 1794280324972,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "I could not refute it; the problem is real. I built a scene…",
+      "promptPreview": "Worktree /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/wt/rel38b (Rust crate flowmaid, branch release/0.38.0 at 2eae88d). Do not edit, commit or push there; copy it (without target/) to your own scratch dir for experiments, with a CARGO_TARGET_DIR there (one only, delete it when done; disk is limited). A release CLI built from 2eae88d is at /tmp/claude-0/-home-u…",
+      "promptFramed": true,
+      "lastProgressAt": 1794280676793,
+      "tokens": 139931,
+      "toolCalls": 37,
+      "durationMs": 351796,
+      "resultPreview": "{\"refuted\":false,\"reason\":\"I could not refute it; the problem is real. I built a scene/route probe from a copy of 2eae88d (target dir since deleted) and got the checker's numbers exactly.\\n(1) scene() of verify/a3-state/r6in/f2j_lr.mmd, edge f->j: waypoints [(110,292),(210.35,292),(310.7,292)], bezier [(110,187),(170.21,247),(250.49,247),(310.7,187)]. Both ends are 105 px from the path's ends. The…"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 3,
+      "label": "verify#1",
+      "phaseIndex": 2,
+      "phaseTitle": "Verify",
+      "agentId": "a53bd5100660ed556",
+      "model": "claude-opus-5-5",
+      "state": "done",
+      "startedAt": 1794280324996,
+      "queuedAt": 1794280324972,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "I could not refute the claim. I patched the test in a scrat…",
+      "promptPreview": "Worktree /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/wt/rel38b (Rust crate flowmaid, branch release/0.38.0 at 2eae88d). Do not edit, commit or push there; copy it (without target/) to your own scratch dir for experiments, with a CARGO_TARGET_DIR there (one only, delete it when done; disk is limited). A release CLI built from 2eae88d is at /tmp/claude-0/-home-u…",
+      "promptFramed": true,
+      "lastProgressAt": 1794280616342,
+      "tokens": 90649,
+      "toolCalls": 13,
+      "durationMs": 289164,
+      "resultPreview": "{\"refuted\":false,\"reason\":\"I could not refute the claim. I patched the test in a scratch copy of 2eae88d to print each input's row gap, with no assertion, and ran it under three versions of the track-room gate in src/layout.rs:4004:\\n- Current gate (`drawn_edge_count()`): flat 60 px, boxed 60 px.\\n- Gate forced open: flat 2650 px, boxed 2525 px.\\n- Old gate (`g.edges.len()`): flat 60 px, boxed 252…"
+    }
+  ],
+  "totalTokens": 538304,
+  "totalToolCalls": 156
+}

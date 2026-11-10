@@ -1,0 +1,131 @@
+{
+ "confirmed": [
+  {
+   "area": "readme-edges",
+   "where": "README.md:806 (How it works, step 3, the new ortho stage)",
+   "claim": "\"every edge with the default curve redrawn on the axes with rounded corners, its steps on ordered tracks (`ortho.rs`)\"",
+   "problem": "This is false as written, and it contradicts the README and the CHANGELOG. README:794 says this pipeline also runs class and ER diagrams. The ortho stage skips those edges, and it also skips self-loops, a state note card's link, every edge a drag keeps, and every edge of a drawing with more than 400 edges, even though all of these have the default curve. README:269 itself says note links and self-loops keep their curves. CHANGELOG:87-89 and :95-96 say the builders' curves stay past the 400-edge cap and that class/ER output is byte-identical.",
+   "fix": "README.md:806, replace \"every edge with the default curve redrawn on the axes with rounded corners, its steps on ordered tracks (`ortho.rs`);\" with: \"in a drawing of up to 400 edges, each flowchart or state edge with the default curve (not a self-loop or a state note card's link) redrawn on the axes with rounded corners, its steps on ordered tracks (`ortho.rs`; past 400 edges the builders' curves stay, as the router's cap leaves the drawing as built);\""
+  },
+  {
+   "area": "readme-edges",
+   "where": "README.md:269 (Edges > Drawing)",
+   "claim": "\"flowchart and state edges run on the axes with rounded corners: an edge between adjacent ranks is a Z ...; a long edge runs down its layout column ...\"",
+   "problem": "The bullet states this with no exception for size. A flowchart or state diagram with more than 400 edges keeps the old S-shaped cubics and splines through dummies. This includes the 1,000-node / 2,010-edge row of the README's own Large graphs table. The CHANGELOG documents the cap, but the README does not mention it anywhere.",
+   "fix": "README.md:269: add at the end of the Drawing bullet: \"A drawing of more than 400 edges, past the router's cap, keeps the earlier curves: S-shaped cubics between adjacent ranks, bowed twins, and splines through a long edge's dummies.\" Also fix README.md:806 to match: change \"every edge with the default curve redrawn on the axes with rounded corners, its steps on ordered tracks (`ortho.rs`)\" to \"every edge with the default curve redrawn on the axes with rounded corners, its steps on ordered tracks (`ortho.rs`; skipped, like the router, on a drawing of more than 400 edges)\"."
+  },
+  {
+   "area": "readme-edges",
+   "where": "README.md:269 (Edges > Drawing), against README.md:277",
+   "claim": "\"An edge with an explicit `curve:` or `linkStyle \u2026 interpolate` keeps its curve\", while the unchanged README:277 still says \"`curve:` picks the path shape: `basis` (default), ... an unknown name means `basis`\"",
+   "problem": "The two lines now contradict each other. The default no longer draws `basis`: an edge with no curve is drawn on the axes. An explicit `curve: basis`, an unknown curve name, or `linkStyle \u2026 interpolate basis` sets `meta.curve` to `Some(Basis)`. Such an edge then keeps the old S-shaped basis cubic. A reader who takes `basis` to be the default will expect `curve: basis` to change nothing, but it changes the drawing.",
+   "fix": "README:277: \"- `curve:` picks the path shape: `basis` (mermaid's default curve; naming it draws the S-shaped basis curve, while an edge with no `curve:` is drawn on the axes, see [Edges](#edges)), `linear`, `rounded`, `step`, `stepBefore`, `stepAfter`, `bumpX`, `bumpY`, and `natural` / `monotoneX` / `monotoneY` / `cardinal` / `catmullRom`, which flowmaid draws as one Catmull-Rom spline; an unknown name means `basis`.\"\n\nREADME:269, last sentence: \"An edge with an explicit `curve:` or `linkStyle \u2026 interpolate` keeps that curve (`basis`, or an unknown name, which means `basis`, included), as do a state note card's link and self-loops.\"\n\nREADME:806: change \"every edge with the default curve redrawn on the axes\" to \"every edge with no `curve:` / `interpolate` redrawn on the axes\"."
+  },
+  {
+   "area": "readme-edges",
+   "where": "README.md:269 (Edges > Drawing)",
+   "claim": "\"an edge between adjacent ranks is a Z (an L into a side), its step across the gap between the ranks and its label on that run\"",
+   "problem": "The bullet gives one fallback case as the general rule. Where the gap has room above the label, the code puts a labelled Z's step between the source and the label, \"as mermaid draws a labelled branch\". The label then rides the straight run into the target, not the step. This is what happens in a labelled decision fan whose gap grew for its tracks, and in the corpus's `advanced` drawing. The CHANGELOG Highlights (CHANGELOG.md:20) has the same wording.",
+   "fix": "README.md:269 \u2014 replace \"an edge between adjacent ranks is a Z (an L into a side), its step across the gap between the ranks and its label on that run;\" with:\n\"an edge between adjacent ranks is a Z (an L into a side) whose step runs across the gap between the ranks, its label on that step, or, where the gap leaves room between the source and the label for every step in it (as in a decision fan whose gap grew for its tracks), the step passes between the source and the label, as mermaid draws a labelled branch, and the label rides the straight run into the target;\"\n\nCHANGELOG.md:19-20 (Highlights) \u2014 replace \"An edge between adjacent ranks is a Z (an L into a side), its label on the step across the gap;\" with:\n\"An edge between adjacent ranks is a Z (an L into a side) stepping across the gap, its label on the step, or on the straight run into the target where the gap has room for the step between the source and the label;\"\n\nCHANGELOG.md:46-47 (Changed) \u2014 replace \"an edge between adjacent ranks is a Z (an L into a side port) whose step runs across the gap, its label on that run;\" with:\n\"an edge between adjacent ranks is a Z (an L into a side port) whose step runs across the gap, between its source and its label where the room above the label holds every step of that gap (the label then rides the straight run into the target, as mermaid draws a labelled branch), else with its label on the step;\"\n(This also gives the existing parenthetical at CHANGELOG.md:56-58, \"a labelled fan's steps go under their labels when the room above them cannot hold that order\", the main case it refers back to.)"
+  },
+  {
+   "area": "readme-edges",
+   "where": "README.md:752 (Interactive API > scene::scene)",
+   "claim": "\"comes as `SceneEdge::waypoints`, each corner flanked by points 14 px either side, which a painter's spline turns through as a curve of about 8 px radius\"",
+   "problem": "14 px is only the most a flanking point can be from its corner. `smooth` caps it at half of each adjoining leg, so a corner on a leg shorter than 28 px has closer flanking points and a tighter turn. This is common: a labelled Z's step often sits about 14 px under its source. A host that looks for corners as point triples 14 px apart will miss these corners.",
+   "fix": "README.md:752, replace \"comes as `SceneEdge::waypoints`, each corner flanked by points 14 px either side, which a painter's spline turns through as a curve of about 8 px radius;\" with:\n\"comes as `SceneEdge::waypoints`, each corner flanked by points 14 px either side (half the shorter adjoining leg where a leg is under 28 px, as on a labelled edge's short first step), which a painter's spline turns through as a curve of about 8 px radius (tighter at such a corner);\"\n\nCHANGELOG.md:90-92, replace \"(each corner flanked by points 14 px either side, which the painter's spline turns through as a curve of about 8 px radius)\" with:\n\"(each corner flanked by points 14 px either side, or half the shorter adjoining leg where a leg is under 28 px, which the painter's spline turns through as a curve of about 8 px radius, tighter at such a corner)\""
+  },
+  {
+   "area": "readme-edges",
+   "where": "README.md:752 (Interactive API > scene::scene)",
+   "claim": "\"its `SceneEdge::bezier` is only the chord through its corners\"",
+   "problem": "No edge's `bezier` is a chord through its corners. The ortho stage stores `[start, first corner, last corner, end]`: a cubic that uses the first and last corners as controls, passes through none of them, and ignores any corners in between on a long edge. An edge the router reroutes or the nudge redraws gets the degenerate chord `[start, start, end, end]`, a straight line between its ends. The removed 0.37 wording (\"`bezier` is only a fallback\") was accurate. The rustdoc at src/scene.rs:143-157 is now stale as well: it still says adjacent-layer edges use `bezier` with empty `waypoints`.",
+   "fix": "README.md:752, replace \"its `SceneEdge::bezier` is only the chord through its corners.\" with: \"its `SceneEdge::bezier` is only a fallback that does not follow the path: a cubic from the path's start to its end with its first and last corners as controls, or, for an edge the router rerouted or its nudge redrew, the straight line between its ends.\"\n\nCHANGELOG.md:92, replace \"`bezier` the chord through its corners, so pick == render as before\" with: \"`bezier` only a fallback (a cubic between its ends with its first and last corners as controls), so pick == render as before\".\n\nOptional: in src/scene.rs:143-146, change \"(adjacent layers, free-routed edges)\" to \"(a straight edge, a self-loop, an explicit `curve`, a class or ER builder curve)\", and note that a flowchart or state edge on the axes carries its rounded path in `waypoints`."
+  },
+  {
+   "area": "readme-numbers",
+   "where": "README.md:857 (Interactive editing paragraph)",
+   "claim": "\"Dragging a node does not re-run layout: `route_partial` re-routes only the edges the move can affect. Over every drag frame of the quality harness (`cargo run --release --example quality -- <dir> --drag`, measured on 0.38.0) it averages about **9 ms on the densest sample** (`bench-75` ...) and 4.5\u20137 ms on the other dense samples (`dense-lr`, `dense-td`); the small corpus diagrams average 0.2\u20131.2 ms a frame.\"",
+   "problem": "The numbers are right, but they are not `route_partial` timings. The harness this sentence names times a full `scene::route()` re-route of every edge on each frame. Because of the wording ('`route_partial` re-routes only ... it averages about 9 ms'), the README credits the full re-route's mean to `route_partial`. That more than doubles what a host using `route_partial` should expect: its worst frame on bench-75 is about 4.3 ms. It also clashes with the CHANGELOG's 'drags take less than before', since the 0.37.0 README said 4.7 ms here and this now reads as 9 ms. The smallest small-diagram mean is 0.15 ms (shapes), not 0.2.",
+   "fix": "Dragging a node does not re-run layout: `route_partial` re-routes only the edges the move can affect. The quality harness (`cargo run --release --example quality -- <dir> --drag`, measured on 0.38.0) times the full re-route, `route()`, on every drag frame. That full re-route averages about **9 ms a frame on the densest sample** (`bench-75`: 21 nodes, 75 edges), 4.5\u20137 ms on the other dense samples (`dense-lr`, `dense-td`) and 0.15\u20131.2 ms on the small corpus diagrams. `route_partial` costs less on the same kind of drags: in a separate probe, its worst frame was about 4.3 ms on `bench-75` and 2.5\u20133.6 ms on `dense-lr` and `dense-td`, where `route()` peaked at 13.5 ms and 6.9\u20138.3 ms. Picking (`Scene::hit_test`, `edge_at`, `hits_in_rect`) follows the painted stroke and costs microseconds."
+  },
+  {
+   "area": "readme-numbers",
+   "where": "CHANGELOG.md:142 (0.38.0 Changed, last sentence)",
+   "claim": "\"`route()` and drags take less than before on the large ones (bench-75 drag 20.2 -> 13.0 ms).\"",
+   "problem": "The after value 13.0 ms does not appear in this release's measurements or in the verifier's final runs. The release harness run gives bench-75's worst drag frame (drag_ms) as 20.22 -> 17.03 and its mean (drag_mean) as 13.08 -> 8.95. The verifier's final r4 runs give 14.99 and 13.94 ms. 13.0 matches only an earlier round's run (runs/b10-orthogonal-r3/perf.tsv, drag_ms 13.04), or the base mean 13.08. So the figure overstates the gain, or mixes the worst-frame base with a mean. The claim that drags got faster still holds.",
+   "fix": "`route()` and drags take less than before on the large ones (bench-75's worst drag frame 20.2 -> 17.0 ms, its mean 13.1 -> 9.0 ms)."
+  },
+  {
+   "area": "changelog",
+   "where": "CHANGELOG.md:34-35 (Highlights, 'Cleaner drawings'); also B10 entry CHANGELOG.md:115-116 and 138-142",
+   "claim": "\"static `scene()` takes 1.4-2.0x its pre-release time on small drawings\" (B10 entry: \"within 1.7x its pre-B10 time on the corpus\" and \"1.4-1.7x its time from before this release's layout and edge work ... advanced 2.0x\")",
+   "problem": "The 1.4-2.0x is measured against 5f318a0, the phase-B baseline from 2026-10-28, which is already in v0.33.0's history. It is not 0.37.0 and not the code just before B10. Against the code B10 was built on (c72e56b, 0.37.0's flowchart code), static scene() on the small drawings is about the same or faster. So the Highlights pin on 0.38.0 a slowdown that 0.34.0-0.37.0 caused. The three statements also disagree with each other: line 116 says within 1.7x of pre-B10, line 140 says advanced is 2.0x, and the Highlights say up to 2.0x of pre-release. 'This release's layout work' is wrong too: the layout work (B8/B8b/B9) shipped in 0.34.0-0.37.0.",
+   "fix": "CHANGELOG.md:32-35 (Highlights, end of \"Cleaner drawings\"):\n\"Known costs are listed under Changed (parallel cables on the corpus 97 | 107 -> 128 | 143 pairs, some LR fan labels over a neighbouring step, dense-td's `route()` crossings 73 -> 83); static `scene()` on the small drawings takes about its 0.37.0 time (0.6-1.2x).\"\n\nCHANGELOG.md:115-116:\n\"... for hit-testing and the label stage, which keeps the static scene within 1.2x its 0.37.0 (pre-B10) time on the small corpus drawings.\"\n\nCHANGELOG.md:137-142:\n\"... reads a kept path heading). Static `scene()` takes 0.6-1.2x its 0.37.0 time on the small corpus drawings (fastest of interleaved runs; wide-labels 1.2x, advanced 1.1x). Against 5f318a0, the base the phase-B work started from (before 0.33.0), it is up to 1.9x (advanced, its labels, ports and nudge over 18 squared paths), mostly from the layout and edge work released in 0.34.0-0.37.0. `route()` and drags take less than before on the large ones (bench-75 drag 19.9 -> 14-17 ms).\"\n\nThe last parenthesis assumes the drag figure is corrected to the measured values (pre-B10 19.87; release runs 13.94-17.03 ms). If it is not changed, at least keep \"20.2\" labelled as the 5f318a0 baseline."
+  },
+  {
+   "area": "changelog",
+   "where": "CHANGELOG.md:17-25 (Highlights, first bullet); also README.md:269 ('Drawing.') and README.md:806 ('every edge with the default curve redrawn on the axes')",
+   "claim": "Flowchart and state edges are drawn on the axes with rounded corners, where they were S-shaped curves. The bullet then lists the exceptions: straight edges, explicit curve:/linkStyle interpolate, note links, self-loops, back-edge lanes.",
+   "problem": "The list of exceptions leaves out the 400-edge cap. When a drawing has more than 400 edges, the ortho stage returns early in every mode and every edge keeps the builders' S-cubics and splines. The B10 entry says this (lines 87-89), but the Highlights and README present the idiom as covering every default-curve edge.",
+   "fix": "CHANGELOG.md:22-25 (Highlights, first bullet): \"A straight edge stays straight; an explicit `curve:` / `linkStyle \u2026 interpolate`, note links, self-loops and back-edge lanes keep their curves, as does every edge of a drawing with more than 400 edges (past the router's cap, where the router leaves a drawing as built); class and ER output is byte-identical.\"\n\nREADME.md:269 (end of the 'Drawing.' bullet): \"... A straight edge stays straight. An edge with an explicit `curve:` or `linkStyle \u2026 interpolate` keeps its curve, as do a state note card's link and self-loops. A drawing of more than 400 edges (past the router's cap) keeps the default curve on every edge.\"\n\nREADME.md:806: \"... distinct, ordered ports on every node side (`ports.rs`); in a drawing of at most 400 edges, every edge with the default curve redrawn on the axes with rounded corners, its steps on ordered tracks (`ortho.rs`); obstacle-aware repair ...\""
+  },
+  {
+   "area": "changelog",
+   "where": "CHANGELOG.md:119 (B10 entry, under ### Changed)",
+   "claim": "\"end kinks 74 | 94 -> 2 | 1\"",
+   "problem": "This is the stale review-round-2 figure. The fresh release measurement and the final verifier report both give 1 | 1.",
+   "fix": "CHANGELOG.md:119: \"-> 0 | 0, bows 2 | 2 -> 0 | 0, end kinks 74 | 94 -> 1 | 1, edges on a\" (the line keeps its length, so the paragraph's wrapping does not change)."
+  },
+  {
+   "area": "changelog",
+   "where": "CHANGELOG.md:141-142 (B10 entry)",
+   "claim": "\"`route()` and drags take less than before on the large ones (bench-75 drag 20.2 -> 13.0 ms)\"",
+   "problem": "The fresh release measurement contradicts 13.0 ms, and 20.2 is the 5f318a0 phase-B baseline, not the pre-B10 value.",
+   "fix": "CHANGELOG.md:140-142: \"...ports and nudge over 18 squared paths); `route()` and drags take less than before on the large ones (bench-75: worst `route()` drag frame 20.2 -> 17.0 ms, mean frame 13.1 -> 9.0 ms).\""
+  },
+  {
+   "area": "changelog",
+   "where": "CHANGELOG.md:36-38 (Highlights, benchmark bullet)",
+   "claim": "\"about 106x faster than mermaid 12.2.0 (geometric mean over 25 diagrams; 126x on 0.37.0)\"",
+   "problem": "Read next to 126x, the bullet suggests 0.38.0 lost about 16% speed. The measurement files show flowmaid's own times are unchanged; the drop comes from the mermaid side of the run being about 15% faster on the shared box. Together with the scene() 1.4-2.0x line, this tells readers of a regression that did not happen.",
+   "fix": "CHANGELOG.md:36-38:\n- **Benchmark re-measured on 0.38.0:** about 106x faster than mermaid\n  12.2.0 (geometric mean over 25 diagrams), 19 of the 25 under a\n  millisecond, SVG 1.5-25x smaller. The 0.37.0 run said 126x; the drop is\n  the shared box, not this release: flowmaid's medians match that run's\n  (geometric mean 1.01x, 0.90x over the 15 flowchart and state diagrams)\n  while mermaid's ran 15% faster."
+  },
+  {
+   "area": "changelog",
+   "where": "README.md:857 (Interactive editing; changed text) vs CHANGELOG Highlights 'Dragging keeps the look'",
+   "claim": "\"`route_partial` re-routes only the edges the move can affect. Over every drag frame of the quality harness (`cargo run --release --example quality -- <dir> --drag`, measured on 0.38.0) it averages about 9 ms on the densest sample ... 4.5\u20137 ms on the other dense samples\"",
+   "problem": "The harness's --drag numbers time full `scene::route()`, not `route_partial`, so 9 ms is route()'s mean. route_partial on bench-75 is under 4.3 ms even in its worst frame. The 0.37.0 README said 4.7 ms here, so the edit reads as drags getting twice as slow in 0.38.0, when route()'s mean actually fell from 13.5 to 9.0 ms.",
+   "fix": "Dragging a node does not re-run layout: `route_partial` re-routes only the edges the move can affect. Its worst drag frame measured on 0.38.0 is about **4.3 ms on the densest sample** (`bench-75`: 21 nodes, 75 edges) and 2.5\u20133.6 ms on `dense-lr` and `dense-td` (30 sampled drags per file). A full `route()` of every edge, which the quality harness times over every drag frame (`cargo run --release --example quality -- <dir> --drag`, measured on 0.38.0), averages about 9 ms on `bench-75` and 4.5\u20137 ms on `dense-lr` and `dense-td`; on the small corpus diagrams it averages 0.2\u20131.2 ms a frame. Picking (`Scene::hit_test`, `edge_at`, `hits_in_rect`) follows the painted stroke and costs microseconds."
+  },
+  {
+   "area": "changelog",
+   "where": "CHANGELOG.md:23-24 (Highlights, first bullet)",
+   "claim": "\"an explicit `curve:` / `linkStyle \u2026 interpolate`, note links, self-loops and back-edge lanes keep their curves\"",
+   "problem": "Back-edge lanes are not curves. They were already orthogonal lanes with rounded corners, and the ortho stage skips them for that reason. The sentence contradicts the code and README:806.",
+   "fix": "CHANGELOG.md:22-25 should read: \"A straight edge stays straight; an edge with an explicit `curve:` / `linkStyle \u2026 interpolate`, note links and self-loops keep their curves, back-edge lanes (on the axes already) are unchanged, and class and ER output is byte-identical.\""
+  },
+  {
+   "area": "changelog",
+   "where": "CHANGELOG.md:117 (B10 entry)",
+   "claim": "\"Measured over the 14 corpus drawings against 0.35.0 (static | routed): ...\". The same sentence carries the 964-state and 303-flowchart bulk numbers.",
+   "problem": "The 'before' figures come from c72e56b, the B9 head that B10 was built on, which is 0.37.0's flowchart code. They do not come from 0.35.0. This is text carried over from the B10 branch, where 0.35.0 was the last release. The corpus figures happen to be the same for both, because 0.36.0 and 0.37.0 changed no corpus drawing. The bulk sets are not: 0.35.0 draws some of them differently. In a 0.38.0 entry the 0.35.0 label is wrong, and it also conflicts with the Highlights, which present the same numbers as this release's change.",
+   "fix": "CHANGELOG.md:117: replace \"Measured over the 14 corpus drawings against 0.35.0 (static | routed):\" with \"Measured against 0.37.0 (static | routed), over the 14 corpus drawings:\". The figures after it, and the bulk figures for the 964 state diagrams and 303 flowcharts, are already 0.37.0's (c72e56b) and can stay as they are. If a sha is wanted, use \"against 0.37.0 (c72e56b, the code B10 was built on)\". Do not add \"0.36.0 and 0.37.0 changed no corpus drawing\": once the baseline is 0.37.0 it is not needed, and it would invite the 0.35.0 comparison again, which is wrong for the bulk sets (0.35.0: 964-set defects 668|597 and crossings 820|1104; 303-set defects 390|668 and crossings 2485|2768)."
+  },
+  {
+   "area": "changelog",
+   "where": "CHANGELOG.md:130-131 (B10 entry, Known costs)",
+   "claim": "\"one more edge-frame pair there (`alerts -> gw`'s lane over the top through `app`)\"",
+   "problem": "Against the pre-B10 baseline, bench-75 has two more static edge-frame pairs (2 -> 4), not one. 'One more' is the step from review round 1 (3 -> 4).",
+   "fix": "CHANGELOG.md:130-131: \"two more edge-frame pairs there (2 -> 4: `dash -> user`'s lane now runs over the top through `app` and `edge`)\""
+  },
+  {
+   "area": "changelog",
+   "where": "CHANGELOG.md:85-87 (B10 entry); relates to Highlights 'Dragging keeps the look' (CHANGELOG.md:26-28)",
+   "claim": "\"A corner whose rounding point a moved end slid away from or dropped (the spline swept such a corner over up to 1 600 px: bench-75's `svc6 --> ext`) gets it back, 14 px from the corner.\"",
+   "problem": "This only holds in scene() and route(). In route_partial, the re-rounding skips edges the drag keeps (Ctx::fixed), so a kept edge whose end the ports stage moves still sweeps its corner by up to about 14 px. The Known costs list does not mention this drag-only limitation.",
+   "fix": "CHANGELOG.md:85-87, replace with:\n\"In `scene()` and `route()`, a corner whose rounding point a moved end slid away from or dropped (the spline swept such a corner over up to 1 600 px: bench-75's `svc6 --> ext`) gets it back, 14 px from the corner; `route_partial` does the same for the edges it redraws, not for an edge it keeps whose end the ports stage respaces (see Known costs).\"\n\nKnown costs list (CHANGELOG.md:136-138), add before the sentence that starts \"Static `scene()` takes\":\n\"...; a 1 px drag throws one more unrelated end on dense-td and on bench-75 (the re-rounded corners change where the ports stage reads a kept path heading); and in a `route_partial` frame an edge the drag keeps whose end the ports stage respaces keeps its old corner points, so the painted curve can sweep its corner by up to about 14 px (bench-75's `svc4 -> logs` on a 1 px drag of `svc1`).\""
+  }
+ ],
+ "refuted": []
+}

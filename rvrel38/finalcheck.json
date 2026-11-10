@@ -1,0 +1,259 @@
+{
+  "summary": "Independent review of the last 0.38.0 release commit (layout cap gate + doc fixes), each finding adversarially verified",
+  "agentCount": 7,
+  "logs": [
+    "5 confirmed, 0 refuted"
+  ],
+  "result": {
+    "confirmed": [
+      {
+        "lens": "code",
+        "where": "src/layout.rs:4003 (gate) with src/scene.rs:3449-3466 and 3511 (scene_clustered builds `ga`); the claim in the new comment at src/layout.rs:3997-4000",
+        "claim": "In a clustered scene, the two counts can disagree. The layout checks `ga.edges.len()`: g.edges plus one stand-in per sub-edge that has proxies. The ortho stage checks `sc.edges.len()`: g.edges plus every sub-edge the scene draws. Some drawn sub-edges get no stand-in: a box to its own member (`S --> m` with m inside S, or a state composite `C --> c1` to its own substate), a member to its own box when the box has no other entry member, and a box-to-box edge whose only proxies are the same node (nested boxes sharing one member, or a self-loop on a one-member box). When such edges push the scene count past 400 while `ga.edges.len()` stays at or under 400, the ortho stage keeps the builders' curves but the layout still grows every gap for tracks. That is the defect this commit set out to fix, so the new comment's claim that the clustered graph counts what the scene draws is wrong for these edges. ga.edges is never larger than the scene count (every stand-in is drawn as one scene edge), so the reverse case cannot happen. Likelihood is low: the scene count has to land within k edges above the cap, where k is the number of such sub-edges. When it does happen, the result is the same 2 500 px gap as before the fix.",
+        "evidence": "I built 9e60bfe and 5691dc7 CLIs in a scratch copy, plus a probe example that calls scene::scene and counts edges whose waypoints run on the axes. Input box_own_405 is a 20x21 grid cut to 395 `s->t` edges, plus `subgraph S` with m0..m9, plus 10 lines `S --> mi`. Probe: g.edges=395, sub_edges=10, scene.edges=405, on_axes=9 (ortho skipped), s-t row gap 2475 px, height 2647. The parent's output is byte-identical (same 2647 px). The control box_in_405 uses `xi --> S` (these get stand-ins): gap 108 px, height 450. State case st_comp_own_401 is 398 transitions plus `state C { c0 --> c1 }` plus `C --> c1`, `C --> c0`: scene.edges=401, on_axes=9, gap 2512.5 px, height 2700, identical to the parent. The control st_comp_in_401 uses `x0 --> C`, `x1 --> C`: height 352. I prototyped the fix below; it changed only these two outputs (2647 -> 232 and 2700 -> 248). The other 50 inputs were byte-identical to the commit: corpus, README, fixtures, 399/400/401/420 grids, compound and state cases.",
+        "severity": "non-blocking",
+        "fix": "Gate the track room on the edge count the scene will draw, not on ga.edges.len(). For example, add a crate-private `pub(crate) drawn_edges: Option<usize>` to Graph (Default None). In scene_clustered, before `layout_clustered_ranked`, set it:\n```rust\nlet framed = |s: usize| node_cluster.iter().any(|p| p.contains(&s));\nlet ok = |end: End| match end { End::Node(_) => true, End::Sub(s) => framed(s) };\nga.drawn_edges = Some(ne + g.sub_edges.iter().filter(|e| ok(e.from) && ok(e.to)).count());\n```\nIn place(), use `if g.edge_paint_width.is_none() && g.drawn_edges.unwrap_or(g.edges.len()) <= crate::router::ROUTE_MAX_EDGES {`. Then reword the comment to say the clustered layout counts every edge the scene draws. If the fix is deferred, drop the inaccurate comment clause instead.",
+        "verdict": {
+          "refuted": false,
+          "reason": "I could not refute it. The finding is real, and I reproduced it.\n\nThe code: the gate at src/layout.rs:4003 checks `ga.edges.len()`, which is ne plus one stand-in per sub-edge. A stand-in is pushed only when `from.first()` exists and `to` has a member other than `a` (scene.rs:3449-3466). The ortho gate (ortho.rs:182) checks `sc.edges.len()`, which is ne plus every sub-edge the loop at scene.rs:3633ff pushes. That loop skips an edge only when `end_placed` fails, which means an empty box. `sub_edge_proxies` returns `(vec![], vec![])` for a box to its own member (scene.rs:4050). It returns an empty `to` for a member to its own box when the box has no other entry member. And `to.find(b != a)` fails when both ends' proxies are the same node. Each of these is still drawn: as `own_box_stub`, or through `sub_edge_ported`/`free_edge`. So the comment's claim that the two counts match is wrong for these edges. Each stand-in is drawn exactly once, so `ga` can never count more than the scene.\n\nThe renders, using the existing 5691dc7 release CLI on inputs I built in /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/refute_drawn:\n- box_own_405 (395 grid edges plus `S --> m0..m9`): 3024x2647. Its s->t edges are single cubics about 2500 px long, so the ortho stage was skipped but the gap still grew.\n- Control box_in_405 (`xi --> S`): 450 tall.\n- st_comp_own_401: 2700 tall. Control st_comp_in_401: 352.\n- The other two kinds also show it: member_own_401 (6 one-member boxes, each with `ui --> Bi`) is 2647 tall, and nested_one_401 (6 nested pairs sharing one member, each with `Oi --> Ii`) is 2687.\n\nThe proposed fix, tested in a scratch copy:\n- The four affected inputs went to 232, 248, 232 and 272 px tall.\n- box_in_405, st_comp_in_401, plain_395, plain_401, and box_own_400 (the cap edge case: 390 grid edges plus 10 own-box edges, exactly 400 drawn, where tracks should stay) were byte-identical to the commit.\n- The full lib test suite passed: 1045 passed, 0 failed.\n\nThe fix's count matches what the scene draws. `framed(s)` (some node's path contains s) is the same test as `cluster_raw_boxes` returning Some, because the parser gives each node to one subgraph only (parser.rs:2733). A routed or ported draw always has a non-empty box, so no edge is counted that `end_placed` would skip, or the reverse. Compound parts each run `scene_labelled`, and with it `finish`, on their own, so the fix covers them too. Graph already has `pub(crate)` fields and derives Default, and `Graph::part` uses `..Graph::default()`, so the new field causes no API or construction problem.\n\nSeverity non-blocking is right. It only happens when the drawn count sits within k edges above 400, and the result is the old 2500 px gap.",
+          "fix_ok": true
+        }
+      },
+      {
+        "lens": "code",
+        "where": "src/ortho.rs:2327-2329 (new comment in a_drawing_past_the_routers_cap_keeps_the_builders_curves)",
+        "claim": "The new comment says the rows would otherwise be \"the 21 tracks the steps would need on the axes\" apart. Without the gate, the 420-edge grid's busiest point needs 210 tracks (the 2 650 px gap), not 21.",
+        "evidence": "With the gate reverted in my scratch copy, the test fails with \"rows 2650 px apart past the cap\". track_need = ROW_CLEAR 12.5 + HEAD_LEG (11 + 14) + (most-1) * TRACK_PITCH 12.5 = 2650, so most - 1 = 209 and most = 210.",
+        "severity": "non-blocking",
+        "fix": "// rows sit the plain gap apart (0.37.0's depth), not the 2 650 px the 210 tracks of the steps would need on the axes.",
+        "verdict": {
+          "refuted": false,
+          "reason": "The finding holds. I reproduced it in a scratch copy (now deleted; the worktree is unchanged). I removed the `g.edges.len() <= ROUTE_MAX_EDGES` gate in src/layout.rs `track_need` and added an eprintln of `most`. With that, `cargo test --lib a_drawing_past_the_routers_cap` fails with \"rows 2650 px apart past the cap\", the same as the reviewer saw. The final 2-layer layout logs `most 210`, from the 420 spans (other layout candidates log 107, 112 and 260). The arithmetic checks out. ROW_CLEAR is NODE_SEP 12 + 0.5 = 12.5 and HEAD_LEG is ARROW_MARKER_PX 11 + CORNER_R 14 = 25, so track_need = 37.5 + (most-1)*12.5. `place` raises the gap to exactly that, and 2650 gives most - 1 = 209, so most = 210. It is also what you would expect for K(20,21): at the centre about 10*10.5 + 10*10.5 = 210 spans overlap. I looked for a reading where \"21\" is right and found none. In ortho's place_tracks each jog takes its own track inside a channel of overlapping spans, and its fork rule only lets spans that come within a pitch share a track, not spans that overlap at a point. So the steps on the axes would need 210 tracks, not 21. The 21 looks like it came from the 21 targets, or from one source's fan. The commit message and CHANGELOG also say the rows sat 2 650 px apart, which matches 210 tracks and not 21 (21 tracks would be 287.5 px). The error is only in a test comment, so the fix is non-blocking.",
+          "fix_ok": true,
+          "better_fix": "The proposed wording is correct. A slightly tighter version: \"// rows sit the plain gap apart (0.37.0's depth), not the 2 650 px that the 210 tracks of the steps (at the busiest point) would need on the axes.\""
+        }
+      },
+      {
+        "lens": "docs",
+        "where": "src/layout.rs:4003 (claims at README.md:269, CHANGELOG.md:90 and :103-107, src/scene.rs:147/161)",
+        "claim": "The docs say a drawing past the 400-edge cap \"grows no gap between its ranks for tracks\", but the code counts the cap differently in two places, so in a clustered drawing it can still grow those gaps. layout.rs:4003 counts the clustered layout graph `ga`, which is g.edges plus one stand-in per sub-edge. ortho.rs:182 (and the router) count `sc.edges`, which is g.edges plus every sub-edge the scene draws. A member's edge to its own one-member box (`A --> S` where S holds only A) gets no stand-in (scene.rs:3452-3456 skips it) but is still drawn. With 399 node edges plus two such sub-edges, the scene has 401 edges, so the ortho stage skips and keeps the builders' curves. The layout sees only 399 edges, so it still grows every gap for tracks no edge will take. This is the same symptom this commit says it fixed, and the new layout.rs comment (\"a clustered scene's graph counts a stand-in for each edge to a box, as the scene counts the edge it draws\") is wrong for this case.",
+        "evidence": "Input /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/dc38/cap/b401.mmd: the 399-edge chart from rvrel38/cap/e399.mmd plus `subgraph S1[One]\\n z1[z1]\\n end\\n z1 --> S1` and the same for S2/z2. Rendered with target/release/flowmaid at 5691dc7: viewBox 0 0 4131 2164. Rendered with c72e56b (0.37.0): viewBox 0 0 4131 1016. A scene dump at 5691dc7 shows 401 edges. 341 are single cubics and 60 have waypoints: 42 long-edge splines plus 18 S-cubics squared by square_s_cubics. So the ortho stage really was skipped, yet row n1_* moved from y=185 to y=375. For comparison, e401.mmd (no subgraphs) is 976 px tall in both versions, as the docs say.",
+        "severity": "non-blocking",
+        "fix": "Make the layout use the count the ortho stage and router use. For example, in scene.rs scene_clustered count the drawn sub-edges that got no stand-in (`stand_in.iter().filter(|s| s.is_none()).count()`, minus any the builder drops for a frameless subgraph) and pass it to the layout through `ga` (e.g. a new `Graph` field `extra_drawn_edges`). Then change layout.rs:4003 to `g.edges.len() + g.extra_drawn_edges <= crate::router::ROUTE_MAX_EDGES`. Also fix the layout.rs comment, and extend the cap test with a member-to-own-box sub-edge at the 401 boundary.",
+        "verdict": {
+          "refuted": false,
+          "reason": "The finding is real. I re-ran the evidence and tried to break it.\n\nThe two stages count edges differently. scene_labelled -> scene_clustered gives `ga` to the layout (layout_clustered_ranked -> place). `ga` is g.edges plus one stand-in for each sub-edge that has one. The guard at layout.rs:4003 tests `g.edges.len()` on that graph.\n\nscene_clustered then splits the stand-ins off (`sc.edges.split_off(ne)`, scene.rs:3599) and pushes one SceneEdge for every sub-edge it draws. Sub-edges with no stand-in are included: a member to its own one-member box gets `own_box_stub`, and a box to box pair whose only members are the same node gets ported or free_edge. edgepass::finish then runs orthogonalize, and its guard counts `sc.edges.len()` (ortho.rs:182). The router's nudge and spread_close count the same way. So the two counts differ by the number of drawn sub-edges with no stand-in.\n\nRenders with the release binary at 5691dc7:\n- b401.mmd: 399 node edges plus 2 own-box sub-edges, 401 drawn. viewBox 0 0 4131 2164. Edge n5_4->n6_12 is still a single S-cubic across a ~150 px gap.\n- C: the same chart, with the boxes but no sub-edges, 399 edges. Also 4131x2164, so the layout is unchanged. Here the ortho stage runs, and the same edge is a rounded Z.\n- A: 399 node edges plus 2 sub-edges into two-member boxes. These get stand-ins, so both counts are 401. Height 1114: the layout skips growth there, as documented.\n- e401 (no subgraphs) is 976 tall, and e399 is 2274.\n\nSo b401 grows its gaps for tracks and keeps the curves anyway. That contradicts README.md:269 and CHANGELOG.md:90/103-107, and the new layout.rs comment about stand-ins is wrong for sub-edges that have none. It is a narrow case (more than 400 drawn edges, at most 400 counted by the layout), so non-blocking is the right severity. I found nothing that refutes it.\n\nOne more check: in the compound path, compound::scene runs scene_labelled and finish on each part. There both stages see the same per-part graph, so that path does not have this mismatch.",
+          "fix_ok": true,
+          "better_fix": "The proposed approach is correct, and I checked it on a copy of the tree. `Graph` has private fields, so a new `pub(crate)` field is not an API break.\n\nThe one detail to get right is \"minus any the builder drops\". A sub-edge is dropped exactly when one of its Sub ends has no node at any depth: cluster_raw_boxes gives that box None, so `end_placed` fails and the loop hits `continue`. A sub-edge into an empty subgraph shows this: it draws no path. Sub-edges with a stand-in always have members at both ends, so none of them are dropped. That makes the count exact before layout.\n\nWhat I tested:\n1. In model.rs, add `pub(crate) extra_drawn_edges: usize` to `Graph`.\n2. In scene_clustered, right after the stand-in loop:\n   `let framed = |end: End| match end { End::Node(_) => true, End::Sub(s) => node_cluster.iter().any(|p| p.contains(&s)) };`\n   `ga.extra_drawn_edges = g.sub_edges.iter().zip(&stand_in).filter(|(e, si)| si.is_none() && framed(e.from) && framed(e.to)).count();`\n3. In layout.rs:4003, test `g.edges.len() + g.extra_drawn_edges <= ROUTE_MAX_EDGES`.\n\nResults:\n- b401 drops from 2164 to 1016 tall, which matches 0.37.0.\n- A, C, D400 (399 edges + 1 own-box sub-edge = 400), e399, e401 and the empty-subgraph case render byte-identical to 5691dc7.\n- A boundary case with 400 drawn edges (399 + 1 own-box sub-edge + 1 sub-edge to an empty subgraph, which is dropped) is also byte-identical. Without the `framed` filter the layout would count 401 there and stop growing gaps while the ortho stage still runs.\n- The ortho:: unit tests pass (14/14).\n\nAlso rewrite the layout.rs comment to say the layout counts every edge the scene draws, including sub-edges with no stand-in. Add a cap test with an own-box sub-edge at the 401 boundary, plus the 400-drawn case with an empty-subgraph sub-edge."
+        }
+      },
+      {
+        "lens": "docs",
+        "where": "README.md:269; CHANGELOG.md:13-16 (Highlights), :89-91 and :103-107 (Changed); src/scene.rs:147, :161",
+        "claim": "The docs tie the cap to the whole drawing (\"a drawing of more than 400 edges, past the router's cap, keeps the earlier curves ... and grows no gap\"; \"grows a gap ... in a drawing of at most 400 edges\"). In a drawing with a `direction` block (compound.rs), each block and the rest go through the whole pipeline on their own. So the layout cap, the ortho cap and the router cap all count edges per part, not for the whole drawing. A drawing of more than 400 edges whose parts each hold 400 or fewer is drawn on the axes with grown gaps.",
+        "evidence": "Input /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/dc38/cap/c409.mmd: e399.mmd plus `subgraph blk[Block]\\n direction LR\\n x0 --> x1 ... x0 --> x10\\n end`, 409 edges in total. At 5691dc7, 391 of the 409 edges have waypoints (on the axes). At 0.37.0 (c72e56b), 49 do. The canvas is viewBox 0 0 4293 2994 at 5691dc7 against 4265 1822 at 0.37.0, so the gaps grew for tracks even though the drawing has more than 400 edges.",
+        "severity": "non-blocking",
+        "fix": "Say that the count is per laid-out part. README.md:269: \"A drawing of more than 400 edges (counted for each `direction` block, which is laid out on its own, and for the rest round them), past the router's cap, keeps the earlier curves ...\". Give the same qualifier to CHANGELOG.md:14-15 (\"as do the edges of a drawing with more than 400 edges (past the router's cap, counted per `direction` block and for the rest)\"), :90 (\"in a drawing of at most 400 edges (per `direction` block and for the rest)\") and :103-104. In scene.rs:147/161, say \"past the router's 400-edge cap (counted per block a `direction` lays out on its own)\".",
+        "verdict": {
+          "refuted": false,
+          "reason": "The finding is real. I re-checked the code and re-ran the input myself.\n\nCode: compound::scene (src/compound.rs:668-701) sends each outermost block's `part.g` and then `split.rest.g` through `crate::scene::scene_labelled` on its own. compound::route does the same with `route_labelled`. Afterwards `join` only copies the parts' geometry into one scene, and `refit` (src/edgepass.rs:1127) only shifts and resizes the canvas. No stage runs again on the joined scene. That means all three caps count the part, not the drawing:\n- the ortho skip (`sc.edges.len() > ROUTE_MAX_EDGES`, src/ortho.rs:182)\n- the new layout guard (`g.edges.len() <= ROUTE_MAX_EDGES`, src/layout.rs:4003)\n- the router's repair, nudge and spread_close (src/router.rs:4111, 4362, 5122)\n\nRe-run with the release binary built from 5691dc7, using the reviewer's c409.mmd (e399.mmd plus an LR `direction` block of 10 edges, 409 edges in all). I classified each SVG edge path myself: a path counts as drawn on the axes when it has both a horizontal and a vertical straight run.\n\n| input | canvas (viewBox) | edges on the axes |\n|---|---|---|\n| c409.mmd at 5691dc7 | 4293 x 2994 | 382 of 409 |\n| c409.mmd at 0.37.0 (reviewer's SVG) | 4265 x 1822 | 2 |\n| c409.mmd with only the `direction LR` line removed, at 5691dc7 | — | 0 of 409 |\n| e399.mmd at 5691dc7 | 3197 x 2274 | 365 of 399 |\n\nRemoving the `direction LR` line puts the whole drawing through one pass, and the cap then holds. So in a drawing of more than 400 edges whose parts each hold 400 or fewer, edges are drawn on the axes and the gaps grow. The reviewer's dumps agree: 391 of 409 edges have waypoints at 0.38.0 against 49 at 0.37.0.\n\nIn the README, \"a drawing\" means the whole picture (the Subgraphs section places a block \"in the drawing round it like one node\"). So README.md:269 is false for such drawings. So are CHANGELOG.md:26-27 and :103-107. CHANGELOG.md:90 (\"grows a gap ... in a drawing of at most 400 edges\") also misleads: the per-part counts add up to the whole, so every drawing of 400 or fewer edges does grow gaps, but so does a larger drawing whose parts each stay at or under 400. The same applies to the scene.rs:147/161 doc comments.\n\nWhat the reviewer missed:\n- README.md:806 (the Architecture/Scene step) makes the same claim (\"in a drawing of up to 400 edges, every flowchart or state edge ... redrawn on the axes\"). This commit did not change that line, but it is just as wrong.\n- The Highlights mention is at CHANGELOG.md:26-27, not :13-16.\n\nSeverity: non-blocking is right. Only drawings past 400 edges that hold a block laid out on its own are affected.",
+          "fix_ok": false,
+          "better_fix": "The fix has the right idea but is slightly inaccurate and leaves one spot out.\n\n1. The qualifier is wrong for some subgraphs. A subgraph with a `direction` line is laid out on its own only when no member links to a node outside it, its direction differs from the one round it, and two of its members link to each other. A nested block inside such a block is a part of its own too. Otherwise it is counted with the rest, so \"counted for each `direction` block\" is not accurate. Use something like:\n   - README.md:269: \"A drawing of more than 400 edges, past the router's cap, keeps the earlier curves ... (the count is taken per laid-out part: each subgraph that is laid out on its own in its `direction`, see Subgraphs, and the rest of the drawing round it, so a larger drawing whose parts each hold 400 or fewer edges is drawn on the axes)\".\n   - CHANGELOG.md:26-27, :90 and :103-104: the same short qualifier, for example \"(past the router's cap; counted per part, each subgraph laid out on its own in its `direction` and the rest round them)\". At :90, say \"in a drawing, or a part laid out on its own, of at most 400 edges\".\n   - src/scene.rs:147/161: \"past the router's 400-edge cap (counted per part a `direction` lays out on its own)\".\n\n2. Give README.md:806 (\"in a drawing of up to 400 edges ... redrawn on the axes\") the same per-part wording.\n\nAdding a regression test would also help: render a 401+-edge drawing with a block laid out on its own, and assert that the rest part's edges keep their curves only when the rest part alone is over 400 edges."
+        }
+      },
+      {
+        "lens": "docs",
+        "where": "README.md:752",
+        "claim": "The edited parenthetical says a waypoint edge's `bezier` is \"a cubic from the path's start to its end with its first and last corners as controls, or, for an edge the router rerouted or its channel nudge redrew, the straight line between its ends\". Two cases do not match. First, the sentence covers every \"flowchart or state edge drawn on the axes (see Edges)\", and Edges counts back-edge lanes among them. lane_geometry (scene.rs:7879-7895) gives a lane `[p0, first corner on the lane run, last corner on the lane run, p3]`, which are the path's second and next-to-last corners, not its first and last. Second, `spread_close` (router.rs:4761, applied at :4520) gives an axis-drawn edge it moves clear the straight `[p0,p0,p3,p3]`, though it neither reroutes nor nudges that edge.",
+        "evidence": "Input /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/dc38/back/back.mmd (`A-->B-->C-->D-->A`, TD). Scene at 5691dc7, edge D->A: corners (88.65,322) -> (88.65,302) -> (132.70,302) -> (132.70,86) -> (90.60,86) -> (90.60,66), but bezier = [(88.65,322) (132.70,302) (132.70,86) (90.60,66)]. The first corner is (88.65,302) and the last is (90.60,86); neither is a control. route() gives the same.",
+        "severity": "non-blocking",
+        "fix": "README.md:752, replace \"(a cubic from the path's start to its end with its first and last corners as controls, or, for an edge the router rerouted or its channel nudge redrew, the straight line between its ends)\" with \"(a cubic from the path's start to its end with its first and last corners as controls, a back-edge lane's with the two ends of its run along the lane, or, for an edge the router rerouted, its channel nudge redrew or its spacing pass moved clear, the straight line between its ends)\".",
+        "verdict": {
+          "refuted": false,
+          "reason": "I could not refute the claim. I checked it on a scratch copy of 5691dc7 with a small dump example, plus env-guarded traces on repair (router.rs:5770), the nudge redraw (router.rs:4317) and spread_close (router.rs:4520). I also printed one edge after each stage of edgepass::finish_held.\n\nCase 1, back-edge lanes, is real. The README's \"drawn on the axes (see Edges)\" covers lanes, because Edges (README:269) says lanes \"were on the axes already\". On back.mmd, edge D->A has corners (88.65,302) (132.70,302) (132.70,86) (90.60,86), but its bezier is [(88.65,322) (132.70,302) (132.70,86) (90.60,66)]. route() gives the same. That matches lane_geometry, which takes the first and last corners on the lane's own run, not the path's first and last corners.\n\nCase 2, spread_close, is real. On tests/fixtures/quality/dense-td.mmd, edge #35 n1->n5 is a plain axis Z. The repair and nudge traces never touch it. With spread_close turned off its bezier is [(2708.10,464.64) (2708.10,494.52) (2956.45,494.52) (2956.45,543.64)], i.e. the first and last corners. With spread_close on, it slides the step 4 px and the bezier becomes [p0,p0,p3,p3]. README:806 describes the router as \"repair\" plus \"a channel nudge that spreads shared channels and rounds corners\" and never mentions this pass, so neither \"rerouted\" nor \"channel nudge redrew\" covers it.\n\nThe reviewer missed a third case. Over the flowchart and state corpus (examples/ and tests/, static scene()), 30 waypoint edges that no router stage redrew have a bezier that is neither first/last corners nor straight:\n- 16 on bench-75, e.g. #19 svc2->cache, #62 db->svc2.\n- On dense-td: #2, #4, #8, #11, #14, #16, #25.\n- On fanout-frames: #2 and #3.\n\nPer-stage traces show why. ports::respace (dense-td #2, bench-75 #19 and #62, fanout-frames #3) and the static port reorder at the end of nudge (bench-75 #5) move an end and its first corner after the ortho stage. They update only bezier[0] or bezier[3], so the control stays where the old corner was: 21.6 px off on dense-td #2 (2106.92 vs 2128.5), 1 px on bench-75 #19. snap_ends also moves bezier[3] alone, so some \"straight\" fallbacks are no longer [p0,p0,p3,p3] (dense-td #5 ends ...,(1021.4,1156.29),(1021.4,1161.39)). Totals over the corpus:\n- 119 first/last corners\n- 10 lane-run\n- 65 straight\n- 36 stale\n\nThe original tree is untouched, and the scratch target dir has been deleted.",
+          "fix_ok": false,
+          "better_fix": "The proposed text gets the two cases it adds right, but it still claims \"first and last corners as controls\" for every other axis edge. That is false for an edge whose end the ports stage moves after the axis stage (respace, or the static reorder at the end of the nudge), which happens on 30 corpus edges across bench-75, dense-td and fanout-frames. Listing more cases will keep going stale. Better: describe only what holds and tell hosts not to rely on the controls.\n\nREADME.md:752, replace \"(a cubic from the path's start to its end with its first and last corners as controls, or, for an edge the router rerouted or its channel nudge redrew, the straight line between its ends)\" with \"(a cubic from the path's start to its end whose controls only roughly follow it: where the axis stage put the first and last corners, or for a back-edge lane the ends of its run along the lane, and left there when the ports stage later moves an end; or the straight line between its ends for an edge the router rerouted, its channel nudge redrew or its spacing pass moved clear; rely on its ends only)\"."
+        }
+      }
+    ],
+    "refuted": [],
+    "checked": [
+      {
+        "lens": "code",
+        "checked": "Worked in scratch copies made with `git archive` of 9e60bfe and 5691dc7 under /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rv38gate, with one CARGO_TARGET_DIR, now deleted. The tracked worktree is untouched (git status clean). Note that Cargo reuses the fingerprint across two trees with the same relative path and older mtimes, so I touched the sources to force a real rebuild of the commit.\n\n- Gate logic: place() is always called with the same graph that the scene is built from. In layout_core, every place() call uses g; no layout search or narrow() candidate passes an augmented graph. track_need is only used in the drawn layer lines (`!judged`). This is the only layout change since 0.37.0 (7a0f8fd), so past the cap the layout is 0.37.0's again.\n- Flat graphs: the scene draws exactly g.edges (sub_edges is empty without subgraphs), so the counts agree.\n- Clustered graphs: one mismatch, finding 1. Scene count = ga.edges + drawn sub-edges without a stand-in. ga.edges is never larger than the scene count.\n- Compound layouts: each block and the rest are laid out and finished by their own scene_labelled. Both gates see the same per-part graph. cmp_total406 (406 edges in all, every part at or under 400) is byte-identical to the parent and drawn on the axes. cmp_block400 is identical. cmp_block401 has its curves kept and no track gap. compound::scene only refits after join; no second ortho pass.\n- State diagrams: notes are nodes and note links are g.edges. A note on a composite is a Sub->Node sub-edge, which does get a stand-in. st_notes_400 is identical to the parent; st_notes_401 goes from 2792 to 290 px tall.\n- Class and ER: edge_paint_width is Some, so both gates are off. class.mmd and er.mmd are byte-identical.\n- route(), route_labelled() and route_partial(), including the compound versions, never call layout, so the gate does not affect them.\n- At or under 400 edges the new condition is always true, so the code path is unchanged. Byte-identical renders, parent vs commit: 21 example .mmd files (2 advance files rendered with --advance-text), 19 test fixtures, every README mermaid block, grid_399, grid_400, dag_400, box_own_400, st_notes_400, cmp_block400, cmp_total406. Only grid_401 (2657 -> 192 px), grid_420, dag_401, st_notes_401, st_comp_in_401, box_in_405 and cmp_block401 changed, all past the cap as intended.\n- Test assertion: it fails with the gate reverted (\"rows 2650 px apart past the cap\") and passes with it (gap 60 px against a threshold of GAP_L + 2*TRACK_PITCH = 85). It passed 5 of 5 reruns and takes about 0.01 s in release. The 48 ortho:: and layout:: unit tests pass."
+      },
+      {
+        "lens": "docs",
+        "checked": "Checked every sentence 5691dc7 adds or changes in README.md (lines 269 and 752), CHANGELOG.md [0.38.0] and the SceneEdge::bezier / ::waypoints rustdoc, against the code and against renders. Two copies were built, one from 5691dc7 and one from c72e56b (0.37.0), each with a scene-dump example. The 5691dc7 CLI is byte-identical to the release binary provided.\n\nCorrect apart from the three findings:\n- **Past the cap, flat drawings.** e401.mmd (401 edges) is 976 px tall in both versions, so no gap grows. 381 edges are unchanged from 0.37.0, splines through dummies included. The 20 S-cubics under 28 px across (8.1-27.6 px) became rounded Z's, with flanking points at min(14, half the leg), in both scene() and route(). No S under 28 px is left over. This matches square_s_cubics: under 28 px (2 x CORNER_R) a Z, at or under SQUARE_SLIDE (1 px) straight, run unconditionally in finish_held.\n- **Labelled branch.** ortho.rs:1740-1754 and :1931-1940 match the wording. In a rectangle-source 5-branch fan the step sits at y=82.75, between the source (66) and the label (119), and the label rides the run into the target.\n- **Short first leg.** That fan's first leg is 16.75 px, flanked at 8.375 px. router::smooth uses r = min(14, l1/2, l2/2).\n- **Bezier fallback.** repair and nudge set [p0,p0,p3,p3]; the ortho stage and square_s_cubics put the first and last corners as controls.\n- **Back-edge lanes.** route_backs adds a border count for frames holding neither end; lanes.rs is unchanged. On bench-75, `dash -> user` ran along the bottom in 0.37.0 static (y=1017) and over the top in its 0.37.0 route() lane (y=165). At 5691dc7 it runs over the top in both (static y=154). That top run passes through the `edge` and `app` frames. The quality harness shows static edge-frame pairs going from 2 to 4, and the two new ones are dash->user through edge and app.\n- **Timing sentence.** \"up to 1.9x\" and \"1.3-1.9x on eight of the eleven ... lr and fanout take less\" do not contradict the 0.5-1.2x figure against 0.37.0, the Highlights, or the drag numbers. One of the eleven is not named, but nothing contradicts.\n- **Markdown.** pandoc gfm gives the section 4 Highlights items and 1 Changed item, with no stray list, table or code block. Backticks balance in every item and in README lines 269 and 752.\n\nThe two extra trees and the extra target dir have been deleted. Repro inputs are in /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/dc38 (cap/, back/, b75/, lbl/, q75/). The worktree was not touched."
+      }
+    ]
+  },
+  "workflowProgress": [
+    {
+      "type": "workflow_phase",
+      "index": 1,
+      "title": "Review"
+    },
+    {
+      "type": "workflow_phase",
+      "index": 2,
+      "title": "Verify"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 1,
+      "label": "review:code",
+      "phaseIndex": 1,
+      "phaseTitle": "Review",
+      "agentId": "a6da4c78ca6363554",
+      "model": "claude-opus-5-5",
+      "state": "done",
+      "startedAt": 1794275437517,
+      "queuedAt": 1794275437494,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "Worked in scratch copies made with `git archive` of 9e60bfe…",
+      "promptPreview": "Repository worktree: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/wt/rel38 (Rust crate flowmaid, branch release/0.38.0). The commit under review is 5691dc7 (parent 9e60bfe); see it with `git -C /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/wt/rel38 show 5691dc7`. Do not commit, push, or edit tracked files in that tree. For ex…",
+      "promptFramed": true,
+      "lastProgressAt": 1794276985994,
+      "tokens": 215768,
+      "toolCalls": 61,
+      "durationMs": 1548476,
+      "resultPreview": "{\"findings\":[{\"where\":\"src/layout.rs:4003 (gate) with src/scene.rs:3449-3466 and 3511 (scene_clustered builds `ga`); the claim in the new comment at src/layout.rs:3997-4000\",\"claim\":\"In a clustered scene, the two counts can disagree. The layout checks `ga.edges.len()`: g.edges plus one stand-in per sub-edge that has proxies. The ortho stage checks `sc.edges.len()`: g.edges plus every sub-edge the …"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 2,
+      "label": "review:docs",
+      "phaseIndex": 1,
+      "phaseTitle": "Review",
+      "agentId": "a48ceaa13cae46d27",
+      "model": "claude-opus-5-5",
+      "state": "done",
+      "startedAt": 1794275437517,
+      "queuedAt": 1794275437494,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "Checked every sentence 5691dc7 adds or changes in README.md…",
+      "promptPreview": "Repository worktree: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/wt/rel38 (Rust crate flowmaid, branch release/0.38.0). The commit under review is 5691dc7 (parent 9e60bfe); see it with `git -C /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/wt/rel38 show 5691dc7`. Do not commit, push, or edit tracked files in that tree. For ex…",
+      "promptFramed": true,
+      "lastProgressAt": 1794276316575,
+      "tokens": 249979,
+      "toolCalls": 74,
+      "durationMs": 874056,
+      "resultPreview": "{\"findings\":[{\"where\":\"src/layout.rs:4003 (claims at README.md:269, CHANGELOG.md:90 and :103-107, src/scene.rs:147/161)\",\"claim\":\"The docs say a drawing past the 400-edge cap \\\"grows no gap between its ranks for tracks\\\", but the code counts the cap differently in two places, so in a clustered drawing it can still grow those gaps. layout.rs:4003 counts the clustered layout graph `ga`, which is g.e…"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 3,
+      "label": "verify:docs#0",
+      "phaseIndex": 2,
+      "phaseTitle": "Verify",
+      "agentId": "ab8fc4b4037db28e6",
+      "model": "claude-opus-5-5",
+      "state": "done",
+      "startedAt": 1794276316602,
+      "queuedAt": 1794276316580,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "The finding is real. I re-ran the evidence and tried to bre…",
+      "promptPreview": "Repository worktree: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/wt/rel38 (Rust crate flowmaid, branch release/0.38.0). The commit under review is 5691dc7 (parent 9e60bfe); see it with `git -C /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/wt/rel38 show 5691dc7`. Do not commit, push, or edit tracked files in that tree. For ex…",
+      "promptFramed": true,
+      "lastProgressAt": 1794276721758,
+      "tokens": 138840,
+      "toolCalls": 33,
+      "durationMs": 405156,
+      "resultPreview": "{\"refuted\":false,\"reason\":\"The finding is real. I re-ran the evidence and tried to break it.\\n\\nThe two stages count edges differently. scene_labelled -> scene_clustered gives `ga` to the layout (layout_clustered_ranked -> place). `ga` is g.edges plus one stand-in for each sub-edge that has one. The guard at layout.rs:4003 tests `g.edges.len()` on that graph.\\n\\nscene_clustered then splits the sta…"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 4,
+      "label": "verify:docs#1",
+      "phaseIndex": 2,
+      "phaseTitle": "Verify",
+      "agentId": "a788c7fdd6c23d851",
+      "model": "claude-opus-5-5",
+      "state": "done",
+      "startedAt": 1794276721767,
+      "queuedAt": 1794276316580,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "The finding is real. I re-checked the code and re-ran the i…",
+      "promptPreview": "Repository worktree: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/wt/rel38 (Rust crate flowmaid, branch release/0.38.0). The commit under review is 5691dc7 (parent 9e60bfe); see it with `git -C /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/wt/rel38 show 5691dc7`. Do not commit, push, or edit tracked files in that tree. For ex…",
+      "promptFramed": true,
+      "lastProgressAt": 1794276879993,
+      "tokens": 108462,
+      "toolCalls": 17,
+      "durationMs": 158225,
+      "resultPreview": "{\"refuted\":false,\"reason\":\"The finding is real. I re-checked the code and re-ran the input myself.\\n\\nCode: compound::scene (src/compound.rs:668-701) sends each outermost block's `part.g` and then `split.rest.g` through `crate::scene::scene_labelled` on its own. compound::route does the same with `route_labelled`. Afterwards `join` only copies the parts' geometry into one scene, and `refit` (src/e…"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 5,
+      "label": "verify:docs#2",
+      "phaseIndex": 2,
+      "phaseTitle": "Verify",
+      "agentId": "ab9d0a58b322b5c12",
+      "model": "claude-opus-5-5",
+      "state": "done",
+      "startedAt": 1794276879996,
+      "queuedAt": 1794276316580,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "I could not refute the claim. I checked it on a scratch cop…",
+      "promptPreview": "Repository worktree: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/wt/rel38 (Rust crate flowmaid, branch release/0.38.0). The commit under review is 5691dc7 (parent 9e60bfe); see it with `git -C /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/wt/rel38 show 5691dc7`. Do not commit, push, or edit tracked files in that tree. For ex…",
+      "promptFramed": true,
+      "lastProgressAt": 1794277429637,
+      "tokens": 171518,
+      "toolCalls": 36,
+      "durationMs": 549640,
+      "resultPreview": "{\"refuted\":false,\"reason\":\"I could not refute the claim. I checked it on a scratch copy of 5691dc7 with a small dump example, plus env-guarded traces on repair (router.rs:5770), the nudge redraw (router.rs:4317) and spread_close (router.rs:4520). I also printed one edge after each stage of edgepass::finish_held.\\n\\nCase 1, back-edge lanes, is real. The README's \\\"drawn on the axes (see Edges)\\\" co…"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 6,
+      "label": "verify:code#0",
+      "phaseIndex": 2,
+      "phaseTitle": "Verify",
+      "agentId": "a32e5bc7a0dcdb8e9",
+      "model": "claude-opus-5-5",
+      "state": "done",
+      "startedAt": 1794276985999,
+      "queuedAt": 1794276985997,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "I could not refute it. The finding is real, and I reproduce…",
+      "promptPreview": "Repository worktree: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/wt/rel38 (Rust crate flowmaid, branch release/0.38.0). The commit under review is 5691dc7 (parent 9e60bfe); see it with `git -C /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/wt/rel38 show 5691dc7`. Do not commit, push, or edit tracked files in that tree. For ex…",
+      "promptFramed": true,
+      "lastProgressAt": 1794277459133,
+      "tokens": 143781,
+      "toolCalls": 33,
+      "durationMs": 473133,
+      "resultPreview": "{\"refuted\":false,\"reason\":\"I could not refute it. The finding is real, and I reproduced it.\\n\\nThe code: the gate at src/layout.rs:4003 checks `ga.edges.len()`, which is ne plus one stand-in per sub-edge. A stand-in is pushed only when `from.first()` exists and `to` has a member other than `a` (scene.rs:3449-3466). The ortho gate (ortho.rs:182) checks `sc.edges.len()`, which is ne plus every sub-e…"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 7,
+      "label": "verify:code#1",
+      "phaseIndex": 2,
+      "phaseTitle": "Verify",
+      "agentId": "a635d01e58e24f55f",
+      "model": "claude-opus-5-5",
+      "state": "done",
+      "startedAt": 1794277429641,
+      "queuedAt": 1794276985997,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "The finding holds. I reproduced it in a scratch copy (now d…",
+      "promptPreview": "Repository worktree: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/wt/rel38 (Rust crate flowmaid, branch release/0.38.0). The commit under review is 5691dc7 (parent 9e60bfe); see it with `git -C /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/wt/rel38 show 5691dc7`. Do not commit, push, or edit tracked files in that tree. For ex…",
+      "promptFramed": true,
+      "lastProgressAt": 1794277552053,
+      "tokens": 102563,
+      "toolCalls": 14,
+      "durationMs": 122412,
+      "resultPreview": "{\"refuted\":false,\"reason\":\"The finding holds. I reproduced it in a scratch copy (now deleted; the worktree is unchanged). I removed the `g.edges.len() <= ROUTE_MAX_EDGES` gate in src/layout.rs `track_need` and added an eprintln of `most`. With that, `cargo test --lib a_drawing_past_the_routers_cap` fails with \\\"rows 2650 px apart past the cap\\\", the same as the reviewer saw. The final 2-layer layo…"
+    }
+  ],
+  "totalTokens": 1130911,
+  "totalToolCalls": 268
+}
