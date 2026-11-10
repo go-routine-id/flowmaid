@@ -65,18 +65,25 @@ project adheres to [Semantic Versioning](https://semver.org/).
   line through, along or newly cramped beside a box, no more frame
   borders, title chips or labels crossed, no two lines on top of each
   other or closer beside each other or along a frame's border for longer
-  than before. Two edges of a fan can still cross further out, where
-  their far ends lie the other way round and putting them in order would
-  cost a crossing elsewhere (dense-td's `n16 -> n37` under `n20 -> n37`).
-  The same rule runs in `scene()`, `route()` and every drag frame; in
-  `route_partial()` an end a drag keeps stays where it is and the others
-  comb round it. Over the corpus (static | routed): crossings inside fans
-  29 | 36 -> 14 | 25 (fanout-frames 0 | 1 -> 0 | 0, the two ends of its
-  hub's bottom side no longer cross in `route()`), drawn crossings
-  428 | 494 -> 410 | 478, defects 47 | 46 -> 46 | 44; over 303 generated
-  flowcharts drawn crossings 2 874 | 2 775 -> 2 858 | 2 752 with no file
-  worse on any defect count, over 964 state diagrams 712 | 826 ->
-  688 | 760 (defects 616 | 537 -> 615 | 537).
+  than before. Two stubs of the side itself are not held against it:
+  they stand as far apart as its ports in any order, so a hub with more
+  ends on a side than fit a spacing clear apart (ten on the bottom of a
+  small box, 11 px between ports) is combed like any other, in `route()`
+  too. A track that lies beyond its room may move back towards it, and a
+  label some line crosses already — the label stage places it afresh —
+  is no reason to refuse a comb. Two edges of a fan can still cross
+  further out, where their far ends lie the other way round and putting
+  them in order would cost a crossing elsewhere (dense-td's `n16 -> n37`
+  under `n20 -> n37`). The same rule runs in `scene()`, `route()` and
+  every drag frame; in `route_partial()` an end a drag keeps stays where
+  it is and the others comb round it. Over the corpus (static | routed):
+  crossings inside fans 29 | 36 -> 13 | 18 (fanout-frames 0 | 1 -> 0 | 0,
+  the two ends of its hub's bottom side no longer cross in `route()`;
+  dense-lr's hub `n12` 2 -> 0 there), drawn crossings 428 | 494 ->
+  409 | 471, defects 47 | 46 -> 46 | 44; over 303 generated flowcharts
+  drawn crossings 2 874 | 2 775 -> 2 853 | 2 747 with no file worse on any
+  defect count, over 964 state diagrams 712 | 826 -> 678 | 735 (defects
+  616 | 537 -> 615 | 536).
 - **A hub keeps its order under a drag.** In `route_partial()`, a side
   that takes one redrawn end more than it has room for round its kept
   ends is spaced afresh in the order it is drawn in — the kept ends close
@@ -85,12 +92,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
   do not touch: bench-75 16 -> 13 (dense-td 5, dense-lr 0 as before).
 - Known costs: a comb's teeth run side by side a track pitch apart where
   they crossed each other, which the yardstick counts as cables (pairs of
-  edges 6-26 px apart for over 100 px: 124 | 139 -> 130 | 140 over the six
-  gated fixtures). Judging each side's comb costs time: `scene()` takes
-  3-5 % longer on the dense drawings, `route()` about 5 % on dense-td and
-  dense-lr (5.6 -> 5.8 ms, 3.6 -> 3.8 ms) and 17 % on bench-75
-  (7.2 -> 8.4 ms, 46 sides judged per call); the drag budget holds on
-  every corpus file. A pick takes up to a tenth longer (fanout
+  edges 6-26 px apart for over 100 px: 124 | 139 -> 130 | 142 over the six
+  gated fixtures), and on a crowded side closer than the spacing clear,
+  as its ports stand (pairs under 12 px apart for over 24 px: 31 | 33 ->
+  30 | 37). Nested, the label of an inner tooth has a neighbour beside
+  its whole step: in `route()` one more of dense-lr's fan labels sits
+  over a neighbouring line (3 -> 4). Judging each side's comb costs
+  time: `scene()` takes 4-8 % longer on the dense drawings, `route()`
+  about 10 % on dense-td and dense-lr (5.6 -> 6.1 ms, 3.6 -> 4.1 ms) and
+  15 % on bench-75 (7.8 -> 9.0 ms, 46 sides judged per call); the drag
+  budget holds on every corpus file. A pick takes up to a tenth longer (fanout
   2.9 -> 3.2 us per `hit_test`, bench-75 28 -> 28 us), for looking up the
   hops near the pointer; `to_svg` of bench-75 takes a quarter less time
   (4.0 -> 3.0 ms, fewer masks).

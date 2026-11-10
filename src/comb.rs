@@ -34,7 +34,12 @@
 //! A side's new comb is kept only when its edges cross fewer lines than
 //! before and hit no more boxes, frame borders, title chips or labels,
 //! nor run on top of or closer beside another edge ([`keeps`]): what the
-//! router and the nudge spaced stays spaced.
+//! router and the nudge spaced stays spaced. Two stubs of the side
+//! itself are the exception: they stand as far apart as its ports,
+//! whatever order its teeth take them in, so a hub with more ends than
+//! its side holds a spacing clear apart (ten on one side of a small
+//! box) is combed like any other — its stubs side by side, as they
+//! were, instead of across each other.
 //!
 //! The edges stay separate strokes, each its own port and track: merged
 //! onto one trunk, a fan's edges could not be told apart, picked or
@@ -147,9 +152,10 @@ struct Comb {
     turn: f64,
     /// The depths its track may take: from the straight run its end
     /// needs out to where the path runs on past the turn (less the run
-    /// that leg needs). One depth, its own, when the track is pinned:
-    /// it runs into the edge's far end (an L), or the path heads back
-    /// towards the side past the turn.
+    /// that leg needs), and its own depth where that lies outside. One
+    /// depth, its own, when the track is pinned: it runs into the
+    /// edge's far end (an L), the path heads back towards the side past
+    /// the turn, or the two runs leave no room between them.
     lo: f64,
     hi: f64,
 }
@@ -234,8 +240,11 @@ fn comb_of(e: &SceneEdge, src: bool, c: Vec<Pt>) -> Option<Comb> {
         let far = c.len() == 4 && glyph_at(e, !src);
         c[3].1 - n0 - leg_need(far)
     });
+    // (A track outside that room — a head's run cut short where the
+    // stages found no better — may still move back towards it: its own
+    // depth bounds the range on that side.)
     let (lo, hi) = match room {
-        Some(hi) if hi - lo > EPS && depth >= lo - EPS && depth <= hi + EPS => (lo, hi),
+        Some(hi) if hi - lo > EPS => (lo.min(depth), hi.max(depth)),
         _ => (depth, depth),
     };
     Some(Comb {
@@ -348,7 +357,7 @@ pub(crate) fn comb(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
             if tried.iter().any(|p| same_plan(p, &plan)) {
                 continue;
             }
-            if keeps(sc, &world, &plan, true) {
+            if keeps(sc, &world, &plan, &members, true) {
                 apply(sc, &mut world, moved, &plan);
                 combed = true;
                 break;
@@ -364,7 +373,7 @@ pub(crate) fn comb(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
             teeth
         };
         if let Some(plan) = plan_even(sc, &teeth, fr) {
-            if keeps(sc, &world, &plan, false) {
+            if keeps(sc, &world, &plan, &members, false) {
                 apply(sc, &mut world, moved, &plan);
             }
         }
@@ -859,8 +868,13 @@ impl World {
 /// and other edges' labels, nor run on top of another edge, closer
 /// beside one than the spacing clear, or along a frame's border for
 /// longer than they did — what the quality yardstick counts as defects,
-/// by its own clearances ([`crate::clearance`]).
-fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fewer: bool) -> bool {
+/// by its own clearances ([`crate::clearance`]). `fan` lists the ends
+/// of the side being combed (each end's edge, and whether it is the
+/// edge's start): two of its stubs side by side are as far apart as the
+/// ports stage put the side's ports, in whatever order the teeth take
+/// them, and are not held against the comb ([`stub_of`]) — unless they
+/// come to lie on top of each other.
+fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fan: &[(usize, bool)], fewer: bool) -> bool {
     // The changed edges as (edge, line now, bounds now).
     let new: Vec<(usize, &[Pt], Rect)> = plan
         .iter()
@@ -899,7 +913,7 @@ fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fewer: bool) -> bool {
         return false;
     }
     // Boxes, frame borders, title chips and labels.
-    let hits = |state: &[(usize, &[Pt], Rect)], after: bool| {
+    let hits = |state: &[(usize, &[Pt], Rect)]| {
         let mut n = 0;
         for &(i, line, bb) in state {
             let own = w.ends[i];
@@ -949,8 +963,13 @@ fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fewer: bool) -> bool {
                 }
             }
         }
-        // Labels over lines: a changed line through any label, any line
-        // through a changed edge's label (moved with its leg).
+        n
+    };
+    // Labels over lines: a changed line through any label, any line
+    // through a changed edge's label (moved with its leg) — how often
+    // each label is crossed, in edge order.
+    let labels = |state: &[(usize, &[Pt], Rect)], after: bool| -> Vec<usize> {
+        let mut out = Vec::new();
         for (j, e) in sc.edges.iter().enumerate() {
             let Some((_, c, lw)) = &e.label else {
                 continue;
@@ -963,6 +982,7 @@ fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fewer: bool) -> bool {
                     .filter(|s| seg_hits_rect(s[0], s[1], r))
                     .count()
             };
+            let mut n = 0;
             if own.is_some() {
                 for (i, l) in w.lines.iter().enumerate() {
                     if i != j && w.drawn[i] {
@@ -976,10 +996,22 @@ fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fewer: bool) -> bool {
                     }
                 }
             }
+            out.push(n);
         }
-        n
+        out
     };
-    if hits(&new, true) > hits(&old, false) {
+    // (A label some line crosses already is placed afresh by the label
+    // stage whatever the comb does — it looks again at every label a
+    // stroke crosses — so its crossings count as they were: a comb that
+    // undoes three crossings is not refused for one stroke more through
+    // a label that is about to move.)
+    let (lbl_was, lbl_now) = (labels(&old, false), labels(&new, true));
+    let lbl_now: usize = lbl_was
+        .iter()
+        .zip(&lbl_now)
+        .map(|(&was, &now)| if was > 0 { was } else { now })
+        .sum();
+    if hits(&new) + lbl_now > hits(&old) + lbl_was.iter().sum::<usize>() {
         return false;
     }
     // Nor do the changed lines run beside another closer than the
@@ -1008,9 +1040,22 @@ fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fewer: bool) -> bool {
                         .collect(),
                     _ => Vec::new(),
                 };
-                let l = beside(a, b, gap, &zones).max(beside(b, a, gap, &zones));
+                // (Beside, not on top of each other: less what two
+                // stubs of the combed side run side by side. A fan whose
+                // ports stand closer than the spacing clear has them run
+                // so in any order, and for longer the better its teeth
+                // nest — nested, each stub runs the whole length of the
+                // shorter one beside it. Held against the comb, no such
+                // fan could be put in order.)
+                let stubs = match (stub_of(fan, i, a), stub_of(fan, j, b)) {
+                    (Some(sa), Some(sb)) if gap > EDGE_SPACING => {
+                        beside(&sa, &sb, gap, &zones).max(beside(&sb, &sa, gap, &zones))
+                    }
+                    _ => 0.0,
+                };
+                let l = beside(a, b, gap, &zones).max(beside(b, a, gap, &zones)) - stubs;
                 n += usize::from(l > least);
-                len += l;
+                len += l.max(0.0);
             });
             (n, len)
         };
@@ -1034,6 +1079,28 @@ fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fewer: bool) -> bool {
             .sum()
     };
     along(&new) <= along(&old) + 1.0
+}
+
+/// The stub of edge `i`'s `line` on the combed side `fan` (the side's
+/// ends, see [`keeps`]) — its first leg out of the side — if the edge
+/// ends there. (An edge with both ends on the side: its start's.)
+fn stub_of(fan: &[(usize, bool)], i: usize, line: &[Pt]) -> Option<[Pt; 2]> {
+    let &(_, src) = fan.iter().find(|m| m.0 == i)?;
+    let n = line.len();
+    if n < 2 {
+        return None;
+    }
+    let at = |k: usize| if src { line[k] } else { line[n - 1 - k] };
+    // As far as the line runs straight on from its end (a straight
+    // drop's line is its samples, all one leg).
+    let (p, q) = (at(0), at(1));
+    let len = (q.0 - p.0).hypot(q.1 - p.1).max(EPS);
+    let on = |r: Pt| {
+        ((r.0 - p.0) * (q.1 - p.1) - (r.1 - p.1) * (q.0 - p.0)).abs() < SIDE_SLACK * len
+            && (r.0 - q.0) * (q.0 - p.0) + (r.1 - q.1) * (q.1 - p.1) >= -EPS
+    };
+    let last = (2..n).take_while(|&k| on(at(k))).last().unwrap_or(1);
+    Some([p, at(last)])
 }
 
 /// What a line through (or grazing) a box it does not end on weighs in
@@ -1161,7 +1228,7 @@ fn axis_leg(p: Pt, q: Pt) -> Option<(bool, f64, f64, f64)> {
 }
 
 /// The box of edge `e`'s label centred at `c`, `w` wide.
-fn label_box(e: &SceneEdge, c: Pt, w: f64) -> Rect {
+pub(crate) fn label_box(e: &SceneEdge, c: Pt, w: f64) -> Rect {
     let text = e.label.as_ref().map_or("", |l| l.0.as_str());
     let lines = 1 + text.matches("<br").count() + text.matches('\n').count();
     let h = crate::layout::LABEL_BOX_H / 2.0 + crate::layout::LINE_H * (lines - 1) as f64 / 2.0;
@@ -1312,6 +1379,18 @@ mod tests {
             &[(0.0, 0.0), (0.0, 40.0), (100.0, 40.0), (100.0, 28.0)],
         );
         assert!(back.comb.as_ref().is_some_and(Comb::pinned));
+        // A track beyond its room — past the turn the far leg has less
+        // than its end's run left — may still move back towards it: its
+        // own depth bounds the range (B11 review r1 #4; before, such a
+        // tooth was pinned and a fan round it combed by its ports alone).
+        let deep = tooth(
+            &sc,
+            0,
+            &[(0.0, 0.0), (0.0, 116.0), (100.0, 116.0), (100.0, 120.0)],
+        );
+        let c = deep.comb.as_ref().expect("a tooth");
+        assert!((c.lo - ROW_CLEAR).abs() < 1e-9 && (c.hi - 116.0).abs() < 1e-9);
+        assert!(!c.pinned());
         // A straight drop, and a path that leaves along its side: no teeth.
         assert!(tooth(&sc, 0, &[(0.0, 0.0), (0.0, 80.0)]).comb.is_none());
         let along = [(0.0, 0.0), (60.0, 0.0), (60.0, 80.0)];
@@ -1471,6 +1550,91 @@ mod tests {
             for side in [Side::Right, Side::Bottom] {
                 assert_eq!(fan(s, "n0", side).0, 0, "{side:?}");
             }
+        }
+    }
+
+    /// B11 review r1 #6: a hub with more ends on a side than stand a
+    /// spacing clear apart (ten on `hub`'s bottom side, 10.9 px between
+    /// ports) is combed in `route()` too. Its stubs run side by side in
+    /// any order, the longer the better they nest; held against the comb,
+    /// every re-order of such a side was refused and the fan kept its
+    /// crossings (`hub --> d1` over `hub -->|yes| c4` and `hub -.-> d3`).
+    #[test]
+    fn a_crowded_side_is_combed_in_route() {
+        let src = "flowchart TD\n  hub[Hub service]\n  a1[Alpha] --> hub\n  a2[Beta] --> hub\n\
+                   hub --> c1[One]\n  hub -.-> c2[Two]\n  hub ==> c3[Three]\n\
+                   hub -->|yes| c4[Four]\n  hub --> c5[Five]\n  hub -->|no| c6[Six]\n\
+                   hub --> c7[Seven]\n  c1 --> d1[Deep one]\n  c2 --> d1\n\
+                   c7 --> d2[Deep two]\n  hub --> d2\n  hub --> d1\n\
+                   hub -.-> d3[Deep three]\n  c4 --> d3\n  c3 --> d4[Deep four]\n  hub ==> d4\n";
+        let g = parse(src).unwrap();
+        let sc = scene(&g);
+        let at: Vec<Pt> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        for (mode, s) in [("scene", &sc), ("route", &route(&g, &at))] {
+            let (x, ports) = fan(s, "hub", Side::Bottom);
+            let k = ports.len();
+            assert!(k >= 10, "{mode}: {k} ends");
+            let pitch = (ports[k - 1] - ports[0]) / (k - 1) as f64;
+            assert!(
+                pitch < CLEAR_GAP,
+                "{mode}: a crowded side, pitch {pitch:.1}"
+            );
+            assert_eq!(x, 0, "{mode}: crossings inside the fan");
+        }
+        // The stub of a fan's edge: its first leg out of the side, the
+        // whole of a straight drop (its line is the curve's samples).
+        let members = [(0, true), (1, false)];
+        let tooth = [(0.0, 0.0), (0.0, 40.0), (60.0, 40.0), (60.0, 90.0)];
+        assert_eq!(
+            stub_of(&members, 0, &tooth),
+            Some([(0.0, 0.0), (0.0, 40.0)])
+        );
+        let drop: Vec<Pt> = (0..=8).map(|k| (11.0, 90.0 - 10.0 * k as f64)).collect();
+        assert_eq!(
+            stub_of(&members, 1, &drop),
+            Some([(11.0, 10.0), (11.0, 90.0)])
+        );
+        assert_eq!(stub_of(&members, 2, &tooth), None);
+        // Two stubs of one side closer than the spacing clear run
+        // beside each other for the length of the shorter.
+        let (a, b) = (
+            stub_of(&members, 0, &tooth).unwrap(),
+            stub_of(&members, 1, &drop).unwrap(),
+        );
+        assert_eq!(beside(&a, &b, CLEAR_GAP, &[]), 30.0);
+    }
+
+    /// B11 review r1 #4 (a generated state diagram, bulk set 11002b70):
+    /// in `route()` the comb put `S0`'s bottom side in the order of its
+    /// turns by its ports alone — the track of `S0 --> C0` lay beyond
+    /// its room and was pinned — and `C0 --> S0 : back` crossed it
+    /// twice. A track may move back towards its room, the two tracks
+    /// change places and the fan has no crossing left. (A label a line
+    /// crosses already, here `back`'s, is no reason to refuse that: the
+    /// label stage places it afresh.)
+    #[test]
+    fn a_fan_with_a_track_beyond_its_room_is_combed() {
+        let src = "stateDiagram-v2\n[*] --> S0\nstate C0 {\n  [*] --> C0i0\n  C0i0 --> C0i1\n\
+                   note right of C0i0 : n791\n  note right of C0i0 : n480\n\
+                   note right of C0i1 : n615\n}\nS0 --> C0\nC0i1 --> S0 : x\nC0i1 --> S0 : x\n\
+                   C0 --> S0 : back\nnote right of C0 : m960\nnote right of C0 : m378\n";
+        let g = match crate::parser::parse_document(src).unwrap() {
+            crate::model::Document::State(g) => g,
+            _ => panic!("a state diagram"),
+        };
+        let sc = scene(&g);
+        let at: Vec<Pt> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        for (mode, s) in [("scene", &sc), ("route", &route(&g, &at))] {
+            let (x, ports) = fan(s, "S0", Side::Bottom);
+            assert_eq!(ports.len(), 4, "{mode}");
+            assert_eq!(x, 0, "{mode}: crossings inside the fan");
+            let m = crate::quality::measure(&g, s);
+            assert_eq!(
+                (m.overlap_pairs, m.edge_edge_x),
+                (0, 0),
+                "{mode}: {:?}",
+                m.details
+            );
         }
     }
 

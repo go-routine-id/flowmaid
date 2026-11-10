@@ -296,8 +296,13 @@ fn every_fixture_has_a_ceiling() {
 /// flow, and hub `n12`'s fan steps a track pitch apart in one channel,
 /// so four of dense-lr's fan labels (and `n25 -> n38`'s) sit over a
 /// neighbouring step where no spot along their short runs is clear;
-/// routed stays 4 (dense-lr 2 -> 3, dense-td 2 -> 1).
-const LBL_EDGE_MAX: (usize, usize) = (6, 4);
+/// routed stays 4 (dense-lr 2 -> 3, dense-td 2 -> 1). B11 review r1
+/// (#6) 4 -> 5 routed, the same trade in `route()`: hub `n12`'s
+/// over-full right side (its ports 8 px apart) is combed there too —
+/// its fan crossed itself twice, `n12 -> n30`'s stub over two tracks —
+/// and, nested, the label of `n12 -> n26` rides its step a track pitch
+/// from `n12 -> n27`'s for the whole of its run (dense-lr 3 -> 4).
+const LBL_EDGE_MAX: (usize, usize) = (6, 5);
 
 /// Most hard label hits (node, label, chip or arrowhead) over all
 /// fixtures, per mode (static, routed). None: a spot covering an
@@ -755,24 +760,35 @@ fn channels_keep_edges_apart_and_off_chips() {
 /// 11 608 px along `n12`'s fan).
 /// `xhops` is no defect and has no row: the crossings drawn as hops
 /// (351 | 406 of the 410 | 478), see `XGAP_MAX`.
+///
+/// B11 review r1 (#4, #6): a side whose ports stand closer than the
+/// spacing clear is combed too (its stubs run side by side in any
+/// order and are no longer held against the comb), and a track beyond
+/// its room may move back towards it. Lowered: fan_x 14 | 25 -> 13 | 18
+/// (dense-lr's hub `n12` 2 -> 0 in `route()`, bench-75's `ext`, `lb`,
+/// `metrics` and `svc1` sides), x_drawn 410 | 478 -> 409 | 471, band_len
+/// 74 260 | 71 550 -> 73 420 | 71 330, lat_backtrack routed 440 -> 430.
+/// Raised: band_pairs routed 140 -> 142 — two more pairs of `n12`'s
+/// nested teeth run a track pitch apart where they crossed (dense-lr
+/// 25 -> 27).
 const DEFECT_BASELINE: [(&str, f64, f64); 18] = [
     ("end_tilt", 0.0, 0.0),
     ("end_tilt_max", 0.3, 0.6),
     ("end_gaps", 0.0, 0.0),
     ("end_gap_max", 0.1, 0.1),
     ("lat_wiggles", 15.0, 5.0),
-    ("lat_backtrack", 1_870.0, 440.0),
+    ("lat_backtrack", 1_870.0, 430.0),
     ("own_frame_x", 0.0, 0.0),
     ("own_frame_len", 0.0, 0.0),
-    ("band_pairs", 130.0, 140.0),
-    ("band_len", 74_260.0, 71_550.0),
+    ("band_pairs", 130.0, 142.0),
+    ("band_len", 73_420.0, 71_330.0),
     ("idiom_scubic", 0.0, 0.0),
     ("idiom_spline", 0.0, 0.0),
     ("idiom_bow", 0.0, 0.0),
-    ("x_drawn", 410.0, 478.0),
+    ("x_drawn", 409.0, 471.0),
     ("end_kink", 0.0, 0.0),
     ("ink_out", 0.0, 0.0),
-    ("fan_x", 14.0, 25.0),
+    ("fan_x", 13.0, 18.0),
     ("fan_uneven", 1.0, 2.0),
 ];
 
