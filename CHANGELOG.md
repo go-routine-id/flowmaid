@@ -176,6 +176,14 @@ or changed.
   ones: a full `route()` drag frame on bench-75 averages 8.7 ms (13.1 ms
   at the phase-B baseline), and `route_partial` 3.2 ms.
 
+### Fixed
+
+- A double-quoted `|…|` edge label may now hold a `|` (#106, #105,
+  contributed by arifintahu): `A -->|"a | b"| B` used to fail with
+  `unknown edge operator`, while `A -- "a | b" --> B` and a quoted node
+  label already worked. The label ends at the closing quote when a `|`
+  follows it; unquoted labels still end at the first `|`.
+
 ## [0.37.0] - 2026-11-09
 
 ### Highlights

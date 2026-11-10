@@ -2367,12 +2367,32 @@ fn parse_statement(
                 label = Some(md_label(&inner, lineno)?);
             } else {
                 cur.pos = save;
-                let l = cur.take_until("|").ok_or_else(|| {
-                    err(
-                        lineno,
-                        "edge label opened with '|' but never closed".to_string(),
-                    )
-                })?;
+                // A double-quoted label may hold `|`: it ends at the
+                // closing `"` when a `|` follows it.
+                let rest = cur.rest();
+                let t = rest.trim_start();
+                let quoted = t.strip_prefix('"').and_then(|b| {
+                    let q = b.find('"')?;
+                    let after = &b[q + 1..];
+                    let gap = after.len() - after.trim_start().len();
+                    // (label incl. quotes, bytes through the closing `|`)
+                    after[gap..].starts_with('|').then(|| {
+                        let label_end = rest.len() - t.len() + 1 + q + 1;
+                        (label_end, label_end + gap + 1)
+                    })
+                });
+                let l = if let Some((label_end, past_pipe)) = quoted {
+                    let l = rest[rest.len() - t.len()..label_end].to_string();
+                    cur.pos += past_pipe;
+                    l
+                } else {
+                    cur.take_until("|").ok_or_else(|| {
+                        err(
+                            lineno,
+                            "edge label opened with '|' but never closed".to_string(),
+                        )
+                    })?
+                };
                 label = Some(clean_label_1line(&l));
             }
         }
@@ -7904,6 +7924,43 @@ mod tests {
         // Unclosed inline label errors with a line number.
         let err = parse("A -- oops -> B").unwrap_err();
         assert!(err.message.contains("never closed"), "{}", err.message);
+    }
+
+    #[test]
+    fn quoted_pipe_edge_label_may_hold_a_pipe() {
+        // `|"a | b"|`: the quotes shield the inner pipe, as they do in
+        // `-- "a | b" -->` and in node labels.
+        for src in [
+            "flowchart TD
+A -->|\"a | b\"| B",
+            "flowchart TD
+A -->| \"a | b\" | B",
+            "flowchart TD
+A -->|\"a | b\"|B-->|\"c | d\"|C",
+        ] {
+            let g = parse(src).unwrap_or_else(|e| panic!("{src:?}: {}", e.message));
+            assert_eq!(g.edges[0].label.as_deref(), Some("a | b"), "{src:?}");
+        }
+        let g = parse(
+            "flowchart TD
+A -->|\"a | b\"|B-->|\"c | d\"|C",
+        )
+        .unwrap();
+        assert_eq!(g.edges.len(), 2);
+        assert_eq!(g.edges[1].label.as_deref(), Some("c | d"));
+        // Unquoted and half-quoted labels keep ending at the first pipe.
+        let g = parse(
+            "flowchart TD
+A -->|x|B",
+        )
+        .unwrap();
+        assert_eq!(g.edges[0].label.as_deref(), Some("x"));
+        let g = parse(
+            "flowchart TD
+A -->|\"x\" y|B",
+        )
+        .unwrap();
+        assert_eq!(g.edges[0].label.as_deref(), Some("\"x\" y"));
     }
 
     #[test]
