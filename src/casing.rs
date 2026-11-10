@@ -104,7 +104,12 @@ fn dist(a: Pt, b: Pt) -> f64 {
 /// no cut, and left out (see [`cut_kinds`]). The quality yardstick reads
 /// this too, to count the cuts each edge collects (G1).
 pub(crate) fn crossings(sc: &Scene) -> Vec<(usize, usize, Pt, bool)> {
-    gapped(crossings_with(sc, true))
+    gapped(crossings_in(
+        sc,
+        &painted_lines(sc),
+        true,
+        &crate::hops::find(sc),
+    ))
 }
 
 /// The crossings of [`crossings_in`] that get a cut, as [`crossings`]
@@ -185,19 +190,26 @@ fn cut_kinds(gaps: &[(usize, f64)]) -> Vec<Cut> {
     kind
 }
 
-/// [`crossings`], optionally keeping those next to an edge end too (the
-/// set the quality yardstick counts as `edge_edge_x`).
+/// Every crossing of the scene's strokes, hops or not, optionally
+/// keeping those next to an edge end too (the set the quality yardstick
+/// counts as `edge_edge_x`).
+#[cfg(test)]
 fn crossings_with(sc: &Scene, skip_ends: bool) -> Vec<(usize, usize, Pt, Cut)> {
-    crossings_in(sc, &painted_lines(sc), skip_ends)
+    crossings_in(sc, &painted_lines(sc), skip_ends, &[])
 }
 
-/// [`crossings_with`] of the strokes `all` ([`painted_lines`]: edge
-/// `i`'s painted polyline, `None` for one never crossed), so a painter
-/// that already holds them works none out twice.
+/// The crossings of the strokes `all` ([`painted_lines`]: edge `i`'s
+/// painted polyline, `None` for one never crossed), so a painter that
+/// already holds them works none out twice; optionally keeping those
+/// next to an edge end too (the set the quality yardstick counts as
+/// `edge_edge_x`). A crossing one of the two edges steps over on a hop
+/// (`hops`, per edge: report M15, [`crate::hops`]) is no crossing here:
+/// both strokes stay whole there, and neither line counts a cut for it.
 fn crossings_in(
     sc: &Scene,
     all: &[Option<Vec<Pt>>],
     skip_ends: bool,
+    hops: &[Vec<crate::hops::Hop>],
 ) -> Vec<(usize, usize, Pt, Cut)> {
     let idx: Vec<usize> = (0..sc.edges.len()).filter(|&i| all[i].is_some()).collect();
     if idx.len() < 2 {
@@ -295,6 +307,13 @@ fn crossings_in(
                         .any(|&q| dist(p, q) < reach)
                 };
                 if near_end {
+                    continue;
+                }
+                let hopped = |k: usize| {
+                    hops.get(idx[k])
+                        .is_some_and(|hs| hs.iter().any(|h| h.covers(p)))
+                };
+                if hopped(ka) || hopped(kb) {
                     continue;
                 }
                 let v = hits.entry((ka, kb)).or_default();
@@ -1113,12 +1132,14 @@ fn back_edges(lines: &[&[Pt]]) -> Vec<bool> {
 /// never share an id unless they draw the same thing. `line_of(i)` is
 /// edge `i`'s stroke as painted ([`edge_painted_polyline`]), asked once
 /// per edge that can cross and only when the scene gets masks at all:
-/// the painter hands over the strokes it draws, worked out once.
+/// the painter hands over the strokes it draws, worked out once, and
+/// the `hops` it draws (per edge), whose crossings get no gap.
 pub(crate) fn masks(
     sc: &Scene,
     line_of: &dyn Fn(usize) -> Vec<Pt>,
     t: &dyn Fn(Pt) -> Pt,
     dom_id: Option<&str>,
+    hops: &[Vec<crate::hops::Hop>],
 ) -> Masks {
     let mut attr = vec![String::new(); sc.edges.len()];
     let lines: Vec<Option<Vec<Pt>>> = if sc.edges.len() > CASING_MAX_EDGES {
@@ -1134,7 +1155,7 @@ pub(crate) fn masks(
     let xs = if lines.is_empty() {
         Vec::new()
     } else {
-        gapped(crossings_in(sc, &lines, true))
+        gapped(crossings_in(sc, &lines, true, hops))
     };
     if xs.is_empty() {
         return Masks {
@@ -1227,7 +1248,9 @@ mod tests {
     /// strip under a box's first row): 79 of 161 (49%). Re-measured with
     /// B10 (every edge on the axes, report §2.1: a forward edge's steps
     /// cross a lane's long legs square, where its S-curve passed beside
-    /// them): 83 of 183 (45%).
+    /// them): 83 of 183 (45%). Re-measured with B11 (report M15: a level
+    /// leg steps over a plumb one on a hop, and only the crossings a hop
+    /// cannot take are cut): 12 of 16 (75%); the floor stays.
     const BACK_UNDER_SHARE: (usize, usize) = (11, 25);
 
     /// A line crossed every 20 px: never more than [`CUTS_PER_WINDOW`]
@@ -1274,10 +1297,18 @@ mod tests {
             for e in &mut sc.edges {
                 e.waypoints.clear();
             }
-            // Down into the tip at the origin; across 200 px from either end.
+            // Down into the tip at the origin; across 200 px from either
+            // end, a hair off level (a level stroke steps over a plumb
+            // one on a hop and cuts no gap at all, see below).
             sc.edges[0].bezier = line((0.0, -300.0), (0.0, 0.0));
-            sc.edges[1].bezier = line((-200.0, y), (200.0, y));
+            sc.edges[1].bezier = line((-190.0, y - 0.5), (200.0, y + 0.5));
             assert_eq!(crossings(&sc).len(), usize::from(gapped), "crossing at {y}");
+            // Level, it hops where the gap would be, and never over a head.
+            sc.edges[1].bezier = line((-200.0, y), (200.0, y));
+            assert!(crossings(&sc).is_empty(), "level at {y}: no gap");
+            let hops = crate::hops::find(&sc);
+            assert_eq!(hops[1].len(), usize::from(gapped), "hop at {y}");
+            assert!(hops[0].is_empty());
         }
     }
 
@@ -1319,8 +1350,11 @@ mod tests {
     /// where the curve ran beside them. B10 review r2: 44 | 100 -> 57 |
     /// 67, bench-75's service fans leaving as bundles (359 -> 302 static
     /// crossings): its fewer crossings come closer together along the
-    /// bundles' lines.
-    const OPPOSITE_MAX: (usize, usize) = (57, 67);
+    /// bundles' lines. B11 (report M15): 57 | 67 -> 2 | 2 — a level
+    /// leg steps over a plumb one on a hop and neither line is cut, so
+    /// what is left are the few crossings in a corner's rounding or
+    /// next to a head (bench-75's).
+    const OPPOSITE_MAX: (usize, usize) = (2, 2);
 
     /// Most fixture lines shorter than [`SHORT_LINE`] cut twice or more,
     /// static and routed: 3 | 2 before short lines handed their extra
@@ -1329,8 +1363,9 @@ mod tests {
     /// whose crossers would chain theirs. Routed 1 -> 2 with B7 (report
     /// M3, M8): the dense fixtures' re-laid gaps (head room in labelled
     /// ones, no dead strip under a box's first row) leave one more short
-    /// line of a `route()` drawing cut twice.
-    const SHORT_TWICE_MAX: (usize, usize) = (1, 2);
+    /// line of a `route()` drawing cut twice. B11 (report M15): none —
+    /// their crossings are hops now.
+    const SHORT_TWICE_MAX: (usize, usize) = (0, 0);
 
     #[test]
     fn a_short_line_keeps_at_most_one_gap() {
@@ -1396,9 +1431,11 @@ mod tests {
         for e in &mut sc.edges {
             e.waypoints.clear();
         }
+        // (A hair off the axes: level strokes over a plumb one each take
+        // a hop and no line is cut at all — report M15, below.)
         sc.edges[0].bezier = line((0.0, -300.0), (0.0, 300.0));
-        sc.edges[1].bezier = line((-200.0, 0.0), (200.0, 0.0));
-        sc.edges[2].bezier = line((-200.0, 14.0), (200.0, 14.0));
+        sc.edges[1].bezier = line((-190.0, -0.5), (200.0, 0.5));
+        sc.edges[2].bezier = line((-190.0, 13.5), (200.0, 14.5));
         let xs = crossings(&sc);
         assert_eq!(xs.len(), 2, "{xs:?}");
         assert!(
@@ -1406,6 +1443,18 @@ mod tests {
             "the long line over both: {xs:?}"
         );
         assert!(opposite_patterns(&sc).is_empty());
+        // On the axes the two level lines step over the plumb one: every
+        // stroke whole, no mask.
+        sc.edges[1].bezier = line((-200.0, 0.0), (200.0, 0.0));
+        sc.edges[2].bezier = line((-200.0, 14.0), (200.0, 14.0));
+        assert!(crossings(&sc).is_empty());
+        let hops = crate::hops::find(&sc);
+        assert_eq!(
+            (hops[0].len(), hops[1].len(), hops[2].len()),
+            (0, 1, 1),
+            "{hops:?}"
+        );
+        assert!(!to_svg(&sc).contains("<mask"));
         // The fixtures: what is left is capped.
         let (mut stat, mut routed) = (0, 0);
         for (_, src) in fixtures() {
@@ -1493,7 +1542,13 @@ mod tests {
     fn crossing_free_diagrams_get_no_mask() {
         let g = parse("flowchart TD\nA-->B\nA-->C\nB-->D\nC-->D").unwrap();
         let sc = scene(&g);
-        let m = masks(&sc, &|i| edge_painted_polyline(&sc.edges[i]), &|p| p, None);
+        let m = masks(
+            &sc,
+            &|i| edge_painted_polyline(&sc.edges[i]),
+            &|p| p,
+            None,
+            &[],
+        );
         assert!(m.defs.is_empty() && m.attr.iter().all(String::is_empty));
         assert!(!to_svg(&sc).contains("<mask"));
     }

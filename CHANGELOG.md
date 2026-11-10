@@ -7,6 +7,94 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Quality yardstick** (`quality::Metrics`, new columns at the end of a
+  row): `xhops`, the crossings drawn as hops; `fan_x`, the crossings
+  between two edges that end on one side of one box where three or more
+  do (`quality::FAN_MIN`); `fan_uneven`, such sides whose neighbouring
+  ports are not one pitch apart (`quality::FAN_PITCH_TOL`; a side holding
+  the end of an edge drawn straight across is not counted, that end stays
+  where its partner lies).
+
+### Changed
+
+- **Crossing lines hop** (report M15, §2.10). Where a level stretch of one
+  flowchart or state edge crosses a plumb stretch of another, the level
+  one steps over on a small semicircle — 5 px radius, wider over a thick
+  or `linkStyle`-widened stroke (up to 9 px), always upwards — so both
+  strokes stay whole: a dotted edge keeps its dots, and a solid edge
+  crossed a few times no longer reads as dashed. Hops over lines closer
+  together than a hop's width join into one bridge, flat on top. One rule
+  for every crossing (the level line hops) was chosen over hopping
+  whichever line is shorter or drawn later, and over the gaps alone,
+  after comparing dense-td, dense-lr, bench-75 and fanout rendered each
+  way: with gaps every third line of bench-75 came out chopped (up to 9
+  cuts on one line), while hops leave each line one stroke and read the
+  same everywhere. A hop needs both strokes straight where they cross, so
+  a crossing in a corner's rounding, next to an arrowhead or a node, under
+  another level line a few px above, or on an edge with its own `curve:`
+  keeps the casing's gap (never within a head of an end, and spread so no
+  line reads as dashed), and a drawing of more than 400 edges still draws
+  its crossings plain. Over the 14 corpus drawings (static | routed)
+  351 | 406 of the 410 | 478 crossings are hops; the most gaps cut into
+  one line fell from 9 | 12 to 2 | 3, and bench-75's SVG from 66.6 to
+  63.8 kB (272 mask holes -> 37). Hops are paint: `Scene` keeps the
+  plain paths, which is what a host draws from, `to_svg` strokes them, and
+  picking follows the paint — `Scene::edge_at` and `hits_in_rect` cover a
+  hop's arc, and at the crossing under a hop they answer the line that is
+  stepped over, not the one stepping over it.
+- **A fan is drawn as a comb** (report B4). A new last path stage (`comb`)
+  puts each box side's ends in one order: its teeth take the side's ports
+  in the order of their turns, and the tracks of the teeth stepping one
+  way are put in the same order — the tooth turning furthest out leaves
+  from the outermost port on the track nearest the box — moving as few as
+  that takes (a tooth out of order gets a track of its own between its
+  new neighbours'). The ports stage ordered a long edge down its channel
+  and a reroute by the first point off their stubs and a Z by its chord,
+  so a hub's fan came out with its tracks nested and its ports not:
+  dense-td's hub `n16` (twelve edges out of one side, one in) crossed
+  itself 14 times under its box in `scene()` and 8 times in `route()`,
+  now 0 and 0. Where every end of a side is such a tooth, its ports are
+  also spread one pitch apart between the outermost two (bench-75's
+  `svc3`: 14 / 22 px -> 18 / 18). The edges stay separate strokes, each
+  its own port and track: merged onto one trunk they could not be told
+  apart, picked or styled one by one. A side is combed only where that
+  leaves the drawing with fewer crossings (its ports spread only where it
+  adds none) and nothing else worse by the yardstick's own clearances: no
+  line through, along or newly cramped beside a box, no more frame
+  borders, title chips or labels crossed, no two lines on top of each
+  other or closer beside each other or along a frame's border for longer
+  than before. Two edges of a fan can still cross further out, where
+  their far ends lie the other way round and putting them in order would
+  cost a crossing elsewhere (dense-td's `n16 -> n37` under `n20 -> n37`).
+  The same rule runs in `scene()`, `route()` and every drag frame; in
+  `route_partial()` an end a drag keeps stays where it is and the others
+  comb round it. Over the corpus (static | routed): crossings inside fans
+  29 | 36 -> 14 | 25 (fanout-frames 0 | 1 -> 0 | 0, the two ends of its
+  hub's bottom side no longer cross in `route()`), drawn crossings
+  428 | 494 -> 410 | 478, defects 47 | 46 -> 46 | 44; over 303 generated
+  flowcharts drawn crossings 2 874 | 2 775 -> 2 858 | 2 752 with no file
+  worse on any defect count, over 964 state diagrams 712 | 826 ->
+  688 | 760 (defects 616 | 537 -> 615 | 537).
+- **A hub keeps its order under a drag.** In `route_partial()`, a side
+  that takes one redrawn end more than it has room for round its kept
+  ends is spaced afresh in the order it is drawn in — the kept ends close
+  up and none changes places — where it was re-sorted by where each edge
+  first heads. Ends thrown more than 20 px by a 1 px drag of a node they
+  do not touch: bench-75 16 -> 13 (dense-td 5, dense-lr 0 as before).
+- Known costs: a comb's teeth run side by side a track pitch apart where
+  they crossed each other, which the yardstick counts as cables (pairs of
+  edges 6-26 px apart for over 100 px: 124 | 139 -> 130 | 140 over the six
+  gated fixtures). Judging each side's comb costs time: `scene()` takes
+  3-5 % longer on the dense drawings, `route()` about 5 % on dense-td and
+  dense-lr (5.6 -> 5.8 ms, 3.6 -> 3.8 ms) and 17 % on bench-75
+  (7.2 -> 8.4 ms, 46 sides judged per call); the drag budget holds on
+  every corpus file. A pick takes up to a tenth longer (fanout
+  2.9 -> 3.2 us per `hit_test`, bench-75 28 -> 28 us), for looking up the
+  hops near the pointer; `to_svg` of bench-75 takes a quarter less time
+  (4.0 -> 3.0 ms, fewer masks).
+
 ## [0.38.0] - 2026-11-10
 
 ### Highlights
