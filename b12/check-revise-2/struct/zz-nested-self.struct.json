@@ -1,0 +1,30 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"TD",
+"nodes":[
+ {"id":"o1","label":"router","shape":"Rect","sub":0},
+ {"id":"i1","label":"w1","shape":"Rect","sub":1},
+ {"id":"i2","label":"w2","shape":"Rect","sub":1},
+ {"id":"o2","label":"store","shape":"Rect","sub":0}],
+"subgraphs":[
+ {"id":"OUT","title":"Platform","parent":null,"direction":null,"nodes":[0,3]},
+ {"id":"IN","title":"Workers","parent":0,"direction":null,"nodes":[1,2]}],
+"edges":[
+ {"from":{"n":1},"to":{"n":2},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":0},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":2},"to":{"n":3},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"s":0},"to":{"s":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"s":1},"to":{"s":0},"label":null,"kind":"Arrow","drawn":true}],
+"scene":{"width":181.500,"height":469.000,
+ "nodes":[
+  {"id":"o1","x":64.150,"y":68.000,"w":68.700,"h":38.000},
+  {"id":"i1","x":71.500,"y":192.000,"w":54.000,"h":38.000},
+  {"id":"i2","x":71.500,"y":290.000,"w":54.000,"h":38.000},
+  {"id":"o2","x":66.900,"y":388.000,"w":63.200,"h":38.000}],
+ "clusters":[
+  {"id":"OUT","x":43.500,"y":28.000,"w":110.000,"h":412.000,"depth":0},
+  {"id":"IN","x":57.500,"y":152.000,"w":82.000,"h":190.000,"depth":1}],
+ "edges":[
+  {"from":"i1","to":"i2","routed":false,"label":null,"points":[[98.500,230.000],[98.500,260.000],[98.500,260.000],[98.500,290.000]]},
+  {"from":"o1","to":"i1","routed":true,"label":null,"points":[[98.500,106.000],[98.500,113.250],[98.500,120.500],[91.250,120.500],[43.000,120.500],[29.000,120.500],[29.000,134.500],[29.000,197.000],[29.000,211.000],[43.000,211.000],[71.500,211.000]]},
+  {"from":"i2","to":"o2","routed":false,"label":null,"points":[[98.500,328.000],[98.500,358.000],[98.500,358.000],[98.500,388.000]]},
+  {"from":"OUT","to":"IN","routed":false,"label":null,"points":[[95.700,440.000],[95.700,407.333],[95.700,374.667],[95.700,342.000]]},
+  {"from":"IN","to":"OUT","routed":false,"label":null,"points":[[109.718,342.000],[109.718,374.667],[109.718,407.333],[109.718,440.000]]}]}}

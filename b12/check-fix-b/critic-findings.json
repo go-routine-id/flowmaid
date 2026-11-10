@@ -1,0 +1,159 @@
+{
+ "verdict": "Not ready to hand over. The block layering itself holds up (bands, compact frames, no run through a foreign frame, B9 inside a block, nesting: all reproduced with the spec's own experiment tree). Eight things must change in SPEC.md first: the trigger withholds every B12 edge rule from 21 of 36 clustered corpus inputs, including the two-block cycle and the hub case; the chosen ordering fails a pinned robustness test (dense-td -22 %) and reaches the analog's 20 crossings only from the fifth start at about 300 ms; and five rules contradict each other or the code (L2 note cards, F2, title-clear jog room, R3 against R5, the two-block-cycle row). Fourteen smaller holes follow. Nothing was built beyond the spec's experiment CLI; the build dir is deleted; b12/tree and /home/user/flowmaid were not touched. Evidence, inputs and scripts: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/critic (binary fm-spec = spec/tree, run with FM_B12=2 FM_B12_LVL=1 FM_B12_STARTS=7 FM_B12_TRIG=1).",
+ "findings": [
+  {
+   "where": "SPEC 2.2 (trigger), 1.1, 1.3 item 2, 2.8 row 'subgraph -> itself', 4.7, section 5, Appendix B",
+   "problem": "The trigger switches off not only the block layout but every B12 edge rule (upstream channels E3, flow-facing ends, title-clear entries, corridors in route(), the subgraph self-loop, the shared frame growth F3) for any diagram whose rows already equal 0.38's. That is most simple block diagrams, including two of the named cases (hub + blocks, two-block cycle). So 'the default for every flowchart and state diagram with subgraphs' and decision D3 as worded to the user are not what ships, one added edge flips a drawing between two edge styles, and the README guarantee and CHANGELOG lines of 4.7 are false for these diagrams. One line of section 5 owns up to it; it is not put to the user.",
+   "evidence": "Spec experiment binary with the trigger on: 21 of the 36 inputs with frames in metrics/extra/in are byte-identical to 0.38 (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/critic/sweep/trigger.txt), p06-block-cycle among them; my probes hub5, cycle2, state-note, self-member print 'trigger: same=true'. The 0.38 drawings they keep: hub5 has 5 lateral-wall crossings on 4 edges (critic/out/hub5.038.png; mermaid 0, critic/mm/hub5.mermaid.png); cycle2 has 6 on all 4 inter-block edges with the returns as side lanes (critic/out/cycle2.038.png against critic/mm/cycle2.mermaid.png); p06-block-cycle 2, notes/spread-bottom 4 (critic/lateral.py). state-note and self-member keep the zero-length composite self-edge (path 'M 84.0 400.0 C 84.0 400.0, 84.0 400.0, 84.0 400.0' in critic/out/self-member.038.svg) although 4.7 lists it under Fixed.",
+   "severity": "blocking",
+   "fix": "Add decision D7 to Appendix B with the hub5 and cycle2 picture pairs: for diagrams whose rows are already blocks, either (a) keep 0.38's edges, or (b) block mode is also on when a drawn edge with a block end runs upstream or crosses a frame (then advanced, near-drag, spread-bottom, straight-link, wide-frames stop being byte-identical and their budgets are re-measured). Independently of D7: move the subgraph self-loop and F3 out of block mode (fixes for every clustered diagram; drop affected files from the hash list); scope 1.1, the README guarantee and the CHANGELOG sentences of 4.7 to 'diagrams drawn in block mode'; B12.0 records lateral_x and the count of upstream inter-block lanes for every trigger-off fixture; add hub5 and cycle2 as fixtures."
+  },
+  {
+   "where": "SPEC 2.4 O2-O4, 2.11, 4.5 'Must pass as written', B12.4 check, checkpoint A stop rule",
+   "problem": "4.5 requires edge_line_order_barely_moves_the_dense_layouts to pass as written, but the ordering 2.4 specifies (chains + level-first) breaks it. The spec only checked canvas width over the analog's five permutations.",
+   "evidence": "The test's six xorshift shuffles replayed on the experiment binary (critic/shuf.py, inputs critic/shuf/dense-td-s*.mmd): dense-td 3829 px wide in source order, 2989 / 2986 / 2986 / 2986 on four of six shuffles (-22 %, limit 10 %). 0.38: +3.7 % at most. d-global's lanes mode (FM_B12=1): +3.9 %. Chains + level-first with one start already gives 3829 against 2986. The 26 layers are identical across shuffles; the layered crossing count is 84 for the source order and 70-71 for the shuffles, so the instability is in O, and seven starts do not find the better order from the written one. bench-75 and dense-lr stay within 4.5 %; the n45 move test passes (-3.7 %).",
+   "severity": "blocking",
+   "fix": "2.4 and 2.11: the start order of a layer is canonical and independent of edge statements: units by key, chain dummies by (key of the source unit, key of the target unit, edge index); shuffles permute that order. Add both declaration-order tests to B12.4's check and to checkpoint A's stop rule ('dense-td under the six shuffles: width within 10 % and crossings within its must')."
+  },
+  {
+   "where": "SPEC 0.2 and 0.3 ('proven'), 2.4 O4, 2.12, 3.5, 4.1 checkpoint A",
+   "problem": "'Analog 20 crossings' is listed as proven, but it is reached only from the fifth start and at about 300 ms per scene; the analog's static limit is 13.2 ms. 3.5 quotes 50 ms, which is the one-start cost. Checkpoint A has no time gate, so A can pass with an ordering that cannot ship, and O4's work budget can silently grant fewer starts than the must needs.",
+   "evidence": "block-metrics over the analog family by number of starts (critic/starts/s{1,2,3,4,5,7}/metrics.tsv): analog crossings 37, 37, 36, 36, 20, 20 for 1, 2, 3, 4, 5, 7 starts; perm-d 42, 42, 36, 36, 22, 22; perm-a 37 until five starts (musts: 24 and 26). CLI time on the analog: 0.38 13 ms; experiment 60 ms (1 start), 255 ms (5), 302 ms (7). The spec's own spec/evidence/quality.chains-levelfirst-7starts.tsv has scene_ms 310 (analog), 1510 (bench-75), 648 (dense-td), 763 (dense-lr).",
+   "severity": "blocking",
+   "fix": "Correct 3.5 (analog about 300 ms with seven starts; one start 50-60 ms and 36-37 crossings). B12.4's check and checkpoint A's gate add: 'the crossing musts hold with the number of starts BLOCK_ORDER_WORK grants, and scene_ms of the analog, bench-75, dense-td and dense-lr is within 4.6 on perf.sh', plus a required table crossings x starts (1..7) for the analog family. Stop rule: the musts need more starts than the budget grants -> stop and report. 0.3 moves 'crossings on the analog family' from proven to 'proven at 23 x the static limit'."
+  },
+  {
+   "where": "SPEC 2.3 L2 (with L5, L6), 1.3 item 2, B12.1 check, B12.2 check",
+   "problem": "Note links take no part in L3-L5, so a block's rows are counted without its cards, and the card is then 'clamped into its own block's interval'. A 'note right of' on a block's last row (or 'left of' on its first) therefore lands on its target's row. That contradicts L2's own sentence ('keeps the position relative to its target that 0.38 gives it'), B12.2's check, and turns block mode on for notes/near-drag, which 1.3 item 2 and B12.1 require to stay byte-identical. The three builds behind 'eight unchanged' treat note links as ordinary links (d-hybrid: note-card exclusion not implemented).",
+   "evidence": "0.38 render of tests/fixtures/notes/near-drag.mmd (critic/out/near-drag.png): card in301 sits one layer after K0_0 and is K0's last row, while K0's rows without cards are [*] and K0_0. critic/in/note-edge-row.mmd -> critic/out/note-edge-row.png: the card 'after the last row' is a fourth row of composite K. Parser: a card joins its target's own box and links state -> card or card -> state (parser.rs state_note, 5882-5925).",
+   "severity": "blocking",
+   "fix": "Replace L2 with: 'A note link is never turned (L3 skips it) and is not counted by L4. In L5 it constrains rows like any link, so a card's row is one of its block's rows; a lead card then takes start(target) - 1 inside its level when that is later (step 4 of rank, applied per level). No clamp.' Add to B12.2: near-drag and note-edge-row keep their flat layers."
+  },
+  {
+   "where": "SPEC 2.7 F2, 2.9 R5 and R6, 2.6 G1, 2.12 ALIGN_SNAP, B12.7",
+   "problem": "F2 makes a frame's leading edge depend on a sibling's members. (1) R6 says a frame without a moved node keeps its base box, so route_partial() and route() disagree on the sibling's frame. (2) It is a discontinuous function of positions: while a member of one block is dragged, the untouched sibling's frame follows it and then jumps back by up to ALIGN_SNAP = SUB_HEADER = 26 px, which is the snap F3 is meant to remove and exceeds the 20 px drag-jump threshold. (3) Statically it extends a frame (17 px on the analog) into a band gap whose room G1 measured from the unextended frame.",
+   "evidence": "scene.rs route_partial_with 4980-4995: 'if !holds_moved { continue; }' keeps base boxes; scene.rs:3423 SUB_HEADER = 26.0; tests/quality.rs DRAG_JUMP = 20.0; cluster_raw_boxes (scene.rs:5346) is today a function of the subgraph's own members only.",
+   "severity": "blocking",
+   "fix": "Delete F2 as a frame rule and ALIGN_SNAP from 2.12. Put the alignment in X4: 'in block mode the first-row members of the blocks of one band are placed along the flow so that their frames' leading edges (member edge - pad - own title strip) coincide; the shift is a layout coordinate, within the slot's spare room'. Frames stay cluster_raw_boxes in all three entry points; B12.7 keeps sib_stagger 0 and fr_max <= 0.5 px."
+  },
+  {
+   "where": "SPEC 2.8 'Title-clear entries', 2.7 F1 and F3, B12.9",
+   "problem": "The jog under the title strip needs a track between the strip and the first row, and the spec gets it by growing 'the header slot'. But F1 fixes the frame as member box + SUB_PAD + SUB_HEADER + title_extra: a taller layer slot moves the previous layer line, not the frame's top, so the room appears above the frame, outside it. Inside there are 14 px between strip and node. F3 grows frames across the flow only, and route() reserves nothing. As written the rule cannot be drawn, and lateral_x 0 on the analog depends on it (TR1, TR2 and PSDEV sit under their chips).",
+   "evidence": "scene.rs:5346-5386 (frame top = miny - SUB_PAD - SUB_HEADER - title_extra, from members and title alone); layout.rs:3212-3238 (lextra grows the slot, the node keeps its size); scene.rs:3423-3425 (SUB_HEADER 26, SUB_PAD 14).",
+   "severity": "blocking",
+   "fix": "2.8 and F3: 'a block with k displaced title-side entries grows its frame on the title side, along the flow, by ROW_CLEAR + (k - 1) x TRACK_PITCH. This is part of the shared frame function (frame, title chip, ports of the entering edges) in scene(), route() and route_partial(); the static layout reserves the same amount in lextra and reach_of so G1 holds; in route() the growth stops FRAME_GAP short of whatever lies upstream, and when it cannot grow the entry takes the lateral side and counts in routed lateral_x.' B12.9's test asserts that the jog lies inside the frame in scene and route."
+  },
+  {
+   "where": "SPEC 2.9 R3, R4, R5; 3.1 lanes.rs line",
+   "problem": "(1) R3 plans corridors with lanes::plan; R5 demands slots by edge index, side by nearness and continuity in the frames. lanes::plan does none of that. (2) A Lane has one breadth, and R3's path has five legs: an edge passing two bands with staggered blocks, or ending on a member that is not on its block's border row, has no defined path (analog: DNS->PSPROD under TR2, LANE->GITLAB, ARGO->GITLAB, PSPROD->TG, LANE->OAI, LANE->AZ, DNS->DRAPP), while the static chain bends in every gap. (3) R4's hard obstacles are undefined when a host position puts an end box on a foreign frame; route() keeps any positions.",
+   "evidence": "lanes.rs:689-721 (plan order: band length, then a geometric 'far' measure, then index); 793-800 (breadth chosen by lane_at with the crossing callback 'cross(i, x, &placed)'); 812-850 (breadths re-dealt among the lanes of one side); struct Lane has a single x (lanes.rs:616-642).",
+   "severity": "blocking",
+   "fix": "Rewrite R3: 'a corridor is a polyline with one breadth per band it passes and one per end block it descends in, bending in the gaps like the static chain; per band the side is R5's rule and the slot is the edge's rank by index among the edges passing that band on that side; lanes::plan is not used for placement (its stub and nesting geometry may be).' Add the inner-leg rule: 'inside an end block the path is planned at that block's level, from the border crossing to the member, obstacles = that block's other units.' R4: 'a frame that overlaps either end's unit box is priced as today, not hard.' Tests: a two-band pass, a second-row target."
+  },
+  {
+   "where": "SPEC 2.10 row 'two-block cycle A <-> B', 2.3 L0 and L3, 4.4",
+   "problem": "The row says the direction with more drawn links runs downstream. L0 + L3 do something else: when the cycle is a node cycle, L0's breakers reverse the returns first, L3 never runs and the trigger stays off; otherwise the walk keeps key order until it turns more than 2M + 1.",
+   "evidence": "d-hybrid prototype (source of block_rank), critic/in/ratio{2,3,4}.mmd: A->B x1 with B->A x2 and x3 keeps Front on top with 2 and 3 links upstream; only x4 puts Back first. critic/in/cycle2.mmd (1 against 3, a node cycle): byte-identical to 0.38, Front on top. mermaid also keeps Front on top (critic/mm/cycle2.mermaid.png).",
+   "severity": "blocking",
+   "fix": "Replace the row with: 'two-block cycle: L0's node-level breakers decide when it is a node cycle; otherwise the block with the lower key is first unless that turns more than 2M + 1 links (1:2 and 1:3 keep declaration order, 1:4 flips)'. Add the three ratio inputs and cycle2 to block_order_follows_declarations_until_it_costs_twice_the_minimum."
+  },
+  {
+   "where": "SPEC 2.4 O0, 2.8 table (E2, E3), 3.1 row back_lanes",
+   "problem": "No rule for an upstream edge with a block end that spans one layer. O0 gives it no chain, 3.1 says 'an edge with a chain is no lane' (so by that test it is a lane), and E3 says 'dummy chain'.",
+   "evidence": "On the analog ARGO -> TG is this case: B12.2's own layer list puts TG on layer 1 and ARGO on layer 2.",
+   "severity": "non-blocking",
+   "fix": "Add a row 'E3, adjacent layers: no dummy; drawn as E2 mirrored (out of the upstream side, the Z in the band gap, into the downstream side); never a lane'. In 3.1 key back_lanes and static_lanes on 'is E4', not on 'has a chain'."
+  },
+  {
+   "where": "SPEC 2.7 F3, 2.5 X2, B12.7",
+   "problem": "F3's growth covers edges with both ends in the frame, own lanes and displaced entries. It drops what 0.38 covers: the waypoints of a border-crossing chain laid inside the box. X2 keeps runs 'between the walls', but the frame is members + 14 px, so a run beside the outermost member pokes out of the frame or hugs its border and becomes a lateral crossing. route() has no such waypoints, so fr_max <= 0.5 px needs a stated counterpart.",
+   "evidence": "scene.rs:3524-3590: the comment 'a channel lane can sit just outside the outermost member node ... which the node-only bbox would leave poking outside' and the loop that widens over every waypoint whose cluster path contains the box.",
+   "severity": "non-blocking",
+   "fix": "F3: 'also covers the inner legs of every edge with one end in the frame: in scene() the chain waypoints laid out in that box, in route() R3's inner legs'. X2: 'an inner run takes a free column between members when one exists'."
+  },
+  {
+   "where": "SPEC 2.8 'Free pins', 1.2 list of what the experiment still gets wrong",
+   "problem": "'Ends at the middle of the chip-free stretch when alone, else ordered by O3' names no mechanism: the stand-in chain aims at a proxy member and is cut where it happens to cross the border. Among other entries the pin's position is not defined at all.",
+   "evidence": "In /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/spec/evidence/infra-overview.lvl-chains-7starts.svg the three node -> block edges end 14, 14 and 32 px from a frame corner: (1632,845) on STG x[999,1646], (965,828) on DR x[125,979], (2208,360) on PROD x[1212,2239]. 1.2 does not list it.",
+   "severity": "non-blocking",
+   "fix": "2.8: 'the stand-in's chain is cut at its last dummy outside the block and the builder sets the end at the pin: alone on the side, the middle of the chip-free stretch; among other entries, the middle of the free interval between its neighbours in O3's order, at least PORT_SPACING from them and from a corner; ortho draws the last gap step.' Add it to 1.2 and gate it: no frame end nearer than PORT_SPACING to a corner on the analog family."
+  },
+  {
+   "where": "SPEC 2.4 O4, 2.11, 1.3 item 5 ('source order as the tie-break')",
+   "problem": "The winner of the starts is chosen by crossings, but inside a winning shuffled start the members that affect no crossing stay where the shuffle left them. Source order is then no tie-break.",
+   "evidence": "Analog with seven starts and different base seeds: the layered count is 23 every time, but EXT's row is 'DNS GW TG OAI AZ' for base seeds 0, 1, 2, 3, 8 and 'GW DNS TG OAI AZ' for 5 and 13 (FM_B12_SEED, FM_B12_DUMP). GW is edge-less and declared first.",
+   "severity": "non-blocking",
+   "fix": "Add O4b: 'after the winning start, adjacent units of one level and slot swap toward key order whenever the weighted crossing count does not rise; repeat to a fixed point.' Add the row to 2.11 and a test crossing_neutral_members_keep_declaration_order."
+  },
+  {
+   "where": "SPEC 2.3 L5 (no interleaving, then source block)",
+   "problem": "The two refinements run once, in an order that can leave the pattern L5 forbids, although 'sibling blocks never interleave' is claimed by construction.",
+   "evidence": "critic/in/interleave.mmd: N0 -> T (3 rows); N0 -> P1 -> ... -> P5 -> Q; S (source block, 2 rows) -> Q. Longest path gives T rows 1-3, S rows 0-1. No-interleave pushes T to 2-4; the source rule then moves S to 4-5: start(T) 2 < start(S) 4 < end(T) 5 < end(S) 6. The single-walk experiment draws T 1-3, S 4-5; d-hybrid's prototype draws S 0-1, T 2-4 (critic/out/interleave.exp.svg, interleave.hyb.svg).",
+   "severity": "non-blocking",
+   "fix": "L5: 'sink source blocks first, then run the no-interleave loop, and repeat both until nothing changes (each pass only adds a constraint or moves a source later, so it ends).' Add the input to sibling_blocks_never_interleave."
+  },
+  {
+   "where": "SPEC 2.5 X2.2 (TD/BT only), 2.10 row LR / RL / BT, 4.3",
+   "problem": "In LR/RL the title runs along the flow. A compact one-column block is shorter than its title, and the next band's frame is close, so the title is cut. No rule reserves the length and no acceptance check sees an ellipsis.",
+   "evidence": "critic/in/lr.mmd: the experiment cuts 'External services with a long title' to 'External s\u2026' (critic/out/lr.exp.png); 0.38 shows it whole (critic/out/lr.038.png).",
+   "severity": "non-blocking",
+   "fix": "Add X2.2b: 'LR/RL: the block's extent along the flow plus the gap after it (G1) is at least the title's length + CHIP_CLEAR.' Acceptance 4.3 (c): 'no title ellipsis that 0.38 does not have, on every block fixture in all four directions'."
+  },
+  {
+   "where": "SPEC 2.8 rows 'subgraph -> its own member: unchanged', 2.1 (a link's level), 2.10",
+   "problem": "Two degenerate own-box edges are drawn through members in 0.38 and the spec keeps one unchanged and has no row for the other: a subgraph and its own nested subgraph (2.1's common-ancestor rule gives cu = cv there).",
+   "evidence": "critic/in/self-member.mmd: the stub of 'S --> b' runs from the frame's bottom border through member c (path 'M 84.0 400.0 L 84.0 386.5 L 84.0 331.6 ...'; c is the rect y 348-386; critic/out/self-member.038.svg). critic/in/sub-nested-self.mmd: 'OUT --> IN' and 'IN --> OUT' are two straight strokes through member store ('M 95.7 524.0 C ... 95.7 431.5'; critic/out/sub-nested-self.038.png).",
+   "severity": "non-blocking",
+   "fix": "2.8: 'subgraph -> own member: the stub takes the frame side from which the member is reached without passing another member'. New row 'subgraph <-> its own nested subgraph: no link for L; a stub between the two borders on a side where no member lies between them'. Both inputs become fixtures with edge_node_x 0."
+  },
+  {
+   "where": "SPEC 2.1 Key, 2.3 L3.4 and L4, 2.12, 1.3 item 5",
+   "problem": "(1) BLOCK_ORDER_EXACT_MAX counts plain nodes: a level of 13 units loses the safety net and, because L4 needs M, the lane rule too. (2) 'Reads node declaration order only, never the order of edge statements' is false when nodes are first mentioned in edge lines: the key is first mention.",
+   "evidence": "Unit counts from metrics/struct: the root of examples/state.mmd has exactly 12 units; one more state drops the net. critic/in/cycle2-tie.mmd and cycle2-tie-swapped.mmd differ only in the order of two edge lines written before the subgraph blocks; the block order flips, Back/Front against Front/Back (critic/out/cycle2-tie.exp.png, cycle2-tie-swapped.exp.png; 0.38 flips the same way).",
+   "severity": "non-blocking",
+   "fix": "L3.4: 'the exact minimum is computed per strongly connected component of the level's unit graph, cap 12 units per component; M is the sum over components'. Reword the claim: 'reads the first-mention order of nodes; independent of edge-statement order when nodes are declared before the edges'. Add the cycle2-tie pair as a fixture that documents it."
+  },
+  {
+   "where": "SPEC 2.5 X1, X3, B12.5 gate spine_off",
+   "problem": "X1 is stronger than what was prototyped: it withholds every alignment link whose ends have different cluster paths, so an adjacent-layer edge across a border (the E2 class) is never aligned. X3's pull acts only in the squeeze branch, and spine_off counts intra-block edges only. Straight spines across a border (PLAN invariant 4) have no rule and no gate.",
+   "evidence": "d-global/prototype.patch, coordinates_bk hunk: the retain drops a link only when both ends are edge dummies ('edge_dummy(u) && ap[u] != ap[v]'). In the experiment picture R1 -> ARGO is straight under that rule.",
+   "severity": "non-blocking",
+   "fix": "X1: 'no alignment between two chain dummies with different cluster paths (the prototyped rule); a real node may align with its neighbour across a border'. Extend spine_off to an adjacent-layer edge whose ends are each other's only link on that side, across a border too."
+  },
+  {
+   "where": "SPEC 2.3 L4, 2.10 row 'more than a third', 2.2, Appendix B D4",
+   "problem": "'That level stays as 0.38 draws it' is not what L4 does: only the layering is 0.38's (without seat_box_sources); O, X, G, E still run in block mode. Whether links L3 turned before L4 fired count for the trigger is unstated. D4 does not tell the user that the L4 drawing fails the block-shape rules, nor that mermaid stacks the same input.",
+   "evidence": "critic/in/swimlane.mmd: 0.38 draws two side-by-side frames five rows tall (critic/out/swimlane.038.png); mermaid stacks two compact blocks with 2 of 5 arrows upward (critic/mm/swimlane.mermaid.png), which is also d-global's result (critic/out/swimlane.exp.png).",
+   "severity": "non-blocking",
+   "fix": "2.2: 'links of a level L4 made transparent do not count as turned'. 2.10 row: 'its child blocks are ranked as in 0.38; if nothing else differs the trigger stays off'. D4 shows the three pictures and states that under L4 the level keeps side-by-side linked frames."
+  },
+  {
+   "where": "SPEC 2.4 O2 ('a run can never change sides ... as a property'), 2.12 TIE",
+   "problem": "TIE is a weight, not a constraint. The cost is a product of multiplicities: a run changing sides of a block costs 1000, less than five crossings of two 15-edge bundles (5 x 225). Block ordinals are also handed out per layer.",
+   "evidence": "spec/experiment.patch, level_order: 'TIE: f64 = 1000.0' and keys built per layer; the experiment's own table has xframe_runs 1 on dense-lr (spec/evidence/metrics.chains-levelfirst-7starts.tsv) where B12.4 demands 0. 250 random cases with side-by-side multi-row blocks (critic/fuzz.py) gave no frame overlap, so it is rare.",
+   "severity": "non-blocking",
+   "fix": "O2: 'one ordinal per child block for the whole level among the blocks it shares a layer with, and one side per (run, block); enforced as constraints, checked after O2'. Drop TIE from 2.12."
+  },
+  {
+   "where": "SPEC 2.2 ('layout::block_mode(g, node_cluster, rank_only)'), 3.1 route_built row",
+   "problem": "The static ranking runs on the augmented graph (one stand-in edge per sub-edge appended), not on g. route_built has no such graph. Called with g, L3's count of drawn turned links differs (a stand-in weighs 1, a rank-only pair 0), so scene() and route() can disagree on block mode.",
+   "evidence": "scene.rs:3455-3520: stand-ins are appended to the clone ga and layout_clustered_ranked(&ga, ...) ranks it; route_built (4435) builds no ga.",
+   "severity": "non-blocking",
+   "fix": "2.2: 'block_mode takes the augmented graph and rank-only groups from one shared constructor used by scene_clustered, route_built and route_partial_with'. Add a test block_mode_agrees_between_scene_and_route over every fixture, and measure its cost per drag frame in B12.8."
+  },
+  {
+   "where": "SPEC 2.6 G3, 4.3 (a), metrics/thresholds.json",
+   "problem": "The problem statement lists 'labels far from both ends'. G3 puts the chip mid-run beside the foreign band, and the only label-position must (lbl_off, distance from the edge's middle) rewards that. No gate measures distance to the ends, though block-metrics has the column.",
+   "evidence": "lbl_endpx_mean on the analog: 0.38 309 px, spec experiment 332 px, mermaid 558 px (spec/evidence/metrics.*.tsv, metrics/mermaid.tsv).",
+   "severity": "non-blocking",
+   "fix": "Either add an analog must 'lbl_endpx_mean not above 0.38's (309)', or state in 1.1 that distance to the ends is not a goal and why, so the user sees the choice."
+  },
+  {
+   "where": "SPEC 4.1 (order of checkpoints), 3.5, 4.6",
+   "problem": "Every measurement of route() at block positions breaks the analog's route_ms limit, none with corridors, and the corridor work comes after seven items. A failure at checkpoint R stops the package after the whole of A.",
+   "evidence": "route_ms on the analog against the limit 2.9: 4.0 (spec experiment, quality table), 4.7 (d-global), 4.97 (d-hybrid), 4.77 (hand-placed blocks, understand-flowmaid 2.5); 0.38 is 1.9.",
+   "severity": "non-blocking",
+   "fix": "4.1: add a spike right after B12.1: R2 + R3 on the experiment's centres (positions from spec/tree), measured with perf.sh on the analog, bench-75 and dense-td; its result decides whether B12.2-B12.7 start. B12.8 stays the full item."
+  }
+ ]
+}

@@ -1,0 +1,32 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"TD",
+"nodes":[
+ {"id":"a","label":"a","shape":"Rect","sub":0},
+ {"id":"b","label":"b","shape":"Rect","sub":0},
+ {"id":"b2","label":"b2","shape":"Rect","sub":0},
+ {"id":"c","label":"c","shape":"Rect","sub":1},
+ {"id":"c2","label":"c2","shape":"Rect","sub":1}],
+"subgraphs":[
+ {"id":"Y","title":"Inner source","parent":null,"direction":null,"nodes":[0,1,2]},
+ {"id":"Z","title":"Inner target","parent":null,"direction":null,"nodes":[3,4]}],
+"edges":[
+ {"from":{"n":0},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":1},"to":{"n":2},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":3},"to":{"n":4},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":2},"to":{"n":3},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":0},"to":{"n":4},"label":null,"kind":"Arrow","drawn":true}],
+"scene":{"width":193.500,"height":566.000,
+ "nodes":[
+  {"id":"a","x":92.000,"y":68.000,"w":54.000,"h":38.000},
+  {"id":"b","x":57.500,"y":166.000,"w":54.000,"h":38.000},
+  {"id":"b2","x":57.500,"y":264.000,"w":54.000,"h":38.000},
+  {"id":"c","x":57.500,"y":388.000,"w":54.000,"h":38.000},
+  {"id":"c2","x":92.000,"y":486.000,"w":54.000,"h":38.000}],
+ "clusters":[
+  {"id":"Y","x":43.500,"y":28.000,"w":122.000,"h":288.000,"depth":0},
+  {"id":"Z","x":43.500,"y":348.000,"w":122.000,"h":190.000,"depth":0}],
+ "edges":[
+  {"from":"a","to":"b","routed":true,"label":null,"points":[[106.925,106.000],[106.925,124.787],[106.925,136.000],[95.713,136.000],[84.500,136.000],[84.500,147.213],[84.500,166.000]]},
+  {"from":"b","to":"b2","routed":false,"label":null,"points":[[84.500,204.000],[84.500,234.000],[84.500,234.000],[84.500,264.000]]},
+  {"from":"c","to":"c2","routed":true,"label":null,"points":[[84.500,426.000],[84.500,444.788],[84.500,456.000],[95.713,456.000],[106.925,456.000],[106.925,467.212],[106.925,486.000]]},
+  {"from":"b2","to":"c","routed":true,"label":null,"points":[[57.500,283.000],[43.000,283.000],[29.000,283.000],[29.000,297.000],[29.000,393.000],[29.000,407.000],[43.000,407.000],[57.500,407.000]]},
+  {"from":"a","to":"c2","routed":false,"label":null,"points":[[131.075,106.000],[131.075,232.667],[131.075,359.333],[131.075,486.000]]}]}}

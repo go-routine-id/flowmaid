@@ -1,0 +1,8 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Done
+    state Work {
+        [*] --> A
+        A --> B
+    }
+    note right of Work : isolated composite

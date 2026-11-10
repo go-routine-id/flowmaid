@@ -1,0 +1,16 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"TD",
+"nodes":[
+ {"id":"p","label":"p","shape":"Rect","sub":0},
+ {"id":"q","label":"q","shape":"Rect","sub":0}],
+"subgraphs":[
+ {"id":"S","title":"Service","parent":null,"direction":null,"nodes":[0,1]}],
+"edges":[
+ {"from":{"s":0},"to":{"s":0},"label":null,"kind":"Arrow","drawn":true}],
+"scene":{"width":138.000,"height":247.000,
+ "nodes":[
+  {"id":"p","x":42.000,"y":68.000,"w":54.000,"h":38.000},
+  {"id":"q","x":42.000,"y":166.000,"w":54.000,"h":38.000}],
+ "clusters":[
+  {"id":"S","x":28.000,"y":28.000,"w":82.000,"h":190.000,"depth":0}],
+ "edges":[
+  {"from":"S","to":"S","routed":false,"label":null,"points":[[69.000,218.000],[69.000,218.000],[69.000,218.000],[69.000,218.000]]}]}}

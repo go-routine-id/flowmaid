@@ -1,0 +1,28 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"TD",
+"nodes":[
+ {"id":"a1","label":"form","shape":"Rect","sub":0},
+ {"id":"a2","label":"result page","shape":"Rect","sub":0},
+ {"id":"b1","label":"validate","shape":"Rect","sub":1},
+ {"id":"b2","label":"store","shape":"Rect","sub":1}],
+"subgraphs":[
+ {"id":"A","title":"Front","parent":null,"direction":null,"nodes":[0,1]},
+ {"id":"B","title":"Back","parent":null,"direction":null,"nodes":[2,3]}],
+"edges":[
+ {"from":{"n":0},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":2},"to":{"n":3},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":0},"to":{"n":2},"label":"request","kind":"Arrow","drawn":true},
+ {"from":{"n":3},"to":{"n":1},"label":"response","kind":"Arrow","drawn":true}],
+"scene":{"width":314.600,"height":520.000,
+ "nodes":[
+  {"id":"a1","x":191.700,"y":68.000,"w":60.100,"h":38.000},
+  {"id":"a2","x":170.900,"y":440.000,"w":101.700,"h":38.000},
+  {"id":"b1","x":42.000,"y":218.000,"w":80.900,"h":38.000},
+  {"id":"b2","x":50.850,"y":316.000,"w":63.200,"h":38.000}],
+ "clusters":[
+  {"id":"A","x":156.900,"y":28.000,"w":129.700,"h":464.000,"depth":0},
+  {"id":"B","x":28.000,"y":178.000,"w":108.900,"h":190.000,"depth":0}],
+ "edges":[
+  {"from":"a1","to":"a2","routed":true,"label":null,"points":[[221.750,106.000],[221.750,237.000],[221.750,335.000],[221.750,440.000]]},
+  {"from":"b1","to":"b2","routed":false,"label":null,"points":[[82.450,256.000],[82.450,286.000],[82.450,286.000],[82.450,316.000]]},
+  {"from":"a1","to":"b1","routed":true,"label":{"text":"request","cx":106.852,"cy":118.644,"w":60.800},"points":[[203.700,106.000],[203.700,112.250],[203.700,118.500],[197.450,118.500],[108.950,118.500],[94.950,118.500],[94.950,132.500],[94.950,218.000]]},
+  {"from":"b2","to":"a2","routed":true,"label":{"text":"response","cx":112.077,"cy":382.500,"w":71.700},"points":[[82.450,354.000],[82.450,368.500],[82.450,382.500],[96.450,382.500],[168.900,382.500],[182.900,382.500],[182.900,396.500],[182.900,440.000]]}]}}

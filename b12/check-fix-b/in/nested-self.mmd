@@ -1,0 +1,11 @@
+flowchart TD
+    subgraph OUT[Platform]
+        o1[router]
+        subgraph IN[Workers]
+            i1[w1] --> i2[w2]
+        end
+        o1 --> i1
+        i2 --> o2[store]
+    end
+    OUT --> IN
+    IN --> OUT

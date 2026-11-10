@@ -1,0 +1,10 @@
+name	engine	dir	lateral_x	lateral_edges	flow_x	node_ends	node_lat_ends	lbl_n	lbl_off_own_edge	lbl_own_gap_max	lbl_on_frame_border	lbl_centre_in_end_block	crossings	warn
+infra-overview	fm	TD	21	14	15	51	3	20	0	0	0	7	24	0
+infra-overview-v2	fm	TD	24	14	12	51	4	20	1	16.5	0	7	19	0
+blocks-overview	fm	TD	14	11	21	54	3	22	0	0	0	7	14	0
+infra-overview	mermaid	TD	0	0	36	51	0	20	0	0	0	0	16	0
+infra-overview-v2	mermaid	TD	0	0	36	51	0	20	0	0	0	0	13	0
+blocks-overview	mermaid	TD	0	0	35	54	0	22	0	0	0	0	5	0
+infra-overview	fm	TD	7	6	29	51	6	20	1	16.5	0	3	20	0
+infra-overview-v2	fm	TD	11	9	27	51	11	20	1	16.5	0	5	20	0
+blocks-overview	fm	TD	2	2	33	54	2	22	0	0	0	1	7	0

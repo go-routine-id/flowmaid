@@ -1,0 +1,36 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"LR",
+"nodes":[
+ {"id":"U","label":"user","shape":"Stadium","sub":null},
+ {"id":"DNS","label":"dns","shape":"Rect","sub":1},
+ {"id":"ALTN","label":"alt","shape":"Rect","sub":2},
+ {"id":"in","label":"ingress","shape":"Rect","sub":3},
+ {"id":"app","label":"app","shape":"Rect","sub":3}],
+"subgraphs":[
+ {"id":"OUT","title":"Outer","parent":null,"direction":null,"nodes":[]},
+ {"id":"EXT","title":"External services with a long title","parent":0,"direction":null,"nodes":[1]},
+ {"id":"ALT","title":"Another quite long block title here","parent":0,"direction":null,"nodes":[2]},
+ {"id":"P","title":"Prod","parent":null,"direction":null,"nodes":[3,4]}],
+"edges":[
+ {"from":{"n":3},"to":{"n":4},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":0},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":0},"to":{"n":2},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":1},"to":{"n":3},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":2},"to":{"n":3},"label":null,"kind":"Arrow","drawn":true}],
+"scene":{"width":556.800,"height":314.000,
+ "nodes":[
+  {"id":"U","x":28.000,"y":164.000,"w":71.300,"h":38.000},
+  {"id":"DNS","x":183.300,"y":108.000,"w":54.600,"h":38.000},
+  {"id":"ALTN","x":183.600,"y":220.000,"w":54.000,"h":38.000},
+  {"id":"in","x":321.900,"y":164.000,"w":77.500,"h":38.000},
+  {"id":"app","x":459.400,"y":164.000,"w":55.400,"h":38.000}],
+ "clusters":[
+  {"id":"OUT","x":155.300,"y":28.000,"w":110.600,"h":258.000,"depth":0},
+  {"id":"P","x":307.900,"y":124.000,"w":220.900,"h":92.000,"depth":0},
+  {"id":"EXT","x":169.300,"y":68.000,"w":82.600,"h":92.000,"depth":1},
+  {"id":"ALT","x":169.600,"y":180.000,"w":82.000,"h":92.000,"depth":1}],
+ "edges":[
+  {"from":"in","to":"app","routed":false,"label":null,"points":[[399.400,183.000],[429.400,183.000],[429.400,183.000],[459.400,183.000]]},
+  {"from":"U","to":"DNS","routed":true,"label":null,"points":[[97.964,176.000],[126.632,176.000],[140.632,176.000],[140.632,162.000],[140.632,141.000],[140.632,127.000],[154.632,127.000],[183.300,127.000]]},
+  {"from":"U","to":"ALTN","routed":true,"label":null,"points":[[97.964,190.000],[126.782,190.000],[140.782,190.000],[140.782,204.000],[140.782,225.000],[140.782,239.000],[154.782,239.000],[183.600,239.000]]},
+  {"from":"DNS","to":"in","routed":true,"label":null,"points":[[237.900,127.000],[266.400,127.000],[280.400,127.000],[280.400,141.000],[280.400,162.000],[280.400,176.000],[294.400,176.000],[321.900,176.000]]},
+  {"from":"ALTN","to":"in","routed":true,"label":null,"points":[[237.600,239.000],[266.400,239.000],[280.400,239.000],[280.400,225.000],[280.400,204.000],[280.400,190.000],[294.400,190.000],[321.900,190.000]]}]}}

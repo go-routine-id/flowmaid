@@ -1,0 +1,10 @@
+flowchart LR
+    U([user])
+    subgraph EXT[External services with a long title]
+        DNS[dns]
+    end
+    subgraph P[Prod]
+        in[ingress] --> app[app]
+    end
+    U --> DNS
+    DNS --> in

@@ -1,0 +1,15 @@
+flowchart TD
+    subgraph A[Edge]
+        a1[lb]
+    end
+    subgraph B[App]
+        b1[svc]
+    end
+    subgraph C[Data]
+        c1[db]
+    end
+    a1 --> b1
+    b1 --> c1
+    c1 -->|notify| b1
+    b1 -->|ack| a1
+    c1 -.->|audit| a1

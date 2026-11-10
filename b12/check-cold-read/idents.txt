@@ -1,0 +1,540 @@
+ *displaced entries*. With 
+## [Unreleased]
+#[cfg(test)]
+#[doc(hidden)]
+, 
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12
+2 * M + 1
+2 * TITLE_INSET
+2M + 1
+A
+A <-> B
+ARGO -> TG
+ARGO->TG
+B
+B/USER-DECISIONS.md
+B/critic
+B/critic/fm-spec
+B/critic/in
+B/critic/in/cycle2-tie.mmd
+B/critic/in/infra-{bt,lr}.mmd
+B/critic/in/interleave.mmd
+B/critic/in/ratio{2,3,4}.mmd
+B/critic/lateral.py
+B/critic/mm
+B/critic/mm/cycle2.mermaid.png
+B/critic/mm/hub5.mermaid.png
+B/critic/mm/swimlane.mermaid.png
+B/critic/out/cycle2.038.png
+B/critic/out/hub5.038.png
+B/critic/out/lr.exp.png
+B/critic/out/self-member.038.svg
+B/critic/out/sub-nested-self.038.png
+B/critic/out/swimlane.038.png
+B/critic/out/swimlane.exp.png
+B/critic/shuf.py
+B/critic/starts/s{1,2,3,4,5,7}/metrics.tsv
+B/critic/sweep/trigger.txt
+B/d-global/infra-overview.proto-lanes.png
+B/d-global/prototype.patch
+B/d-global/tree
+B/d-hybrid/in/{swimlane, nested-cases}.mmd
+B/d-hybrid/prototype.patch
+B/d-hybrid/tree
+B/design-global.md
+B/design-hybrid.md
+B/design-recursive.md
+B/in/infra-overview.mmd
+B/infra-overview.fm038.png
+B/j-invariants/b12inv.rs
+B/metrics/
+B/metrics/README.md
+B/metrics/extra/in
+B/metrics/extra/sweep-mermaid.tsv
+B/metrics/judge <out>/metrics.tsv
+B/metrics/mermaid-svg/infra-overview.mermaid.png
+B/metrics/mermaid.tsv
+B/metrics/run.sh
+B/metrics/run.sh fm <cli> <out>
+B/metrics/thresholds.json
+B/private/
+B/revise
+B/revise/fixture/blocks-overview.{fm038,mermaid,exp}.png
+B/revise/in/blocks-overview.mmd
+B/revise/lat2.py file.svg:h
+B/revise/mfm
+B/revise/mmm
+B/revise/out/*.{038,blk}.png
+B/revise/out/advanced.{038,blk}.png
+B/revise/out/cycle2.blk.png
+B/revise/out/subgraph.{038,blk}.png
+B/spec/evidence/infra-overview-v2.lvl-chains-7starts.png
+B/spec/evidence/infra-overview.lvl-chains-7starts.png
+B/spec/evidence/infra-overview.lvl-chains.routed.png
+B/spec/evidence/metrics.*.tsv
+B/spec/evidence/title-entry.fm038.png
+B/spec/evidence/title-entry.mmd
+B/spec/experiment.patch
+B/spec/in
+B/spec/measure.sh <label> ENV=...
+B/spec/struct
+B/spec/tree
+B/tree/src
+B/u-mermaid/in/infra-overview-v2.mmd
+B/u-mermaid/in/perm-*.mmd
+B/u-mermaid/probes/p*.mmd
+B/u-mermaid/probes/{p01-iso, p02-iso-dir, p09-disconnected, p13-inner-dir-ext}.mmd
+B/understand-flowmaid.md
+B/understand-mermaid.md
+BLOCK_ORDER_EXACT_MAX
+BLOCK_ORDER_STARTS
+BLOCK_ORDER_WORK
+BLOCK_SLACK
+BORDER_LEN_MAX
+BTreeMap
+CEILINGS
+CHANNEL_MAX
+CHIP_CLEAR
+CLEAR_GAP
+COMPACT_SWEEPS
+DEFECT_BASELINE
+DNS -> PSDEV
+DNS -> ingress
+DNS GW TG OAI AZ
+DRAG_JUMP
+DRAG_JUMPS_MAX
+DRAPP->TG
+EDGE_CHIP_MAX
+EDGE_GAP
+EDGE_SEP_MIN
+FLOW_MIN_GAP
+FM_B12
+FM_B12=2 FM_B12_LVL=1 FM_B12_STARTS=7
+FM_B12_BT=1
+FM_B12_DUMP=1
+FM_B12_FORCE="a,b"
+FM_B12_LVL=1
+FM_B12_SEED=n
+FM_B12_STARTS=k
+FM_B12_TRIG=0
+FM_B12_TRIG=1
+FRAME_GAP
+FoldSkip::HasSubgraphs
+GAP_FLOORS
+GW DNS TG OAI AZ
+Graph::edges.len()
+Graph::lead_nodes
+Graph::nodes
+INK_MEAN_MIN
+K0
+L
+LANE->AZ
+LANE->OAI
+LANE_PAD
+LANE_SHARE
+LBL_EDGE_MAX
+Lane
+M
+M 84.0 400.0 C 84.0 400.0, ...
+MARGIN
+MAX_ASPECT
+Metrics::tail_fields
+Opts
+PARTIAL_ROUTE_SHARE
+PG --> DRAPP
+PORT_SPACING
+PSPROD -> TG
+PSPROD->TG
+R1 -> ARGO
+RIBBON_ENTRY
+ROUTE_MAX_EDGES
+ROW_CLEAR
+ROW_CLEAR + (k - 1) * TRACK_PITCH
+S
+S --> b
+SEARCH_MAX_ELEMENTS
+SHUFFLE_WIDTH_MAX
+Scene
+SceneEdge
+T
+TIE
+TITLE_INSET
+TRACK_PITCH
+U1 -> DNS
+Vec
+WALK_MAX_ELEMENTS
+W_min
+Want
+XGAP_MAX
+[*]
+a1 -> b1 -> a2 -> b2 -> a3 -> b3
+a_band_gap_holds_its_tracks_and_labels_between_the_frames
+a_bottom
+a_chain_label_sits_outside_both_end_blocks
+a_compact_block_keeps_its_brandes_koepf_columns
+a_composite_edge_to_its_own_state_drops_straight_from_the_border
+a_corridor_passes_two_staggered_bands
+a_corridor_reaches_a_second_row_target
+a_direction_block_inside_a_bordered_block_keeps_its_direction
+a_far_end_drag_never_changes_a_frame_it_does_not_enter
+a_hub_fan_leaves_in_target_order
+a_hub_fed_row_of_shallow_frames_wraps_into_two_rows
+a_label_slot_is_clear_of_foreign_lines
+a_lane_between_two_members_stays_in_their_box
+a_lane_stays_in_its_frames_in_route_and_on_a_drag_too
+a_nested_edge_crosses_each_frame_on_a_flow_side_in_route
+a_node_dragged_onto_a_foreign_frame_is_still_routed
+a_note_card_keeps_its_row_in_its_block
+a_ping_pong_level_stays_lanes
+a_rerouted_edge_between_members_stays_in_their_frame_in_route
+a_source_block_sits_beside_what_it_feeds
+a_spine_across_a_border_is_straight
+a_spine_inside_a_block_is_straight
+a_static_canvas_is_its_drawing_with_even_margins
+a_stub_to_an_own_member_passes_no_member
+a_stub_to_an_own_nested_subgraph_passes_no_member
+a_subgraph_self_edge_is_a_loop_in_scene_and_route
+a_subgraph_takes_consecutive_rows
+a_turned_edge_one_layer_up_is_a_z_not_a_lane
+a_turned_edge_runs_up_its_channel_through_flow_sides
+advance
+advanced
+advanced.mmd
+an_edge_to_a_block_ends_mid_side_clear_of_the_chip_and_the_corners
+an_entry_under_a_title_jogs_in_beside_the_chip_inside_the_frame
+an_lr_frame_is_as_long_as_its_title
+apath
+area
+arrange
+arrow_on_start
+assert_clean_clusters
+augmented
+augmented(g)
+b9-inside
+b9-inside2
+back
+back[e] = layer(to) < layer(from)
+back_edge_inside_a_box_bows_beside_it...
+back_lanes
+band_len
+bar_cards
+baseline + 0.3 ms
+block_compact
+block_mode
+block_mode_agrees_between_scene_and_route
+block_mode_is_decided_by_border_links
+block_order_follows_declarations_until_it_costs_twice_the_minimum
+block_order_follows_first_mention
+block_order_survives_reordered_statements
+block_rank
+blocks
+blocks-overview
+border(m)
+c
+cap(m)
+casing::a_line_takes_one_role_across_a_cluster_of_crossings
+casing::a_short_line_keeps_at_most_one_gap
+centre_largest
+chains_keep_one_side_of_a_block
+class
+cluster_at
+cluster_gap
+cluster_keys
+cluster_raw_boxes
+clustered
+clusters_line_up
+compact
+compact_breadth
+compact_max
+compact_mean
+compound
+compound.rs
+compound::split
+coordinates_bk
+corridor_geometry
+corridors_nest_and_do_not_jump_on_a_one_px_drag
+count_crossings
+cross_cluster_route
+cross_need
+crossing_neutral_members_keep_declaration_order
+crossings
+ctx
+cu
+cu != cv
+cut_to_frames
+cv
+cx.back
+cycle2
+cycle2-tie
+cycle2-tie-swapped
+cycle2-tie-swapped.mmd
+d-global
+d-global/prototype.patch
+d-hybrid
+d-recursive
+defects
+dev
+direction
+docs/ex-subgraph.svg
+docs/img/compare/state.png
+docs/img/compare/{advanced, subgraph}.png
+drag_ms
+dragging_a_member_pulls_its_cluster_along
+dragging_every_node_of_a_block_diagram_keeps_the_contract
+drawn_breadth
+drawn_crossings
+edge_at
+edge_frame_pairs
+edge_len
+edge_line_order_barely_moves_the_dense_layouts
+edge_node_x
+edge_picking_matches_the_painted_strokes_on_every_fixture
+edgepass::finish
+ends_apart
+every_fixture_has_a_ceiling
+examples/*.mmd
+examples/advanced.mmd
+examples/quality.rs
+examples/state.mmd
+examples/{advanced, subgraph}.mmd
+fan_x
+fanout-frames
+file:line
+finish
+finish_held
+fit_bars
+fit_cluster_title
+flat_and_unlinked_inputs_render_as_before
+flowchart TD
+flowchart-elk
+fn block_compact
+fn block_layers
+fn block_rank
+fold::scene_compact
+fork_join_branches_drop_straight_and_drags_agree
+fr_max
+frame_foreign_nodes
+frame_overlap
+frame_side
+frames_agree_between_scene_and_route
+free_edge
+from x to
+ga
+gap_need
+grid_pairs
+header_b
+hit_test
+hits_in_rect
+hub5
+hub_fed_leaves_in_a_box_pack_into_a_grid
+in301
+infra-overview-v2
+interleave
+inversions
+judge
+k
+k > 0
+lane_gap_min
+lanes::plan
+largest_box_is_centred_among_its_siblings
+lateral.py
+lateral_x
+layer(node) = sum of the starts of its enclosing blocks + its own start
+layout
+layout::a_box_seats_its_loose_parts_on_its_top_layer
+layout::block_rank
+layout::layout_clustered
+layout::{layout_clustered, layout_sized, LayoutResult, Placed}
+layout_clustered
+layout_clustered_returns_blocks
+layout_core
+lbl_*
+lbl_crowd
+lbl_endpx_mean
+lbl_gap_min
+lbl_lbl
+lbl_node
+lbl_off_max
+lbl_off_mean
+lbl_struck
+lcoord[li] >= lcoord[li-1] + reach_of(li-1, 1) + need(li) + reach_of(li, 0)
+level_order
+level_order_is_deterministic_and_bounded
+levels.rs
+levels::augmented
+levels::augmented(g)
+levels::block_mode
+lextra
+li
+li - 1
+linked_blocks_never_share_a_row
+loop_reach
+lr
+m
+marquee_selects_an_edge_once_its_painted_stroke_touches
+max(layer of its unturned sources) + 1
+measure_source
+mexp
+min(start of its successors) - rows
+min_edge_gap
+mmm
+moving_a_node_declaration_barely_moves_dense_td
+narrow
+near-drag
+nearest_node
+need
+nested
+nested-cases
+node_at
+node_cluster
+node_frame
+node_hits
+node_overlap
+note left of
+note-edge-row
+note_links_hold_their_ends_and_corners_in_scene_route_and_drag
+note_links_match_between_scene_and_route
+notes
+notes/near-drag
+notes/spread-bottom
+notes/{near-drag, spread-bottom, straight-link, wide-frames}.mmd
+opts.compact
+ortho
+ortho_pass
+overlap_pairs
+own_box_stub
+own_box_targets
+own_frame_x
+p03
+p06-block-cycle
+p07
+p11-lr
+pair_sep
+perf.sh
+pin_corner
+place
+plan
+plan_jog
+ports::a_nearly_straight_pair_is_drawn_straight
+ports::assign
+pub(crate)
+quality.*.tsv
+quality.rs
+quality/fanout-frames.mmd
+rank
+ratio2
+ratio3
+ratio4
+ratio{2,3,4}
+reach
+reach_of
+render.sh
+render::advanced_showcase_parses_and_renders
+renest_boxes
+reorder
+repair
+route
+route()
+route(scene centres)
+route_and_scene_agree_on_which_edges_run_upstream
+route_backs
+route_built
+route_clusters
+route_lane_clusters
+route_ms
+route_partial
+route_partial()
+route_partial_*
+route_partial_keeps_unmoved_edges_and_reroutes_moved
+route_partial_matches_route_on_the_dragged_node
+route_partial_with
+route_sized
+route_sized()
+route_takes_a_corridor_round_a_foreign_block
+router::repair
+rows(level) = max(start + rows)
+scene
+scene()
+scene.rs
+scene::a_run_into_a_box_crosses_its_border_clear_of_the_run
+scene::a_two_cycle_into_a_diamond_keeps_its_twin_ends_apart
+scene::a_two_cycle_runs_side_by_side_across_its_gap
+scene::far_apart_back_edges_and_frame_legs_square_up_alike_in_route
+scene::route_built
+scene_carries_stable_identity_and_stays_index_parallel
+scene_clustered
+scene_flat
+scene_from_layout
+scene_labelled
+scene_ms
+scene_sized
+scene_sized()
+scratchpad/PLAN.md
+seat_box_sources
+self-member
+shared_ports
+short_labels
+sib_*
+sib_side_linked
+sib_stagger
+sibling_blocks_never_interleave
+sibling_frames_of_a_band_start_level_in_scene_and_route
+span_max
+spine_off
+src/compound.rs
+src/edgepass.rs
+src/lanes.rs
+src/layout.rs
+src/levels.rs
+src/ortho.rs
+src/ports.rs
+src/quality.rs
+src/router.rs
+src/scene.rs
+stack_candidates
+stagger_proposals
+start(A) < start(B) < end(A) < end(B)
+start(B) >= end(A)
+start(cv) >= start(cu) + rows(cu)
+start(target) - 1
+starts = clamp(BLOCK_ORDER_WORK / (augmented nodes + links), 1, 7)
+state-note
+state_composite_keeps_flow_order
+static_lanes
+stop_at_siblings
+store
+straight_max
+struct Opts
+struct Ranking
+style
+style::is_note_card
+sub-nested-self
+sub_edge_ported
+sub_edge_proxies
+subgraph
+subgraph.mmd
+tests/fixtures/blocks/
+tests/fixtures/notes
+tests/fixtures/outline/*
+tests/fixtures/quality/{back-edge, wide-labels}
+tests/quality.rs
+the_start_order_ignores_edge_statement_order
+tighten_sources
+title_cut
+title_head
+to_mermaid
+tools/guard.sh
+tools/perf.sh
+track_need
+transpose
+u
+u -> v
+up_lanes
+v
+warn
+weighted_median
+wide_sibling_boxes_stack_instead_of_a_ribbon
+wiggles
+wrap_candidates
+x_drawn
+xframe_runs

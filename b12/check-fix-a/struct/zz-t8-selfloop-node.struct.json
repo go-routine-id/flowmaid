@@ -1,0 +1,24 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"TD",
+"nodes":[
+ {"id":"x","label":"x","shape":"Rect","sub":null},
+ {"id":"y","label":"y","shape":"Rect","sub":null},
+ {"id":"a","label":"a","shape":"Rect","sub":0},
+ {"id":"b","label":"b","shape":"Rect","sub":0}],
+"subgraphs":[
+ {"id":"S","title":"Service","parent":null,"direction":null,"nodes":[2,3]}],
+"edges":[
+ {"from":{"n":0},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":2},"to":{"n":3},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":3},"to":{"n":3},"label":null,"kind":"Arrow","drawn":true}],
+"scene":{"width":250.000,"height":246.000,
+ "nodes":[
+  {"id":"x","x":28.000,"y":68.000,"w":54.000,"h":38.000},
+  {"id":"y","x":28.000,"y":166.000,"w":54.000,"h":38.000},
+  {"id":"a","x":131.000,"y":68.000,"w":54.000,"h":38.000},
+  {"id":"b","x":131.000,"y":166.000,"w":54.000,"h":38.000}],
+ "clusters":[
+  {"id":"S","x":117.000,"y":28.000,"w":82.000,"h":190.000,"depth":0}],
+ "edges":[
+  {"from":"x","to":"y","routed":false,"label":null,"points":[[55.000,106.000],[55.000,136.000],[55.000,136.000],[55.000,166.000]]},
+  {"from":"a","to":"b","routed":false,"label":null,"points":[[158.000,106.000],[158.000,136.000],[158.000,136.000],[158.000,166.000]]},
+  {"from":"b","to":"b","routed":false,"label":null,"points":[[185.000,177.000],[233.000,157.000],[233.000,213.000],[185.000,193.000]]}]}}

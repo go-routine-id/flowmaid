@@ -1,0 +1,14 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"TD",
+"nodes":[
+ {"id":"p","label":"p","shape":"Rect","sub":0},
+ {"id":"q","label":"q","shape":"Rect","sub":0}],
+"subgraphs":[
+ {"id":"S","title":"Service","parent":null,"direction":null,"nodes":[0,1]}],
+"edges":[],
+"scene":{"width":242.000,"height":148.000,
+ "nodes":[
+  {"id":"p","x":42.000,"y":68.000,"w":54.000,"h":38.000},
+  {"id":"q","x":146.000,"y":68.000,"w":54.000,"h":38.000}],
+ "clusters":[
+  {"id":"S","x":28.000,"y":28.000,"w":186.000,"h":92.000,"depth":0}],
+ "edges":[]}}

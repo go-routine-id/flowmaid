@@ -1,0 +1,34 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"state","direction":"TD",
+"nodes":[
+ {"id":"__start_root","label":"","shape":"StateStart","sub":null},
+ {"id":"Idle","label":"Idle","shape":"Rounded","sub":null},
+ {"id":"Done","label":"Done","shape":"Rounded","sub":null},
+ {"id":"__start_0","label":"","shape":"StateStart","sub":0},
+ {"id":"A","label":"A","shape":"Rounded","sub":0},
+ {"id":"B","label":"B","shape":"Rounded","sub":0},
+ {"id":"__note_6","label":"isolated composite","shape":"Rect","sub":null}],
+"subgraphs":[
+ {"id":"Work","title":"Work","parent":null,"direction":null,"nodes":[3,4,5]}],
+"edges":[
+ {"from":{"n":0},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":1},"to":{"n":2},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":3},"to":{"n":4},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":4},"to":{"n":5},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"s":0},"to":{"n":6},"label":null,"kind":"DottedOpen","drawn":true}],
+"scene":{"width":248.600,"height":404.000,
+ "nodes":[
+  {"id":"__start_root","x":53.550,"y":68.000,"w":14.000,"h":14.000},
+  {"id":"Idle","x":33.100,"y":142.000,"w":54.900,"h":38.000},
+  {"id":"Done","x":28.000,"y":240.000,"w":65.100,"h":38.000},
+  {"id":"__start_0","x":139.100,"y":68.000,"w":14.000,"h":14.000},
+  {"id":"A","x":119.100,"y":142.000,"w":54.000,"h":38.000},
+  {"id":"B","x":119.100,"y":240.000,"w":54.000,"h":38.000},
+  {"id":"__note_6","x":71.600,"y":338.000,"w":149.000,"h":38.000}],
+ "clusters":[
+  {"id":"Work","x":105.100,"y":28.000,"w":82.000,"h":264.000,"depth":0}],
+ "edges":[
+  {"from":"__start_root","to":"Idle","routed":false,"label":null,"points":[[60.550,82.000],[60.550,112.000],[60.550,112.000],[60.550,142.000]]},
+  {"from":"Idle","to":"Done","routed":false,"label":null,"points":[[60.550,180.000],[60.550,210.000],[60.550,210.000],[60.550,240.000]]},
+  {"from":"__start_0","to":"A","routed":false,"label":null,"points":[[146.100,82.000],[146.100,112.000],[146.100,112.000],[146.100,142.000]]},
+  {"from":"A","to":"B","routed":false,"label":null,"points":[[146.100,180.000],[146.100,210.000],[146.100,210.000],[146.100,240.000]]},
+  {"from":"Work","to":"__note_6","routed":false,"label":null,"points":[[146.100,292.000],[146.100,315.000],[146.100,315.000],[146.100,338.000]]}]}}

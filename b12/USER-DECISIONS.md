@@ -21,3 +21,10 @@ What follows from it (the lead's reading; apply to SPEC.md):
 - **D1:** static limit for files under 1 ms may be max(2 x baseline, baseline + 0.3 ms) (the lead's own budget, sub-ms).
 - **D4:** the lane rule's principle is accepted; the constant comes from the sweep; such diagrams must not get worse.
 - **D6:** on a stop rule the implementer stops and reports; gates are not re-baselined to pass.
+
+## After the second review pass (2026-11-10 ~22:00 UTC), the lead's decisions (also at the top of SPEC.md section 0)
+- **D7 confirmed (option b):** covered by the user's own choice "Default untuk semua" (2026-11-10 ~04:45 UTC: every
+  diagram with subgraphs takes the block layout) and by the bar.
+- `lateral_x` on bench-75 / dense-lr / dense-td: must = not above mermaid's count (3 / 0 / 1), target 0.
+- Four workflow packages: b12a1-structure (B12.0-B12.6), b12a2-geometry (B12.7-B12.12), b12a3-route (B12.13),
+  b12b-default (B12.14-B12.16). The first three: switch off, no release. 0.41.0 after the fourth.

@@ -1,0 +1,17 @@
+flowchart LR
+    U([user])
+    subgraph OUT[Outer]
+        subgraph EXT[External services with a long title]
+            DNS[dns]
+        end
+        subgraph ALT[Another quite long block title here]
+            ALTN[alt]
+        end
+    end
+    subgraph P[Prod]
+        in[ingress] --> app[app]
+    end
+    U --> DNS
+    U --> ALTN
+    DNS --> in
+    ALTN --> in

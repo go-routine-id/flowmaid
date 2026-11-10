@@ -1,0 +1,13 @@
+flowchart TD
+    subgraph C[Left]
+        c1
+        c2
+        c3
+    end
+    subgraph D[Right]
+        d1
+        d2
+    end
+    c1 -->|ask| d1
+    d2 -->|s1| c2
+    d2 -->|s2| c3

@@ -1,0 +1,26 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"LR",
+"nodes":[
+ {"id":"U","label":"user","shape":"Stadium","sub":null},
+ {"id":"DNS","label":"dns","shape":"Rect","sub":0},
+ {"id":"in","label":"ingress","shape":"Rect","sub":1},
+ {"id":"app","label":"app","shape":"Rect","sub":1}],
+"subgraphs":[
+ {"id":"EXT","title":"External services with a long title","parent":null,"direction":null,"nodes":[1]},
+ {"id":"P","title":"Prod","parent":null,"direction":null,"nodes":[2,3]}],
+"edges":[
+ {"from":{"n":2},"to":{"n":3},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":0},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":1},"to":{"n":2},"label":null,"kind":"Arrow","drawn":true}],
+"scene":{"width":508.800,"height":148.000,
+ "nodes":[
+  {"id":"U","x":28.000,"y":68.000,"w":71.300,"h":38.000},
+  {"id":"DNS","x":159.300,"y":68.000,"w":54.600,"h":38.000},
+  {"id":"in","x":273.900,"y":68.000,"w":77.500,"h":38.000},
+  {"id":"app","x":411.400,"y":68.000,"w":55.400,"h":38.000}],
+ "clusters":[
+  {"id":"EXT","x":145.300,"y":28.000,"w":82.600,"h":92.000,"depth":0},
+  {"id":"P","x":259.900,"y":28.000,"w":220.900,"h":92.000,"depth":0}],
+ "edges":[
+  {"from":"in","to":"app","routed":false,"label":null,"points":[[351.400,87.000],[381.400,87.000],[381.400,87.000],[411.400,87.000]]},
+  {"from":"U","to":"DNS","routed":false,"label":null,"points":[[99.300,87.000],[129.300,87.000],[129.300,87.000],[159.300,87.000]]},
+  {"from":"DNS","to":"in","routed":false,"label":null,"points":[[213.900,87.000],[243.900,87.000],[243.900,87.000],[273.900,87.000]]}]}}

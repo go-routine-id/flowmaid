@@ -1,0 +1,8 @@
+flowchart TD
+    x --> y
+    subgraph S[Service]
+        a --> b --> c
+    end
+    S --> S
+    S --> b
+    c --> S

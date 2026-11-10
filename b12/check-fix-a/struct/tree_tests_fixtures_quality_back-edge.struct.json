@@ -1,0 +1,32 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"TD",
+"nodes":[
+ {"id":"A","label":"Start","shape":"Stadium","sub":null},
+ {"id":"B","label":"Read input","shape":"Rect","sub":null},
+ {"id":"C","label":"Valid?","shape":"Diamond","sub":null},
+ {"id":"D","label":"Process","shape":"Rect","sub":null},
+ {"id":"E","label":"Show error","shape":"Rect","sub":null},
+ {"id":"F","label":"Done","shape":"Circle","sub":null}],
+"subgraphs":[],
+"edges":[
+ {"from":{"n":0},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":1},"to":{"n":2},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":2},"to":{"n":3},"label":"yes","kind":"Arrow","drawn":true},
+ {"from":{"n":2},"to":{"n":4},"label":"no","kind":"Arrow","drawn":true},
+ {"from":{"n":4},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":3},"to":{"n":5},"label":null,"kind":"Thick","drawn":true}],
+"scene":{"width":290.000,"height":543.700,
+ "nodes":[
+  {"id":"A","x":103.500,"y":28.000,"w":74.000,"h":38.000},
+  {"id":"B","x":90.650,"y":126.000,"w":99.700,"h":38.000},
+  {"id":"C","x":89.380,"y":224.000,"w":102.240,"h":64.600},
+  {"id":"D","x":28.000,"y":360.600,"w":83.000,"h":38.000},
+  {"id":"E","x":161.000,"y":360.600,"w":101.000,"h":38.000},
+  {"id":"F","x":40.950,"y":458.600,"w":57.100,"h":57.100}],
+ "clusters":[],
+ "edges":[
+  {"from":"A","to":"B","routed":false,"label":null,"points":[[140.500,66.000],[140.500,96.000],[140.500,96.000],[140.500,126.000]]},
+  {"from":"B","to":"C","routed":false,"label":null,"points":[[140.500,164.000],[140.500,194.000],[140.500,194.000],[140.500,224.000]]},
+  {"from":"C","to":"D","routed":true,"label":{"text":"yes","cx":81.868,"cy":303.728,"w":35.800},"points":[[126.862,279.983],[126.862,291.839],[126.862,303.696],[115.006,303.696],[83.500,303.696],[69.500,303.696],[69.500,317.696],[69.500,360.600]]},
+  {"from":"C","to":"E","routed":true,"label":{"text":"no","cx":185.455,"cy":307.729,"w":29.600},"points":[[154.138,279.983],[154.138,291.839],[154.138,303.696],[165.994,303.696],[172.650,303.696],[186.650,303.696],[186.650,317.696],[186.650,360.600]]},
+  {"from":"E","to":"B","routed":true,"label":null,"points":[[215.620,360.600],[215.620,198.000],[215.620,184.000],[201.620,184.000],[188.350,184.000],[178.350,184.000],[178.350,174.000],[178.350,164.000]]},
+  {"from":"D","to":"F","routed":false,"label":null,"points":[[69.500,398.600],[69.500,428.600],[69.500,428.600],[69.500,458.600]]}]}}

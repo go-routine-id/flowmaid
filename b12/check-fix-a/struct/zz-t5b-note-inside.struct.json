@@ -1,0 +1,38 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"state","direction":"TD",
+"nodes":[
+ {"id":"__start_root","label":"","shape":"StateStart","sub":null},
+ {"id":"Idle","label":"Idle","shape":"Rounded","sub":null},
+ {"id":"Done","label":"Done","shape":"Rounded","sub":null},
+ {"id":"__start_0","label":"","shape":"StateStart","sub":0},
+ {"id":"A","label":"A","shape":"Rounded","sub":0},
+ {"id":"B","label":"B","shape":"Rounded","sub":0},
+ {"id":"__note_6","label":"inside","shape":"Rect","sub":0},
+ {"id":"__note_7","label":"lead","shape":"Rect","sub":0}],
+"subgraphs":[
+ {"id":"Work","title":"Work","parent":null,"direction":null,"nodes":[3,4,5,6,7]}],
+"edges":[
+ {"from":{"n":0},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":1},"to":{"n":2},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":3},"to":{"n":4},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":4},"to":{"n":5},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":5},"to":{"n":6},"label":null,"kind":"DottedOpen","drawn":true},
+ {"from":{"n":7},"to":{"n":4},"label":null,"kind":"DottedOpen","drawn":true}],
+"scene":{"width":297.700,"height":442.000,
+ "nodes":[
+  {"id":"__start_root","x":53.550,"y":80.000,"w":14.000,"h":14.000},
+  {"id":"Idle","x":33.100,"y":166.000,"w":54.900,"h":38.000},
+  {"id":"Done","x":28.000,"y":264.000,"w":65.100,"h":38.000},
+  {"id":"__start_0","x":132.900,"y":80.000,"w":14.000,"h":14.000},
+  {"id":"A","x":156.100,"y":166.000,"w":54.000,"h":38.000},
+  {"id":"B","x":156.100,"y":264.000,"w":54.000,"h":38.000},
+  {"id":"__note_6","x":148.500,"y":362.000,"w":69.200,"h":38.000},
+  {"id":"__note_7","x":196.900,"y":68.000,"w":58.800,"h":38.000}],
+ "clusters":[
+  {"id":"Work","x":118.900,"y":28.000,"w":150.800,"h":386.000,"depth":0}],
+ "edges":[
+  {"from":"__start_root","to":"Idle","routed":false,"label":null,"points":[[60.550,94.000],[60.550,130.000],[60.550,130.000],[60.550,166.000]]},
+  {"from":"Idle","to":"Done","routed":false,"label":null,"points":[[60.550,204.000],[60.550,234.000],[60.550,234.000],[60.550,264.000]]},
+  {"from":"__start_0","to":"A","routed":true,"label":null,"points":[[142.724,93.405],[142.724,117.014],[142.724,129.703],[155.412,129.703],[168.100,129.703],[168.100,142.391],[168.100,166.000]]},
+  {"from":"A","to":"B","routed":false,"label":null,"points":[[183.100,204.000],[183.100,234.000],[183.100,234.000],[183.100,264.000]]},
+  {"from":"B","to":"__note_6","routed":false,"label":null,"points":[[183.100,302.000],[183.100,332.000],[183.100,332.000],[183.100,362.000]]},
+  {"from":"__note_7","to":"A","routed":false,"label":null,"points":[[211.180,106.000],[211.180,136.000],[198.100,136.000],[198.100,166.000]]}]}}
