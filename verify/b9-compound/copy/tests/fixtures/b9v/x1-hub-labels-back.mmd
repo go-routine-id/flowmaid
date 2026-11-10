@@ -1,0 +1,16 @@
+flowchart TB
+  H[Hub node] --> s
+  H --> T1[Task one]
+  H --> T2[Task two]
+  H -->|feeds| s
+  subgraph s [Pipeline stage]
+    direction LR
+    A[Fetch] -->|raw| B{Valid?}
+    B -->|yes| C[Transform]
+    B -->|no| A
+    C --> D[(Store)]
+    D -. retry .-> A
+  end
+  s --> Z[Report]
+  T1 --> Z
+  T2 --> Z

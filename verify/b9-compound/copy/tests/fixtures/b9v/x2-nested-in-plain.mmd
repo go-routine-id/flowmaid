@@ -1,0 +1,11 @@
+flowchart LR
+  X[Ingress] --> outer
+  subgraph outer [Outer zone]
+    O1[Gate] --> inner
+    subgraph inner [Inner TB]
+      direction TB
+      i1[Parse] --> i2[Check] --> i3[Emit]
+    end
+    inner --> O2[Sink]
+  end
+  O2 --> W[Warehouse]

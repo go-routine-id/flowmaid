@@ -1,18 +1,18 @@
 # flowmaid: resuming on Monday (START HERE)
 
-> **Ringkasan (ID) — JEDA 2026-11-10 (yang berlaku sekarang):** B10 lolos dan rilis **0.38.0** (PR #108). Atas permintaan user ("setelah b10 selesai kita cukup untuk minggu ini! ... minggu depan kita lanjutkan") B11 **belum** dijalankan. Minggu depan: (1) jalankan cek §1 di bawah, lalu ikuti **§0** (bukan jalur A–D, yang itu riwayat jeda B8), (2) **tunggu aba-aba user**, (3) lanjut B11 → c-leftovers → rilis 0.39.0. Semua bahan kerja ada di branch `backup/parity-workspace` (folder ini). Kalau ada yang bertentangan, §0 dan §12 yang benar.
+> **Ringkasan (ID) — DILANJUTKAN 2026-11-10 ~15:10 UTC (yang berlaku sekarang):** user bilang "mari kita lanjutkan saja!", jadi jeda dibatalkan dan fase B jalan lagi di sesi yang sama. Urutan: **B11 → c-leftovers → rilis 0.39.0 → B12 (subgraph sebagai blok, §0a)**. Keadaan terkini ada di **§0** dan **§0b**; bagian lain yang bertanda HISTORICAL jangan diikuti. Semua bahan kerja ada di branch `backup/parity-workspace` (folder ini).
 
 ## 0. State at the 2026-11-10 pause (CURRENT — read this first)
 | Thing | Value |
 |---|---|
-| Releases | 0.36.0 `main` b2d6d0c (PR #99), 0.37.0 `main` 8e3553b (PR #102), **0.38.0 `main` 56b0bdd (PR #108, merged 2026-11-10 03:2x UTC; includes contributor PR #105)**. The user tags and publishes each (§7 step 7); ask whether `v0.36.0` / `v0.37.0` / `v0.38.0` are tagged and on crates.io. 0.38.0 went through four review rounds (rvrel38/, wf_224da1be-a8f, wf_54ad3715-c76): 18 → 9 → 5 → 2 findings, all fixed. |
+| Releases | 0.36.0 `main` b2d6d0c (PR #99), 0.37.0 `main` 8e3553b (PR #102), **0.38.0 `main` 56b0bdd (PR #108, merged 2026-11-10 03:2x UTC; includes contributor PR #105)**. The user tags and publishes each (§7 step 7); tags `v0.36.0`, `v0.37.0`, `v0.38.0` are on origin (checked 2026-11-10); crates.io had 0.37.0 at 04:29 UTC, so ask once whether `cargo publish` of 0.38.0 is done. 0.38.0 went through four review rounds (rvrel38/, wf_224da1be-a8f, wf_54ad3715-c76): 18 → 9 → 5 → 2 findings, all fixed. |
 | Phase B | Done through **B10**. Next: **B11** (`b11-hops-comb`: M15 semicircle hops at crossings + B4 comb bundling / even hub port band), then **c-leftovers** (narrowed class/state spec; repro files restored from wsbackup/verify), then the wrap-up. |
 | B11 WIP | Started before the pause and cut off by a container restart: `backup/b11-hops-comb-wip` **662eea3** (also a local `git stash` in /home/user/flowmaid, gone if the container is new). It never passed verification. The workflow re-implements B11 from scratch; look at the WIP only for ideas. |
 | Work branch | `ccr-ccc6d89a-5cxd7e` = `dev` = **dc05e8c** (PR #109 main → dev merged 2026-11-10 03:27 UTC; contains main 56b0bdd = 0.38.0). Clean, nothing unpushed. The B11 WIP stash in /home/user/flowmaid is only a copy of `backup/b11-hops-comb-wip` 662eea3. |
-| Workflow | No run is active. Old run `wf_5b4ccf67-c1e` was lost in the restart; do **not** resume it. |
-| Hourly task | `trig_019VQH3TYG4ijXR8niHxK13z` **disabled** at the pause. Re-enable it (update_trigger enabled=true, rewrite its prompt for B11) or create a new one in a new session (§5). |
-| Contributor PR #105 | arifintahu, fixes #106 (a `\|` inside a double-quoted edge label). User chose to ship it in 0.38.0: merged into `release/0.38.0` as 003c2a7 (CHANGELOG entry under [0.38.0] › Fixed, credited); thank-you comment posted. PR #105 shows merged and #106 closes when PR #108 reaches `main` (check; close #106 by hand if it stays open). |
-| Follow-ups | §8 (large-graph perf package), §11 (c-polish candidates from the README review), and the 0.38.0 review notes in `rvrel38/` (fixcheck #4 done; nothing left open). |
+| Workflow | See **§0b** for the live run. Old runs `wf_513402ce-c52` and `wf_5b4ccf67-c1e` no longer exist; do **not** resume them. |
+| Hourly task | `trig_019VQH3TYG4ijXR8niHxK13z`, bound to session `session_01JGDFJkgB3ttBJtcTtc6aL5` (see §0b for whether it is enabled and its prompt). A NEW session must not re-enable it (it would wake the old session): delete it (delete_trigger) and create its own with the §5 template. |
+| Contributor PR #105 | arifintahu, fixes #106 (a `\|` inside a double-quoted edge label). User chose to ship it in 0.38.0: merged into `release/0.38.0` as 003c2a7 (CHANGELOG entry under [0.38.0] › Fixed, credited); thank-you comment posted. Done: PR #105 shows merged and issue #106 is closed. |
+| Follow-ups | §8 (large-graph perf package), §11 (c-polish candidates from the README review), and §11b (2 open items from the 0.38.0 reviews; review files in `rvrel38/`). New issues filed by the user on 2026-11-10 for hosts (flowcli): **#110** fallible `route` for class/ER, **#111** `route_partial` for ER/class/mindmap, **#112** hit-testing for mindmap/sequence/pie/journey/timeline/sankey, **#113** measure-aware `route_partial` + compact fold. Not scheduled yet: offer them to the user as a parallel track (non-flowchart modules, like c1-nonflow). |
 
 ### 0a. USER DECISION 2026-11-10 ~04:40 UTC — new package B12 "subgraphs as blocks", AFTER B11
 The user compared flowmaid 0.38.0 with mermaid 12.2 in the flowmaid-web playground on their private architecture diagram (`01-overview.mmd`, folder ARCHITECTURE-CURRENT; screenshots in the session) and said mermaid is "masih jauh lebih rapi". Diagnosis:
@@ -23,7 +23,14 @@ Decisions: **order = B11 → c-leftovers → release 0.39.0 → B12** ("Minggu d
 B12 sketch (write its spec into phaseB-continue.js before running): each subgraph laid out recursively as a block (members' internal edges only), blocks placed as single nodes in the parent layering with block-level cycle breaking (more out-edges → earlier), cross-block edges routed orthogonally between blocks with ports on block borders, labels near their edge's middle; keep route()/route_partial()/picking consistent and the drag budget; class/ER untouched; state composites follow the same rule (mermaid/ELK does). Measure on the corpus + a sanitized copy of the user's diagram (crossings, frame strikes, area, label-to-edge distance) against 0.38.0 and against mermaid renders.
 TODO with the user: ask for the text of `01-overview.mmd` (they did not paste it yet). It holds private infrastructure (IPs, domains): never commit it as is — commit only a copy with names/IPs replaced.
 
-**Resume next week (after the user's go):**
+### 0b. Live state after the 2026-11-10 resume (CURRENT)
+- `main` = b9e0ab9 (the user's README commit "crate link" on top of 0.38.0 56b0bdd); synced into dev by PR #114; work branch fast-forwarded to dev before B11 started (shas in HANDOFF.md).
+- Run: `phaseB-continue.js` with `{from: "b11-hops-comb", until: "c-leftovers", noWrap: true, note: …}` (run id and task id in HANDOFF.md's last lines). `until` / `noWrap` are new args (2026-11-10): this run ends after c-leftovers' push without the Wrap-up; B12 gets its own run later, from a work branch synced with dev, and that run does the Wrap-up.
+- PLAN.md's commit trailer is now `Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>` + the same Claude-Session line (the session's attribution reminder changed on 2026-11-10).
+- At `push:b11-hops-comb`: integrate B11 → dev (§10). At `push:c-leftovers`: integrate, release **0.39.0** (§7; `release/0.39.0` is covered by the user's "release at every big package"), main → dev, then fast-forward the work branch to dev (the run has ended), then B12.
+- B12: design/spec work goes to `<S>/b12/` (SPEC.md); add a `b12-blocks` entry to PKGS that points at it, then run `{from: "b12-blocks"}`.
+
+**Resume steps as written at the pause (kept for a new session; `<S>` = this workspace folder, rebuilt per §6 in a new session or container):**
 1. `cd /home/user/flowmaid && git fetch -q origin && git checkout ccr-ccc6d89a-5cxd7e && git merge --ff-only origin/dev` (push if it moved).
 2. `Workflow({scriptPath: "<S>/phaseB-continue.js", args: {from: "b11-hops-comb"}})` (in a fresh container: §6 first, and update `BR` / the commit trailer per §3).
 3. At `push:b11-hops-comb`, integrate B11 → dev (§10). c-leftovers runs next; at its push, integrate and release **0.39.0** = B11 + c-leftovers (§7).
@@ -32,13 +39,13 @@ TODO with the user: ask for the text of `01-overview.mmd` (they did not paste it
 
 Written 2026-11-04 by the session that ran phase B (CLI session `cac93b13…`, claude.ai `session_01JGDFJkgB3ttBJtcTtc6aL5`). §2 records the state at the pause and gets updated as the pause completes.
 
-> **Update 2026-11-09:** resumed. Live run `wf_5b4ccf67-c1e` (task `wyf69sgs1`, script phaseB-continue.js, `{from: "b8b-leftovers"}`): B8b (B8 leftovers) → B9 → B10 → B11 → c-leftovers. The hourly task is re-enabled. To resume after a restart in this session, use `Workflow({scriptPath: "<S>/phaseB-continue.js", resumeFromRunId: "wf_5b4ccf67-c1e"})`, and don't edit prompts before resuming.
+> **[HISTORICAL, superseded by §0/§0b; those runs no longer exist, the narrowed c-leftovers spec is already in phaseB-continue.js, do NOT stop a run after push:b11] Update 2026-11-09:** resumed. Live run `wf_5b4ccf67-c1e` (task `wyf69sgs1`, script phaseB-continue.js, `{from: "b8b-leftovers"}`): B8b (B8 leftovers) → B9 → B10 → B11 → c-leftovers. The hourly task is re-enabled. To resume after a restart in this session, use `Workflow({scriptPath: "<S>/phaseB-continue.js", resumeFromRunId: "wf_5b4ccf67-c1e"})`, and don't edit prompts before resuming.
 
-> **Update 2026-11-09 (parallel):** a second track runs on branch `ccr-ccc6d89a-5cxd7e-par` (worktree `<S>/wt/par`, script `phaseB-par.js`, run `wf_e7e056b0-fbb`, package `c1-nonflow`).
+> **[HISTORICAL, superseded by §0/§0b; those runs no longer exist, the narrowed c-leftovers spec is already in phaseB-continue.js, do NOT stop a run after push:b11] Update 2026-11-09 (parallel):** a second track runs on branch `ccr-ccc6d89a-5cxd7e-par` (worktree `<S>/wt/par`, script `phaseB-par.js`, run `wf_e7e056b0-fbb`, package `c1-nonflow`).
 > - Its CHANGELOG text is in `<S>/par/CHANGELOG-c1.md`; add it to CHANGELOG at the next release.
 > - The main track's c-leftovers was narrowed to class/state. Stop the main run after `push:b11-hops-comb`, then resume it with `resumeFromRunId` so the narrowed spec is picked up.
 
-> **0.36.0 released 2026-11-09:** `main` = `b2d6d0c` (PR #99, B8b + c1). The user tags `v0.36.0` and runs `cargo publish`. B9 is running; its PR to dev will conflict on CHANGELOG, so integrate it through branch `ccr-ccc6d89a-5cxd7e-par` (§10).
+> **[HISTORICAL, superseded by §0/§0b; those runs no longer exist, the narrowed c-leftovers spec is already in phaseB-continue.js, do NOT stop a run after push:b11] 0.36.0 released 2026-11-09:** `main` = `b2d6d0c` (PR #99, B8b + c1). The user tags `v0.36.0` and runs `cargo publish`. B9 is running; its PR to dev will conflict on CHANGELOG, so integrate it through branch `ccr-ccc6d89a-5cxd7e-par` (§10).
 
 ## 1. First five minutes: find out where things stand
 Run this as one Bash call:
@@ -47,7 +54,9 @@ cd /home/user/flowmaid && git fetch -q origin --tags && \
 git log --oneline -6 origin/dev && echo --- && git log --oneline -4 origin/ccr-ccc6d89a-5cxd7e && echo --- && \
 git ls-remote origin 'refs/heads/backup/*' 'refs/heads/release/*' && git tag -l 'v0.3*' && git status --short | head
 ```
-Then pick the matching path:
+**Expected (2026-11-10):** `origin/dev` and `origin/ccr-ccc6d89a-5cxd7e` at or after `dc05e8c`, tags through `v0.38.0`, `backup/b11-hops-comb-wip` = `662eea3`. Then follow **§0 / §0b**. If the work branch has commits that dev lacks, a package is in progress or stopped: read HANDOFF.md's last lines before running anything. **The A–D table below is HISTORICAL (the 2026-11-04 B8 pause); do not use it** — path A would re-run B9.
+
+Historical paths:
 
 | Situation | Path |
 |---|---|
@@ -78,7 +87,7 @@ Pass `note` instead of `resumeAt` when the B8 work looks unfinished. For context
 
 **D. B9 started by accident.** Save it (`git branch backup-b9-wip HEAD`, then push to `backup/b9-wip`). Reset the work branch to the B8 head, and follow A. The B9 attempt may be thrown away: the workflow re-implements B9 from scratch.
 
-## 2. State at the pause (final unless noted)
+## 2. State at the 2026-11-04 B8 pause (HISTORICAL, superseded by §0; do not act on it)
 | Thing | Value |
 |---|---|
 | 0.34.0 | `main` `dd7c591` (PR #92); tag `v0.34.0` and crates.io published by the user. |
@@ -89,7 +98,7 @@ Pass `note` instead of `resumeAt` when the B8 work looks unfinished. For context
 | Work branch | `ccr-ccc6d89a-5cxd7e` = dev = `9dc3292` (contains main `3430984` = 0.35.0). Clean, nothing unpushed. |
 | Backups | `backup/parity-workspace` (this folder) and `backup/b8-layering-wip` (now merged; can be deleted). The obsolete `backup/a1-class`, `backup/a1-class-wip` and `backup/a3-state` can go too (the user decides). |
 
-### 2a. Release 0.35.0 follow-through (filled in as it happens)
+### 2a. Release 0.35.0 follow-through (HISTORICAL)
 - PR #95 merged 2026-11-04 14:06 UTC → `main` = **`3430984`** (0.35.0).
 - Tag `v0.35.0` + `cargo publish`: **the user** does it (`git fetch origin && git tag -a v0.35.0 3430984 -m "flowmaid 0.35.0" && git push origin v0.35.0 && git checkout v0.35.0 && cargo publish`).
 - main → dev sync: **PR #96 merged** → `dev` = **`9dc3292`**; the work branch `ccr-ccc6d89a-5cxd7e` was fast-forwarded and pushed (= `9dc3292`). **So Monday is path A: start B9 from `9dc3292`.**
@@ -100,7 +109,7 @@ Pass `note` instead of `resumeAt` when the B8 work looks unfinished. For context
 - After every passing package: push the work branch, open a PR to `dev`, wait for green CI (test, msrv, wasm), merge with a merge commit and `expectedHeadSha`.
   - The workflow itself only pushes. The PR and merge come from the hourly task (§5) or are done by hand.
 - The user decides when the workflow stops and resumes (*"tunggu aba-aba aku"*).
-- Reply in Indonesian. No model names in commits, PRs or code.
+- Reply in Indonesian. No model names in commits, PRs or code, except the attribution trailer and PR footer the session's system reminder prescribes (copied into PLAN.md's commit rules).
 - Never lose flowmaid's differentiators (PLAN.md invariants):
   - interactive scene / route / route_partial / hit_test with drag speed;
   - fold, to_mermaid, advance;
@@ -109,14 +118,14 @@ Pass `note` instead of `resumeAt` when the B8 work looks unfinished. For context
 - **New session identity:**
   - *Commit trailer.* Use the attribution lines the new session's system reminder gives; they replace `Claude-Session: …session_01JGDFJkgB3ttBJtcTtc6aL5`. Also update the trailer line in `PLAN.md`, which every agent prompt cites. Editing PLAN.md does not touch the prompt text, so it is safe.
   - *Branch.* Push to the branch the new session designates. If it is not `ccr-ccc6d89a-5cxd7e`, create it from that branch, which carries all the history, and change `const BR = …` in `phaseB-continue.js`. PRs then go from the new branch to `dev`.
-  - *Pushing elsewhere.* release/* and backup/* need the user's explicit permission. It was granted for release/0.34.0, release/0.35.0 and backup/*.
+  - *Pushing elsewhere.* release/* and backup/* need the user's explicit permission. Granted so far: release/0.34.0, release/0.35.0, backup/*, and the integration branch `ccr-ccc6d89a-5cxd7e-par` (2026-11-09). release/0.36.0–0.38.0 were pushed under the §10 decision "release at every big package", which also covers release/0.39.0. Tags: never (the proxy refuses them; the user tags).
 
 ## 4. Running the workflow
 - **Fresh session or fresh container:** `Workflow({scriptPath: "<S>/phaseB-continue.js", args: {from: "<package>", pre?: "<sha>", resumeAt?: "verify", note?: "…"}})`.
-  - Package ids, in order: `b8-layering`, `b9-compound`, `b10-orthogonal`, `b11-hops-comb`, `c-leftovers`, then the wrap-up.
+  - Package ids, in order: `b8-layering`, `b8b-leftovers`, `b9-compound`, `b10-orthogonal` (all done), `b11-hops-comb`, `c-leftovers`, later `b12-blocks`, then the wrap-up. Args `until: "<pkg>"` and `noWrap: true` end a run early.
   - With no args it starts at b8, so always pass `from`.
   - Each package goes impl → verify → up to 4 fix rounds → push, or STOP with its commits left on the branch.
-- **Same container, old run:** `Workflow({scriptPath: "<S>/phaseB2.js", resumeFromRunId: "wf_513402ce-c52"})`. **Never edit `implPrompt`, `verifyPrompt` or `COMMON` before a resume** (they are the cache key). Prefer `phaseB-continue.js` after the pause, because its `pre` is the current HEAD.
+- **Resuming:** no old run can be resumed (`wf_513402ce-c52` ended at the B8 pause; `wf_5b4ccf67-c1e` was lost in the 2026-11-10 restart). Only a run started by this same session can be resumed with `resumeFromRunId: "<its id>"`, and never edit `implPrompt`, `verifyPrompt`, `COMMON` or `PKGS` before that. After a new session or container, use `{from: "<pkg>", pre: "<sha before the package>", resumeAt: "verify"}` when that package's commits are already on the branch.
 - **Stopping cleanly after a package:** the script starts the next package seconds after the push. To pause, watch the run's journal for `"label":"push:<pkg>"` and stop the task at once. If needed, finish the push by hand (`git push -u origin <branch>`). Path D covers a late stop.
 - **Back up WIP** to `backup/<pkg>-wip` at each fix-round commit if the container might go away.
 
@@ -135,16 +144,16 @@ mkdir -p "$NEW" && cp -a "$TMP/ws/." "$NEW/" && cd "$NEW" && \
 grep -rlI "$OLD" --exclude-dir=.git . | xargs sed -i "s#$OLD#$NEW#g" && \
 (cd mm && npm install --silent) && \
 (rustup toolchain list | grep -q 1.75 || rustup toolchain install 1.75) && rustup target add wasm32-unknown-unknown && \
-echo READY
+chmod +x "$NEW"/tools/*.sh && echo READY
 ```
 Then run `"$NEW/tools/guard.sh" /home/user/flowmaid`. It must print `GUARD: ALL GREEN` on the branch you start from.
 
 Notes:
 - Playwright and Chromium are preinstalled; never reinstall them.
-- The sed leaves about 24 tracked files modified in `$NEW`. That is fine, and is also fine if the backup is pushed again from there.
+- The sed leaves about 40 tracked files modified in `$NEW` (39 on 2026-11-10). That is fine, and is also fine if the backup is pushed again from there.
 - Check disk with `df`: each cargo `target/` is 1.5–2 GB. Delete old ones when less than 3 GB is free.
 
-## 7. Release procedure (as done for 0.34.0; next: 0.35.0)
+## 7. Release procedure (as done for 0.34.0–0.38.0; next: 0.39.0)
 1. **Branch.** Make a worktree `release/X` from `origin/dev` (dev contains main since PR #93). Check that main is an ancestor: `git merge-base --is-ancestor origin/main origin/dev`.
 2. **Version.** `Cargo.toml` and `Cargo.lock` → X. Keep `exclude = ["docs/img/"]`.
 3. **CHANGELOG.** Rename `## [Unreleased]` to `## [X] - date`, add a new empty `## [Unreleased]` above it, and add a `### Highlights` list at the top of `[X]`.
@@ -161,7 +170,7 @@ Notes:
 8. **Sync back.** Open a PR `main` → `dev` (or the user does it, as with #93), then fast-forward the work branch.
 
 ## 8. Open items and follow-ups (do not forget)
-1. **Phase B:** B8 (if not done), then B9 compound layout (subgraph/composite `direction LR`, P0 #10), B10 all-orthogonal static edges (biggest visual factor), B11 crossing hops + comb bundling, c-leftovers (non-flowchart verifier leftovers, HANDOFF §4), and the wrap-up.
+1. **Phase B (B8–B10 done, 0.35.0–0.38.0; left: B11, c-leftovers, 0.39.0, B12, wrap-up). Original list:** B8 (if not done), then B9 compound layout (subgraph/composite `direction LR`, P0 #10), B10 all-orthogonal static edges (biggest visual factor), B11 crossing hops + comb bundling, c-leftovers (non-flowchart verifier leftovers, HANDOFF §4), and the wrap-up.
 2. **Large-graph performance package.** The user knows about it; not yet scheduled. 1,000-node dense synthetic graphs take about 3.3 s versus 1.8 s before phase B; corpus diagrams take 0.04–48 ms. The README states this honestly. Propose it after phase B.
 3. **Watch for quadratic code in new packages.** The B7 hub-label regression (6.5 s on a 1,000-edge labelled fan) was caught only by a wall-clock test that barely passed. After each package, time a 1,000-edge labelled fan (`python3 -c "print('flowchart TB'); [print(f'  H -->|label {i}| T{i}') for i in range(1000)]"`) and the 1,000-node synthetic graph against the previous release.
 4. `scene::tests::colliding_label_placement_stays_near_linear` (debug, 20 s limit) takes about 2.3 s on branches that contain 9c62b27. A branch without that fix (B8 WIP before the dev merge) takes 16–26 s and may fail under load. That is not B8's fault; merge dev in.

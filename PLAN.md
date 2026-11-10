@@ -55,6 +55,6 @@ Inputs (read the parts relevant to your work package):
 ## Commit rules
 - Commit only when guard is green. Clear message: what/why, which report items (e.g. "Q1+M1"), which snapshots/gates changed and why.
 - End every commit message with exactly these two lines (after a blank line):
-  Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+  Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
   Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
 - Never push. Never rewrite history that is not your own work package's. Never mention model names in code/commits beyond that trailer.

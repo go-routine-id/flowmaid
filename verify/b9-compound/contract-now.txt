@@ -1,0 +1,23 @@
+state.mmd: nodes 15 edges 14 subs 2 | scene 535x873 |  | frame mismatches partial/full 0 | bad 0
+r1-nodir-iso.mmd: nodes 5 edges 2 subs 2 | scene 138x512 |  | frame mismatches partial/full 0 | bad 0
+r2-state-nodir-lr.mmd: nodes 6 edges 3 subs 2 | scene 604x148 |  | frame mismatches partial/full 0 | bad 0
+r3-member-own.mmd: nodes 4 edges 2 subs 2 | scene 154x428 |  | frame mismatches partial/full 0 | bad 0
+r4-state-linkin.mmd: nodes 6 edges 4 subs 2 | scene 178x608 |  | frame mismatches partial/full 12 | bad 6
+r5-edge-to-nested.mmd: nodes 5 edges 2 subs 2 | scene 193x588 |  | frame mismatches partial/full 0 | bad 0
+x1-hub-labels-back.mmd: nodes 8 edges 9 subs 3 | scene 917x425 |  | frame mismatches partial/full 0 | bad 0
+x2-nested-in-plain.mmd: nodes 7 edges 3 subs 3 | scene 698x398 |  | frame mismatches partial/full 0 | bad 6
+x3-sibling-blocks.mmd: nodes 8 edges 4 subs 3 | scene 431x565 |  | frame mismatches partial/full 0 | bad 0
+x4-state-rich.mmd: nodes 16 edges 14 subs 4 | scene 847x755 |  | frame mismatches partial/full 0 | bad 113
+x5-bt-rl.mmd: nodes 9 edges 7 subs 3 | scene 872x358 |  | frame mismatches partial/full 0 | bad 0
+x6-nested-blocks-state.mmd: nodes 12 edges 7 subs 4 | scene 822x550 |  | frame mismatches partial/full 0 | bad 0
+subgraph.mmd: nodes 8 edges 8 subs 0 | scene 382x758 |  | frame mismatches partial/full 0 | bad 74
+advanced.mmd: nodes 14 edges 16 subs 4 | scene 596x1236 |  | frame mismatches partial/full 0 | bad 232
+fork-twins.mmd: nodes 27 edges 25 subs 7 | scene 2094x1153 |  | frame mismatches partial/full 76 | bad 395
+near-drag.mmd: nodes 8 edges 6 subs 2 | scene 796x229 |  | frame mismatches partial/full 0 | bad 0
+nested-composite.mmd: nodes 26 edges 29 subs 6 | scene 1895x892 |  | frame mismatches partial/full 116 | bad 1025
+routed-around.mmd: nodes 17 edges 16 subs 9 | scene 1504x540 |  | frame mismatches partial/full 36 | bad 98
+spread-bottom.mmd: nodes 30 edges 27 subs 11 | scene 1998x893 |  | frame mismatches partial/full 68 | bad 422
+spread-face.mmd: nodes 36 edges 35 subs 13 | scene 992x2370 |  | frame mismatches partial/full 280 | bad 1423
+straight-link.mmd: nodes 9 edges 6 subs 4 | scene 368x733 |  | frame mismatches partial/full 0 | bad 0
+wide-frames.mmd: nodes 19 edges 15 subs 10 | scene 897x1396 |  | frame mismatches partial/full 64 | bad 85
+TOTAL BAD 3879

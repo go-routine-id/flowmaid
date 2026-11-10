@@ -156,6 +156,7 @@ Fix each item that is local and in proportion, with a regression test each. Skip
   - Parity: in state diagrams, mermaid lays out a composite without its own \`direction\` top-down whatever the diagram's direction, but flowmaid inherits the diagram's direction. Match mermaid if local.
   - A block is ordered after sibling nodes created before its first member, whatever the declaration order. Follow declaration order as mermaid does, if local.
   - A block's proxy widens its layer for sibling subgraphs (bulk f114, f259). Reduce it if in proportion.
+  - For these two block-placement items: a later package (B12, "subgraphs as blocks") reworks how every subgraph is placed, so do them only where the fix is small and local to today's code; otherwise skip them with that reason (a legitimate skip).
   - Nit: in src/compound.rs, \`let (labels, sizes) = …; let _ = labels;\` should become \`let (_, sizes) = …\`.
   - Also delete the dead \`layout::wrap_text\` / \`lines_at\` and \`wrap::RETIRED_GREEDY_WRAP\` (no callers since c1-nonflow).
 Flowchart output must not change in this package unless a state fix needs it, justified.` },
@@ -191,15 +192,19 @@ verdict = "pass" only if guard is green, perf within budget, no blocking problem
 // args: { from: 'b8-layering',            first package to run (earlier ones are already merged into dev)
 //         pre: '<full sha>',               optional: the branch head before `from` started (when its commits already exist)
 //         resumeAt: 'impl' | 'verify',     optional: 'verify' skips the first package's implementation (its commits are on the branch)
-//         note: '...' }                     optional: context for the first package (what an earlier attempt left behind)
+//         note: '...',                      optional: context for the first package (what an earlier attempt left behind)
+//         until: 'c-leftovers',            optional: last package to run (default: the last in PKGS)
+//         noWrap: true }                    optional: skip the Wrap-up phase (a later run finishes phase B)
 const A = (args && typeof args === 'object') ? args : {}
 const FROM = A.from || 'b8-layering'
 const startIdx = PKGS.findIndex(p => p.id === FROM)
 if (startIdx < 0) return { error: `unknown package ${FROM}` }
+const endIdx = A.until ? PKGS.findIndex(p => p.id === A.until) : PKGS.length - 1
+if (endIdx < startIdx) return { error: `unknown or earlier package in until: ${A.until}` }
 const results = PKGS.slice(0, startIdx).map(p => ({ id: p.id, status: 'kept (earlier run, merged into dev)' }))
 phase('Packages')
 let first = true
-for (const pk of PKGS.slice(startIdx)) {
+for (const pk of PKGS.slice(startIdx, endIdx + 1)) {
   let preSha = first && A.pre ? A.pre : null
   if (!preSha) {
     const pre = await agent(`Run \`git -C ${REPO} rev-parse HEAD\` and \`git -C ${REPO} status --short | head\`. Return the full sha. If the working tree has uncommitted changes, report them in nothing but the sha field prefixed with "DIRTY:" followed by the sha. Do nothing else.`, { label: `pre:${pk.id}`, phase: 'Packages', schema: SHA, effort: 'low' })
@@ -232,6 +237,7 @@ for (const pk of PKGS.slice(startIdx)) {
   log(`${pk.id}: ${results[results.length - 1].status}`)
 }
 
+if (A.noWrap) return { results, wrap: 'skipped (noWrap): a later run finishes phase B' }
 phase('Wrap-up')
 const wrap = await agent(`Final check of flowmaid phase B in ${REPO} (branch ${BR}). ${COMMON}
 Package outcomes: ${JSON.stringify(results.map(r => ({ id: r.id, status: r.status })))}

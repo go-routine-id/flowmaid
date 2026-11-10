@@ -1,0 +1,15 @@
+flowchart LR
+n1
+n2
+n3
+subgraph S0
+n0[Node 0]
+n4[Node 4]
+n0 --> n4
+end
+subgraph S1
+direction RL
+end
+n3 --> n0
+n0 -->|lbl| S0
+n3 -->|lbl| n1

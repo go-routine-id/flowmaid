@@ -1,0 +1,14 @@
+flowchart LR
+  A --> s1
+  subgraph s1 [Up]
+    direction BT
+    p1 --> p2 --> p3
+    p3 --> p1
+  end
+  s1 --> s2
+  subgraph s2 [Back]
+    direction RL
+    q1 --> q2 --> q3 --> q4
+  end
+  s2 --> B
+  A --> B

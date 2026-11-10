@@ -1,0 +1,25 @@
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Work : start
+  Retry --> Work
+  state Work {
+    direction LR
+    [*] --> Load
+    Load --> Check : loaded
+    state Check <<choice>>
+    Check --> Run : ok
+    Check --> Fail : bad
+    state fk <<fork>>
+    Run --> fk
+    fk --> T1
+    fk --> T2
+    state jn <<join>>
+    T1 --> jn
+    T2 --> jn
+    jn --> [*]
+    Fail --> [*]
+    note right of Load : reads input
+  }
+  Work --> Done : finished
+  Work --> Retry : error
+  Done --> [*]

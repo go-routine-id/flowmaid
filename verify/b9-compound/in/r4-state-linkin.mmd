@@ -1,0 +1,10 @@
+stateDiagram-v2
+  [*] --> Idle
+  state P {
+    direction LR
+    a --> b
+    b --> c
+  }
+  Idle --> P
+  Idle --> b
+  P --> Done

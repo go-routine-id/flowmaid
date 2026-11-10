@@ -1,0 +1,8 @@
+flowchart TB
+  S[Source] --> s
+  S --> Q[Other]
+  subgraph s [Block]
+    a --> b --> c
+  end
+  s --> T[Sink]
+  Q --> T

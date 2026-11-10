@@ -1,0 +1,26 @@
+flowchart LR
+n1
+n2
+n5
+subgraph S0
+subgraph S1
+direction TB
+n3[Node 3]
+n6[Node 6]
+n7[Node 7]
+n7 --> n6
+n3 --> n7
+subgraph S2
+direction LR
+n0[Node 0]
+n4[Node 4]
+n0 --> n4
+n0 --> n4
+end
+end
+end
+subgraph S3
+end
+n2 --> n1
+n4 --> n0
+S0 --> n1

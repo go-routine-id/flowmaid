@@ -1,0 +1,24 @@
+flowchart LR
+subgraph S0
+n0[Node 0]
+n6[Node 6]
+n6 --> n0
+subgraph S1
+n2[Node 2]
+n4[Node 4]
+n4 --> n2
+end
+end
+subgraph S2
+n1[Node 1]
+end
+subgraph S3
+n3[Node 3]
+n5[Node 5]
+n7[Node 7]
+n8[Node 8]
+n7 --> n3
+n7 --> n5
+n5 --> n7
+end
+S3 -->|lbl| S2

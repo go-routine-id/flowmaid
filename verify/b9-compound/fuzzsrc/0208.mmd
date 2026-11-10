@@ -1,0 +1,19 @@
+flowchart BT
+subgraph S0
+n0[Node 0]
+n1[Node 1]
+n2[Node 2]
+n3[Node 3]
+n4[Node 4]
+n5[Node 5]
+n6[Node 6]
+n2 --> n5
+n4 --> n3
+n5 --> n4
+n5 --> n0
+n4 --> n0
+n3 --> n5
+end
+n3 --> n5
+S0 --> n2
+S0 --> n1

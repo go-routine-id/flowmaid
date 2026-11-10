@@ -1,0 +1,8 @@
+%% Example: input validation flow (with a cycle E -> B)
+flowchart TD
+    A([Start]) --> B[Read input]
+    B --> C{Valid?}
+    C -->|yes| D[Process data]
+    C -->|no| E[Show error]
+    E --> B
+    D ==> F((Done))

@@ -1,0 +1,29 @@
+stateDiagram-v2
+direction TB
+n1
+n9
+state S0 {
+n0
+n6
+n6 --> n0
+n6 --> n0
+}
+state S1 {
+direction BT
+n2
+n3
+n4
+n5
+n7
+n8
+n7 --> n8
+n4 --> n8
+n3 --> n2
+n8 --> n2
+n4 --> n3
+n2 --> n8
+}
+n3 --> S0
+n8 --> n0
+n7 --> n2
+n4 --> n0

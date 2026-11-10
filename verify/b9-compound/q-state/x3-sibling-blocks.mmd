@@ -1,0 +1,16 @@
+flowchart TB
+  classDef hot fill:#fdd,stroke:#c00,stroke-width:3px
+  S((Start)) --> s1
+  subgraph s1 [First]
+    direction LR
+    a1[Alpha] --> a2{Gate} --> a3([Beta]):::hot
+  end
+  subgraph s2 [Second]
+    direction RL
+    b1[One] e1@--> b2[Two] --> b3[Three]
+  end
+  s1 -->|hand over| s2
+  s2 --> E((End))
+  e1@{ curve: linear }
+  linkStyle 1 stroke:#0a0,stroke-width:4px
+  linkStyle 4 stroke:#00f,stroke-dasharray:5 5

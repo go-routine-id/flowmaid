@@ -1,0 +1,33 @@
+stateDiagram-v2
+direction RL
+n2
+n4
+n5
+n8
+state S0 {
+direction RL
+n3
+n9
+n11
+state S2 {
+state S3 {
+direction TB
+n1
+n7
+n10
+n1 --> n10
+n7 --> n10
+n10 --> n1
+}
+}
+}
+state S1 {
+direction TB
+n0
+n6
+n12
+n13
+n6 --> n12
+n6 --> n13
+}
+n0 --> n1

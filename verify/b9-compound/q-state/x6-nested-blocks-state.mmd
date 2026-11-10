@@ -1,0 +1,19 @@
+stateDiagram-v2
+  direction LR
+  [*] --> Outer
+  state Outer {
+    direction TB
+    [*] --> In1
+    In1 --> Inner
+    state Inner {
+      direction LR
+      [*] --> d1
+      d1 --> d2
+      d2 --> d3
+      d3 --> [*]
+    }
+    Inner --> In2
+    In2 --> [*]
+  }
+  Outer --> Final
+  Final --> [*]
