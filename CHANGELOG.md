@@ -7,6 +7,110 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Flowchart and state edges are drawn on the axes, with rounded corners**
+  (report §2.1, B1, M2, M5, P0 #14), as mermaid 12.2's ELK renderer draws
+  them, where they were S-shaped cubics, bowed twins and splines through a
+  long edge's dummies. A new stage (`ortho`) runs after the ports are
+  placed and before the router: an edge between adjacent ranks is a Z (an
+  L into a side port) whose step runs across the gap, its label on that
+  run; a long edge runs down its layout column, straightened within the
+  room its dummies leave (21 px off a box, frame border, label or self-loop
+  beside it, half way to the next column), stepping across a gap only
+  where that room moves; a labelled twin bulges clear of its twin's line
+  where the two would run together — unless the bulge would sweep across
+  another end on its side or leave a composite holding both ends, when it
+  is drawn plain and its label goes onto its own line, off its twin's; a
+  straight edge stays a straight cubic. Each gap's steps sit on tracks a
+  pitch apart (12.5 px, 6.5 px in a gap too shallow for that), ordered as
+  libavoid orders a channel so their turns do not cross (a labelled fan's
+  steps go under their labels when the room above them cannot hold that
+  order at the least pitch, rather than two sharing a track); the steps of a
+  fan going either way from a node fork apart on their own tracks, a step
+  that carries its label keeps the label's half and its gap off the
+  tracks beside it, and a step whose legs would cross a curve the stage
+  leaves (a note card's link) or another step moves to the nearest place
+  in its room that crosses fewest. In the static scene, two ends of one
+  side whose paths still cross each other twice swap places (an L round
+  the outside of a Z off the same side), and an end lying between a note
+  card's link and its card goes to the link's other side, each kept only
+  when the edges it changes cross fewer lines. A breadth side whose starts
+  would run along their own row through a box (a `<<choice>>` fan spilled
+  round the diamond's corners, past the note cards beside it) leaves on
+  stubs planned nested by their order along the flow and steps in the gap
+  instead (the channel nudge may still order two such steps by where their
+  far ends turn when one of them is rerouted: bench-75's `svc1 --> queue`
+  and `svc1 --> db` cross once either way, and the nudge puts that
+  crossing under `svc1`). A long run in `route()` steps in the gap whose legs cross the
+  fewest lines. The layout grows a gap by the
+  tracks its steps need (two at the plain gap, one more per further step
+  one way). A state composite's edge to one of its own states leaves the
+  composite's border from inside, straight into the state. `route()` and
+  the drag path (`route_partial`) draw the same idiom; an end a drag holds
+  on a hub starts where the base had it even across sides, so the redrawn
+  step matches the kept ones, and a single cubic that a later spacing
+  slid a few px off its line (a choice's two ends spread, a drag frame
+  respacing a kept end) is squared again — straight under a px, else a Z.
+  A corner whose rounding point a moved end slid away from or dropped (the
+  spline swept such a corner over up to 1 600 px: bench-75's `svc6 -->
+  ext`) gets it back, 14 px from the corner. Past the router's 400-edge
+  cap, where the router and its nudge leave a drawing as built, the
+  builders' curves stay too (a 531-edge chart's `route()` 25.7 -> 2.6 ms).
+  The path comes as `SceneEdge::waypoints` (each corner flanked by points
+  14 px either side, which the painter's spline turns through as a curve
+  of about 8 px radius), `bezier` the chord through its corners, so
+  pick == render as before. Explicit `curve:` / `linkStyle … interpolate`,
+  state note card links, self-loops, back-edge lanes, invisible `~~~`
+  links and class / ER scenes are unchanged (class and ER output is
+  byte-identical). The router weighs a lateral run as `route()` does in
+  the static scene too (`H_WEIGHT` 1.0), prices a forward edge's run
+  along a node's flank, takes a second pass over pairs still drawn on top
+  of each other, searches a way round for a static unlabelled edge
+  crossing four or more others — and, in both modes, for an edge crossing
+  a note card's link out of a node it shares (in the static scene also one
+  crossing an edge out of a node it shares twice) — and the static reorder (G9) compares two
+  squared paths off one side over their whole corners, so a fan's Ls
+  turning the same way nest. The ports stage steers a Z or an L by the
+  chord through its corners and slides an end's leg along with it (an end
+  moved round a diamond's corner no longer kinks back to its old line),
+  settles a side whose ends all hold finished square paths (a second pass
+  leaves a 24-end hub as drawn), and puts an end heading into its own
+  frame at the end of the side it lies at; the label stage keeps a long
+  edge's label in its dummy's slot when the edge runs straight, restacks a
+  compact branch point's fan whose labels crowd each other, and a
+  nearly-on label lands on its new line. Two-point straight paths are
+  drawn as straight cubics; an end sunk into a drum's lid along an axis is
+  brought back to its outline. A path's rounded corners are sampled with
+  a few chords (its legs as lines) for hit-testing and the label stage,
+  which keeps the static scene within 1.7x its pre-B10 time on the corpus.
+  Measured over the 14 corpus drawings against 0.35.0 (static | routed):
+  defects 57 | 90 -> 47 | 46, S-cubics 92 | 112 -> 0 | 0, splines 23 | 24
+  -> 0 | 0, bows 2 | 2 -> 0 | 0, end kinks 74 | 94 -> 2 | 1, edges on a
+  frame border 11 | 20 -> 0 | 7, drawn crossings 499 | 504 -> 428 | 494
+  (bench-75 349 | 375 -> 302 | 361, fanout-frames 3 | 3 -> 0 | 1,
+  dense-td 92 | 73 -> 80 | 83); bench-75 defects 5 | 27 -> 4 | 1. Over 964
+  generated state diagrams: drawn crossings 762 | 1 021 -> 712 | 826,
+  defects 633 | 558 -> 616 | 537, pairs of edges out of one node crossing
+  each other twice 20 | 17 -> 14 | 16, edges through a node 45 | 55 -> 32
+  | 39; over 303 generated flowcharts: crossings 2 902 | 2 988 -> 2 874 |
+  2 775, defects 404 | 331 -> 87 | 91. Known costs: parallel cables (a
+  channel's tracks, a fan's bundled stubs) 97 | 107 -> 128 | 143 pairs
+  on the corpus; bench-75's static crossings still above mermaid's 222
+  (its layout's node order bounds them); one more edge-frame pair there
+  (`alerts -> gw`'s lane over the top through `app`); dense-lr's LR fan
+  labels over a neighbouring step (static label-over-line 1 -> 5);
+  dense-td's `route()` crossings 73 -> 83; plain twins' labels over a line
+  in narrow composites; and on bench-75 `route()` takes `job1 -> svc1`'s
+  lane round the other side from the static layout (its planner reads gap
+  depths in px); a 1 px drag throws one more unrelated end on dense-td
+  and on bench-75 (the re-rounded corners change where the ports stage
+  reads a kept path heading). Static `scene()` takes 1.4-1.7x its time
+  from before this release's layout and edge work on the small corpus
+  drawings (fastest of interleaved runs; advanced 2.0x, its labels,
+  ports and nudge over 18 squared paths); `route()` and drags take less
+  than before on the large ones (bench-75 drag 20.2 -> 13.0 ms).
+
 ## [0.37.0] - 2026-11-09
 
 ### Highlights
