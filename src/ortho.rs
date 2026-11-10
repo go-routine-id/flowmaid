@@ -2337,8 +2337,8 @@ mod tests {
             assert!(sc.edges.len() > crate::router::ROUTE_MAX_EDGES);
             // Nor does the layout grow the gap for tracks no edge takes:
             // the rows sit the plain gap apart (0.37.0's depth), not the
-            // 2 650 px the busiest point's 210 tracks would take on the
-            // axes.
+            // 2 650 px (`flat`, 210 tracks at the busiest point) or
+            // 2 525 px (`boxed`, 200) the axes would take.
             let row_gap = {
                 let span = |p: &str| {
                     sc.nodes

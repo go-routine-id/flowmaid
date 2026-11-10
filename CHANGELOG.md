@@ -111,11 +111,12 @@ or changed.
   14 px either side, or half the shorter adjoining leg where a leg is
   under 28 px, which the painter's spline turns through as a curve of
   about 8 px radius, tighter at such a corner), `bezier` only a fallback
-  whose controls only roughly follow the path (a cubic between its ends,
-  its controls where the axis stage put the first and last corners, or
-  the straight line between the ends for an edge the router, its nudge or
-  its spacing pass redrew; rely on its ends only), so pick == render as
-  before. Explicit
+  whose controls only roughly follow the path (its controls where the
+  axis stage put the first and last corners, or a straight line for an
+  edge the router, its nudge or its spacing pass redrew; its ends on the
+  end nodes' outlines, usually but not always at the path's ends, so a
+  host reads the drawn ends from `waypoints[0]` and `waypoints.last()`),
+  so pick == render as before. Explicit
   `curve:` / `linkStyle … interpolate`, state note card links,
   self-loops, invisible `~~~` links and class / ER scenes are unchanged
   (class and ER output is byte-identical). Back-edge lanes are not

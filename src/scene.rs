@@ -146,10 +146,14 @@ pub struct SceneEdge {
     /// redraws (one with its own `curve`, an ER edge the router leaves as
     /// built, any such edge in a drawing past the router's 400-edge cap,
     /// counted per part a `direction` lays out on its own).
-    /// With `waypoints` set it is only a fallback that does not follow
-    /// the path. The ends lie on the node borders; on a forward, side-by-side or nested
-    /// curve the controls lie on the sides' normals, so a head drawn
-    /// along the end tangent points square in.
+    /// Such a curve's ends lie on the node borders; on a forward,
+    /// side-by-side or nested curve the controls lie on the sides'
+    /// normals, so a head drawn along the end tangent points square in.
+    /// With `waypoints` set it is only a fallback whose controls roughly
+    /// follow the path, its ends on the end nodes' outlines but not
+    /// always at the path's ends (a fork-to-join edge, or an end a later
+    /// stage moved, can sit tens of px along the side): read the drawn
+    /// ends and end tangents from `waypoints`.
     /// flowmaid's own SVG ends a curve still turning there in a straight
     /// run along that tangent, bending into it within a px of this curve
     /// outside the arrowhead, and stops the stroke under its arrowhead.
