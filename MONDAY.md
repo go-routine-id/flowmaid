@@ -1,6 +1,6 @@
 # flowmaid: resuming on Monday (START HERE)
 
-> **Ringkasan (ID) — DILANJUTKAN 2026-11-10 ~15:10 UTC (yang berlaku sekarang):** user bilang "mari kita lanjutkan saja!", jadi jeda dibatalkan dan fase B jalan lagi di sesi yang sama. Urutan: **B11 → c-leftovers → rilis 0.39.0 → B12 (subgraph sebagai blok, §0a)**. Keadaan terkini ada di **§0** dan **§0b**; bagian lain yang bertanda HISTORICAL jangan diikuti. Semua bahan kerja ada di branch `backup/parity-workspace` (folder ini).
+> **Ringkasan (ID) — DILANJUTKAN 2026-11-10 ~15:10 UTC (yang berlaku sekarang):** user bilang "mari kita lanjutkan saja!", jadi jeda dibatalkan dan fase B jalan lagi di sesi yang sama. Lalu user minta **rilis di setiap fase** ("mohon rilis aja di setiap fase ya!", 2026-11-10 ~16:25 UTC). Urutan: **B11 → rilis 0.39.0 → c-leftovers → rilis 0.40.0 → B12 (subgraph sebagai blok, §0a) → rilis 0.41.0**. Keadaan terkini ada di **§0** dan **§0b**; bagian lain yang bertanda HISTORICAL jangan diikuti. Semua bahan kerja ada di branch `backup/parity-workspace` (folder ini).
 
 ## 0. State at the 2026-11-10 pause (CURRENT — read this first)
 | Thing | Value |
@@ -27,7 +27,7 @@ TODO with the user: ask for the text of `01-overview.mmd` (they did not paste it
 - `main` = b9e0ab9 (the user's README commit "crate link" on top of 0.38.0 56b0bdd); synced into dev by PR #114 → `dev` = work branch = `0366084` when B11 started. Hourly task `trig_019VQH3TYG4ijXR8niHxK13z` is **enabled** with the B11 → c-leftovers → 0.39.0 → B12 prompt. B12 test input: `<S>/b12/in/infra-overview.mmd` (sanitized analog of the user's diagram).
 - Run: **`wf_5d440b00-741`** (task `w3le898zw`, started 2026-11-10 15:11 UTC, pre = `0366084`): `phaseB-continue.js` with `{from: "b11-hops-comb", until: "c-leftovers", noWrap: true, note: …}`. Same-session resume: `Workflow({scriptPath: "<S>/phaseB-continue.js", resumeFromRunId: "wf_5d440b00-741"})` with the same args and unedited prompts. `until` / `noWrap` are new args (2026-11-10): this run ends after c-leftovers' push without the Wrap-up; B12 gets its own run later, from a work branch synced with dev, and that run does the Wrap-up.
 - PLAN.md's commit trailer is now `Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>` + the same Claude-Session line (the session's attribution reminder changed on 2026-11-10).
-- At `push:b11-hops-comb`: integrate B11 → dev (§10). At `push:c-leftovers`: integrate, release **0.39.0** (§7; `release/0.39.0` is covered by the user's "release at every big package"), main → dev, then fast-forward the work branch to dev (the run has ended), then B12.
+- **USER DECISION 2026-11-10 ~16:25 UTC: "mohon rilis aja di setiap fase ya!" — every package that passes is released on its own** (this replaces "0.39.0 = B11 + c-leftovers" in §10): at `push:b11-hops-comb` integrate B11 → dev (§10) and release **0.39.0** = B11 while c-leftovers runs (never touch the work branch then); at `push:c-leftovers` integrate (its CHANGELOG conflicts after the release: use the `-par` branch), release **0.40.0** = c-leftovers, main → dev, fast-forward the work branch to dev (the run has ended); then B12 → release **0.41.0** (if the spec splits B12 in two, release after each part). release/* pushes are covered by this decision. The user tags and publishes each.
 - B12: design workflow **`wf_42b526a2-23d`** (task `wv2yr8abg`, script `<S>/b12/b12-design.js`, started 2026-11-10 15:25 UTC, parallel to B11, read-only on the worktree `<S>/b12/tree`) writes `<S>/b12/understand-*.md`, `<S>/b12/metrics/`, `<S>/b12/design-*.md` and `<S>/b12/SPEC.md`. When SPEC.md is final and 0.39.0 is out: add a `b12-blocks` entry to PKGS that points at it (the workflow returns a `pkg_spec` text), then run `{from: "b12-blocks"}`. `<S>/b12/private/` holds the user's real screenshots: never copy it to wsbackup or the repo.
 
 **Resume steps as written at the pause (kept for a new session; `<S>` = this workspace folder, rebuilt per §6 in a new session or container):**
@@ -201,7 +201,7 @@ Notes:
 | `README.md` | Old restore notes; superseded by §6. |
 
 ## 10. Release at every big package (user decision 2026-11-09)
-Plan: **0.36.0** = B8b + c1-nonflow (whichever is in dev), **0.37.0** = B9, **0.38.0** = B10, **0.39.0** = B11 + c-leftovers. The user tags and runs `cargo publish` for each.
+Plan: **0.36.0** = B8b + c1-nonflow (whichever is in dev), **0.37.0** = B9, **0.38.0** = B10 (all released). From 2026-11-10 on the user wants a release at EVERY phase: **0.39.0** = B11, **0.40.0** = c-leftovers, **0.41.0** = B12 (see §0b). The user tags and runs `cargo publish` for each.
 
 **Boundary procedure (revised 2026-11-09 03:00 UTC — never stop the main run).**
 When a package's push lands on `origin/ccr-ccc6d89a-5cxd7e`, the hourly task (or I) do the following. Meanwhile the main workflow simply continues with the next package.
