@@ -7,6 +7,43 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.38.0] - 2026-11-10
+
+### Highlights
+
+Flowchart parity phase B: B10, edges on the axes. No public API is removed
+or changed.
+
+- **Flowchart and state edges are drawn on the axes, with rounded corners,**
+  as mermaid 12.2's ELK renderer draws them, where they were S-shaped
+  curves, bowed twins and splines. An edge between adjacent ranks is a Z
+  (an L into a side) stepping across the gap, its label on the step, or
+  on the straight run into the target where the gap has room for the step
+  between the source and the label; a long edge runs down its layout
+  column; the steps in one gap sit on their own tracks, ordered so their
+  turns cross as little as possible. A straight edge stays straight; an
+  edge with an explicit `curve:` / `linkStyle … interpolate`, note links
+  and self-loops keep their curves, as does every edge of a drawing with
+  more than 400 edges (past the router's cap); back-edge lanes (on the
+  axes already) are unchanged, and class and ER output is byte-identical.
+- **Dragging keeps the look.** `route()` and `route_partial()` draw the
+  same idiom; hosts get the path as `SceneEdge::waypoints` with rounded
+  corners, and picking follows it.
+- **Cleaner drawings.** Over the 14 corpus drawings (static | routed):
+  S-shaped curves 92 | 112 -> 0 | 0, defects 57 | 90 -> 47 | 46, drawn
+  crossings 499 | 504 -> 428 | 494; over 303 generated flowcharts defects
+  404 | 331 -> 87 | 91. Known costs are listed under Changed (parallel
+  cables on the corpus 97 | 107 -> 128 | 143 pairs, some LR fan labels
+  over a neighbouring step, dense-td's `route()` crossings 73 -> 83); the
+  small corpus drawings render in about their 0.37.0 time (0.5-1.2x,
+  benchmark medians).
+- **Benchmark re-measured on 0.38.0:** about 106x faster than mermaid
+  12.2.0 (geometric mean over 25 diagrams), 19 of the 25 under a
+  millisecond, SVG 1.5-25x smaller. The 0.37.0 run said 126x; the drop is
+  the shared box, not this release: flowmaid's medians match that run's
+  (1.01x overall, 0.90x over the 15 flowchart and state diagrams) while
+  mermaid's ran 15% faster.
+
 ### Changed
 
 - **Flowchart and state edges are drawn on the axes, with rounded corners**
@@ -14,8 +51,10 @@ project adheres to [Semantic Versioning](https://semver.org/).
   them, where they were S-shaped cubics, bowed twins and splines through a
   long edge's dummies. A new stage (`ortho`) runs after the ports are
   placed and before the router: an edge between adjacent ranks is a Z (an
-  L into a side port) whose step runs across the gap, its label on that
-  run; a long edge runs down its layout column, straightened within the
+  L into a side port) whose step runs across the gap, between its source
+  and its label where the room above the label holds every step of that
+  gap (the label then rides the straight run into the target, as mermaid
+  draws a labelled branch), else with its label on the step; a long edge runs down its layout column, straightened within the
   room its dummies leave (21 px off a box, frame border, label or self-loop
   beside it, half way to the next column), stepping across a gap only
   where that room moves; a labelled twin bulges clear of its twin's line
@@ -52,15 +91,19 @@ project adheres to [Semantic Versioning](https://semver.org/).
   step matches the kept ones, and a single cubic that a later spacing
   slid a few px off its line (a choice's two ends spread, a drag frame
   respacing a kept end) is squared again — straight under a px, else a Z.
-  A corner whose rounding point a moved end slid away from or dropped (the
-  spline swept such a corner over up to 1 600 px: bench-75's `svc6 -->
-  ext`) gets it back, 14 px from the corner. Past the router's 400-edge
+  In `scene()` and `route()`, a corner whose rounding point a moved end
+  slid away from or dropped (the spline swept such a corner over up to
+  1 600 px: bench-75's `svc6 --> ext`) gets it back, 14 px from the
+  corner; `route_partial` does the same for the edges it redraws, not for
+  an edge it keeps whose end the ports stage respaces (see Known costs). Past the router's 400-edge
   cap, where the router and its nudge leave a drawing as built, the
   builders' curves stay too (a 531-edge chart's `route()` 25.7 -> 2.6 ms).
   The path comes as `SceneEdge::waypoints` (each corner flanked by points
-  14 px either side, which the painter's spline turns through as a curve
-  of about 8 px radius), `bezier` the chord through its corners, so
-  pick == render as before. Explicit `curve:` / `linkStyle … interpolate`,
+  14 px either side, or half the shorter adjoining leg where a leg is
+  under 28 px, which the painter's spline turns through as a curve of
+  about 8 px radius, tighter at such a corner), `bezier` only a fallback
+  (a cubic between its ends with its first and last corners as
+  controls), so pick == render as before. Explicit `curve:` / `linkStyle … interpolate`,
   state note card links, self-loops, back-edge lanes, invisible `~~~`
   links and class / ER scenes are unchanged (class and ER output is
   byte-identical). The router weighs a lateral run as `route()` does in
@@ -83,10 +126,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
   drawn as straight cubics; an end sunk into a drum's lid along an axis is
   brought back to its outline. A path's rounded corners are sampled with
   a few chords (its legs as lines) for hit-testing and the label stage,
-  which keeps the static scene within 1.7x its pre-B10 time on the corpus.
-  Measured over the 14 corpus drawings against 0.35.0 (static | routed):
+  which keeps the static scene near its 0.37.0 time on the corpus.
+  Measured against 0.37.0 (c72e56b, the code B10 was built on), over the
+  14 corpus drawings (static | routed):
   defects 57 | 90 -> 47 | 46, S-cubics 92 | 112 -> 0 | 0, splines 23 | 24
-  -> 0 | 0, bows 2 | 2 -> 0 | 0, end kinks 74 | 94 -> 2 | 1, edges on a
+  -> 0 | 0, bows 2 | 2 -> 0 | 0, end kinks 74 | 94 -> 1 | 1, edges on a
   frame border 11 | 20 -> 0 | 7, drawn crossings 499 | 504 -> 428 | 494
   (bench-75 349 | 375 -> 302 | 361, fanout-frames 3 | 3 -> 0 | 1,
   dense-td 92 | 73 -> 80 | 83); bench-75 defects 5 | 27 -> 4 | 1. Over 964
@@ -97,19 +141,24 @@ project adheres to [Semantic Versioning](https://semver.org/).
   2 775, defects 404 | 331 -> 87 | 91. Known costs: parallel cables (a
   channel's tracks, a fan's bundled stubs) 97 | 107 -> 128 | 143 pairs
   on the corpus; bench-75's static crossings still above mermaid's 222
-  (its layout's node order bounds them); one more edge-frame pair there
-  (`alerts -> gw`'s lane over the top through `app`); dense-lr's LR fan
+  (its layout's node order bounds them); two more edge-frame pairs there
+  (2 -> 4, lanes taken over the top through `app`); dense-lr's LR fan
   labels over a neighbouring step (static label-over-line 1 -> 5);
   dense-td's `route()` crossings 73 -> 83; plain twins' labels over a line
   in narrow composites; and on bench-75 `route()` takes `job1 -> svc1`'s
   lane round the other side from the static layout (its planner reads gap
   depths in px); a 1 px drag throws one more unrelated end on dense-td
   and on bench-75 (the re-rounded corners change where the ports stage
-  reads a kept path heading). Static `scene()` takes 1.4-1.7x its time
-  from before this release's layout and edge work on the small corpus
-  drawings (fastest of interleaved runs; advanced 2.0x, its labels,
-  ports and nudge over 18 squared paths); `route()` and drags take less
-  than before on the large ones (bench-75 drag 20.2 -> 13.0 ms).
+  reads a kept path heading); in a `route_partial` frame an edge the drag
+  keeps whose end the ports stage respaces keeps its old corner points,
+  so its painted curve can sweep its corner by up to about 14 px. Static
+  `scene()` takes about its 0.37.0 time on the small corpus drawings
+  (renders 0.5-1.2x, benchmark medians); against the phase-B baseline
+  (5f318a0, before 0.33.0) it is 1.4-2.0x, mostly from the layout and edge
+  work released in 0.34.0-0.37.0 (advanced 2.0x, its labels, ports and
+  nudge over 18 squared paths). Drags take less than before on the large
+  ones: a full `route()` drag frame on bench-75 averages 8.7 ms (13.1 ms
+  at the phase-B baseline), and `route_partial` 3.2 ms.
 
 ## [0.37.0] - 2026-11-09
 
