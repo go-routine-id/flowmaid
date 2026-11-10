@@ -140,20 +140,33 @@ pub struct SceneEdge {
     pub from: String,
     /// Target-endpoint id (node id, or subgraph id for sub-edges).
     pub to: String,
-    /// Bezier points: start, control1, control2, end. This is the
-    /// single-curve form used when `waypoints` is empty (adjacent
-    /// layers, free-routed edges) and as the fallback everywhere. The
-    /// ends lie on the node borders; on a forward, side-by-side or nested
-    /// curve the controls lie on the sides' normals, so a head drawn
-    /// along the end tangent points square in.
+    /// Bezier points: start, control1, control2, end. With `waypoints`
+    /// empty this single cubic is the edge: a straight edge, a self-loop,
+    /// or a builder's curve between adjacent ranks that no later stage
+    /// redraws (one with its own `curve`, an ER edge the router leaves as
+    /// built, any such edge in a drawing past the router's 400-edge cap,
+    /// counted per part a `direction` lays out on its own).
+    /// Such a curve's ends lie on the node borders; on a forward,
+    /// side-by-side or nested curve the controls lie on the sides'
+    /// normals, so a head drawn along the end tangent points square in.
+    /// With `waypoints` set it is only a fallback whose controls roughly
+    /// follow the path, its ends on the end nodes' outlines but not
+    /// always at the path's ends (a fork-to-join edge, or an end a later
+    /// stage moved, can sit tens of px along the side): read the drawn
+    /// ends and end tangents from `waypoints`.
     /// flowmaid's own SVG ends a curve still turning there in a straight
     /// run along that tangent, bending into it within a px of this curve
     /// outside the arrowhead, and stops the stroke under its arrowhead.
     pub bezier: [(f64, f64); 4],
-    /// Routed polyline (final coords) a long edge threads through — its
-    /// node-boundary start, the per-layer channel points, and its end.
+    /// Routed polyline (final coords) from the edge's node-boundary start
+    /// to its end: a flowchart or state edge drawn on the axes (each
+    /// corner flanked by the points a spline rounds it through), a
+    /// back-edge's lane, a route the router or a class or ER stage drew,
+    /// or a long edge's channel points where its curve is kept (an
+    /// explicit `curve`, a drawing past the router's 400-edge cap,
+    /// counted per part a `direction` lays out on its own).
     /// Empty = draw `bezier`. A painter splines a smooth curve through
-    /// these so the edge stays in its channel instead of cutting across.
+    /// these so the edge stays on its path instead of cutting across.
     pub waypoints: Vec<(f64, f64)>,
     pub kind: EdgeKind,
     /// Cross / circle / two-way end glyphs layered over `kind` (see
@@ -3490,6 +3503,9 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)], labels: &[String]) -> Scene 
     // Each stand-in cut back to a frame tells the layout which: its
     // label is drawn between those borders (B7 review r4 #2).
     ga.frame_cut = vec![[None, None]; ga.edges.len()];
+    // What the scene will draw, which the layout weighs against the
+    // router's cap as the ortho stage does.
+    ga.drawn_edges = Some(clustered_drawn_edges(g, &node_cluster));
     for (i, si) in stand_in.iter().enumerate() {
         let Some(ei) = *si else { continue };
         if own_drawn[i] {
@@ -4212,6 +4228,23 @@ fn grid_pairs(g: &Graph, node_cluster: &[Vec<usize>]) -> Vec<RankGroup> {
         }
     }
     out
+}
+
+/// The edges a clustered scene draws ([`scene_clustered`]): every edge,
+/// and every edge to a box with members, whether or not it got a
+/// stand-in (a box to its own member gets none); one into an empty box
+/// draws nothing. The layout reads it against the router's cap as the
+/// ortho stage reads the scene's count ([`Graph::drawn_edges`]).
+fn clustered_drawn_edges(g: &Graph, node_cluster: &[Vec<usize>]) -> usize {
+    let framed = |end: End| match end {
+        End::Node(_) => true,
+        End::Sub(s) => node_cluster.iter().any(|p| p.contains(&s)),
+    };
+    g.edges.len()
+        + g.sub_edges
+            .iter()
+            .filter(|e| framed(e.from) && framed(e.to))
+            .count()
 }
 
 /// Cluster path (outermost subgraph id first) for every node; empty
@@ -9554,6 +9587,33 @@ pub(crate) fn assert_drawn_inside_canvas(svg: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_layout_counts_the_edges_a_clustered_scene_draws() {
+        // What the layout weighs against the router's cap is what the
+        // ortho stage counts: a box to its own member (no stand-in), a
+        // member to its own box, an edge into an empty box (not drawn),
+        // nested boxes sharing a member, a composite to its own state.
+        for src in [
+            "flowchart TD\nsubgraph K\na --> b\nend\nK --> a\nK --> b",
+            "flowchart TD\nsubgraph K\na\nend\na --> K\nx --> K",
+            "flowchart TD\nsubgraph K\na --> b\nend\nsubgraph E\nend\nb --> E\nE --> a",
+            "flowchart TD\nsubgraph O\nsubgraph I\nm\nend\nend\nO --> I\nI --> O\nx --> m",
+            "flowchart LR\nsubgraph A\na1 --> a2\nend\nsubgraph B\nb1\nend\nA --> B\nB --> a1",
+            "stateDiagram-v2\nstate C {\n  c0 --> c1\n}\nC --> c1\nC --> c0\n[*] --> C",
+        ] {
+            let g = match crate::parser::parse_document(src).unwrap() {
+                crate::model::Document::Flowchart(g) | crate::model::Document::State(g) => g,
+                _ => panic!("{src:?}"),
+            };
+            let nc = node_cluster_paths(&g);
+            assert_eq!(
+                clustered_drawn_edges(&g, &nc),
+                scene(&g).edges.len(),
+                "{src:?}"
+            );
+        }
+    }
     use crate::layout::{intrinsic_size, LINE_H};
     use crate::parser::parse;
 

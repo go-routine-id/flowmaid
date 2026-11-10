@@ -2315,29 +2315,60 @@ mod tests {
     fn a_drawing_past_the_routers_cap_keeps_the_builders_curves() {
         // 20 sources each linked to 21 targets: 420 edges, past
         // `ROUTE_MAX_EDGES`, where the router leaves a drawing as built.
-        let mut src = String::from("flowchart TD\n");
+        let mut flat = String::from("flowchart TD\n");
         for a in 0..20 {
             for b in 0..21 {
-                src.push_str(&format!("s{a} --> t{b}\n"));
+                flat.push_str(&format!("s{a} --> t{b}\n"));
             }
         }
-        let g = parse(&src).unwrap();
-        assert!(g.edges.len() > crate::router::ROUTE_MAX_EDGES);
-        let sc = scene(&g);
-        let pos: Vec<Pt> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
-        for s in [sc, crate::scene::route(&g, &pos)] {
-            let squared = s
-                .edges
-                .iter()
-                .filter(|e| crate::router::ortho_corners(e).is_some_and(|c| c.len() >= 3))
-                .count();
-            // (Only the few S-cubics a rounding or two across, which the
-            // last stage squares whatever the size, come out as Zs.)
+        // 19 x 21 = 399 edges inside a box and two from the box to its
+        // own members: 401 drawn, though the layout graph, which holds
+        // no stand-in for an edge from a box to its own member, has 399.
+        let mut boxed = String::from("flowchart TD\nsubgraph K\n");
+        for a in 0..19 {
+            for b in 0..21 {
+                boxed.push_str(&format!("s{a} --> t{b}\n"));
+            }
+        }
+        boxed.push_str("end\nK --> s0\nK --> t0\n");
+        for src in [flat, boxed] {
+            let g = parse(&src).unwrap();
+            let sc = scene(&g);
+            assert!(sc.edges.len() > crate::router::ROUTE_MAX_EDGES);
+            // Nor does the layout grow the gap for tracks no edge takes:
+            // the rows sit the plain gap apart (0.37.0's depth), not the
+            // 2 650 px (`flat`, 210 tracks at the busiest point) or
+            // 2 525 px (`boxed`, 200) the axes would take.
+            let row_gap = {
+                let span = |p: &str| {
+                    sc.nodes
+                        .iter()
+                        .filter(|n| n.id.starts_with(p))
+                        .map(|n| (n.y - n.h / 2.0, n.y + n.h / 2.0))
+                        .fold((f64::MAX, f64::MIN), |a, b| (a.0.min(b.0), a.1.max(b.1)))
+                };
+                span("t").0 - span("s").1
+            };
             assert!(
-                squared * 20 < s.edges.len(),
-                "{squared} of {} edges drawn on the axes past the cap",
-                s.edges.len()
+                row_gap < crate::layout::GAP_L + 2.0 * TRACK_PITCH,
+                "rows {row_gap} px apart past the cap"
             );
+            let pos: Vec<Pt> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+            for s in [sc, crate::scene::route(&g, &pos)] {
+                let squared = s
+                    .edges
+                    .iter()
+                    .filter(|e| crate::router::ortho_corners(e).is_some_and(|c| c.len() >= 3))
+                    .count();
+                // (Only the few S-cubics a rounding or two across, which
+                // the last stage squares whatever the size, come out as
+                // Zs.)
+                assert!(
+                    squared * 20 < s.edges.len(),
+                    "{squared} of {} edges drawn on the axes past the cap",
+                    s.edges.len()
+                );
+            }
         }
     }
 

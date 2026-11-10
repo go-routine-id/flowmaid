@@ -12,7 +12,7 @@ A small Mermaid-like diagram engine written in pure std Rust with zero external 
 **Why flowmaid?**
 
 - **Zero dependencies**, pure std Rust (MSRV 1.75), and `wasm32` out of the box: all twelve diagram types fit in a compact wasm bundle, where mermaid.js 12.2.0 is about 5.5 MB minified (1.6 MB gzipped).
-- **Fast:** most hand-written diagrams render in under a millisecond, about **126× faster than mermaid** (see [Performance](#performance)).
+- **Fast:** most hand-written diagrams render in under a millisecond, about **106× faster than mermaid** (see [Performance](#performance)).
 - **One geometry source** for SVG export and interactive canvases: drag a node and only its edges re-route, pick what is under the pointer, save the graph back as mermaid text (see [Interactive API](#interactive-api)).
 - **Deterministic, accessible SVG:** byte-identical output for the same input, with `role="img"` and an accessible name on every diagram, and per-item `<title>`s in flowchart, state, journey and sankey diagrams.
 - **Forgiving input, clear errors:** line-numbered parse errors, UTF-8 BOMs stripped, CRLF fine, and the unsupported Mermaid headers flowmaid recognises (`gantt`, `quadrantChart`, `xychart-beta`, `kanban`, …) fail with an explicit "not supported yet" message instead of a confusing parse error (see [Diagram types](#diagram-types) for the newer headers it does not recognise yet).
@@ -30,11 +30,11 @@ A small Mermaid-like diagram engine written in pure std Rust with zero external 
 
 ## flowmaid next to mermaid
 
-The same `.mmd` source rendered by mermaid 12.2.0 (left, in headless Chromium) and by flowmaid 0.37.0 (right, `flowmaid file.mmd`). flowmaid keeps its own semantic palette by default; mermaid's look is one `--theme default` away (see [Themes](#themes)).
+The same `.mmd` source rendered by mermaid 12.2.0 (left, in headless Chromium) and by flowmaid 0.38.0 (right, `flowmaid file.mmd`). flowmaid keeps its own semantic palette by default; mermaid's look is one `--theme default` away (see [Themes](#themes)).
 
 **Flowchart with subgraphs, a decision and a back-edge**
 
-![advanced flowchart: mermaid 12.2.0 vs flowmaid 0.37.0](docs/img/compare/advanced.png)
+![advanced flowchart: mermaid 12.2.0 vs flowmaid 0.38.0](docs/img/compare/advanced.png)
 
 **Loop back to an earlier step**
 
@@ -61,7 +61,7 @@ The same `.mmd` source rendered by mermaid 12.2.0 (left, in headless Chromium) a
 
 </details>
 
-Rendering is about **126× faster than mermaid** (geometric mean over 25 diagrams) and the SVG is a fraction of the size — see [Performance](#performance).
+Rendering is about **106× faster than mermaid** (geometric mean over 25 diagrams) and the SVG is a fraction of the size — see [Performance](#performance).
 
 ## Installation
 
@@ -75,7 +75,7 @@ Or in `Cargo.toml`:
 
 ```toml
 [dependencies]
-flowmaid = "0.37"
+flowmaid = "0.38"
 ```
 
 The crate is lib + bin; `cargo install flowmaid` installs the `flowmaid` command.
@@ -266,7 +266,7 @@ Mermaid v11 node metadata works too: `A@{ shape: cyl, label: "DB" }`.
 
 - **Labels** come in both mermaid spellings: `-->|text|` and inline `-- text -->` (`-. text .-`, `== text ==>`).
 - **Ends.** Cross and circle ends (`--x`, `-.-x`, `==x`, `--o`, `-.-o`, `==o`, also `-- text --x`) and two-way links (`<-->`, `<-.->`, `<==>`, `x--x`, `o--o`, also `<-- text -->`) draw the matching glyph at each end. As in mermaid, a marker letter glued to the operator is the marker: `A---oB` is a circle edge to `B` — write `A --- oB` to target a node named `oB`.
-- **Drawing.** As mermaid 12.2's ELK renderer draws them, flowchart and state edges run on the axes with rounded corners: an edge between adjacent ranks is a Z (an L into a side), its step across the gap between the ranks and its label on that run; a long edge runs down its layout column and steps across a gap only where it must; the steps in one gap sit on their own tracks, a pitch apart, ordered so their turns cross as little as possible. A straight edge stays straight. An edge with an explicit `curve:` or `linkStyle … interpolate` keeps its curve, as do a state note card's link and self-loops.
+- **Drawing.** As mermaid 12.2's ELK renderer draws them, flowchart and state edges run on the axes with rounded corners: an edge between adjacent ranks is a Z (an L into a side) whose step runs across the gap between the ranks — its label on that step, or, where the gap has room for it (as in a decision fan whose gap grew for its tracks), the step runs between the source and the label, as mermaid draws a labelled branch, and the label rides the straight run into the target; a long edge runs down its layout column and steps across a gap only where it must; the steps in one gap sit on their own tracks, a pitch apart, ordered so their turns cross as little as possible. A straight edge stays straight, and back-edge lanes were on the axes already. An edge with an explicit `curve:` or `linkStyle … interpolate` keeps that curve (`basis`, or an unknown name, which means `basis`, included), as do a state note card's link and self-loops. A drawing of more than 400 edges, past the router's cap, keeps the earlier curves (S-shaped cubics, bowed twins and splines through a long edge's dummies) and grows no gap between its ranks for tracks, but for an S whose ends lie under 28 px apart across, which is drawn straight (within a px) or as a rounded Z there too. The count is taken per laid-out part: each subgraph laid out on its own in its `direction` (see [Subgraphs](#subgraphs)), and the rest of the drawing round it, so a larger drawing whose parts each hold 400 or fewer edges is drawn on the axes.
 - **Fan-out** lists work on either side: `A --> B & C`, `A & B --> C`. Chains like `A --> B & C --> D` are supported, as are cycles (`E --> B` looping back up) and self-loops (`A --> A`).
 
 ### Edge ids, animation and curves
@@ -274,7 +274,7 @@ Mermaid v11 node metadata works too: `A@{ shape: cyl, label: "DB" }`.
 - **Ids.** An edge can carry an id written before its operator — `A e1@--> B`, `A e1@-- text --> B`, `A e1@x--x B`. The SVG writes it as `id="flowmaid-<hash>-e1" data-id="e1"`: mermaid's `<diagram-id>-<edge-id>`, with a content-hashed, deterministic diagram id that the root `<svg>` carries (only when the diagram has edge ids or animation), so several SVGs inlined on one page never share an edge id.
 - **Metadata.** A later `e1@{ … }` statement sets the edge's metadata, mermaid-style, on one line or several (YAML block form):
   - `animate: true` (or `animation: fast` / `slow`) adds mermaid's `edge-animation-*` class plus its dash-animation CSS, scoped to that SVG (`#flowmaid-<hash> .edge-animation-fast`, keyframes `flowmaid-<hash>-dash`) so it never restyles the host page;
-  - `curve:` picks the path shape: `basis` (default), `linear`, `rounded`, `step`, `stepBefore`, `stepAfter`, `bumpX`, `bumpY`, and `natural` / `monotoneX` / `monotoneY` / `cardinal` / `catmullRom`, which flowmaid draws as one Catmull-Rom spline; an unknown name means `basis`.
+  - `curve:` picks the path shape: `basis` (mermaid's default curve; naming it draws the S-shaped basis curve, while an edge with no `curve:` is drawn on the axes, see Drawing above), `linear`, `rounded`, `step`, `stepBefore`, `stepAfter`, `bumpX`, `bumpY`, and `natural` / `monotoneX` / `monotoneY` / `cardinal` / `catmullRom`, which flowmaid draws as one Catmull-Rom spline; an unknown name means `basis`.
 - **Mermaid's rules.** With fan-out only the last-source → first-target pair takes the id, a repeated id is silently dropped, and metadata written before its edge exists is a node.
 
 ### Subgraphs
@@ -749,7 +749,7 @@ Beyond static SVG, the engine exposes the geometry it draws, so GUI apps can pai
 
 ### Scene, drag and re-route
 
-- **`scene::scene(&graph)`** returns a `Scene`: the position, size and shape of every node plus the path of every edge, in final coordinates, ready to draw with any painter. A flowchart or state edge drawn on the axes (see [Edges](#edges)) comes as `SceneEdge::waypoints`, each corner flanked by points 14 px either side, which a painter's spline turns through as a curve of about 8 px radius; its `SceneEdge::bezier` is only the chord through its corners. An edge with empty `waypoints` (a straight edge, a self-loop) is its single cubic `bezier`, unless it sets a non-default mermaid `curve` (`SceneEdge::meta.curve`): that curve is then drawn between the bezier's two ends (through all four of its points for a self-loop); an edge with waypoints and a `curve` draws that curve through them. A static `Scene`'s `width` × `height` and node centres are exactly the SVG's canvas and coordinates. Nodes and edges keep a stable identity (`SceneNode.id`, `SceneEdge.from`/`to`).
+- **`scene::scene(&graph)`** returns a `Scene`: the position, size and shape of every node plus the path of every edge, in final coordinates, ready to draw with any painter. A flowchart or state edge drawn on the axes (see [Edges](#edges)) comes as `SceneEdge::waypoints`, each corner flanked by points 14 px either side (half the shorter adjoining leg where a leg is under 28 px, as on a labelled edge's short first leg, from its source to its step), which a painter's spline turns through as a curve of about 8 px radius (tighter at such a corner); its `SceneEdge::bezier` is only a fallback that does not follow the path (a cubic whose controls only roughly follow the path: where the axis stage put the first and last corners, or for a back-edge lane the ends of its run along the lane; or a straight line for an edge the router rerouted, its channel nudge redrew or its spacing pass moved clear. Its ends lie on the end nodes' outlines, usually but not always at the path's ends: a fork-to-join edge, or an end a later stage moved, can sit tens of px along the side. Read `waypoints[0]` and `waypoints.last()` for the drawn ends, and the first and last legs for the end tangents and arrowhead direction). An edge with empty `waypoints` (a straight edge, a self-loop) is its single cubic `bezier`, unless it sets a non-default mermaid `curve` (`SceneEdge::meta.curve`): that curve is then drawn between the bezier's two ends (through all four of its points for a self-loop); an edge with waypoints and a `curve` draws that curve through them. A static `Scene`'s `width` × `height` and node centres are exactly the SVG's canvas and coordinates. Nodes and edges keep a stable identity (`SceneNode.id`, `SceneEdge.from`/`to`).
 - **`scene::route(&graph, &positions)`** re-routes every edge for custom node positions (a user's drag) *without* re-running layout, so nodes never jump back.
 - **`scene::route_partial`** re-routes only the edges a move can affect, keeping the rest of a base drawing: a drag frame costs what lies near the drag, not the whole drawing (see [Interactive editing](#interactive-editing)). `scene::box_edge_bezier` gives flowmaid's curve for one edge between two freely placed boxes, for hosts that own their node model.
 - **`scene::to_svg(&scene)`** exports any state, including after drags. `render()` is just a wrapper over the same pipeline, so the SVG and the interactive flow always agree.
@@ -803,7 +803,7 @@ Flowcharts (and state, class and ER diagrams, which map onto the same graph) go 
    - **Room for labels.** A gap between adjacent layers that carries an edge label grows to hold the label clear of the arrowhead (72px down the page for a one-line label; along LR the label's width, the head — both heads of a `<-->` edge — and a clearance, plus a 15px run of stroke either side for a dotted, thick or `linkStyle`-painted edge so its style still reads; a `linkStyle` width that repeats the plain 2px is no style). So does the gap between two stacked subgraphs that a labelled edge crosses from border to border, and a subgraph's title strip takes room only above its first row.
    - **Narrowing.** Once the drawing is placed, one broader than 2.5 : 1 is narrowed by trying other layerings, each laid out again in full — a subgraph stacked below its sibling, a row of sibling subgraphs folded into two, sources pulled down beside their targets, leaves staggered into two rows — and a candidate is kept only where it adds at most 2% to the area and 10% to the edges' length (a stacked or folded subgraph at most 15% along the flow), so a hub feeding a column of subgraphs keeps them in one column. A diagram of more than 600 nodes plus edges skips this search.
    - **Subgraphs in their own direction** (`compound.rs`) are laid out on their own, recursively, and placed in the pass round them as one node the size of their frame.
-3. **Scene** (`scene.rs`) — maps the layout to final coordinates and builds every edge (a back-edge in an orthogonal lane, `lanes.rs`), then finishes the edges in fixed stages shared by `scene()`, `route()` and `route_partial()` (`edgepass.rs`): distinct, ordered ports on every node side (`ports.rs`); every edge with the default curve redrawn on the axes with rounded corners, its steps on ordered tracks (`ortho.rs`); obstacle-aware repair of edges that pass through a node or a foreign frame or run on top of another edge, then a channel nudge that spreads shared channels and rounds corners (`router.rs`); collision-aware label placement (`labels.rs`); and a canvas grown over whatever moved.
+3. **Scene** (`scene.rs`) — maps the layout to final coordinates and builds every edge (a back-edge in an orthogonal lane, `lanes.rs`), then finishes the edges in fixed stages shared by `scene()`, `route()` and `route_partial()` (`edgepass.rs`): distinct, ordered ports on every node side (`ports.rs`); in a drawing (or a part laid out on its own in its `direction`) of up to 400 edges, every flowchart or state edge with no `curve:` / `interpolate` (not a self-loop or a state note card's link) redrawn on the axes with rounded corners, its steps on ordered tracks (`ortho.rs`); obstacle-aware repair of edges that pass through a node or a foreign frame or run on top of another edge, then a channel nudge that spreads shared channels and rounds corners (`router.rs`); collision-aware label placement (`labels.rs`); and a canvas grown over whatever moved.
 4. **SVG** (`scene::to_svg`) — writes the scene, trims each stroke under its arrowhead, and cuts a small gap in the stroke that passes under each crossing (`casing.rs`). `render.rs` is just scene → SVG.
 
 The other diagram types have their own modules (`seq`, `pie`, `journey`, `gitgraph`, `mindmap`, `timeline`, `sankey`, `architecture`, `advance`), each computing a scene and writing it.
@@ -820,41 +820,41 @@ What every flowchart drawing guarantees:
 
 ### Next to mermaid
 
-25 sample diagrams — flowcharts from a handful of nodes up to 52 nodes or 75 edges, plus every other diagram type — rendered from the same `.mmd` source. flowmaid is about **126× faster** (geometric mean) and its SVG is 1.5–23× smaller.
+25 sample diagrams — flowcharts from a handful of nodes up to 52 nodes or 75 edges, plus every other diagram type — rendered from the same `.mmd` source. flowmaid is about **106× faster** (geometric mean) and its SVG is 1.5–25× smaller.
 
 | diagram | type | flowmaid ms | mermaid ms | speed-up × | flowmaid SVG KB | mermaid SVG KB |
 |---|---|--:|--:|--:|--:|--:|
-| advanced | flowchart | 1.58 | 147.2 | 93× | 10.9 | 58.0 |
-| architecture | architecture | 0.10 | 49.1 | 506× | 4.0 | 18.5 |
-| back-edge | flowchart | 0.38 | 76.6 | 200× | 3.5 | 78.5 |
-| bench-75 | flowchart | 48.75 | 449.1 | 9× | 69.6 | 194.7 |
-| class | class | 0.50 | 194.7 | 389× | 11.8 | 53.5 |
-| demo | flowchart | 0.34 | 66.1 | 193× | 3.5 | 78.5 |
-| dense-lr | flowchart | 24.35 | 491.5 | 20× | 51.0 | 489.0 |
-| dense-td | flowchart | 31.27 | 522.8 | 17× | 53.9 | 487.0 |
-| er | er | 0.28 | 141.9 | 516× | 14.8 | 127.3 |
-| fanout-frames | flowchart | 3.08 | 157.9 | 51× | 13.0 | 298.3 |
-| fanout | flowchart | 1.01 | 79.6 | 79× | 5.8 | 84.4 |
-| gitgraph | gitgraph | 0.08 | 23.3 | 291× | 5.8 | 13.0 |
-| journey | journey | 0.04 | 9.8 | 258× | 3.8 | 13.2 |
-| long-labels | flowchart | 0.26 | 48.0 | 188× | 3.2 | 35.0 |
-| lr | flowchart | 0.64 | 55.6 | 87× | 3.9 | 80.4 |
-| mindmap | mindmap | 0.82 | 104.1 | 127× | 8.7 | 49.0 |
-| pie | pie | 0.04 | 11.0 | 297× | 2.8 | 5.5 |
-| sankey | sankey | 0.23 | 21.3 | 91× | 6.8 | 10.3 |
-| sequence | sequence | 0.17 | 54.6 | 314× | 10.3 | 39.0 |
-| shapes | flowchart | 0.58 | 90.8 | 156× | 5.0 | 81.9 |
-| state | state | 1.18 | 135.4 | 115× | 8.5 | 70.6 |
-| stress | flowchart | 0.57 | 52.6 | 92× | 3.7 | 37.7 |
-| subgraph | flowchart | 0.47 | 77.1 | 163× | 4.5 | 38.5 |
-| timeline | timeline | 0.04 | 10.6 | 252× | 3.7 | 15.9 |
-| wide-labels | flowchart | 0.73 | 61.1 | 83× | 5.7 | 42.1 |
+| advanced | flowchart | 1.69 | 119.4 | 71× | 11.5 | 58.0 |
+| architecture | architecture | 0.11 | 46.7 | 428× | 4.0 | 18.5 |
+| back-edge | flowchart | 0.36 | 55.8 | 155× | 3.7 | 78.5 |
+| bench-75 | flowchart | 45.85 | 326.0 | 7× | 65.1 | 194.2 |
+| class | class | 0.54 | 162.9 | 302× | 11.8 | 53.5 |
+| demo | flowchart | 0.33 | 62.9 | 191× | 3.7 | 78.5 |
+| dense-lr | flowchart | 22.48 | 377.5 | 17× | 51.3 | 489.1 |
+| dense-td | flowchart | 31.96 | 396.1 | 12× | 54.3 | 487.0 |
+| er | er | 0.52 | 113.6 | 220× | 14.8 | 127.4 |
+| fanout-frames | flowchart | 2.69 | 138.8 | 52× | 11.8 | 298.2 |
+| fanout | flowchart | 1.24 | 68.1 | 55× | 6.6 | 84.7 |
+| gitgraph | gitgraph | 0.12 | 23.5 | 191× | 5.8 | 13.0 |
+| journey | journey | 0.07 | 10.1 | 136× | 3.8 | 13.2 |
+| long-labels | flowchart | 0.29 | 45.3 | 158× | 3.5 | 35.0 |
+| lr | flowchart | 0.37 | 57.1 | 153× | 4.5 | 80.4 |
+| mindmap | mindmap | 0.79 | 89.7 | 113× | 8.7 | 49.0 |
+| pie | pie | 0.04 | 6.2 | 155× | 2.8 | 5.5 |
+| sankey | sankey | 0.23 | 13.0 | 57× | 6.8 | 10.3 |
+| sequence | sequence | 0.14 | 43.5 | 302× | 10.3 | 39.0 |
+| shapes | flowchart | 0.28 | 67.3 | 238× | 5.0 | 81.9 |
+| state | state | 0.96 | 130.5 | 136× | 8.5 | 70.6 |
+| stress | flowchart | 0.47 | 48.4 | 104× | 4.0 | 37.7 |
+| subgraph | flowchart | 0.43 | 73.8 | 173× | 4.6 | 38.5 |
+| timeline | timeline | 0.05 | 9.4 | 204× | 3.7 | 15.9 |
+| wide-labels | flowchart | 0.88 | 60.5 | 69× | 6.5 | 42.1 |
 
-**Method.** Each cell is the median of 30 timed renders after warm-ups (flowmaid 3, mermaid 2). flowmaid: `flowmaid::render_svg` (parse + layout + SVG string) in a release build, `cargo run --release --example bench -- files <file.mmd>...`. mermaid: `mermaid.render()` 12.2.0 (parse + layout + SVG string, including its in-browser text measurement) in headless Chromium 153 via Playwright. Speed-up = mermaid median ÷ flowmaid median. SVG KB = length of the returned SVG string. Measured on 0.37.0. Machine: 4 vCPUs, Intel Xeon @ 2.10 GHz, rustc 1.97; the box was shared with a background build, so expect ±20 % on both sides.
+**Method.** Each cell is the median of 30 timed renders after warm-ups (flowmaid 3, mermaid 2). flowmaid: `flowmaid::render_svg` (parse + layout + SVG string) in a release build, `cargo run --release --example bench -- files <file.mmd>...`. mermaid: `mermaid.render()` 12.2.0 (parse + layout + SVG string, including its in-browser text measurement) in headless Chromium 153 via Playwright. Speed-up = mermaid median ÷ flowmaid median. SVG KB = length of the returned SVG string. Measured on 0.38.0. Machine: 4 vCPUs, Intel Xeon @ 2.10 GHz, rustc 1.97; the box was shared with a background build, so expect ±20 % on both sides.
 
 ### Interactive editing
 
-Dragging a node does not re-run layout: `route_partial` re-routes only the edges the move can affect. Over every drag frame of the quality harness it averages about **4.7 ms on the densest sample (`bench-75`: 21 nodes, 75 edges)** and about 3 ms on the other dense samples; small diagrams stay well under a millisecond. Picking (`Scene::hit_test`, `edge_at`, `hits_in_rect`) follows the painted stroke and costs microseconds.
+Dragging a node does not re-run layout: `route_partial` re-routes only the edges the move can affect. Over the quality harness's drag frames (`quality::drag_frames`: every node moved along the drawing's diagonal and nudged each way; measured on 0.38.0) it averages about **3 ms a frame on the densest sample** (`bench-75`: 21 nodes, 75 edges; 6 ms at worst) and 2–2.4 ms on `dense-lr` and `dense-td`; the small corpus diagrams average 0.14–0.6 ms. A full `route()` of every edge, which `cargo run --release --example quality -- <dir> --drag` times, averages 8.7 ms on `bench-75` and 4.3–6.4 ms on the other dense samples. Picking (`Scene::hit_test`, `edge_at`, `hits_in_rect`) follows the painted stroke and costs microseconds.
 
 ### Large graphs
 
@@ -862,9 +862,9 @@ flowmaid spends its time on drawing quality — crossing-aware routing, back-edg
 
 | nodes | edges | parse | layout | render* | SVG |
 |------:|------:|------:|-------:|--------:|----:|
-| 49 | 100 | 0.13 ms | 1.5 ms | 23 ms | 82 KB |
-| 200 | 400 | 0.92 ms | 36 ms | 0.18 s | 659 KB |
-| 1,000 | 2,010 | 2.7 ms | 0.94 s | 2.4 s | 7.7 MB |
+| 49 | 100 | 0.18 ms | 1.5 ms | 35 ms | 75 KB |
+| 200 | 400 | 0.58 ms | 28 ms | 0.26 s | 507 KB |
+| 1,000 | 2,010 | 3.1 ms | 0.97 s | 2.6 s | 3.2 MB |
 
 \* render includes layout and routing.
 
