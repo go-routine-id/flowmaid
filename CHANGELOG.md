@@ -7,6 +7,57 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.39.0] - 2026-11-11
+
+### Highlights
+
+Flowchart parity phase B: B11, hops and combs. No public API is removed or
+changed.
+
+- **Crossing lines hop.** Where a level stretch of one flowchart or state
+  edge crosses a plumb stretch of another, the level one steps over on a
+  small arc, so both strokes stay whole: a dotted edge keeps its dots, and
+  a solid edge crossed a few times no longer reads as dashed. Hops close
+  together join into one bridge, flat on top. Hops are paint: `Scene`
+  keeps the plain paths a host draws from, and picking follows the painted
+  stroke. A crossing where a hop has no room (in a corner's rounding,
+  where the arc would touch a node, a label chip or a frame's border) or
+  on an edge with its own `curve:` keeps the casing's gap; one right at
+  an arrowhead or at an edge's end on a node is drawn plain, as before;
+  and a drawing of more than 400 edges draws its crossings as before.
+- **A hub's fan is drawn as a comb.** The ends on one side of a box take
+  their ports and tracks in the order of their turns, so the teeth of a
+  fan nest where they crossed each other, in `scene()`, `route()` and
+  `route_sized()`. A side is combed only where that leaves the drawing
+  with fewer crossings and nothing else worse; what a comb cannot undo is
+  listed under Changed. Under a drag `route_partial()` combs small fans
+  as far as the frame's time allows and leaves a big hub's fan to
+  `route()` at the drop. The edges stay separate strokes, each still
+  picked and styled on its own.
+- **Fewer crossings.** Over the six gated fixtures (static | routed): drawn
+  crossings 428 | 494 -> 405 | 465, crossings inside fans 29 | 36 -> 9 | 13,
+  defects 47 | 46 -> 46 | 44; dense-td's hub `n16` crossed itself 14 | 8
+  times under its box, now 0 | 0. Over 120 generated hub fans drawn
+  crossings 222 | 307 -> 103 | 136, no drawing with more. Known costs are
+  listed under Changed: a comb's teeth run side by side a track apart, a
+  label chip wider than the pitch can cover a neighbouring tooth, and
+  `route()` takes 15 % longer on bench-75.
+- **Benchmark re-measured on 0.39.0:** about 113x faster than mermaid
+  12.2.0 (geometric mean over 25 diagrams), 20 of the 25 under a
+  millisecond, SVG 1.5-25x smaller. The 0.38.0 run said 106x; the
+  difference is the shared box, not this release: both sides ran faster
+  this time (mermaid's medians 0.85x, flowmaid's 0.80x), over the 15
+  flowchart and state diagrams by the same amount (0.85x and 0.84x, 73x
+  in both runs). The rise comes from er, journey and gitgraph, which took
+  about half their 0.38.0 time and whose code this release does not
+  change. The three dense flowcharts' SVGs are about a tenth smaller
+  (bench-75 65.1 -> 59.0 KB); the synthetic 200-node, 400-edge graph's
+  grows from 507 to 589 KB.
+- **A shorter README.** It no longer restates mermaid's syntax: each
+  diagram type links to mermaid's page and lists only the supported
+  subset, what is not supported yet and what flowmaid adds, and the
+  differences from mermaid are gathered in one table (928 lines -> 618).
+
 ### Added
 
 - **Quality yardstick** (`quality::Metrics`, new columns at the end of a
@@ -25,8 +76,9 @@ project adheres to [Semantic Versioning](https://semver.org/).
   one steps over on a small semicircle — 5 px radius, wider over a thick
   or `linkStyle`-widened stroke (up to 9 px), always upwards — so both
   strokes stay whole: a dotted edge keeps its dots, and a solid edge
-  crossed a few times no longer reads as dashed. Hops over lines closer
-  together than a hop's width join into one bridge, flat on top. One rule
+  crossed a few times no longer reads as dashed. Hops closer together
+  than a radius (over lines under 15 px apart at the default radius) join
+  into one bridge, flat on top. One rule
   for every crossing (the level line hops) was chosen over hopping
   whichever line is shorter or drawn later, and over the gaps alone,
   after comparing dense-td, dense-lr, bench-75 and fanout rendered each
@@ -64,7 +116,9 @@ project adheres to [Semantic Versioning](https://semver.org/).
   hop's arc, and at the crossing under a hop they answer the line that is
   stepped over, not the one stepping over it. The painter and a pick work
   the hops out by one rule from the same legs, read in one order, in
-  `scene()`, `route()` and under a drag alike.
+  `scene()`, `route()` and under a drag alike. An architecture or
+  gitGraph scene, whose own painter strokes every edge plain, takes no
+  hops and is picked plain.
 - **A fan is drawn as a comb** (report B4). A new last path stage (`comb`)
   puts each box side's ends in one order: its teeth take the side's ports
   in the order of their turns, and the tracks of the teeth stepping one
