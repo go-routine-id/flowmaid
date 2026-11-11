@@ -206,8 +206,8 @@ Where the same source gives a different result:
 | `click` url that is `javascript:`, `data:` or `vbscript:` | written as `about:blank` | not linked at all |
 | An empty markdown label (``` "``" ```), or extra spaces in a `click` (`click A  href  "u"`) | rejected | accepted |
 | State diagram `note "text" as N` | dropped | drawn as a free-standing card |
-| State composite with no `direction` of its own | laid out top-down whichever way the diagram runs, unless one of its states links out of it or a note is attached to it or inside it | keeps the direction round it; write `direction TB` in the composite for mermaid's column |
-| State composite with a `direction` and a note inside | the `direction` is dropped | the `direction` holds |
+| State composite with no `direction` of its own | laid out top-down whichever way the diagram runs, unless a transition crosses its border to or from one of its states, or a note is attached to it or inside it | keeps the direction round it; write `direction TB` in the composite for mermaid's column |
+| State composite with a `direction` and a note attached to it or inside it | the `direction` is dropped | the `direction` holds |
 | Class name part that is just `o`, as in `o.A --> B` or `x.o--o.y` | read as an aggregation glyph, and the line fails | part of the name |
 | Trailing `%%` comment in class and sequence diagrams | printed as part of the label or message text | stripped |
 | ER alias, as in `p[Person]` | accepted only where an entity is declared | also accepted inside a relationship |
@@ -322,7 +322,7 @@ What every flowchart drawing guarantees:
 - **Routing.** Edges are orthogonal with rounded corners, square to the box faces and clear of the corners. An orthogonal route never runs along another edge; where no lane is free, the edge keeps a curve.
 - **Fans.** A class with up to about a dozen subclasses draws its fan without a crossing. Crowded fan-ins (six or more classes pointing at one) can still cross, up to about a dozen times with labels and cardinalities. Much wider fans (twenty or more subclasses) can cross many times.
 - **Cardinalities** sit beside their end, clear of lines, glyphs and labels, in every direction.
-- **Self-relations** of a class alternate sides and nest, and their labels sit beside the loops, not on them. Where a loop would run under another box, cross a relation or a neighbour's loop, or cover a label, the loops are shared among the class's faces the way that does so least; a loop under a box counts before anything else. A class with more than eight loops keeps to two faces.
+- **Self-relations** of a class alternate sides and nest, and their labels sit beside the loops where there is room; next to a close neighbour a label can land on a loop. Where a loop would run under another box, cross a relation or a neighbour's loop, or cover a label, the loops are shared among the class's faces the way that does so least; a loop under a box counts before anything else. A class with more than eight loops keeps to two faces.
 
 ## Entity-Relationship diagrams
 
@@ -575,7 +575,7 @@ The other diagram types have their own modules (`seq`, `pie`, `journey`, `gitgra
 | timeline | timeline | 0.04 | 7.9 | 193× | 3.7 | 15.9 |
 | wide-labels | flowchart | 0.85 | 55.5 | 65× | 6.5 | 42.1 |
 
-**Method.** Each cell is the median of 30 timed renders after warm-ups (flowmaid 3, mermaid 2). flowmaid: `flowmaid::render_svg` (parse + layout + SVG string) in a release build, `cargo run --release --example bench -- files <file.mmd>...`. mermaid: `mermaid.render()` 12.2.0 (parse + layout + SVG string, including its in-browser text measurement) in headless Chromium 153 via Playwright. Speed-up = mermaid median ÷ flowmaid median. SVG KB = length of the returned SVG string. Measured on 0.39.0; 0.40.0 draws all 25 samples byte for byte the same and in the same time (both releases timed in three alternated rounds: 0.99× in the geometric mean), so the table stands. Two runs of the whole table on 0.40.0, on a busier box where both sides ran slower, gave 127× and 134×. Machine: 4 vCPUs, Intel Xeon @ 2.10 GHz, rustc 1.97; the box was shared with a background build, so expect ±20 % on both sides, and more on a single sub-millisecond row (er, gitgraph and journey took about half their 0.38.0 time in this run, with no change to their code).
+**Method.** Each cell is the median of 30 timed renders after warm-ups (flowmaid 3, mermaid 2). flowmaid: `flowmaid::render_svg` (parse + layout + SVG string) in a release build, `cargo run --release --example bench -- files <file.mmd>...`. mermaid: `mermaid.render()` 12.2.0 (parse + layout + SVG string, including its in-browser text measurement) in headless Chromium 153 via Playwright. Speed-up = mermaid median ÷ flowmaid median. SVG KB = length of the returned SVG string. Measured on 0.39.0; 0.40.0 draws all 25 samples byte for byte the same, in the same time (each sample's fastest of three alternated rounds: 0.99× in the geometric mean). Two full runs on 0.40.0, on a busier box where both sides ran slower, gave 127× and 134×. Machine: 4 vCPUs, Intel Xeon @ 2.10 GHz, rustc 1.97; the box was shared with a background build, so expect ±20 % on both sides, and more on a single sub-millisecond row (er, gitgraph and journey took about half their 0.38.0 time in the 0.39.0 run, with no change to their code).
 
 ### Interactive editing
 

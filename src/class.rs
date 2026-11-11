@@ -6183,7 +6183,7 @@ mod tests {
     /// Verifier repro (r4 `in6_l0_c0_TB`, phase A leftover): six plain
     /// classes into one hub. The unlabelled gap holds three lanes; the
     /// innermost jog took the middle one and the next the lane below,
-    /// and the outermost — its leg into the hub 3.5 px beside the
+    /// and the outermost — its leg into the hub right beside the
     /// innermost's leg out of its class — found none under both, kept
     /// its curve and swept across its neighbour's route twice, on each
     /// side: 4 crossings where mermaid draws none. A curve that would
