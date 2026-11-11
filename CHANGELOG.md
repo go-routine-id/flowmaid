@@ -148,9 +148,8 @@ under a drag. No public API is removed or changed.
   - The review's 244 loop-heavy inputs (seven to nine loops on one class
     in most) take 10-14 % longer in total to draw, to route and to drag,
     single ones up to three times as long: eight unlabelled loops on a
-    class 0.1 -> 0.3 ms to draw, one drag frame 1.0 -> 2.3 ms, and the
-    slowest input 3 -> 5.5 ms to render. Ordinary class diagrams take
-    the same time.
+    class 0.1 -> 0.3 ms to draw, and one drag frame 1.0 -> 2.3 ms.
+    Ordinary class diagrams take the same time.
 - **State diagrams: a drag inside a composite resizes no fork or join.**
   A bar that branches to a composite laid out in its own `direction`
   spans the composite's frame, and `route()`, `route_sized()` and
