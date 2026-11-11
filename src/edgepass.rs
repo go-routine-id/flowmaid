@@ -116,6 +116,20 @@ pub(crate) struct Ctx {
     /// nudge leaves it as drawn (it only fences the others), as merging
     /// its steps would draw it on top of its twin, its label off it.
     pub shaped: Vec<bool>,
+    /// The scene is a block layout ([`crate::levels`]): its subgraphs
+    /// are blocks, and only an upstream edge between two plain nodes of
+    /// one level is a back-edge lane ([`Ctx::lane`]). `false` before
+    /// blocks, and in `route()` and `route_partial()` until they lay
+    /// blocks out themselves.
+    pub blocks: bool,
+    /// Index-parallel with `sc.edges`: the edge is a back-edge in its
+    /// lane. Every [`Ctx::back`] edge before blocks; in a block layout
+    /// ([`Ctx::blocks`]) only one between two plain nodes of one level
+    /// and a note card's link ([`crate::layout::keeps_lane`]) — every
+    /// other upstream edge there runs in a channel like a forward one,
+    /// out of its source's upstream side and into its target's
+    /// downstream side, and the stages shape it as they shape those.
+    pub lane: Vec<bool>,
 }
 
 /// Build the shared context. `sc.edges` holds `g.edges` first, then the
@@ -244,6 +258,8 @@ pub(crate) fn ctx(g: &Graph, sc: &Scene) -> Ctx {
     let held = fixed.clone();
     let chain = fixed.clone();
     let shaped = fixed.clone();
+    let back: Vec<bool> = back;
+    let lane = back.clone();
     Ctx {
         ends,
         node_frames,
@@ -254,6 +270,37 @@ pub(crate) fn ctx(g: &Graph, sc: &Scene) -> Ctx {
         held,
         chain,
         shaped,
+        blocks: false,
+        lane,
+    }
+}
+
+impl Ctx {
+    /// Mark the scene a block layout: `paths` is each node's chain of
+    /// blocks as the layout took them ([`crate::layout::BlockPaths`]).
+    /// From here on only an upstream edge between two plain nodes of
+    /// one level, or a note card's link, is a lane ([`Ctx::lane`]).
+    fn block_layout(&mut self, sc: &Scene, paths: &[Vec<usize>]) {
+        self.blocks = true;
+        let card = |v: usize| {
+            sc.nodes
+                .get(v)
+                .is_some_and(|n| crate::style::is_note_card(&n.id, n.shape, &n.style))
+        };
+        for (lane, (&back, ends)) in self.lane.iter_mut().zip(self.back.iter().zip(&self.ends)) {
+            *lane = back
+                && match ends {
+                    Some((EndRef::Node(u), EndRef::Node(v))) => {
+                        card(*u)
+                            || card(*v)
+                            || paths
+                                .get(*u)
+                                .zip(paths.get(*v))
+                                .map_or(true, |(a, b)| a == b)
+                    }
+                    _ => false,
+                };
+        }
     }
 }
 
@@ -366,6 +413,23 @@ pub(crate) fn finish_held(g: &Graph, sc: &mut Scene, mode: Mode, fixed: &[bool],
     for (f, &x) in cx.held.iter_mut().zip(held) {
         *f = x;
     }
+    stages(g, sc, cx, mode);
+}
+
+/// [`finish`] for the static scene of a graph that may be laid out as
+/// blocks: with `blocks` (the layout's [`crate::layout::BlockPaths`])
+/// the stages know which upstream edges are lanes ([`Ctx::lane`]) and
+/// that a long edge's label keeps the slot between its end blocks.
+pub(crate) fn finish_blocks(g: &Graph, sc: &mut Scene, blocks: Option<&[Vec<usize>]>) {
+    let mut cx = ctx(g, sc);
+    if let Some(paths) = blocks {
+        cx.block_layout(sc, paths);
+    }
+    stages(g, sc, cx, Mode::Static);
+}
+
+/// The edge stages over `sc` with its context built.
+fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
     let mut moved = vec![false; sc.edges.len()];
     crate::ports::assign(g, sc, &cx, mode, &mut moved);
     // Every edge on the axes, its corners rounded (report §2.1): from the

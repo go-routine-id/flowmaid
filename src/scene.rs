@@ -3451,15 +3451,16 @@ pub(crate) fn scene_labelled(g: &Graph, sizes: &[(f64, f64)], labels: &[String])
         }
     }
     let sizes = &fit_bars(g, &sizes)[..];
-    let mut sc = if g.subgraphs.is_empty() {
+    let (mut sc, blocks) = if g.subgraphs.is_empty() {
         #[cfg(test)]
-        crate::levels::note_used(crate::levels::Entry::Scene, g, false);
-        scene_flat(g, sizes, labels)
+        crate::levels::note_used(crate::levels::Entry::Scene, g, || false);
+        (scene_flat(g, sizes, labels), None)
     } else {
         // The switch of the block layout, read once for this call.
         scene_clustered(g, sizes, labels, crate::levels::blocks_on())
     };
-    crate::edgepass::finish(g, &mut sc, crate::edgepass::Mode::Static);
+    // (A block layout's edge stages know which upstream edges are lanes.)
+    crate::edgepass::finish_blocks(g, &mut sc, blocks.as_deref());
     sc
 }
 
@@ -3872,7 +3873,12 @@ const GRID_MIN_EDGELESS: usize = 4;
 /// With `blocks` (the block layout is switched on) a graph with a link
 /// across a subgraph's border is laid out as blocks
 /// ([`crate::levels::Augmented::block_mode`]).
-fn scene_clustered(g: &Graph, sizes: &[(f64, f64)], labels: &[String], blocks: bool) -> Scene {
+fn scene_clustered(
+    g: &Graph,
+    sizes: &[(f64, f64)],
+    labels: &[String],
+    blocks: bool,
+) -> (Scene, Option<crate::layout::BlockPaths>) {
     // Each sub-edge also gets one routed STAND-IN edge between a proxy
     // pair — mermaid lays `A --> box` out as an edge to one of the box's
     // members — so it owns a channel (and label slot) through the ranks
@@ -3881,8 +3887,6 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)], labels: &[String], blocks: b
     // ([`crate::levels::Augmented`], the one constructor of both).
     let aug = crate::levels::Augmented::of(g);
     let block_mode = blocks && aug.block_mode(g);
-    #[cfg(test)]
-    crate::levels::note_used(crate::levels::Entry::Scene, g, block_mode);
     let rank_only = aug.rank_only();
     let ne = g.edges.len();
     let (mut ga, stand_in) = aug.graph(g);
@@ -3936,6 +3940,10 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)], labels: &[String], blocks: b
         ga.frame_cut[ei] = [cut(g.sub_edges[i].from), cut(g.sub_edges[i].to)];
     }
     let (lo, groups, block_paths) = layout_clustered_ranked(&ga, sizes, &node_cluster, &rank_only);
+    // (What the layout did, not what it was asked: a test compares it
+    // with what the other entry points decide.)
+    #[cfg(test)]
+    crate::levels::note_used(crate::levels::Entry::Scene, g, || block_paths.is_some());
     let lanes = static_lanes(&ga, &lo, Some(&node_cluster), block_paths.as_deref(), ne);
     let mut sc = scene_from_layout(&ga, sizes, labels, lo, &lanes, ne);
     // A block layout's chain carries its label at the slot the layout
@@ -4197,7 +4205,7 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)], labels: &[String], blocks: b
         sc.width = (maxx - minx) + 2.0 * MARGIN;
         sc.height = (maxy - miny) + 2.0 * MARGIN;
     }
-    sc
+    (sc, block_paths)
 }
 
 /// A stand-in's routed waypoints (screen coordinates) cut back to the
@@ -4865,17 +4873,19 @@ pub(crate) fn route_labelled(
     }
     let sizes = &fit_bars(g, &sizes)[..];
     #[cfg(test)]
-    crate::levels::note_used(crate::levels::Entry::Route, g, block_mode_used(g));
+    crate::levels::note_used(crate::levels::Entry::Route, g, || block_mode_decided(g));
     let mut sc = route_built(g, centers, sizes, labels, true);
     crate::edgepass::finish(g, &mut sc, crate::edgepass::Mode::Routed);
     sc
 }
 
-/// The block mode `route()` and `route_partial()` use for the one part
-/// `g` (never split further): the switch and the predicate `scene()`
-/// decides by, from the same constructor.
+/// The block mode `route()` and `route_partial()` decide for the one
+/// part `g` (never split further): the switch and the predicate
+/// `scene()` asks the layout with, from the same constructor. Neither
+/// acts on it before it routes in corridors; the record says which
+/// parts they will, against what `scene()`'s layout did.
 #[cfg(test)]
-fn block_mode_used(g: &Graph) -> bool {
+fn block_mode_decided(g: &Graph) -> bool {
     crate::levels::blocks_on()
         && !g.subgraphs.is_empty()
         && crate::levels::Augmented::of(g).block_mode(g)
@@ -5365,7 +5375,7 @@ pub(crate) fn route_partial_with(
             .unwrap_or_else(|| route(g, centers));
     }
     #[cfg(test)]
-    crate::levels::note_used(crate::levels::Entry::Partial, g, block_mode_used(g));
+    crate::levels::note_used(crate::levels::Entry::Partial, g, || block_mode_decided(g));
     // Each label wrapped once for the frame (the fallbacks below reuse it).
     let (labels, mut raw_sizes) = crate::layout::node_texts(g);
     for &(v, size, _) in sized {

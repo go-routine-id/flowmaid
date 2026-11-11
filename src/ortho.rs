@@ -990,6 +990,16 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
                 let (a, b) = (screen[2], screen[3]);
                 *at = ((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0);
             }
+        } else if cx.blocks && chain[i] {
+            // A block layout's long edge: its label keeps the slot the
+            // layout reserved on the run between its two end blocks
+            // ([`crate::layout::label_slot`]), on the new path. Moved
+            // with the path's middle, the label of a chain whose
+            // columns lined up into one run and a last step went onto
+            // that step, inside the block the edge ends in.
+            if let Some((_, at, _)) = e.label.as_mut() {
+                *at = nearest_on(&screen, *at);
+            }
         } else {
             relabel(e, &screen, rides.then_some(dir));
         }

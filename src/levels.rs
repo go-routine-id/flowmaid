@@ -418,26 +418,56 @@ pub(crate) enum Entry {
 #[cfg(test)]
 thread_local! {
     /// What each entry point decided, in call order: (entry, nodes and
-    /// edges of the graph it was given, block mode).
-    static USED: std::cell::RefCell<Vec<(Entry, usize, usize, bool)>> =
-        const { std::cell::RefCell::new(Vec::new()) };
+    /// edges of the graph it was given, block mode). `None` while no
+    /// test is recording.
+    static USED: std::cell::RefCell<Option<Vec<(Entry, usize, usize, bool)>>> =
+        const { std::cell::RefCell::new(None) };
 }
 
 /// Record the block mode an entry point used for `g` (tests only: the
 /// three entry points must agree, and calling one predicate three times
-/// could not show that they do).
+/// could not show that they do). `on` is asked only while a test
+/// records ([`recording`]): every other test's `route()` and
+/// `route_partial()` calls cost what they cost outside tests (a drag
+/// frame's timing among them).
 #[cfg(test)]
-pub(crate) fn note_used(entry: Entry, g: &Graph, on: bool) {
+pub(crate) fn note_used(entry: Entry, g: &Graph, on: impl FnOnce() -> bool) {
+    if USED.with(|u| u.borrow().is_none()) {
+        return;
+    }
+    let on = on();
     USED.with(|u| {
-        u.borrow_mut()
-            .push((entry, g.nodes.len(), g.edges.len(), on))
+        if let Some(used) = u.borrow_mut().as_mut() {
+            used.push((entry, g.nodes.len(), g.edges.len(), on));
+        }
     });
+}
+
+/// Run `f` with the entry points recording the block mode they use
+/// ([`note_used`], [`take_used`]); the earlier state comes back after
+/// it, on unwind too.
+#[cfg(test)]
+pub(crate) fn recording<T>(f: impl FnOnce() -> T) -> T {
+    struct Restore(Option<Vec<(Entry, usize, usize, bool)>>);
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            let old = self.0.take();
+            USED.with(|u| *u.borrow_mut() = old);
+        }
+    }
+    let _restore = Restore(USED.with(|u| u.borrow_mut().replace(Vec::new())));
+    f()
 }
 
 /// The record since the last call, emptied.
 #[cfg(test)]
 pub(crate) fn take_used() -> Vec<(Entry, usize, usize, bool)> {
-    USED.with(|u| std::mem::take(&mut *u.borrow_mut()))
+    USED.with(|u| {
+        u.borrow_mut()
+            .as_mut()
+            .map(std::mem::take)
+            .unwrap_or_default()
+    })
 }
 
 #[cfg(test)]
@@ -499,10 +529,11 @@ mod tests {
     /// the switch on (a diagram with blocks laid out in their own
     /// direction is decided part by part).
     fn in_block_mode(g: &Graph) -> bool {
-        with_blocks(true, || {
-            take_used();
-            scene(g);
-            take_used().iter().any(|u| u.3)
+        recording(|| {
+            with_blocks(true, || {
+                scene(g);
+                take_used().iter().any(|u| u.3)
+            })
         })
     }
 
@@ -690,10 +721,12 @@ mod tests {
             }
         }
         // With the switch off nothing is.
-        with_blocks(false, || {
-            take_used();
-            scene(&graph(&fixture("blocks/hub5")));
-            assert!(take_used().iter().all(|u| !u.3));
+        recording(|| {
+            with_blocks(false, || {
+                scene(&graph(&fixture("blocks/hub5")));
+                let used = take_used();
+                assert!(!used.is_empty() && used.iter().all(|u| !u.3));
+            })
         });
     }
 
@@ -764,43 +797,73 @@ mod tests {
     }
 
     /// B12.1: `scene()`, `route()` and `route_partial()` decide block
-    /// mode alike for every fixture, part by part.
+    /// mode alike for every fixture, part by part. `scene()` records
+    /// what its layout did (whether it came back as blocks), the other
+    /// two what they decide from the shared constructor, so the test
+    /// fails when a part the predicate names is not laid out as blocks
+    /// (or one it does not name is), and when an entry point cuts a
+    /// diagram into other parts than `scene()` does. With the switch
+    /// off, nothing is laid out as blocks and none decides so.
     #[test]
     fn block_mode_agrees_between_scene_and_route() {
-        with_blocks(true, || {
+        recording(|| {
             for (name, g) in flow_fixtures() {
                 take_used();
-                let base = scene(&g);
-                let by_scene = take_used();
+                let base = with_blocks(false, || scene(&g));
                 let at: Vec<(f64, f64)> = base.nodes.iter().map(|n| (n.x, n.y)).collect();
-                route(&g, &at);
-                let by_route = take_used();
-                let mut moved = at.clone();
-                if let Some(p) = moved.first_mut() {
-                    *p = (p.0 + 7.0, p.1 + 5.0);
-                }
-                route_partial(&g, &moved, &base, &at);
-                let by_partial = take_used();
-                let part = |u: &(Entry, usize, usize, bool)| (u.1, u.2, u.3);
-                let scene_parts: Vec<_> = by_scene.iter().map(part).collect();
-                assert!(by_scene.iter().all(|u| u.0 == Entry::Scene), "{name}");
-                assert_eq!(
-                    scene_parts,
-                    by_route
-                        .iter()
-                        .filter(|u| u.0 == Entry::Route)
-                        .map(part)
-                        .collect::<Vec<_>>(),
-                    "{name}: route() decides as scene() does"
+                with_blocks(false, || route(&g, &at));
+                let off = take_used();
+                assert!(
+                    !off.is_empty() && off.iter().all(|u| !u.3),
+                    "{name}: {off:?}"
                 );
-                // A drag frame re-routes the parts the drag reaches (and
-                // may fall back to a whole route()): each decides as
-                // scene() decided for that part.
-                assert!(!by_partial.is_empty(), "{name}");
-                for u in &by_partial {
-                    assert!(scene_parts.contains(&part(u)), "{name}: {u:?}");
-                }
             }
+        });
+        // (Outside a recording nothing is noted: a drag frame's timing
+        // pays for no record.)
+        scene(&graph("flowchart TD\n subgraph S\n a\n end\n b --> a"));
+        assert!(take_used().is_empty());
+        recording(|| {
+            with_blocks(true, || {
+                for (name, g) in flow_fixtures() {
+                    take_used();
+                    let base = scene(&g);
+                    let by_scene = take_used();
+                    // What `scene()`'s layout did is what the predicate
+                    // says, part by part: block mode iff a link crosses a
+                    // border of the part.
+                    let whole = crate::scene::block_mode(&g);
+                    assert_eq!(by_scene.iter().any(|u| u.3), whole, "{name}: {by_scene:?}");
+                    let at: Vec<(f64, f64)> = base.nodes.iter().map(|n| (n.x, n.y)).collect();
+                    route(&g, &at);
+                    let by_route = take_used();
+                    let mut moved = at.clone();
+                    if let Some(p) = moved.first_mut() {
+                        *p = (p.0 + 7.0, p.1 + 5.0);
+                    }
+                    route_partial(&g, &moved, &base, &at);
+                    let by_partial = take_used();
+                    let part = |u: &(Entry, usize, usize, bool)| (u.1, u.2, u.3);
+                    let scene_parts: Vec<_> = by_scene.iter().map(part).collect();
+                    assert!(by_scene.iter().all(|u| u.0 == Entry::Scene), "{name}");
+                    assert_eq!(
+                        scene_parts,
+                        by_route
+                            .iter()
+                            .filter(|u| u.0 == Entry::Route)
+                            .map(part)
+                            .collect::<Vec<_>>(),
+                        "{name}: route() decides as scene() does"
+                    );
+                    // A drag frame re-routes the parts the drag reaches (and
+                    // may fall back to a whole route()): each decides as
+                    // scene() decided for that part.
+                    assert!(!by_partial.is_empty(), "{name}");
+                    for u in &by_partial {
+                        assert!(scene_parts.contains(&part(u)), "{name}: {u:?}");
+                    }
+                }
+            })
         });
     }
 

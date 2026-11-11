@@ -4967,7 +4967,7 @@ fn info_of(g: &Graph, w: &World, cx: &Ctx, i: usize) -> Option<Info> {
         ends: (a, b),
         allowed,
         blocked_frames,
-        back: cx.back.get(i).copied().unwrap_or(false),
+        back: cx.lane.get(i).copied().unwrap_or(false),
         sideways: a1.min(b1) > a0.max(b0),
         home,
     })

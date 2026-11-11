@@ -1021,13 +1021,44 @@ fn level_order_is_deterministic_and_bounded() {
         let other = std::thread::scope(|s| s.spawn(|| svg(&g)).join().expect("renders"));
         assert_eq!(first, other, "{name}");
     }
-    // More starts than the ordering ever takes change nothing more: the
-    // budget's seven are the most.
+    // More starts than the budget grants the public fixture change
+    // nothing more: the most the ordering ever takes find no better.
     let g = fixture("blocks/blocks-overview");
     let at = |starts: usize| {
         crate::levels::with_order_starts(starts, || crate::scene::to_svg(&block_scene(&g)))
     };
-    assert_eq!(at(7), crate::scene::to_svg(&block_scene(&g)));
+    let most = crate::layout::BLOCK_ORDER_PINS.2;
+    assert_eq!(at(most), crate::scene::to_svg(&block_scene(&g)));
+}
+
+#[test]
+fn the_level_order_keeps_the_public_fixture_within_its_crossings() {
+    // The public fixture and its four permutations (edge lines reversed
+    // and rotated, subgraphs and actors declared the other way round):
+    // at most 7 crossings as drawn with the starts the budget grants
+    // (mermaid: 5; before blocks: 14, 6, 23, 15 and 12). The half
+    // sweeps alone leave 9 on every one of them: a long unit's one key
+    // is the mean of what its layers ask for, and the adjacent
+    // exchange after each half is what tries the neighbour that mean
+    // passed over.
+    for variant in [
+        "",
+        "-edges-reversed",
+        "-edges-rotated",
+        "-actors-reversed",
+        "-subgraphs-reversed",
+    ] {
+        let name = format!("blocks/blocks-overview{variant}");
+        let root = env!("CARGO_MANIFEST_DIR");
+        let src = std::fs::read_to_string(format!("{root}/tests/fixtures/{name}.mmd")).unwrap();
+        let rep = crate::levels::with_blocks(true, || crate::quality::measure_source(&src, false))
+            .expect("a flowchart");
+        assert!(
+            rep.statik.x_drawn <= 7,
+            "{name}: {} crossings",
+            rep.statik.x_drawn
+        );
+    }
 }
 
 #[test]
@@ -1041,16 +1072,73 @@ fn the_start_order_ignores_edge_statement_order() {
     }
 }
 
+/// The ends of `hub`'s edges in `sc`, as (place across the flow of the
+/// end on the hub, place across the flow of the edge's other end, the
+/// end's height on the hub): a top-down drawing's fan.
+fn fan_of(sc: &Scene, hub: &str) -> Vec<(f64, f64, f64)> {
+    sc.edges
+        .iter()
+        .filter(|e| e.from != e.to && (e.from == hub || e.to == hub))
+        .map(|e| {
+            let pts = path_of(e);
+            let (near, far) = if e.from == hub {
+                (pts[0], pts[pts.len() - 1])
+            } else {
+                (pts[pts.len() - 1], pts[0])
+            };
+            (near.0, far.0, near.1)
+        })
+        .collect()
+}
+
 #[test]
 fn a_hub_fan_leaves_in_target_order() {
     // No two edges of one node's or frame's fan cross each other, in the
-    // static scene and routed at its centres.
+    // static scene and routed at its centres (B11's comb has run in
+    // both).
     for name in ["blocks/blocks-overview", "blocks/hub5"] {
         let root = env!("CARGO_MANIFEST_DIR");
         let src = std::fs::read_to_string(format!("{root}/tests/fixtures/{name}.mmd")).unwrap();
         let rep = crate::levels::with_blocks(true, || crate::quality::measure_source(&src, false))
             .expect("a flowchart");
         assert_eq!(rep.statik.fan_x, 0, "{name} static");
+        assert_eq!(rep.routed.fan_x, 0, "{name} routed");
+        // The hubs: every end on the hub's one flow-facing side (its
+        // bottom border: one height), and along it in the order of the
+        // nodes the edges lead to. `HUB` feeds five blocks below it;
+        // the mail relay of the public fixture takes three returns
+        // from the blocks below it, up their channels.
+        let hub = if name.ends_with("hub5") {
+            "HUB"
+        } else {
+            "MAIL"
+        };
+        for (mode, sc) in [("static", &rep.static_scene), ("routed", &rep.routed_scene)] {
+            let node = sc.nodes.iter().find(|n| n.id == hub).expect("the hub");
+            let mut fan = fan_of(sc, hub);
+            assert!(fan.len() >= 3, "{name} {mode}: {fan:?}");
+            let bottom = node.y + node.h / 2.0;
+            for &(_, _, y) in &fan {
+                assert!(
+                    (y - bottom).abs() < 1.0,
+                    "{name} {mode}: an end at {y}, bottom {bottom}"
+                );
+            }
+            fan.sort_by(|a, b| a.0.total_cmp(&b.0));
+            // (Two that end in one column — blocks stacked under the
+            // hub — have no order across the flow: they nest.)
+            let column = 20.0;
+            for w in fan.windows(2) {
+                assert!(
+                    w[0].1 <= w[1].1 + column,
+                    "{name} {mode}: ends at {} and {} lead to {} and {}",
+                    w[0].0,
+                    w[1].0,
+                    w[0].1,
+                    w[1].1
+                );
+            }
+        }
     }
 }
 
@@ -1070,6 +1158,44 @@ fn crossing_neutral_members_keep_declaration_order() {
             .filter(|id| declared.contains(id))
             .collect();
         assert_eq!(row, declared, "{starts} starts");
+    }
+}
+
+/// The ids of `g`'s nodes on the row of `id` in its block layout, by
+/// place across the flow.
+fn row_of(g: &Graph, id: &str) -> Vec<String> {
+    layer_orders(g)
+        .into_iter()
+        .find(|row| row.iter().any(|x| x == id))
+        .expect("a row")
+}
+
+#[test]
+fn a_member_a_channel_holds_out_of_place_goes_back_with_it() {
+    // `R --> I` runs up from R's last row (from `A`, the member it is
+    // drawn from) past `Q` and `C`. The sweeps leave the channel right
+    // of those two and `A` under it, last in its row: no crossing, and
+    // `B E A` where the source says `A B E`. Neither moves back alone
+    // without crossing `C`'s links; the two together do, the channel to
+    // the left end of the block on every row it passes.
+    let src = "flowchart TD\n    I[idle] --> Q\n    subgraph R[Review]\n        Q[queue] --> C[check]\n        C --> A[approve]\n        C --> B[reject]\n        C --> E[escalate]\n    end\n    R --> D[done]\n    R --> I\n";
+    let g = graph(src);
+    let most = crate::layout::BLOCK_ORDER_PINS.2;
+    for starts in [1, 3, most] {
+        let row = crate::levels::with_order_starts(starts, || row_of(&g, "A"));
+        assert_eq!(row, ["A", "B", "E"], "{starts} starts");
+    }
+    let rep = crate::levels::with_blocks(true, || crate::quality::measure_source(src, false))
+        .expect("a flowchart");
+    assert_eq!(rep.statik.x_drawn, 0);
+    // Without the edge up, and with a member's own edge out instead,
+    // the row is the source's as it was.
+    for (drop, add) in [
+        ("    R --> I\n", ""),
+        ("    R --> D[done]\n    R --> I\n", "    A --> D[done]\n"),
+    ] {
+        let g = graph(&format!("{}{add}", src.replace(drop, "")));
+        assert_eq!(row_of(&g, "A"), ["A", "B", "E"]);
     }
 }
 
@@ -1186,7 +1312,7 @@ pub(crate) fn sweep() -> Vec<(String, String)> {
 #[test]
 fn a_generated_sweep_keeps_the_block_invariants() {
     // The constants the sweep pins.
-    assert_eq!(crate::layout::BLOCK_ORDER_PINS, (12, (1, 3), 7));
+    assert_eq!(crate::layout::BLOCK_ORDER_PINS, (12, (1, 3), 9));
     let (mut blocks, mut lanes, mut hard) = (0, Vec::new(), Vec::new());
     for (name, src) in sweep() {
         let g = graph(&src);

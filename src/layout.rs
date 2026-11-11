@@ -4463,7 +4463,19 @@ fn place(
                     levels.push((path, lo, hi));
                 }
             }
+            let mut bspan = vec![(0usize, 0usize); ns];
+            for (&c, &span) in &cluster_span {
+                bspan[c] = span;
+            }
+            let mut rspan = vec![(usize::MAX, 0usize); runs];
+            for (d, &r) in run.iter().enumerate() {
+                if r != usize::MAX {
+                    rspan[r] = (rspan[r].0.min(alayer[d]), rspan[r].1.max(alayer[d]));
+                }
+            }
             Some(BlockOrder {
+                bspan,
+                rspan,
                 apath: &apath,
                 border: &border_side,
                 preds: &preds,
@@ -5868,18 +5880,23 @@ pub(crate) const BLOCK_ORDER_PINS: (usize, (usize, usize), usize) =
     (BLOCK_ORDER_EXACT_MAX, LANE_SHARE, BLOCK_ORDER_STARTS);
 
 /// The most starts the ordering of a block layout takes ([`BlockOrder`]):
-/// the canonical order and six shuffles of it. A shuffled start finds
-/// orders no sweep reaches from the canonical one (the public fixture's
-/// crossings fall with the starts), and seven is what a layered layout
-/// spends by default elsewhere (ELK's thoroughness).
-const BLOCK_ORDER_STARTS: usize = 7;
+/// the canonical order and eight shuffles of it. A shuffled start finds
+/// orders no sweep reaches from the canonical one, and which start does
+/// is the draw's: over the block fixtures the least crossings are
+/// reached by the seventh start at the latest (a hub and five blocks),
+/// over the larger drawings the package was judged on by the ninth; a
+/// layered layout elsewhere spends seven by default (ELK's
+/// thoroughness).
+const BLOCK_ORDER_STARTS: usize = 9;
 
 /// The work the starts of one ordering may cost, in elements (dummies
 /// and walls included) plus links, summed over the starts: a drawing of
 /// `e` elements takes `BLOCK_ORDER_WORK / e` starts, at least one and at
 /// most [`BLOCK_ORDER_STARTS`], so the static scene of a large diagram
-/// stays inside its time budget.
-const BLOCK_ORDER_WORK: usize = 9_000;
+/// stays inside its time budget (twice the scene before blocks):
+/// about 150 elements and links take all nine, the public fixture's 234
+/// five, dense-td's 371 three.
+const BLOCK_ORDER_WORK: usize = 1_400;
 
 /// The final order of a block layout's placement, by element: per
 /// layer, each real node `(node, usize::MAX)` and each channel dummy
@@ -5930,6 +5947,10 @@ struct BlockOrder<'a> {
     /// Per augmented node: its slot in its own level on its layer —
     /// just before the block of that rank.
     slot: Vec<f64>,
+    /// Per subgraph: the layers it spans.
+    bspan: Vec<(usize, usize)>,
+    /// Per run: the layers its dummies stand on.
+    rspan: Vec<(usize, usize)>,
 }
 
 impl BlockOrder<'_> {
@@ -6028,10 +6049,12 @@ impl BlockOrder<'_> {
     /// are contiguous: the level's own walls stand at their two ends.
     fn units(&self, layer: &[usize], path: &[usize]) -> Vec<(OrderUnit, usize, usize)> {
         let k = path.len();
-        let mut out: Vec<(OrderUnit, usize, usize)> = Vec::new();
+        let mut out: Vec<(OrderUnit, usize, usize)> = Vec::with_capacity(layer.len());
+        // (A subgraph has one path: its id at depth `k - 1` is the level.)
+        let level = path.last();
         for (i, &v) in layer.iter().enumerate() {
             let p = &self.apath[v];
-            if p.len() < k || p[..k] != *path {
+            if k > 0 && p.get(k - 1) != level {
                 continue;
             }
             match p.get(k) {
@@ -6068,24 +6091,39 @@ impl BlockOrder<'_> {
         }
     }
 
-    /// Layered crossings in the gaps from layer `from` to layer `to`.
+    /// Layered crossings in the gaps from layer `from` to layer `to`:
+    /// per gap, the upper layer's links in its order, each counted
+    /// against the links before it that end further on (a binary
+    /// indexed tree over the lower layer's places; the links of one
+    /// node never count against each other).
     fn crossings(&self, layers: &[Vec<usize>], pos: &[f64], from: usize, to: usize) -> usize {
         let mut total = 0;
-        let mut es: Vec<(usize, usize)> = Vec::new();
-        let mut buf: Vec<usize> = Vec::new();
+        let mut tree: Vec<u32> = Vec::new();
         for li in from..to.min(self.nlayers.saturating_sub(1)) {
-            es.clear();
+            let n = layers[li + 1].len();
+            tree.clear();
+            tree.resize(n + 1, 0);
+            let mut seen = 0usize;
             for &u in &layers[li] {
-                for &v in &self.succs[u] {
-                    if self.alayer[v] == li + 1 {
-                        es.push((pos[u] as usize, pos[v] as usize));
+                let links = self.succs[u].iter().filter(|&&v| self.alayer[v] == li + 1);
+                for &v in links.clone() {
+                    // Links seen so far that end at or before `v`.
+                    let (mut i, mut upto) = (pos[v] as usize + 1, 0usize);
+                    while i > 0 {
+                        upto += tree[i] as usize;
+                        i &= i - 1;
                     }
+                    total += seen - upto;
+                }
+                for &v in links {
+                    let mut i = pos[v] as usize + 1;
+                    while i <= n {
+                        tree[i] += 1;
+                        i += i & i.wrapping_neg();
+                    }
+                    seen += 1;
                 }
             }
-            es.sort_unstable();
-            let mut lower: Vec<usize> = es.iter().map(|e| e.1).collect();
-            buf.resize(lower.len(), 0);
-            total += inversions(&mut lower, &mut buf);
         }
         total
     }
@@ -6143,10 +6181,10 @@ impl BlockOrder<'_> {
                     for &w in &layers[l][at..at + n] {
                         let nbrs = if down { &self.preds[w] } else { &self.succs[w] };
                         for &x in nbrs {
+                            // (Inside the same child block: its id at
+                            // this depth says so.)
                             let inside = matches!(u, OrderUnit::Block(c)
-                                if self.apath[x].len() > k
-                                    && self.apath[x][k] == c
-                                    && self.apath[x][..k] == *path);
+                                if self.apath[x].get(k) == Some(&c));
                             if self.alayer[x] == b && !inside {
                                 sum += pos[x] as usize;
                                 links += 1;
@@ -6200,14 +6238,206 @@ impl BlockOrder<'_> {
         }
     }
 
+    /// The layers a long unit of a level stands on.
+    fn long_span(&self, u: OrderUnit) -> Option<(usize, usize)> {
+        match u {
+            OrderUnit::Block(c) => Some(self.bspan[c]),
+            OrderUnit::Run(r) => Some(self.rspan[r]),
+            OrderUnit::Node(_) => None,
+        }
+    }
+
+    /// What exchanging two neighbours of one layer does to the layered
+    /// crossings: `a` (the left one) and `b`, as `(start, len)` ranges
+    /// of `layer`. `beside` holds, for the layer before and the layer
+    /// after, the two units' ranges there when they change places on it
+    /// in the same exchange: a pair of links that flips at both ends
+    /// keeps its state. `scratch` is two buffers, kept between calls.
+    fn exchange_delta(
+        &self,
+        layer: &[usize],
+        (a, b): ((usize, usize), (usize, usize)),
+        pos: &[f64],
+        beside: [Option<((usize, usize), (usize, usize))>; 2],
+        scratch: &mut (Vec<usize>, Vec<usize>),
+    ) -> isize {
+        let mut delta = 0isize;
+        let l = self.alayer[layer[a.0]];
+        let (xs, ys) = scratch;
+        for (nbrs, other, both) in [
+            (self.preds, l.wrapping_sub(1), beside[0]),
+            (self.succs, l + 1, beside[1]),
+        ] {
+            let ends = |range: (usize, usize), out: &mut Vec<usize>| {
+                out.clear();
+                for &v in &layer[range.0..range.0 + range.1] {
+                    out.extend(
+                        nbrs[v]
+                            .iter()
+                            .filter(|&&x| self.alayer[x] == other)
+                            .map(|&x| pos[x] as usize),
+                    );
+                }
+                out.sort_unstable();
+            };
+            ends(a, xs);
+            if xs.is_empty() {
+                continue;
+            }
+            ends(b, ys);
+            if ys.is_empty() {
+                continue;
+            }
+            // The left unit is left now: a pair of links crosses while
+            // the left one's far end is the further on.
+            let (mut below, mut upto) = (0usize, 0usize);
+            for &x in xs.iter() {
+                while below < ys.len() && ys[below] < x {
+                    below += 1;
+                }
+                while upto < ys.len() && ys[upto] <= x {
+                    upto += 1;
+                }
+                delta += (ys.len() - upto) as isize - below as isize;
+            }
+            if let Some((ra, rb)) = both {
+                let within = |r: (usize, usize), v: &[usize]| {
+                    v.iter().filter(|&&p| p >= r.0 && p < r.0 + r.1).count() as isize
+                };
+                delta -= within(ra, xs) * within(rb, ys);
+                delta += within(rb, xs) * within(ra, ys);
+            }
+        }
+        delta
+    }
+
+    /// The weighted adjacent exchange of a level's order, after each
+    /// half sweep: two units that stand next to each other on every
+    /// layer they share change places — on all of those layers at once,
+    /// so two blocks keep one order and a run one side of a block —
+    /// when that lowers the layered crossings, every link of theirs
+    /// counted (a bundle weighs its multiplicity). A barycentre gives a
+    /// long unit ONE key for all its layers, the mean of what each
+    /// layer asks for; the exchange is what then tries the neighbour
+    /// that mean passed over (the public fixture's crossings fall from
+    /// 9 to 6 with it, dense-td's layered ones by a quarter). With
+    /// `tidy`, the level's nodes and runs are what is exchanged, a pair
+    /// whose left one is later in the canonical order, also when the
+    /// crossings only stay ([`BlockOrder::tidy`]). Each exchange lowers
+    /// the crossings or the inversions against the canonical order, so
+    /// it ends. Returns whether anything moved.
+    fn exchange(
+        &self,
+        path: &[usize],
+        (lo, hi): (usize, usize),
+        tidy: bool,
+        layers: &mut [Vec<usize>],
+        pos: &mut [f64],
+    ) -> bool {
+        type Range = (usize, usize);
+        let mut units: Vec<Vec<(OrderUnit, usize, usize)>> =
+            (lo..=hi).map(|l| self.units(&layers[l], path)).collect();
+        let canon = |u: OrderUnit, at: usize, layer: &[usize]| match u {
+            OrderUnit::Block(c) => (self.first[c], 0, 0, 0),
+            _ => self.canon[layer[at]],
+        };
+        let mut shared: Vec<(usize, usize, Range, Range)> = Vec::new();
+        let mut scratch: (Vec<usize>, Vec<usize>) = (Vec::new(), Vec::new());
+        let mut moved = false;
+        let mut again = true;
+        let mut passes = 0;
+        while again && passes < EXCHANGE_PASSES {
+            again = false;
+            passes += 1;
+            for l in lo..=hi {
+                let mut i = 0;
+                while i + 1 < units[l - lo].len() {
+                    let (a, b) = (units[l - lo][i], units[l - lo][i + 1]);
+                    i += 1;
+                    // The layers the two share, with their places there.
+                    shared.clear();
+                    match (self.long_span(a.0), self.long_span(b.0)) {
+                        (Some(sa), Some(sb)) => {
+                            let (from, to) = (sa.0.max(sb.0), sa.1.min(sb.1));
+                            // Judged once, from the first layer they share.
+                            if from != l {
+                                continue;
+                            }
+                            let mut apart = false;
+                            for m in from..=to {
+                                let us = &units[m - lo];
+                                match us.iter().position(|u| u.0 == a.0) {
+                                    Some(ia) if us.get(ia + 1).is_some_and(|u| u.0 == b.0) => {
+                                        let (ua, ub) = (us[ia], us[ia + 1]);
+                                        shared.push((m, ia, (ua.1, ua.2), (ub.1, ub.2)));
+                                    }
+                                    _ => {
+                                        apart = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if apart {
+                                continue;
+                            }
+                        }
+                        _ => shared.push((l, i - 1, (a.1, a.2), (b.1, b.2))),
+                    }
+                    if tidy {
+                        let later = canon(a.0, a.1, &layers[l]) > canon(b.0, b.1, &layers[l]);
+                        let block = |u: OrderUnit| matches!(u, OrderUnit::Block(_));
+                        if !later || block(a.0) || block(b.0) {
+                            continue;
+                        }
+                    }
+                    // A pair of links that flips at one end only is met
+                    // from that end; one that flips at both (the two
+                    // units change places on the layer beside this one
+                    // too), never.
+                    let mut delta = 0isize;
+                    for (si, &(m, _, ra, rb)) in shared.iter().enumerate() {
+                        let on = |k: Option<usize>, layer: usize| {
+                            k.and_then(|k| shared.get(k))
+                                .filter(|s| s.0 == layer)
+                                .map(|s| (s.2, s.3))
+                        };
+                        let beside = [
+                            on(si.checked_sub(1), m.wrapping_sub(1)),
+                            on(Some(si + 1), m + 1),
+                        ];
+                        delta +=
+                            self.exchange_delta(&layers[m], (ra, rb), pos, beside, &mut scratch);
+                    }
+                    if delta > 0 || (delta == 0 && !tidy) {
+                        continue;
+                    }
+                    for &(m, ia, ra, rb) in &shared {
+                        layers[m][ra.0..rb.0 + rb.1].rotate_left(ra.1);
+                        for at in ra.0..rb.0 + rb.1 {
+                            pos[layers[m][at]] = at as f64;
+                        }
+                        let us = &mut units[m - lo];
+                        us.swap(ia, ia + 1);
+                        us[ia].1 = ra.0;
+                        us[ia + 1].1 = ra.0 + rb.1;
+                    }
+                    moved = true;
+                    again = true;
+                }
+            }
+        }
+        moved
+    }
+
     /// The order of one level's units (the level `li` of `levels`):
-    /// half sweeps down and up from the order they stand in and from
-    /// its reverse, judged after each half by the layered crossings of
-    /// the layers the level spans (and the gaps just outside it, whose
-    /// far layers stay as the levels above left them); the least wins,
-    /// the earlier on a tie. The result is each child block's rank and
-    /// each node's and run dummy's slot between the blocks, which the
-    /// sweeps over the whole graph then keep.
+    /// from the order they stand in and from its reverse, half sweeps
+    /// down and up with an adjacent exchange after each half
+    /// ([`BlockOrder::exchange`]), judged after each half by the layered
+    /// crossings of the layers the level spans (and the gaps just
+    /// outside it, whose far layers stay as the levels above left
+    /// them); the least wins, the earlier on a tie. The result is each
+    /// child block's rank and each node's and run dummy's slot between
+    /// the blocks, which the sweeps over the whole graph then keep.
     fn order_level(&mut self, li: usize, layers: &mut [Vec<usize>], pos: &mut [f64]) {
         let (path, lo, hi) = self.levels[li].clone();
         let span = (lo, hi);
@@ -6235,27 +6465,32 @@ impl BlockOrder<'_> {
                     break;
                 }
                 restore(layers, pos, &base);
+                // This start's own least: its rounds go on while they
+                // lower it, whatever the other start reached.
+                let mut least = best.0;
                 if start == 1 {
                     for l in lo..=hi {
                         let units = self.units(&layers[l], &path);
                         let by: Vec<usize> = (0..units.len()).rev().collect();
                         Self::place_units(&mut layers[l], pos, &units, &by);
                     }
-                    let c = judge(self, layers, pos);
-                    if c < best.0 {
-                        best = (c, layers[lo..=hi].to_vec());
+                    least = judge(self, layers, pos);
+                    if least < best.0 {
+                        best = (least, layers[lo..=hi].to_vec());
                     }
                 }
                 for _ in 0..LEVEL_ROUNDS {
-                    let before = best.0;
+                    let before = least;
                     for down in [true, false] {
                         self.half_sweep(&path, span, down, layers, pos);
+                        self.exchange(&path, span, false, layers, pos);
                         let c = judge(self, layers, pos);
+                        least = least.min(c);
                         if c < best.0 {
                             best = (c, layers[lo..=hi].to_vec());
                         }
                     }
-                    if best.0 == 0 || best.0 >= before {
+                    if least == 0 || least >= before {
                         break;
                     }
                 }
@@ -6386,17 +6621,19 @@ impl BlockOrder<'_> {
         }
     }
 
-    /// Start `k > 0`: the canonical order shuffled — per level one
-    /// permutation of its long units, and per layer one of the level's
-    /// own nodes; never a layer as a whole, so two blocks start in one
-    /// order on every layer and a run on one side of a block. One
-    /// generator stream per start, consumed level by level (top-down),
-    /// the long units first and then the layers in ascending order;
+    /// Start `k > 0`, for the level `li`: the canonical order shuffled —
+    /// one permutation of the level's long units, and per layer one of
+    /// its own nodes; never a layer as a whole, so two blocks start in
+    /// one order on every layer and a run on one side of a block. One
+    /// generator stream per (start, level) — a level's draw then depends
+    /// on its own units alone, not on how many the levels before it
+    /// drew — the long units first, then the layers in ascending order;
     /// integer arithmetic only.
-    fn shuffle(&self, k: usize, layers: &mut [Vec<usize>], pos: &mut [f64]) {
+    fn shuffle(&self, li: usize, k: usize, layers: &mut [Vec<usize>], pos: &mut [f64]) {
         const MUL: u64 = 6_364_136_223_846_793_005;
         const INC: u64 = 1_442_695_040_888_963_407;
-        let mut x = (k as u64).wrapping_mul(MUL).wrapping_add(INC);
+        let stream = k + SHUFFLE_STREAMS * li;
+        let mut x = (stream as u64).wrapping_mul(MUL).wrapping_add(INC);
         let mut draw = |below: usize| -> usize {
             x = x.wrapping_mul(MUL).wrapping_add(INC);
             ((x >> 33) % below as u64) as usize
@@ -6408,41 +6645,40 @@ impl BlockOrder<'_> {
             }
             p
         };
-        for (path, lo, hi) in &self.levels {
-            // The level's long units, in canonical order of first sight.
-            let mut long: Vec<OrderUnit> = Vec::new();
-            for lv in &layers[*lo..=*hi] {
-                for (u, _, _) in self.units(lv, path) {
-                    if !matches!(u, OrderUnit::Node(_)) && !long.contains(&u) {
-                        long.push(u);
-                    }
+        let (path, lo, hi) = &self.levels[li];
+        // The level's long units, in the order they are first met.
+        let mut long: Vec<OrderUnit> = Vec::new();
+        for lv in &layers[*lo..=*hi] {
+            for (u, _, _) in self.units(lv, path) {
+                if !matches!(u, OrderUnit::Node(_)) && !long.contains(&u) {
+                    long.push(u);
                 }
             }
-            let perm = fisher_yates(long.len());
-            let place = |u: OrderUnit| long.iter().position(|&x| x == u).map_or(0, |i| perm[i]);
-            for l in *lo..=*hi {
-                let units = self.units(&layers[l], path);
-                let (mut longs, mut shorts): (Vec<usize>, Vec<usize>) =
-                    (0..units.len()).partition(|&i| !matches!(units[i].0, OrderUnit::Node(_)));
-                longs.sort_by_key(|&i| place(units[i].0));
-                let p = fisher_yates(shorts.len());
-                shorts = p.iter().map(|&i| shorts[i]).collect();
-                // The layer's pattern of long and short places stays.
-                let (mut li, mut si) = (0, 0);
-                let by: Vec<usize> = units
-                    .iter()
-                    .map(|u| {
-                        if matches!(u.0, OrderUnit::Node(_)) {
-                            si += 1;
-                            shorts[si - 1]
-                        } else {
-                            li += 1;
-                            longs[li - 1]
-                        }
-                    })
-                    .collect();
-                Self::place_units(&mut layers[l], pos, &units, &by);
-            }
+        }
+        let perm = fisher_yates(long.len());
+        let place = |u: OrderUnit| long.iter().position(|&x| x == u).map_or(0, |i| perm[i]);
+        for l in *lo..=*hi {
+            let units = self.units(&layers[l], path);
+            let (mut longs, mut shorts): (Vec<usize>, Vec<usize>) =
+                (0..units.len()).partition(|&i| !matches!(units[i].0, OrderUnit::Node(_)));
+            longs.sort_by_key(|&i| place(units[i].0));
+            let p = fisher_yates(shorts.len());
+            shorts = p.iter().map(|&i| shorts[i]).collect();
+            // The layer's pattern of long and short places stays.
+            let (mut li, mut si) = (0, 0);
+            let by: Vec<usize> = units
+                .iter()
+                .map(|u| {
+                    if matches!(u.0, OrderUnit::Node(_)) {
+                        si += 1;
+                        shorts[si - 1]
+                    } else {
+                        li += 1;
+                        longs[li - 1]
+                    }
+                })
+                .collect();
+            Self::place_units(&mut layers[l], pos, &units, &by);
         }
     }
 
@@ -6518,45 +6754,168 @@ impl BlockOrder<'_> {
         fresh
     }
 
-    /// Source order among equals: after the winning start, two adjacent
-    /// nodes or runs of one level in one slot swap when the left one is
-    /// later in the canonical order and the layered crossings do not
-    /// rise. Each swap removes one inversion against the canonical
-    /// order, so it ends. (A shuffled start leaves the members that
-    /// change no crossing wherever the shuffle put them.)
-    fn tidy(&self, layers: &mut [Vec<usize>], pos: &mut [f64]) {
-        for li in 0..self.nlayers {
-            let mut swapped = true;
-            while swapped {
-                swapped = false;
-                for i in 0..layers[li].len().saturating_sub(1) {
-                    let (v, w) = (layers[li][i], layers[li][i + 1]);
-                    if self.border[v] != 0
-                        || self.border[w] != 0
-                        || self.apath[v] != self.apath[w]
-                        || self.canon[v] <= self.canon[w]
-                    {
-                        continue;
-                    }
-                    let now = local_crossings(v, w, self.preds, pos)
-                        + local_crossings(v, w, self.succs, pos);
-                    let then = local_crossings(w, v, self.preds, pos)
-                        + local_crossings(w, v, self.succs, pos);
-                    if then <= now {
-                        layers[li].swap(i, i + 1);
-                        pos[v] = (i + 1) as f64;
-                        pos[w] = i as f64;
-                        swapped = true;
+    /// How many pairs of a level's own nodes stand against the
+    /// canonical (source) order on a layer they share.
+    fn node_inversions(
+        &self,
+        path: &[usize],
+        (lo, hi): (usize, usize),
+        layers: &[Vec<usize>],
+    ) -> usize {
+        let mut total = 0;
+        for lv in &layers[lo..=hi] {
+            let nodes: Vec<usize> = self
+                .units(lv, path)
+                .iter()
+                .filter_map(|&(u, at, _)| matches!(u, OrderUnit::Node(_)).then_some(lv[at]))
+                .collect();
+            for (i, &v) in nodes.iter().enumerate() {
+                total += nodes[i + 1..]
+                    .iter()
+                    .filter(|&&w| self.canon[v] > self.canon[w])
+                    .count();
+            }
+        }
+        total
+    }
+
+    /// Source order among equals, for the members a channel holds out
+    /// of place. A channel that ends on a member of its own level (an
+    /// edge out of a block's last row, up past the rows before it)
+    /// passes those rows on one side, and the sweeps settle for the
+    /// member on that side of its row whatever the source says: taking
+    /// the member back alone would cross the channel over its row
+    /// mates' links, and moving the channel alone crosses it too. So
+    /// the two are tried together: a channel that ends on a node out of
+    /// source order goes, with that node, to the end the node belongs
+    /// on — every run of it to that end of its own level, on every
+    /// layer it has — the levels it passes are tidied again, and the
+    /// change is kept when the layered crossings do not rise and the
+    /// nodes are nearer their source order. At most [`FLIP_TRIES`]
+    /// channels are tried, so a dense drawing, where a member out of
+    /// source order is where its links want it, pays a bounded price.
+    fn flip_chains(&self, layers: &mut [Vec<usize>], pos: &mut [f64]) {
+        let judge = |me: &Self, layers: &[Vec<usize>], pos: &[f64]| {
+            let inversions: usize = me
+                .levels
+                .iter()
+                .map(|(path, lo, hi)| me.node_inversions(path, (*lo, *hi), layers))
+                .sum();
+            (me.crossings(layers, pos, 0, me.nlayers), inversions)
+        };
+        let span_of = |path: &[usize]| match path.last() {
+            Some(&c) => self.bspan[c],
+            None => (0, self.nlayers.saturating_sub(1)),
+        };
+        let mut now = judge(self, layers, pos);
+        let mut tries = 0;
+        // Each kept change lowers (crossings, inversions): it ends.
+        while now.1 > 0 && tries < FLIP_TRIES {
+            // The channels that end on a node standing out of source
+            // order in its level: (edge, node, the end the node belongs
+            // on — `true`: the low one).
+            let mut cands: Vec<(usize, usize, bool)> = Vec::new();
+            for (path, lo, hi) in &self.levels {
+                for lv in &layers[*lo..=*hi] {
+                    let nodes: Vec<usize> = self
+                        .units(lv, path)
+                        .iter()
+                        .filter_map(|&(u, at, _)| matches!(u, OrderUnit::Node(_)).then_some(lv[at]))
+                        .collect();
+                    for (i, &v) in nodes.iter().enumerate() {
+                        for &w in &nodes[i + 1..] {
+                            if self.canon[v] <= self.canon[w] {
+                                continue;
+                            }
+                            for (node, low) in [(w, true), (v, false)] {
+                                for &x in self.preds[node].iter().chain(&self.succs[node]) {
+                                    let edge = self.canon[x].3;
+                                    if self.run[x] != usize::MAX
+                                        && self.apath[x] == *path
+                                        && !cands.contains(&(edge, node, low))
+                                    {
+                                        cands.push((edge, node, low));
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
+            }
+            let mut kept = false;
+            for (edge, node, low) in cands {
+                if tries == FLIP_TRIES {
+                    break;
+                }
+                tries += 1;
+                let before: Vec<Vec<usize>> = layers.to_vec();
+                // The channel's dummies and the node, each to the end of
+                // its own level on its layer.
+                let mut paths: Vec<&[usize]> = Vec::new();
+                for v in 0..self.alayer.len() {
+                    let dummy = self.run[v] != usize::MAX && self.canon[v].3 == edge;
+                    if !dummy && v != node {
+                        continue;
+                    }
+                    let (l, path) = (self.alayer[v], self.apath[v].as_slice());
+                    if !paths.contains(&path) {
+                        paths.push(path);
+                    }
+                    let units = self.units(&layers[l], path);
+                    let (Some(first), Some(last)) = (units.first(), units.last()) else {
+                        continue;
+                    };
+                    let Some(at) = layers[l].iter().position(|&x| x == v) else {
+                        continue;
+                    };
+                    let end = if low { first.1 } else { last.1 + last.2 - 1 };
+                    let d = layers[l].remove(at);
+                    layers[l].insert(end, d);
+                    for (i, &x) in layers[l].iter().enumerate() {
+                        pos[x] = i as f64;
+                    }
+                }
+                for path in paths {
+                    self.exchange(path, span_of(path), true, layers, pos);
+                }
+                let then = judge(self, layers, pos);
+                if then.0 <= now.0 && then < now {
+                    now = then;
+                    kept = true;
+                    break;
+                }
+                layers.clone_from_slice(&before);
+                for lv in layers.iter() {
+                    for (i, &v) in lv.iter().enumerate() {
+                        pos[v] = i as f64;
+                    }
+                }
+            }
+            if !kept {
+                break;
             }
         }
     }
 
-    /// One run from the order the layers stand in: the level orders
-    /// top-down (each level's blocks and runs first, then inside each
-    /// block), then the sweeps inside their slots. Returns the layered
-    /// crossings.
+    /// Source order among equals: after the winning start, two units of
+    /// one level that stand next to each other (two members of a block,
+    /// two nodes or runs between the same blocks) change places when
+    /// the left one is later in the canonical order and the layered
+    /// crossings do not rise ([`BlockOrder::exchange`]); each exchange
+    /// removes one inversion against the canonical order, so it ends.
+    /// (A shuffled start leaves the members that change no crossing
+    /// wherever the shuffle put them.)
+    fn tidy(&self, layers: &mut [Vec<usize>], pos: &mut [f64]) {
+        for (path, lo, hi) in &self.levels {
+            self.exchange(path, (*lo, *hi), true, layers, pos);
+        }
+    }
+
+    /// One start's orders, from the order the layers stand in: the level
+    /// orders top-down (each level's blocks and runs first, then inside
+    /// each block), then the sweeps inside their slots; again while a
+    /// pass lowers the layered crossings, at most [`LEVEL_PASSES`]
+    /// times. Returns the layered crossings.
     fn settle(&mut self, layers: &mut Vec<Vec<usize>>, pos: &mut [f64]) -> usize {
         let mut best: Option<(usize, Vec<Vec<usize>>)> = None;
         for _ in 0..LEVEL_PASSES {
@@ -6567,6 +6926,9 @@ impl BlockOrder<'_> {
             if best.as_ref().map_or(true, |b| c < b.0) {
                 best = Some((c, layers.clone()));
             } else {
+                break;
+            }
+            if c == 0 {
                 break;
             }
         }
@@ -6595,11 +6957,11 @@ impl BlockOrder<'_> {
     /// shuffles of it ([`BlockOrder::shuffle`]) — and the start with the
     /// fewest layered crossings wins, the lowest on a tie; then the
     /// crossing-neutral neighbours go back to source order
-    /// ([`BlockOrder::tidy`]). With `seed` (a later placement of the
-    /// same layout call) there is one run, from the first placement's
-    /// final order ([`BlockOrder::warm`]): its layers differ from the
-    /// winner's, and from a start of its own it would lose to the
-    /// multi-start best by construction.
+    /// ([`BlockOrder::tidy`], [`BlockOrder::flip_chains`]). With `seed`
+    /// (a later placement of the same layout call) there is one run,
+    /// from the first placement's final order ([`BlockOrder::warm`]):
+    /// its layers differ from the winner's, and from a start of its own
+    /// it would lose to the multi-start best by construction.
     fn run(
         &mut self,
         starts: usize,
@@ -6625,7 +6987,9 @@ impl BlockOrder<'_> {
                 }
             }
             if k > 0 {
-                self.shuffle(k, layers, pos);
+                for li in 0..self.levels.len() {
+                    self.shuffle(li, k, layers, pos);
+                }
             }
             let c = self.settle(layers, pos);
             if best.as_ref().map_or(true, |b| c < b.0) {
@@ -6644,17 +7008,30 @@ impl BlockOrder<'_> {
             }
         }
         self.tidy(layers, pos);
+        // (Once a layout call: a later placement starts from this order.)
+        self.flip_chains(layers, pos);
     }
 }
 
-/// Passes of level orders and sweeps from one start: the first orders
-/// each level's blocks while their insides still stand as the start
-/// left them, the second with the insides ordered (the public fixture's
-/// layered crossings fall from 6 to 5, bench-75's by a twentieth); a
-/// third changes nothing on any fixture.
-const LEVEL_PASSES: usize = 2;
+/// Most passes of level orders and sweeps from one start: the first
+/// orders each level's blocks while their insides still stand as the
+/// start left them, the later ones with the insides ordered (the least
+/// layered crossings of dense-td's starts fall from 57 to 38 with the
+/// third); a pass that lowers nothing is the last.
+const LEVEL_PASSES: usize = 3;
+/// The generator streams a level has for its shuffles
+/// ([`BlockOrder::shuffle`]): one per start, with room past
+/// [`BLOCK_ORDER_STARTS`] for a count forced by a report. Pinned with
+/// the starts (the crossings by start of the block fixtures): a level's
+/// stream is `start + SHUFFLE_STREAMS * level`.
+const SHUFFLE_STREAMS: usize = 21;
 /// Most rounds (a half sweep down, one up) of a level's order.
 const LEVEL_ROUNDS: usize = 12;
+/// Most passes of one adjacent exchange over a level's layers.
+const EXCHANGE_PASSES: usize = 8;
+/// Most channels [`BlockOrder::flip_chains`] tries to move to the other
+/// side of their levels in one ordering.
+const FLIP_TRIES: usize = 12;
 /// Most rounds of the sweeps inside the slots.
 const SLOT_ROUNDS: usize = 16;
 

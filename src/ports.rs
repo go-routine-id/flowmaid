@@ -1109,7 +1109,7 @@ fn place_ports(
             if p.spilled.is_some() {
                 turn_end(e, p.src, old, new, side, p.back);
             } else {
-                move_end(e, p.src, old, delta, side, p.back);
+                move_end(e, p.src, old, delta, side, p.back, cx.blocks);
             }
         }
         // A move never drags an orthogonal path's leg through a node:
@@ -1203,7 +1203,10 @@ fn side_groups(sc: &Scene, cx: &Ctx) -> BTreeMap<(EndRef, Side), Vec<PortEnd>> {
                 steer: q,
                 want: split(side, p).0,
                 spilled: None,
-                back: cx.back.get(i).copied().unwrap_or(false),
+                // (A back-edge in its lane: in a block layout an
+                // upstream edge in a channel is spaced, shaped and
+                // spilled as a forward one.)
+                back: cx.lane.get(i).copied().unwrap_or(false),
                 weight: 1.0,
             });
         }
@@ -1542,7 +1545,7 @@ fn snap_straight_pairs(
             let old = if src { bez[0] } else { bez[3] };
             let new = join(side, to, prof.placed_at(to - tc));
             let delta = (new.0 - old.0, new.1 - old.1);
-            move_end(&mut sc.edges[i], src, old, delta, side, false);
+            move_end(&mut sc.edges[i], src, old, delta, side, false, cx.blocks);
             let end = usize::from(!src);
             deltas[i][end] = (deltas[i][end].0 + delta.0, deltas[i][end].1 + delta.1);
             if delta.0.hypot(delta.1) >= MOVED_MIN {
@@ -1950,7 +1953,15 @@ pub(crate) fn reround(e: &mut SceneEdge) {
 /// rounded one: two corner roundings ([`crate::router::CORNER_R`]).
 const SWOOP_REACH: f64 = 2.0 * crate::router::CORNER_R;
 
-fn move_end(e: &mut SceneEdge, src: bool, old: Pt, delta: Pt, side: Side, back: bool) {
+fn move_end(
+    e: &mut SceneEdge,
+    src: bool,
+    old: Pt,
+    delta: Pt,
+    side: Side,
+    back: bool,
+    columns: bool,
+) {
     let add = |p: &mut Pt| {
         p.0 += delta.0;
         p.1 += delta.1;
@@ -2026,7 +2037,19 @@ fn move_end(e: &mut SceneEdge, src: bool, old: Pt, delta: Pt, side: Side, back: 
     // orthogonal rather than cutting a diagonal across the drawing.
     let at = |k: usize| if src { k } else { n - 1 - k };
     let mut drop = 0;
-    if k + 1 < n {
+    // In a block layout (`columns`) a long edge's points are still the
+    // layout's columns when the ports are first set: the point after
+    // the end is no corner of a leg along the side, and the one after
+    // it no leg along the normal. Dropped and slid as those, a hub's
+    // channel lost its first column and ran straight under its port
+    // past the next row, across the fan's other channels that step
+    // aside there (dense-td's hub: a dozen such crossings).
+    let on_axes = {
+        let (_, a) = split(side, e.waypoints[at(k - 1)]);
+        let (_, b) = split(side, e.waypoints[at(k.min(n - 1))]);
+        (a - b).abs() < STUB_EPS
+    };
+    if k + 1 < n && (on_axes || !columns) {
         let (head, leg) = split(side, e.waypoints[at(k)]);
         let head = head - ot;
         if head * dt > 0.0 {
