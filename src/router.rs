@@ -6157,6 +6157,11 @@ mod tests {
             "parallel-labelled" => (0..25).fold("flowchart TD\n".to_string(), |s, i| {
                 s + &format!("A -->|lbl {i}| B\n")
             }),
+            // A fixture of another directory, named with it.
+            _ if name.contains('/') => {
+                let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures");
+                std::fs::read_to_string(format!("{dir}/{name}.mmd")).unwrap()
+            }
             _ => {
                 let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/quality");
                 std::fs::read_to_string(format!("{dir}/{name}.mmd")).unwrap()
@@ -6248,6 +6253,8 @@ mod tests {
             ("dense-lr", true),
             ("dense-td", true),
             ("bench-75", true),
+            // A diagram of linked subgraphs (the block layout's fixture).
+            ("blocks/blocks-overview", true),
             ("fan-40-labelled", false),
             ("parallel-labelled", false),
         ] {

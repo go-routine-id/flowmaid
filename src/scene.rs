@@ -11296,7 +11296,12 @@ mod tests {
         // `route()` draws it and under a drag (`route_partial`), where
         // edges come to lie on one another (B11 review r1 #2).
         let root = env!("CARGO_MANIFEST_DIR");
-        let mut files: Vec<std::path::PathBuf> = ["tests/fixtures/quality", "examples"]
+        let dirs = [
+            "tests/fixtures/quality",
+            "tests/fixtures/blocks",
+            "examples",
+        ];
+        let mut files: Vec<std::path::PathBuf> = dirs
             .iter()
             .flat_map(|d| std::fs::read_dir(format!("{root}/{d}")).unwrap())
             .map(|f| f.unwrap().path())
@@ -17558,7 +17563,12 @@ mod tests {
     /// The `.mmd` fixtures every scene-wide test walks.
     fn fixture_files() -> Vec<std::path::PathBuf> {
         let root = env!("CARGO_MANIFEST_DIR");
-        let mut files: Vec<std::path::PathBuf> = ["tests/fixtures/quality", "examples"]
+        let dirs = [
+            "tests/fixtures/quality",
+            "tests/fixtures/blocks",
+            "examples",
+        ];
+        let mut files: Vec<std::path::PathBuf> = dirs
             .iter()
             .flat_map(|d| std::fs::read_dir(format!("{root}/{d}")).unwrap())
             .map(|f| f.unwrap().path())

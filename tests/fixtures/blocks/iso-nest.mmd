@@ -1,0 +1,10 @@
+%% Not in block mode: an isolated two-level nest. No link joins a
+%% subgraph to anything outside it.
+flowchart TD
+    x --> y
+    subgraph OUT[Platform]
+        subgraph IN[Workers]
+            i1[w1] --> i2[w2] --> i3[w3]
+            i3 -->|retry| i1
+        end
+    end

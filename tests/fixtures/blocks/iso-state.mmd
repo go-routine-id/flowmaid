@@ -1,0 +1,11 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Done
+    state Work {
+        [*] --> A
+        A --> B : step
+        B --> C
+        C --> A : again
+        A --> C
+        note right of B : inside
+    }

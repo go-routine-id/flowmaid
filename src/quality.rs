@@ -119,6 +119,26 @@ pub const FAN_PITCH_TOL: f64 = 2.0;
 /// it, and a leg whose ends differ by less than this on one axis runs
 /// along it: how a straight edge, an S and a bow are told apart.
 pub const STRAIGHT_TOL: f64 = 0.5;
+/// A straight run of a drawn edge continues while a segment turns less
+/// than this (degrees) and stays within [`RUN_OFF`] of the run's line —
+/// how `bends_max` tells a leg from a corner's rounding.
+pub const RUN_TURN: f64 = 1.5;
+/// See [`RUN_TURN`] (px).
+pub const RUN_OFF: f64 = 0.75;
+/// Straight runs at least this long (px) are the legs `bends_max`
+/// counts the bends between: a corner's rounding is a string of shorter
+/// ones.
+pub const BEND_RUN_MIN: f64 = 8.0;
+/// `detour_max` reads edges at least this long (px): on a short edge a
+/// port a few px off its partner is no detour.
+pub const DETOUR_MIN_LEN: f64 = 200.0;
+/// Two sibling frames sit side by side when their extents along the
+/// flow overlap by more than this (px).
+pub const SIDE_MIN: f64 = 1.0;
+/// Two side-by-side sibling frames are level when one's extent along
+/// the flow contains the other's within this (px); else they are
+/// staggered (`sib_stagger`).
+pub const STAGGER_SLACK: f64 = 2.0;
 
 /// How a metric folds across many diagrams in a totals row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -350,6 +370,44 @@ pub struct Metrics {
     /// counted: that end stays where its partner lies, and the others
     /// space round it (report M3).
     pub fan_uneven: usize,
+    /// Largest frame area over the box areas of the nodes inside it
+    /// (members of nested frames included): how much air a subgraph's
+    /// frame holds. 1 would be no air at all; a one-row block of
+    /// text-sized nodes is about 2 to 3.5. 0 without frames.
+    pub compact_max: f64,
+    /// Mean of that ratio over the frames (0 without frames).
+    pub compact_mean: f64,
+    /// Largest share of the canvas one frame takes along the flow
+    /// (frame extent / canvas extent; 0 without frames).
+    pub span_max: f64,
+    /// Pairs of sibling frames side by side along the flow (their
+    /// extents overlap by more than [`SIDE_MIN`]) where neither extent
+    /// contains the other within [`STAGGER_SLACK`]: interleaved, not one
+    /// level band.
+    pub sib_stagger: usize,
+    /// Frame titles drawn cut to an ellipsis (`scene::fit_cluster_title`).
+    pub title_cut: usize,
+    /// Total length of the drawn edges (px), each as painted.
+    pub edge_len: f64,
+    /// Most bends on one edge: its straight runs of [`BEND_RUN_MIN`] or
+    /// more ([`RUN_TURN`], [`RUN_OFF`]) less one.
+    pub bends_max: usize,
+    /// Largest drawn length over the Manhattan distance of the two drawn
+    /// ends, over the edges at least [`DETOUR_MIN_LEN`] long (0 when
+    /// there is none): how far round an edge goes.
+    pub detour_max: f64,
+    /// Mean distance (px, along its edge) from a label to the nearer end
+    /// of the edge (0 without labels).
+    pub lbl_end_mean: f64,
+    /// Edge labels with a stroke of another edge nearer than
+    /// [`CLEAR_GAP`] to their chip: labels in a corridor of lines that
+    /// cannot be told apart at a glance. (`lbl_crowd` counts pairs of
+    /// labels close to each other, another thing.)
+    pub chip_crowd: usize,
+    /// Smallest distance (px) from a label's chip to another edge's
+    /// stroke (0 = touched or struck; higher is better; capped at
+    /// [`GAP_PROBE`], which a drawing without labels reports).
+    pub chip_gap_min: f64,
     /// One line per node/frame crossing, parallel overlap, close edge
     /// pair, label on a node or arrowhead, wiggle, wrong frame side and
     /// shared port, naming the elements (`from->to kind other`), for
@@ -450,8 +508,36 @@ impl Metrics {
             ("xhops", self.xhops as f64, Sum),
             ("fan_x", self.fan_x as f64, Sum),
             ("fan_uneven", self.fan_uneven as f64, Sum),
+            ("compact_max", self.compact_max, Max),
+            ("compact_mean", self.compact_mean, Mean),
+            ("span_max", self.span_max, Max),
+            ("sib_stagger", self.sib_stagger as f64, Sum),
+            ("title_cut", self.title_cut as f64, Sum),
+            ("edge_len", self.edge_len, Sum),
+            ("bends_max", self.bends_max as f64, Max),
+            ("detour_max", self.detour_max, Max),
+            ("lbl_end_mean", self.lbl_end_mean, Mean),
+            ("chip_crowd", self.chip_crowd as f64, Sum),
+            ("chip_gap_min", self.chip_gap_min, Min),
         ]
     }
+
+    /// The block-shape and edge-shape columns of [`Metrics::tail_fields`]
+    /// (from `compact_max` on): measures of how a drawing with subgraphs
+    /// is laid out, gated per fixture rather than as totals.
+    pub const BLOCK_FIELDS: [&'static str; 11] = [
+        "compact_max",
+        "compact_mean",
+        "span_max",
+        "sib_stagger",
+        "title_cut",
+        "edge_len",
+        "bends_max",
+        "detour_max",
+        "lbl_end_mean",
+        "chip_crowd",
+        "chip_gap_min",
+    ];
 
     /// Hard-defect count: everything a reader sees as broken (node /
     /// frame crossings, overlaps, label collisions, shared ports,
@@ -908,6 +994,93 @@ fn bounds(pts: &[Pt]) -> Rect {
         ),
         |r, p| Rect(r.0.min(p.0), r.1.min(p.1), r.2.max(p.0), r.3.max(p.1)),
     )
+}
+
+/// Distance from segment `a`–`b` to the box `r` (0 when it touches).
+fn seg_rect_dist(a: Pt, b: Pt, r: Rect) -> f64 {
+    if r.hits_seg(a, b) {
+        return 0.0;
+    }
+    let corners = [(r.0, r.1), (r.2, r.1), (r.2, r.3), (r.0, r.3)];
+    corners
+        .iter()
+        .map(|&c| seg_dist(c, a, b))
+        .fold(r.dist(a).min(r.dist(b)), f64::min)
+}
+
+/// Lengths of the maximal straight runs of the polyline `pts`. Exactly
+/// collinear samples are one leg; the legs are then grown into runs
+/// longest first, each taking its neighbours on either side while they
+/// turn less than [`RUN_TURN`] off it and end within [`RUN_OFF`] of its
+/// line. Growing from the long legs outwards makes a corner's easing
+/// part of the leg it runs into, whichever way the path is read (a run
+/// grown from its first sample splits a leg from the last degree of the
+/// rounding before it, some 13 px of a spline's corner).
+fn straight_runs(pts: &[Pt]) -> Vec<f64> {
+    // Collinear neighbours merged: (start, end) per leg.
+    let mut legs: Vec<(Pt, Pt)> = Vec::new();
+    for w in pts.windows(2) {
+        let (a, b) = (w[0], w[1]);
+        let len = dist(a, b);
+        if len < 1e-9 {
+            continue;
+        }
+        if let Some(run) = legs.last_mut() {
+            let rl = dist(run.0, run.1);
+            let (ux, uy) = ((run.1 .0 - run.0 .0) / rl, (run.1 .1 - run.0 .1) / rl);
+            let cross = ((b.0 - run.0 .0) * uy - (b.1 - run.0 .1) * ux).abs();
+            let dot = ((b.0 - a.0) * ux + (b.1 - a.1) * uy) / len;
+            if cross < 1e-6 * (1.0 + rl + len) && dot > 0.999_999 {
+                run.1 = b;
+                continue;
+            }
+        }
+        legs.push((a, b));
+    }
+    let n = legs.len();
+    let len_of = |k: usize| dist(legs[k].0, legs[k].1);
+    let cos_tol = RUN_TURN.to_radians().cos();
+    // Longest leg first (the earlier one on a tie).
+    let mut order: Vec<usize> = (0..n).collect();
+    order.sort_by(|&a, &b| len_of(b).total_cmp(&len_of(a)).then(a.cmp(&b)));
+    // The run each leg belongs to.
+    let mut run_of: Vec<Option<usize>> = vec![None; n];
+    let mut runs: Vec<f64> = Vec::new();
+    for seed in order {
+        if run_of[seed].is_some() {
+            continue;
+        }
+        let (a, b) = legs[seed];
+        let l = len_of(seed);
+        let u = ((b.0 - a.0) / l, (b.1 - a.1) / l);
+        // Whether leg `k` carries the seed's line on: its heading and
+        // both its ends.
+        let fits = |k: usize| {
+            let (p, q) = legs[k];
+            let kl = dist(p, q);
+            let off = |x: Pt| ((x.0 - a.0) * u.1 - (x.1 - a.1) * u.0).abs();
+            ((q.0 - p.0) * u.0 + (q.1 - p.1) * u.1) / kl >= cos_tol
+                && off(p) <= RUN_OFF
+                && off(q) <= RUN_OFF
+        };
+        let id = runs.len();
+        let mut total = l;
+        run_of[seed] = Some(id);
+        let mut k = seed;
+        while k + 1 < n && run_of[k + 1].is_none() && fits(k + 1) {
+            k += 1;
+            run_of[k] = Some(id);
+            total += len_of(k);
+        }
+        let mut k = seed;
+        while k > 0 && run_of[k - 1].is_none() && fits(k - 1) {
+            k -= 1;
+            run_of[k] = Some(id);
+            total += len_of(k);
+        }
+        runs.push(total);
+    }
+    runs
 }
 
 /// Distance along the polyline `pts` (px) of its point nearest `p`.
@@ -1992,6 +2165,96 @@ pub fn measure(g: &Graph, sc: &Scene) -> Metrics {
         ink += len * edge_stroke_width(e);
     }
     m.ink = ink / (m.width * m.height).max(1.0);
+    // Block shape: how much air each frame holds, how much of the flow
+    // it spans, and whether sibling frames sharing a band are level.
+    let mut held = vec![0.0f64; sc.clusters.len()];
+    for (n, frames) in node_frames.iter().enumerate() {
+        for &f in frames {
+            held[f] += sc.nodes[n].w * sc.nodes[n].h;
+        }
+    }
+    let along = |r: &Rect| if horizontal { (r.0, r.2) } else { (r.1, r.3) };
+    let canvas = if horizontal { m.width } else { m.height };
+    let mut ratios = Vec::new();
+    for (f, r) in frame_rect.iter().enumerate() {
+        if held[f] > 0.0 {
+            ratios.push((r.2 - r.0) * (r.3 - r.1) / held[f]);
+        }
+        let (lo, hi) = along(r);
+        m.span_max = m.span_max.max((hi - lo) / canvas.max(1.0));
+    }
+    if !ratios.is_empty() {
+        m.compact_max = ratios.iter().copied().fold(0.0, f64::max);
+        m.compact_mean = ratios.iter().sum::<f64>() / ratios.len() as f64;
+    }
+    let parent = |f: usize| frame_chain[f].get(1).copied();
+    for i in 0..frame_rect.len() {
+        for j in i + 1..frame_rect.len() {
+            if parent(i) != parent(j) {
+                continue;
+            }
+            let ((a0, a1), (b0, b1)) = (along(&frame_rect[i]), along(&frame_rect[j]));
+            let inside = |p: (f64, f64), q: (f64, f64)| {
+                p.0 <= q.0 + STAGGER_SLACK && p.1 >= q.1 - STAGGER_SLACK
+            };
+            if a1.min(b1) - a0.max(b0) > SIDE_MIN
+                && !inside((a0, a1), (b0, b1))
+                && !inside((b0, b1), (a0, a1))
+            {
+                m.sib_stagger += 1;
+                m.details.push(format!(
+                    "{} sib_stagger {}",
+                    sc.clusters[i].id, sc.clusters[j].id
+                ));
+            }
+        }
+    }
+    m.title_cut = (0..sc.clusters.len())
+        .filter(|&ci| {
+            scene::fit_cluster_title(&sc.clusters, ci, maxx + MARGIN) != sc.clusters[ci].title
+        })
+        .count();
+    // Edge shape: length, bends and detours of each edge as painted.
+    for me in &edges {
+        let len: f64 = me.pts.windows(2).map(|w| dist(w[0], w[1])).sum();
+        m.edge_len += len;
+        let legs = straight_runs(&me.pts)
+            .iter()
+            .filter(|&&l| l >= BEND_RUN_MIN)
+            .count();
+        m.bends_max = m.bends_max.max(legs.saturating_sub(1));
+        if let (Some(&a), Some(&b), true) = (me.pts.first(), me.pts.last(), len >= DETOUR_MIN_LEN) {
+            let manhattan = (b.0 - a.0).abs() + (b.1 - a.1).abs();
+            if manhattan > 1.0 {
+                m.detour_max = m.detour_max.max(len / manhattan);
+            }
+        }
+    }
+    // Labels: how far along its edge each sits from the nearer end, and
+    // how close another edge's stroke comes to its chip.
+    m.chip_gap_min = GAP_PROBE;
+    let mut end_sum = 0.0;
+    for &(i, r) in &labels {
+        let me = &edges[i];
+        let len: f64 = me.pts.windows(2).map(|w| dist(w[0], w[1])).sum();
+        let at = arc_at(&me.pts, ((r.0 + r.2) / 2.0, (r.1 + r.3) / 2.0));
+        end_sum += at.min(len - at);
+        let gap = edges
+            .iter()
+            .enumerate()
+            .filter(|&(j, o)| j != i && o.bb.grow(GAP_PROBE).overlaps(r))
+            .flat_map(|(_, o)| o.pts.windows(2).map(move |w| seg_rect_dist(w[0], w[1], r)))
+            .fold(GAP_PROBE, f64::min);
+        m.chip_gap_min = m.chip_gap_min.min(gap);
+        if gap < CLEAR_GAP {
+            m.chip_crowd += 1;
+            m.details
+                .push(format!("{}->{} chip_crowd {gap:.1}px", me.e.from, me.e.to));
+        }
+    }
+    if !labels.is_empty() {
+        m.lbl_end_mean = end_sum / labels.len() as f64;
+    }
     // Ink off the canvas `to_svg` writes: the drawing's bounds and the
     // padding round them.
     let (x0, x1, y0, y1) = (minx - MARGIN, maxx + MARGIN, miny - MARGIN, maxy + MARGIN);
@@ -2315,6 +2578,130 @@ mod tests {
             m.idiom_ortho + m.idiom_scubic + m.idiom_spline + m.idiom_bow,
             m.edges
         );
+    }
+
+    /// B12.0: how much air a frame holds, how much of the flow it spans
+    /// and whether sibling frames sharing a band are level, read off the
+    /// scene's frames and node boxes.
+    #[test]
+    fn block_shape_reads_frames_against_their_nodes() {
+        let (g, mut sc) =
+            laid("flowchart TD\nsubgraph S[one]\na-->b\nend\nsubgraph T[two]\nc\nend\nx-->y");
+        let m = measure(&g, &sc);
+        let area = |id: &str| {
+            let n = sc.nodes.iter().find(|n| n.id == id).unwrap();
+            n.w * n.h
+        };
+        let frame = |id: &str| sc.clusters.iter().find(|c| c.id == id).unwrap();
+        let (s, t) = (frame("S"), frame("T"));
+        let (rs, rt) = (s.w * s.h / (area("a") + area("b")), t.w * t.h / area("c"));
+        assert!((m.compact_max - rs.max(rt)).abs() < 1e-9, "{m:?}");
+        assert!((m.compact_mean - (rs + rt) / 2.0).abs() < 1e-9, "{m:?}");
+        assert!((m.span_max - s.h.max(t.h) / m.height).abs() < 1e-9, "{m:?}");
+        // T's one row lies within S's two: side by side and level.
+        assert_eq!((m.sib_stagger, m.title_cut), (0, 0), "{m:?}");
+        // Slid half a row down it reaches past S's end: staggered.
+        let (si, ti) = (
+            sc.clusters.iter().position(|c| c.id == "S").unwrap(),
+            sc.clusters.iter().position(|c| c.id == "T").unwrap(),
+        );
+        sc.clusters[ti].y = sc.clusters[si].y + sc.clusters[si].h - 10.0;
+        assert_eq!(measure(&g, &sc).sib_stagger, 1);
+        // Below S altogether they are stacked: no pair to judge.
+        sc.clusters[ti].y = sc.clusters[si].y + sc.clusters[si].h + 20.0;
+        assert_eq!(measure(&g, &sc).sib_stagger, 0);
+        // A diagram without frames reads zero throughout.
+        let (g, sc) = laid("flowchart TD\nA-->B");
+        let m = measure(&g, &sc);
+        assert_eq!(
+            (m.compact_max, m.compact_mean, m.span_max, m.sib_stagger),
+            (0.0, 0.0, 0.0, 0),
+            "{m:?}"
+        );
+    }
+
+    /// B12.0: bends, detour and length of an edge as drawn; a corner's
+    /// rounding is no leg of its own.
+    #[test]
+    fn edge_shape_counts_legs_and_detours() {
+        let (g, mut sc) = laid("flowchart TD\nA-->B\nC-->D");
+        let (x, y) = (sc.nodes[0].x, sc.nodes[0].y);
+        // Down 100, right 60, down 100: two bends, no detour.
+        let z = [
+            (x, y),
+            (x, y + 100.0),
+            (x + 60.0, y + 100.0),
+            (x + 60.0, y + 200.0),
+        ];
+        draw_linear(&mut sc.edges[0], &z);
+        draw_linear(&mut sc.edges[1], &[(x + 300.0, y), (x + 300.0, y + 50.0)]);
+        let m = measure(&g, &sc);
+        assert_eq!(m.bends_max, 2, "{m:?}");
+        assert!((m.edge_len - 310.0).abs() < 1e-6, "{}", m.edge_len);
+        assert!((m.detour_max - 1.0).abs() < 1e-9, "{}", m.detour_max);
+        // The same Z with rounded corners still has two bends.
+        let round = crate::router::smooth(&z, crate::router::CORNER_R);
+        sc.edges[0].waypoints = round;
+        sc.edges[0].meta.curve = None;
+        assert_eq!(measure(&g, &sc).bends_max, 2);
+        // Round a block and back: 100 out, 200 down, 100 back in is 400 px
+        // for 200 px between the ends.
+        let u = [
+            (x, y),
+            (x + 100.0, y),
+            (x + 100.0, y + 200.0),
+            (x, y + 200.0),
+        ];
+        draw_linear(&mut sc.edges[0], &u);
+        let m = measure(&g, &sc);
+        assert!((m.detour_max - 2.0).abs() < 1e-9, "{}", m.detour_max);
+        // A leg shorter than BEND_RUN_MIN is a jog, not two bends more.
+        let jog = [
+            (x, y),
+            (x, y + 100.0),
+            (x + 5.0, y + 100.0),
+            (x + 5.0, y + 200.0),
+        ];
+        draw_linear(&mut sc.edges[0], &jog);
+        assert_eq!(measure(&g, &sc).bends_max, 1);
+        // An edge under DETOUR_MIN_LEN is not judged for its detour.
+        let short = [(x, y), (x + 50.0, y), (x + 50.0, y + 50.0), (x, y + 50.0)];
+        draw_linear(&mut sc.edges[0], &short);
+        assert_eq!(measure(&g, &sc).detour_max, 0.0);
+    }
+
+    /// B12.0: a chip with another edge's line beside it is crowded; the
+    /// label's distance to its nearer end is read along its own edge.
+    #[test]
+    fn a_chip_beside_a_foreign_line_is_crowded() {
+        let (g, mut sc) = laid("flowchart TD\nA-->|go|B\nC-->D");
+        let (x, y) = (sc.nodes[0].x, sc.nodes[0].y);
+        draw_linear(&mut sc.edges[0], &[(x, y), (x, y + 200.0)]);
+        // The chip 60 px down its 200 px line, 30 px wide.
+        sc.edges[0].label = Some(("go".to_string(), (x, y + 60.0), 30.0));
+        // The other line 40 px to the right of the chip's side: clear.
+        draw_linear(&mut sc.edges[1], &[(x + 55.0, y), (x + 55.0, y + 200.0)]);
+        let m = measure(&g, &sc);
+        assert_eq!(m.chip_crowd, 0, "{m:?}");
+        assert!(
+            (m.chip_gap_min - GAP_PROBE).abs() < 1e-9,
+            "{}",
+            m.chip_gap_min
+        );
+        assert!((m.lbl_end_mean - 60.0).abs() < 1e-6, "{}", m.lbl_end_mean);
+        // 5 px from the chip's side it crowds the label.
+        draw_linear(&mut sc.edges[1], &[(x + 20.0, y), (x + 20.0, y + 200.0)]);
+        let m = measure(&g, &sc);
+        assert_eq!(m.chip_crowd, 1, "{m:?}");
+        assert!((m.chip_gap_min - 5.0).abs() < 1e-9, "{}", m.chip_gap_min);
+        // Through the chip the gap is 0.
+        draw_linear(&mut sc.edges[1], &[(x + 5.0, y), (x + 5.0, y + 200.0)]);
+        let m = measure(&g, &sc);
+        assert_eq!((m.chip_crowd, m.chip_gap_min), (1, 0.0), "{m:?}");
+        // A line that ends short of the chip is as far as its end.
+        draw_linear(&mut sc.edges[1], &[(x, y + 80.0), (x, y + 200.0)]);
+        let m = measure(&g, &sc);
+        assert!((m.chip_gap_min - 10.0).abs() < 1e-9, "{}", m.chip_gap_min);
     }
 
     #[test]

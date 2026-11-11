@@ -1,0 +1,7 @@
+flowchart TD
+    x --> y
+    subgraph S[isolated with a lane]
+        a --> b --> c --> d
+        d -->|retry| a
+        a --> d
+    end

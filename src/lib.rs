@@ -46,6 +46,8 @@ pub mod er;
 pub mod fold;
 pub mod gitgraph;
 mod hops;
+#[cfg(test)]
+mod identity;
 pub mod journey;
 pub(crate) mod json;
 mod labels;

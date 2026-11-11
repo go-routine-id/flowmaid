@@ -112,6 +112,148 @@ const GAP_FLOORS: &[(&str, f64, f64)] = &[
     ("wide-labels", 40.0, 40.0),
 ];
 
+/// Upper bounds for one drawing of a fixture with subgraphs:
+/// (defects, edge_frame_pairs, overlap_pairs, x_drawn, hard zeros).
+/// The last sums what [`check`] gates at zero on the dense fixtures
+/// (`edge_node_x`, `shared_ports`, `arrow_on_start`, `wiggles`,
+/// `frame_side`, `node_overlap`, `node_frame`, `frame_overlap`) and
+/// `own_frame_x`.
+type BlockCeil = (usize, usize, usize, usize, usize);
+
+/// Per-fixture ceilings (static, routed) for the diagrams with subgraphs
+/// that [`CEILINGS`] does not hold: the two examples, the state fixtures
+/// of `tests/fixtures/notes` and every fixture of `tests/fixtures/blocks`
+/// (paths under `tests/fixtures`, or `examples/`). The block layout of
+/// subgraphs re-lays most of them; "not drawn worse" is this table. The
+/// values are the drawings' own before that layout was begun, measured
+/// on that commit, and are lowered only. Where the last number is not 0
+/// the drawing held such a defect already (a composite's self-transition
+/// drawn through its border, an edge from a subgraph to its own member
+/// through another member): 0 is the target there, the count the
+/// ceiling.
+const BLOCK_CEILINGS: &[(&str, BlockCeil, BlockCeil)] = &[
+    ("examples/advanced", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("examples/subgraph", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("notes/fork-twins", (3, 0, 0, 9, 3), (6, 0, 1, 10, 5)),
+    ("notes/near-drag", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("notes/nested-composite", (3, 0, 0, 6, 4), (3, 0, 0, 9, 4)),
+    ("notes/routed-around", (2, 0, 0, 1, 2), (2, 0, 0, 1, 2)),
+    ("notes/spread-bottom", (0, 0, 0, 1, 0), (0, 0, 0, 3, 0)),
+    ("notes/spread-face", (3, 0, 0, 4, 4), (2, 0, 0, 4, 3)),
+    ("notes/straight-link", (0, 0, 0, 0, 0), (0, 0, 0, 2, 0)),
+    ("notes/wide-frames", (0, 0, 0, 5, 0), (0, 0, 0, 5, 0)),
+    ("blocks/b9-inside", (0, 0, 0, 0, 0), (0, 0, 0, 2, 0)),
+    ("blocks/b9-inside2", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    (
+        "blocks/blocks-overview-actors-reversed",
+        (2, 2, 0, 15, 0),
+        (3, 2, 1, 11, 0),
+    ),
+    (
+        "blocks/blocks-overview-bt",
+        (2, 2, 0, 22, 0),
+        (3, 3, 0, 11, 0),
+    ),
+    (
+        "blocks/blocks-overview-edges-reversed",
+        (0, 0, 0, 6, 0),
+        (0, 0, 0, 11, 0),
+    ),
+    (
+        "blocks/blocks-overview-edges-rotated",
+        (0, 0, 0, 23, 0),
+        (0, 0, 0, 23, 0),
+    ),
+    (
+        "blocks/blocks-overview-lr",
+        (3, 2, 1, 11, 0),
+        (2, 2, 0, 18, 0),
+    ),
+    (
+        "blocks/blocks-overview-rl",
+        (3, 2, 1, 11, 0),
+        (2, 2, 0, 17, 0),
+    ),
+    (
+        "blocks/blocks-overview-subgraphs-reversed",
+        (0, 0, 0, 12, 0),
+        (0, 0, 0, 14, 0),
+    ),
+    ("blocks/blocks-overview", (2, 2, 0, 14, 0), (2, 2, 0, 17, 0)),
+    (
+        "blocks/cycle2-tie-swapped",
+        (0, 0, 0, 0, 0),
+        (0, 0, 0, 0, 0),
+    ),
+    ("blocks/cycle2-tie", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/cycle2", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/empty-target", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/hub5", (1, 0, 1, 0, 0), (0, 0, 0, 2, 0)),
+    ("blocks/interleave", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/iso-lane-lr", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/iso-lane", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/iso-nest", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/iso-state", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/l5loop", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/lr", (2, 1, 0, 1, 1), (2, 1, 0, 1, 1)),
+    ("blocks/nested-cases", (0, 0, 0, 5, 0), (0, 0, 0, 7, 0)),
+    ("blocks/nested-chain", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/nested-self-only", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/nested", (0, 0, 0, 0, 0), (0, 0, 0, 1, 1)),
+    ("blocks/note-edge-row", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/own-centre", (2, 0, 1, 0, 1), (2, 0, 1, 0, 1)),
+    ("blocks/p01-iso", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/p02-iso-dir", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/p03-ext-dir", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/p04-to-cluster", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/p05-siblings", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/p06-block-cycle", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/p07-nested", (0, 0, 0, 1, 1), (0, 0, 0, 0, 0)),
+    ("blocks/p08-chain3", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/p09-disconnected", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/p10-mixed-rank", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/p11-lr", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/p12-state", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/p13-inner-dir-ext", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    (
+        "blocks/p14-empty-and-self",
+        (0, 0, 0, 0, 0),
+        (0, 0, 0, 0, 0),
+    ),
+    ("blocks/ratio2", (0, 0, 0, 2, 0), (0, 0, 0, 2, 0)),
+    ("blocks/ratio2x4", (0, 0, 0, 6, 0), (0, 0, 0, 6, 0)),
+    ("blocks/ratio3", (0, 0, 0, 4, 0), (0, 0, 0, 2, 0)),
+    ("blocks/ratio4", (0, 0, 0, 4, 0), (0, 0, 0, 4, 0)),
+    ("blocks/ratio4mask", (0, 0, 0, 5, 0), (0, 0, 0, 5, 0)),
+    ("blocks/reqresp", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/reqresp22", (0, 0, 0, 2, 0), (0, 0, 0, 2, 0)),
+    ("blocks/self-member", (2, 0, 1, 1, 2), (2, 0, 1, 0, 1)),
+    ("blocks/selfsub-nested", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/state-note", (2, 0, 1, 3, 2), (0, 0, 0, 4, 0)),
+    ("blocks/sub-nested-self", (2, 0, 0, 0, 3), (2, 0, 0, 0, 3)),
+    ("blocks/swim-cycle", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/swim-nested", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/swimlane-nested", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/swimlane", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/t1-nest-own", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/t2-self-nested", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    (
+        "blocks/t2b-self-nested-order",
+        (0, 0, 0, 0, 0),
+        (0, 0, 0, 0, 0),
+    ),
+    ("blocks/t9-frames-8px", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/t9b-frames-8px-lr", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    (
+        "blocks/t9c-frames-8px-two-way",
+        (0, 0, 0, 0, 0),
+        (0, 0, 0, 0, 0),
+    ),
+    ("blocks/title-entry", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/title-hidden", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/wide-stroke", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+];
+
 fn check(name: &str, mode: &str, m: &Metrics, ceil: Ceil) -> Vec<String> {
     let mut bad = Vec::new();
     let mut gate = |what: &str, got: usize, max: usize| {
@@ -277,6 +419,88 @@ fn every_fixture_has_a_ceiling() {
             );
         }
     }
+}
+
+/// The source of a [`BLOCK_CEILINGS`] fixture.
+fn block_fixture(name: &str) -> String {
+    let root = env!("CARGO_MANIFEST_DIR");
+    let path = if name.starts_with("examples/") {
+        format!("{root}/{name}.mmd")
+    } else {
+        format!("{root}/tests/fixtures/{name}.mmd")
+    };
+    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path}: {e}"))
+}
+
+/// Every diagram with subgraphs among the fixtures is held to a row of
+/// [`BLOCK_CEILINGS`]: both examples, every file of
+/// `tests/fixtures/notes` and of `tests/fixtures/blocks`.
+#[test]
+fn every_block_fixture_has_a_ceiling() {
+    let root = env!("CARGO_MANIFEST_DIR");
+    let mut want = vec![
+        "examples/advanced".to_string(),
+        "examples/subgraph".to_string(),
+    ];
+    for dir in ["notes", "blocks"] {
+        let mut names: Vec<String> = std::fs::read_dir(format!("{root}/tests/fixtures/{dir}"))
+            .expect("fixture dir")
+            .filter_map(|e| e.ok().map(|e| e.path()))
+            .filter(|p| p.extension().is_some_and(|x| x == "mmd"))
+            .map(|p| format!("{dir}/{}", p.file_stem().unwrap().to_string_lossy()))
+            .collect();
+        names.sort();
+        want.extend(names);
+    }
+    let have: Vec<&str> = BLOCK_CEILINGS.iter().map(|r| r.0).collect();
+    for name in &want {
+        assert!(have.contains(&name.as_str()), "{name} has no ceiling");
+    }
+    for name in &have {
+        assert!(
+            want.iter().any(|w| w == name),
+            "{name} has a ceiling but no fixture"
+        );
+    }
+}
+
+/// No fixture with subgraphs is drawn worse than [`BLOCK_CEILINGS`]
+/// records it, in the static scene or routed at its centres.
+#[test]
+fn block_fixtures_are_not_drawn_worse() {
+    let mut bad = Vec::new();
+    for &(name, cs, cr) in BLOCK_CEILINGS {
+        let rep =
+            measure_source(&block_fixture(name), false).expect("a flowchart or state fixture");
+        assert!(rep.deterministic, "{name}: output not deterministic (G14)");
+        for (mode, m, ceil) in [("static", &rep.statik, cs), ("routed", &rep.routed, cr)] {
+            let hard = m.edge_node_x
+                + m.shared_ports
+                + m.arrow_on_start
+                + m.wiggles
+                + m.frame_side
+                + m.node_overlap
+                + m.node_frame
+                + m.frame_overlap
+                + m.own_frame_x;
+            for (what, got, max) in [
+                ("defects", m.defects(), ceil.0),
+                ("edge_frame_pairs", m.edge_frame_pairs, ceil.1),
+                ("overlap_pairs", m.overlap_pairs, ceil.2),
+                ("x_drawn", m.x_drawn, ceil.3),
+                ("hard zeros", hard, ceil.4),
+            ] {
+                if got > max {
+                    bad.push(format!("{name} {mode}: {what} = {got} > ceiling {max}"));
+                }
+            }
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "block fixtures drawn worse:\n{}",
+        bad.join("\n")
+    );
 }
 
 /// Most labels (over all fixtures, per mode) another edge's stroke may
@@ -850,6 +1074,11 @@ fn defect_baseline_gate() {
             // The idiom counts partition the edges: the ceilings on the
             // other three are this one's floor.
             if col == "idiom_ortho" || col == "xhops" {
+                continue;
+            }
+            // Block and edge shape are gated per fixture, not as totals
+            // over this corpus (`BLOCK_CEILINGS`).
+            if Metrics::BLOCK_FIELDS.contains(&col) {
                 continue;
             }
             if col == "ink" {

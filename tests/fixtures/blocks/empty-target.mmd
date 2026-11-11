@@ -1,0 +1,10 @@
+%% Not in block mode: the only edge to a subgraph ends on an empty
+%% one, which is no unit and has no frame; its sub-edge is skipped.
+flowchart TD
+    x --> y
+    subgraph S[Service]
+        a --> b
+    end
+    subgraph EMPTY[Nothing here]
+    end
+    x --> EMPTY
