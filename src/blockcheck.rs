@@ -1084,3 +1084,171 @@ fn a_narrowing_candidate_starts_from_the_winning_order() {
     let (lo, _, _) = block_layout(&g);
     assert!(lo.total_b < 5000.0, "{} px broad", lo.total_b);
 }
+
+// --- The generated sweep.
+
+/// A generated state diagram: composites (one nested), transitions
+/// across their borders and to whole composites, notes.
+pub(crate) fn generated_state(seed: u64) -> String {
+    let mut r = Lcg(seed.wrapping_mul(0xD1B5_4A32_D192_ED03) ^ 0x57A7E);
+    let composites = 2 + r.next(3);
+    let mut out = String::from("stateDiagram-v2\n[*] --> A\n");
+    let mut states: Vec<String> = vec!["A".into()];
+    for c in 0..composites {
+        out.push_str(&format!("state K{c} {{\n  [*] --> K{c}_0\n"));
+        let inner = 1 + r.next(3);
+        for k in 0..inner {
+            states.push(format!("K{c}_{k}"));
+            if k > 0 {
+                out.push_str(&format!("  K{c}_{} --> K{c}_{k}\n", k - 1));
+            }
+        }
+        if r.next(2) == 0 {
+            out.push_str(&format!("  note right of K{c}_0 : n{c}\n"));
+        }
+        if r.next(3) == 0 {
+            out.push_str(&format!("  note left of K{c}_0 : lead{c}\n"));
+        }
+        out.push_str("}\n");
+    }
+    out.push_str("A --> K0\n");
+    for c in 1..composites {
+        match r.next(3) {
+            0 => out.push_str(&format!("K{} --> K{c}\n", c - 1)),
+            1 => out.push_str(&format!("K{}_0 --> K{c}_0 : go\n", c - 1)),
+            _ => out.push_str(&format!("K{}_0 --> K{c}\n", c - 1)),
+        }
+    }
+    for _ in 0..r.next(4) {
+        let (a, b) = (r.next(states.len()), r.next(states.len()));
+        if a != b {
+            out.push_str(&format!("{} --> {} : t\n", states[a], states[b]));
+        }
+    }
+    out.push_str(&format!("K{} --> [*]\n", composites - 1));
+    out
+}
+
+/// A generated flowchart no edge of which crosses a subgraph's border:
+/// isolated subgraphs with edges inside them, and free nodes linked
+/// among themselves. Never in block mode.
+pub(crate) fn generated_isolated(seed: u64, dir: &str) -> String {
+    let mut r = Lcg(seed.wrapping_mul(0xA24B_AED4_963E_E407) ^ 0x150);
+    let mut out = format!("flowchart {dir}\n");
+    for b in 0..1 + r.next(4) {
+        let n = 1 + r.next(5);
+        out.push_str(&format!("    subgraph S{b}[Island {b}]\n"));
+        for k in 0..n {
+            out.push_str(&format!("        s{b}n{k}\n"));
+        }
+        for _ in 0..r.next(n + 2) {
+            let (a, c) = (r.next(n), r.next(n));
+            if a != c {
+                let label = if r.next(3) == 0 { "|in|" } else { "" };
+                out.push_str(&format!("        s{b}n{a} -->{label} s{b}n{c}\n"));
+            }
+        }
+        out.push_str("    end\n");
+    }
+    let free = 2 + r.next(4);
+    for _ in 0..free + r.next(free) {
+        let (a, c) = (r.next(free), r.next(free));
+        if a != c {
+            out.push_str(&format!("    f{a} --> f{c}\n"));
+        }
+    }
+    out
+}
+
+/// The graphs of the sweep: generated flowcharts in the four
+/// directions, generated state diagrams, and flowcharts whose
+/// subgraphs are all isolated.
+pub(crate) fn sweep() -> Vec<(String, String)> {
+    let dir = |seed: u64| ["TD", "LR", "BT", "RL"][(seed % 4) as usize];
+    let mut out: Vec<(String, String)> = (0..160u64)
+        .map(|seed| {
+            (
+                format!("flow {seed} {}", dir(seed)),
+                generated(seed, dir(seed)),
+            )
+        })
+        .collect();
+    out.extend((0..40u64).map(|seed| (format!("state {seed}"), generated_state(seed))));
+    out.extend((0..40u64).map(|seed| {
+        (
+            format!("isolated {seed} {}", dir(seed)),
+            generated_isolated(seed, dir(seed)),
+        )
+    }));
+    out
+}
+
+#[test]
+fn a_generated_sweep_keeps_the_block_invariants() {
+    // The constants the sweep pins.
+    assert_eq!(crate::layout::BLOCK_ORDER_PINS, (12, (1, 3), 7));
+    let (mut blocks, mut lanes, mut hard) = (0, Vec::new(), Vec::new());
+    for (name, src) in sweep() {
+        let g = graph(&src);
+        if g.subgraphs.is_empty() || crate::compound::split(&g).is_some() {
+            continue;
+        }
+        // No panic in scene() or route(), and the same drawing twice.
+        let sc = block_scene(&g);
+        let svg = crate::scene::to_svg(&sc);
+        assert_eq!(svg, crate::scene::to_svg(&block_scene(&g)), "{name}\n{src}");
+        let centres: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let routed = crate::levels::with_blocks(true, || crate::scene::route(&g, &centres));
+        assert_eq!(routed.nodes.len(), sc.nodes.len(), "{name}");
+        // Rows: consecutive, linked units apart, no interleaving; every
+        // level's constraints acyclic and its rows settled within their
+        // bound (debug assertions of the layering).
+        let l = layers(&g);
+        assert_block_rows(&format!("{name}\n{src}"), &g, &l);
+        if !l.lanes.is_empty() {
+            lanes.push(name.clone());
+        }
+        if !crate::scene::block_mode(&g) {
+            continue;
+        }
+        blocks += 1;
+        assert_one_side(&format!("{name}\n{src}"), &g);
+        let zeros = |sc: &Scene| {
+            let m = crate::quality::measure(&g, sc);
+            m.edge_node_x
+                + m.shared_ports
+                + m.arrow_on_start
+                + m.wiggles
+                + m.frame_side
+                + m.node_overlap
+                + m.node_frame
+                + m.frame_overlap
+        };
+        let before = zeros(&crate::levels::with_blocks(false, || {
+            crate::scene::scene(&g)
+        }));
+        let now = zeros(&sc);
+        if before + now > 0 {
+            hard.push((name, before, now));
+        }
+    }
+    println!("sweep: {blocks} diagrams in block mode");
+    println!(
+        "levels the lane rule keeps side by side: {} diagrams: {lanes:?}",
+        lanes.len()
+    );
+    // (name, before blocks, as blocks)
+    println!(
+        "hard zeros in the static scene, before blocks | as blocks: {} | {} diagrams, {} | {} in all: {hard:?}",
+        hard.iter().filter(|h| h.1 > 0).count(),
+        hard.iter().filter(|h| h.2 > 0).count(),
+        hard.iter().map(|h| h.1).sum::<usize>(),
+        hard.iter().map(|h| h.2).sum::<usize>(),
+    );
+    assert!(blocks >= 120, "{blocks}");
+    // The isolated ones are never laid out as blocks.
+    for seed in 0..40u64 {
+        let g = graph(&generated_isolated(seed, "TD"));
+        assert!(!crate::scene::block_mode(&g), "isolated {seed}");
+    }
+}

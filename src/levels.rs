@@ -821,7 +821,13 @@ mod tests {
                 )
         };
         let mut checked = 0;
-        for (name, g) in flow_fixtures() {
+        // The fixtures, and the graphs of the generated sweep (the
+        // flowcharts whose random edges all stay inside one subgraph,
+        // and the flat ones).
+        let generated = crate::blockcheck::sweep()
+            .into_iter()
+            .map(|(name, src)| (name, graph(&src)));
+        for (name, g) in flow_fixtures().into_iter().chain(generated) {
             if in_block_mode(&g) || own_box(&g) {
                 continue;
             }

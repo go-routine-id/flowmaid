@@ -5861,6 +5861,12 @@ fn drawn_crossings(
     total
 }
 
+/// The constants the generated sweep pins: the largest component
+/// ordered exactly, the lane rule's share, the most starts.
+#[cfg(test)]
+pub(crate) const BLOCK_ORDER_PINS: (usize, (usize, usize), usize) =
+    (BLOCK_ORDER_EXACT_MAX, LANE_SHARE, BLOCK_ORDER_STARTS);
+
 /// The most starts the ordering of a block layout takes ([`BlockOrder`]):
 /// the canonical order and six shuffles of it. A shuffled start finds
 /// orders no sweep reaches from the canonical one (the public fixture's
