@@ -447,7 +447,16 @@ impl Legs {
         }
         xs.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.total_cmp(&b.1)));
         let bars = |lo: f64, hi: f64| barred.iter().any(|&x| x >= lo - EPS && x <= hi + EPS);
-        xs.retain(|&(x, r)| !bars(x - r, x + r));
+        // (A crossing right beside one that bars a hop takes none
+        // either, and like any that takes none leaves no room for a
+        // foot beside it.)
+        xs.retain(|&(x, r)| {
+            let free = !bars(x - r, x + r);
+            if !free {
+                soft.push(x);
+            }
+            free
+        });
         // Whether a crossing that takes no hop lies under a foot of the
         // hop from `x0` to `x1`, `r` high, or within a join of it: the
         // hop would spring from that line.
@@ -888,6 +897,27 @@ mod tests {
             let sc = paths(&[level, &first, &second]);
             assert_eq!(find(&sc)[0].len(), hops, "{gap} px before");
             assert_pick_is_paint(&sc, "given up, far end");
+        }
+    }
+
+    /// B11 review r2 #2, the same beside a line that bars a hop: a
+    /// crossing a hop's width from a plumb stroke's bare end takes no
+    /// hop (the hop would sit on the end), and the next line along is
+    /// stepped over only where the foot stands a join clear of it.
+    #[test]
+    fn a_foot_keeps_clear_of_a_crossing_beside_a_barred_one() {
+        let level = ((0.0, 50.0), (300.0, 50.0));
+        // A plumb stroke that ends 4 px above the level one bars a hop
+        // at x = 100; the line 4 px on has no room for one either.
+        let end = ((100.0, 46.0), (100.0, 100.0));
+        let beside = ((104.0, 0.0), (104.0, 100.0));
+        for (on, hops) in [(8.0, 0), (HOP_R + HOP_JOIN, 0), (HOP_R + HOP_JOIN + 1.0, 1)] {
+            let third = ((104.0 + on, 0.0), (104.0 + on, 100.0));
+            let sc = strokes(&[level, end, beside, third]);
+            let found = find(&sc);
+            assert_eq!(found[0].len(), hops, "{on} px on: {:?}", found[0]);
+            assert!(found[0].iter().all(|h| h.x0 == 104.0 + on && h.over == 1));
+            assert_pick_is_paint(&sc, "beside a barred crossing");
         }
     }
 
