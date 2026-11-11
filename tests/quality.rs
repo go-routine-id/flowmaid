@@ -775,24 +775,37 @@ fn channels_keep_edges_apart_and_off_chips() {
 /// Raised: band_pairs routed 140 -> 142 — two more pairs of `n12`'s
 /// nested teeth run a track pitch apart where they crossed (dense-lr
 /// 25 -> 27).
+///
+/// B11 review r2 (#3): a side whose tracks cannot follow its turns is
+/// dealt row by row or by its tracks as they lie, each way's tracks
+/// among themselves or a pitch apart in their teeth's room, and a side
+/// is dealt again after a deal that undid a crossing (`comb.rs`; the
+/// reviewer's 120 hub fans: crossings inside a fan 104 | 150 -> 7 | 4).
+/// Here only bench-75 changes. Lowered: fan_x 13 | 18 -> 9 | 13,
+/// x_drawn 409 | 471 -> 405 | 465, band_pairs routed 142 -> 141,
+/// band_len routed 71 330 -> 71 020, lat_backtrack routed 430 -> 425.
+/// Raised: band_pairs static 130 -> 132 and band_len static 73 420 ->
+/// 74 730 — two more pairs of nested teeth run side by side a track
+/// pitch apart (bench-75's `svc5` and `svc6` edges to `logs` and to
+/// `ext`: 59 -> 61 pairs for 4 crossings fewer inside its fans).
 const DEFECT_BASELINE: [(&str, f64, f64); 18] = [
     ("end_tilt", 0.0, 0.0),
     ("end_tilt_max", 0.3, 0.6),
     ("end_gaps", 0.0, 0.0),
     ("end_gap_max", 0.1, 0.1),
     ("lat_wiggles", 15.0, 5.0),
-    ("lat_backtrack", 1_870.0, 430.0),
+    ("lat_backtrack", 1_870.0, 425.0),
     ("own_frame_x", 0.0, 0.0),
     ("own_frame_len", 0.0, 0.0),
-    ("band_pairs", 130.0, 142.0),
-    ("band_len", 73_420.0, 71_330.0),
+    ("band_pairs", 132.0, 141.0),
+    ("band_len", 74_730.0, 71_020.0),
     ("idiom_scubic", 0.0, 0.0),
     ("idiom_spline", 0.0, 0.0),
     ("idiom_bow", 0.0, 0.0),
-    ("x_drawn", 409.0, 471.0),
+    ("x_drawn", 405.0, 465.0),
     ("end_kink", 0.0, 0.0),
     ("ink_out", 0.0, 0.0),
-    ("fan_x", 13.0, 18.0),
+    ("fan_x", 9.0, 13.0),
     ("fan_uneven", 1.0, 2.0),
 ];
 
