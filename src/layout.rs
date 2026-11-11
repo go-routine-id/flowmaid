@@ -1098,40 +1098,6 @@ pub fn line_count(s: &str) -> usize {
     s.split('\n').count().max(1)
 }
 
-/// Greedy word wrap of `s` to lines at most `max_w` px wide, where a
-/// line measures `text_width(line) * scale` (pass `size /
-/// TEXT_CALIBRATION` for text drawn at another size). Existing `\n`
-/// breaks stay; a single word wider than `max_w` keeps a line to
-/// itself, unsplit, as mermaid's wrapped labels do. Runs of spaces at
-/// a break are dropped. For the fixed-column diagrams (journey tasks,
-/// timeline periods and events) whose text would otherwise widen its
-/// column without bound.
-pub(crate) fn wrap_text(s: &str, max_w: f64, scale: f64) -> String {
-    let mut out: Vec<String> = Vec::new();
-    for line in s.split('\n') {
-        if text_width(line) * scale <= max_w {
-            out.push(line.to_string());
-            continue;
-        }
-        let words: Vec<&str> = line.split(' ').filter(|w| !w.is_empty()).collect();
-        let starts = crate::wrap::greedy(words.len(), max_w, |i, j| {
-            text_width(&words[i..j].join(" ")) * scale
-        });
-        out.extend(lines_at(&words, &starts));
-    }
-    out.join("\n")
-}
-
-/// `words` joined into the lines starting at `starts` (see
-/// [`crate::wrap`]), one space between words.
-fn lines_at(words: &[&str], starts: &[usize]) -> Vec<String> {
-    starts
-        .iter()
-        .enumerate()
-        .map(|(k, &s)| words[s..starts.get(k + 1).copied().unwrap_or(words.len())].join(" "))
-        .collect()
-}
-
 /// Width (px, at [`TEXT_CALIBRATION`]) a node label without a line break
 /// of its own wraps at by default ([`wrap_label`], report M7): mermaid's
 /// documented `flowchart.wrappingWidth` default. Mermaid 12.2.0 draws its
@@ -6422,34 +6388,6 @@ mod tests {
                 assert!(!"「（".contains(a.chars().last().unwrap()), "{a}");
             }
         }
-    }
-
-    #[test]
-    fn wrap_text_is_greedy_keeps_breaks_and_never_splits_words() {
-        // Fits: untouched (including inner runs of spaces).
-        assert_eq!(wrap_text("short  text", 200.0, 1.0), "short  text");
-        let s = "one two three four five six seven eight nine ten";
-        let w = wrap_text(s, 80.0, 1.0);
-        assert!(w.lines().count() > 1);
-        assert_eq!(w.replace('\n', " "), s, "words kept in order");
-        for line in w.lines() {
-            assert!(text_width(line) <= 80.0, "{line:?} too wide");
-        }
-        // Greedy: no line could take the next line's first word.
-        let lines: Vec<&str> = w.lines().collect();
-        for pair in lines.windows(2) {
-            let next = pair[1].split(' ').next().unwrap();
-            assert!(text_width(&format!("{} {next}", pair[0])) > 80.0);
-        }
-        // An over-long word keeps a line to itself, unsplit.
-        assert_eq!(
-            wrap_text("a Pneumonoultramicroscopic b", 40.0, 1.0),
-            "a\nPneumonoultramicroscopic\nb"
-        );
-        // Existing breaks stay; the scale measures at another size.
-        assert_eq!(wrap_text("x\ny", 1.0, 1.0), "x\ny");
-        let at_13 = wrap_text(s, 80.0, 13.0 / TEXT_CALIBRATION);
-        assert!(at_13.lines().count() <= w.lines().count());
     }
 
     #[test]

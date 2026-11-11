@@ -1098,8 +1098,7 @@ mod tests {
             let n = node(&g, &sc, bar);
             assert!(n.h > 2.0 * n.w, "{bar}: {} x {}", n.w, n.h);
             let v = g.node_index(bar).unwrap();
-            let (labels, sizes) = crate::layout::node_texts(&g);
-            let _ = labels;
+            let (_, sizes) = crate::layout::node_texts(&g);
             assert_eq!(crate::scene::fit_bars(&g, &sizes)[v], (n.w, n.h), "{bar}");
         }
         in_line(&g, &sc, &["A", "B"], false);
