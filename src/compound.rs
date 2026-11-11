@@ -723,15 +723,63 @@ pub(crate) fn route(
         boxes.push((w, h));
         blocks.push(sc);
     }
-    let rest = crate::scene::route_labelled(
+    let rest = crate::scene::route_fitted(
         &split.rest.g,
         &part_of(&split.rest, centers, &at, (0.0, 0.0)),
-        &part_of(&split.rest, sizes, &boxes, (0.0, 0.0)),
+        &rest_sizes(g, split, sizes, labels, &boxes),
         &part_of(&split.rest, labels, &[], String::new()),
     );
     let mut out = join(g, split, &blocks, &rest)?;
     refit(&mut out, Mode::Routed, g.edge_paint_width.is_none());
     Some(out)
+}
+
+/// The rest's node sizes for [`route`]: each proxy the box of its
+/// block's frame now (`boxes`), each fork/join bar fitted
+/// ([`crate::scene::fit_bars`]) as [`scene`] fits it. A bar that
+/// branches to a block spans the block's frame, and fitted to the frame
+/// as it stands it would stretch whenever a drag inside the block pulls
+/// its states apart — but a drag never resizes a bar. So each block a
+/// bar branches to is laid out as [`scene`] lays it out, for the frame
+/// the bar was fitted to there; the other blocks, and a graph without
+/// such a bar, cost nothing more.
+fn rest_sizes(
+    g: &Graph,
+    split: &Split,
+    sizes: &[(f64, f64)],
+    labels: &[String],
+    boxes: &[(f64, f64)],
+) -> Vec<(f64, f64)> {
+    let rest = &split.rest;
+    let now = part_of(rest, sizes, boxes, (0.0, 0.0));
+    let is_bar = |k: usize| rest.g.nodes[k].shape == Shape::ForkBar;
+    if !(0..rest.g.nodes.len()).any(is_bar) {
+        return now;
+    }
+    let mut laid = now.clone();
+    for (b, (si, part)) in split.blocks.iter().enumerate() {
+        let Some(p) = split.proxy(b) else { continue };
+        let branch = rest
+            .g
+            .edges
+            .iter()
+            .any(|e| (e.from == p && is_bar(e.to)) || (e.to == p && is_bar(e.from)));
+        if !branch {
+            continue;
+        }
+        let sc = crate::scene::scene_labelled(
+            &part.g,
+            &part_of(part, sizes, &[], (0.0, 0.0)),
+            &part_of(part, labels, &[], String::new()),
+        );
+        if let Some(f) = frame(&sc, &g.subgraphs[*si].id) {
+            laid[p] = (f.2, f.3);
+        }
+    }
+    let fitted = crate::scene::fit_bars(&rest.g, &laid);
+    (0..now.len())
+        .map(|k| if is_bar(k) { fitted[k] } else { now[k] })
+        .collect()
 }
 
 /// `base` cut to `part`: its nodes (each proxy on `frames[b]`, its
@@ -1105,6 +1153,85 @@ mod tests {
         // The serpentine fold leaves a diagram with frames as `scene` draws it.
         let c = crate::fold::scene_compact(&g, &crate::fold::CompactOptions::for_extent(200.0));
         assert_eq!(to_svg(&c.scene), to_svg(&sc));
+    }
+
+    /// B9 verification leftover: a fork or join that branches to a block
+    /// spans the block's frame, and the interactive builders fitted it
+    /// to the frame as it stood — so dragging a state inside the block,
+    /// which stretches the frame, stretched the bar too (`f` 321 -> 446
+    /// px with `d` pulled 250 px along its row), against the rule that
+    /// a drag never resizes a bar. Every builder now draws the bar the
+    /// static scene draws, wherever the block's states are dragged.
+    #[test]
+    fn a_drag_inside_a_block_resizes_no_bar() {
+        // A fork into a row block and a plain state, joined again; and
+        // a sideways diagram whose column block holds a fork of its own.
+        let row = "stateDiagram-v2\n[*] --> f\nstate f <<fork>>\nf --> P\nf --> Q\n\
+                   state P {\n  direction LR\n  a --> b\n  b --> c\n  c --> d\n}\n\
+                   state j <<join>>\nP --> j\nQ --> j\nj --> [*]";
+        let column = "stateDiagram-v2\ndirection LR\n[*] --> f\nstate f <<fork>>\n\
+                      f --> P\nf --> Q\nstate P {\n  direction TB\n  a --> b\n  b --> c\n  \
+                      state g <<fork>>\n  c --> g\n  g --> d\n  g --> e\n}\n\
+                      P --> Done\nQ --> Done";
+        for (src, dragged, by) in [
+            (row, "d", (250.0, 0.0)),
+            (row, "a", (-120.0, 40.0)),
+            (column, "e", (0.0, 200.0)),
+            (column, "a", (90.0, -60.0)),
+        ] {
+            let g = state(src);
+            assert_eq!(blocks(&g), vec![true], "{src}");
+            let sc = scene(&g);
+            let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let sizes: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.w, n.h)).collect();
+            let v = g.node_index(dragged).unwrap();
+            let mut to = at.clone();
+            to[v] = (to[v].0 + by.0, to[v].1 + by.1);
+            let routed = route(&g, &to);
+            let drawings = [
+                ("route", route(&g, &at)),
+                ("route, dragged", routed.clone()),
+                (
+                    "route_sized, dragged",
+                    crate::scene::route_sized(&g, &to, &sizes),
+                ),
+                ("route_partial", route_partial(&g, &to, &sc, &at)),
+                (
+                    "route_partial, dragged back",
+                    route_partial(&g, &at, &routed, &to),
+                ),
+            ];
+            // The drag did stretch the block's frame.
+            let (was, now) = (frame_of(&sc, "P"), frame_of(&routed, "P"));
+            assert!(
+                (now.w - was.w).abs() > 20.0 || (now.h - was.h).abs() > 20.0,
+                "{dragged}: the frame kept {} x {}",
+                now.w,
+                now.h
+            );
+            let bars = g
+                .nodes
+                .iter()
+                .enumerate()
+                .filter(|(_, n)| n.shape == Shape::ForkBar);
+            for (k, bar) in bars {
+                let drawn = (sc.nodes[k].w, sc.nodes[k].h);
+                assert!(
+                    drawn.0.max(drawn.1) > 100.0,
+                    "{} is fitted: {drawn:?}",
+                    bar.id
+                );
+                for (what, d) in &drawings {
+                    contract(&g, d);
+                    assert_eq!(
+                        (d.nodes[k].w, d.nodes[k].h),
+                        drawn,
+                        "{what}, {dragged} dragged: bar {}",
+                        bar.id
+                    );
+                }
+            }
+        }
     }
 
     #[test]

@@ -196,6 +196,31 @@ project adheres to [Semantic Versioning](https://semver.org/).
   or one of the class's own ends still counts first, so no loop is sent
   into a box to spare a neighbour's loop. A class with more than eight
   loops keeps to two faces, as before.
+- **State diagrams: a drag inside a composite resizes no fork or join.**
+  A bar that branches to a composite laid out in its own `direction`
+  spans the composite's frame, and `route()`, `route_sized()` and
+  `route_partial()` fitted it to the frame as it stood, so dragging a
+  state inside the composite, which stretches the frame, stretched the
+  bar too (321 -> 446 px for a state pulled 250 px along its row) —
+  against the rule, since 0.34.0, that a drag never resizes a bar. Every
+  builder now draws the bar the static layout draws: `route()` and
+  `route_sized()` lay such a composite out once more to learn its frame
+  there (only where a bar branches to one), and `route_partial()` keeps
+  each bar as its `base` drew it.
+
+### Documentation
+
+- **State diagrams: where a composite's direction differs from
+  mermaid's.** The README said the `direction` rule is mermaid's for
+  state diagrams too. It is, for a composite that sets one; but a
+  composite that sets none keeps the direction round it here, while
+  mermaid lays it out top-down whichever way the diagram runs — as long
+  as none of its states links out of it and neither it nor a state
+  inside it carries a note (mermaid hangs a note's card outside the
+  composite, which counts there as a link out). Write `direction TB` in
+  the composite for mermaid's column in a `direction LR` diagram. Unlike
+  mermaid, a `direction` a composite does set also holds when a state in
+  it carries a note.
 
 ## [0.38.0] - 2026-11-10
 
