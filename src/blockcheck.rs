@@ -610,3 +610,233 @@ fn layout_clustered_returns_blocks() {
         crate::levels::with_blocks(false, || crate::layout::layout_clustered(&g, &sizes, &nc));
     assert_eq!(off.nodes[id(&g, "s1")].layer, 0);
 }
+
+// --- Chains both ways (the static scene, block layout switched on).
+
+use crate::scene::{Scene, SceneEdge};
+
+/// The static scene of `g` laid out as blocks.
+fn block_scene(g: &Graph) -> Scene {
+    crate::levels::with_blocks(true, || crate::scene::scene(g))
+}
+
+/// The points an edge is drawn through: its waypoints, or the ends of
+/// its single curve.
+fn path_of(e: &SceneEdge) -> Vec<(f64, f64)> {
+    if e.waypoints.is_empty() {
+        vec![e.bezier[0], e.bezier[3]]
+    } else {
+        e.waypoints.clone()
+    }
+}
+
+/// A node's box as (x0, y0, x1, y1).
+fn node_box(sc: &Scene, id: &str) -> (f64, f64, f64, f64) {
+    let n = sc
+        .nodes
+        .iter()
+        .find(|n| n.id == id)
+        .unwrap_or_else(|| panic!("no node {id}"));
+    (
+        n.x - n.w / 2.0,
+        n.y - n.h / 2.0,
+        n.x + n.w / 2.0,
+        n.y + n.h / 2.0,
+    )
+}
+
+/// A frame as (x0, y0, x1, y1).
+fn frame_box(sc: &Scene, id: &str) -> (f64, f64, f64, f64) {
+    let c = sc
+        .clusters
+        .iter()
+        .find(|c| c.id == id)
+        .unwrap_or_else(|| panic!("no frame {id}"));
+    (c.x, c.y, c.x + c.w, c.y + c.h)
+}
+
+fn edge<'a>(sc: &'a Scene, from: &str, to: &str) -> &'a SceneEdge {
+    sc.edges
+        .iter()
+        .find(|e| e.from == from && e.to == to)
+        .unwrap_or_else(|| panic!("no edge {from} -> {to}"))
+}
+
+/// Where `p` lies on the box `b`: 'u' on its upstream side, 'd' on its
+/// downstream side (for flow direction `dir`), 'l' on a lateral side.
+fn side_of(dir: &str, b: (f64, f64, f64, f64), p: (f64, f64)) -> char {
+    let near = |a: f64, c: f64| (a - c).abs() < 1.5;
+    let (top, bottom, left, right) = (
+        near(p.1, b.1),
+        near(p.1, b.3),
+        near(p.0, b.0),
+        near(p.0, b.2),
+    );
+    let (up, down) = match dir {
+        "TD" => (top, bottom),
+        "BT" => (bottom, top),
+        "LR" => (left, right),
+        _ => (right, left),
+    };
+    if up {
+        'u'
+    } else if down {
+        'd'
+    } else {
+        'l'
+    }
+}
+
+#[test]
+fn a_long_edge_of_a_block_layout_runs_in_a_channel() {
+    // No edge of a block layout is one curve across more than one layer:
+    // forward or against the flow it has its channel. Only an upstream
+    // edge between two plain nodes of one level keeps its lane, a note
+    // card's link elbows, and an invisible link is not drawn.
+    for (name, g) in clustered_fixtures() {
+        if crate::compound::split(&g).is_some() || !crate::scene::block_mode(&g) {
+            continue;
+        }
+        let aug = crate::levels::Augmented::of(&g);
+        let rank_only = aug.rank_only();
+        let (mut ga, stand_in) = aug.graph(&g);
+        ga.block_links = Some(aug.block_links(&stand_in, ga.edges.len()));
+        let sizes = crate::layout::node_sizes(&g);
+        let (lo, _, paths) =
+            crate::layout::layout_clustered_ranked(&ga, &sizes, &aug.node_cluster, &rank_only);
+        let paths = paths.expect("laid out as blocks");
+        let card = |v: usize| {
+            let n = &g.nodes[v];
+            crate::style::is_note_card(&n.id, n.shape, &n.style)
+        };
+        for (ei, e) in g.edges.iter().enumerate() {
+            let (a, b) = (lo.nodes[e.from].layer, lo.nodes[e.to].layer);
+            let lane = b < a && crate::layout::keeps_lane(Some(&paths), e.from, e.to);
+            if matches!(e.kind, crate::model::EdgeKind::Invisible)
+                || card(e.from)
+                || card(e.to)
+                || lane
+            {
+                continue;
+            }
+            assert_eq!(
+                lo.edge_paths[ei].len(),
+                a.abs_diff(b).saturating_sub(1),
+                "{name}: {} -> {} across layers {a} to {b}",
+                g.nodes[e.from].id,
+                g.nodes[e.to].id
+            );
+        }
+    }
+}
+
+#[test]
+fn a_turned_edge_runs_up_its_channel_through_flow_sides() {
+    // `b2 -> a2` of the two-block cycle runs against the flow across
+    // two layers: out of its source's upstream side, into its target's
+    // downstream side, in every direction.
+    let root = env!("CARGO_MANIFEST_DIR");
+    let src = std::fs::read_to_string(format!("{root}/tests/fixtures/blocks/cycle2.mmd")).unwrap();
+    for dir in ["TD", "BT", "LR", "RL"] {
+        let g = graph(&src.replace("flowchart TD", &format!("flowchart {dir}")));
+        let sc = block_scene(&g);
+        let e = edge(&sc, "b2", "a2");
+        let path = path_of(e);
+        assert_eq!(
+            side_of(dir, node_box(&sc, "b2"), path[0]),
+            'u',
+            "{dir}: {path:?}"
+        );
+        assert_eq!(
+            side_of(dir, node_box(&sc, "a2"), path[path.len() - 1]),
+            'd',
+            "{dir}: {path:?}"
+        );
+    }
+}
+
+#[test]
+fn a_turned_edge_one_layer_up_is_a_z_not_a_lane() {
+    // A three-block cycle whose closing edge runs one layer up: it
+    // crosses the gap between its two rows, no lane round the blocks.
+    // (Left to right: across the flow a title chip lies over the entry
+    // of a block's first row, and until entries are kept clear of it the
+    // router takes such an edge round to the member's side.)
+    let src = "flowchart LR\nsubgraph A[First]\na1 --> a2\nend\nsubgraph B[Second]\nb1\nend\n\
+               subgraph C[Third]\nc1\nend\na2 --> b1\nb1 --> c1\nc1 --> b1\nc1 --> a1\n";
+    let rep = crate::levels::with_blocks(true, || crate::quality::measure_source(src, false))
+        .expect("a flowchart");
+    assert!(rep.block_mode);
+    assert_eq!(rep.statik.up_lanes, 0);
+    assert_eq!(rep.statik.wiggles, 0);
+    let sc = &rep.static_scene;
+    // `c1 -> b1` runs one layer up: it stays between its two rows.
+    let (b, c) = (node_box(sc, "b1"), node_box(sc, "c1"));
+    for p in path_of(edge(sc, "c1", "b1")) {
+        assert!(p.0 > b.0 - 1.0 && p.0 < c.2 + 1.0, "{p:?} leaves the gap");
+    }
+    // The fixture cycle: no upstream edge of it leaves by a side lane.
+    let src = std::fs::read_to_string(format!(
+        "{}/tests/fixtures/blocks/p06-block-cycle.mmd",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    let rep = crate::levels::with_blocks(true, || crate::quality::measure_source(&src, false))
+        .expect("a flowchart");
+    assert_eq!(rep.statik.up_lanes, 0);
+    assert_eq!(rep.statik.wiggles, 0);
+}
+
+#[test]
+fn a_chain_out_of_a_nested_block_leaves_through_its_downstream_side() {
+    // `a -> c2` starts in one nested block and ends in its sibling: its
+    // channel stays inside the source block down to that block's last
+    // row and inside the target block from its first row on, so it
+    // crosses both frames on their flow-facing sides.
+    let g = fixture("blocks/nested-chain");
+    let sc = block_scene(&g);
+    let path = path_of(edge(&sc, "a", "c2"));
+    for id in ["Y", "Z"] {
+        let f = frame_box(&sc, id);
+        for w in path.windows(2) {
+            for k in 0..=20 {
+                let t = f64::from(k) / 20.0;
+                let p = (
+                    w[0].0 + (w[1].0 - w[0].0) * t,
+                    w[0].1 + (w[1].1 - w[0].1) * t,
+                );
+                if p.1 > f.1 && p.1 < f.3 {
+                    assert!(p.0 > f.0 && p.0 < f.2, "{id}: {p:?} outside {f:?}");
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn a_chain_label_sits_outside_both_end_blocks() {
+    // The label of an edge between two blocks sits on the chain's run
+    // between them: its centre lies in no frame that holds exactly one
+    // of the edge's ends.
+    let g = fixture("blocks/blocks-overview");
+    let sc = block_scene(&g);
+    let nc = crate::scene::node_cluster_paths(&g);
+    for (e, se) in g.edges.iter().zip(&sc.edges) {
+        let Some((text, at, _)) = &se.label else {
+            continue;
+        };
+        for (s, sub) in g.subgraphs.iter().enumerate() {
+            if nc[e.from].contains(&s) == nc[e.to].contains(&s) {
+                continue;
+            }
+            let f = frame_box(&sc, &sub.id);
+            assert!(
+                !(at.0 > f.0 && at.0 < f.2 && at.1 > f.1 && at.1 < f.3),
+                "label {text:?} of {} -> {} inside frame {}",
+                se.from,
+                se.to,
+                sub.id
+            );
+        }
+    }
+}

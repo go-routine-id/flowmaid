@@ -3505,7 +3505,7 @@ pub(crate) fn built(g: &Graph) -> Scene {
 /// The classic single-level pipeline (no subgraphs).
 fn scene_flat(g: &Graph, sizes: &[(f64, f64)], labels: &[String]) -> Scene {
     let lo = layout_sized(g, sizes);
-    let lanes = static_lanes(g, &lo, None, g.edges.len());
+    let lanes = static_lanes(g, &lo, None, None, g.edges.len());
     let mut sc = scene_from_layout(g, sizes, labels, lo, &lanes, g.edges.len());
     let moved = avoid_label_overlaps(&sc.nodes, &[], &mut sc.edges, LABEL_STATIC_WORK);
     fit_moved_labels(&mut sc, &moved);
@@ -3516,11 +3516,14 @@ fn scene_flat(g: &Graph, sizes: &[(f64, f64)], labels: &[String]) -> Scene {
 /// `lo`'s abstract coordinates:
 /// planned on the layers as the layout planned them
 /// ([`crate::layout::back_lanes`]). Only the first `real` edges get one
-/// (the rest are `scene_clustered`'s stand-ins).
+/// (the rest are `scene_clustered`'s stand-ins). In a block layout
+/// (`blocks`, its [`crate::layout::BlockPaths`]) only an upstream edge
+/// between two plain nodes of one level has a lane.
 fn static_lanes(
     g: &Graph,
     lo: &LayoutResult,
     node_cluster: Option<&[Vec<usize>]>,
+    blocks: Option<&[Vec<usize>]>,
     real: usize,
 ) -> Vec<Option<crate::lanes::Lane>> {
     // The nodes with their layer index as `l`, and each channel's dummies
@@ -3558,7 +3561,8 @@ fn static_lanes(
         })
         .collect();
     let mut v = vec![None; g.edges.len()];
-    for (ei, lane) in crate::layout::back_lanes(g, &at, node_cluster, &chains, |d| dummies[d]) {
+    let lanes = crate::layout::back_lanes(g, &at, node_cluster, blocks, &chains, |d| dummies[d]);
+    for (ei, lane) in lanes {
         if ei < real {
             v[ei] = Some(lane);
         }
@@ -3931,9 +3935,29 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)], labels: &[String], blocks: b
         };
         ga.frame_cut[ei] = [cut(g.sub_edges[i].from), cut(g.sub_edges[i].to)];
     }
-    let (lo, groups) = layout_clustered_ranked(&ga, sizes, &node_cluster, &rank_only);
-    let lanes = static_lanes(&ga, &lo, Some(&node_cluster), ne);
+    let (lo, groups, block_paths) = layout_clustered_ranked(&ga, sizes, &node_cluster, &rank_only);
+    let lanes = static_lanes(&ga, &lo, Some(&node_cluster), block_paths.as_deref(), ne);
     let mut sc = scene_from_layout(&ga, sizes, labels, lo, &lanes, ne);
+    // A block layout's chain carries its label at the slot the layout
+    // sized for it: the middle of its run between the end blocks
+    // ([`crate::layout::label_slot`]), not the middle of the whole chain.
+    if block_paths.is_some() {
+        for (ei, (ge, se)) in ga.edges.iter().zip(sc.edges.iter_mut()).enumerate() {
+            let (Some(label), false) = (se.label.as_mut(), groups[ei].is_empty()) else {
+                continue;
+            };
+            let common: Vec<usize> = node_cluster[ge.from]
+                .iter()
+                .zip(&node_cluster[ge.to])
+                .take_while(|(a, b)| a == b)
+                .map(|(a, _)| *a)
+                .collect();
+            let slot = crate::layout::label_slot(&groups[ei], &common);
+            if let Some(&at) = se.waypoints.get(slot + 1) {
+                label.1 = at;
+            }
+        }
+    }
     let horizontal = matches!(g.direction, Direction::LR | Direction::RL);
 
     // Wrap boxes around the laid-out members, then widen each box to
