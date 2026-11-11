@@ -7,20 +7,65 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.40.0] - 2026-11-11
+
+### Highlights
+
+Class and state follow-ups: what the phase A reviews left open. Flowchart
+drawings are unchanged, and so are the other diagram types; class diagrams
+change where a fan or self-relations are involved, and state diagrams only
+under a drag. No public API is removed or changed.
+
+- **Dotted class names.** `com.example.Order` is one class wherever it is
+  written (`A.B --> C`, `A.B : +id int`, `note for A.B "…"`), as in
+  mermaid; `..` stays the dotted line. Such names were parse errors in a
+  relation, an inline member and a `note for`.
+- **A plain fan of six no longer crosses itself.** Six classes into one
+  hub drew 4 crossings where mermaid draws none; the six now nest a
+  lane's room apart, in every direction and for every relation kind. The
+  same nesting rescues other fans that kept curves.
+- **Self-relations keep off a neighbour.** A class's loops are shared
+  among its faces by what each sharing costs: a loop under another box
+  counts before anything else, then a loop on a face where a relation
+  ends, a crossing, a covered label. Over 2,132 generated class diagrams
+  with loops no drawing has more loops under a box than before and 372
+  have fewer crossings (4 have more). The costs are listed with the entry
+  under Fixed: most fall on classes with four or more self-relations,
+  some start at three, and under a drag a loop changes face more often
+  whatever their number.
+- **A drag inside a composite resizes no fork or join.** `route()`,
+  `route_sized()` and `route_partial()` fit a bar that branches to a
+  composite laid out in its own `direction` to the frame the static
+  layout draws, so stretching the frame under a drag no longer stretches
+  the bar.
+- **`PartialEq` on the graph model** (`model::Graph`, `Node`, `Edge`,
+  `Subgraph`, `SubEdge`), so a host can tell whether an edit changed the
+  graph.
+- **Benchmark: the 0.39.0 table stands.** 0.40.0 draws the 25 benchmark
+  samples byte for byte as 0.39.0 does, and in the same time: with both
+  releases timed in three alternated rounds and each sample's fastest
+  round compared, 0.99x in the geometric mean (single rounds gave 0.76x
+  to 1.07x, which is the box). So the README keeps the table measured on
+  0.39.0 and its "about 113x faster than mermaid". Two runs of the whole
+  table on 0.40.0 gave 127x and 134x on a busier box where both sides
+  ran slower; that rise is the box too, not this release.
+
 ### Added
 
-- **Class diagrams: dotted names** (`com.example.Order`, `A.B --> C`).
-  A name may hold single dots, as in mermaid: `A.B` is one class called
+- **Class diagrams: dotted names** (`com.example.Order`, `A.B --> C`). A
+  name may hold single dots, as in mermaid: `A.B` is one class called
   `A.B`, the same class in a declaration, a `class A.B { … }` block, an
   inline member (`A.B : +id int`), a relation, a `note for A.B` and a
   backtick literal. Only `..` is the dotted line (`A.B..>C` is `A.B`
-  depending on `C`), and a dot never starts or ends a name (`A.`, `.A`
-  and `A...B` stay errors, as in mermaid). Such names were parse errors
-  in a relation, an inline member and a `note for`. A name part that is
-  just `o` is no aggregation glyph, last in the name or first:
-  `pkg.o --> B` links the class `pkg.o` and `o.A --> B` the class `o.A`
-  (so do `class o.A` and `o.A : +id int`), where mermaid's lexer takes
-  that `o` for the glyph and gives up on the line.
+  depending on `C`), and in a relation, an inline member and a `note
+  for` a dot never starts or ends a name (`A.`, `.A` and `A...B` stay
+  errors there, as in mermaid; a `class` declaration takes such a name
+  as written, as before, where mermaid rejects it). Dotted names were
+  parse errors in a relation, an inline member and a `note for`. A name
+  part that is just `o` is no aggregation glyph, last in the name or
+  first: `pkg.o --> B` links the class `pkg.o` and `o.A --> B` the class
+  `o.A` (so do `class o.A` and `o.A : +id int`), where mermaid's lexer
+  takes that `o` for the glyph and gives up on the line.
 - **`PartialEq` for the graph model**: `model::Graph`, `Node`, `Edge`,
   `Subgraph` and `SubEdge` compare field by field, so two parses of one
   source are equal and a host can tell whether an edit changed the
@@ -33,7 +78,7 @@ project adheres to [Semantic Versioning](https://semver.org/).
   to six) left the two outermost relations as curves that swept across
   their neighbours' routes, 4 crossings where mermaid draws none: the
   innermost jog took the middle one of the gap's three lanes and the
-  next the lane below, and the outermost — its leg into the hub 3.5 px
+  next the lane below, and the outermost — its leg into the hub right
   beside the innermost's leg out of its class — found no lane under
   both. A curve that would be a jog now joins the jogs of its gap when
   they are stacked in nesting order, so the six nest a lane's room
@@ -79,10 +124,32 @@ project adheres to [Semantic Versioning](https://semver.org/).
   372 have fewer line crossings and 4 more (extreme cases, such as
   eight loops on a class with relations on three faces), and of 8,528
   drags of them none has more loops under a box, 1,994 have fewer
-  crossings and 61 more. Where every face of a class is taken a loop still goes round a
-  relation's end — the relation leaves through the loop — rather than
-  under a box. A class with more than eight loops keeps to two faces, as
-  before.
+  crossings and 61 more. Where every face of a class is taken a loop
+  still goes round a relation's end — the relation leaves through the
+  loop — rather than under a box. A class with more than eight loops
+  keeps to two faces, as before. What it costs, as the package's
+  independent review measured it:
+  - A nest deeper than its face is long leaves loop ends hanging past
+    the class's corners. The fault existed before and is more frequent
+    now: of 4,678 generated scenes with loops, an end more than 5 px off
+    its box is new in 260 and gone in 92. In 237 of the 260 a class has
+    four or more loops; in the other 23 none has more than three, and
+    three loops nested on the side of a class without members leave the
+    outer one's ends 6 px off the box. On the 894-file class corpus 16
+    scenes had such an end, now 14.
+  - Labels can land on the loops of a deep nest: 47 of 9,831 scenes have
+    more labels under a line, 1,407 fewer.
+  - While a class is dragged a loop changes face more often, whatever
+    the number of loops: 3.2 % -> 4.8 % of frames over 1,200 random
+    diagrams (0.7 % -> 1.3 % in those where no class has more than one
+    loop), 4.6 % -> 8.1 % over 500 loop-heavy ones, 10.9 % -> 13.8 %
+    over the 432 with three to eight loops on one class, and 2.7 % ->
+    3.3 % on the class corpus.
+  - The review's 244 loop-heavy inputs (seven to nine loops on one class
+    in most) take 10-14 % longer in total to draw, to route and to drag,
+    single ones up to three times as long: eight unlabelled loops on a
+    class 0.1 -> 0.3 ms to draw, and one drag frame 1.0 -> 2.3 ms.
+    Ordinary class diagrams take the same time.
 - **State diagrams: a drag inside a composite resizes no fork or join.**
   A bar that branches to a composite laid out in its own `direction`
   spans the composite's frame, and `route()`, `route_sized()` and
@@ -116,12 +183,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
   state diagrams too. It is, for a composite that sets one; but a
   composite that sets none keeps the direction round it here, while
   mermaid lays it out top-down whichever way the diagram runs — as long
-  as none of its states links out of it and neither it nor a state
-  inside it carries a note (mermaid hangs a note's card outside the
-  composite, which counts there as a link out). Write `direction TB` in
+  as no transition crosses its border to or from one of its states and
+  neither it nor a state inside it carries a note (mermaid hangs a
+  note's card outside the composite, which counts there as a link
+  across its border). Write `direction TB` in
   the composite for mermaid's column in a `direction LR` diagram. Unlike
-  mermaid, a `direction` a composite does set also holds when a state in
-  it carries a note.
+  mermaid, a `direction` a composite does set also holds when it or a
+  state in it carries a note.
 
 ## [0.39.0] - 2026-11-11
 
