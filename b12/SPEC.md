@@ -42,12 +42,15 @@ Date 2026-11-10. Written for an implementer who has seen none of the design work
 - **The workflow runs B12 as four packages**, cut at the checkpoints as section 5 allows, each one
   implement-verify-fix cycle: `b12a1-structure` = B12.0-B12.6 (checkpoints S, A1), `b12a2-geometry` = B12.7-B12.12
   (A2), `b12a3-route` = B12.13 (R), `b12b-default` = B12.14-B12.16 (C). The first three end with the switch off and
-  byte-identical default output, are merged to `dev`, and are not released; the release (0.41.0) follows the fourth.
+  byte-identical default output, are merged to `dev`, and are not released; the release (0.40.0) follows the fourth.
   The lead does the release itself (version, release branch, pull requests); B12.16 prepares the flip, the ratchets,
   the README text and images and the CHANGELOG entry under `[Unreleased]`.
 - **B12.0's workspace tooling** (block-metrics columns, judge rules, reference tables) is reviewed by the verifier of
   `b12a1-structure`, who re-derives at least three rows by hand.
 - **Disk:** the suite-on run's second cargo target directory is deleted after each checkpoint report is written.
+- **Order and release number (user decision, 2026-11-11):** B12 runs BEFORE the class/state leftovers package, right
+  after B11 (released as 0.39.0). Its release is therefore **0.40.0**; the leftovers package follows as 0.41.0. The
+  "starting release" of every baseline in this spec is the commit B12.0 starts from (B11's head).
 
 1. **Design built: `d-global`**, the unanimous winner of the three judges: one Sugiyama pass over all nodes, one scene,
    one `edgepass::finish`, `compound.rs` (B9) untouched; blocks come from a block-aware layering, a block-aware ordering
@@ -96,7 +99,7 @@ Date 2026-11-10. Written for an implementer who has seen none of the design work
    is never re-baselined to pass (decision D6).
 5. **Two packages (decision D2), one internal switch.** B12a builds the whole block path, static and routed, behind a
    switch that is off in every ordinary build: nothing visible, no release, byte-identical default output. B12b adds
-   the last edge kinds, runs the acceptance, flips the default and releases 0.41.0. Items, checkpoints and each
+   the last edge kinds, runs the acceptance, flips the default and releases 0.40.0. Items, checkpoints and each
    package's own acceptance are in 4.1, 4.2 and section 5.
 
 ## 1. Goal, the user's words, before and after, what must not change
@@ -1430,7 +1433,7 @@ not in block mode and without an own-box edge byte-identical to the starting rel
 
 **B12.16 Default on, ratchets, docs, release.** Only after checkpoint C. Flip and remove the switch (4.1). Re-baseline
 per 4.5 (numbers already accepted at A2, R and C are written down; nothing is first discovered here). README,
-CHANGELOG, images, benchmark table (4.7). Final `perf.sh`, `render.sh`, `judge` in the default build. Release 0.41.0.
+CHANGELOG, images, benchmark table (4.7). Final `perf.sh`, `render.sh`, `judge` in the default build. Release 0.40.0.
 *Check*: everything in 4.3-4.6 in the default build; the permanent hash test green.
 
 ### 4.3 Acceptance
@@ -1752,7 +1755,7 @@ Out of scope for B12:
 - Styling subgraphs (`style`, `class` on a subgraph are still dropped), class and ER diagrams, the `advance` module.
 
 **Two packages (decision D2).** The user-visible contract of D2 is unchanged: nothing visible until one release,
-0.41.0. What moved against the first cut is where the edge work sits: flow-facing ends, free pins, title-clear entries
+0.40.0. What moved against the first cut is where the edge work sits: flow-facing ends, free pins, title-clear entries
 and label room are built in B12a, because B12a's frames (F2), coordinates (X2.2) and corridors (R3) are built on them
 and `route()` would otherwise be reopened after its checkpoint. B12b keeps the last edge kinds, the acceptance and the
 flip.
@@ -1782,7 +1785,7 @@ B12a ends with **no release**. It must not ship as the default: the own-box edge
 rows-equal gate (4.3 e) and the comparison sweep are not done.
 
 **B12b "blocks: remaining edges, acceptance, default on"** = B12.14 state diagrams and own-box edges, B12.15
-comparison sweep, B12.16 default on, ratchets, docs, release 0.41.0; checkpoint C between B12.15 and B12.16.
+comparison sweep, B12.16 default on, ratchets, docs, release 0.40.0; checkpoint C between B12.15 and B12.16.
 
 *B12b's acceptance:* before the flip, checkpoint C in the suite-on run (`judge` 0 must-fails static and routed
 against complete reference tables, every rule of 4.3 including (e) with its picture triples, the suite-on failing
@@ -1944,7 +1947,7 @@ Taken by the user on 2026-11-10 (`B/USER-DECISIONS.md`):
   public fixture, which has the room, 1.1 x 0.38's).
 - **D1 Static time on tiny clustered files.** For files under 1 ms the static limit is max(2 x baseline, baseline +
   0.3 ms).
-- **D2 Split**: yes. B12a (nothing visible, merged to dev, no release), then B12b and release 0.41.0. The contents of
+- **D2 Split**: yes. B12a (nothing visible, merged to dev, no release), then B12b and release 0.40.0. The contents of
   the two packages are in section 5; against the first cut, the edge ends and the label room are built in B12a,
   behind the switch.
 - **D3 Upstream edges between blocks**: channels. They leave the top of a node and enter the bottom of a block

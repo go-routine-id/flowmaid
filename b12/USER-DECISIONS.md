@@ -28,3 +28,8 @@ What follows from it (the lead's reading; apply to SPEC.md):
 - `lateral_x` on bench-75 / dense-lr / dense-td: must = not above mermaid's count (3 / 0 / 1), target 0.
 - Four workflow packages: b12a1-structure (B12.0-B12.6), b12a2-geometry (B12.7-B12.12), b12a3-route (B12.13),
   b12b-default (B12.14-B12.16). The first three: switch off, no release. 0.41.0 after the fourth.
+
+## Order and release number (user decision, 2026-11-11 ~00:15 UTC)
+- The user asked why B12 came after c-leftovers and chose **"Tukar: B12 dulu"**: B12 runs right after B11.
+  Order: B11 → release 0.39.0 → B12 (four packages) → release **0.40.0** → c-leftovers → release 0.41.0.
+  Every earlier mention of "0.41.0 after B12b" in this file is superseded by this entry.
