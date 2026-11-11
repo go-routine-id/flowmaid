@@ -206,6 +206,9 @@ Where the same source gives a different result:
 | `click` url that is `javascript:`, `data:` or `vbscript:` | written as `about:blank` | not linked at all |
 | An empty markdown label (``` "``" ```), or extra spaces in a `click` (`click A  href  "u"`) | rejected | accepted |
 | State diagram `note "text" as N` | dropped | drawn as a free-standing card |
+| State composite with no `direction` of its own | laid out top-down whichever way the diagram runs, unless one of its states links out of it or a note is attached to it or inside it | keeps the direction round it; write `direction TB` in the composite for mermaid's column |
+| State composite with a `direction` and a note inside | the `direction` is dropped | the `direction` holds |
+| Class name part that is just `o`, as in `o.A --> B` or `x.o--o.y` | read as an aggregation glyph, and the line fails | part of the name |
 | Trailing `%%` comment in class and sequence diagrams | printed as part of the label or message text | stripped |
 | ER alias, as in `p[Person]` | accepted only where an entity is declared | also accepted inside a relationship |
 | Sequence frames | sized to the lifelines they cover | full-width bands by default; `scopedFrames: true` gives mermaid's sizing |
@@ -308,18 +311,18 @@ What every flowchart drawing guarantees:
 
 - **Supported subset** of [mermaid's state diagram syntax](https://mermaid.js.org/syntax/stateDiagram.html): start and end states, labelled transitions, state declarations with titles and descriptions, nested composites with their own `direction`, transitions to or from a composite, `<<choice>>`, `<<fork>>` / `<<join>>`, and `note left of` / `note right of` notes, on one line or as a block.
 - **Not yet:** concurrency regions (`--`) and entry/exit actions.
-- **Direction.** A composite's `direction` follows the [subgraph rule](#subgraphs).
+- **Direction.** A composite's `direction` follows the [subgraph rule](#subgraphs). A composite that sets none keeps the direction round it (see [Differences from mermaid](#differences-from-mermaid)).
 - **Fork and join** bars are laid across the flow and stretched to span their branches.
 - **Notes.** `note "text" as N` is drawn as a free-standing card. Note cards are ordinary nodes, so they can be picked and dragged like states.
 
 ## Class diagrams
 
-- **Supported subset** of [mermaid's class diagram syntax](https://mermaid.js.org/syntax/classDiagram.html): class blocks and inline members, with visibility, return types, generics and the `$` / `*` classifiers; several classes on one line; hyphenated and backtick names; `<<stereotype>>` annotations. All UML relations, solid or dashed, in either direction or two-way, with cardinalities and labels; lollipop interfaces. `direction`, and notes with or without a class.
-- **Not yet:** `namespace` blocks, `classDef` / `:::` styling and `click` in class diagrams. Dotted names in relations (`A.B --> C`) are parse errors.
+- **Supported subset** of [mermaid's class diagram syntax](https://mermaid.js.org/syntax/classDiagram.html): class blocks and inline members, with visibility, return types, generics and the `$` / `*` classifiers; several classes on one line; hyphenated, dotted (`com.example.Order`) and backtick names; `<<stereotype>>` annotations. All UML relations, solid or dashed, in either direction or two-way, with cardinalities and labels; lollipop interfaces. `direction`, and notes with or without a class.
+- **Not yet:** `namespace` blocks, `classDef` / `:::` styling and `click` in class diagrams.
 - **Routing.** Edges are orthogonal with rounded corners, square to the box faces and clear of the corners. An orthogonal route never runs along another edge; where no lane is free, the edge keeps a curve.
 - **Fans.** A class with up to about a dozen subclasses draws its fan without a crossing. Crowded fan-ins (six or more classes pointing at one) can still cross, up to about a dozen times with labels and cardinalities. Much wider fans (twenty or more subclasses) can cross many times.
 - **Cardinalities** sit beside their end, clear of lines, glyphs and labels, in every direction.
-- **Self-relations** of a class alternate sides and nest. Their labels sit beside the loops, not on them.
+- **Self-relations** of a class alternate sides and nest, and their labels sit beside the loops, not on them. Where a loop would run under another box, cross a relation or a neighbour's loop, or cover a label, the loops are shared among the class's faces the way that does so least; a loop under a box counts before anything else. A class with more than eight loops keeps to two faces.
 
 ## Entity-Relationship diagrams
 
