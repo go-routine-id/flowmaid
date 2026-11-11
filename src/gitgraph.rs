@@ -133,6 +133,11 @@ pub struct GitLabel {
 /// on a white luggage-label pill outlined in its colour.
 #[derive(Debug, Clone)]
 pub struct GitScene {
+    /// Commits and their links. Pick on this scene as built, cloned or
+    /// edited in place: it is marked as stroked plain, the way
+    /// [`to_svg`] here paints it. A scene rebuilt from [`Scene::empty`]
+    /// loses the mark and is picked as the flowchart painter would draw
+    /// it, with a hop where a level link crosses a plumb one.
     pub scene: Scene,
     pub branch_labels: Vec<GitLabel>,
     pub commit_ids: Vec<GitLabel>,
@@ -1876,7 +1881,17 @@ mod tests {
         sc.edges[0].waypoints = vec![(cx - 100.0, cy), (cx + 100.0, cy)];
         sc.edges[1].waypoints = vec![(cx, cy - 100.0), (cx, cy + 100.0)];
         assert!(crate::hops::find(&sc).iter().all(Vec::is_empty));
-        let k = crate::hops::HOP_R * std::f64::consts::FRAC_1_SQRT_2;
+        // The hop the flowchart painter would draw over these wide
+        // strokes (wider than its default radius), and a point on its arc.
+        let mut flow = sc.clone();
+        flow.plain_crossings = false;
+        let hops = crate::hops::find(&flow);
+        assert_eq!(hops.iter().map(Vec::len).sum::<usize>(), 1);
+        let r = hops[0][0].r;
+        assert!(r > crate::hops::HOP_R, "{r}");
+        let k = r * std::f64::consts::FRAC_1_SQRT_2;
+        assert_eq!(flow.edge_at(cx + k, cy - k, 0.4), Some(0));
+        // This drawing has no stroke there, and none is picked.
         assert_eq!(sc.edge_at(cx + k, cy - k, 0.4), None);
         assert_eq!(sc.edge_at(cx + 30.0, cy, 0.4), Some(0));
     }
