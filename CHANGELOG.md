@@ -199,19 +199,40 @@ project adheres to [Semantic Versioning](https://semver.org/).
   crossings -> 0-2), with two more whose `route()` trades one curve for
   a route. In 2,784 generated fans of 12 to 40 classes (four relation
   kinds, four directions, with and without labels and cardinalities) 24
-  draw better in `scene()` or `route()`, 58 counting two drags of each,
-  and none worse.
+  draw better in `scene()` or `route()` and none worse. Under a drag a
+  fan can trade one fault for another: of four drags of each, 214
+  frames draw better and 13 mixed (the widest: an `RL` fan of 26, one
+  curve and nine crossings fewer, seven more labels touched by a
+  line).
 - **Class diagrams: self-relations keep off a neighbour's.** A class's
   loops were placed clear of the other boxes only, so with a loop on
   each of two siblings they met in the gap between: five loops on one
   class set a label on its sibling's loop, eight unlabelled ones ran
   four deep through the sibling's loop and its label, and two siblings
-  with three loops each wove them together. A class's loops and their
-  labels now also keep off the loops and loop labels of the classes
-  drawn before it (in source order), on whichever face is clear — a box
-  or one of the class's own ends still counts first, so no loop is sent
-  into a box to spare a neighbour's loop. A class with more than eight
-  loops keeps to two faces, as before.
+  with three loops each wove them together. The loops of a class are now
+  shared among its faces by what each sharing costs, counting in turn:
+  the loops that would run under another box, each loop by itself (so a
+  deep nest under a box costs more than a shallow one, and nothing below
+  is worth a loop under a box); the clutter — a loop on a face where a
+  relation ends, a crossing with a relation passing by, with a
+  neighbour's loop or with the class's own loops round a corner, a label
+  on a box, under a line or on another label; the boxes close by; and
+  last the faces the layout prefers and the shallowest nests. The
+  sharing is chosen before the relations are redrawn on the axes (their
+  ends are spread round the loop ends), measured against the relations
+  as the layout drew them, and once more afterwards, against the routes
+  as drawn; that second time no loop moves onto a face where relations
+  end. Over 2,132 generated class diagrams with loops (432 of them a
+  class with three to eight loops between two siblings, with and without
+  a child, labels and looped siblings; 1,700 random ones) no `scene()`
+  has more loops under a box than before (21 diagrams fewer have one),
+  372 have fewer line crossings and 4 more (extreme cases, such as
+  eight loops on a class with relations on three faces), and of 8,528
+  drags of them none has more loops under a box, 1,994 have fewer
+  crossings and 61 more. Where every face of a class is taken a loop still goes round a
+  relation's end — the relation leaves through the loop — rather than
+  under a box. A class with more than eight loops keeps to two faces, as
+  before.
 - **State diagrams: a drag inside a composite resizes no fork or join.**
   A bar that branches to a composite laid out in its own `direction`
   spans the composite's frame, and `route()`, `route_sized()` and
@@ -225,11 +246,18 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `base` that is not this graph's (an edge label edited since): it then
   agrees with `route()`. The frame is kept from the last layout of that
   composite on the thread (`scene()` keeps it as it draws; 32
-  composites at most, the oldest dropped first), so a drag pays nothing
-  for it: only a `route()` of a graph, or of node sizes, that no
-  `scene()` or `route()` has seen since lays the composite out, once (a
-  60-state composite: 4 ms on top of that frame's 3). The output is the
-  same either way. Diagrams without such a bar are untouched.
+  composites at most, the one kept longest dropped first), so a drag
+  pays nothing for it: only a `route()` of a graph, or of node sizes,
+  that no `scene()` or `route()` has seen since lays the composite out,
+  once (a 60-state composite: 4 ms on top of that frame's 3); a diagram
+  whose bars branch to more than 32 such composites lays them out on
+  every `route()`. The output is the same either way. One case keeps
+  `base`'s bar: `route_partial()` takes a composite none of whose
+  states moved from `base` as it stands, as it takes a graph none of
+  whose nodes moved, so a bar inside such a composite keeps the length
+  `base` drew — also a `base` drawn for other node sizes (the
+  `route_partial` docs now say so). Diagrams without such a bar are
+  untouched.
 
 ### Documentation
 

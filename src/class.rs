@@ -21,7 +21,7 @@
 //! [`card_spots`] expose the end glyphs and cardinality positions as
 //! plain geometry so GUI painters draw exactly what SVG exports.
 
-use std::cell::Cell;
+use std::cell::{Cell, OnceCell};
 use std::collections::{BTreeMap, HashMap};
 
 use crate::edgepass::{refit, Mode};
@@ -297,7 +297,7 @@ fn assemble(d: &ClassDiagram, b: Built, mut scene: Scene, mode: Mode) -> ClassSc
         .iter()
         .map(|r| r.from_card.is_some() || r.to_card.is_some())
         .collect();
-    part_self_loops(&mut scene, &carded);
+    let parted = part_self_loops(&mut scene, &carded, None);
     let decos: Vec<[EndDeco; 2]> = d
         .relations
         .iter()
@@ -316,6 +316,9 @@ fn assemble(d: &ClassDiagram, b: Built, mut scene: Scene, mode: Mode) -> ClassSc
         })
         .collect();
     orthogonalize(&mut scene, &decos, mode);
+    // The self-loops chose their faces by the relations as the layout
+    // drew them: now against the routes as drawn.
+    part_self_loops(&mut scene, &carded, Some(parted));
     // Rerouting moved labels onto their new lines, where one may now
     // cover another label or sit under a stroke; the glyph ends are
     // still marked, so labels keep off them too.
@@ -386,13 +389,22 @@ const LOOP_NEST: (f64, f64, f64) = (12.0, 28.0, 16.0);
 /// side along the face. When the loops so shared would run under
 /// another box (a sibling close beside the class), across another line
 /// or label, or close by a box, they take the faces where they do so
-/// least ([`loop_faces`]); the lines and labels they are measured
-/// against are the relations as the layout drew them and the loops of
-/// the classes drawn before (classes are drawn in source order: two
-/// siblings' loops used to meet in the gap between them, each label on
-/// the other's loops). A class's only loop keeps the layout's curve
+/// least ([`loop_faces`]). A class's only loop keeps the layout's curve
 /// while it stays on the layout's side.
-fn part_self_loops(sc: &mut Scene, carded: &[bool]) {
+///
+/// This runs twice. Before the relations are redrawn
+/// ([`orthogonalize`], which spreads the relation ends of a face round
+/// the loop ends it finds there) `parted` is `None`: the lines the
+/// loops are measured against are the relations as the layout drew
+/// them and the loops of the classes drawn before (classes are drawn in
+/// source order: two siblings' loops used to meet in the gap between
+/// them, each label on the other's loops) — an estimate. Afterwards
+/// `parted` is what the first run returned, and every class shares its
+/// loops again against the drawing as it now stands: the routes and
+/// their labels where they are, every other loop in its place. In that
+/// second run no loop moves onto a face where relations end, as their
+/// ends are spread by then.
+fn part_self_loops(sc: &mut Scene, carded: &[bool], parted: Option<Vec<Parted>>) -> Vec<Parted> {
     let idx = node_index(sc);
     let mut loops: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
     for (j, e) in sc.edges.iter().enumerate() {
@@ -403,47 +415,70 @@ fn part_self_loops(sc: &mut Scene, carded: &[bool]) {
         }
     }
     if loops.is_empty() {
-        return;
+        return Vec::new();
     }
+    let settling = parted.is_some();
+    let mut held: BTreeMap<usize, Parted> =
+        parted.into_iter().flatten().map(|p| (p.class, p)).collect();
     let rects: Vec<Rect> = sc.nodes.iter().map(node_rect).collect();
-    // Every edge as it is drawn so far, with the box round it, and
-    // whether it is drawn for good: a loop still to be parted is not —
-    // it counts for the classes after its own, once it has its face.
+    // Every edge as it is drawn so far (an orthogonal route by its
+    // corners: a handful of runs to measure against, where its rounded
+    // path is hundreds of points), with the box round it, and whether
+    // it is drawn for good: in the first run a loop still to be parted
+    // is not — it counts for the classes after its own, once it has its
+    // face.
+    let line_of = |e: &SceneEdge| ortho_corners(e).unwrap_or_else(|| edge_polyline(e));
     let mut drawn: Vec<(Rect, Vec<(f64, f64)>)> = sc
         .edges
         .iter()
         .map(|e| {
-            let line = edge_polyline(e);
+            let line = line_of(e);
             (bounds(&line), line)
         })
         .collect();
     let mut settled: Vec<bool> = vec![true; sc.edges.len()];
-    for &j in loops.values().flatten() {
-        settled[j] = false;
+    if !settling {
+        for &j in loops.values().flatten() {
+            settled[j] = false;
+        }
     }
+    let mut done = Vec::with_capacity(loops.len());
     for (i, js) in loops {
         let n = sc.nodes[i].clone();
-        let side = face_normal(&n, sc.edges[js[0]].bezier[0]);
+        let before = held.remove(&i).filter(|p| p.faces.len() == js.len());
+        if settling && before.is_none() {
+            continue;
+        }
         // The faces in order of preference: the layout's side, the
         // opposite one, then the two across it.
-        let outs = [
-            side,
-            (-side.0, -side.1),
-            (-side.1, side.0),
-            (side.1, -side.0),
-        ];
+        let outs = before.as_ref().map_or_else(
+            || {
+                let side = face_normal(&n, sc.edges[js[0]].bezier[0]);
+                [
+                    side,
+                    (-side.0, -side.1),
+                    (-side.1, side.0),
+                    (side.1, -side.0),
+                ]
+            },
+            |p| p.outs,
+        );
+        for &j in &js {
+            settled[j] = false;
+        }
         // The relations' ends on each face: a loop there crosses them,
         // or leaves beside them, glyph on glyph.
+        let face_of = |e: &SceneEdge| -> Option<usize> {
+            let (a, b) = edge_ends(e);
+            [(&e.from, a), (&e.to, b)]
+                .into_iter()
+                .filter(|_| e.from != e.to)
+                .find(|(id, _)| **id == n.id)
+                .and_then(|(_, p)| outs.iter().position(|&o| o == face_normal(&n, p)))
+        };
         let mut ends = [0usize; 4];
-        for e in sc.edges.iter().filter(|e| e.from != e.to) {
-            for (id, p) in [(&e.from, e.bezier[0]), (&e.to, e.bezier[3])] {
-                if *id == n.id {
-                    let f = face_normal(&n, p);
-                    if let Some(k) = outs.iter().position(|&o| o == f) {
-                        ends[k] += 1;
-                    }
-                }
-            }
+        for f in sc.edges.iter().filter_map(face_of) {
+            ends[f] += 1;
         }
         let widths: Vec<Option<f64>> = js
             .iter()
@@ -481,49 +516,75 @@ fn part_self_loops(sc: &mut Scene, carded: &[bool]) {
                 .map(|(((_, line), _), e)| {
                     let near: Vec<&[(f64, f64)]> = line
                         .windows(2)
-                        .filter(|s| rects_meet(hood, bounds(s)))
+                        .filter(|s| rects_meet(hood, grown(bounds(s), 0.5)))
                         .collect();
                     let round = near.iter().fold(bounds(&[]), |r, s| {
                         let b = bounds(s);
                         (r.0.min(b.0), r.1.min(b.1), r.2.max(b.2), r.3.max(b.3))
                     });
                     FieldLine {
-                        round,
+                        round: grown(round, 0.5),
                         pieces: near.iter().map(|s| [s[0], s[1]]).collect(),
-                        own: e.from != e.to && (e.from == n.id || e.to == n.id),
+                        own: face_of(e),
                     }
                 })
                 .collect(),
+            // The labels of the loops in their places; in the second
+            // run those of the relations too, on their routes by then.
             chips: sc
                 .edges
                 .iter()
                 .zip(&settled)
-                .filter(|&(e, &settled)| settled && e.from == e.to)
+                .filter(|&(e, &settled)| settled && (settling || e.from == e.to))
                 .filter_map(|(e, _)| label_chip(e))
                 .filter(|&c| rects_meet(hood, c))
                 .collect(),
         };
-        let faces = loop_faces(&n, &outs, &widths, &outer, &field);
-        for (f, &out) in outs.iter().enumerate() {
-            let on = on_face(&faces, f, &outer);
-            let labels: Vec<Option<f64>> = on.iter().map(|&k| widths[k]).collect();
-            for (&k, (curve, spot)) in on.iter().zip(face_loops(&n, out, &labels)) {
-                let e = &mut sc.edges[js[k]];
-                if js.len() > 1 || f != 0 {
-                    e.bezier = curve;
-                    e.waypoints.clear();
-                }
-                if let (Some((_, m, _)), Some(spot)) = (&mut e.label, spot) {
-                    *m = spot;
+        let faces = loop_faces(
+            &n,
+            &outs,
+            &widths,
+            &outer,
+            &field,
+            before.as_ref().map(|p| p.faces.as_slice()),
+        );
+        if before.as_ref().map_or(true, |p| p.faces != faces) {
+            for (f, &out) in outs.iter().enumerate() {
+                let on = on_face(&faces, f, &outer);
+                let labels: Vec<Option<f64>> = on.iter().map(|&k| widths[k]).collect();
+                for (&k, (curve, spot)) in on.iter().zip(face_loops(&n, out, &labels)) {
+                    let e = &mut sc.edges[js[k]];
+                    if settling || js.len() > 1 || f != 0 {
+                        e.bezier = curve;
+                        e.waypoints.clear();
+                    }
+                    if let (Some((_, m, _)), Some(spot)) = (&mut e.label, spot) {
+                        *m = spot;
+                    }
                 }
             }
         }
         for &j in &js {
-            let line = edge_polyline(&sc.edges[j]);
+            let line = line_of(&sc.edges[j]);
             drawn[j] = (bounds(&line), line);
             settled[j] = true;
         }
+        done.push(Parted {
+            class: i,
+            outs,
+            faces,
+        });
     }
+    done
+}
+
+/// Where [`part_self_loops`] drew a class's self-loops: the class (its
+/// index among the nodes), its faces as outward normals in order of
+/// preference, and the face of each of its loops in source order.
+struct Parted {
+    class: usize,
+    outs: [(f64, f64); 4],
+    faces: Vec<usize>,
 }
 
 /// The box round `pts` (inside out when there are none).
@@ -633,11 +694,11 @@ struct LoopField {
     ends: [usize; 4],
     /// The other boxes.
     boxes: Vec<Rect>,
-    /// The other lines: the relations as the layout drew them (their
-    /// orthogonal routes come later, between the same faces) and the
-    /// self-loops already parted.
+    /// The other lines: the relations as they are drawn so far (as the
+    /// layout drew them in the first run of [`part_self_loops`], their
+    /// routes in the second) and the self-loops in their places.
     lines: Vec<FieldLine>,
-    /// Those loops' labels.
+    /// Those loops' labels, and in the second run the relations' too.
     chips: Vec<Rect>,
 }
 
@@ -647,8 +708,10 @@ struct FieldLine {
     round: Rect,
     /// Its straight pieces within reach.
     pieces: Vec<[(f64, f64); 2]>,
-    /// Whether it is a relation of the class itself, ending on it.
-    own: bool,
+    /// The face of the class (an index into its faces in order of
+    /// preference) it ends on, when it is a relation of the class
+    /// itself.
+    own: Option<usize>,
 }
 
 /// What a sharing of a class's self-loops among its faces costs
@@ -658,13 +721,13 @@ struct FieldLine {
 type LoopCost = (usize, usize, usize, usize);
 
 /// What a sharing's clutter counts, in turn: a loop on a face for each
-/// relation that ends there (it crosses the relation at its end, where
-/// the glyph and the cardinality sit, or leaves the box beside it,
-/// glyph on glyph); a crossing with another line; a label on another
-/// box (the label stage moves it off, onto whatever is nearest); a
-/// label struck by a line or on another label. So a loop goes round a
-/// relation's end rather than twice across a neighbour's loops, and
-/// its label onto a neighbour's rather than the loop across a line.
+/// relation that ends there (the relation leaves through the loop,
+/// where its glyph and its cardinality sit, or beside it, glyph on
+/// glyph); a crossing with another line; a label on another box (the
+/// label stage moves it off, onto whatever is nearest); a label struck
+/// by a line or on another label. So a loop goes round a relation's
+/// end rather than twice across a neighbour's loops, and its label
+/// onto a neighbour's rather than the loop across a line.
 const LOOP_CLUTTER: (usize, usize, usize, usize) = (4, 2, 2, 1);
 
 /// How much of a loop label may lie on a box before the label counts as
@@ -674,8 +737,8 @@ const LOOP_LABEL_GRAZE: f64 = 2.0;
 
 /// One loop of a nest on a face as [`loop_faces`] costs it: its line,
 /// the box round it, and what it meets of the field by itself — the
-/// boxes it runs under, its crossings with the lines that are not the
-/// class's own relations, the loop labels it strikes.
+/// boxes it runs under, its crossings with the lines passing by, the
+/// loop labels it strikes.
 struct Nested {
     line: Vec<(f64, f64)>,
     bbox: Rect,
@@ -684,13 +747,68 @@ struct Nested {
     struck: usize,
 }
 
+impl Nested {
+    /// The loop drawn as `curve` on face `f` of its class, measured
+    /// against `field`. A relation of the class that ends on `f` itself
+    /// is left out: where its end goes among the loops' ends is settled
+    /// when the faces are spread, so the loops there are counted per
+    /// end instead ([`LOOP_CLUTTER`]).
+    fn of(curve: &[(f64, f64); 4], f: usize, field: &LoopField) -> Nested {
+        let line = sample_cubic(curve, 16);
+        let bbox = bounds(&line);
+        let under = field
+            .boxes
+            .iter()
+            .filter(|&&b| rects_meet(bbox, b) && polyline_hits(&line, b))
+            .count();
+        let cross = field
+            .lines
+            .iter()
+            .filter(|l| l.own != Some(f) && rects_meet(bbox, l.round))
+            .flat_map(|l| &l.pieces)
+            .filter(|p| rects_meet(bbox, grown(bounds(&p[..]), 0.5)))
+            .map(|p| crossings(&line, p))
+            .sum();
+        let struck = field
+            .chips
+            .iter()
+            .filter(|&&c| rects_meet(bbox, c) && polyline_hits(&line, c))
+            .count();
+        Nested {
+            line,
+            bbox,
+            under,
+            cross,
+            struck,
+        }
+    }
+}
+
+/// Whether the polyline `line` meets the box `r`.
+fn polyline_hits(line: &[(f64, f64)], r: Rect) -> bool {
+    line.windows(2).any(|s| rect_hits_segment(r, s[0], s[1]))
+}
+
+/// How often the polylines `p` and `q` cross.
+fn crossings(p: &[(f64, f64)], q: &[(f64, f64)]) -> usize {
+    p.windows(2)
+        .map(|s| {
+            q.windows(2)
+                .filter(|t| segments_cross(s[0], s[1], t[0], t[1]))
+                .count()
+        })
+        .sum()
+}
+
 /// The face (an index into `outs`, the four outward normals of `n` in
 /// order of preference) for each of a class's self-loops, `widths`
 /// their labels' widths, `outer` whether each nests outermost (as
-/// [`on_face`] orders them): alternately the first two faces, when that
-/// meets nothing. Else each way of sharing the loops among the four
-/// faces is tried, round robin as before, and the one kept that costs
-/// least ([`LoopCost`]), counting in turn
+/// [`on_face`] orders them): alternately the first two faces — or the
+/// faces they are on, `held`, in the second run of
+/// [`part_self_loops`] — when that meets nothing. Else each way of
+/// sharing the loops among the four faces is tried, round robin as
+/// before, and the one kept that costs least ([`LoopCost`]), counting
+/// in turn
 ///
 /// 1. the loops under another box of `field` — each loop by itself,
 ///    as it would be drawn, so a deeper nest under a box costs more
@@ -707,16 +825,20 @@ struct Nested {
 /// 4. the faces used and the nesting: the preferred faces first, the
 ///    shallowest nests.
 ///
-/// The relations are measured where the layout drew them — their
-/// orthogonal routes come after — and a class sees the loops of the
-/// classes before it only, so the count is an estimate; what lies under
-/// a box is exact.
+/// What lies under a box is exact in both runs. The clutter of the
+/// first is an estimate — the relations are measured where the layout
+/// drew them, and a class sees the loops of the classes before it only
+/// — which is why the second run shares the loops again, against the
+/// routes. There a face where relations end takes no more loops than
+/// it holds: [`orthogonalize`] spread its relation ends round the loop
+/// ends it found.
 fn loop_faces(
     n: &SceneNode,
     outs: &[(f64, f64); 4],
     widths: &[Option<f64>],
     outer: &[bool],
     field: &LoopField,
+    held: Option<&[usize]>,
 ) -> Vec<usize> {
     let m = widths.len();
     // Round robin over the faces with loops still to take.
@@ -733,61 +855,49 @@ fn loop_faces(
         }
         faces
     };
-    let default = share([m.div_ceil(2), m / 2, 0, 0]);
-    // Up to eight loops (165 ways to share them); more keep the default.
+    let first = held.map_or_else(|| share([m.div_ceil(2), m / 2, 0, 0]), <[usize]>::to_vec);
+    // Up to eight loops (165 ways to share them); more keep the first.
     if m > 8 {
-        return default;
+        return first;
     }
-    let hits =
-        |line: &[(f64, f64)], r: Rect| line.windows(2).any(|s| rect_hits_segment(r, s[0], s[1]));
-    let crossings = |p: &[(f64, f64)], q: &[(f64, f64)]| -> usize {
-        p.windows(2)
-            .map(|s| {
-                q.windows(2)
-                    .filter(|t| segments_cross(s[0], s[1], t[0], t[1]))
-                    .count()
-            })
-            .sum()
-    };
-    // Each face's nest, as deep as it can get: a loop's curve depends
-    // on its face and its place in the nest alone.
-    let nests: Vec<Vec<Nested>> = outs
+    // How many loops each face may take: any number, but in the second
+    // run no more than it holds where relations end.
+    let room: [usize; 4] = std::array::from_fn(|f| match held {
+        Some(held) if field.ends[f] > 0 => held.iter().filter(|&&h| h == f).count(),
+        _ => m,
+    });
+    // Each face's nest, as deep as it can get — a loop's curve depends
+    // on its face and its place in the nest alone — each loop measured
+    // against the field when a sharing first puts one there (most
+    // classes keep the first sharing tried).
+    let curves: Vec<Vec<SelfLoop>> = outs
         .iter()
-        .map(|&out| {
-            face_loops(n, out, &vec![None; m])
-                .iter()
-                .map(|(curve, _)| {
-                    let line = sample_cubic(curve, 16);
-                    let bbox = bounds(&line);
-                    let under = field
-                        .boxes
-                        .iter()
-                        .filter(|&&b| rects_meet(bbox, b) && hits(&line, b))
-                        .count();
-                    let cross = field
-                        .lines
-                        .iter()
-                        .filter(|l| !l.own && rects_meet(bbox, l.round))
-                        .flat_map(|l| &l.pieces)
-                        .map(|p| crossings(&line, p))
-                        .sum();
-                    let struck = field.chips.iter().filter(|&&c| hits(&line, c)).count();
-                    Nested {
-                        line,
-                        bbox,
-                        under,
-                        cross,
-                        struck,
-                    }
-                })
-                .collect()
-        })
+        .map(|&out| face_loops(n, out, &vec![None; m]))
         .collect();
+    let nests: Vec<Vec<OnceCell<Nested>>> = (0..4)
+        .map(|_| (0..m).map(|_| OnceCell::new()).collect())
+        .collect();
+    // How often two loops of different faces cross (the outer loops of
+    // deep nests meet round a corner), counted once per pair: `a` on
+    // face `f` at place `q`, `b` on face `g` at place `r`.
+    let pairs: Vec<Cell<Option<usize>>> = vec![Cell::new(None); 16 * m * m];
+    let pair = |(f, q, a): (usize, usize, &Nested), (g, r, b): (usize, usize, &Nested)| {
+        let cell = &pairs[(f * m + q) * 4 * m + g * m + r];
+        cell.get().unwrap_or_else(|| {
+            let n = if rects_meet(a.bbox, b.bbox) {
+                crossings(&a.line, &b.line)
+            } else {
+                0
+            };
+            cell.set(Some(n));
+            n
+        })
+    };
     let cost = |faces: &[usize]| -> LoopCost {
         let (mut under, mut ends, mut cross, mut boxed, mut struck) = (0, 0, 0, 0, 0);
         let (mut close, mut pref) = (0, 0);
         // The loops and labels of the faces before.
-        let mut loops: Vec<&Nested> = Vec::new();
+        let mut loops: Vec<(usize, usize, &Nested)> = Vec::new();
         let mut chips: Vec<Rect> = Vec::new();
         for (f, &out) in outs.iter().enumerate() {
             let on = on_face(faces, f, outer);
@@ -797,7 +907,9 @@ fn loop_faces(
             }
             pref += 2 * f + 3 * c * (c - 1) / 2;
             ends += field.ends[f] * c;
-            let nest = &nests[f][..c];
+            let nest: Vec<&Nested> = (0..c)
+                .map(|q| nests[f][q].get_or_init(|| Nested::of(&curves[f][q].0, f, field)))
+                .collect();
             let labels: Vec<Option<f64>> = on.iter().map(|&k| widths[k]).collect();
             let own: Vec<Rect> = face_loops(n, out, &labels)
                 .iter()
@@ -821,16 +933,15 @@ fn loop_faces(
                     region.3.max(r.3),
                 );
             };
-            for l in nest {
+            for (q, &l) in nest.iter().enumerate() {
                 under += l.under;
                 cross += l.cross;
                 struck += l.struck;
-                cross += loops
+                cross += loops.iter().map(|&o| pair(o, (f, q, l))).sum::<usize>();
+                struck += chips
                     .iter()
-                    .filter(|o| rects_meet(l.bbox, o.bbox))
-                    .map(|o| crossings(&l.line, &o.line))
-                    .sum::<usize>();
-                struck += chips.iter().filter(|&&c| hits(&l.line, c)).count();
+                    .filter(|&&c| rects_meet(l.bbox, c) && polyline_hits(&l.line, c))
+                    .count();
                 grow(l.bbox);
             }
             for &chip in &own {
@@ -848,7 +959,10 @@ fn loop_faces(
                     })
                     .count();
                 struck += field.chips.iter().filter(|&&o| rects_meet(chip, o)).count();
-                struck += loops.iter().filter(|o| hits(&o.line, chip)).count();
+                struck += loops
+                    .iter()
+                    .filter(|o| rects_meet(o.2.bbox, chip) && polyline_hits(&o.2.line, chip))
+                    .count();
                 struck += chips.iter().filter(|&&o| rects_meet(chip, o)).count();
                 grow(chip);
             }
@@ -858,7 +972,7 @@ fn loop_faces(
                 .iter()
                 .filter(|&&b| rects_meet(region, b))
                 .count();
-            loops.extend(nest);
+            loops.extend(nest.iter().enumerate().map(|(q, &l)| (f, q, l)));
             chips.extend(own);
         }
         let clutter = LOOP_CLUTTER.0 * ends
@@ -867,13 +981,16 @@ fn loop_faces(
             + LOOP_CLUTTER.3 * struck;
         (under, clutter, close, pref)
     };
-    let mut best = (cost(&default), default);
+    let mut best = (cost(&first), first);
     if (best.0 .0, best.0 .1, best.0 .2) == (0, 0, 0) {
         return best.1;
     }
-    for a in 0..=m {
-        for b in 0..=m - a {
-            for c in 0..=m - a - b {
+    for a in 0..=m.min(room[0]) {
+        for b in 0..=(m - a).min(room[1]) {
+            for c in 0..=(m - a - b).min(room[2]) {
+                if m - a - b - c > room[3] {
+                    continue;
+                }
                 let faces = share([a, b, c, m - a - b - c]);
                 let k = cost(&faces);
                 if k < best.0 {
@@ -4686,6 +4803,12 @@ mod tests {
             ("A --> o.B", "A", "o.B"),
             ("o.o --> pkg.o.x", "o.o", "pkg.o.x"),
             ("A.org --> B.out", "A.org", "B.out"),
+            // ... also glued to the line (review r2 #8: `x.o--o.y` was
+            // read as `x.o` aggregated by a class named `.y`).
+            ("x.o--o.y", "x.o", "o.y"),
+            ("A--o.B", "A", "o.B"),
+            ("A..o.B", "A", "o.B"),
+            ("o.A--o.A", "o.A", "o.A"),
         ] {
             assert_eq!(ends(line), pair(from, to), "{line}");
         }
@@ -6665,6 +6788,187 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// Verifier finding (C-leftovers r2): with a relation on one more
+    /// face of the class (`B --> Q`), five loops on B went to one face,
+    /// the outer two under the sibling C — where the split the layout
+    /// starts from had none under a box. A face's loops and labels were
+    /// one region, and a region meeting a box one hit however many
+    /// loops lay in the box: the same as a label within reach of a box,
+    /// so a neighbour's loop tipped the choice to the deep stack. Each
+    /// loop under a box now counts by itself, before all else, and the
+    /// loops are shared again once the relations are drawn. In the
+    /// verifier's family (three to eight loops on B, a looped sibling,
+    /// a child or none, down and across) no loop runs through a box,
+    /// crosses a line passing by or sets its label on a box — in the
+    /// layout and routed again in place.
+    #[test]
+    fn self_loops_stay_off_boxes_whatever_ends_on_the_other_faces() {
+        for dir in ["TB", "LR"] {
+            for loops in 3..=8 {
+                for (sibling, child) in [(1, false), (1, true), (3, true)] {
+                    let mut src =
+                        format!("classDiagram\ndirection {dir}\nP <|-- A\nP <|-- B\nP <|-- C\n");
+                    if child {
+                        src += "B --> Q\n";
+                    }
+                    for k in 0..loops {
+                        src += &format!("B --> B : b{k}\n");
+                    }
+                    for k in 0..sibling {
+                        src += &format!("A --> A : a{k}\n");
+                    }
+                    let d = cd(&src);
+                    let laid = scene(&d);
+                    let at: Vec<(f64, f64)> = laid.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
+                    for (what, cs) in [("scene", &laid), ("route", &route(&d, &at))] {
+                        let sc = &cs.scene;
+                        let lines: Vec<Vec<(f64, f64)>> =
+                            sc.edges.iter().map(edge_polyline).collect();
+                        for (i, e) in sc.edges.iter().enumerate().filter(|(_, e)| e.from == e.to) {
+                            for n in sc.nodes.iter().filter(|n| n.id != e.from) {
+                                let r = rect(n);
+                                assert!(
+                                    !lines[i]
+                                        .windows(2)
+                                        .any(|s| rect_hits_segment(r, s[0], s[1])),
+                                    "{what}: a loop of {} runs under {}\n{src}",
+                                    e.from,
+                                    n.id
+                                );
+                                // A chip's margin may graze a box.
+                                assert!(
+                                    !label_chip(e).is_some_and(|c| rects_meet(
+                                        grown(c, -LOOP_LABEL_GRAZE),
+                                        r
+                                    )),
+                                    "{what}: {:?} lies on {}\n{src}",
+                                    e.label,
+                                    n.id
+                                );
+                            }
+                            // (A relation of B itself may leave through
+                            // a loop on its face: B's eighth loop goes
+                            // round the child's end rather than deeper
+                            // toward a sibling.)
+                            let passing = |o: &SceneEdge| o.from != e.from && o.to != e.from;
+                            for (k, o) in sc.edges.iter().enumerate().filter(|&(_, o)| passing(o)) {
+                                let crossing = lines[i].windows(2).any(|p| {
+                                    lines[k]
+                                        .windows(2)
+                                        .any(|q| segments_cross(p[0], p[1], q[0], q[1]))
+                                });
+                                assert!(
+                                    !crossing,
+                                    "{what}: a loop of {} crosses {} -> {}\n{src}",
+                                    e.from, o.from, o.to
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// The rules [`loop_faces`] shares a class's loops by. A loop under
+    /// a box counts before any clutter, each loop by itself: three
+    /// loops go round a line twice over rather than one of them under a
+    /// box. And once the relations are drawn (`held`: where the loops
+    /// are) no loop moves onto a face where relations end — their ends
+    /// are spread round the loop ends by then — though it may leave one.
+    #[test]
+    fn loop_faces_count_each_loop_and_hold_the_faces_where_relations_end() {
+        let n = scene(&cd("classDiagram\nclass B")).scene.nodes[0].clone();
+        let outs = [(1.0, 0.0), (-1.0, 0.0), (0.0, -1.0), (0.0, 1.0)];
+        let (right, left) = (n.x + n.w / 2.0, n.x - n.w / 2.0);
+        let (top, bottom) = (n.y - n.h / 2.0, n.y + n.h / 2.0);
+        let line = |a: (f64, f64), b: (f64, f64)| FieldLine {
+            round: grown(bounds(&[a, b]), 0.5),
+            pieces: vec![[a, b]],
+            own: None,
+        };
+        // A line across each face's loops, 20 px out, but the left's.
+        let fence = |times: usize| -> Vec<FieldLine> {
+            (0..times)
+                .flat_map(|k| {
+                    let d = 20.0 + k as f64;
+                    [
+                        line((right + d, top - 200.0), (right + d, bottom + 200.0)),
+                        line((left - 200.0, top - d), (right + 200.0, top - d)),
+                        line((left - 200.0, bottom + d), (right + 200.0, bottom + d)),
+                    ]
+                })
+                .collect()
+        };
+        let none = [None, None, None];
+        let plain = [false; 3];
+        // A box 60 px off the right face: the first two loops of a nest
+        // there pass before it (36 and 57 px out), the third (78 px)
+        // runs under it. The left face is fenced off twice over.
+        let boxed = LoopField {
+            ends: [0; 4],
+            boxes: vec![(right + 60.0, top - 40.0, right + 160.0, bottom + 40.0)],
+            lines: (0..2)
+                .map(|k| {
+                    let d = 20.0 + k as f64;
+                    line((left - d, top - 200.0), (left - d, bottom + 200.0))
+                })
+                .chain(fence(1).into_iter().skip(1))
+                .collect(),
+            chips: Vec::new(),
+        };
+        let under = |faces: &[usize]| {
+            outs.iter().enumerate().any(|(f, &out)| {
+                let on = faces.iter().filter(|&&h| h == f).count();
+                face_loops(&n, out, &vec![None; on])
+                    .iter()
+                    .any(|(curve, _)| {
+                        let l = sample_cubic(curve, 16);
+                        boxed.boxes.iter().any(|&b| polyline_hits(&l, b))
+                    })
+            })
+        };
+        assert!(
+            under(&[0, 0, 0]),
+            "the fixture: a third loop on the right runs under the box"
+        );
+        let faces = loop_faces(&n, &outs, &none, &plain, &boxed, None);
+        assert!(!under(&faces), "a loop under the box: {faces:?}");
+
+        // Relations end on the left face; every other face is fenced.
+        let ended = |fences| LoopField {
+            ends: [0, 1, 0, 0],
+            boxes: Vec::new(),
+            lines: fence(fences),
+            chips: Vec::new(),
+        };
+        // Before the relations are drawn the loops may choose the left
+        // face (two lines to cross elsewhere, one end here)...
+        let first = loop_faces(&n, &outs, &none[..2], &plain[..2], &ended(2), None);
+        assert_eq!(first, [1, 1], "two fences cost more than an end");
+        // ...afterwards they stay off it,
+        let held = loop_faces(&n, &outs, &none[..2], &plain[..2], &ended(2), Some(&[0, 0]));
+        assert!(
+            !held.contains(&1),
+            "a loop moved onto the relations' face: {held:?}"
+        );
+        // take no more of it than they held,
+        let part = loop_faces(&n, &outs, &none[..2], &plain[..2], &ended(2), Some(&[0, 1]));
+        assert!(part.iter().filter(|&&f| f == 1).count() <= 1, "{part:?}");
+        // and may leave it for a face that is clear.
+        let clear = LoopField {
+            ends: [0, 1, 0, 0],
+            boxes: Vec::new(),
+            lines: Vec::new(),
+            chips: Vec::new(),
+        };
+        let left_it = loop_faces(&n, &outs, &none[..2], &plain[..2], &clear, Some(&[1, 1]));
+        assert!(
+            !left_it.contains(&1),
+            "loops kept the relations' face: {left_it:?}"
+        );
     }
 
     /// Verifier finding (r3): every attached note sat on the first rank
