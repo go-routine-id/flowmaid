@@ -821,6 +821,8 @@ pub fn scene(d: &GitGraph) -> GitScene {
             clusters: Vec::new(),
             width,
             height,
+            // `to_svg` here strokes each link plain.
+            plain_crossings: true,
         },
         branch_labels: pl.names,
         commit_ids: pl.ids,
@@ -1859,5 +1861,23 @@ mod tests {
         assert!(ys[1] - ys[0] <= 2.0 * BRANCH_DY + 1e-9);
         let svg = to_svg(&scene(&GitGraph::default()));
         assert!(svg.contains(">main</text>"));
+    }
+
+    /// A gitGraph is stroked plain by its own painter, so its scene
+    /// takes no hops and a pick follows the plain strokes
+    /// (`Scene::plain_crossings`).
+    #[test]
+    fn a_gitgraph_scene_is_picked_plain() {
+        let src = "gitGraph\n commit\n branch a\n commit\n checkout main\n commit\n merge a\n";
+        let mut sc = scene(&git(src)).scene;
+        assert!(sc.plain_crossings);
+        assert!(sc.edges.len() >= 2);
+        let (cx, cy) = (sc.width + 200.0, sc.height + 200.0);
+        sc.edges[0].waypoints = vec![(cx - 100.0, cy), (cx + 100.0, cy)];
+        sc.edges[1].waypoints = vec![(cx, cy - 100.0), (cx, cy + 100.0)];
+        assert!(crate::hops::find(&sc).iter().all(Vec::is_empty));
+        let k = crate::hops::HOP_R * std::f64::consts::FRAC_1_SQRT_2;
+        assert_eq!(sc.edge_at(cx + k, cy - k, 0.4), None);
+        assert_eq!(sc.edge_at(cx + 30.0, cy, 0.4), Some(0));
     }
 }

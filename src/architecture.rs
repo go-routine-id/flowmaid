@@ -546,6 +546,8 @@ fn build(d: &Architecture) -> (ArchScene, Vec<Vec<Pt>>) {
             clusters,
             width,
             height,
+            // `to_svg` here strokes each edge as a plain polyline.
+            plain_crossings: true,
         },
         icons,
         arrow_starts,
@@ -4164,6 +4166,37 @@ mod tests {
             let (x, y) = (cx - r * d, cy - r * d);
             assert_eq!(sc.node_at(x, y).is_some(), picked, "{r}");
         }
+    }
+
+    /// An architecture drawing is stroked plain by its own painter
+    /// (`to_svg` here), so its scene takes no hops: where a level edge
+    /// crosses a plumb one, a pick follows the two straight strokes and
+    /// finds nothing on the arc a flowchart's hop would draw there.
+    #[test]
+    fn a_crossing_in_an_architecture_scene_is_picked_plain() {
+        let mut sc = scene(&arch(CORPUS)).scene;
+        assert!(sc.plain_crossings);
+        // Two straight strokes crossing in the open, as the router draws
+        // a row and a column of services joined across an empty cell.
+        let (cx, cy) = (sc.width + 200.0, sc.height + 200.0);
+        sc.edges[0].waypoints = vec![(cx - 100.0, cy), (cx + 100.0, cy)];
+        sc.edges[1].waypoints = vec![(cx, cy - 100.0), (cx, cy + 100.0)];
+        assert!(crate::hops::find(&sc).iter().all(Vec::is_empty));
+        // On the arc of the hop a flowchart would draw there (its radius
+        // out, at 45 degrees): no stroke of this drawing.
+        let k = crate::hops::HOP_R * std::f64::consts::FRAC_1_SQRT_2;
+        assert_eq!(sc.edge_at(cx + k, cy - k, 0.4), None);
+        // The strokes themselves pick where they are painted.
+        assert_eq!(sc.edge_at(cx + 30.0, cy, 0.4), Some(0));
+        assert_eq!(sc.edge_at(cx, cy + 30.0, 0.4), Some(1));
+        // The same two strokes in a scene the flowchart painter draws
+        // do hop, and the pick follows the hop.
+        sc.plain_crossings = false;
+        assert_eq!(
+            crate::hops::find(&sc).iter().map(Vec::len).sum::<usize>(),
+            1
+        );
+        assert_eq!(sc.edge_at(cx + k, cy - k, 0.4), Some(0));
     }
 
     #[test]
