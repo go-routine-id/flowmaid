@@ -3452,12 +3452,25 @@ pub(crate) fn scene_labelled(g: &Graph, sizes: &[(f64, f64)], labels: &[String])
     }
     let sizes = &fit_bars(g, &sizes)[..];
     let mut sc = if g.subgraphs.is_empty() {
+        #[cfg(test)]
+        crate::levels::note_used(crate::levels::Entry::Scene, g, false);
         scene_flat(g, sizes, labels)
     } else {
         scene_clustered(g, sizes, labels)
     };
     crate::edgepass::finish(g, &mut sc, crate::edgepass::Mode::Static);
     sc
+}
+
+/// Whether the block layout of subgraphs applies to `g` once it is
+/// switched on ([`crate::levels`]): `g`, or one of the parts it is laid
+/// out as when a subgraph sets its own direction ([`crate::compound`]),
+/// has a link across a subgraph's border. Each part is decided on its
+/// own, as [`scene`], [`route`] and [`route_partial`] lay it out.
+pub(crate) fn block_mode(g: &Graph) -> bool {
+    crate::compound::any_part(g, &|part| {
+        !part.subgraphs.is_empty() && crate::levels::Augmented::of(part).block_mode(part)
+    })
 }
 
 /// A flat diagram's scene as its builder draws it, before the edge
@@ -3832,35 +3845,23 @@ const GRID_MIN_EDGELESS: usize = 4;
 /// keeps cross-cluster edges ordered globally so they route through the
 /// gaps between boxes instead of tangling straight through them.
 fn scene_clustered(g: &Graph, sizes: &[(f64, f64)], labels: &[String]) -> Scene {
-    let node_cluster = node_cluster_paths(g);
-    let grid = grid_pairs(g, &node_cluster);
-    let proxies = sub_edge_proxies(g, &node_cluster, &grid);
-    let mut rank_only = proxies.clone();
-    rank_only.extend_from_slice(&grid);
     // Each sub-edge also gets one routed STAND-IN edge between a proxy
     // pair — mermaid lays `A --> box` out as an edge to one of the box's
     // members — so it owns a channel (and label slot) through the ranks
     // it spans; it is cut back to the frame when drawn. `ga` is `g` plus
-    // those edges, appended after the real ones.
+    // those edges, appended after the real ones
+    // ([`crate::levels::Augmented`], the one constructor of both).
+    let aug = crate::levels::Augmented::of(g);
+    #[cfg(test)]
+    crate::levels::note_used(
+        crate::levels::Entry::Scene,
+        g,
+        crate::levels::blocks_on() && aug.block_mode(g),
+    );
+    let rank_only = aug.rank_only();
     let ne = g.edges.len();
-    let mut ga = g.clone();
-    let mut stand_in: Vec<Option<usize>> = vec![None; g.sub_edges.len()];
-    for (i, (e, (from, to))) in g.sub_edges.iter().zip(&proxies).enumerate() {
-        let Some(&a) = from.first() else { continue };
-        let Some(&b) = to.iter().find(|&&b| b != a) else {
-            continue;
-        };
-        stand_in[i] = Some(ga.edges.len());
-        ga.edges.push(Edge {
-            from: a,
-            to: b,
-            label: e.label.clone(),
-            kind: e.kind,
-            ends: e.ends,
-            meta: e.meta.clone(),
-            end_room: (0.0, 0.0),
-        });
-    }
+    let (mut ga, stand_in) = aug.graph(g);
+    let (node_cluster, proxies) = (aug.node_cluster, aug.proxies);
     // A member's edge to its own box is drawn as its stand-in, whole:
     // an edge to the box's entry member (see `own_box_targets`).
     let own_drawn: Vec<bool> = g
@@ -4381,7 +4382,11 @@ fn sub_edge_ported(
 /// box), as SOURCE for its exit members (no out-edge to inside it).
 /// `grid` pairs count as internal edges, so a packed box is entered
 /// through its first row only. One group per entry of `g.sub_edges`.
-fn sub_edge_proxies(g: &Graph, node_cluster: &[Vec<usize>], grid: &[RankGroup]) -> Vec<RankGroup> {
+pub(crate) fn sub_edge_proxies(
+    g: &Graph,
+    node_cluster: &[Vec<usize>],
+    grid: &[RankGroup],
+) -> Vec<RankGroup> {
     if g.sub_edges.is_empty() {
         return Vec::new();
     }
@@ -4559,7 +4564,7 @@ fn cycle_ends(
 /// flow (`direction LR` in a TB chart): there one row is what the
 /// author asked for. Each pair is a one-to-one [`RankGroup`].
 /// `node_cluster` holds each node's [`node_cluster_paths`] entry.
-fn grid_pairs(g: &Graph, node_cluster: &[Vec<usize>]) -> Vec<RankGroup> {
+pub(crate) fn grid_pairs(g: &Graph, node_cluster: &[Vec<usize>]) -> Vec<RankGroup> {
     let horizontal = |d: Direction| matches!(d, Direction::LR | Direction::RL);
     let n = g.nodes.len();
     // Per node: an out-edge or box edge (never loose), and its in-edge
@@ -4639,7 +4644,7 @@ fn clustered_drawn_edges(g: &Graph, node_cluster: &[Vec<usize>]) -> usize {
 
 /// Cluster path (outermost subgraph id first) for every node; empty
 /// for a top-level node. Constrains the global clustered layout.
-fn node_cluster_paths(g: &Graph) -> Vec<Vec<usize>> {
+pub(crate) fn node_cluster_paths(g: &Graph) -> Vec<Vec<usize>> {
     let mut owner: Vec<Option<usize>> = vec![None; g.nodes.len()];
     for (si, s) in g.subgraphs.iter().enumerate() {
         for &v in &s.nodes {
@@ -4812,9 +4817,21 @@ pub(crate) fn route_labelled(
         }
     }
     let sizes = &fit_bars(g, &sizes)[..];
+    #[cfg(test)]
+    crate::levels::note_used(crate::levels::Entry::Route, g, block_mode_used(g));
     let mut sc = route_built(g, centers, sizes, labels, true);
     crate::edgepass::finish(g, &mut sc, crate::edgepass::Mode::Routed);
     sc
+}
+
+/// The block mode `route()` and `route_partial()` use for the one part
+/// `g` (never split further): the switch and the predicate `scene()`
+/// decides by, from the same constructor.
+#[cfg(test)]
+fn block_mode_used(g: &Graph) -> bool {
+    crate::levels::blocks_on()
+        && !g.subgraphs.is_empty()
+        && crate::levels::Augmented::of(g).block_mode(g)
 }
 
 /// The scene [`route_sized`] draws before the edge stages: free curves
@@ -5300,6 +5317,8 @@ pub(crate) fn route_partial_with(
         return crate::compound::route_partial(g, &split, centers, base, base_centers)
             .unwrap_or_else(|| route(g, centers));
     }
+    #[cfg(test)]
+    crate::levels::note_used(crate::levels::Entry::Partial, g, block_mode_used(g));
     // Each label wrapped once for the frame (the fallbacks below reuse it).
     let (labels, mut raw_sizes) = crate::layout::node_texts(g);
     for &(v, size, _) in sized {

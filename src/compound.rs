@@ -659,6 +659,17 @@ fn join(g: &Graph, split: &Split, blocks: &[Scene], rest: &Scene) -> Option<Scen
     })
 }
 
+/// Whether `f` holds for any part `g` is laid out as: each outermost
+/// block's own graph (cut further where a block nests one) and the
+/// rest, or `g` itself when it has no block. Read-only: how a caller
+/// asks a question of the graphs [`scene`] and [`route`] hand on.
+pub(crate) fn any_part(g: &Graph, f: &dyn Fn(&Graph) -> bool) -> bool {
+    match split(g) {
+        Some(s) => s.blocks.iter().any(|(_, p)| any_part(&p.g, f)) || any_part(&s.rest.g, f),
+        None => f(g),
+    }
+}
+
 /// [`crate::scene::scene_sized`] for a split graph: each block laid
 /// out in its own direction, the rest with each proxy the size of its
 /// block's frame, each block moved into its proxy's box. `sizes` are

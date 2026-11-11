@@ -53,6 +53,7 @@ pub(crate) mod json;
 mod labels;
 mod lanes;
 pub mod layout;
+mod levels;
 mod markdown;
 pub mod mindmap;
 pub mod model;

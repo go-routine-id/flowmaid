@@ -11,4 +11,9 @@ categories = ["visualization", "command-line-utilities"]
 repository = "https://github.com/go-routine-id/flowmaid"
 exclude = ["docs/img/"]
 
+# `flowmaid_blocks` switches the block layout of subgraphs on while it
+# is being built (`src/levels.rs`); no ordinary build sets it.
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(flowmaid_blocks)'] }
+
 [dependencies]

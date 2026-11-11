@@ -21,7 +21,16 @@
 //! `quality::DRAG_FRAME_MS` (all 0 without `--drag`). After the
 //! timings come `Metrics::tail_fields` (end tilt and outline gaps,
 //! sideways wiggles, own-frame escapes, parallel cables, ink, the
-//! idiom counts), last so every earlier column keeps its number.
+//! idiom counts, block and edge shape), so every earlier column keeps
+//! its number. The last five compare the two drawings (on the routed
+//! row; 0 on the static one): `block_mode` (1 when a link crosses a
+//! subgraph's border, so the block layout applies), `fr_max` (largest
+//! difference of a frame's side between `scene()` and `route()` at its
+//! centres), `ends_apart` (edges with an end more than
+//! `quality::ENDS_APART` apart between the two), and with `--drag`
+//! `dfr_own` / `dfr_far` (`quality::frame_drags`: how far a 1 px drag
+//! moves the frames it may redraw / any other frame).
+//! `--levels` lists each diagram's level tree on stderr.
 
 use flowmaid::model::Graph;
 use flowmaid::quality::{self, Agg, Metrics};
@@ -30,7 +39,9 @@ use flowmaid::Document;
 use std::path::{Path, PathBuf};
 
 fn usage() -> ! {
-    eprintln!("usage: quality <dir> [--svg <out-dir>] [--details]  (or set FLOWMAID_QUALITY_DIR)");
+    eprintln!(
+        "usage: quality <dir> [--svg <out-dir>] [--details] [--drag] [--levels]  (or set FLOWMAID_QUALITY_DIR)"
+    );
     std::process::exit(2)
 }
 
@@ -53,8 +64,19 @@ fn num(v: f64) -> String {
     }
 }
 
-/// One measured row: metrics, `route_ms`, `deterministic`, timings.
-type Row = (Metrics, f64, f64, [f64; 4]);
+/// One measured row: metrics, `route_ms`, `deterministic`, timings,
+/// the columns comparing the two drawings.
+type Row = (Metrics, f64, f64, [f64; 4], [f64; 5]);
+
+/// The columns comparing `scene()` with `route()` and with a drag, with
+/// how totals fold them.
+const COMPARED: [(&str, Agg); 5] = [
+    ("block_mode", Agg::Sum),
+    ("fr_max", Agg::Max),
+    ("ends_apart", Agg::Sum),
+    ("dfr_own", Agg::Max),
+    ("dfr_far", Agg::Max),
+];
 
 /// Timing columns after the late fields, with how totals fold them.
 const TIMINGS: [(&str, Agg); 4] = [
@@ -64,7 +86,14 @@ const TIMINGS: [(&str, Agg); 4] = [
     ("drag_over", Agg::Sum),
 ];
 
-fn row(name: &str, mode: &str, m: &Metrics, extra: &[f64], timing: &[f64]) -> String {
+fn row(
+    name: &str,
+    mode: &str,
+    m: &Metrics,
+    extra: &[f64],
+    timing: &[f64],
+    compared: &[f64],
+) -> String {
     let mut cols = vec![name.to_string(), mode.to_string()];
     cols.extend(m.fields().iter().map(|&(_, v, _)| num(v)));
     cols.push(num(m.defects() as f64));
@@ -72,6 +101,7 @@ fn row(name: &str, mode: &str, m: &Metrics, extra: &[f64], timing: &[f64]) -> St
     cols.extend(m.late_fields().iter().map(|&(_, v, _)| num(v)));
     cols.extend(timing.iter().map(|&v| num(v)));
     cols.extend(m.tail_fields().iter().map(|&(_, v, _)| num(v)));
+    cols.extend(compared.iter().map(|&v| num(v)));
     cols.join("\t")
 }
 
@@ -97,9 +127,12 @@ fn main() {
     let mut svg_out: Option<PathBuf> = None;
     let mut details = false;
     let mut dragging = false;
+    let mut levels = false;
     while let Some(a) = args.next() {
         if a == "--details" {
             details = true;
+        } else if a == "--levels" {
+            levels = true;
         } else if a == "--drag" {
             dragging = true;
         } else if a == "--svg" {
@@ -135,12 +168,14 @@ fn main() {
         .iter()
         .map(|f| f.0)
         .collect();
+    let compared: Vec<&str> = COMPARED.iter().map(|t| t.0).collect();
     println!(
-        "file\tmode\t{}\tdefects\troute_ms\tdeterministic\t{}\t{}\t{}",
+        "file\tmode\t{}\tdefects\troute_ms\tdeterministic\t{}\t{}\t{}\t{}",
         header.join("\t"),
         late.join("\t"),
         timing.join("\t"),
-        tail.join("\t")
+        tail.join("\t"),
+        compared.join("\t")
     );
     let mut per_mode: [Vec<Row>; 2] = [Vec::new(), Vec::new()];
     for path in &files {
@@ -163,6 +198,16 @@ fn main() {
         } else {
             [0.0; 3]
         };
+        let dfr = if dragging {
+            quality::frame_drags(&g, &rep.static_scene)
+        } else {
+            (0.0, 0.0)
+        };
+        if levels {
+            for l in quality::levels_dump(&g) {
+                eprintln!("{name}\tlevel\t{l}");
+            }
+        }
         for (k, (mode, m)) in [("static", &rep.statik), ("routed", &rep.routed)]
             .into_iter()
             .enumerate()
@@ -174,13 +219,25 @@ fn main() {
             } else {
                 [0.0, dr[0], dr[1], dr[2]]
             };
-            println!("{}", row(&name, mode, m, &[ms, det], &t));
+            // The two drawings compared: on the routed row.
+            let cmp = if k == 1 {
+                [
+                    f64::from(u8::from(rep.block_mode)),
+                    rep.fr_max,
+                    rep.ends_apart as f64,
+                    dfr.0,
+                    dfr.1,
+                ]
+            } else {
+                [0.0; 5]
+            };
+            println!("{}", row(&name, mode, m, &[ms, det], &t, &cmp));
             if details {
                 for d in &m.details {
                     eprintln!("{name}\t{mode}\t{d}");
                 }
             }
-            per_mode[k].push((m.clone(), ms, det, t));
+            per_mode[k].push((m.clone(), ms, det, t, cmp));
         }
         if let Some(out) = &svg_out {
             write(
@@ -227,6 +284,10 @@ fn main() {
         for c in 0..tail[0].len() {
             let vals: Vec<f64> = tail.iter().map(|f| f[c].1).collect();
             cols.push(num(fold(&vals, tail[0][c].2)));
+        }
+        for (c, &(_, agg)) in COMPARED.iter().enumerate() {
+            let vals: Vec<f64> = rows.iter().map(|r| r.4[c]).collect();
+            cols.push(num(fold(&vals, agg)));
         }
         println!("{}", cols.join("\t"));
     }

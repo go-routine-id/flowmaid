@@ -12,6 +12,12 @@
 //! holds every output to it while that layout sits behind its switch:
 //! with the switch off, nothing a user can draw changes by a byte.
 //!
+//! The last column says how the block layout sees the file: `blocks`
+//! (a link crosses a subgraph's border: it will be laid out as blocks),
+//! `unlinked` (subgraphs, none of them linked to anything outside it),
+//! `flat` (no subgraph) or `-` (another diagram type). Every row but
+//! the `blocks` ones is permanent: those drawings never change.
+//!
 //! To record the table afresh after an intended change, run
 //! `FLOWMAID_RECORD_IDENTITY=1 cargo test --lib identity` and say in
 //! the commit which rows moved and why.
@@ -48,8 +54,9 @@ fn collect(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// One row: the file (relative to the crate root), then the three
-/// hashes (`-` where the diagram type has no such drawing).
+/// One row: the file (relative to the crate root), the three hashes
+/// (`-` where the diagram type has no such drawing), and how the block
+/// layout sees the file (module docs).
 fn row(root: &Path, path: &Path) -> String {
     let src = std::fs::read_to_string(path).expect("read fixture");
     let rel = path.strip_prefix(root).expect("under the crate root");
@@ -60,7 +67,15 @@ fn row(root: &Path, path: &Path) -> String {
         .or_else(|| crate::render_advance_text_svg(&src).ok())
         .unwrap_or_else(|| panic!("{rel}: does not render"));
     let (mut routed, mut partial) = ("-".to_string(), "-".to_string());
+    let mut class = "-";
     if let Ok(Document::Flowchart(g) | Document::State(g)) = crate::parser::parse_document(&src) {
+        class = if g.subgraphs.is_empty() {
+            "flat"
+        } else if crate::scene::block_mode(&g) {
+            "blocks"
+        } else {
+            "unlinked"
+        };
         if !g.nodes.is_empty() {
             let base = scene(&g);
             let at: Vec<(f64, f64)> = base.nodes.iter().map(|n| (n.x, n.y)).collect();
@@ -70,7 +85,7 @@ fn row(root: &Path, path: &Path) -> String {
             partial = hash(&to_svg(&route_partial(&g, &moved, &base, &at)));
         }
     }
-    format!("{rel}\t{}\t{routed}\t{partial}", hash(&svg))
+    format!("{rel}\t{}\t{routed}\t{partial}\t{class}", hash(&svg))
 }
 
 /// Every example and fixture, measured now.
@@ -88,7 +103,7 @@ fn table() -> Vec<String> {
 /// centres and a `route_partial()` drag frame.
 #[test]
 fn everything_renders_as_before_with_blocks_off() {
-    let now = table();
+    let now = crate::levels::with_blocks(false, table);
     if std::env::var_os("FLOWMAID_RECORD_IDENTITY").is_some() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/identity.tsv");
         let head = RECORDED
