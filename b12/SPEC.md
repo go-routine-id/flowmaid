@@ -61,6 +61,29 @@ Date 2026-11-10. Written for an implementer who has seen none of the design work
   for a class or state input because of such a merge re-takes that baseline with B12.0's scripts and says so in its
   report; this is not a loosened gate. A difference on a flowchart input is never explained this way: report it.
 
+- **After checkpoint A1's first report (lead, 2026-11-11 ~06:30 UTC; read `reports/checkpoint-A1.md` first).** A1's
+  stop rule fired on drawn crossings: the analog 21 against 20, the public fixture 9 against 7, perm-b 32 against 23,
+  perm-e 40 against 22, dense-td 151 against 74.6. **No must is changed.** What follows is the order of the work, which
+  is the lead's to set:
+  1. **O2's weighted adjacent exchange belongs to `b12a1-structure` and was not built.** Build it, then take the table
+     crossings x starts again.
+  2. **Title-clear entries (2.8, listed under B12.11) may be pulled forward into `b12a1-structure`** if A1's
+     drawn-crossings musts cannot be met without them. The report shows the public fixture at 5 layered crossings and 9
+     drawn, the difference being entries the router takes round a title chip. Build them as 2.8 specifies, with their
+     tests, in a commit of their own, and say so in the checkpoint report so that `b12a2-geometry` does not build them
+     again. Pulling an item forward is not a loosened gate. Judging A1's drawn crossings by the layered count would be
+     one, and is not allowed.
+  3. **dense-td (151 drawn against the start's 66; 98 layered) is a structure problem and belongs to this package.**
+     Find where the block layering or ordering loses to the flat layout (the report: one block as wide as the drawing
+     lies between two bands, and every edge past it runs round it) and fix the rule: block mode must not draw a dense
+     diagram worse than the release before it. If that cannot be done inside the design, stop and report the
+     measurements with pictures; the lead takes it to the user. (The fallback then on the table: a drawing keeps the
+     old path when its block layout has more crossings. It costs a second layout and changes decision D7, so it is
+     the user's to decide, not the implementer's and not the lead's.)
+  4. **B12.3's wrap of a long row of members without inner links is deferred to B12.12**, where its acceptance lives
+     (the report found its trigger, as worded, wraps rows the layers of B12.3's own check keep whole).
+     `b12a1-structure` does not build it and is not failed for it.
+
 1. **Design built: `d-global`**, the unanimous winner of the three judges: one Sugiyama pass over all nodes, one scene,
    one `edgepass::finish`, `compound.rs` (B9) untouched; blocks come from a block-aware layering, a block-aware ordering
    and a hierarchical breadth assignment. No edge is ever laid out in two halves, so the scene contract holds without a
