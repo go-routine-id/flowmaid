@@ -12,7 +12,7 @@ A small Mermaid-like diagram engine written in pure std Rust with zero external 
 **Why flowmaid?**
 
 - **Zero dependencies**, pure std Rust (MSRV 1.75), and `wasm32` out of the box: all twelve diagram types fit in a compact wasm bundle, where mermaid.js 12.2.0 is about 5.5 MB minified (1.6 MB gzipped).
-- **Fast:** most hand-written diagrams render in under a millisecond, about **106× faster than mermaid** (see [Performance](#performance)).
+- **Fast:** most hand-written diagrams render in under a millisecond, about **113× faster than mermaid** (see [Performance](#performance)).
 - **One geometry source** for SVG export and interactive canvases: drag a node and only its edges re-route, pick what is under the pointer, save the graph back as mermaid text (see [Interactive API](#interactive-api)).
 - **Deterministic, accessible SVG:** byte-identical output for the same input, with `role="img"` and an accessible name on every diagram, and per-item `<title>`s in flowchart, state, journey and sankey diagrams.
 - **Forgiving input, clear errors:** line-numbered parse errors, UTF-8 BOMs stripped, CRLF fine, and the unsupported Mermaid headers flowmaid recognises (`gantt`, `quadrantChart`, `xychart-beta`, `kanban`, …) fail with an explicit "not supported yet" message instead of a confusing parse error (see [Diagram types](#diagram-types) for the newer headers it does not recognise yet).
@@ -30,11 +30,11 @@ A small Mermaid-like diagram engine written in pure std Rust with zero external 
 
 ## flowmaid next to mermaid
 
-The same `.mmd` source rendered by mermaid 12.2.0 (left, in headless Chromium) and by flowmaid 0.38.0 (right, `flowmaid file.mmd`). flowmaid keeps its own semantic palette by default; mermaid's look is one `--theme default` away (see [Themes](#themes)).
+The same `.mmd` source rendered by mermaid 12.2.0 (left, in headless Chromium) and by flowmaid 0.39.0 (right, `flowmaid file.mmd`). flowmaid keeps its own semantic palette by default; mermaid's look is one `--theme default` away (see [Themes](#themes)).
 
 **Flowchart with subgraphs, a decision and a back-edge**
 
-![advanced flowchart: mermaid 12.2.0 vs flowmaid 0.38.0](docs/img/compare/advanced.png)
+![advanced flowchart: mermaid 12.2.0 vs flowmaid 0.39.0](docs/img/compare/advanced.png)
 
 **Loop back to an earlier step**
 
@@ -61,7 +61,7 @@ The same `.mmd` source rendered by mermaid 12.2.0 (left, in headless Chromium) a
 
 </details>
 
-Rendering is about **106× faster than mermaid** (geometric mean over 25 diagrams) and the SVG is a fraction of the size — see [Performance](#performance).
+Rendering is about **113× faster than mermaid** (geometric mean over 25 diagrams) and the SVG is a fraction of the size — see [Performance](#performance).
 
 ## Installation
 
@@ -75,7 +75,7 @@ Or in `Cargo.toml`:
 
 ```toml
 [dependencies]
-flowmaid = "0.38"
+flowmaid = "0.39"
 ```
 
 The crate is lib + bin; `cargo install flowmaid` installs the `flowmaid` command.
@@ -822,41 +822,41 @@ What every flowchart drawing guarantees:
 
 ### Next to mermaid
 
-25 sample diagrams — flowcharts from a handful of nodes up to 52 nodes or 75 edges, plus every other diagram type — rendered from the same `.mmd` source. flowmaid is about **106× faster** (geometric mean) and its SVG is 1.5–25× smaller.
+25 sample diagrams — flowcharts from a handful of nodes up to 52 nodes or 75 edges, plus every other diagram type — rendered from the same `.mmd` source. flowmaid is about **113× faster** (geometric mean) and its SVG is 1.5–25× smaller.
 
 | diagram | type | flowmaid ms | mermaid ms | speed-up × | flowmaid SVG KB | mermaid SVG KB |
 |---|---|--:|--:|--:|--:|--:|
-| advanced | flowchart | 1.69 | 119.4 | 71× | 11.5 | 58.0 |
-| architecture | architecture | 0.11 | 46.7 | 428× | 4.0 | 18.5 |
-| back-edge | flowchart | 0.36 | 55.8 | 155× | 3.7 | 78.5 |
-| bench-75 | flowchart | 45.85 | 326.0 | 7× | 65.1 | 194.2 |
-| class | class | 0.54 | 162.9 | 302× | 11.8 | 53.5 |
-| demo | flowchart | 0.33 | 62.9 | 191× | 3.7 | 78.5 |
-| dense-lr | flowchart | 22.48 | 377.5 | 17× | 51.3 | 489.1 |
-| dense-td | flowchart | 31.96 | 396.1 | 12× | 54.3 | 487.0 |
-| er | er | 0.52 | 113.6 | 220× | 14.8 | 127.4 |
-| fanout-frames | flowchart | 2.69 | 138.8 | 52× | 11.8 | 298.2 |
-| fanout | flowchart | 1.24 | 68.1 | 55× | 6.6 | 84.7 |
-| gitgraph | gitgraph | 0.12 | 23.5 | 191× | 5.8 | 13.0 |
-| journey | journey | 0.07 | 10.1 | 136× | 3.8 | 13.2 |
-| long-labels | flowchart | 0.29 | 45.3 | 158× | 3.5 | 35.0 |
-| lr | flowchart | 0.37 | 57.1 | 153× | 4.5 | 80.4 |
-| mindmap | mindmap | 0.79 | 89.7 | 113× | 8.7 | 49.0 |
-| pie | pie | 0.04 | 6.2 | 155× | 2.8 | 5.5 |
-| sankey | sankey | 0.23 | 13.0 | 57× | 6.8 | 10.3 |
-| sequence | sequence | 0.14 | 43.5 | 302× | 10.3 | 39.0 |
-| shapes | flowchart | 0.28 | 67.3 | 238× | 5.0 | 81.9 |
-| state | state | 0.96 | 130.5 | 136× | 8.5 | 70.6 |
-| stress | flowchart | 0.47 | 48.4 | 104× | 4.0 | 37.7 |
-| subgraph | flowchart | 0.43 | 73.8 | 173× | 4.6 | 38.5 |
-| timeline | timeline | 0.05 | 9.4 | 204× | 3.7 | 15.9 |
-| wide-labels | flowchart | 0.88 | 60.5 | 69× | 6.5 | 42.1 |
+| advanced | flowchart | 1.38 | 101.5 | 74× | 11.5 | 58.0 |
+| architecture | architecture | 0.09 | 37.9 | 426× | 4.0 | 18.5 |
+| back-edge | flowchart | 0.28 | 48.5 | 175× | 3.7 | 78.5 |
+| bench-75 | flowchart | 37.32 | 261.9 | 7× | 59.0 | 194.6 |
+| class | class | 0.43 | 152.6 | 352× | 11.8 | 53.5 |
+| demo | flowchart | 0.29 | 50.2 | 174× | 3.7 | 78.5 |
+| dense-lr | flowchart | 20.22 | 324.0 | 16× | 45.4 | 489.0 |
+| dense-td | flowchart | 27.32 | 351.1 | 13× | 48.6 | 487.0 |
+| er | er | 0.23 | 96.9 | 425× | 14.8 | 127.3 |
+| fanout-frames | flowchart | 2.38 | 111.6 | 47× | 11.8 | 298.3 |
+| fanout | flowchart | 0.77 | 60.2 | 79× | 6.6 | 84.7 |
+| gitgraph | gitgraph | 0.06 | 19.6 | 306× | 5.8 | 13.0 |
+| journey | journey | 0.03 | 8.6 | 253× | 3.8 | 13.2 |
+| long-labels | flowchart | 0.20 | 40.3 | 199× | 3.5 | 34.7 |
+| lr | flowchart | 0.34 | 48.9 | 142× | 4.5 | 80.3 |
+| mindmap | mindmap | 0.71 | 75.2 | 106× | 8.7 | 49.0 |
+| pie | pie | 0.04 | 4.9 | 132× | 2.8 | 5.5 |
+| sankey | sankey | 0.21 | 11.7 | 55× | 6.8 | 10.3 |
+| sequence | sequence | 0.13 | 37.2 | 286× | 10.3 | 38.9 |
+| shapes | flowchart | 0.26 | 55.0 | 216× | 5.0 | 81.9 |
+| state | state | 0.82 | 111.9 | 136× | 8.5 | 70.6 |
+| stress | flowchart | 0.40 | 43.6 | 109× | 4.0 | 37.7 |
+| subgraph | flowchart | 0.41 | 56.2 | 138× | 4.6 | 38.2 |
+| timeline | timeline | 0.04 | 7.9 | 193× | 3.7 | 15.9 |
+| wide-labels | flowchart | 0.85 | 55.5 | 65× | 6.5 | 42.1 |
 
-**Method.** Each cell is the median of 30 timed renders after warm-ups (flowmaid 3, mermaid 2). flowmaid: `flowmaid::render_svg` (parse + layout + SVG string) in a release build, `cargo run --release --example bench -- files <file.mmd>...`. mermaid: `mermaid.render()` 12.2.0 (parse + layout + SVG string, including its in-browser text measurement) in headless Chromium 153 via Playwright. Speed-up = mermaid median ÷ flowmaid median. SVG KB = length of the returned SVG string. Measured on 0.38.0. Machine: 4 vCPUs, Intel Xeon @ 2.10 GHz, rustc 1.97; the box was shared with a background build, so expect ±20 % on both sides.
+**Method.** Each cell is the median of 30 timed renders after warm-ups (flowmaid 3, mermaid 2). flowmaid: `flowmaid::render_svg` (parse + layout + SVG string) in a release build, `cargo run --release --example bench -- files <file.mmd>...`. mermaid: `mermaid.render()` 12.2.0 (parse + layout + SVG string, including its in-browser text measurement) in headless Chromium 153 via Playwright. Speed-up = mermaid median ÷ flowmaid median. SVG KB = length of the returned SVG string. Measured on 0.39.0. Machine: 4 vCPUs, Intel Xeon @ 2.10 GHz, rustc 1.97; the box was shared with a background build, so expect ±20 % on both sides.
 
 ### Interactive editing
 
-Dragging a node does not re-run layout: `route_partial` re-routes only the edges the move can affect. Over the quality harness's drag frames (`quality::drag_frames`: every node moved along the drawing's diagonal and nudged each way; measured on 0.38.0) it averages about **3 ms a frame on the densest sample** (`bench-75`: 21 nodes, 75 edges; 6 ms at worst) and 2–2.4 ms on `dense-lr` and `dense-td`; the small corpus diagrams average 0.14–0.6 ms. A full `route()` of every edge, which `cargo run --release --example quality -- <dir> --drag` times, averages 8.7 ms on `bench-75` and 4.3–6.4 ms on the other dense samples. Picking (`Scene::hit_test`, `edge_at`, `hits_in_rect`) follows the painted stroke and costs microseconds.
+Dragging a node does not re-run layout: `route_partial` re-routes only the edges the move can affect. Over the quality harness's drag frames (`quality::drag_frames`: every node moved along the drawing's diagonal and nudged each way; measured on 0.38.0 — the comb 0.39.0 adds makes the mean frame 1.4 % longer on `bench-75` and leaves the other two dense samples unchanged) it averages about **3 ms a frame on the densest sample** (`bench-75`: 21 nodes, 75 edges; 6 ms at worst) and 2–2.4 ms on `dense-lr` and `dense-td`; the small corpus diagrams average 0.14–0.6 ms. A full `route()` of every edge, which `cargo run --release --example quality -- <dir> --drag` times, averages about 8.5 ms on `bench-75` and 4–6.3 ms on the other dense samples (0.39.0). Picking (`Scene::hit_test`, `edge_at`, `hits_in_rect`) follows the painted stroke and costs microseconds.
 
 ### Large graphs
 
@@ -864,9 +864,9 @@ flowmaid spends its time on drawing quality — crossing-aware routing, back-edg
 
 | nodes | edges | parse | layout | render* | SVG |
 |------:|------:|------:|-------:|--------:|----:|
-| 49 | 100 | 0.18 ms | 1.5 ms | 35 ms | 75 KB |
-| 200 | 400 | 0.58 ms | 28 ms | 0.26 s | 507 KB |
-| 1,000 | 2,010 | 3.1 ms | 0.97 s | 2.6 s | 3.2 MB |
+| 49 | 100 | 0.15 ms | 1.3 ms | 30 ms | 70 KB |
+| 200 | 400 | 0.53 ms | 25 ms | 0.22 s | 589 KB |
+| 1,000 | 2,010 | 2.8 ms | 0.92 s | 2.3 s | 3.2 MB |
 
 \* render includes layout and routing.
 
