@@ -603,8 +603,9 @@ Diagrams people write by hand — up to a few dozen nodes — render in millisec
 
 ## Mermaid parity roadmap
 
-The goal: **mermaid.js functionality, pure-Rust edition.** The progress board with all the details is [issue #10](https://github.com/go-routine-id/flowmaid/issues/10). Contributions are welcome, and every item has its own issue.
+The goal: **mermaid.js functionality, pure-Rust edition.** The progress board with all the details is [issue #10](https://github.com/go-routine-id/flowmaid/issues/10). Contributions are welcome.
 
+- **Drawing quality** next to mermaid 12.2.0, with what is done and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 - **Diagram types not drawn yet** are tracked on the board. [Diagram types](#diagram-types) lists their headers and what each does today.
 - **Open flowchart item:** `$$…$$` math in labels, KaTeX-style. Phase A (italic TeX passthrough, correct widths) was done in v0.20.0; next: MathML subset → native ([#12](https://github.com/go-routine-id/flowmaid/issues/12)).
 

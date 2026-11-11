@@ -7,6 +7,12 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Documentation
+
+- **Roadmap page** (`docs/ROADMAP.md`, linked from the README): what the
+  drawing-quality work has shipped release by release, the subgraph
+  layout in progress and its four steps, and what is listed for later.
+
 ## [0.40.0] - 2026-11-11
 
 ### Highlights
