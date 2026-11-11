@@ -4081,17 +4081,22 @@ fn straight_between_ports(
 /// The corner list of an edge drawn as an orthogonal path (every leg of
 /// its waypoints axis-aligned, its ports' included), else `None`.
 pub(crate) fn ortho_corners(e: &crate::scene::SceneEdge) -> Option<Vec<Pt>> {
+    ortho_corners_of(&e.waypoints)
+}
+
+/// [`ortho_corners`] of the waypoints `pts` (a path, or the stretch of
+/// one that runs on the axes).
+pub(crate) fn ortho_corners_of(pts: &[Pt]) -> Option<Vec<Pt>> {
     // (Every leg on an axis before the copy: most paths that are not
     // fail on their first leg.)
-    if e.waypoints.len() < 2
-        || !e
-            .waypoints
+    if pts.len() < 2
+        || !pts
             .windows(2)
             .all(|q| (q[0].0 - q[1].0).abs() < EPS || (q[0].1 - q[1].1).abs() < EPS)
     {
         return None;
     }
-    let c = collapse_from(&e.waypoints);
+    let c = collapse_from(pts);
     let aligned = c
         .windows(2)
         .all(|q| (q[0].0 - q[1].0).abs() < EPS || (q[0].1 - q[1].1).abs() < EPS);

@@ -109,6 +109,12 @@ pub const PARALLEL_BAND: f64 = 26.0;
 /// (px): about a rank gap plus a node, so two edges that stay side by
 /// side past a whole rank.
 pub const BAND_RUN_MIN: f64 = 100.0;
+/// Ends on one side of a node or frame from which the side is a fan
+/// (report B4).
+pub const FAN_MIN: usize = 3;
+/// How far (px) the gaps between a fanned side's neighbouring ports may
+/// differ and still read as one even band (report M3's ±2 px).
+pub const FAN_PITCH_TOL: f64 = 2.0;
 /// Control points closer than this (px) to their cubic's chord lie on
 /// it, and a leg whose ends differ by less than this on one axis runs
 /// along it: how a straight edge, an S and a bow are told apart.
@@ -325,6 +331,25 @@ pub struct Metrics {
     /// plus the padding `to_svg` gives them, i.e. clipped by the SVG's
     /// view box (B1 review). Gated at 0.
     pub ink_out: usize,
+    /// Crossings drawn as a hop: a level leg stepping over a plumb one
+    /// on a semicircle (or several on one bridge), both strokes whole
+    /// (report M15, `to_svg`). Not a defect, and no cut: `xgap_max`,
+    /// `dash_edges` and `xnotches` count the crossings left to the
+    /// casing's gaps.
+    pub xhops: usize,
+    /// Crossings between two edges of one fan: both end on the same
+    /// side of the same node or frame, a side [`FAN_MIN`] or more ends
+    /// share (report B4: a fan drawn as a comb has none — its ports,
+    /// tracks and turns in one order). Counted wherever the two cross.
+    pub fan_x: usize,
+    /// Fanned straight sides ([`FAN_MIN`] or more ends on a box's or a
+    /// frame's side) whose neighbouring ports are not one pitch apart:
+    /// the widest gap more than [`FAN_PITCH_TOL`] over the narrowest
+    /// (report B4, §2.4: a hub's ports in one even band). A side holding
+    /// the end of an edge drawn straight across to its other end is not
+    /// counted: that end stays where its partner lies, and the others
+    /// space round it (report M3).
+    pub fan_uneven: usize,
     /// One line per node/frame crossing, parallel overlap, close edge
     /// pair, label on a node or arrowhead, wiggle, wrong frame side and
     /// shared port, naming the elements (`from->to kind other`), for
@@ -422,6 +447,9 @@ impl Metrics {
             ("x_drawn", self.x_drawn as f64, Sum),
             ("end_kink", self.end_kink as f64, Sum),
             ("ink_out", self.ink_out as f64, Sum),
+            ("xhops", self.xhops as f64, Sum),
+            ("fan_x", self.fan_x as f64, Sum),
+            ("fan_uneven", self.fan_uneven as f64, Sum),
         ]
     }
 
@@ -1500,6 +1528,8 @@ pub fn measure(g: &Graph, sc: &Scene) -> Metrics {
         for (j, me) in edges.iter().enumerate() {
             if j != i && me.pts.windows(2).any(|s| r.hits_seg(s[0], s[1])) {
                 m.lbl_edge += 1;
+                m.details
+                    .push(format!("{owner} lbl_edge {}->{}", me.e.from, me.e.to));
             }
             if me.e.ends.end_marker(me.e.kind).is_some() {
                 let n = me.pts.len();
@@ -1534,6 +1564,7 @@ pub fn measure(g: &Graph, sc: &Scene) -> Metrics {
     } else {
         crate::casing::crossings(sc)
     };
+    m.xhops = crate::hops::find(sc).iter().flatten().map(|h| h.over).sum();
     let mut gaps: std::collections::BTreeMap<usize, Vec<f64>> = std::collections::BTreeMap::new();
     // A notch (the over-edge's halo alone, see `casing::crossings`)
     // is under half a gap and does not chain into a dash.
@@ -1618,6 +1649,106 @@ pub fn measure(g: &Graph, sc: &Scene) -> Metrics {
                     m.arrow_on_start += usize::from(v[i].1 != v[j].1);
                     m.details
                         .push(format!("port {} {} {}", owner_id(*end), v[i].2, v[j].2));
+                }
+            }
+        }
+    }
+
+    // Fans (report B4): the ends sharing one side of a node or frame.
+    // Two edges of a fan that cross are out of order somewhere (ports,
+    // tracks or turns), and a fan's ports stand one pitch apart.
+    {
+        use crate::edgepass::Side;
+        let side_at = |end: End, p: Pt| match end {
+            End::Node(n) => {
+                let r = Rect::of_node(&sc.nodes[n]);
+                crate::ports::outline_side(sc.nodes[n].shape, (r.0, r.1, r.2, r.3), p)
+            }
+            End::Frame(f) => {
+                let r = frame_rect[f];
+                crate::edgepass::side_of((r.0, r.1, r.2, r.3), p)
+            }
+        };
+        // (owner, side) -> (index into `edges`, port along the side,
+        // whether its edge runs straight across to its other end).
+        type Fans = std::collections::BTreeMap<(End, Side), Vec<(usize, f64, bool)>>;
+        let mut fans: Fans = Fans::new();
+        for (k, me) in edges.iter().enumerate() {
+            let (p0, p3) = (me.pts[0], me.pts[me.pts.len() - 1]);
+            for (end, p) in [(me.from, p0), (me.to, p3)] {
+                let Some(end) = end else { continue };
+                let side = side_at(end, p);
+                let along = |q: Pt| match side {
+                    Side::Top | Side::Bottom => q.0,
+                    Side::Left | Side::Right => q.1,
+                };
+                let pinned = me
+                    .pts
+                    .iter()
+                    .all(|&q| (along(q) - along(p)).abs() < STRAIGHT_TOL);
+                fans.entry((end, side))
+                    .or_default()
+                    .push((k, along(p), pinned));
+            }
+        }
+        for ((end, side), mut v) in fans {
+            if v.len() < FAN_MIN {
+                continue;
+            }
+            v.sort_by(|a, b| a.1.total_cmp(&b.1).then(a.0.cmp(&b.0)));
+            let straight = v.iter().all(|x| !x.2)
+                && match end {
+                    End::Frame(_) => true,
+                    End::Node(n) => !matches!(
+                        sc.nodes[n].shape,
+                        Shape::Diamond
+                            | Shape::Circle
+                            | Shape::DoubleCircle
+                            | Shape::StateStart
+                            | Shape::StateEnd
+                    ),
+                };
+            let gaps: Vec<f64> = v.windows(2).map(|w| w[1].1 - w[0].1).collect();
+            let (lo, hi) = gaps.iter().fold((f64::INFINITY, 0.0f64), |(lo, hi), &g| {
+                (lo.min(g), hi.max(g))
+            });
+            if straight && hi - lo > FAN_PITCH_TOL {
+                m.fan_uneven += 1;
+                m.details.push(format!(
+                    "fan_uneven {} {side:?} {} ends, pitch {lo:.1}..{hi:.1}",
+                    owner_id(end),
+                    v.len()
+                ));
+            }
+            for a in 0..v.len() {
+                for b in a + 1..v.len() {
+                    let (x, y) = (&edges[v[a].0], &edges[v[b].0]);
+                    if x.idx == y.idx || !x.bb.grow(GAP_PROBE).overlaps(y.bb.grow(OVERLAP_EPS)) {
+                        continue;
+                    }
+                    let mut hits: Vec<Pt> = Vec::new();
+                    for sa in x.pts.windows(2) {
+                        for sb in y.pts.windows(2) {
+                            if let Some(p) = seg_cross(sa[0], sa[1], sb[0], sb[1]) {
+                                if hits.iter().all(|&q| dist(p, q) >= CROSS_MERGE) {
+                                    hits.push(p);
+                                }
+                            }
+                        }
+                    }
+                    for p in hits {
+                        m.fan_x += 1;
+                        m.details.push(format!(
+                            "fan_x {} {side:?} {}->{} x {}->{} at ({:.0},{:.0})",
+                            owner_id(end),
+                            x.e.from,
+                            x.e.to,
+                            y.e.from,
+                            y.e.to,
+                            p.0,
+                            p.1
+                        ));
+                    }
                 }
             }
         }
