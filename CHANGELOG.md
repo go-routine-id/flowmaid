@@ -7,6 +7,40 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.40.0] - 2026-11-11
+
+### Highlights
+
+Class and state follow-ups: what the phase A reviews left open. Flowchart
+drawings are unchanged, and so are the other diagram types; class diagrams
+change where a fan or self-relations are involved, and state diagrams only
+under a drag. No public API is removed or changed.
+
+- **Dotted class names.** `com.example.Order` is one class wherever it is
+  written (`A.B --> C`, `A.B : +id int`, `note for A.B "…"`), as in
+  mermaid; `..` stays the dotted line. Such names were parse errors in a
+  relation, an inline member and a `note for`.
+- **A plain fan of six no longer crosses itself.** Six classes into one
+  hub drew 4 crossings where mermaid draws none; the six now nest a
+  lane's room apart, in every direction and for every relation kind. The
+  same nesting rescues other fans that kept curves.
+- **Self-relations keep off a neighbour.** A class's loops are shared
+  among its faces by what each sharing costs: a loop under another box
+  counts before anything else, then a loop on a face where a relation
+  ends, a crossing, a covered label. Over 2,132 generated class diagrams
+  with loops no drawing has more loops under a box than before and 372
+  have fewer crossings (4 have more). The costs, all in classes with four
+  or more self-relations, are listed with the entry under Fixed.
+- **A drag inside a composite resizes no fork or join.** `route()`,
+  `route_sized()` and `route_partial()` fit a bar that branches to a
+  composite laid out in its own `direction` to the frame the static
+  layout draws, so stretching the frame under a drag no longer stretches
+  the bar.
+- **`PartialEq` on the graph model** (`model::Graph`, `Node`, `Edge`,
+  `Subgraph`, `SubEdge`), so a host can tell whether an edit changed the
+  graph.
+@@BENCH@@
+
 ### Added
 
 - **Class diagrams: dotted names** (`com.example.Order`, `A.B --> C`).
@@ -82,7 +116,18 @@ project adheres to [Semantic Versioning](https://semver.org/).
   crossings and 61 more. Where every face of a class is taken a loop still goes round a
   relation's end — the relation leaves through the loop — rather than
   under a box. A class with more than eight loops keeps to two faces, as
-  before.
+  before. What it costs, measured in the package's independent review on
+  classes with four or more loops: a nest deeper than its face is long
+  leaves loop ends hanging past the class's corners, a fault that
+  existed before and is now more frequent on such inputs (of 4,678
+  generated scenes with loops, an end more than 5 px off its box is new
+  in 260 and gone in 92; on the 894-file class corpus 16 scenes had one,
+  now 14); labels can land on the loops of a deep nest (47 of 9,831
+  scenes have more labels under a line, 1,407 fewer); while a class is
+  dragged a loop changes face more often (3.2 % -> 4.8 % of frames over
+  1,200 random diagrams, 2.7 % -> 3.3 % on the class corpus); and
+  inputs with seven to nine loops on one class take 10-13 % longer to
+  draw and to route (ordinary class diagrams take the same time).
 - **State diagrams: a drag inside a composite resizes no fork or join.**
   A bar that branches to a composite laid out in its own `direction`
   spans the composite's frame, and `route()`, `route_sized()` and

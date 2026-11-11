@@ -29,7 +29,7 @@ Or in `Cargo.toml`:
 
 ```toml
 [dependencies]
-flowmaid = "0.39"
+flowmaid = "0.40"
 ```
 
 The crate is lib + bin; `cargo install flowmaid` installs the `flowmaid` command.
@@ -56,11 +56,11 @@ let svg = flowmaid::render_svg("flowchart TD\nA[Start] --> B[Done]")?;
 
 ## flowmaid next to mermaid
 
-The same `.mmd` source rendered by mermaid 12.2.0 (left, in headless Chromium) and by flowmaid 0.39.0 (right, `flowmaid file.mmd`). flowmaid keeps its own semantic palette by default; mermaid's look is one `--theme default` away (see [Themes](#themes)).
+The same `.mmd` source rendered by mermaid 12.2.0 (left, in headless Chromium) and by flowmaid 0.40.0 (right, `flowmaid file.mmd`). flowmaid keeps its own semantic palette by default; mermaid's look is one `--theme default` away (see [Themes](#themes)).
 
 **Flowchart with subgraphs, a decision and a back-edge**
 
-![advanced flowchart: mermaid 12.2.0 vs flowmaid 0.39.0](docs/img/compare/advanced.png)
+![advanced flowchart: mermaid 12.2.0 vs flowmaid 0.40.0](docs/img/compare/advanced.png)
 
 **Loop back to an earlier step**
 
@@ -575,7 +575,7 @@ The other diagram types have their own modules (`seq`, `pie`, `journey`, `gitgra
 | timeline | timeline | 0.04 | 7.9 | 193× | 3.7 | 15.9 |
 | wide-labels | flowchart | 0.85 | 55.5 | 65× | 6.5 | 42.1 |
 
-**Method.** Each cell is the median of 30 timed renders after warm-ups (flowmaid 3, mermaid 2). flowmaid: `flowmaid::render_svg` (parse + layout + SVG string) in a release build, `cargo run --release --example bench -- files <file.mmd>...`. mermaid: `mermaid.render()` 12.2.0 (parse + layout + SVG string, including its in-browser text measurement) in headless Chromium 153 via Playwright. Speed-up = mermaid median ÷ flowmaid median. SVG KB = length of the returned SVG string. Measured on 0.39.0. Machine: 4 vCPUs, Intel Xeon @ 2.10 GHz, rustc 1.97; the box was shared with a background build, so expect ±20 % on both sides, and more on a single sub-millisecond row (er, gitgraph and journey took about half their 0.38.0 time in this run, with no change to their code).
+**Method.** Each cell is the median of 30 timed renders after warm-ups (flowmaid 3, mermaid 2). flowmaid: `flowmaid::render_svg` (parse + layout + SVG string) in a release build, `cargo run --release --example bench -- files <file.mmd>...`. mermaid: `mermaid.render()` 12.2.0 (parse + layout + SVG string, including its in-browser text measurement) in headless Chromium 153 via Playwright. Speed-up = mermaid median ÷ flowmaid median. SVG KB = length of the returned SVG string. Measured on 0.39.0; 0.40.0 draws all 25 samples byte for byte the same and in the same time (both releases timed in three alternated rounds: 0.99× in the geometric mean), so the table stands. Two runs of the whole table on 0.40.0, on a busier box where both sides ran slower, gave 127× and 134×. Machine: 4 vCPUs, Intel Xeon @ 2.10 GHz, rustc 1.97; the box was shared with a background build, so expect ±20 % on both sides, and more on a single sub-millisecond row (er, gitgraph and journey took about half their 0.38.0 time in this run, with no change to their code).
 
 ### Interactive editing
 
