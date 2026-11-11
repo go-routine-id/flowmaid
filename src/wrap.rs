@@ -359,7 +359,7 @@ const BALANCE_MAX_WORDS: usize = 64;
 /// Where the lines of `n` words start, filling each line greedily while
 /// the next word fits in `width` (`line_w(i, j)`: how wide words `i..j`
 /// are on one line). The first entry is always 0; empty for no words.
-pub(crate) fn greedy(n: usize, width: f64, line_w: impl Fn(usize, usize) -> f64) -> Vec<usize> {
+fn greedy(n: usize, width: f64, line_w: impl Fn(usize, usize) -> f64) -> Vec<usize> {
     let mut starts = Vec::new();
     if n == 0 {
         return starts;
@@ -497,15 +497,6 @@ pub(crate) fn into_lines(
     }
     Some(out)
 }
-
-/// `crate::layout::wrap_text`, the greedy wrapper journeys and timelines
-/// used before [`wrap_block`], has no caller left. It lives in
-/// `layout.rs`, which a parallel change owns; until that file drops it
-/// (with its `lines_at` helper and its test), this reference keeps the
-/// unused function from failing the `-D warnings` build. Delete both
-/// together.
-#[allow(dead_code)]
-const RETIRED_GREEDY_WRAP: fn(&str, f64, f64) -> String = crate::layout::wrap_text;
 
 #[cfg(test)]
 mod tests {

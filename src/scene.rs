@@ -4822,7 +4822,21 @@ pub(crate) fn route_labelled(
             return sc;
         }
     }
-    let sizes = &fit_bars(g, &sizes)[..];
+    route_fitted(g, centers, &fit_bars(g, &sizes), labels)
+}
+
+/// [`route_labelled`] for a graph without blocks of their own direction
+/// whose `sizes` are sane and hold each fork/join bar at its fitted
+/// length already ([`fit_bars`]): no bar is fitted again. For the rest
+/// of a split graph ([`crate::compound`]), whose bars are fitted to
+/// each block's frame as the static layout draws it, not to the box its
+/// proxy has while a drag stretches the block.
+pub(crate) fn route_fitted(
+    g: &Graph,
+    centers: &[(f64, f64)],
+    sizes: &[(f64, f64)],
+    labels: &[String],
+) -> Scene {
     let mut sc = route_built(g, centers, sizes, labels, true);
     crate::edgepass::finish(g, &mut sc, crate::edgepass::Mode::Routed);
     sc
@@ -5263,7 +5277,13 @@ const PARTIAL_ROUTE_SHARE: f64 = 0.5;
 /// cost.
 /// Falls back to [`route`] whenever `base` no longer lines up with the
 /// graph (e.g. after an edit to nodes, edges, edge labels or styles, or
-/// subgraphs).
+/// subgraphs). What lines up and did not move is taken from `base` as
+/// it stands, though: a graph none of whose nodes moved comes back as
+/// `base`, and so does a subgraph laid out on its own in its
+/// `direction` none of whose nodes moved — a fork/join bar inside it
+/// keeps the length `base` drew, also when `base` was drawn for other
+/// node sizes. So draw `base` for the graph and the sizes the drag is
+/// routed with.
 ///
 /// # Panics
 ///
@@ -5282,18 +5302,26 @@ pub fn route_partial(
     route_partial_with(g, centers, base, base_centers, &[])
 }
 
+/// A node's box given to [`route_partial_with`]: (node, size, whether
+/// it differs from its `base` box).
+pub(crate) type GivenBox = (usize, (f64, f64), bool);
+
 /// [`route_partial`] (lengths checked) with the boxes of some nodes
-/// given: `sized` holds (node, size, whether it differs from its `base`
-/// box) for each proxy of a block laid out in its own direction
-/// ([`crate::compound`]) — its box is the block's frame, not one sized
-/// from a label — and a proxy whose box changed counts as moved however
-/// its centre lies. A graph with such blocks is re-routed block by block.
+/// given, for the rest of a graph with blocks laid out in their own
+/// directions ([`crate::compound`]; such a graph is re-routed block by
+/// block). `sized` holds each block's proxy — its box is the block's
+/// frame, not one sized from a label — and, where a fork/join bar
+/// branches to a block, every bar at its fitted size: fitted here
+/// ([`fit_bars`]), to a proxy's box as it is now, it would stretch with
+/// the frame of a block a drag pulls apart, so [`crate::compound`] fits
+/// it as [`route`] does. A given box is used as it is, and one that
+/// differs from its `base` box counts as moved however its centre lies.
 pub(crate) fn route_partial_with(
     g: &Graph,
     centers: &[(f64, f64)],
     base: &Scene,
     base_centers: &[(f64, f64)],
-    sized: &[(usize, (f64, f64), bool)],
+    sized: &[GivenBox],
 ) -> Scene {
     let n = g.nodes.len();
     let mut moved: Vec<bool> = (0..n)
@@ -5317,7 +5345,14 @@ pub(crate) fn route_partial_with(
     for &(v, size, _) in sized {
         raw_sizes[v] = size;
     }
-    let sizes = fit_bars(g, &raw_sizes);
+    // A given bar keeps its size: fitted already, to the blocks' frames
+    // as the static layout draws them.
+    let mut sizes = fit_bars(g, &raw_sizes);
+    for &(v, size, _) in sized {
+        if sizes[v] != size {
+            sizes.to_mut()[v] = size;
+        }
+    }
     // No builder label pass: a redrawn edge's label starts at its spot
     // on the new line and the label stage moves it only if it covers
     // something. route() slides every label first so the router can
@@ -5357,8 +5392,11 @@ pub(crate) fn route_partial_with(
         }
         sc
     };
+    // The fallbacks route with `sizes` as fitted above (what
+    // `route_labelled` fits for a graph without blocks; a given bar is
+    // not fitted again).
     if !same_graph || !clusters_line_up(g, base) {
-        return full(route_labelled(g, centers, &raw_sizes, &labels));
+        return full(route_fitted(g, centers, &sizes, &labels));
     }
     type R = (f64, f64, f64, f64);
     let node_rect = |nd: &SceneNode| -> R {
@@ -5539,7 +5577,7 @@ pub(crate) fn route_partial_with(
     // Most of the drawing redrawn afresh (not merely near the drag): a
     // full route() costs about the same and draws it better.
     if redrawn as f64 > PARTIAL_ROUTE_SHARE * fixed.len() as f64 {
-        return full(route_labelled(g, centers, &raw_sizes, &labels));
+        return full(route_fitted(g, centers, &sizes, &labels));
     }
     sc.clusters = clusters;
     // The base canvas already covers the kept geometry; the pipeline's
@@ -7857,7 +7895,12 @@ pub(crate) fn sane_sizes(sizes: &[(f64, f64)]) -> Cow<'_, [(f64, f64)]> {
 /// static and the interactive builders fit the same sizes and a drag
 /// never resizes a bar; fitting fitted sizes again changes nothing.
 /// A bar in a composite laid out in its own direction
-/// ([`crate::compound`]) lies across that direction's flow.
+/// ([`crate::compound`]) lies across that direction's flow. A branch
+/// that is such a composite, or holds one, counts at that composite's
+/// frame as the static layout draws it — [`crate::compound`] gives the
+/// interactive builders that frame for every node [`bar_branches`]
+/// names — so a drag inside the composite, which stretches its frame,
+/// resizes no bar either.
 /// Other sizes pass through untouched (borrowed when there is no bar).
 pub(crate) fn fit_bars<'a>(g: &Graph, sizes: &'a [(f64, f64)]) -> Cow<'a, [(f64, f64)]> {
     if !g.nodes.iter().any(|n| n.shape == Shape::ForkBar) {
@@ -7892,20 +7935,7 @@ pub(crate) fn fit_bars<'a>(g: &Graph, sizes: &'a [(f64, f64)]) -> Cow<'a, [(f64,
         End::Node(v) if is_bar(v) => Some(v),
         _ => None,
     };
-    // Every (from, to) a bar may span: the states it joins, composite
-    // ones (frames) included.
-    let ends: Vec<(End, End)> = g
-        .edges
-        .iter()
-        .filter(|e| bar_counts(g, e))
-        .map(|e| (End::Node(e.from), End::Node(e.to)))
-        .chain(
-            g.sub_edges
-                .iter()
-                .filter(|e| e.from != e.to && e.kind != EdgeKind::Invisible)
-                .map(|e| (e.from, e.to)),
-        )
-        .collect();
+    let ends = bar_spans(g);
     // A bar with a note card beside it: its link leaves past the
     // branches, a port's room beyond the outermost one at either end
     // (the layout leaves the card beside the branches, see
@@ -7981,6 +8011,74 @@ pub(crate) fn fit_bars<'a>(g: &Graph, sizes: &'a [(f64, f64)]) -> Cow<'a, [(f64,
         };
     }
     Cow::Owned(out)
+}
+
+/// Every (from, to) a fork/join bar may span ([`fit_bars`]): the states
+/// the graph's drawn edges join, composite ones (frames) included.
+fn bar_spans(g: &Graph) -> Vec<(End, End)> {
+    g.edges
+        .iter()
+        .filter(|e| bar_counts(g, e))
+        .map(|e| (End::Node(e.from), End::Node(e.to)))
+        .chain(
+            g.sub_edges
+                .iter()
+                .filter(|e| e.from != e.to && e.kind != EdgeKind::Invisible)
+                .map(|e| (e.from, e.to)),
+        )
+        .collect()
+}
+
+/// Per node: whether [`fit_bars`] reads its size for a fork/join bar's
+/// length — a state a bar branches to, or a member, however deep, of a
+/// composite one (whose breadth is [`frame_breadth`] of its members).
+/// All `false` without a bar. [`crate::compound`] asks it of each
+/// block's proxy: such a proxy must count at its block's frame as the
+/// static layout draws it, whatever the frame is now.
+pub(crate) fn bar_branches(g: &Graph) -> Vec<bool> {
+    let mut out = vec![false; g.nodes.len()];
+    let is_bar = |end: End| matches!(end, End::Node(v) if g.nodes[v].shape == Shape::ForkBar);
+    if !g.nodes.iter().any(|n| n.shape == Shape::ForkBar) {
+        return out;
+    }
+    // A frame's members and, like `frame_breadth`, those of every frame
+    // nested in it (the walk is bounded by the subgraph count, so a
+    // malformed parent chain cannot loop).
+    let mut mark = |end: End| match end {
+        End::Node(v) => out[v] = true,
+        End::Sub(si) => {
+            for (ci, c) in g.subgraphs.iter().enumerate() {
+                let mut cur = Some(ci);
+                let mut within = false;
+                for _ in 0..=g.subgraphs.len() {
+                    match cur {
+                        Some(x) if x == si => {
+                            within = true;
+                            break;
+                        }
+                        Some(x) => cur = g.subgraphs.get(x).and_then(|s| s.parent),
+                        None => break,
+                    }
+                }
+                if within {
+                    for &v in &c.nodes {
+                        if let Some(o) = out.get_mut(v) {
+                            *o = true;
+                        }
+                    }
+                }
+            }
+        }
+    };
+    for (from, to) in bar_spans(g) {
+        if is_bar(to) {
+            mark(from);
+        }
+        if is_bar(from) {
+            mark(to);
+        }
+    }
+    out
 }
 
 /// How far from its centre a bar must reach to meet the centres of the
@@ -12582,6 +12680,49 @@ mod tests {
         let g = parse("flowchart TD\nA --> B").unwrap();
         let sizes: Vec<(f64, f64)> = g.nodes.iter().map(intrinsic_size).collect();
         assert!(matches!(fit_bars(&g, &sizes), Cow::Borrowed(_)));
+        assert_eq!(bar_branches(&g), [false, false]);
+    }
+
+    /// [`bar_branches`] names exactly the nodes whose size a bar's
+    /// length may read: the states a bar branches to and, for a
+    /// composite one, its members however deep — what
+    /// `crate::compound` swaps a block's static frame in for.
+    #[test]
+    fn bar_branches_are_the_sizes_a_bar_reads() {
+        let g = state_graph(
+            "stateDiagram-v2\n[*] --> Idle\nIdle --> f\nstate f <<fork>>\nf --> A\nf --> Outer\n\
+             state Outer {\n  x --> Inner\n  state Inner {\n    y --> z\n  }\n}\n\
+             state j <<join>>\nA --> j\nOuter --> j\nj --> Done\nDone --> Later\n\
+             note right of f : forks",
+        );
+        let branches = bar_branches(&g);
+        let read: Vec<&str> = (0..g.nodes.len())
+            .filter(|&v| branches[v])
+            .map(|v| g.nodes[v].id.as_str())
+            .collect();
+        // `Idle` and `Done` are the bars' lone ends on those sides, read
+        // all the same (one branch is no fan, two would be); the note's
+        // card and `Later` are not.
+        assert_eq!(read, ["Idle", "A", "x", "y", "z", "Done"]);
+        let sizes = crate::layout::node_sizes(&g);
+        let fitted = fit_bars(&g, &sizes).into_owned();
+        let bars = |sizes: &[(f64, f64)]| -> Vec<(f64, f64)> {
+            (0..g.nodes.len())
+                .filter(|&v| g.nodes[v].shape == Shape::ForkBar)
+                .map(|v| sizes[v])
+                .collect()
+        };
+        for v in (0..g.nodes.len()).filter(|&v| g.nodes[v].shape != Shape::ForkBar) {
+            let mut grown = sizes.clone();
+            grown[v] = (grown[v].0 + 900.0, grown[v].1 + 900.0);
+            let changed = bars(&fit_bars(&g, &grown)) != bars(&fitted);
+            let id = &g.nodes[v].id;
+            if !branches[v] {
+                assert!(!changed, "{id}: not read, yet a bar changed");
+            } else if ["A", "x", "y", "z"].contains(&id.as_str()) {
+                assert!(changed, "{id}: a branch of a fan, yet no bar changed");
+            }
+        }
     }
 
     #[test]
@@ -15715,6 +15856,29 @@ mod tests {
         }
     }
 
+    /// The labels of `sc` with another edge's stroke through their box,
+    /// as "'label' under from>to", and each label's distance from its
+    /// own line.
+    fn struck_labels(sc: &Scene) -> (Vec<String>, Vec<(String, f64)>) {
+        let (mut struck, mut off) = (Vec::new(), Vec::new());
+        for l in sc.edges.iter().filter(|e| e.label.is_some()) {
+            let Some((text, c, _)) = &l.label else {
+                continue;
+            };
+            for o in sc.edges.iter().filter(|o| !std::ptr::eq(*o, l)) {
+                if crosses_label(l, &edge_polyline(o)) {
+                    struck.push(format!("'{text}' under {}>{}", o.from, o.to));
+                }
+            }
+            let d = edge_polyline(l)
+                .windows(2)
+                .map(|w| point_seg_dist(c.0, c.1, w[0], w[1]))
+                .fold(f64::INFINITY, f64::min);
+            off.push((text.clone(), d));
+        }
+        (struck, off)
+    }
+
     #[test]
     fn a_choice_twins_middle_label_keeps_beside_its_line() {
         // State twins3: three labelled transitions from a <<choice>> to
@@ -15723,30 +15887,90 @@ mod tests {
         // by the nearer line to its centre, and moved onto its own line
         // between both neighbours, covering two strokes. A labelled line
         // carries its own label and never takes this one over.
-        let src = "stateDiagram-v2\nstate c <<choice>>\n[*] --> P\nP --> c\nc --> B : one\n\
-                   c --> B : two\nc --> B : three";
-        let g = match crate::parser::parse_document(src).unwrap() {
-            crate::model::Document::State(g) => g,
-            _ => panic!("state"),
-        };
-        let s = scene(&g);
-        let c: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
-        for sc in [s.clone(), route(&g, &c)] {
-            let twins: Vec<&SceneEdge> = sc
-                .edges
-                .iter()
-                .filter(|e| e.from == "c" && e.to == "B")
-                .collect();
-            let covered: usize = twins
-                .iter()
-                .map(|l| {
-                    twins
-                        .iter()
-                        .filter(|o| !std::ptr::eq(**o, *l) && crosses_label(l, &edge_polyline(o)))
-                        .count()
-                })
-                .sum();
-            assert!(covered <= 1, "{covered} twin strokes under labels");
+        //
+        // Phase A leftover: 'two' still lay half over the 'three' stroke
+        // (one twin stroke under a label was let through here). With
+        // the twins drawn square, a lane's room apart, each label sits
+        // on its own line with no other stroke under it: in every
+        // direction, in the static scene, after a full reroute and
+        // while the choice is dragged across the flow. (Dragged toward
+        // the state it leaves the three labels one row, too short for
+        // them side by side: the general placer's best spots then.)
+        let body = "state c <<choice>>\n[*] --> P\nP --> c\nc --> B : one\n\
+                    c --> B : two\nc --> B : three";
+        for dir in ["TB", "BT", "LR", "RL"] {
+            let g = state_graph(&format!("stateDiagram-v2\ndirection {dir}\n{body}"));
+            let s = scene(&g);
+            let at: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let ci = g.node_index("c").unwrap();
+            let mut scenes = vec![("scene".to_string(), s.clone())];
+            scenes.push(("route".to_string(), route(&g, &at)));
+            let across = if matches!(dir, "TB" | "BT") {
+                (30.0, 0.0)
+            } else {
+                (0.0, 30.0)
+            };
+            for k in [-1.0, 1.0] {
+                let mut to = at.clone();
+                to[ci] = (to[ci].0 + k * across.0, to[ci].1 + k * across.1);
+                scenes.push((format!("drag {k}"), route_partial(&g, &to, &s, &at)));
+            }
+            for (what, sc) in &scenes {
+                let (struck, off) = struck_labels(sc);
+                assert!(struck.is_empty(), "{dir} {what}: {struck:?}");
+                assert_eq!(off.len(), 3, "{dir} {what}");
+                for (text, d) in off {
+                    assert!(d < 1.0, "{dir} {what}: '{text}' {d:.1} px off its line");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_wide_choice_label_keeps_off_its_siblings_lines() {
+        // State wide_lr (phase A leftover): in an LR choice whose labels
+        // are about as long as the gap, 'the request is anonymous but
+        // rate limited' covered the start of the transition to A, where
+        // the fan's lines leave the choice side by side. The flowchart
+        // label and port work since has cleared it; this keeps it so: no
+        // label has another transition's stroke under it, and each sits
+        // on its line or just beside it (a label as long as its gap
+        // steps off the arrowhead), in the static scene, after a full
+        // reroute and while the choice is dragged across the flow,
+        // whichever way the diagram runs. (Dragged toward its targets
+        // the choice leaves the gap shorter than the label: the general
+        // placer's best spot then, as before.)
+        let body = "state c <<choice>>\n[*] --> P\nP --> c\n\
+                    c --> A : the request came from a verified partner\n\
+                    c --> B : the request is anonymous but rate limited\nc --> C : failed";
+        for dir in ["LR", "RL", "TB", "BT"] {
+            let g = state_graph(&format!("stateDiagram-v2\ndirection {dir}\n{body}"));
+            let s = scene(&g);
+            let at: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let ci = g.node_index("c").unwrap();
+            let mut scenes = vec![("scene".to_string(), s.clone())];
+            scenes.push(("route".to_string(), route(&g, &at)));
+            let across = if matches!(dir, "TB" | "BT") {
+                (30.0, 0.0)
+            } else {
+                (0.0, 30.0)
+            };
+            for k in [-1.0, 1.0] {
+                let mut to = at.clone();
+                to[ci] = (to[ci].0 + k * across.0, to[ci].1 + k * across.1);
+                scenes.push((format!("drag {k}"), route_partial(&g, &to, &s, &at)));
+            }
+            for (what, sc) in &scenes {
+                let (struck, off) = struck_labels(sc);
+                assert!(struck.is_empty(), "{dir} {what}: {struck:?}");
+                assert_eq!(off.len(), 3, "{dir} {what}");
+                // Beside its line: the chip's half height and the air
+                // `labels::LABEL_SIDE_AIR` keeps between the two.
+                let beside = crate::layout::LABEL_BOX_H / 2.0 + crate::labels::LABEL_SIDE_AIR + 1.0;
+                for (text, d) in off {
+                    assert!(d <= beside, "{dir} {what}: '{text}' {d:.1} px off its line");
+                }
+            }
         }
     }
 
