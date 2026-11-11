@@ -33,3 +33,8 @@ What follows from it (the lead's reading; apply to SPEC.md):
 - The user asked why B12 came after c-leftovers and chose **"Tukar: B12 dulu"**: B12 runs right after B11.
   Order: B11 → release 0.39.0 → B12 (four packages) → release **0.40.0** → c-leftovers → release 0.41.0.
   Every earlier mention of "0.41.0 after B12b" in this file is superseded by this entry.
+
+## Side by side (user, 2026-11-11 ~00:50 UTC: "harusnya bisa paralel kan?")
+- B12 (main repo) and the class/state leftovers package (worktree, branch `ccr-ccc6d89a-5cxd7e-par`) run at the same
+  time, both starting on B11's head. B12 still starts the moment B11 passes. Release numbers follow the order in which
+  the packages pass (B12's release is 0.40.0 or 0.41.0). The leftovers skip the two block-placement items.

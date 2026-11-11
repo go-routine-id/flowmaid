@@ -48,9 +48,18 @@ Date 2026-11-10. Written for an implementer who has seen none of the design work
 - **B12.0's workspace tooling** (block-metrics columns, judge rules, reference tables) is reviewed by the verifier of
   `b12a1-structure`, who re-derives at least three rows by hand.
 - **Disk:** the suite-on run's second cargo target directory is deleted after each checkpoint report is written.
-- **Order and release number (user decision, 2026-11-11):** B12 runs BEFORE the class/state leftovers package, right
-  after B11 (released as 0.39.0). Its release is therefore **0.40.0**; the leftovers package follows as 0.41.0. The
+- **Order and release number (user decisions, 2026-11-11):** B12 starts right after B11 (released as 0.39.0) and does
+  not wait for the class/state leftovers package. That package now runs AT THE SAME TIME in another worktree (branch
+  `ccr-ccc6d89a-5cxd7e-par`); it skips the two block-placement items and keeps its state/compound edits small. The
   "starting release" of every baseline in this spec is the commit B12.0 starts from (B11's head).
+  **Release number:** B12 takes the next free number when it is released (0.40.0 if it passes before the leftovers
+  package, otherwise 0.41.0). Wherever this spec says "0.40.0", read "B12's release". Never write a version number
+  into code, tests or fixtures; the CHANGELOG entry goes under `[Unreleased]`; the lead bumps the version.
+  **Merges between B12 packages:** the lead merges `dev` (the 0.39.0 release commits, later the leftovers package)
+  into this branch only between two B12 packages, never while one runs, and re-takes B12.0's baselines in that step
+  when a default drawing changed. A B12 implementer who finds, at the start of its package, a baseline that differs
+  for a class or state input because of such a merge re-takes that baseline with B12.0's scripts and says so in its
+  report; this is not a loosened gate. A difference on a flowchart input is never explained this way: report it.
 
 1. **Design built: `d-global`**, the unanimous winner of the three judges: one Sugiyama pass over all nodes, one scene,
    one `edgepass::finish`, `compound.rs` (B9) untouched; blocks come from a block-aware layering, a block-aware ordering
