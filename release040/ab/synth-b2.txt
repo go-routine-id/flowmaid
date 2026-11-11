@@ -1,0 +1,4 @@
+ nodes  edges layers |     parse    layout   render* |      SVG
+    49    100     10 |    0.14ms    1.50ms   34.50ms |     70KB
+   200    400     20 |    0.55ms   26.30ms  249.71ms |    589KB
+  1000   2010     50 |    4.69ms 1270.15ms 3205.44ms |   3230KB
