@@ -220,11 +220,14 @@ pub struct Scene {
     pub clusters: Vec<SceneCluster>,
     pub width: f64,
     pub height: f64,
-    /// Set by a scene builder whose own painter strokes every edge
-    /// plain (architecture, gitGraph): no crossing of such a scene is
+    /// Set by the architecture and gitGraph scene builders, whose own
+    /// painters stroke every edge plain: no crossing of such a scene is
     /// drawn as a hop, so none is worked out for it and a pick follows
     /// the plain strokes ([`crate::hops::legs_for_pick`]). `false` for
-    /// every scene [`to_svg`] paints.
+    /// every scene flowmaid itself paints with [`to_svg`] (flowchart,
+    /// state, compact); handed a scene with it set, `to_svg` draws its
+    /// crossings without hops too. A class or ER scene is kept plain by
+    /// its edges' `paint_width` instead.
     pub(crate) plain_crossings: bool,
 }
 
