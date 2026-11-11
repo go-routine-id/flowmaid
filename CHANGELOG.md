@@ -53,6 +53,10 @@ changed.
   change. The three dense flowcharts' SVGs are about a tenth smaller
   (bench-75 65.1 -> 59.0 KB); the synthetic 200-node, 400-edge graph's
   grows from 507 to 589 KB.
+- **A shorter README.** It no longer restates mermaid's syntax: each
+  diagram type links to mermaid's page and lists only the supported
+  subset, what is not supported yet and what flowmaid adds, and the
+  differences from mermaid are gathered in one table (928 lines -> 618).
 
 ### Added
 
