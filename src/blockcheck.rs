@@ -787,29 +787,58 @@ fn a_turned_edge_one_layer_up_is_a_z_not_a_lane() {
     assert_eq!(rep.statik.wiggles, 0);
 }
 
+/// The block layout of `g` as the layout returns it: positions, each
+/// channel point's subgraph path, and each node's chain of blocks.
+fn block_layout(
+    g: &Graph,
+) -> (
+    crate::layout::LayoutResult,
+    crate::layout::EdgeGroups,
+    crate::layout::BlockPaths,
+) {
+    let aug = crate::levels::Augmented::of(g);
+    let rank_only = aug.rank_only();
+    let (mut ga, stand_in) = aug.graph(g);
+    ga.block_links = Some(aug.block_links(&stand_in, ga.edges.len()));
+    let sizes = crate::layout::node_sizes(g);
+    let (lo, groups, paths) =
+        crate::layout::layout_clustered_ranked(&ga, &sizes, &aug.node_cluster, &rank_only);
+    (lo, groups, paths.expect("laid out as blocks"))
+}
+
 #[test]
 fn a_chain_out_of_a_nested_block_leaves_through_its_downstream_side() {
     // `a -> c2` starts in one nested block and ends in its sibling: its
     // channel stays inside the source block down to that block's last
     // row and inside the target block from its first row on, so it
-    // crosses both frames on their flow-facing sides.
+    // crosses both frames on their flow-facing sides. (With "the
+    // target's path wins" the channel took the outer block's path on the
+    // source block's remaining rows and lay beside it.)
     let g = fixture("blocks/nested-chain");
-    let sc = block_scene(&g);
-    let path = path_of(edge(&sc, "a", "c2"));
-    for id in ["Y", "Z"] {
-        let f = frame_box(&sc, id);
-        for w in path.windows(2) {
-            for k in 0..=20 {
-                let t = f64::from(k) / 20.0;
-                let p = (
-                    w[0].0 + (w[1].0 - w[0].0) * t,
-                    w[0].1 + (w[1].1 - w[0].1) * t,
-                );
-                if p.1 > f.1 && p.1 < f.3 {
-                    assert!(p.0 > f.0 && p.0 < f.2, "{id}: {p:?} outside {f:?}");
-                }
-            }
-        }
+    let (lo, groups, _) = block_layout(&g);
+    let ei = g
+        .edges
+        .iter()
+        .position(|e| g.nodes[e.from].id == "a" && g.nodes[e.to].id == "c2")
+        .expect("the edge");
+    let sub = |id: &str| {
+        g.subgraphs
+            .iter()
+            .position(|s| s.id == id)
+            .expect("subgraph")
+    };
+    let (x, y, z) = (sub("X"), sub("Y"), sub("Z"));
+    let last_of_y = lo.nodes[id(&g, "b2")].layer;
+    let from = lo.nodes[id(&g, "a")].layer;
+    assert!(!groups[ei].is_empty());
+    for (k, path) in groups[ei].iter().enumerate() {
+        let layer = from + 1 + k;
+        let want = if layer <= last_of_y {
+            vec![x, y]
+        } else {
+            vec![x, z]
+        };
+        assert_eq!(path, &want, "channel point on layer {layer}");
     }
 }
 
@@ -821,10 +850,25 @@ fn a_chain_label_sits_outside_both_end_blocks() {
     let g = fixture("blocks/blocks-overview");
     let sc = block_scene(&g);
     let nc = crate::scene::node_cluster_paths(&g);
-    for (e, se) in g.edges.iter().zip(&sc.edges) {
+    let (_, groups, _) = block_layout(&g);
+    let mut checked = 0;
+    for (ei, (e, se)) in g.edges.iter().zip(&sc.edges).enumerate() {
         let Some((text, at, _)) = &se.label else {
             continue;
         };
+        // A chain with a run between its end blocks. (Without one —
+        // two bands with no layer between them — the label keeps to
+        // the gap between the frames, which the gap room has to hold.)
+        let common: Vec<usize> = nc[e.from]
+            .iter()
+            .zip(&nc[e.to])
+            .take_while(|(a, b)| a == b)
+            .map(|(a, _)| *a)
+            .collect();
+        if !groups[ei].contains(&common) {
+            continue;
+        }
+        checked += 1;
         for (s, sub) in g.subgraphs.iter().enumerate() {
             if nc[e.from].contains(&s) == nc[e.to].contains(&s) {
                 continue;
@@ -839,4 +883,204 @@ fn a_chain_label_sits_outside_both_end_blocks() {
             );
         }
     }
+    assert!(checked >= 5, "{checked} labelled chains checked");
+}
+
+// --- The level-first ordering.
+
+/// Per layer, the node ids in the order the block layout draws them.
+fn layer_orders(g: &Graph) -> Vec<Vec<String>> {
+    let (lo, _, _) = block_layout(g);
+    let layers = lo.nodes.iter().map(|p| p.layer).max().map_or(0, |m| m + 1);
+    (0..layers)
+        .map(|l| {
+            let mut on: Vec<usize> = (0..g.nodes.len())
+                .filter(|&v| lo.nodes[v].layer == l)
+                .collect();
+            on.sort_by(|&a, &b| lo.nodes[a].b.total_cmp(&lo.nodes[b].b));
+            on.into_iter().map(|v| g.nodes[v].id.clone()).collect()
+        })
+        .collect()
+}
+
+/// The two constraints of a level's order, read off a block layout:
+/// two sibling blocks that share layers stand in one order on all of
+/// them, and a channel passing a block keeps to one side of it.
+fn assert_one_side(name: &str, g: &Graph) {
+    let (lo, groups, _) = block_layout(g);
+    let nc = crate::scene::node_cluster_paths(g);
+    let ns = g.subgraphs.len();
+    // Per (block, layer): the breadth span of its members.
+    let mut span: std::collections::BTreeMap<(usize, usize), (f64, f64)> = Default::default();
+    for (v, path) in nc.iter().enumerate() {
+        let p = &lo.nodes[v];
+        for &c in path {
+            let e = span
+                .entry((c, p.layer))
+                .or_insert((f64::INFINITY, f64::NEG_INFINITY));
+            *e = (e.0.min(p.b - p.bsize / 2.0), e.1.max(p.b + p.bsize / 2.0));
+        }
+    }
+    let parent = |c: usize| g.subgraphs[c].parent;
+    for a in 0..ns {
+        for b in a + 1..ns {
+            if parent(a) != parent(b) {
+                continue;
+            }
+            let mut order: Option<bool> = None;
+            for (&(c, l), &(a0, a1)) in span.iter().filter(|(k, _)| k.0 == a) {
+                debug_assert_eq!(c, a);
+                let Some(&(b0, b1)) = span.get(&(b, l)) else {
+                    continue;
+                };
+                assert!(
+                    a1 <= b0 + 0.5 || b1 <= a0 + 0.5,
+                    "{name}: blocks {} and {} overlap on layer {l}",
+                    g.subgraphs[a].id,
+                    g.subgraphs[b].id
+                );
+                let first = a1 <= b0 + 0.5;
+                assert!(
+                    order.map_or(true, |o| o == first),
+                    "{name}: blocks {} and {} change sides on layer {l}",
+                    g.subgraphs[a].id,
+                    g.subgraphs[b].id
+                );
+                order = Some(first);
+            }
+        }
+    }
+    // A channel's points at one subgraph path on consecutive layers are
+    // a run: it stays on one side of every block of that level.
+    for (ei, e) in g.edges.iter().enumerate() {
+        let (la, lb) = (lo.nodes[e.from].layer, lo.nodes[e.to].layer);
+        let layer_of = |k: usize| if la < lb { la + 1 + k } else { la - 1 - k };
+        for c in 0..ns {
+            let mut side: Option<(bool, &Vec<usize>)> = None;
+            for (k, (point, path)) in lo.edge_paths[ei].iter().zip(&groups[ei]).enumerate() {
+                let level: Vec<usize> = nc
+                    .iter()
+                    .find(|p| p.contains(&c))
+                    .map(|p| p[..p.iter().position(|&x| x == c).unwrap_or(0)].to_vec())
+                    .unwrap_or_default();
+                if *path != level {
+                    side = None;
+                    continue;
+                }
+                let Some(&(c0, c1)) = span.get(&(c, layer_of(k))) else {
+                    side = None;
+                    continue;
+                };
+                let left = point.0 < (c0 + c1) / 2.0;
+                if let Some((was, at)) = side {
+                    assert!(
+                        was == left || at != path,
+                        "{name}: {} -> {} changes sides of block {}",
+                        g.nodes[e.from].id,
+                        g.nodes[e.to].id,
+                        g.subgraphs[c].id
+                    );
+                }
+                side = Some((left, path));
+            }
+        }
+    }
+}
+
+#[test]
+fn chains_keep_one_side_of_a_block() {
+    for (name, g) in clustered_fixtures() {
+        if crate::compound::split(&g).is_some() || !crate::scene::block_mode(&g) {
+            continue;
+        }
+        assert_one_side(&name, &g);
+    }
+    for seed in 0..120u64 {
+        let dir = ["TD", "LR", "BT", "RL"][(seed % 4) as usize];
+        let src = generated(seed, dir);
+        let g = graph(&src);
+        if !g.subgraphs.is_empty() && crate::scene::block_mode(&g) {
+            assert_one_side(&format!("seed {seed}\n{src}"), &g);
+        }
+    }
+}
+
+#[test]
+fn level_order_is_deterministic_and_bounded() {
+    // The same drawing twice, on a thread of its own too (nothing of the
+    // order depends on what ran before).
+    for name in [
+        "blocks/blocks-overview",
+        "quality/dense-td",
+        "blocks/nested",
+    ] {
+        let g = fixture(name);
+        let svg = |g: &Graph| crate::scene::to_svg(&block_scene(g));
+        let first = svg(&g);
+        assert_eq!(first, svg(&g), "{name}");
+        let other = std::thread::scope(|s| s.spawn(|| svg(&g)).join().expect("renders"));
+        assert_eq!(first, other, "{name}");
+    }
+    // More starts than the ordering ever takes change nothing more: the
+    // budget's seven are the most.
+    let g = fixture("blocks/blocks-overview");
+    let at = |starts: usize| {
+        crate::levels::with_order_starts(starts, || crate::scene::to_svg(&block_scene(&g)))
+    };
+    assert_eq!(at(7), crate::scene::to_svg(&block_scene(&g)));
+}
+
+#[test]
+fn the_start_order_ignores_edge_statement_order() {
+    // The public fixture with its edge lines reversed, and rotated, is
+    // the same graph: the same order on every layer.
+    let want = layer_orders(&fixture("blocks/blocks-overview"));
+    for variant in ["edges-reversed", "edges-rotated"] {
+        let g = fixture(&format!("blocks/blocks-overview-{variant}"));
+        assert_eq!(layer_orders(&g), want, "{variant}");
+    }
+}
+
+#[test]
+fn a_hub_fan_leaves_in_target_order() {
+    // No two edges of one node's or frame's fan cross each other, in the
+    // static scene and routed at its centres.
+    for name in ["blocks/blocks-overview", "blocks/hub5"] {
+        let root = env!("CARGO_MANIFEST_DIR");
+        let src = std::fs::read_to_string(format!("{root}/tests/fixtures/{name}.mmd")).unwrap();
+        let rep = crate::levels::with_blocks(true, || crate::quality::measure_source(&src, false))
+            .expect("a flowchart");
+        assert_eq!(rep.statik.fan_x, 0, "{name} static");
+    }
+}
+
+#[test]
+fn crossing_neutral_members_keep_declaration_order() {
+    // The shared services of the public fixture: none of its members'
+    // places changes a crossing against another's, so they stand as
+    // declared, whatever shuffle the winning start began with.
+    let g = fixture("blocks/blocks-overview");
+    let declared = ["CDN", "LB", "MAIL", "PAGER"];
+    for starts in [1, 3, 7] {
+        let orders = crate::levels::with_order_starts(starts, || layer_orders(&g));
+        let row: Vec<&str> = orders
+            .iter()
+            .flatten()
+            .map(String::as_str)
+            .filter(|id| declared.contains(id))
+            .collect();
+        assert_eq!(row, declared, "{starts} starts");
+    }
+}
+
+#[test]
+fn a_narrowing_candidate_starts_from_the_winning_order() {
+    // dense-td's first placement as blocks is a ribbon over 7 000 px
+    // broad. Narrowing still gives breadth back: its candidates start
+    // from the first placement's final order, not from a start of
+    // their own (which would lose to the multi-start best on crossings
+    // and leave the ribbon as it is).
+    let g = fixture("quality/dense-td");
+    let (lo, _, _) = block_layout(&g);
+    assert!(lo.total_b < 5000.0, "{} px broad", lo.total_b);
 }

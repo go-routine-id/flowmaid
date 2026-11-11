@@ -32,7 +32,8 @@
 //! moves the frames it may redraw / any other frame).
 //! `--levels` lists each diagram's level tree on stderr, `--layers` its
 //! layers as blocks beside its layers before blocks
-//! (`quality::layers_dump`).
+//! (`quality::layers_dump`). `--starts <n>` makes the ordering of a
+//! block layout take `n` starts instead of what its budget grants.
 
 use flowmaid::model::Graph;
 use flowmaid::quality::{self, Agg, Metrics};
@@ -42,7 +43,7 @@ use std::path::{Path, PathBuf};
 
 fn usage() -> ! {
     eprintln!(
-        "usage: quality <dir> [--svg <out-dir>] [--details] [--drag] [--levels] [--layers]  (or set FLOWMAID_QUALITY_DIR)"
+        "usage: quality <dir> [--svg <out-dir>] [--details] [--drag] [--levels] [--layers] [--starts <n>]  (or set FLOWMAID_QUALITY_DIR)"
     );
     std::process::exit(2)
 }
@@ -131,6 +132,7 @@ fn main() {
     let mut dragging = false;
     let mut levels = false;
     let mut layers = false;
+    let mut starts: Option<usize> = None;
     while let Some(a) = args.next() {
         if a == "--details" {
             details = true;
@@ -138,6 +140,12 @@ fn main() {
             levels = true;
         } else if a == "--layers" {
             layers = true;
+        } else if a == "--starts" {
+            starts = Some(
+                args.next()
+                    .and_then(|n| n.parse().ok())
+                    .unwrap_or_else(|| usage()),
+            );
         } else if a == "--drag" {
             dragging = true;
         } else if a == "--svg" {
@@ -186,7 +194,11 @@ fn main() {
     for path in &files {
         let name = path.file_stem().unwrap().to_string_lossy().to_string();
         let src = std::fs::read_to_string(path).expect("read mmd");
-        let rep = match quality::measure_source(&src, true) {
+        let measured = match starts {
+            Some(n) => quality::with_block_order_starts(n, || quality::measure_source(&src, true)),
+            None => quality::measure_source(&src, true),
+        };
+        let rep = match measured {
             Ok(r) => r,
             Err(e) => {
                 eprintln!("skip {name}: {e}");

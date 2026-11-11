@@ -649,6 +649,13 @@ pub fn with_blocks<T>(on: bool, f: impl FnOnce() -> T) -> T {
     crate::levels::with_blocks(on, f)
 }
 
+/// Run `f` with the ordering of a block layout taking `starts` starts
+/// instead of what its work budget grants (for the table of crossings
+/// by starts).
+pub fn with_block_order_starts<T>(starts: usize, f: impl FnOnce() -> T) -> T {
+    crate::levels::with_order_starts(starts, f)
+}
+
 /// Whether the block layout of subgraphs is switched on for a call made
 /// now on this thread.
 pub fn blocks_on() -> bool {

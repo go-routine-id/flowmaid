@@ -63,6 +63,32 @@ pub(crate) fn with_blocks<T>(on: bool, f: impl FnOnce() -> T) -> T {
     f()
 }
 
+thread_local! {
+    /// The number of starts the ordering of a block layout takes, when
+    /// a report sets it ([`with_order_starts`]).
+    static STARTS: Cell<Option<usize>> = const { Cell::new(None) };
+}
+
+/// The number of starts a report asked the ordering of a block layout
+/// to take on this thread; `None`: the budget decides.
+pub(crate) fn order_starts() -> Option<usize> {
+    STARTS.with(|c| c.get())
+}
+
+/// Run `f` with the ordering of a block layout taking `starts` starts
+/// on this thread (the table of crossings by starts), and put the
+/// former setting back afterwards, also when `f` unwinds.
+pub(crate) fn with_order_starts<T>(starts: usize, f: impl FnOnce() -> T) -> T {
+    struct Reset(Option<usize>);
+    impl Drop for Reset {
+        fn drop(&mut self) {
+            STARTS.with(|c| c.set(self.0));
+        }
+    }
+    let _reset = Reset(STARTS.with(|c| c.replace(Some(starts))));
+    f()
+}
+
 /// What a clustered diagram's edges to whole subgraphs stand for in the
 /// layout: built once per entry call, by the one constructor
 /// ([`Augmented::of`]).
