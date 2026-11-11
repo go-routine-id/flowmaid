@@ -17,6 +17,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
   the end of an edge drawn straight across is not counted, that end stays
   where its partner lies). `Metrics::details` lists each label a stroke
   runs through (`lbl_edge`).
+- **Class diagrams: dotted names** (`com.example.Order`, `A.B --> C`).
+  A name may hold single dots, as in mermaid: `A.B` is one class called
+  `A.B`, the same class in a declaration, a `class A.B { … }` block, an
+  inline member (`A.B : +id int`), a relation, a `note for A.B` and a
+  backtick literal. Only `..` is the dotted line (`A.B..>C` is `A.B`
+  depending on `C`), and a dot never starts or ends a name (`A.`, `.A`
+  and `A...B` stay errors, as in mermaid). Such names were parse errors
+  in a relation, an inline member and a `note for`. A name part that is
+  just `o` is no aggregation glyph: `pkg.o --> B` links the class
+  `pkg.o`, where mermaid's lexer gives up on the line.
 
 ### Changed
 
@@ -159,6 +169,33 @@ project adheres to [Semantic Versioning](https://semver.org/).
   dense-lr 12 -> 14, fanout 4.5 -> 5.2), for working out the hops near
   the pointer; `to_svg` of bench-75 takes a fifth less time
   (4.1 -> 3.2 ms, fewer masks).
+
+### Fixed
+
+- **Class diagrams: a plain fan of six no longer crosses itself.** Six
+  classes into one hub (`Svc0 --> Hub` … `Svc5 --> Hub`, or the hub out
+  to six) left the two outermost relations as curves that swept across
+  their neighbours' routes, 4 crossings where mermaid draws none: the
+  innermost jog took the middle one of the gap's three lanes and the
+  next the lane below, and the outermost — its leg into the hub 3.5 px
+  beside the innermost's leg out of its class — found no lane under
+  both. A curve that would be a jog now joins the jogs of its gap when
+  they are stacked in nesting order, so the six nest a lane's room
+  apart, in every direction and for every relation kind. The same
+  rescues another fan that kept two curves (eleven classes into one in
+  `LR`, each with a label and cardinalities: 8 crossings -> 0); no
+  other class diagram tried (some 950) draws differently.
+- **Class diagrams: self-relations keep off a neighbour's.** A class's
+  loops were placed clear of the other boxes only, so with a loop on
+  each of two siblings they met in the gap between: five loops on one
+  class set a label on its sibling's loop, eight unlabelled ones ran
+  four deep through the sibling's loop and its label, and two siblings
+  with three loops each wove them together. A class's loops and their
+  labels now also keep off the loops and loop labels of the classes
+  drawn before it (in source order), on whichever face is clear — a box
+  or one of the class's own ends still counts first, so no loop is sent
+  into a box to spare a neighbour's loop. A class with more than eight
+  loops keeps to two faces, as before.
 
 ## [0.38.0] - 2026-11-10
 

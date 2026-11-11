@@ -402,10 +402,11 @@ Supported subset:
   - a fan's jogs nest in order, and a fan wider than its parent's face sends its outermost legs to the side faces, so a class with up to about a dozen subclasses draws its fan without a crossing;
   - crowded fan-ins (six or more classes pointing at one) can still cross, up to about a dozen times with labels and cardinalities, and much wider fans (twenty or more subclasses) many times, a leg with no free lane keeping a diagonal curve across the others;
   - cardinalities sit beside their end, clear of lines, glyphs and labels, in every direction;
-  - a class's self-relations alternate sides and nest, those with cardinalities outermost so each cardinality sits by its own end. They move to a clear face when a sibling sits close (past four loops on such a class, a loop can still pass under the sibling), and their labels sit beside the loops, not on them.
+  - a class's self-relations alternate sides and nest, those with cardinalities outermost so each cardinality sits by its own end. They move to a clear face when a sibling, or a sibling's own loops, sits close (a class with more than eight loops keeps to two faces whatever stands beside it), and their labels sit beside the loops, not on them.
 - **Notes.** `note "text"` and `note for Class "text"` draw as yellow cards, and an attached note sits just above its class, linked to it by a dotted line. `\n` or `<br/>` breaks a note line. A diagram may hold notes alone. As in mermaid, a note for a class that is never declared stays free.
 - **Comments.** Trailing `%%` comments are stripped (mermaid prints them as part of the label).
-- **Not yet supported:** `namespace` blocks, `classDef` / `:::` styling and `click` in class diagrams; dotted names in relations (`A.B --> C`), which are parse errors.
+- **Dotted names.** A name may hold single dots, as in mermaid: `com.example.Order` is one class of that name wherever it is written (`A.B --> C`, `A.B : +id int`, `note for A.B "…"`), `..` stays the dotted line (`A.B..>C`), and a dot never starts or ends a name.
+- **Not yet supported:** `namespace` blocks, `classDef` / `:::` styling and `click` in class diagrams.
 
 See `examples/class.mmd`.
 

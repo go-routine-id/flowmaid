@@ -384,9 +384,12 @@ const LOOP_NEST: (f64, f64, f64) = (12.0, 28.0, 16.0);
 /// beside its own end instead of out past the outer loops, next to
 /// theirs. The labels of a side sit past its outermost loop, side by
 /// side along the face. A side whose loops would run into another box
-/// (a sibling close beside the class) or over another edge's end gives
-/// them to a clear face ([`loop_faces`]). A class's only loop keeps the
-/// layout's curve while it stays on the layout's side.
+/// (a sibling close beside the class), into the loops or loop labels
+/// of a class drawn before it (classes are drawn in source order: two
+/// siblings' loops used to meet in the gap between them, each label on
+/// the other's loops) or over another edge's end gives them to a clear
+/// face ([`loop_faces`]). A class's only loop keeps the layout's curve
+/// while it stays on the layout's side.
 fn part_self_loops(sc: &mut Scene, carded: &[bool]) {
     let idx = node_index(sc);
     let mut loops: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
@@ -398,6 +401,9 @@ fn part_self_loops(sc: &mut Scene, carded: &[bool]) {
         }
     }
     let rects: Vec<Rect> = sc.nodes.iter().map(node_rect).collect();
+    // The loops and loop labels of the classes done so far, each one's
+    // box: in the way of a later class's loops like any class.
+    let mut drawn: Vec<Rect> = Vec::new();
     for (i, js) in loops {
         let n = sc.nodes[i].clone();
         let side = face_normal(&n, sc.edges[js[0]].bezier[0]);
@@ -431,7 +437,7 @@ fn part_self_loops(sc: &mut Scene, carded: &[bool]) {
             .filter(|&(k, _)| k != i)
             .map(|(_, &r)| r)
             .collect();
-        let faces = loop_faces(&n, &outs, &ends, &widths, &others);
+        let faces = loop_faces(&n, &outs, &ends, &widths, (&others, &drawn));
         for (f, &out) in outs.iter().enumerate() {
             let mut on: Vec<usize> = (0..js.len()).filter(|&k| faces[k] == f).collect();
             // Innermost first: the loops without cardinalities, then
@@ -448,6 +454,20 @@ fn part_self_loops(sc: &mut Scene, carded: &[bool]) {
                     *m = spot;
                 }
             }
+        }
+        for &j in &js {
+            let e = &sc.edges[j];
+            let line = edge_polyline(e);
+            drawn.push(line.iter().fold(
+                (
+                    f64::INFINITY,
+                    f64::INFINITY,
+                    f64::NEG_INFINITY,
+                    f64::NEG_INFINITY,
+                ),
+                |r, p| (r.0.min(p.0), r.1.min(p.1), r.2.max(p.0), r.3.max(p.1)),
+            ));
+            drawn.extend(label_chip(e));
         }
     }
 }
@@ -521,16 +541,20 @@ fn face_loops(n: &SceneNode, out: (f64, f64), labels: &[Option<f64>]) -> Vec<Sel
 /// order of preference) for each of a class's self-loops, `widths`
 /// their labels' widths: alternately the first two faces, unless the
 /// loops and labels there would meet a box of `others`, lie over
-/// `ends` (other edges' ends per face) or meet the loops of another
-/// face. Then each way of sharing the loops among the four faces is
-/// tried, round robin as before, the clearest kept; of two as clear,
-/// the one that uses the preferred faces and nests least.
+/// `ends` (other edges' ends per face), meet the loops of another
+/// face or those `drawn` round other classes (each loop's and each
+/// loop label's box). Then each way of sharing the loops among the
+/// four faces is tried, round robin as before, the clearest kept — a
+/// box, an end or the class's own loops count before any number of
+/// another class's loops, so no loop is sent into a box to spare a
+/// neighbour's loop; of two as clear, the one that uses the preferred
+/// faces and nests least.
 fn loop_faces(
     n: &SceneNode,
     outs: &[(f64, f64); 4],
     ends: &[usize; 4],
     widths: &[Option<f64>],
-    others: &[Rect],
+    (others, drawn): (&[Rect], &[Rect]),
 ) -> Vec<usize> {
     let m = widths.len();
     // Round robin over the faces with loops still to take.
@@ -547,10 +571,11 @@ fn loop_faces(
         }
         faces
     };
-    // What a sharing costs: (hits, preference).
+    // What a sharing costs: (hits, other classes' loops met, preference).
     let cost = |faces: &[usize]| {
         let mut regions: Vec<Rect> = Vec::new();
         let mut hits = 0;
+        let mut near = 0;
         let mut pref = 0;
         for (f, &out) in outs.iter().enumerate() {
             let labels: Vec<Option<f64>> = (0..m)
@@ -588,14 +613,15 @@ fn loop_faces(
             );
             hits += others.iter().filter(|&&b| rects_meet(r, b)).count();
             hits += regions.iter().filter(|&&b| rects_meet(r, b)).count();
+            near += drawn.iter().filter(|&&b| rects_meet(r, b)).count();
             regions.push(r);
         }
-        (hits, pref)
+        (hits, near, pref)
     };
     let default = share([m.div_ceil(2), m / 2, 0, 0]);
     let mut best = (cost(&default), default);
     // Up to eight loops (165 ways to share them); more keep the default.
-    if best.0 .0 == 0 || m > 8 {
+    if (best.0 .0, best.0 .1) == (0, 0) || m > 8 {
         return best.1;
     }
     for a in 0..=m {
@@ -668,7 +694,8 @@ const ORTHO_INSET: f64 = 24.0;
 /// between perpendicular faces turns once (L). Jogs step aside from
 /// runs already placed, then restack in nesting order
 /// ([`nest_jogs`]); a route that would cross a box, or lie on another
-/// route, keeps its curve. Edges the router routed
+/// route, keeps its curve (unless that restacking finds it a place
+/// among the jogs of its gap). Edges the router routed
 /// (axis-aligned waypoints) are kept as routed, unless they lie along
 /// another or enter their glyph on a short leg; a label moves onto its
 /// new line. `decos[j]` is what edge `j` holds at its start and its end
@@ -1030,14 +1057,27 @@ impl Zig {
 /// ([`nest_group`]). The group keeps the new routes only when the whole
 /// drawing then costs less (crossings, lines merged, label chips
 /// struck) than before.
+///
+/// An outer route can also find no place at all and keep its curve: in
+/// a plain fan of six the innermost jog takes the middle one of the
+/// gap's three lanes and the next the lane below, and the outermost,
+/// whose leg into the hub drops right beside the innermost's leg out
+/// of its class, has no lane left under both — its curve then swept
+/// across its neighbour's route twice. Such a curve ([`stray_z`])
+/// joins the jogs of its gap as the Z it would be: a group holding one
+/// is drawn again whether or not two of its jogs cross, and keeps the
+/// new routes whenever every jog finds a place — as [`ortho_pass`]
+/// takes any route over a curve. A curve tied to no other jog stays.
 fn nest_jogs(nodes: &[SceneNode], edges: &mut [SceneEdge]) {
     let idx: HashMap<&str, usize> = nodes
         .iter()
         .enumerate()
         .map(|(i, n)| (n.id.as_str(), i))
         .collect();
+    let strays: Vec<Option<SceneEdge>> = edges.iter().map(|e| stray_z(nodes, &idx, e)).collect();
     let mut zigs: Vec<Zig> = Vec::new();
     for (j, e) in edges.iter().enumerate() {
+        let e = strays[j].as_ref().unwrap_or(e);
         if e.from == e.to || e.meta.curve.is_some() || e.waypoints.is_empty() {
             continue;
         }
@@ -1141,7 +1181,16 @@ fn nest_jogs(nodes: &[SceneNode], edges: &mut [SceneEdge]) {
         let mut routes: Vec<usize> = members.iter().map(|&k| zigs[k].j).collect();
         routes.sort_unstable();
         routes.dedup();
-        if !members.iter().any(|&k| tangled[k]) || routes.len() < members.len() {
+        // The group's curves that would be Zs (alone, a curve stays: the
+        // pass found it no place among routes that are all still there).
+        let lost: Vec<usize> = routes
+            .iter()
+            .copied()
+            .filter(|&j| strays[j].is_some() && members.len() > 1)
+            .collect();
+        if !(members.iter().any(|&k| tangled[k]) || !lost.is_empty())
+            || routes.len() < members.len()
+        {
             continue;
         }
         // Topological order of `above`, the jog highest now first of
@@ -1166,7 +1215,23 @@ fn nest_jogs(nodes: &[SceneNode], edges: &mut [SceneEdge]) {
             above: &above,
             order: &order,
         };
-        let before = drawing_cost(&rects, &idx, edges);
+        // With a curve among them the jogs are drawn from the Zs, and
+        // any drawing that places them all beats the one with the curve.
+        let as_zs: Vec<SceneEdge>;
+        let (from, before): (&[SceneEdge], usize) = if lost.is_empty() {
+            (edges, drawing_cost(&rects, &idx, edges))
+        } else {
+            as_zs = edges
+                .iter()
+                .zip(&strays)
+                .enumerate()
+                .map(|(j, (e, z))| match z {
+                    Some(z) if lost.contains(&j) => z.clone(),
+                    _ => e.clone(),
+                })
+                .collect();
+            (&as_zs, usize::MAX)
+        };
         let mut best: Option<(usize, Vec<SceneEdge>)> = None;
         for (respect, step, pack) in [
             (true, ORTHO_ROOM, false),
@@ -1176,7 +1241,7 @@ fn nest_jogs(nodes: &[SceneNode], edges: &mut [SceneEdge]) {
             (false, ORTHO_SEP, false),
             (false, ORTHO_SEP, true),
         ] {
-            let Some(trial) = nest_group(nodes, &rects, &idx, edges, &g, (respect, step, pack))
+            let Some(trial) = nest_group(nodes, &rects, &idx, from, &g, (respect, step, pack))
             else {
                 continue;
             };
@@ -1189,6 +1254,41 @@ fn nest_jogs(nodes: &[SceneNode], edges: &mut [SceneEdge]) {
             edges.clone_from_slice(&trial);
         }
     }
+}
+
+/// Edge `e`, when it is a curve [`ortho_pass`] left between two faces
+/// that face each other across room for both end stubs, as the Z it
+/// would be with its jog at mid gap — whatever that jog runs along —
+/// for [`nest_jogs`] to stack with the jogs of its gap. `None` for
+/// anything else: a route, a straight line, a self-loop, an edge with
+/// a `curve` of its own, ends in line or on faces not facing each
+/// other.
+fn stray_z(nodes: &[SceneNode], idx: &HashMap<&str, usize>, e: &SceneEdge) -> Option<SceneEdge> {
+    if e.from == e.to
+        || e.meta.curve.is_some()
+        || !e.waypoints.is_empty()
+        || ortho_corners(e).is_some()
+    {
+        return None;
+    }
+    let (ia, ib) = (*idx.get(e.from.as_str())?, *idx.get(e.to.as_str())?);
+    let (a, b) = edge_ends(e);
+    let (na, nb) = (face_normal(&nodes[ia], a), face_normal(&nodes[ib], b));
+    // From `a` out of its face to `b`, and across that.
+    let out = (b.0 - a.0) * na.0 + (b.1 - a.1) * na.1;
+    let jog = ((b.0 - a.0) * na.1).abs() + ((b.1 - a.1) * na.0).abs();
+    if na.0 * nb.0 + na.1 * nb.1 > -0.5 || out < 2.0 * ORTHO_STUB || jog < 0.5 {
+        return None;
+    }
+    let mid = ((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0);
+    let corners = if na.0 == 0.0 {
+        [a, (a.0, mid.1), (b.0, mid.1), b]
+    } else {
+        [a, (mid.0, a.1), (mid.0, b.1), b]
+    };
+    let mut z = e.clone();
+    draw_route(&mut z, &corners, (na, nb), None);
+    Some(z)
 }
 
 /// A group of tied jogs (one per route) for [`nest_group`]: `order`
@@ -4213,6 +4313,87 @@ mod tests {
         }
     }
 
+    /// A dotted name (`com.example.Order`) is one class of that name, as
+    /// in mermaid: its single dots join the name's parts, and only `..`
+    /// is the dotted line.
+    #[test]
+    fn dotted_names_in_relations() {
+        let ends = |line: &str| -> Vec<(String, String)> {
+            let d = cd(&format!("classDiagram\n{line}"));
+            let n = |i: usize| d.classes[i].name.clone();
+            d.relations.iter().map(|r| (n(r.from), n(r.to))).collect()
+        };
+        let pair = |a: &str, b: &str| vec![(a.to_string(), b.to_string())];
+        for (line, from, to) in [
+            ("A.B --> C", "A.B", "C"),
+            ("A.B-->C.D", "A.B", "C.D"),
+            (
+                "com.example.Customer --> com.example.Order",
+                "com.example.Customer",
+                "com.example.Order",
+            ),
+            ("A.B..>C", "A.B", "C"),
+            ("A.B.. C", "A.B", "C"),
+            ("A.B..C.D", "A.B", "C.D"),
+            ("A..B", "A", "B"),
+            ("A-B.C-D --> E", "A-B.C-D", "E"),
+            ("A.1 --> B.2", "A.1", "B.2"),
+            ("A._x --> B", "A._x", "B"),
+            ("A.-x --> B", "A.-x", "B"),
+            ("A.B~T~ --> C", "A.B", "C"),
+            // A part that is just `o` is no aggregation glyph.
+            ("A.o --> B", "A.o", "B"),
+            ("pkg.o--B", "pkg.o", "B"),
+            ("pkg.o..B", "pkg.o", "B"),
+            ("A.org --> B.out", "A.org", "B.out"),
+        ] {
+            assert_eq!(ends(line), pair(from, to), "{line}");
+        }
+        // Head on the left, glyphs glued to the names.
+        assert_eq!(ends("A.B<|--C.D"), pair("C.D", "A.B"));
+        assert_eq!(ends("A.B o-- C.D"), pair("C.D", "A.B"));
+        let d = cd("classDiagram\nA.B \"1\" *-- \"many\" C.D : owns");
+        let r = &d.relations[0];
+        assert_eq!(
+            (r.from_card.as_deref(), r.to_card.as_deref()),
+            (Some("many"), Some("1"))
+        );
+        assert_eq!(r.label.as_deref(), Some("owns"));
+        // One class per spelling: declaration, block, inline member,
+        // relation, backtick literal, note and lollipop host all name
+        // the same `shop.Order`; the generic is read off a dotted name.
+        let d = cd("classDiagram\n\
+            class shop.Order {\n+int id\n}\n\
+            shop.Order : +total() float\n\
+            shop.Order --> shop.Line~T~\n\
+            `shop.Order` ..> Audit\n\
+            note for shop.Order \"an order\"\n\
+            class shop.Order\n\
+            Sortable ()-- shop.Order");
+        let names: Vec<&str> = d.classes.iter().map(|c| c.name.as_str()).collect();
+        assert_eq!(names, ["shop.Order", "shop.Line", "Audit", "Sortable"]);
+        let c = &d.classes[0];
+        assert_eq!((c.fields.len(), c.methods.len()), (1, 1));
+        assert_eq!(d.classes[1].generic.as_deref(), Some("T"));
+        assert_eq!(d.notes[0].class, Some(0));
+        assert!(d.classes[3].lollipop);
+        // The box shows the whole dotted name and is as wide as it.
+        let cs = scene(&d);
+        let n = node(&cs, "shop.Order");
+        assert!(n.w >= crate::layout::text_width("shop.Order"), "{}", n.w);
+        assert!(to_svg(&cs).contains(">shop.Order</text>"));
+        // A dot never starts or ends a name, and three dots are no line
+        // plus a name: errors, as in mermaid.
+        for bad in [
+            "A. --> B", ".A --> B", "A...B", "A --> B.", "A.o-- .B", "A. : +x",
+        ] {
+            assert!(
+                parse_document(&format!("classDiagram\n{bad}")).is_err(),
+                "{bad}"
+            );
+        }
+    }
+
     /// Backtick names are mermaid's literal class names: the text
     /// between the backticks is the class, so it may hold spaces,
     /// colons, quotes or operators.
@@ -5535,6 +5716,122 @@ mod tests {
         )
     }
 
+    /// Verifier repro (r4 `in6_l0_c0_TB`, phase A leftover): six plain
+    /// classes into one hub. The unlabelled gap holds three lanes; the
+    /// innermost jog took the middle one and the next the lane below,
+    /// and the outermost — its leg into the hub 3.5 px beside the
+    /// innermost's leg out of its class — found none under both, kept
+    /// its curve and swept across its neighbour's route twice, on each
+    /// side: 4 crossings where mermaid draws none. A curve that would
+    /// be a Z now joins the jogs of its gap when they are stacked in
+    /// nesting order, so the six nest one lane apart, whichever way the
+    /// relations point and the diagram flows.
+    #[test]
+    fn a_fan_of_six_nests_without_a_curve() {
+        for (op, name) in [
+            ("-->", "arrow"),
+            ("--|>", "triangle"),
+            ("..>", "dotted"),
+            ("--", "link"),
+        ] {
+            for fan_in in [true, false] {
+                let src = (0..6).fold(String::from("classDiagram\n"), |s, i| {
+                    if fan_in {
+                        s + &format!("Svc{i} {op} Hub\n")
+                    } else {
+                        s + &format!("Hub {op} Svc{i}\n")
+                    }
+                });
+                for dir in ["TB", "BT", "LR", "RL"] {
+                    let what = format!("{name} fan_in={fan_in} {dir}");
+                    let cs = scene(&cd(&with_direction(&src, dir)));
+                    for e in &cs.scene.edges {
+                        assert!(
+                            ortho_corners(e).is_some(),
+                            "{what}: {}->{} kept its curve",
+                            e.from,
+                            e.to
+                        );
+                    }
+                    let (merged, crossing) = merged_and_crossing(&cs);
+                    assert!(merged.is_empty(), "{what}: merged {merged:?}");
+                    assert!(crossing.is_empty(), "{what}: crossing {crossing:?}");
+                    // Three jogs a side, each a lane's room from the
+                    // next: none packed tight against its neighbour.
+                    let horizontal = matches!(dir, "LR" | "RL");
+                    let mut jogs: Vec<f64> = cs
+                        .scene
+                        .edges
+                        .iter()
+                        .filter_map(|e| {
+                            let c = ortho_corners(e)?;
+                            (c.len() == 4).then(|| if horizontal { c[1].0 } else { c[1].1 })
+                        })
+                        .collect();
+                    jogs.sort_by(f64::total_cmp);
+                    jogs.dedup_by(|a, b| (*a - *b).abs() < 0.5);
+                    assert_eq!(jogs.len(), 3, "{what}: lanes {jogs:?}");
+                    for w in jogs.windows(2) {
+                        assert!(w[1] - w[0] >= ORTHO_ROOM - 0.5, "{what}: lanes {jogs:?}");
+                    }
+                }
+            }
+        }
+        // Only a curve between two faces that face each other across
+        // both stubs' room would be a Z.
+        let cs = scene(&cd("classDiagram\nA --> B\nB --> B\nC --> D\nC --> E"));
+        let idx: HashMap<&str, usize> = cs
+            .scene
+            .nodes
+            .iter()
+            .enumerate()
+            .map(|(i, n)| (n.id.as_str(), i))
+            .collect();
+        for e in &cs.scene.edges {
+            // Straight lines, a self-loop and routes: none is a stray.
+            assert!(
+                stray_z(&cs.scene.nodes, &idx, e).is_none(),
+                "{}->{}",
+                e.from,
+                e.to
+            );
+        }
+        let (a, b) = (node(&cs, "A"), node(&cs, "B"));
+        let mut curve = cs.scene.edges[0].clone();
+        let (top, bot) = ((a.x - 20.0, a.y + a.h / 2.0), (b.x + 30.0, b.y - b.h / 2.0));
+        curve.waypoints.clear();
+        curve.bezier = [top, (top.0, top.1 + 30.0), (bot.0, bot.1 - 30.0), bot];
+        let z = stray_z(&cs.scene.nodes, &idx, &curve).expect("a curve between facing faces");
+        let c = ortho_corners(&z).unwrap();
+        assert_eq!((c.len(), c[0], c[3]), (4, top, bot));
+        assert!(
+            (c[1].1 - (top.1 + bot.1) / 2.0).abs() < 1e-9,
+            "jog at mid gap: {c:?}"
+        );
+        // In line, a `curve` of its own, or the faces too close: none.
+        let mut inline = curve.clone();
+        inline.bezier = [
+            top,
+            (top.0 + 9.0, top.1 + 30.0),
+            (top.0 - 9.0, bot.1 - 30.0),
+            (top.0, bot.1),
+        ];
+        assert!(stray_z(&cs.scene.nodes, &idx, &inline).is_none());
+        let mut own = curve.clone();
+        own.meta.curve = Some(crate::model::EdgeCurve::Basis);
+        assert!(stray_z(&cs.scene.nodes, &idx, &own).is_none());
+        assert!(
+            bot.1 - top.1 >= 2.0 * ORTHO_STUB,
+            "the test's gap holds both stubs"
+        );
+        let mut near = curve;
+        near.bezier[3] = (b.x + 30.0, b.y + b.h / 2.0);
+        assert!(
+            stray_z(&cs.scene.nodes, &idx, &near).is_none(),
+            "faces not facing"
+        );
+    }
+
     /// Verifier repro (r3, s5 — a regression from 0.32): the layout
     /// stacks a class's self-loops on one side, each starting where the
     /// one before ends, and the source order turned `o--`'s loop round,
@@ -5838,6 +6135,102 @@ mod tests {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    /// Verifier repro (r6 `loopk/k5_TB`, phase A leftover): five loops
+    /// on B, between siblings A and C that carry a loop each. A class's
+    /// loops kept off the other boxes only, so B's loop on the side
+    /// facing A set its label on A's loop; eight unlabelled loops ran
+    /// four deep through A's loop and its label, and two siblings with
+    /// three loops each wove them together in the gap between. A
+    /// class's loops now keep off the loops and loop labels of the
+    /// classes drawn before it as well: no loop crosses another class's
+    /// loop or enters another box, and no loop label covers a box, a
+    /// loop or another loop's label, in every direction.
+    #[test]
+    fn self_loops_keep_off_a_neighbours_loops() {
+        let k5 = "classDiagram\nP <|-- A\nP <|-- B\nP <|-- C\nP <|-- D\n\
+                  B --> B : loop0\nB --> B : loop1\nB --> B : loop2\nB --> B : loop3\n\
+                  B --> B : loop4\nA --> A\nC *-- C : c\nD o-- D";
+        let plain8 = (0..8).fold(
+            String::from("classDiagram\nP <|-- A\nP <|-- B\nP <|-- C\n"),
+            |s, _| s + "B --> B\n",
+        ) + "A --> A : a loop\nC *-- C : c loop\n";
+        let woven = "classDiagram\nP <|-- A\nP <|-- B\nP <|-- C\n\
+                     B --> B : b0\nB --> B : b1\nB --> B : b2\n\
+                     A --> A : a0\nA --> A : a1\nA --> A : a2\nC --> C : c0\nC --> C : c1";
+        for src in [k5, plain8.as_str(), woven] {
+            for dir in ["TB", "BT", "LR", "RL"] {
+                let cs = scene(&cd(&with_direction(src, dir)));
+                let sc = &cs.scene;
+                let loops: Vec<&SceneEdge> = sc.edges.iter().filter(|e| e.from == e.to).collect();
+                let lines: Vec<Vec<(f64, f64)>> = loops.iter().map(|e| edge_polyline(e)).collect();
+                for (i, e) in loops.iter().enumerate() {
+                    let chip = label_chip(e);
+                    for n in sc.nodes.iter().filter(|n| n.id != e.from) {
+                        let r = rect(n);
+                        assert!(
+                            !lines[i]
+                                .windows(2)
+                                .any(|s| rect_hits_segment(r, s[0], s[1])),
+                            "{dir}: a loop of {} runs into {}\n{src}",
+                            e.from,
+                            n.id
+                        );
+                        assert!(
+                            !chip.is_some_and(|c| rects_meet(c, r)),
+                            "{dir}: a loop label of {} covers {}\n{src}",
+                            e.from,
+                            n.id
+                        );
+                    }
+                    for (k, o) in loops.iter().enumerate().filter(|&(k, _)| k != i) {
+                        assert!(
+                            !chip.is_some_and(|c| lines[k]
+                                .windows(2)
+                                .any(|s| rect_hits_segment(c, s[0], s[1]))),
+                            "{dir}: {:?} covers a loop of {}\n{src}",
+                            e.label,
+                            o.from
+                        );
+                        if let (Some(c), Some(oc)) = (chip, label_chip(o)) {
+                            assert!(!rects_meet(c, oc), "{dir}: loop labels overlap\n{src}");
+                        }
+                        let crossing = lines[i].windows(2).any(|p| {
+                            lines[k]
+                                .windows(2)
+                                .any(|q| segments_cross(p[0], p[1], q[0], q[1]))
+                        });
+                        assert!(
+                            o.from == e.from || !crossing,
+                            "{dir}: a loop of {} crosses a loop of {}\n{src}",
+                            e.from,
+                            o.from
+                        );
+                    }
+                }
+            }
+        }
+        // A box counts before any number of a neighbour's loops: B's
+        // eight loops fill three of its faces rather than send one into
+        // C's box to spare A's three loops.
+        let crowded = (0..8).fold(
+            String::from("classDiagram\nP <|-- A\nP <|-- B\nP <|-- C\n"),
+            |s, i| s + &format!("B --> B : b{i}\n"),
+        ) + "A --> A : a0\nA --> A : a1\nA --> A : a2\nC --> C : c0\nC --> C : c1\n";
+        let cs = scene(&cd(&crowded));
+        for e in cs.scene.edges.iter().filter(|e| e.from == e.to) {
+            let line = edge_polyline(e);
+            for n in cs.scene.nodes.iter().filter(|n| n.id != e.from) {
+                let r = rect(n);
+                assert!(
+                    !line.windows(2).any(|s| rect_hits_segment(r, s[0], s[1])),
+                    "a loop of {} runs into {}",
+                    e.from,
+                    n.id
+                );
             }
         }
     }
