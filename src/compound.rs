@@ -673,13 +673,18 @@ pub(crate) fn scene(
 ) -> Option<Scene> {
     let mut blocks = Vec::with_capacity(split.blocks.len());
     let mut frames = Vec::with_capacity(split.blocks.len());
-    for (si, part) in &split.blocks {
-        let sc = crate::scene::scene_labelled(
-            &part.g,
-            &part_of(part, sizes, &[], (0.0, 0.0)),
-            &part_of(part, labels, &[], String::new()),
-        );
-        frames.push(frame(&sc, &g.subgraphs[*si].id)?);
+    // The blocks a fork/join bar of the rest is fitted to: the routed
+    // builders fit the bar to the same frames, kept from here (`LAID`).
+    let fitted_to = bar_blocks(split);
+    for ((si, part), &kept) in split.blocks.iter().zip(&fitted_to) {
+        let ps = part_of(part, sizes, &[], (0.0, 0.0));
+        let pl = part_of(part, labels, &[], String::new());
+        let sc = crate::scene::scene_labelled(&part.g, &ps, &pl);
+        let f = frame(&sc, &g.subgraphs[*si].id)?;
+        if kept {
+            keep_laid(&part.g, ps, pl, (f.2, f.3));
+        }
+        frames.push(f);
         blocks.push(sc);
     }
     let boxes: Vec<(f64, f64)> = frames.iter().map(|f| (f.2, f.3)).collect();
@@ -734,15 +739,26 @@ pub(crate) fn route(
     Some(out)
 }
 
-/// The rest's node sizes for [`route`]: each proxy the box of its
-/// block's frame now (`boxes`), each fork/join bar fitted
+/// Per block: whether the length of a fork/join bar of the rest reads
+/// its proxy's box ([`crate::scene::bar_branches`]) — the bar branches
+/// to the block, or to a composite holding it.
+fn bar_blocks(split: &Split) -> Vec<bool> {
+    let branches = crate::scene::bar_branches(&split.rest.g);
+    (0..split.blocks.len())
+        .map(|b| split.proxy(b).is_some_and(|p| branches[p]))
+        .collect()
+}
+
+/// The rest's node sizes for the routed builders: each proxy the box of
+/// its block's frame now (`boxes`), each fork/join bar fitted
 /// ([`crate::scene::fit_bars`]) as [`scene`] fits it. A bar that
-/// branches to a block spans the block's frame, and fitted to the frame
-/// as it stands it would stretch whenever a drag inside the block pulls
-/// its states apart — but a drag never resizes a bar. So each block a
-/// bar branches to is laid out as [`scene`] lays it out, for the frame
-/// the bar was fitted to there; the other blocks, and a graph without
-/// such a bar, cost nothing more.
+/// branches to a block — or to a composite holding one — spans the
+/// block's frame, and fitted to the frame as it stands it would stretch
+/// whenever a drag inside the block pulls its states apart; but a drag
+/// never resizes a bar. So every proxy whose box the fit reads
+/// ([`bar_blocks`]) counts at its block's frame as [`scene`] draws it
+/// ([`laid_box`]). The other blocks, and a graph without such a bar,
+/// cost nothing more.
 fn rest_sizes(
     g: &Graph,
     split: &Split,
@@ -757,29 +773,87 @@ fn rest_sizes(
         return now;
     }
     let mut laid = now.clone();
-    for (b, (si, part)) in split.blocks.iter().enumerate() {
-        let Some(p) = split.proxy(b) else { continue };
-        let branch = rest
-            .g
-            .edges
-            .iter()
-            .any(|e| (e.from == p && is_bar(e.to)) || (e.to == p && is_bar(e.from)));
-        if !branch {
+    for (b, fitted_to) in bar_blocks(split).into_iter().enumerate() {
+        let (si, part) = &split.blocks[b];
+        let Some(p) = split.proxy(b).filter(|_| fitted_to) else {
             continue;
-        }
-        let sc = crate::scene::scene_labelled(
-            &part.g,
-            &part_of(part, sizes, &[], (0.0, 0.0)),
-            &part_of(part, labels, &[], String::new()),
-        );
-        if let Some(f) = frame(&sc, &g.subgraphs[*si].id) {
-            laid[p] = (f.2, f.3);
+        };
+        if let Some(f) = laid_box(g, *si, part, sizes, labels) {
+            laid[p] = f;
         }
     }
     let fitted = crate::scene::fit_bars(&rest.g, &laid);
     (0..now.len())
         .map(|k| if is_bar(k) { fitted[k] } else { now[k] })
         .collect()
+}
+
+/// A block as the static layout was given it — its part's graph, node
+/// sizes and labels — with the frame `(w, h)` that layout drew round it.
+type Laid = (Graph, Vec<(f64, f64)>, Vec<String>, (f64, f64));
+
+/// Most blocks [`LAID`] holds before it drops the oldest: more than one
+/// diagram's bars branch to (a diagram with more lays the oldest out
+/// again on each [`route`]), few enough to compare against on each.
+const LAID_MAX: usize = 32;
+
+thread_local! {
+    /// The frame [`scene`] draws round each block a fork/join bar is
+    /// fitted to, by everything that layout reads: the bar keeps that
+    /// length in every [`route`] of the graph ([`rest_sizes`]), and
+    /// laying the block out again for each frame of a drag would cost
+    /// more than routing it (a 60-state block: 4 ms on top of 3). A
+    /// memo of a pure function — the answer is the same either way, so
+    /// output stays deterministic — kept by [`scene`] itself, so only a
+    /// `route` of a graph (or sizes) no `scene` call on this thread has
+    /// laid out since pays for the layout, once.
+    static LAID: std::cell::RefCell<Vec<Laid>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// Keep the frame `(w, h)` the static layout drew round a block's part
+/// `pg` for these node sizes and labels ([`LAID`]).
+fn keep_laid(pg: &Graph, sizes: Vec<(f64, f64)>, labels: Vec<String>, frame: (f64, f64)) {
+    LAID.with(|m| {
+        let mut m = m.borrow_mut();
+        if m.iter()
+            .any(|l| l.1 == sizes && l.2 == labels && l.0 == *pg)
+        {
+            return;
+        }
+        if m.len() >= LAID_MAX {
+            m.remove(0);
+        }
+        m.push((pg.clone(), sizes, labels, frame));
+    });
+}
+
+/// The box `(w, h)` of the frame [`scene`] draws round block `part`
+/// (subgraph `si` of `g`) for these node `sizes` and `labels`: kept
+/// from the last time it was laid out ([`LAID`]), else laid out now.
+/// `None` when the layout draws no such frame.
+fn laid_box(
+    g: &Graph,
+    si: usize,
+    part: &Part,
+    sizes: &[(f64, f64)],
+    labels: &[String],
+) -> Option<(f64, f64)> {
+    let ps = part_of(part, sizes, &[], (0.0, 0.0));
+    let pl = part_of(part, labels, &[], String::new());
+    let kept = LAID.with(|m| {
+        m.borrow()
+            .iter()
+            .find(|l| l.1 == ps && l.2 == pl && l.0 == part.g)
+            .map(|l| l.3)
+    });
+    if kept.is_some() {
+        return kept;
+    }
+    // Not under the borrow: a block's nested blocks come through here.
+    let sc = crate::scene::scene_labelled(&part.g, &ps, &pl);
+    let f = frame(&sc, &g.subgraphs[si].id)?;
+    keep_laid(&part.g, ps, pl, (f.2, f.3));
+    Some((f.2, f.3))
 }
 
 /// `base` cut to `part`: its nodes (each proxy on `frames[b]`, its
@@ -859,8 +933,13 @@ fn part_base(
 /// into the parts, each block re-routed locally for its centres, then
 /// the rest with each proxy on its block's frame now — a proxy whose
 /// frame moved or changed size counts as moved, so the rest redraws the
-/// edges to it. `None` when `base` does not line up with the split (the
-/// caller falls back to [`crate::scene::route`]).
+/// edges to it. A fork/join bar of the rest that branches to a block
+/// is fitted as [`route`] fits it ([`rest_sizes`]), not to the frame as
+/// the drag leaves it, whatever `base` holds. (A part none of whose
+/// nodes moved is `base`'s, as a graph none of whose nodes moved is:
+/// with it a block keeps the bars `base` drew inside it.) `None` when
+/// `base` does not line up with the split (the caller falls back to
+/// [`crate::scene::route`]).
 pub(crate) fn route_partial(
     g: &Graph,
     split: &Split,
@@ -903,7 +982,7 @@ pub(crate) fn route_partial(
     let rb = part_base(&split.rest, base, &subs, &base_frames)?;
     let now: Vec<(f64, f64)> = frames.iter().map(centre).collect();
     let was: Vec<(f64, f64)> = base_frames.iter().map(centre).collect();
-    let sized: Vec<(usize, (f64, f64), bool)> = frames
+    let mut sized: Vec<crate::scene::GivenBox> = frames
         .iter()
         .zip(&base_frames)
         .enumerate()
@@ -912,6 +991,20 @@ pub(crate) fn route_partial(
             Some((split.proxy(b)?, (f.2, f.3), resized))
         })
         .collect();
+    // Where a bar of the rest branches to a block, every bar as `route`
+    // fits it. (Elsewhere the rest fits its own, reading no proxy.)
+    if bar_blocks(split).contains(&true) {
+        let (labels, sizes) = crate::layout::node_texts(g);
+        let boxes: Vec<(f64, f64)> = frames.iter().map(|f| (f.2, f.3)).collect();
+        let fitted = rest_sizes(g, split, &sizes, &labels, &boxes);
+        for (k, (n, drawn)) in split.rest.g.nodes.iter().zip(&rb.nodes).enumerate() {
+            if n.shape == Shape::ForkBar {
+                let (w, h) = fitted[k];
+                let resized = (w - drawn.w).abs() > 0.01 || (h - drawn.h).abs() > 0.01;
+                sized.push((k, (w, h), resized));
+            }
+        }
+    }
     let rest = crate::scene::route_partial_with(
         &split.rest.g,
         &part_of(&split.rest, centers, &now, (0.0, 0.0)),
@@ -1155,32 +1248,59 @@ mod tests {
         assert_eq!(to_svg(&c.scene), to_svg(&sc));
     }
 
+    /// A fork into a row block and a plain state, joined again.
+    const BAR_ROW: &str = "stateDiagram-v2\n[*] --> f\nstate f <<fork>>\nf --> P\nf --> Q\n\
+        state P {\n  direction LR\n  a --> b\n  b --> c\n  c --> d\n}\n\
+        state j <<join>>\nP --> j\nQ --> j\nj --> [*]";
+
+    /// The sizes `sc` draws the fork/join bars of `g` at, in node order.
+    fn bar_sizes(g: &Graph, sc: &Scene) -> Vec<(f64, f64)> {
+        g.nodes
+            .iter()
+            .zip(&sc.nodes)
+            .filter(|(n, _)| n.shape == Shape::ForkBar)
+            .map(|(_, d)| (d.w, d.h))
+            .collect()
+    }
+
     /// B9 verification leftover: a fork or join that branches to a block
     /// spans the block's frame, and the interactive builders fitted it
     /// to the frame as it stood — so dragging a state inside the block,
     /// which stretches the frame, stretched the bar too (`f` 321 -> 446
     /// px with `d` pulled 250 px along its row), against the rule that
     /// a drag never resizes a bar. Every builder now draws the bar the
-    /// static scene draws, wherever the block's states are dragged.
+    /// static scene draws, wherever the block's states are dragged —
+    /// also a bar that branches to a plain composite holding the block
+    /// (review: `route()` still fitted that one to the frame as it
+    /// stood, 335 -> 460 px, where `route_partial()` kept it).
     #[test]
     fn a_drag_inside_a_block_resizes_no_bar() {
-        // A fork into a row block and a plain state, joined again; and
-        // a sideways diagram whose column block holds a fork of its own.
-        let row = "stateDiagram-v2\n[*] --> f\nstate f <<fork>>\nf --> P\nf --> Q\n\
-                   state P {\n  direction LR\n  a --> b\n  b --> c\n  c --> d\n}\n\
-                   state j <<join>>\nP --> j\nQ --> j\nj --> [*]";
+        // A sideways diagram whose column block holds a fork of its own.
         let column = "stateDiagram-v2\ndirection LR\n[*] --> f\nstate f <<fork>>\n\
                       f --> P\nf --> Q\nstate P {\n  direction TB\n  a --> b\n  b --> c\n  \
                       state g <<fork>>\n  c --> g\n  g --> d\n  g --> e\n}\n\
                       P --> Done\nQ --> Done";
+        // The bars branch to `Outer`, which sets no direction and holds
+        // the block `P`; and to a block inside a block.
+        let held = "stateDiagram-v2\n[*] --> f\nstate f <<fork>>\nf --> Outer\nf --> Q\n\
+                    state Outer {\n  x --> P\n  state P {\n    direction LR\n    \
+                    a --> b\n    b --> c\n    c --> d\n  }\n}\n\
+                    state j <<join>>\nOuter --> j\nQ --> j\nj --> [*]";
+        let nested = "stateDiagram-v2\ndirection LR\n[*] --> Outer\nstate Outer {\n  \
+                      direction TB\n  [*] --> f\n  state f <<fork>>\n  f --> P\n  f --> x\n  \
+                      state P {\n    direction LR\n    a --> b\n    b --> c\n    c --> d\n  }\n  \
+                      state j <<join>>\n  P --> j\n  x --> j\n}\nOuter --> Done";
         for (src, dragged, by) in [
-            (row, "d", (250.0, 0.0)),
-            (row, "a", (-120.0, 40.0)),
+            (BAR_ROW, "d", (250.0, 0.0)),
+            (BAR_ROW, "a", (-120.0, 40.0)),
             (column, "e", (0.0, 200.0)),
             (column, "a", (90.0, -60.0)),
+            (held, "d", (250.0, 0.0)),
+            (held, "c", (30.0, 140.0)),
+            (nested, "d", (250.0, 0.0)),
         ] {
             let g = state(src);
-            assert_eq!(blocks(&g), vec![true], "{src}");
+            assert!(blocks(&g).contains(&true), "{src}");
             let sc = scene(&g);
             let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
             let sizes: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.w, n.h)).collect();
@@ -1232,6 +1352,109 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// Review: `route_partial()` with a `base` that is not this graph's
+    /// (an edge label edited since) drew the rest afresh with each bar
+    /// fitted to its block's frame as the drag left it (446 px where
+    /// `route()` drew 321). The rest's bars are fitted as `route()` fits
+    /// them whatever `base` holds, so the two agree — on the bar the
+    /// static layout of the edited graph draws.
+    #[test]
+    fn a_stale_base_fits_a_bar_as_route_does() {
+        let g = state(BAR_ROW);
+        let base = scene(&g);
+        let at: Vec<(f64, f64)> = base.nodes.iter().map(|n| (n.x, n.y)).collect();
+        for (edit, to) in [
+            // A transition of the rest, and one inside the block (which
+            // widens the block's own layout, and so the bar).
+            ("f --> Q", "f --> Q : edited since"),
+            ("a --> b", "a --> b : edited since"),
+        ] {
+            let edited = state(&BAR_ROW.replace(edit, to));
+            let fresh = bar_sizes(&edited, &scene(&edited));
+            for dragged in ["d", "Q"] {
+                let v = edited.node_index(dragged).unwrap();
+                let mut c = at.clone();
+                c[v].0 += 250.0;
+                let p = route_partial(&edited, &c, &base, &at);
+                contract(&edited, &p);
+                let what = format!("`{to}`, {dragged} dragged");
+                assert_eq!(bar_sizes(&edited, &route(&edited, &c)), fresh, "{what}");
+                assert_eq!(bar_sizes(&edited, &p), fresh, "{what}: route_partial");
+            }
+        }
+        // The edit inside the block did change the bar.
+        let edited = state(&BAR_ROW.replace("a --> b", "a --> b : edited since"));
+        assert_ne!(
+            bar_sizes(&edited, &scene(&edited)),
+            bar_sizes(&g, &base),
+            "a longer row, a longer bar"
+        );
+    }
+
+    /// Review: to fit such a bar, `route()` laid the block out as the
+    /// static layout does on every call (a 60-state block: 7 ms a frame
+    /// for 3). The frame is now kept from the last layout of the same
+    /// block ([`LAID`]): the answer is the same with it or without —
+    /// before any `scene()` of the graph, after one, and after more
+    /// graphs than the memo holds.
+    #[test]
+    fn the_kept_block_frames_change_no_bar() {
+        // The same diagram with rows of different lengths.
+        let row = |k: usize| {
+            let chain: String = (0..k + 2)
+                .map(|i| format!("  s{i} --> s{}\n", i + 1))
+                .collect();
+            format!(
+                "stateDiagram-v2\n[*] --> f\nstate f <<fork>>\nf --> P\nf --> Q\n\
+                 state P {{\n  direction LR\n{chain}}}\n\
+                 state j <<join>>\nP --> j\nQ --> j\nj --> [*]"
+            )
+        };
+        let graphs: Vec<Graph> = (0..LAID_MAX + 3).map(|k| state(&row(k))).collect();
+        let far = |g: &Graph| -> Vec<(f64, f64)> {
+            (0..g.nodes.len())
+                .map(|i| (140.0 * i as f64, 90.0 * (i % 3) as f64))
+                .collect()
+        };
+        // route() first: nothing kept yet on this thread.
+        let routed: Vec<_> = graphs
+            .iter()
+            .map(|g| bar_sizes(g, &route(g, &far(g))))
+            .collect();
+        LAID.with(|m| assert_eq!(m.borrow().len(), LAID_MAX, "the memo is bounded"));
+        for (k, g) in graphs.iter().enumerate() {
+            let fresh = bar_sizes(g, &scene(g));
+            assert!(fresh[0].0 > 100.0, "{k}: fitted, {fresh:?}");
+            assert_eq!(routed[k], fresh, "{k}: route() before any scene()");
+            assert_eq!(bar_sizes(g, &route(g, &far(g))), fresh, "{k}: and after");
+            if k > 0 {
+                assert_ne!(routed[k], routed[k - 1], "{k}: a longer row, a longer bar");
+            }
+        }
+        // The first graphs fell out of the memo since: still the same.
+        assert_eq!(
+            bar_sizes(&graphs[0], &route(&graphs[0], &far(&graphs[0]))),
+            routed[0]
+        );
+        // Sizes are part of what a frame is kept by: a host's wider
+        // states give a longer bar, and its own again after.
+        let g = &graphs[1];
+        let own = crate::layout::node_sizes(g);
+        let wide: Vec<(f64, f64)> = own.iter().map(|&(w, h)| (w + 40.0, h)).collect();
+        let at = far(g);
+        let widened = bar_sizes(g, &crate::scene::route_sized(g, &at, &wide));
+        assert!(
+            widened[0].0 > routed[1][0].0 + 40.0,
+            "{widened:?} vs {:?}",
+            routed[1]
+        );
+        assert_eq!(bar_sizes(g, &crate::scene::scene_sized(g, &wide)), widened);
+        assert_eq!(
+            bar_sizes(g, &crate::scene::route_sized(g, &at, &own)),
+            routed[1]
+        );
     }
 
     #[test]

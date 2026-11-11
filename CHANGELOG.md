@@ -29,6 +29,10 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `pkg.o --> B` links the class `pkg.o` and `o.A --> B` the class `o.A`
   (so do `class o.A` and `o.A : +id int`), where mermaid's lexer takes
   that `o` for the glyph and gives up on the line.
+- **`PartialEq` for the graph model**: `model::Graph`, `Node`, `Edge`,
+  `Subgraph` and `SubEdge` compare field by field, so two parses of one
+  source are equal and a host can tell whether an edit changed the
+  graph.
 
 ### Changed
 
@@ -215,10 +219,17 @@ project adheres to [Semantic Versioning](https://semver.org/).
   state inside the composite, which stretches the frame, stretched the
   bar too (321 -> 446 px for a state pulled 250 px along its row) —
   against the rule, since 0.34.0, that a drag never resizes a bar. Every
-  builder now draws the bar the static layout draws: `route()` and
-  `route_sized()` lay such a composite out once more to learn its frame
-  there (only where a bar branches to one), and `route_partial()` keeps
-  each bar as its `base` drew it.
+  builder now fits such a bar to the composite's frame as the static
+  layout draws it, also a bar that branches to a plain composite holding
+  one laid out in its own direction, and also `route_partial()` given a
+  `base` that is not this graph's (an edge label edited since): it then
+  agrees with `route()`. The frame is kept from the last layout of that
+  composite on the thread (`scene()` keeps it as it draws; 32
+  composites at most, the oldest dropped first), so a drag pays nothing
+  for it: only a `route()` of a graph, or of node sizes, that no
+  `scene()` or `route()` has seen since lays the composite out, once (a
+  60-state composite: 4 ms on top of that frame's 3). The output is the
+  same either way. Diagrams without such a bar are untouched.
 
 ### Documentation
 
