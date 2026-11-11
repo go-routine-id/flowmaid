@@ -38,3 +38,9 @@ What follows from it (the lead's reading; apply to SPEC.md):
 - B12 (main repo) and the class/state leftovers package (worktree, branch `ccr-ccc6d89a-5cxd7e-par`) run at the same
   time, both starting on B11's head. B12 still starts the moment B11 passes. Release numbers follow the order in which
   the packages pass (B12's release is 0.40.0 or 0.41.0). The leftovers skip the two block-placement items.
+
+## README (user, 2026-11-11 ~03:20 UTC)
+- "readme sekarang terlalu banyak bertele-tele padahal penjelasan basic yang sudah ada di mermaid malah di jelasin lagi,
+  harusnya tidak perlu": the README must not restate standard mermaid syntax (link to mermaid's docs instead) and must
+  be short and plain. Applies to every later README edit too (b12b-default's README text: say what blocks change for
+  the user in a few lines, no syntax lessons, no internal narrative).
