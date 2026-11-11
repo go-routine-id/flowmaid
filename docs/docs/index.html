@@ -6,171 +6,305 @@
 <title>flowmaid — documentation</title>
 <meta name="description" content="flowmaid documentation: a Mermaid-compatible diagram engine in pure, zero-dependency Rust. Installation, CLI, library API, WebAssembly, and supported diagram types.">
 <script>
-  // Terapkan tema tersimpan SEBELUM paint pertama (hindari kedip).
+  // Same theme key and modes as the landing page and the playground.
   (function () {
-    var t = localStorage.getItem("theme");
+    var t = null;
+    try { t = localStorage.getItem("theme"); } catch (e) {}
     if (t) document.documentElement.dataset.theme = t;
   })();
-  function toggleTheme() {
-    var cur = document.documentElement.dataset.theme ||
+  function currentTheme() {
+    return document.documentElement.dataset.theme ||
       (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-    var next = cur === "dark" ? "light" : "dark";
+  }
+  function setTheme(next) {
     document.documentElement.dataset.theme = next;
-    localStorage.setItem("theme", next);
+    try { localStorage.setItem("theme", next); } catch (e) {}
+    syncModes();
+  }
+  function syncModes() {
+    var cur = currentTheme();
+    var bs = document.querySelectorAll(".modes button");
+    for (var i = 0; i < bs.length; i++)
+      bs[i].setAttribute("aria-pressed", String(bs[i].dataset.mode === cur));
   }
 </script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Non-blocking: where Google Fonts is unreachable the page paints at once
+     with the system font stacks in --body/--mono/--display. -->
+<link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Archivo:wght@800;900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>
+  /* The landing page's design: "paper" (light) and "ink" (dark) modes,
+     square corners, 1px rules, no shadows or gradients. */
   :root {
-    --ink: #232840; --line: #d5d9ec; --accent: #5b6dc0; --bg: #f6f7fc;
-    --muted: #6a7086; --code-bg: #f0f2fa; --card: #ffffff;
+    --bg: #efece5; --panel: #e7e3da; --mass: #ddd8cc;
+    --ink: #15140f; --dim: #55534a; --muted: #86826f;
+    --line: #e2ded4; --line2: #cbc5b6;
+    --accent: #8839ef; --accent-ink: #ffffff;
+    --code-bg: #15140f; --code-ink: #eae8ee; --code-dim: #908f96; --code-line: #35353d;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --body: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, sans-serif;
+    --display: "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     color-scheme: light;
   }
   :root[data-theme="dark"] {
-    --ink: #dfe3f2; --line: #31374f; --accent: #8b9aec; --bg: #14161e;
-    --muted: #9298b0; --code-bg: #232840; --card: #1b1e2b;
+    --bg: #17171a; --panel: #1e1e22; --mass: #26262b;
+    --ink: #eae8ee; --dim: #cdccd2; --muted: #908f96;
+    --line: #26262b; --line2: #35353d;
+    --accent: #cba6f7; --accent-ink: #17171a;
+    --code-bg: #111113; --code-ink: #eae8ee; --code-dim: #908f96; --code-line: #2c2c32;
     color-scheme: dark;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --ink: #dfe3f2; --line: #31374f; --accent: #8b9aec; --bg: #14161e;
-      --muted: #9298b0; --code-bg: #232840; --card: #1b1e2b;
+      --bg: #17171a; --panel: #1e1e22; --mass: #26262b;
+      --ink: #eae8ee; --dim: #cdccd2; --muted: #908f96;
+      --line: #26262b; --line2: #35353d;
+      --accent: #cba6f7; --accent-ink: #17171a;
+      --code-bg: #111113; --code-ink: #eae8ee; --code-dim: #908f96; --code-line: #2c2c32;
       color-scheme: dark;
     }
   }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; margin: 0; }
+  html { scroll-padding-top: 76px; }
   body {
-    margin: 0; font-family: Helvetica, Arial, sans-serif; color: var(--ink);
-    background: var(--bg); line-height: 1.6;
+    font: 400 15px/1.7 var(--body); color: var(--ink); background: var(--bg);
+    -webkit-font-smoothing: antialiased;
   }
-  header {
-    display: flex; align-items: center; gap: 12px; padding: 10px 20px;
-    background: var(--card); border-bottom: 1px solid var(--line);
-    position: sticky; top: 0; z-index: 10;
+  ::selection { background: var(--accent); color: var(--accent-ink); }
+  a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; }
+  a:hover { color: var(--accent); }
+  a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  code { font: 500 .86em var(--mono); font-variant-ligatures: none; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+  .label {
+    font: 500 11px var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted);
   }
-  header h1 { font-size: 18px; margin: 0; color: var(--accent); }
-  header h1 a { color: inherit; text-decoration: none; }
-  header .sub { font-size: 12px; color: var(--muted); }
-  header .spacer { flex: 1; }
-  header nav a {
-    font-size: 13px; color: var(--ink); text-decoration: none; padding: 6px 10px;
-    border-radius: 6px;
+
+  /* ── Top bar (as on the landing page, kept in view) ── */
+  .bar {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--bg); border-bottom: 1px solid var(--line2);
   }
-  header nav a:hover { color: var(--accent); background: var(--bg); }
-  .wrap { display: flex; max-width: 1200px; margin: 0 auto; gap: 32px; padding: 28px 20px; }
-  aside {
-    width: 220px; flex-shrink: 0; position: sticky; top: 66px;
-    align-self: flex-start; font-size: 13.5px;
+  .bar .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 56px; }
+  .brand { font: 900 18px var(--display); letter-spacing: -.02em; text-decoration: none; }
+  .brand::after { content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 3px; background: var(--accent); }
+  .bar nav { display: flex; align-items: center; gap: 20px; }
+  .bar nav a { font: 500 11.5px var(--mono); letter-spacing: .07em; text-transform: uppercase; text-decoration: none; color: var(--dim); }
+  .bar nav a:hover, .bar nav a[aria-current="page"] { color: var(--accent); }
+  .modes { display: inline-flex; border: 1px solid var(--line2); }
+  .modes button {
+    font: 500 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase;
+    padding: 5px 10px; border: 0; border-radius: 0; background: transparent; color: var(--muted); cursor: pointer;
   }
-  aside .group { font-weight: bold; margin: 14px 0 4px; color: var(--muted); font-size: 12px;
-    text-transform: uppercase; letter-spacing: .04em; }
-  aside a { display: block; color: var(--ink); text-decoration: none; padding: 3px 10px;
-    border-left: 2px solid transparent; border-radius: 0 6px 6px 0; }
-  aside a:hover { color: var(--accent); background: var(--card); border-left-color: var(--accent); }
-  article { flex: 1; min-width: 0; }
-  article section {
-    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
-    padding: 22px 26px; margin-bottom: 22px;
+  .modes button:hover { color: var(--ink); }
+  .modes button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+
+  /* ── Page head ── */
+  .head { padding: 64px 0 48px; border-bottom: 1px solid var(--line2); }
+  .head h1 {
+    font: 900 clamp(44px, 8vw, 88px)/.92 var(--display); letter-spacing: -.045em; margin: 16px 0 20px;
   }
-  h2 { margin: 0 0 12px; font-size: 22px; }
-  h3 { margin: 22px 0 8px; font-size: 16px; }
-  p, li { font-size: 14.5px; }
-  a { color: var(--accent); }
-  code {
-    font: 12.5px/1.5 ui-monospace, Menlo, monospace; background: var(--code-bg);
-    padding: 1.5px 5px; border-radius: 4px;
+  .head h1::after { content: ""; display: inline-block; width: .16em; height: .16em; margin-left: .04em; background: var(--accent); }
+  .head p.tag { font-size: clamp(16px, 2vw, 19px); color: var(--dim); max-width: 52ch; margin-bottom: 28px; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 10px; }
+  .cta {
+    display: inline-block; padding: 10px 16px; border: 1px solid var(--line2);
+    font: 500 11.5px var(--mono); letter-spacing: .07em; text-transform: uppercase; text-decoration: none; color: var(--ink);
+    transition: border-color .12s ease, background-color .12s ease, color .12s ease;
   }
+  .cta:hover { border-color: var(--ink); background: var(--mass); color: var(--ink); }
+  .cta.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .cta.primary:hover { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+
+  /* ── Contents + article ── */
+  .layout { display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: 64px; padding-top: 8px; }
+  .toc { position: sticky; top: 76px; align-self: start; max-height: calc(100vh - 92px); overflow-y: auto; padding: 32px 0 24px; }
+  .toc summary { display: none; }
+  .toc .group { margin: 22px 0 8px; }
+  .toc .group:first-child { margin-top: 0; }
+  .toc a {
+    display: block; padding: 5px 0 5px 14px; border-left: 1px solid var(--line2);
+    font-size: 13.5px; line-height: 1.45; color: var(--dim); text-decoration: none;
+  }
+  .toc a:hover { color: var(--ink); border-left-color: var(--ink); }
+  .toc a[aria-current="true"] { color: var(--ink); font-weight: 600; border-left: 2px solid var(--accent); padding-left: 13px; }
+
+  main { min-width: 0; padding-bottom: 48px; }
+  main section { padding: 44px 0; border-bottom: 1px solid var(--line2); }
+  main section:last-child { border-bottom: 0; }
+  main h2 { font: 900 clamp(26px, 3.4vw, 34px)/1.1 var(--display); letter-spacing: -.03em; margin: 10px 0 16px; }
+  main h3 { font: 800 17px/1.3 var(--display); letter-spacing: -.01em; margin: 30px 0 10px; }
+  main p, main li { max-width: 74ch; }
+  main p + p, main p + ul, main p + ol, main ul + p, main ol + p { margin-top: 12px; }
+  main p:has(+ pre), main p:has(+ .tbl) { margin-bottom: 0; }
+  main ul, main ol { padding-left: 22px; margin: 12px 0; }
+  main li + li { margin-top: 6px; }
+  main li::marker { color: var(--muted); }
+  :not(pre) > code { background: var(--mass); padding: .08em .36em; overflow-wrap: anywhere; }
+
+  /* Highlights: square bullets, as on the landing page's roadmap. */
+  ul.points { list-style: none; padding: 0; border-top: 1px solid var(--line2); margin-top: 20px; }
+  ul.points li { display: flex; gap: 14px; align-items: baseline; padding: 12px 0; margin: 0; border-bottom: 1px solid var(--line); max-width: none; }
+  ul.points li::before { flex: none; content: ""; width: 9px; height: 9px; background: var(--accent); transform: translateY(-1px); }
+
   pre {
-    background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px;
-    padding: 12px 14px; overflow-x: auto;
+    position: relative; margin: 14px 0; padding: 18px 20px;
+    background: var(--code-bg); color: var(--code-ink); border: 1px solid var(--code-line);
+    font: 400 13px/1.65 var(--mono); font-variant-ligatures: none;
+    overflow-x: auto; tab-size: 4;
   }
-  pre code { background: none; padding: 0; }
-  table { border-collapse: collapse; width: 100%; font-size: 14px; }
-  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
-  th { color: var(--muted); font-size: 12.5px; text-transform: uppercase; letter-spacing: .03em; }
-  .badges { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 4px; }
-  .badges a {
-    font-size: 12.5px; text-decoration: none; border: 1px solid var(--line);
-    border-radius: 6px; padding: 4px 10px; color: var(--ink); background: var(--bg);
+  pre code { font: inherit; }
+  .codebox { position: relative; margin: 14px 0; }
+  .codebox > pre { margin: 0; }
+  .copy {
+    position: absolute; top: 8px; right: 8px; padding: 4px 9px;
+    font: 500 10px var(--mono); letter-spacing: .1em; text-transform: uppercase;
+    color: var(--code-dim); background: var(--code-bg); border: 1px solid var(--code-line); border-radius: 0; cursor: pointer;
+    opacity: 0; transition: opacity .12s ease, color .12s ease, border-color .12s ease;
   }
-  .badges a:hover { border-color: var(--accent); color: var(--accent); }
+  .codebox:hover .copy, .copy:focus-visible { opacity: 1; }
+  .copy:hover { color: var(--code-ink); border-color: var(--code-dim); }
+  /* Touch screens have no hover: the button stays shown, above the first line. */
+  @media (hover: none) { .copy { opacity: 1; } .codebox > pre { padding-top: 40px; } }
+
+  .tbl { overflow-x: auto; margin: 16px 0; border: 1px solid var(--line2); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; line-height: 1.55; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  tr:last-child td { border-bottom: 0; }
+  th { font: 500 10.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); background: var(--panel); border-bottom-color: var(--line2); }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  td:nth-child(2) code { white-space: nowrap; }
+
   .tip {
-    border-left: 3px solid var(--accent); background: var(--bg);
-    padding: 8px 14px; border-radius: 0 8px 8px 0; font-size: 13.5px; margin: 12px 0;
+    margin: 18px 0 0; padding: 14px 18px; max-width: 74ch;
+    background: var(--panel); border-left: 2px solid var(--accent); font-size: 14px; color: var(--dim);
   }
-  footer {
-    max-width: 1200px; margin: 0 auto; padding: 10px 20px 30px; font-size: 12.5px;
-    color: var(--muted);
+
+  /* Key numbers: the landing page's stat grid. */
+  .stats {
+    display: grid; grid-template-columns: repeat(4, 1fr); margin: 22px 0 18px;
+    border-top: 1px solid var(--line2); border-left: 1px solid var(--line2);
   }
-  footer a { color: var(--accent); text-decoration: none; }
-  @media (max-width: 800px) {
-    .wrap { flex-direction: column; }
-    aside { position: static; width: auto; display: flex; flex-wrap: wrap; gap: 2px 10px; }
-    aside .group { width: 100%; }
+  .stat { padding: 18px 16px; border-right: 1px solid var(--line2); border-bottom: 1px solid var(--line2); }
+  .stat b { display: block; font: 900 28px/1.1 var(--display); letter-spacing: -.02em; margin-bottom: 6px; }
+  .stat span { font: 500 10.5px/1.5 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+
+  footer { border-top: 1px solid var(--line2); padding: 32px 0 44px; }
+  footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; font: 400 12px/1.7 var(--mono); color: var(--muted); }
+  footer a { color: var(--dim); }
+
+  /* ── Narrow screens: contents fold into a menu above the article ── */
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    .toc { position: static; max-height: none; overflow: visible; padding: 20px 0 0; }
+    .toc summary {
+      display: flex; justify-content: space-between; align-items: center; cursor: pointer; list-style: none;
+      padding: 12px 14px; border: 1px solid var(--line2);
+      font: 500 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink);
+    }
+    .toc summary::-webkit-details-marker { display: none; }
+    .toc summary::after { content: "+"; font-size: 15px; color: var(--muted); }
+    .toc[open] summary::after { content: "−"; }
+    .toc[open] nav { border: 1px solid var(--line2); border-top: 0; padding: 14px 14px 16px; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .wrap { padding: 0 16px; }
+    .bar nav { gap: 14px; }
+    .bar nav a { display: none; }
+    .head { padding: 44px 0 36px; }
+    main section { padding: 36px 0; }
+    pre, .codebox { margin-left: -16px; margin-right: -16px; }
+    .codebox > pre { margin-left: 0; margin-right: 0; }
+    pre { border-left: 0; border-right: 0; padding: 16px; font-size: 12.5px; }
+    .tbl { margin-left: -16px; margin-right: -16px; border-left: 0; border-right: 0; }
   }
 </style>
 </head>
 <body>
-<header>
-  <h1><a href="../">flowmaid</a></h1>
-  <span class="sub">documentation</span>
-  <span class="spacer"></span>
-  <nav>
-    <a href="/flowmaid-web/">Playground</a>
-    <a href="https://crates.io/crates/flowmaid" target="_blank">crates.io</a>
-    <a href="https://docs.rs/flowmaid" target="_blank">API docs</a>
-    <a href="https://github.com/go-routine-id/flowmaid" target="_blank">GitHub</a>
-    <a href="#" id="theme" title="Toggle dark mode" onclick="toggleTheme();return false;">🌓</a>
-  </nav>
+
+<div class="bar">
+  <div class="wrap">
+    <a class="brand" href="../">flowmaid</a>
+    <nav>
+      <a href="/flowmaid-web/">Playground</a>
+      <a href="./" aria-current="page">Docs</a>
+      <a href="https://docs.rs/flowmaid">API</a>
+      <a href="https://github.com/go-routine-id/flowmaid">GitHub</a>
+      <div class="modes" role="group" aria-label="Colour mode">
+        <button type="button" data-mode="dark" aria-pressed="false" onclick="setTheme('dark')">Ink</button>
+        <button type="button" data-mode="light" aria-pressed="false" onclick="setTheme('light')">Paper</button>
+      </div>
+    </nav>
+  </div>
+</div>
+<script>syncModes();</script>
+
+<header class="head">
+  <div class="wrap">
+    <div class="label">flowmaid · documentation</div>
+    <h1>Documentation</h1>
+    <p class="tag">Mermaid syntax in, SVG or live geometry out. Install it, render from the command line or from Rust, and build editors on the scene API.</p>
+    <div class="ctas">
+      <a class="cta primary" href="/flowmaid-web/">▶ Try the playground</a>
+      <a class="cta" href="https://docs.rs/flowmaid">API reference</a>
+      <a class="cta" href="https://crates.io/crates/flowmaid">crates.io</a>
+      <a class="cta" href="https://github.com/go-routine-id/flowmaid">GitHub</a>
+      <a class="cta" href="https://github.com/go-routine-id/flowmaid/blob/main/docs/ROADMAP.md">Roadmap</a>
+    </div>
+  </div>
 </header>
 
-<div class="wrap">
-<aside>
-  <div class="group">Start</div>
-  <a href="#overview">Overview</a>
-  <a href="#install">Installation</a>
-  <a href="#cli">Quick start — CLI</a>
-  <a href="#library">Quick start — Rust</a>
-  <div class="group">Guides</div>
-  <a href="#interactive">Interactive apps</a>
-  <a href="#wasm">WebAssembly</a>
-  <a href="#types">Diagram types</a>
-  <a href="#advance">Swimlanes (JSON &amp; text DSL)</a>
-  <a href="#layout">How layout works</a>
-  <div class="group">More</div>
-  <a href="#ecosystem">Ecosystem</a>
-  <a href="#license">License</a>
-</aside>
+<div class="wrap layout">
+<details class="toc" open>
+  <summary>Contents</summary>
+  <nav aria-label="Contents">
+    <div class="label group">Start</div>
+    <a href="#overview">Overview</a>
+    <a href="#install">Installation</a>
+    <a href="#cli">Quick start — CLI</a>
+    <a href="#library">Quick start — Rust</a>
+    <a href="#performance">Performance</a>
+    <div class="label group">Guides</div>
+    <a href="#interactive">Interactive apps</a>
+    <a href="#wasm">WebAssembly</a>
+    <a href="#types">Diagram types</a>
+    <a href="#advance">Swimlanes (JSON &amp; text DSL)</a>
+    <a href="#layout">How layout works</a>
+    <div class="label group">More</div>
+    <a href="#ecosystem">Ecosystem</a>
+    <a href="#license">License &amp; contributing</a>
+  </nav>
+</details>
 
-<article>
+<main>
 
 <section id="overview">
+  <div class="label">01 · Start</div>
   <h2>Overview</h2>
   <p><strong>flowmaid</strong> is a diagram engine that speaks Mermaid syntax and is written in
   pure Rust with <strong>zero dependencies</strong> — no C libraries, no JavaScript runtime,
   nothing beyond the Rust standard library. Feed it Mermaid-like text, get back an SVG string
   or plain positioned geometry you can paint with any UI toolkit.</p>
-  <div class="badges">
-    <a href="https://crates.io/crates/flowmaid" target="_blank">📦 crates.io/crates/flowmaid</a>
-    <a href="https://docs.rs/flowmaid" target="_blank">📚 docs.rs/flowmaid</a>
-    <a href="https://github.com/go-routine-id/flowmaid" target="_blank">⭐ go-routine-id/flowmaid</a>
-    <a href="/flowmaid-web/">▶ Live playground</a>
-  </div>
-  <h3>Highlights</h3>
-  <ul>
-    <li><strong>12 diagram types</strong> — flowchart, ER, class, sequence, state, pie, mindmap, user journey, git graph, architecture, timeline, sankey.</li>
-    <li><strong>Mermaid-grade layout</strong> — a faithful dagre-style pipeline: crossing
-      minimization, Brandes-Köpf coordinates, subgraph clusters with border walls,
-      edge labels that reserve their own space, smooth <code>curveBasis</code> splines.</li>
-    <li><strong>Interactive by design</strong> — a <code>scene</code>/<code>route</code> API exposes every node
-      and edge as plain geometry, so hosts can implement drag &amp; drop and re-route
-      edges without re-running layout.</li>
-    <li><strong>Runs anywhere Rust runs</strong> — native CLI, desktop apps, or the browser via
-      a ~380&nbsp;KB WebAssembly bundle (that is what powers the <a href="/flowmaid-web/">playground</a>).</li>
-    <li><strong>Line-numbered errors</strong> — parse failures tell you the offending line.</li>
+  <ul class="points">
+    <li><span><strong>12 diagram types</strong> — flowchart, ER, class, sequence, state, pie, mindmap, user journey, git graph, architecture, timeline, sankey.</span></li>
+    <li><span><strong>Fast</strong> — about 113× faster than mermaid 12.2.0 (geometric mean over 25 diagrams); most
+      hand-written diagrams render in under a millisecond. See <a href="#performance">Performance</a>.</span></li>
+    <li><span><strong>Layout from mermaid's family</strong> — a Sugiyama pipeline following dagre, the algorithm
+      mermaid.js uses. Flowchart and state edges run on the axes with rounded corners, crossing lines
+      hop over each other, and a hub's fan is drawn as a comb.</span></li>
+    <li><span><strong>Interactive by design</strong> — a <code>scene</code>/<code>route</code> API exposes every node
+      and edge as plain geometry, so hosts can implement drag &amp; drop, picking and re-routing
+      without re-running layout, then save the graph back as mermaid text.</span></li>
+    <li><span><strong>Runs anywhere Rust runs</strong> — native CLI, desktop apps, or the browser through one
+      WebAssembly file (that is what powers the <a href="/flowmaid-web/">playground</a>).</span></li>
+    <li><span><strong>Line-numbered errors</strong> — parse failures tell you the offending line.</span></li>
   </ul>
 </section>
 
 <section id="install">
+  <div class="label">02 · Start</div>
   <h2>Installation</h2>
   <p>Requires Rust <strong>1.75</strong> or newer. flowmaid has no other requirements.</p>
   <h3>As a library</h3>
@@ -184,6 +318,7 @@ flowmaid = "0.40"</code></pre>
 </section>
 
 <section id="cli">
+  <div class="label">03 · Start</div>
   <h2>Quick start — CLI</h2>
   <pre><code># file in, file out
 flowmaid diagram.mmd -o diagram.svg
@@ -202,6 +337,7 @@ cat diagram.mmd | flowmaid &gt; diagram.svg</code></pre>
 </section>
 
 <section id="library">
+  <div class="label">04 · Start</div>
   <h2>Quick start — Rust library</h2>
   <p>The one-call API renders any supported source straight to an SVG string:</p>
   <pre><code>fn main() {
@@ -225,10 +361,28 @@ match parser::parse_document(src) {
   <code>&lt;b&gt;</code>/<code>&lt;i&gt;</code> styling render as real bold/italic text.</p>
 </section>
 
+<section id="performance">
+  <div class="label">05 · Start</div>
+  <h2>Performance</h2>
+  <p>25 sample diagrams — flowcharts from a handful of nodes up to 52 nodes or 75 edges, plus every
+  other diagram type — rendered from the same <code>.mmd</code> source by flowmaid and by mermaid 12.2.0
+  (in headless Chromium).</p>
+  <div class="stats">
+    <div class="stat"><b>~113×</b><span>faster than mermaid, geometric mean</span></div>
+    <div class="stat"><b>20 / 25</b><span>diagrams under a millisecond</span></div>
+    <div class="stat"><b>1.5–25×</b><span>smaller SVG</span></div>
+    <div class="stat"><b>~3 ms</b><span>a drag frame on the densest sample</span></div>
+  </div>
+  <p>Dragging a node does not re-run layout: <code>route_partial</code> re-routes only the edges the move
+  can affect. The full table, the method and the machine are in the README's
+  <a href="https://github.com/go-routine-id/flowmaid#benchmark">Benchmark</a> section.</p>
+</section>
+
 <section id="interactive">
+  <div class="label">06 · Guides</div>
   <h2>Interactive apps (drag &amp; drop)</h2>
   <p>Every diagram type exposes its geometry as a <em>scene</em>: node centres, sizes,
-  shapes, edge curves, cluster boxes — plain data, no canvas assumed. The flow for an
+  shapes, edge paths, cluster boxes — plain data, no canvas assumed. The flow for an
   editor with draggable nodes:</p>
   <pre><code>use flowmaid::scene;
 
@@ -244,27 +398,48 @@ let s1 = scene::route_partial(                 // 3. LOCAL re-route:
 let svg = scene::to_svg(&amp;s1);                  // 4. export any state</code></pre>
   <ul>
     <li><code>scene()</code> — full automatic layout (what the CLI and playground use).</li>
-    <li><code>route(g, &amp;pos)</code> — re-route <em>every</em> edge for arbitrary positions.</li>
-    <li><code>route_partial(g, &amp;pos, &amp;base, &amp;base_pos)</code> — re-route only edges touching
-      moved nodes; the rest keep their channel-routed geometry.</li>
-    <li>The same triple exists for ER (<code>er::</code>), class (<code>class::</code>) and mindmap
-      (<code>mindmap::</code>) diagrams; sequence, pie and journey are static.</li>
+    <li><code>route(g, &amp;pos)</code> — re-route <em>every</em> edge for arbitrary positions, without re-running layout.</li>
+    <li><code>route_partial(g, &amp;pos, &amp;base, &amp;base_pos)</code> — re-route only the edges a move
+      can affect; the rest keep the base drawing.</li>
+    <li><strong>Picking</strong> — <code>Scene::{hit_test, node_at, edge_at, cluster_at, hits_in_rect, nearest_node}</code>
+      match what is painted, a crossing hop's arc included.</li>
+    <li><strong>Saving</strong> — <code>emit::to_mermaid(&amp;graph)</code> writes the graph back as valid mermaid text.</li>
   </ul>
+  <h3>Other diagram types</h3>
+  <ul>
+    <li>ER and class diagrams have the same <code>scene</code> / <code>route</code> / <code>to_svg</code> triple
+      (<code>er::</code>, <code>class::</code>); state diagrams use the flowchart API directly.</li>
+    <li>Mindmaps have <code>mindmap::scene</code> / <code>mindmap::route</code>.</li>
+    <li>Sequence, pie, journey, timeline, sankey, git graph and architecture diagrams are static:
+      a <code>scene()</code> and a <code>to_svg()</code>, no <code>route()</code>.</li>
+  </ul>
+  <div class="tip">A flowchart or state edge drawn on the axes comes as <code>SceneEdge::waypoints</code>,
+  which a painter's spline turns through as rounded corners. The hops at crossings are painted by
+  flowmaid's SVG writer only; the waypoints hold the plain path.</div>
 </section>
 
 <section id="wasm">
+  <div class="label">07 · Guides</div>
   <h2>WebAssembly</h2>
-  <p>The <a href="https://github.com/go-routine-id/flowmaid-web" target="_blank">flowmaid-web</a>
-  repository compiles the engine to a ~380&nbsp;KB wasm bundle with tiny JS bindings —
-  the <a href="/flowmaid-web/">playground</a> is built on exactly this:</p>
+  <p>The <a href="https://github.com/go-routine-id/flowmaid-web">flowmaid-web</a>
+  repository compiles the engine to one wasm file with small JS bindings —
+  the <a href="/flowmaid-web/">playground</a> is built on exactly this. On engine 0.40.0 that file
+  is about 2.8&nbsp;MB, about 1.1&nbsp;MB with gzip.</p>
   <pre><code>import init, { render_svg } from "./pkg/flowmaid_web.js";
 
 await init();
 document.body.innerHTML =
     render_svg("flowchart TD\nA([Start]) --&gt; B{OK?}");</code></pre>
-  <p>Additional bindings power interactivity: <code>auto_positions</code>,
-  <code>node_sizes</code>, <code>node_keys</code>, and <code>render_routed(src, positions)</code>
-  for drag-and-drop, plus <code>engine_version()</code>.</p>
+  <div class="tbl"><table>
+    <tr><th>Use</th><th>Bindings</th></tr>
+    <tr><td>Render</td><td><code>render_svg</code>, <code>render_svg_transparent</code></td></tr>
+    <tr><td>Drag &amp; drop</td><td><code>node_keys</code>, <code>auto_positions</code>, <code>node_sizes</code>,
+      <code>render_routed(src, positions)</code></td></tr>
+    <tr><td>Swimlanes</td><td><code>render_advance_svg</code>, <code>render_advance_text_svg</code>,
+      <code>render_advance_routed</code>, <code>render_advance_routed_with_lanes</code>,
+      <code>layout_advance_json</code></td></tr>
+    <tr><td>Version</td><td><code>engine_version()</code></td></tr>
+  </table></div>
   <h3>Building the bundle yourself</h3>
   <pre><code>git clone https://github.com/go-routine-id/flowmaid-web
 cd flowmaid-web
@@ -273,8 +448,9 @@ python3 -m http.server                   # open http://localhost:8000</code></pr
 </section>
 
 <section id="types">
+  <div class="label">08 · Guides</div>
   <h2>Diagram types</h2>
-  <table>
+  <div class="tbl"><table>
     <tr><th>Type</th><th>Header</th><th>Supports</th></tr>
     <tr><td>Flowchart</td><td><code>flowchart TD</code> / <code>graph LR</code></td>
       <td>13 node shapes, 6 edge kinds + labels, fan-out lists (<code>A --&gt; B &amp; C</code>),
@@ -311,14 +487,15 @@ python3 -m http.server                   # open http://localhost:8000</code></pr
       <td>CSV <code>source,target,value</code> rows, quoted fields, ribbons sized by
       value, measured labels, <code>config.sankey.*</code> (incl. <code>nodeColors</code>,
       <code>labelStyle</code>) from frontmatter</td></tr>
-  </table>
+  </table></div>
   <div class="tip">Every type above renders in the playground — type or paste its source
-  into the editor and edit live. The examples dropdown carries presets for
-  flowchart (plain &amp; styled), ER, class, sequence, pie, state, and the
-  swimlane example; the other headers work just as well when typed.</div>
+  into the editor and edit live. The examples menu has presets for flowchart (plain &amp; styled),
+  ER, class, sequence, pie and state diagrams, plus three swimlane examples (JSON, text DSL and
+  nested horizontal lanes); the other headers work just as well when typed.</div>
 </section>
 
 <section id="advance">
+  <div class="label">09 · Guides</div>
   <h2>Advance swimlanes (JSON input)</h2>
   <p>Besides the mermaid-syntax diagram types, the engine ships an engine-native
   swimlane renderer driven by JSON: vertical lane columns, top-down nodes,
@@ -369,10 +546,11 @@ style c fill:#fff8e1</code></pre>
 </section>
 
 <section id="layout">
+  <div class="label">10 · Guides</div>
   <h2>How layout works</h2>
-  <p>Flowcharts go through a Sugiyama pipeline modelled on
-  <a href="https://github.com/dagrejs/dagre" target="_blank">dagre</a> — the same algorithm
-  family mermaid.js uses:</p>
+  <p>Flowcharts (and state, class and ER diagrams, which map onto the same graph) go through a
+  Sugiyama pipeline following <a href="https://github.com/dagrejs/dagre">dagre</a> — the
+  algorithm family mermaid.js uses:</p>
   <ol>
     <li>DFS marks <em>back-edges</em> so cycles cannot break the layering.</li>
     <li><em>Longest-path layering</em> assigns nodes to ranks.</li>
@@ -382,51 +560,110 @@ style c fill:#fff8e1</code></pre>
       transpose, keeping the best round. Subgraph members stay contiguous, bracketed by
       invisible border walls.</li>
     <li><em>Brandes-Köpf</em> coordinate assignment straightens long edges and centres
-      fan-in/outs; edges then flow through their channels as
-      <code>curveBasis</code> splines.</li>
+      fan-in/outs. All four directions are one transform at the end.</li>
+    <li>The <em>scene</em> finishes every edge in the same fixed stages in <code>scene()</code>,
+      <code>route()</code> and <code>route_partial()</code>: distinct, ordered ports on every node side,
+      edges redrawn on the axes with rounded corners, repair of edges that pass through a node or a
+      foreign frame or run on top of another edge, combed fans, and collision-aware label placement.</li>
   </ol>
-  <p>Sequence, pie, mindmap and journey diagrams use their own dedicated layouts.</p>
+  <p>The SVG writer then paints the scene, adding a small hop where a level stretch of one edge
+  crosses a plumb stretch of another. Sequence, pie, journey, timeline, sankey, git graph,
+  mindmap, architecture and swimlane diagrams use their own dedicated layouts.</p>
 </section>
 
 <section id="ecosystem">
+  <div class="label">11 · More</div>
   <h2>Ecosystem</h2>
-  <table>
+  <div class="tbl"><table>
     <tr><th>Project</th><th>What it is</th></tr>
-    <tr><td><a href="https://github.com/go-routine-id/flowmaid" target="_blank">flowmaid</a></td>
+    <tr><td><a href="https://github.com/go-routine-id/flowmaid">flowmaid</a></td>
       <td>The engine — parser, layout, SVG renderer, interactive scene API (this documentation).</td></tr>
-    <tr><td><a href="https://crates.io/crates/markmaid" target="_blank">markmaid</a></td>
+    <tr><td><a href="https://crates.io/crates/markmaid">markmaid</a></td>
       <td>Framework-agnostic Markdown rendering engine (GFM subset → positioned geometry)
       with first-class inline <code>```mermaid</code> blocks rendered by flowmaid.</td></tr>
-    <tr><td><a href="https://github.com/go-routine-id/flowmaid-web" target="_blank">flowmaid-web</a></td>
+    <tr><td><a href="https://github.com/go-routine-id/flowmaid-web">flowmaid-web</a></td>
       <td>WebAssembly bindings + the <a href="/flowmaid-web/">live playground</a>.</td></tr>
-    <tr><td>flowmaid-desktop</td>
+    <tr><td><a href="https://github.com/go-routine-id/flowmaid-desktop">flowmaid-desktop</a></td>
       <td>Native editor (egui): tabs, file tree, live preview, drag-and-drop nodes,
       Markdown documents via markmaid.</td></tr>
-    <tr><td><a href="https://github.com/go-routine-id/flowcli" target="_blank">flowcli</a></td>
+    <tr><td><a href="https://github.com/go-routine-id/flowcli">flowcli</a></td>
       <td>Terminal renderer (ratatui) — draws the scene as Unicode box- and
       line-drawing, no SVG. A showcase of the renderer-agnostic scene API.</td></tr>
-  </table>
+  </table></div>
 </section>
 
 <section id="license">
+  <div class="label">12 · More</div>
   <h2>License &amp; contributing</h2>
   <p>flowmaid, markmaid and the playground are licensed
   <strong>GPL-3.0-or-later</strong>.</p>
   <p>Bug reports and feature requests: use the
-  <a href="https://github.com/go-routine-id/flowmaid/issues" target="_blank">GitHub issues</a>;
-  the diagram-type roadmap lives in
-  <a href="https://github.com/go-routine-id/flowmaid/issues/10" target="_blank">issue #10</a>.
+  <a href="https://github.com/go-routine-id/flowmaid/issues">GitHub issues</a>.
+  The diagram-type board lives in
+  <a href="https://github.com/go-routine-id/flowmaid/issues/10">issue #10</a>, and the
+  drawing-quality roadmap in <a href="https://github.com/go-routine-id/flowmaid/blob/main/docs/ROADMAP.md">docs/ROADMAP.md</a>.
   A good bug report includes the <code>.mmd</code> source and, for rendering issues,
   a screenshot of what you got vs what you expected.</p>
 </section>
 
-</article>
+</main>
 </div>
 
 <footer>
-  © PT GO ROUTINE TECH · <a href="/flowmaid-web/">playground</a> ·
-  <a href="https://github.com/go-routine-id/flowmaid" target="_blank">engine source</a> ·
-  <a href="https://github.com/go-routine-id/flowmaid-web" target="_blank">site source</a>
+  <div class="wrap">
+    <span>flowmaid is GPL-3.0-or-later · © PT GO ROUTINE TECH</span>
+    <span><a href="/flowmaid-web/">playground</a> · <a href="https://github.com/go-routine-id/flowmaid">engine source</a> · <a href="https://github.com/go-routine-id/flowmaid/blob/main/docs/docs/index.html">page source</a></span>
+  </div>
 </footer>
+
+<script>
+  // Copy buttons on code blocks, in a box round each block so the button
+  // stays put while the code scrolls sideways.
+  (function () {
+    var pres = document.querySelectorAll("main pre");
+    for (var i = 0; i < pres.length; i++) (function (pre) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "copy"; b.textContent = "Copy";
+      b.setAttribute("aria-label", "Copy code");
+      b.addEventListener("click", function () {
+        var text = pre.querySelector("code").innerText;
+        var done = function (msg) { b.textContent = msg; setTimeout(function () { b.textContent = "Copy"; }, 1400); };
+        if (navigator.clipboard) navigator.clipboard.writeText(text).then(function () { done("Copied"); }, function () { done("Select"); });
+        else done("Select");
+      });
+      var box = document.createElement("div");
+      box.className = "codebox";
+      pre.parentNode.insertBefore(box, pre);
+      box.appendChild(pre);
+      box.appendChild(b);
+    })(pres[i]);
+  })();
+
+  // Contents: folded on narrow screens, open beside the article on wide ones;
+  // the link of the section in view is marked.
+  (function () {
+    var toc = document.querySelector(".toc");
+    var narrow = matchMedia("(max-width: 900px)");
+    function fit() { if (narrow.matches) toc.removeAttribute("open"); else toc.setAttribute("open", ""); }
+    fit();
+    if (narrow.addEventListener) narrow.addEventListener("change", fit);
+    toc.addEventListener("click", function (e) {
+      if (e.target.tagName === "A" && narrow.matches) toc.removeAttribute("open");
+    });
+    if (!("IntersectionObserver" in window)) return;
+    var links = {};
+    var as = toc.querySelectorAll("a[href^='#']");
+    for (var i = 0; i < as.length; i++) links[as[i].getAttribute("href").slice(1)] = as[i];
+    if (as.length && !location.hash) as[0].setAttribute("aria-current", "true");
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting || !links[en.target.id]) return;
+        for (var k in links) links[k].removeAttribute("aria-current");
+        links[en.target.id].setAttribute("aria-current", "true");
+      });
+    }, { rootMargin: "-20% 0px -70% 0px" });
+    document.querySelectorAll("main section[id]").forEach(function (s) { io.observe(s); });
+  })();
+</script>
 </body>
 </html>
