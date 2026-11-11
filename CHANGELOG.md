@@ -25,8 +25,10 @@ project adheres to [Semantic Versioning](https://semver.org/).
   depending on `C`), and a dot never starts or ends a name (`A.`, `.A`
   and `A...B` stay errors, as in mermaid). Such names were parse errors
   in a relation, an inline member and a `note for`. A name part that is
-  just `o` is no aggregation glyph: `pkg.o --> B` links the class
-  `pkg.o`, where mermaid's lexer gives up on the line.
+  just `o` is no aggregation glyph, last in the name or first:
+  `pkg.o --> B` links the class `pkg.o` and `o.A --> B` the class `o.A`
+  (so do `class o.A` and `o.A : +id int`), where mermaid's lexer takes
+  that `o` for the glyph and gives up on the line.
 
 ### Changed
 
@@ -181,10 +183,20 @@ project adheres to [Semantic Versioning](https://semver.org/).
   beside the innermost's leg out of its class — found no lane under
   both. A curve that would be a jog now joins the jogs of its gap when
   they are stacked in nesting order, so the six nest a lane's room
-  apart, in every direction and for every relation kind. The same
-  rescues another fan that kept two curves (eleven classes into one in
-  `LR`, each with a label and cardinalities: 8 crossings -> 0); no
-  other class diagram tried (some 950) draws differently.
+  apart, in every direction and for every relation kind. The new
+  routes are kept only when every jog finds a place and the drawing
+  then costs less than with the curve, counted at what it crosses and
+  covers; a curve whose gap has no such drawing stays, on the routes
+  stacked as they were without it (a wide `LR` fan with cardinalities
+  keeps its staircase and the two curves round it). The same rescues
+  other fans that kept curves: eleven classes into one in `LR`, each
+  with a label and cardinalities (8 crossings -> 0), and of 1,949 class
+  inputs tried, six diagrams of the bulk corpus (1-2 curves -> 0, 4-36
+  crossings -> 0-2), with two more whose `route()` trades one curve for
+  a route. In 2,784 generated fans of 12 to 40 classes (four relation
+  kinds, four directions, with and without labels and cardinalities) 24
+  draw better in `scene()` or `route()`, 58 counting two drags of each,
+  and none worse.
 - **Class diagrams: self-relations keep off a neighbour's.** A class's
   loops were placed clear of the other boxes only, so with a loop on
   each of two siblings they met in the gap between: five loops on one

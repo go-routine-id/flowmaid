@@ -405,7 +405,7 @@ Supported subset:
   - a class's self-relations alternate sides and nest, those with cardinalities outermost so each cardinality sits by its own end. They move to a clear face when a sibling, or a sibling's own loops, sits close (a class with more than eight loops keeps to two faces whatever stands beside it), and their labels sit beside the loops, not on them.
 - **Notes.** `note "text"` and `note for Class "text"` draw as yellow cards, and an attached note sits just above its class, linked to it by a dotted line. `\n` or `<br/>` breaks a note line. A diagram may hold notes alone. As in mermaid, a note for a class that is never declared stays free.
 - **Comments.** Trailing `%%` comments are stripped (mermaid prints them as part of the label).
-- **Dotted names.** A name may hold single dots, as in mermaid: `com.example.Order` is one class of that name wherever it is written (`A.B --> C`, `A.B : +id int`, `note for A.B "…"`), `..` stays the dotted line (`A.B..>C`), and a dot never starts or ends a name.
+- **Dotted names.** A name may hold single dots, as in mermaid: `com.example.Order` is one class of that name wherever it is written (`A.B --> C`, `A.B : +id int`, `note for A.B "…"`), `..` stays the dotted line (`A.B..>C`), and a dot never starts or ends a name. A part that is just `o` belongs to the name too (`o.A`, `pkg.o`), where mermaid reads an aggregation glyph and fails.
 - **Not yet supported:** `namespace` blocks, `classDef` / `:::` styling and `click` in class diagrams.
 
 See `examples/class.mmd`.

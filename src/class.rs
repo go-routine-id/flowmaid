@@ -1066,15 +1066,56 @@ impl Zig {
 /// across its neighbour's route twice. Such a curve ([`stray_z`])
 /// joins the jogs of its gap as the Z it would be: a group holding one
 /// is drawn again whether or not two of its jogs cross, and keeps the
-/// new routes whenever every jog finds a place — as [`ortho_pass`]
-/// takes any route over a curve. A curve tied to no other jog stays.
+/// new routes when every jog finds a place and the drawing then costs
+/// less than with the curve, counted at what it crosses and covers
+/// ([`curve_cost`]). A curve tied to no other jog stays.
+///
+/// A curve whose group finds no such drawing stays too, and must not
+/// keep the routes of its gap from being stacked as they are without
+/// it (a wide fan's staircase, the curve round it): the jogs are then
+/// stacked again from the start with that curve left alone.
 fn nest_jogs(nodes: &[SceneNode], edges: &mut [SceneEdge]) {
     let idx: HashMap<&str, usize> = nodes
         .iter()
         .enumerate()
         .map(|(i, n)| (n.id.as_str(), i))
         .collect();
-    let strays: Vec<Option<SceneEdge>> = edges.iter().map(|e| stray_z(nodes, &idx, e)).collect();
+    let rects: Vec<Rect> = nodes.iter().map(node_rect).collect();
+    let mut strays: Vec<Option<SceneEdge>> =
+        edges.iter().map(|e| stray_z(nodes, &idx, e)).collect();
+    if strays.iter().all(Option::is_none) {
+        nest_pass(nodes, &rects, &idx, edges, &strays);
+        return;
+    }
+    // At most three passes: with every curve, without those that found
+    // no drawing, and — should that leave others without one — with
+    // none, as the routes alone are stacked.
+    let laid = edges.to_vec();
+    for pass in 0..3 {
+        let left = nest_pass(nodes, &rects, &idx, edges, &strays);
+        if left.is_empty() {
+            return;
+        }
+        edges.clone_from_slice(&laid);
+        for (j, z) in strays.iter_mut().enumerate() {
+            if pass == 1 || left.contains(&j) {
+                *z = None;
+            }
+        }
+    }
+}
+
+/// One pass of [`nest_jogs`], with `strays[j]` the Z a curve `j` joins
+/// its gap's jogs as (if any). Returns the curves whose group found no
+/// drawing to keep.
+fn nest_pass(
+    nodes: &[SceneNode],
+    rects: &[Rect],
+    idx: &HashMap<&str, usize>,
+    edges: &mut [SceneEdge],
+    strays: &[Option<SceneEdge>],
+) -> Vec<usize> {
+    let mut unplaced: Vec<usize> = Vec::new();
     let mut zigs: Vec<Zig> = Vec::new();
     for (j, e) in edges.iter().enumerate() {
         let e = strays[j].as_ref().unwrap_or(e);
@@ -1133,7 +1174,7 @@ fn nest_jogs(nodes: &[SceneNode], edges: &mut [SceneEdge]) {
     }
     let n = zigs.len();
     if n < 2 {
-        return;
+        return unplaced;
     }
     // above[a][b]: route a must jog above route b (not both ways: then
     // they cross once whichever way, and no order helps).
@@ -1167,7 +1208,6 @@ fn nest_jogs(nodes: &[SceneNode], edges: &mut [SceneEdge]) {
             }
         }
     }
-    let rects: Vec<Rect> = nodes.iter().map(node_rect).collect();
     let mut done = vec![false; n];
     for start in 0..n {
         let r = root(&mut group, start);
@@ -1188,9 +1228,11 @@ fn nest_jogs(nodes: &[SceneNode], edges: &mut [SceneEdge]) {
             .copied()
             .filter(|&j| strays[j].is_some() && members.len() > 1)
             .collect();
-        if !(members.iter().any(|&k| tangled[k]) || !lost.is_empty())
-            || routes.len() < members.len()
-        {
+        if !(members.iter().any(|&k| tangled[k]) || !lost.is_empty()) {
+            continue;
+        }
+        if routes.len() < members.len() {
+            unplaced.extend(lost);
             continue;
         }
         // Topological order of `above`, the jog highest now first of
@@ -1208,6 +1250,7 @@ fn nest_jogs(nodes: &[SceneNode], edges: &mut [SceneEdge]) {
             left.retain(|&k| k != next);
         }
         if !left.is_empty() {
+            unplaced.extend(lost);
             continue; // a cycle: no order clears every pair
         }
         let g = Group {
@@ -1215,22 +1258,25 @@ fn nest_jogs(nodes: &[SceneNode], edges: &mut [SceneEdge]) {
             above: &above,
             order: &order,
         };
-        // With a curve among them the jogs are drawn from the Zs, and
-        // any drawing that places them all beats the one with the curve.
+        // With a curve among them the jogs are drawn from the Zs. A
+        // curve costs the drawing nothing as `drawing_cost` reads it, so
+        // each is counted at what it crosses and covers.
         let as_zs: Vec<SceneEdge>;
+        let before = drawing_cost(rects, idx, edges);
         let (from, before): (&[SceneEdge], usize) = if lost.is_empty() {
-            (edges, drawing_cost(&rects, &idx, edges))
+            (edges, before)
         } else {
             as_zs = edges
                 .iter()
-                .zip(&strays)
+                .zip(strays)
                 .enumerate()
                 .map(|(j, (e, z))| match z {
                     Some(z) if lost.contains(&j) => z.clone(),
                     _ => e.clone(),
                 })
                 .collect();
-            (&as_zs, usize::MAX)
+            let curved: usize = lost.iter().map(|&j| curve_cost(edges, j)).sum();
+            (&as_zs, before + curved)
         };
         let mut best: Option<(usize, Vec<SceneEdge>)> = None;
         for (respect, step, pack) in [
@@ -1241,19 +1287,60 @@ fn nest_jogs(nodes: &[SceneNode], edges: &mut [SceneEdge]) {
             (false, ORTHO_SEP, false),
             (false, ORTHO_SEP, true),
         ] {
-            let Some(trial) = nest_group(nodes, &rects, &idx, from, &g, (respect, step, pack))
-            else {
+            let Some(trial) = nest_group(nodes, rects, idx, from, &g, (respect, step, pack)) else {
                 continue;
             };
-            let c = drawing_cost(&rects, &idx, &trial);
+            let c = drawing_cost(rects, idx, &trial);
             if c < best.as_ref().map_or(before, |b| b.0) {
                 best = Some((c, trial));
             }
         }
-        if let Some((_, trial)) = best {
-            edges.clone_from_slice(&trial);
+        match best {
+            Some((_, trial)) => edges.clone_from_slice(&trial),
+            None => unplaced.extend(lost),
         }
     }
+    unplaced
+}
+
+/// What the curve of edge `j` costs the drawing, for [`nest_jogs`] to
+/// weigh a drawing that routes it against the one that keeps it:
+/// [`ORTHO_CROSSING`] per line of another edge it crosses,
+/// [`ORTHO_UNDER_LABEL`] per label of another edge it runs under, and 1
+/// for the curve itself (a route that costs the same is the better
+/// drawing).
+fn curve_cost(edges: &[SceneEdge], j: usize) -> usize {
+    let cross = |a: (f64, f64), b: (f64, f64), c: (f64, f64), d: (f64, f64)| {
+        let side = |o: (f64, f64), p: (f64, f64), q: (f64, f64)| {
+            (p.0 - o.0) * (q.1 - o.1) - (p.1 - o.1) * (q.0 - o.0)
+        };
+        side(c, d, a) * side(c, d, b) < 0.0 && side(a, b, c) * side(a, b, d) < 0.0
+    };
+    let line = edge_polyline(&edges[j]);
+    let mut cost = 1;
+    for (k, o) in edges.iter().enumerate() {
+        if k == j {
+            continue;
+        }
+        // A route by its corners, as `drawing_cost` reads it.
+        let other = ortho_corners(o).unwrap_or_else(|| edge_polyline(o));
+        cost += ORTHO_CROSSING
+            * line
+                .windows(2)
+                .map(|s| {
+                    other
+                        .windows(2)
+                        .filter(|t| cross(s[0], s[1], t[0], t[1]))
+                        .count()
+                })
+                .sum::<usize>();
+        if let Some(chip) = label_chip(o) {
+            if line.windows(2).any(|s| rect_hits_segment(chip, s[0], s[1])) {
+                cost += ORTHO_UNDER_LABEL;
+            }
+        }
+    }
+    cost
 }
 
 /// Edge `e`, when it is a curve [`ortho_pass`] left between two faces
@@ -4341,14 +4428,29 @@ mod tests {
             ("A._x --> B", "A._x", "B"),
             ("A.-x --> B", "A.-x", "B"),
             ("A.B~T~ --> C", "A.B", "C"),
-            // A part that is just `o` is no aggregation glyph.
+            // A part that is just `o` is no aggregation glyph, last
+            // in the name or first (mermaid's lexer takes either for
+            // the glyph and gives up on the line).
             ("A.o --> B", "A.o", "B"),
             ("pkg.o--B", "pkg.o", "B"),
             ("pkg.o..B", "pkg.o", "B"),
+            ("o.A --> B", "o.A", "B"),
+            ("o.A..>B", "o.A", "B"),
+            ("A --> o.B", "A", "o.B"),
+            ("o.o --> pkg.o.x", "o.o", "pkg.o.x"),
             ("A.org --> B.out", "A.org", "B.out"),
         ] {
             assert_eq!(ends(line), pair(from, to), "{line}");
         }
+        // ... nor in a declaration or an inline member.
+        let d = cd("classDiagram\nclass o.A\no.A : +x int\nB <-- o.A");
+        let names: Vec<&str> = d.classes.iter().map(|c| c.name.as_str()).collect();
+        assert_eq!(names, ["o.A", "B"]);
+        assert_eq!(d.classes[0].fields.len(), 1);
+        assert_eq!(ends("B <-- o.A"), pair("o.A", "B"));
+        // The glyph still reads as one beside a dotted name.
+        assert_eq!(ends("o.A o-- B"), pair("B", "o.A"));
+        assert_eq!(ends("A --o o.B"), pair("A", "o.B"));
         // Head on the left, glyphs glued to the names.
         assert_eq!(ends("A.B<|--C.D"), pair("C.D", "A.B"));
         assert_eq!(ends("A.B o-- C.D"), pair("C.D", "A.B"));
@@ -5830,6 +5932,97 @@ mod tests {
             stray_z(&cs.scene.nodes, &idx, &near).is_none(),
             "faces not facing"
         );
+    }
+
+    /// Review finding on the change above: a wide fan in `LR` with
+    /// cardinalities keeps its two outermost relations as curves (no
+    /// lane is left for them), and with those curves in its group the
+    /// group found no drawing at all — so the routes, which stack into a
+    /// staircase without the curves, were left as first drawn: 76
+    /// crossings for 20 at twenty-four sources, 182 for 32 at
+    /// thirty-eight, with label chips struck. A curve whose group finds
+    /// no drawing is now left alone and the routes are stacked as they
+    /// are without it: no route crosses another, and no label lies
+    /// under another relation's route.
+    #[test]
+    fn a_wide_fan_keeps_its_staircase_beside_a_curve_without_a_place() {
+        // (sources, relation, labelled, check `route()` too): `route()`
+        // of the arrow and dependency fans crossed as much before.
+        for (n, op, labelled, routed) in [
+            (24, "--*", true, true),
+            (36, "--*", false, true),
+            (28, "-->", true, false),
+            (30, "..>", true, false),
+        ] {
+            let label = if labelled { " : uses" } else { "" };
+            let src = (1..=n).fold(String::from("classDiagram\ndirection LR\n"), |s, i| {
+                s + &format!("S{i} \"1\" {op} \"*\" Hub{label}\n")
+            });
+            let d = cd(&src);
+            let cs = scene(&d);
+            let at: Vec<(f64, f64)> = cs.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let mut drawings = vec![("scene", cs)];
+            if routed {
+                drawings.push(("route", route(&d, &at)));
+            }
+            for (what, cs) in &drawings {
+                let what = format!("{n} x `{op}`{label}, {what}");
+                let edges = &cs.scene.edges;
+                let is_route = |j: usize| ortho_corners(&edges[j]).is_some();
+                // The case at hand: a curve is left, the rest are routes.
+                let curves = (0..edges.len()).filter(|&j| !is_route(j)).count();
+                assert!(curves > 0 && curves <= 2, "{what}: {curves} curves");
+                let (merged, crossing) = merged_and_crossing(cs);
+                assert!(merged.is_empty(), "{what}: merged {merged:?}");
+                let crossing: Vec<_> = crossing
+                    .into_iter()
+                    .filter(|&(i, j)| is_route(i) && is_route(j))
+                    .collect();
+                assert!(crossing.is_empty(), "{what}: routes cross: {crossing:?}");
+                for (i, e) in edges.iter().enumerate() {
+                    let Some(chip) = label_chip(e) else { continue };
+                    for (j, o) in edges.iter().enumerate() {
+                        let under = i != j
+                            && is_route(j)
+                            && edge_polyline(o)
+                                .windows(2)
+                                .any(|w| rect_hits_segment(chip, w[0], w[1]));
+                        assert!(
+                            !under,
+                            "{what}: {}'s label under {}'s route",
+                            e.from, o.from
+                        );
+                    }
+                }
+            }
+        }
+        // A curve is weighed at what it crosses and covers.
+        let fan = (0..6).fold(String::from("classDiagram\n"), |s, i| {
+            s + &format!("Svc{i} --> Hub\n")
+        });
+        let mut edges = scene(&cd(&fan)).scene.edges;
+        assert_eq!(
+            drawing_cost_of_curve(&edges, 0),
+            None,
+            "a route is no curve"
+        );
+        // Svc0's route as a curve from its class to the hub's far
+        // corner: it sweeps across its neighbours' routes.
+        let (a, b) = (edge_ends(&edges[0]).0, edge_ends(&edges[5]).1);
+        edges[0].waypoints.clear();
+        edges[0].bezier = [a, (a.0, a.1 + 40.0), (b.0, b.1 - 40.0), b];
+        let cost = drawing_cost_of_curve(&edges, 0).expect("a curve");
+        assert!(
+            cost > ORTHO_CROSSING && cost % ORTHO_CROSSING == 1,
+            "one for the curve and {ORTHO_CROSSING} a crossing: {cost}"
+        );
+    }
+
+    /// [`curve_cost`] of edge `j` when it is drawn as a curve.
+    fn drawing_cost_of_curve(edges: &[SceneEdge], j: usize) -> Option<usize> {
+        ortho_corners(&edges[j])
+            .is_none()
+            .then(|| curve_cost(edges, j))
     }
 
     /// Verifier repro (r3, s5 — a regression from 0.32): the layout
