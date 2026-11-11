@@ -3748,9 +3748,10 @@ struct ClassOp {
 /// counts at an operand boundary — never inside a name like `Foo` or
 /// `my_o`. A hyphen is a boundary: mermaid reads `A-o--B` as `A-`
 /// aggregating `B`. A dot is not: it joins the parts of a dotted name
-/// ([`is_bare_class_name`]), which never ends on one, so `pkg.o--B`
-/// links the class `pkg.o` (mermaid's lexer takes that `o` for a glyph
-/// and gives up on the line).
+/// ([`is_bare_class_name`]), which never starts or ends on one, so
+/// `pkg.o--B` links the class `pkg.o` and `A--o.pkg` the class `o.pkg`
+/// (mermaid's lexer takes either `o` for a glyph and gives up on the
+/// line).
 ///
 /// A dotted name's single dots are no operator either: only `..` is a
 /// line, so `A.B..>C` is `A.B` depending on `C`.
@@ -3787,10 +3788,12 @@ fn find_class_op(rel: &str) -> Option<ClassOp> {
                 };
                 if let Some(dashed) = line_at(at) {
                     let after = at + 2;
-                    // `A--oC` is a link to `oC`, as in mermaid.
+                    // `A--oC` is a link to `oC`, as in mermaid, and
+                    // `A--o.C` one to `o.C`: no name starts on a dot,
+                    // so that `o` is the first part of a dotted name.
                     let right = CLASS_RIGHT_ENDS.iter().find(|&&(g, _)| {
                         rel[after..].starts_with(g)
-                            && (g != "o" || !rel[after + 1..].starts_with(word))
+                            && (g != "o" || !rel[after + 1..].starts_with(glued))
                     });
                     return Some(ClassOp {
                         pos: i,

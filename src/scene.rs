@@ -5265,7 +5265,13 @@ const PARTIAL_ROUTE_SHARE: f64 = 0.5;
 /// cost.
 /// Falls back to [`route`] whenever `base` no longer lines up with the
 /// graph (e.g. after an edit to nodes, edges, edge labels or styles, or
-/// subgraphs).
+/// subgraphs). What lines up and did not move is taken from `base` as
+/// it stands, though: a graph none of whose nodes moved comes back as
+/// `base`, and so does a subgraph laid out on its own in its
+/// `direction` none of whose nodes moved — a fork/join bar inside it
+/// keeps the length `base` drew, also when `base` was drawn for other
+/// node sizes. So draw `base` for the graph and the sizes the drag is
+/// routed with.
 ///
 /// # Panics
 ///

@@ -792,9 +792,12 @@ fn rest_sizes(
 /// sizes and labels — with the frame `(w, h)` that layout drew round it.
 type Laid = (Graph, Vec<(f64, f64)>, Vec<String>, (f64, f64));
 
-/// Most blocks [`LAID`] holds before it drops the oldest: more than one
-/// diagram's bars branch to (a diagram with more lays the oldest out
-/// again on each [`route`]), few enough to compare against on each.
+/// Most blocks [`LAID`] holds before it drops the one kept longest:
+/// more than one diagram's bars branch to, few enough to compare
+/// against on each [`route`]. A diagram whose bars read more blocks
+/// than this finds none of them kept — each one laid out pushes out
+/// the next one asked for — and lays them all out again on each
+/// `route`, as it would without the memo; the drawing is the same.
 const LAID_MAX: usize = 32;
 
 thread_local! {
