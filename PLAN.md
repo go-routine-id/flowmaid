@@ -1,5 +1,7 @@
 # flowmaid visual parity — execution plan (all sprints)
 
+
+> **Commit identity (user decision, 2026-11-11):** commits are authored as the repository owner. The identity is set in the repository's git config (`git config user.name` must print `rhyanz46`); if it prints anything else, set it before committing: `git config user.name rhyanz46; git config user.email "$(git log -1 --no-merges --author=rhyanz46 --format=%ae)"`. Never pass `--author` or `-c user.*`. The commit trailer below stays as it is.
 Repo: /home/user/flowmaid (Rust, zero deps). Branch: `ccr-ccc6d89a-5cxd7e` (based on main 5f318a0).
 Goal: make flowmaid's output look as good as / better than mermaid.js 12.2.0 for every diagram type,
 fixing every verified finding in the comparison report — WITHOUT losing what differentiates flowmaid.
