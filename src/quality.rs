@@ -621,6 +621,10 @@ pub struct Report {
     /// link crosses a subgraph's border), whether or not it is switched
     /// on.
     pub block_mode: bool,
+    /// Whether the diagram's layers as blocks are its layers before
+    /// blocks ([`layers_dump`]'s `rows_equal`, in every part): such a
+    /// diagram is judged by "not drawn worse than before".
+    pub rows_equal: bool,
     /// Largest difference (px) of a frame's side between `scene()` and
     /// `route()` at its centres: how far the frames snap when the
     /// playground first paints the routed drawing.
@@ -759,6 +763,93 @@ pub fn levels_dump(g: &Graph) -> Vec<String> {
         .collect()
 }
 
+/// How `g` is layered as blocks and how it was layered before blocks,
+/// as text. Per part of the diagram that has subgraphs (the whole
+/// diagram unless a subgraph sets its own direction): a header line
+/// `part <k> block_mode <0|1> rows_equal <0|1>`, the block layers as one
+/// line (`layers a b / c / ...`), one line `upstream a -> b` per edge
+/// that runs against the flow, one line `block <subgraph> rows <a>-<b>`
+/// per subgraph laid out as a block, one line `lanes <subgraph>` per
+/// level the lane rule keeps side by side, and one line per node
+/// `node <id> <block layer> <layer before>`.
+pub fn layers_dump(g: &Graph) -> Vec<String> {
+    let out = std::cell::RefCell::new(Vec::new());
+    let part = std::cell::Cell::new(0usize);
+    crate::compound::any_part(g, &|p| {
+        let k = part.replace(part.get() + 1);
+        let Some(l) = scene::layerings(p) else {
+            return false;
+        };
+        let mut out = out.borrow_mut();
+        let mode = crate::levels::Augmented::of(p).block_mode(p);
+        out.push(format!(
+            "part {k} block_mode {} rows_equal {}",
+            u8::from(mode),
+            u8::from(l.block == l.before)
+        ));
+        let rows = l.block.iter().copied().max().map_or(0, |m| m + 1);
+        let by_row: Vec<String> = (0..rows)
+            .map(|r| {
+                let ids: Vec<&str> = (0..p.nodes.len())
+                    .filter(|&v| l.block[v] == r)
+                    .map(|v| p.nodes[v].id.as_str())
+                    .collect();
+                ids.join(" ")
+            })
+            .collect();
+        out.push(format!("layers {}", by_row.join(" / ")));
+        // Stand-ins come after the part's own edges: name those by
+        // their end nodes too.
+        for &ei in &l.upstream {
+            let ends = match p.edges.get(ei) {
+                Some(e) => Some((e.from, e.to)),
+                None => stand_in_ends(p, ei - p.edges.len()),
+            };
+            if let Some((a, b)) = ends {
+                out.push(format!("upstream {} -> {}", p.nodes[a].id, p.nodes[b].id));
+            }
+        }
+        for (s, sub) in p.subgraphs.iter().enumerate() {
+            let on: Vec<usize> = (0..p.nodes.len())
+                .filter(|&v| l.paths[v].contains(&s))
+                .map(|v| l.block[v])
+                .collect();
+            if let (Some(lo), Some(hi)) = (on.iter().min(), on.iter().max()) {
+                out.push(format!("block {} rows {lo}-{hi}", sub.id));
+            }
+        }
+        for lane in &l.lanes {
+            out.push(format!(
+                "lanes {}",
+                lane.map_or("(root)", |s| p.subgraphs[s].id.as_str())
+            ));
+        }
+        for (v, node) in p.nodes.iter().enumerate() {
+            out.push(format!("node {} {} {}", node.id, l.block[v], l.before[v]));
+        }
+        false
+    });
+    out.into_inner()
+}
+
+/// Whether every part of `g` with subgraphs has the same layers as
+/// blocks as before blocks.
+fn rows_equal(g: &Graph) -> bool {
+    !crate::compound::any_part(g, &|p| {
+        scene::layerings(p).is_some_and(|l| l.block != l.before)
+    })
+}
+
+/// The member pair the `k`-th stand-in of `g`'s augmented graph joins.
+fn stand_in_ends(g: &Graph, k: usize) -> Option<(usize, usize)> {
+    crate::levels::Augmented::of(g)
+        .pairs
+        .iter()
+        .flatten()
+        .nth(k)
+        .copied()
+}
+
 /// Fastest of [`ROUTE_RUNS`] calls of `f` (ms).
 ///
 /// Uses `std::time::Instant`, which panics on wasm32-unknown-unknown:
@@ -812,6 +903,7 @@ pub fn measure_source(src: &str, time_route: bool) -> Result<Report, String> {
         .count();
     Ok(Report {
         block_mode: scene::block_mode(&g),
+        rows_equal: rows_equal(&g),
         fr_max,
         ends_apart,
         statik: measure(&g, &statik),

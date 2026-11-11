@@ -464,8 +464,37 @@ fn every_block_fixture_has_a_ceiling() {
     }
 }
 
+/// The most crossings the public block fixture and its four
+/// permutations may draw in the static scene once they are laid out as
+/// blocks (two more than mermaid 12 draws on it; 14 before blocks).
+const BLOCKS_OVERVIEW_X: usize = 7;
+
+/// The crossing ceiling of a block fixture once it is laid out as
+/// blocks: `ceil` (its count before blocks) where the block layout
+/// leaves its rows as they were; on a fixture whose rows it changes,
+/// `1.1 x ceil + 2`, a re-laid drawing being allowed a little either
+/// way; the public fixture's own bound in the static scene.
+fn block_crossing_ceiling(name: &str, statik: bool, rows_equal: bool, ceil: usize) -> usize {
+    const OVERVIEW: [&str; 5] = [
+        "blocks/blocks-overview",
+        "blocks/blocks-overview-actors-reversed",
+        "blocks/blocks-overview-edges-reversed",
+        "blocks/blocks-overview-edges-rotated",
+        "blocks/blocks-overview-subgraphs-reversed",
+    ];
+    if statik && OVERVIEW.contains(&name) {
+        BLOCKS_OVERVIEW_X
+    } else if rows_equal {
+        ceil
+    } else {
+        (ceil as f64 * 1.1 + 2.0) as usize
+    }
+}
+
 /// No fixture with subgraphs is drawn worse than [`BLOCK_CEILINGS`]
-/// records it, in the static scene or routed at its centres.
+/// records it, in the static scene or routed at its centres. With the
+/// block layout switched on, a fixture it applies to takes the crossing
+/// ceiling of [`block_crossing_ceiling`].
 #[test]
 fn block_fixtures_are_not_drawn_worse() {
     let mut bad = Vec::new();
@@ -473,7 +502,11 @@ fn block_fixtures_are_not_drawn_worse() {
         let rep =
             measure_source(&block_fixture(name), false).expect("a flowchart or state fixture");
         assert!(rep.deterministic, "{name}: output not deterministic (G14)");
-        for (mode, m, ceil) in [("static", &rep.statik, cs), ("routed", &rep.routed, cr)] {
+        let as_blocks = flowmaid::quality::blocks_on() && rep.block_mode;
+        for (mode, m, mut ceil) in [("static", &rep.statik, cs), ("routed", &rep.routed, cr)] {
+            if as_blocks {
+                ceil.3 = block_crossing_ceiling(name, mode == "static", rep.rows_equal, ceil.3);
+            }
             let hard = m.edge_node_x
                 + m.shared_ports
                 + m.arrow_on_start

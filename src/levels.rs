@@ -166,6 +166,24 @@ impl Augmented {
         (ga, stand_in)
     }
 
+    /// What the layout needs to lay `g` out as blocks beside its
+    /// augmented graph (whose edge count is `edges`) and its rank-only
+    /// groups ([`Augmented::rank_only`]): which stand-ins (`stand_in`,
+    /// from [`Augmented::graph`]) and which groups are flagged.
+    pub(crate) fn block_links(&self, stand_in: &[Option<usize>], edges: usize) -> BlockLinks {
+        let mut flagged_edges = vec![false; edges];
+        for (si, &flag) in stand_in.iter().zip(&self.flagged) {
+            if let (Some(ei), true) = (*si, flag) {
+                flagged_edges[ei] = true;
+            }
+        }
+        BlockLinks {
+            flagged_edges,
+            // The proxies come first in `rank_only`, one per sub-edge.
+            flagged_groups: self.flagged.clone(),
+        }
+    }
+
     /// Whether `g` is laid out in block mode once the switch is on: the
     /// augmented graph has a **border link** — a real edge (visible or
     /// invisible) or an unflagged stand-in whose two end nodes have
@@ -182,6 +200,41 @@ impl Augmented {
                 .zip(&self.flagged)
                 .any(|(pair, &flag)| !flag && pair.is_some_and(|(a, b)| border(a, b)))
     }
+}
+
+/// Handed to the layout with a graph it is to lay out as blocks (block
+/// mode is on: the switch, and the predicate of
+/// [`Augmented::block_mode`]): the degenerate own-box pairs
+/// ([`Augmented::flagged`]), which are no links there — left out of
+/// ranking and ordering, no channel, no label slot.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct BlockLinks {
+    /// Per edge of the augmented graph (missing = no): a flagged
+    /// stand-in.
+    flagged_edges: Vec<bool>,
+    /// Per rank-only group (missing = no): a flagged sub-edge's group.
+    flagged_groups: Vec<bool>,
+}
+
+impl BlockLinks {
+    /// Whether edge `ei` of the augmented graph is a flagged stand-in.
+    pub(crate) fn flagged_edge(&self, ei: usize) -> bool {
+        self.flagged_edges.get(ei).copied().unwrap_or(false)
+    }
+
+    /// Whether rank-only group `k` stands for a flagged sub-edge.
+    pub(crate) fn flagged_group(&self, k: usize) -> bool {
+        self.flagged_groups.get(k).copied().unwrap_or(false)
+    }
+}
+
+/// Block mode for a graph that comes without stand-ins (the public
+/// [`crate::layout::layout_clustered`]): a real edge whose two ends have
+/// different subgraph paths in `node_cluster`.
+pub(crate) fn border_edge(g: &Graph, node_cluster: &[Vec<usize>]) -> bool {
+    g.edges
+        .iter()
+        .any(|e| e.from != e.to && node_cluster.get(e.from) != node_cluster.get(e.to))
 }
 
 /// One unit of a level: a node whose innermost subgraph is that level,

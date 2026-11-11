@@ -3456,7 +3456,8 @@ pub(crate) fn scene_labelled(g: &Graph, sizes: &[(f64, f64)], labels: &[String])
         crate::levels::note_used(crate::levels::Entry::Scene, g, false);
         scene_flat(g, sizes, labels)
     } else {
-        scene_clustered(g, sizes, labels)
+        // The switch of the block layout, read once for this call.
+        scene_clustered(g, sizes, labels, crate::levels::blocks_on())
     };
     crate::edgepass::finish(g, &mut sc, crate::edgepass::Mode::Static);
     sc
@@ -3471,6 +3472,25 @@ pub(crate) fn block_mode(g: &Graph) -> bool {
     crate::compound::any_part(g, &|part| {
         !part.subgraphs.is_empty() && crate::levels::Augmented::of(part).block_mode(part)
     })
+}
+
+/// How a clustered graph `g` (one part of a diagram: no subgraph of it
+/// sets its own direction) is layered as blocks and as before blocks;
+/// `None` for a flat graph. For reports and tests.
+pub(crate) fn layerings(g: &Graph) -> Option<crate::layout::Layerings> {
+    if g.subgraphs.is_empty() {
+        return None;
+    }
+    let aug = crate::levels::Augmented::of(g);
+    let rank_only = aug.rank_only();
+    let (ga, stand_in) = aug.graph(g);
+    let links = aug.block_links(&stand_in, ga.edges.len());
+    Some(crate::layout::layerings(
+        &ga,
+        &aug.node_cluster,
+        &rank_only,
+        &links,
+    ))
 }
 
 /// A flat diagram's scene as its builder draws it, before the edge
@@ -3844,7 +3864,11 @@ const GRID_MIN_EDGELESS: usize = 4;
 /// contiguous, then wrap each subgraph around its final members. This
 /// keeps cross-cluster edges ordered globally so they route through the
 /// gaps between boxes instead of tangling straight through them.
-fn scene_clustered(g: &Graph, sizes: &[(f64, f64)], labels: &[String]) -> Scene {
+///
+/// With `blocks` (the block layout is switched on) a graph with a link
+/// across a subgraph's border is laid out as blocks
+/// ([`crate::levels::Augmented::block_mode`]).
+fn scene_clustered(g: &Graph, sizes: &[(f64, f64)], labels: &[String], blocks: bool) -> Scene {
     // Each sub-edge also gets one routed STAND-IN edge between a proxy
     // pair — mermaid lays `A --> box` out as an edge to one of the box's
     // members — so it owns a channel (and label slot) through the ranks
@@ -3852,15 +3876,14 @@ fn scene_clustered(g: &Graph, sizes: &[(f64, f64)], labels: &[String]) -> Scene 
     // those edges, appended after the real ones
     // ([`crate::levels::Augmented`], the one constructor of both).
     let aug = crate::levels::Augmented::of(g);
+    let block_mode = blocks && aug.block_mode(g);
     #[cfg(test)]
-    crate::levels::note_used(
-        crate::levels::Entry::Scene,
-        g,
-        crate::levels::blocks_on() && aug.block_mode(g),
-    );
+    crate::levels::note_used(crate::levels::Entry::Scene, g, block_mode);
     let rank_only = aug.rank_only();
     let ne = g.edges.len();
     let (mut ga, stand_in) = aug.graph(g);
+    // Block mode goes to the layout with the augmented graph.
+    ga.block_links = block_mode.then(|| aug.block_links(&stand_in, ga.edges.len()));
     let (node_cluster, proxies) = (aug.node_cluster, aug.proxies);
     // A member's edge to its own box is drawn as its stand-in, whole:
     // an edge to the box's entry member (see `own_box_targets`).

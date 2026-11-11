@@ -30,7 +30,9 @@
 //! `quality::ENDS_APART` apart between the two), and with `--drag`
 //! `dfr_own` / `dfr_far` (`quality::frame_drags`: how far a 1 px drag
 //! moves the frames it may redraw / any other frame).
-//! `--levels` lists each diagram's level tree on stderr.
+//! `--levels` lists each diagram's level tree on stderr, `--layers` its
+//! layers as blocks beside its layers before blocks
+//! (`quality::layers_dump`).
 
 use flowmaid::model::Graph;
 use flowmaid::quality::{self, Agg, Metrics};
@@ -40,7 +42,7 @@ use std::path::{Path, PathBuf};
 
 fn usage() -> ! {
     eprintln!(
-        "usage: quality <dir> [--svg <out-dir>] [--details] [--drag] [--levels]  (or set FLOWMAID_QUALITY_DIR)"
+        "usage: quality <dir> [--svg <out-dir>] [--details] [--drag] [--levels] [--layers]  (or set FLOWMAID_QUALITY_DIR)"
     );
     std::process::exit(2)
 }
@@ -128,11 +130,14 @@ fn main() {
     let mut details = false;
     let mut dragging = false;
     let mut levels = false;
+    let mut layers = false;
     while let Some(a) = args.next() {
         if a == "--details" {
             details = true;
         } else if a == "--levels" {
             levels = true;
+        } else if a == "--layers" {
+            layers = true;
         } else if a == "--drag" {
             dragging = true;
         } else if a == "--svg" {
@@ -206,6 +211,11 @@ fn main() {
         if levels {
             for l in quality::levels_dump(&g) {
                 eprintln!("{name}\tlevel\t{l}");
+            }
+        }
+        if layers {
+            for l in quality::layers_dump(&g) {
+                eprintln!("{name}\tlayers\t{l}");
             }
         }
         for (k, (mode, m)) in [("static", &rep.statik), ("routed", &rep.routed)]

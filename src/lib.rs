@@ -35,6 +35,8 @@
 
 pub mod advance;
 pub mod architecture;
+#[cfg(test)]
+mod blockcheck;
 mod casing;
 pub mod class;
 pub(crate) mod clearance;

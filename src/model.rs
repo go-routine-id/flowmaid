@@ -411,6 +411,11 @@ pub struct Graph {
     /// edge's label room in the gap between those borders, where it is
     /// drawn, though its stand-in runs on to members deeper inside.
     pub(crate) frame_cut: Vec<[Option<usize>; 2]>,
+    /// Set on the layout graph of a clustered scene that is laid out as
+    /// blocks ([`crate::levels`]): block mode is on for this layout, and
+    /// these are the stand-ins and rank-only groups that are no links in
+    /// it. `None`: the layout as it was before blocks.
+    pub(crate) block_links: Option<crate::levels::BlockLinks>,
     /// Keep every layer's leaves on their layer: no leaf staggering
     /// when the drawing is a ribbon. Class diagrams set it — a
     /// hierarchy's children read as one row under their parent (as
