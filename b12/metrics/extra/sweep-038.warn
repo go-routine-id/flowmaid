@@ -1,0 +1,4 @@
+blockmetrics: tree_tests_fixtures_notes_routed-around [fm]: WARN edge "C1 → C1: back" is drawn as a zero-length path
+blockmetrics: tree_tests_fixtures_notes_routed-around [fm]: WARN edge "C1 → C1: self" is drawn as a zero-length path
+blockmetrics: tree_tests_fixtures_notes_spread-face [fm]: WARN edge "K1 → K1: back" is drawn as a zero-length path
+blockmetrics: u-mermaid_probes_p14-empty-and-self [fm]: WARN edge "A → A: self" is drawn as a zero-length path

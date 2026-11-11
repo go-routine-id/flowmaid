@@ -1,0 +1,19 @@
+input                                  xfr  sibL cross lat_x      W fan_x  hard | band_sets
+infra-overview                           0     0    21     3   2899     0     0 | T1 U1 U2 / EXT GH / PROD / DR STG
+infra-overview-v2                        0     0    15     3   2815     1     0 | T1 U1 U2 / EXT GH / DR / PROD / STG
+perm-a-edges-reversed                    0     0    21     3   2899     0     0 | T1 U1 U2 / EXT GH / PROD / DR STG
+perm-b-subgraphs-reversed                0     0    32     2   3127     2     0 | T1 U1 U2 / EXT GH / PROD / DR STG
+perm-c-actors-reversed                   0     0    21     3   2899     0     0 | T1 U1 U2 / EXT GH / PROD / DR STG
+perm-d-edges-rotated                     0     0    21     3   2899     0     0 | T1 U1 U2 / EXT GH / PROD / DR STG
+perm-e-one-more-inner-edge               0     0    40     7   2599     5     0 | T1 U1 U2 / EXT GH / PROD / DR STG
+blocks-overview                          0     0     9     3   1162     0     0 | OPS SHOP / CI EDGE / WEB / ORD / DATA / OBS
+blocks-overview-edges-reversed           0     0     9     3   1162     0     0 | OPS SHOP / CI EDGE / WEB / ORD / DATA / OBS
+blocks-overview-edges-rotated            0     0     9     3   1162     0     0 | OPS SHOP / CI EDGE / WEB / ORD / DATA / OBS
+blocks-overview-actors-reversed          0     0     9     3   1162     0     0 | OPS SHOP / CI EDGE / WEB / ORD / DATA / OBS
+blocks-overview-subgraphs-reversed       0     0     9     3   1233     0     0 | OPS SHOP / CI EDGE / WEB / ORD / DATA / OBS
+bench-75                                 0     0   223     2   1561    14     0 | user / edge / app / data / jobs / ops / ext
+dense-lr                                 0     0    15     2   3088     0     0 | n50 n51 n52 / g1 / g3 g5 / g10 / g11
+dense-td                                 1     0   151    31   3704    18     0 | n45 n46 / g1 / g5 / g8
+hub5                                     0     0     0     3    471     0     0 | HUB / A C / B / D / E
+cycle2                                   0     0     0     2    285     0     0 | A / B
+static hard zeros (incl. own_frame_x) > 0 on: [('fork-twins', 2), ('nested-chain', 1), ('own-centre', 1), ('self-member', 2), ('spread-face', 1), ('sub-nested-self', 3), ('wide-frames', 5)]

@@ -1,0 +1,1729 @@
+   Compiling flowmaid v0.38.0 (/home/user/flowmaid)
+    Finished `test` profile [unoptimized] target(s) in 34.97s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/target-on/debug/deps/flowmaid-9cd8330e70945a63)
+
+running 1138 tests
+test advance::tests::a_lane_block_on_one_line_works_like_a_node_block ... ok
+test advance::tests::a_loop_between_sub_elements_lands_on_them ... ok
+test advance::tests::a_one_line_lane_block_takes_bare_ids ... ok
+test advance::tests::a_ported_channel_avoids_a_third_node ... ok
+test advance::tests::a_ported_edge_keeps_its_whole_leader ... ok
+test advance::tests::a_ported_edge_never_runs_back_through_its_own_nodes ... ok
+test advance::tests::a_ported_edge_that_was_already_clear_is_unchanged ... ok
+test advance::tests::a_routing_is_better_only_on_crossings_then_length_then_bends ... ok
+test advance::tests::a_self_loop_is_a_loop_on_every_pair_of_sides ... ok
+test advance::tests::a_style_target_matching_no_edge_is_an_error_either_way ... ok
+test advance::tests::a_planar_diagram_is_routed_without_a_single_crossing ... ok
+test advance::tests::accessibility_title_and_description ... ok
+test advance::tests::a_terminal_edge_starts_on_its_element_and_leads_out_through_the_node ... ok
+test advance::tests::an_anchor_id_with_a_colon_is_refused ... ok
+test advance::tests::advance_heads_match_the_flowchart_and_cut_the_route ... ok
+test advance::tests::an_id_ending_in_a_side_keyword_is_refused ... ok
+test advance::tests::an_edge_detours_rather_than_run_over_the_edges_already_drawn ... ok
+test advance::tests::comment_and_directive_lines_ending_in_a_brace_are_not_blocks ... ok
+test advance::tests::an_invisible_edge_does_not_deflect_a_visible_one ... ok
+test advance::tests::crossings_counts_pairs_of_edges_not_pairs_of_segments ... ok
+test advance::tests::directives_and_edges_inside_a_block_are_refused ... ok
+test advance::tests::edge_separators_inside_labels_are_text ... ok
+test advance::tests::dragged_positions_round_trip_through_the_scene_order ... ok
+test advance::tests::edges_attach_to_the_node_they_name_whatever_the_scene_order ... ok
+test advance::tests::every_front_end_accepts_the_same_nesting_depth ... ok
+test advance::tests::explicit_geometry_and_serialization_roundtrip ... ok
+test advance::tests::explicit_size_is_clamped_so_sub_elements_fit ... ok
+test advance::tests::every_route_is_orthogonal ... ok
+test advance::tests::fit_canvas_moves_edge_labels_with_their_routes ... ok
+test advance::tests::exposed_side_rule_follows_the_layout ... ok
+test advance::tests::hit_test_does_not_let_an_occluded_anchor_beat_the_visible_node ... ok
+test advance::tests::hit_test_node_edge_lane ... ok
+test advance::tests::horizontal_nested_lanes_layout_and_containment ... ok
+test advance::tests::hit_test_prefers_anchor_then_element_then_node ... ok
+test advance::tests::inline_block_and_multi_line_block_parse_the_same ... ok
+test advance::tests::horizontal_swimlanes ... ok
+test advance::tests::invalid_json_rejected ... ok
+test advance::tests::inline_block_nesting_is_capped_like_json ... ok
+test advance::tests::json_input_accepts_terminals_and_checks_them ... ok
+test advance::tests::json_terminals_round_trip_through_to_json ... ok
+test advance::tests::label_avoids_other_labels ... ok
+test advance::tests::label_avoids_node ... ok
+test advance::tests::lane_boxes_are_sized_by_their_own_nodes_when_lanes_nest ... ok
+test advance::tests::layout_has_geometry ... ok
+test advance::tests::layout_places_sub_elements_inside_a_node_that_grew_to_fit ... ok
+test advance::tests::marker_ids_are_stable_per_diagram_and_differ_between_diagrams ... ok
+test advance::tests::nearest_node_distance ... ok
+test advance::tests::nested_lanes_containment_and_rendering ... ok
+test advance::tests::no_route_doubles_back_on_itself ... ok
+test advance::tests::no_route_passes_through_a_node ... ok
+test advance::tests::node_and_edge_style_json_roundtrip ... ok
+test advance::tests::only_edges_that_would_overlap_are_fanned ... ok
+test advance::tests::ordinary_advance_css_values_still_parse ... ok
+test advance::tests::parallel_edges_are_drawn_apart ... ok
+test advance::tests::negotiated_routing_is_deterministic ... ok
+test advance::tests::parse_end_reads_every_form_of_the_grammar ... ok
+test advance::tests::parallel_ported_edges_keep_their_fan_after_the_detour ... ok
+test advance::tests::parse_sample ... ok
+test advance::tests::per_edge_color_renders_with_matching_marker ... ok
+test advance::tests::per_node_style_renders ... ok
+test advance::tests::ports_affect_anchor ... ok
+test advance::tests::px_number_accepts_strings ... ok
+test advance::tests::render_produces_svg ... ok
+test advance::tests::routed_rejects_bad_position_length ... ok
+test advance::tests::routed_rejects_non_finite_positions ... ok
+test advance::tests::routed_shifts_content_dragged_above_or_left_of_canvas_into_view ... ok
+test advance::tests::routed_renders_with_custom_positions ... ok
+test advance::tests::routed_with_lanes_rejects_horizontal ... ok
+test advance::tests::routed_with_lanes_rejects_bad_margin_gap ... ok
+test advance::tests::routed_with_lanes_rejects_wrong_width_count ... ok
+test advance::tests::routed_with_lanes_rejects_non_positive_width ... ok
+test advance::tests::routed_with_lanes_uses_caller_widths ... ok
+test advance::tests::routed_with_lanes_renders_svg ... ok
+test advance::tests::routed_with_options_honours_transparent ... ok
+test advance::tests::scene_json_carries_elements_anchors_and_terminal_points ... ok
+test advance::tests::shape_and_edge_kind_parity ... ok
+test advance::tests::shape_braces_and_label_punctuation_are_not_block_syntax ... ok
+test advance::tests::side_parse_validates ... ok
+test advance::tests::style_targets_a_terminal_edge_by_its_reference ... ok
+test advance::tests::style_values_cannot_close_an_svg_attribute ... ok
+test advance::tests::sub_elements_need_a_rect_or_rounded_node ... ok
+test advance::tests::svg_draws_compartments_with_their_labels ... ok
+test advance::tests::text_block_mistakes_are_named_with_a_line_number ... ok
+test advance::tests::text_breaks ... ok
+test advance::tests::text_class_def_resolved_after_usage ... ok
+test advance::tests::text_class_shorthand ... ok
+test advance::tests::text_config ... ok
+test advance::tests::text_error_has_snippet ... ok
+test advance::tests::text_nested_lane_blocks ... ok
+test advance::tests::text_nested_sibling_order_preserved ... ok
+test advance::tests::text_node_after_closed_lane_errors ... ok
+test advance::tests::routing_is_deterministic ... ok
+test advance::tests::text_parses_flat_lanes_and_edges ... ok
+test advance::tests::text_node_block_declares_anchors_and_sub_elements ... ok
+test advance::tests::text_ports ... ok
+test advance::tests::text_stroke_width_rejects_bad_values ... ok
+test advance::tests::text_style_edge ... ok
+test advance::tests::text_style_node ... ok
+test advance::tests::text_unbalanced_braces ... ok
+test advance::tests::the_crossing_count_matches_the_geometry ... ok
+test advance::tests::the_canvas_contains_every_point_of_every_route ... ok
+test advance::tests::the_top_nodes_own_anchor_wins_even_when_another_is_nearer ... ok
+test advance::tests::topology_order_reorders_chain ... ok
+test advance::tests::unknown_edge_node_rejected ... ok
+test advance::tests::unknown_lane_rejected ... ok
+test architecture::tests::a_chip_beside_its_line_when_the_line_has_no_room ... ok
+test architecture::tests::a_port_pair_sets_the_direction_of_placement ... ok
+test advance::tests::unconnected_nodes_do_not_switch_the_guarantee_off ... ok
+test architecture::tests::a_service_colour_is_escaped_on_its_way_into_the_attribute ... ok
+test architecture::tests::an_empty_group_keeps_a_frame ... ok
+test architecture::tests::an_edge_into_a_top_port_runs_straight_beside_the_title ... ok
+test architecture::tests::bidirectional_edge ... ok
+test architecture::tests::basic_group_and_service ... ok
+test architecture::tests::chip_geometry_helpers ... ok
+test architecture::tests::bidirectional_svg_has_both_markers ... ok
+test architecture::tests::directed_edge ... ok
+test architecture::tests::duplicate_service_id_is_rejected ... ok
+test architecture::tests::edge_between_services ... ok
+test architecture::tests::edges_are_drawn_over_the_boxes_and_titles_are_never_struck ... ok
+test architecture::tests::edges_leave_and_enter_along_their_port_normals ... ok
+test architecture::tests::group_qualifier_mismatch_is_rejected ... ok
+test architecture::tests::group_qualifier_on_edge ... ok
+test architecture::tests::icon_and_label_are_centred_in_the_box ... ok
+test architecture::tests::icon_is_rendered_to_svg ... ok
+test architecture::tests::junctions_parse_and_edges_meet_at_their_centre ... ok
+test architecture::tests::declaration_order_does_not_change_the_topology_drawn ... ok
+test architecture::tests::labelled_edges_parse_and_draw_a_chip ... ok
+test architecture::tests::linked_groups_keep_their_own_grid ... ok
+test architecture::tests::long_labels_wrap_inside_the_box ... ok
+test architecture::tests::mermaid_syntax_that_used_to_fail_now_parses ... ok
+test architecture::tests::nested_groups_place_services_inside ... ok
+test advance::tests::a_non_planar_diagram_still_renders_and_reports_its_crossings ... ok
+test architecture::tests::no_edge_passes_behind_or_through_a_box ... ok
+test architecture::tests::output_is_deterministic ... ok
+test architecture::tests::label_chips_never_cover_each_other_a_box_or_a_title ... ok
+test architecture::tests::picking_matches_the_drawn_edges ... ok
+test architecture::tests::reverse_arrow_edge ... ok
+test architecture::tests::ports_place_the_corpus_like_mermaid ... ok
+test architecture::tests::services_outside_any_group_are_laid_out_not_stacked_at_the_origin ... ok
+test architecture::tests::services_take_the_accent_of_their_top_level_group ... ok
+test architecture::tests::svg_markers_respect_per_end_arrows ... ok
+test architecture::tests::text_default_emoji_carry_vs16 ... ok
+test architecture::tests::routes_and_label_chips_stay_on_the_canvas ... ok
+test architecture::tests::the_group_modifier_attaches_the_edge_to_the_frame ... ok
+test architecture::tests::title_widths_err_wide_of_what_a_browser_draws ... ok
+test architecture::tests::the_lattice_marks_exactly_what_the_clearances_cover ... ok
+test architecture::tests::wrapping_balances_lines_instead_of_leaving_a_stub ... ok
+test architecture::tests::unrelated_groups_wrap_into_a_block ... ok
+test blockcheck::a_chain_out_of_a_nested_block_leaves_through_its_downstream_side ... ok
+test blockcheck::a_chain_label_sits_outside_both_end_blocks ... ok
+test blockcheck::a_hub_fan_leaves_in_target_order ... ok
+test blockcheck::a_long_edge_of_a_block_layout_runs_in_a_channel ... ok
+test blockcheck::a_narrowing_candidate_starts_from_the_winning_order ... ok
+test blockcheck::a_note_card_keeps_its_row_in_its_block ... ok
+test advance::tests::a_large_diagram_still_routes_around_every_node ... ok
+test blockcheck::a_source_block_sits_beside_what_it_feeds ... ok
+test blockcheck::a_ping_pong_level_stays_lanes ... ok
+test blockcheck::a_turned_edge_one_layer_up_is_a_z_not_a_lane ... ok
+test blockcheck::a_subgraph_takes_consecutive_rows ... ok
+test blockcheck::a_turned_edge_runs_up_its_channel_through_flow_sides ... ok
+test blockcheck::block_order_follows_declarations_until_it_costs_twice_the_minimum ... ok
+test blockcheck::block_order_follows_first_mention ... ok
+test blockcheck::block_order_survives_reordered_statements ... ok
+test blockcheck::crossing_neutral_members_keep_declaration_order ... ok
+test blockcheck::layout_clustered_returns_blocks ... ok
+test architecture::tests::no_edge_draws_a_junction_that_is_not_there ... ok
+test blockcheck::linked_blocks_never_share_a_row ... ok
+test blockcheck::sibling_blocks_never_interleave ... ok
+test blockcheck::the_rows_equal_fixtures_are_listed ... ok
+test blockcheck::the_start_order_ignores_edge_statement_order ... ok
+test casing::tests::a_crossing_gap_never_bites_an_arrowhead ... ok
+test casing::tests::a_dense_grid_leaves_no_line_dashed_and_is_deterministic ... ok
+test casing::tests::a_densely_crossed_line_keeps_its_cuts_sparse ... ok
+test casing::tests::a_gap_is_not_cut_into_a_corner ... ok
+test casing::tests::a_gap_is_not_cut_into_a_jog ... ok
+test casing::tests::a_line_is_not_cut_next_to_its_own_hop ... ok
+test blockcheck::level_order_is_deterministic_and_bounded ... ok
+test casing::tests::a_long_line_crossed_by_a_comb_stays_whole ... ok
+test casing::tests::a_node_dragged_far_away_routes_fast ... ok
+test casing::tests::a_line_takes_one_role_across_a_cluster_of_crossings ... FAILED
+test casing::tests::a_wide_top_down_fan_out_does_not_flip_the_flow ... ok
+test blockcheck::chains_keep_one_side_of_a_block ... ok
+test casing::tests::crossing_free_diagrams_get_no_mask ... ok
+test casing::tests::a_short_line_keeps_at_most_one_gap ... FAILED
+test casing::tests::insert_delta_matches_a_recount ... ok
+test class::tests::a_class_named_like_a_note_id_keeps_its_note ... ok
+test class::tests::a_slid_leg_never_runs_along_a_free_ends_exit ... ok
+test class::tests::all_relation_kinds_parse ... ok
+test class::tests::an_end_beside_another_routes_lane_nudges_instead_of_curving ... ok
+test class::tests::backtick_names ... ok
+test class::tests::cardinalities_and_label_parse ... ok
+test class::tests::cardinalities_clear_strokes_glyphs_boxes_and_each_other ... ok
+test class::tests::class_showcase_parses_and_renders ... ok
+test class::tests::comma_list_declares_multiple_classes ... ok
+test class::tests::compartments_read_clearly ... ok
+test class::tests::crowded_fan_in_cards_clear_the_other_lines ... ok
+test class::tests::direction_and_note_lines_parse ... ok
+test class::tests::drag_past_origin_stays_inside_viewbox ... ok
+test casing::tests::back_edges_mostly_go_under_and_ids_are_stable ... ok
+test class::tests::dragged_scene_routes_round_boxes ... ok
+test class::tests::dragging_a_fan_in_target_never_panics ... ok
+test class::tests::edges_go_round_boxes_and_glyphs_stay_whole_and_outside ... ok
+test class::tests::end_glyphs_on_one_face_stay_apart ... ok
+test class::tests::fans_nest_without_crossings ... ok
+test class::tests::generic_class_is_one_class ... ok
+test class::tests::generics_convert_by_mermaids_rule ... ok
+test class::tests::glyph_ends_enter_on_a_full_stub ... ok
+test class::tests::glyph_sits_at_the_decorated_end ... ok
+test class::tests::header_text_reads_on_every_accent ... ok
+test class::tests::hyphenated_names_in_relations ... ok
+test class::tests::inheritance_normalises_glyph_to_parent ... ok
+test class::tests::inline_members_accumulate ... ok
+test class::tests::label_spots_are_sought_near_the_middle_and_tested_locally ... ok
+test class::tests::labels_sit_on_their_drawn_line ... ok
+test class::tests::laid_out_scene_is_not_shifted ... ok
+test class::tests::lollipop_interfaces_parse ... ok
+test class::tests::long_member_and_cardinality_fit_the_canvas ... ok
+test class::tests::loop_cards_sit_by_their_own_end_and_labels_off_the_loops ... ok
+test class::tests::member_rows_read_as_mermaid_shows_them ... ok
+test class::tests::member_text_with_operator_stays_a_member ... ok
+test class::tests::no_nan_in_output ... ok
+test class::tests::no_space_operators_parse ... ok
+test class::tests::notes_alone_draw ... ok
+test class::tests::notes_and_sources_sit_next_to_their_class ... ok
+test class::tests::notes_draw_as_cards_linked_to_their_class ... ok
+test class::tests::parses_members_and_visibility ... ok
+test class::tests::quoted_cardinality_may_contain_colon_and_operator ... ok
+test class::tests::rel_head_and_card_spots_match_the_svg ... ok
+test class::tests::relations_rank_in_source_order_parents_first ... ok
+test class::tests::renders_compartments_and_glyphs ... ok
+test class::tests::route_follows_dragged_class ... ok
+test class::tests::route_places_notes_or_keeps_them ... ok
+test class::tests::route_rejects_a_wrong_position_count - should panic ... ok
+test class::tests::routes_never_merge_and_fans_nest_without_crossings ... ok
+test class::tests::self_loops_keep_clear_of_their_neighbours ... ok
+test class::tests::self_loops_keep_their_glyphs_apart ... ok
+test class::tests::showcase_edges_are_orthogonal_and_square_to_their_faces ... ok
+test class::tests::stereotype_draws_above_the_name ... ok
+test class::tests::trailing_comment_is_stripped ... ok
+test class::tests::two_way_and_lollipop_glyphs_at_both_ends ... ok
+test class::tests::two_way_relations_parse ... ok
+test class::tests::unclosed_block_reports_the_opening_line ... ok
+test class::tests::wide_fans_with_a_note_render_in_every_direction ... ok
+test comb::tests::a_comb_is_judged_by_the_yardsticks_clearances ... ok
+test comb::tests::a_comb_never_lays_a_track_along_a_box_it_passes ... ok
+test comb::tests::a_crowded_side_is_combed_in_route ... ok
+test comb::tests::a_deal_that_changes_nothing_is_not_the_last_word ... ok
+test comb::tests::a_drag_frame_combs_small_fans_only ... ok
+test comb::tests::a_drag_frame_judges_to_a_budget ... ok
+test comb::tests::a_fan_with_a_track_beyond_its_room_is_combed ... ok
+test comb::tests::a_hub_fan_of_the_reviewers_set_is_a_comb_in_scene_and_route ... ok
+test comb::tests::a_hubs_fan_is_a_comb_in_scene_and_route ... FAILED
+test comb::tests::a_side_takes_its_ports_in_the_order_of_its_turns ... ok
+test comb::tests::a_small_fan_is_combed_under_a_drag ... ok
+test comb::tests::a_tooth_is_a_stub_a_track_and_a_turn ... ok
+test comb::tests::a_track_out_of_order_gets_one_between_its_neighbours ... ok
+test casing::tests::crossings_match_the_yardstick_and_each_mask_has_one_owner ... ok
+test comb::tests::each_way_deals_its_own_tracks ... ok
+test comb::tests::ports_spread_one_pitch_apart_where_every_end_may_move ... ok
+test comb::tests::the_ports_follow_the_rows_where_the_tracks_cannot_follow_the_turns ... ok
+test comb::tests::tracks_fit_a_pitch_apart_in_their_teeths_room ... ok
+test compound::tests::a_bar_lies_across_its_blocks_own_flow ... ok
+test compound::tests::a_state_composite_flows_in_its_own_direction ... ok
+test compound::tests::a_subgraph_direction_holds_while_nothing_links_out_of_it ... ok
+test compound::tests::nested_subgraphs_flow_in_their_own_directions ... ok
+test compound::tests::route_and_drags_lay_a_block_out_as_the_scene_does ... ok
+test compound::tests::the_quality_harness_reads_a_block_in_its_own_direction ... ok
+test edgepass::tests::a_frame_holds_its_own_states_and_nested_frames ... ok
+test edgepass::tests::a_stub_never_crowds_a_node_or_an_edge_its_curve_kept_clear_of ... ok
+test edgepass::tests::a_two_point_axis_path_becomes_a_straight_cubic ... ok
+test edgepass::tests::an_end_sunk_into_a_drums_lid_comes_back_to_its_outline ... ok
+test edgepass::tests::an_s_left_between_facing_sides_is_squared ... ok
+test edgepass::tests::ctx_matches_edges_and_sub_edges ... ok
+test edgepass::tests::finish_is_idempotent_on_a_flat_diagram ... ok
+test edgepass::tests::finish_is_idempotent_with_sub_edges ... ok
+test edgepass::tests::long_edges_run_straight_into_their_arrowheads ... ok
+test edgepass::tests::refit_shifts_static_but_not_routed ... ok
+test edgepass::tests::sides_and_axes ... ok
+test emit::tests::a_quoted_style_value_survives_the_round_trip ... ok
+test emit::tests::acc_programmatic_values_stay_representable ... ok
+test emit::tests::acc_title_and_descr_round_trip ... ok
+test emit::tests::click_links_tooltips_and_targets_round_trip ... ok
+test emit::tests::edge_ids_and_metadata_round_trip ... ok
+test emit::tests::edge_markers_round_trip_through_to_mermaid ... ok
+test emit::tests::empty_labels_round_trip_and_avoid_invalid_mermaid ... ok
+test emit::tests::every_shape_and_edge_kind_round_trips ... ok
+test emit::tests::fuzzed_graphs_round_trip ... ok
+test emit::tests::labels_with_brackets_pipes_and_breaks_round_trip ... ok
+test emit::tests::link_styles_round_trip_in_emitted_order ... ok
+test emit::tests::markdown_labels_round_trip_as_their_lowered_markup ... ok
+test emit::tests::multi_line_subgraph_title_round_trips_as_br ... ok
+test emit::tests::nested_subgraphs_directions_titles_and_sub_edges_round_trip ... ok
+test emit::tests::node_metadata_round_trips_through_bracket_forms ... ok
+test emit::tests::orphaned_subgraphs_are_still_emitted ... ok
+test emit::tests::output_is_valid_standard_mermaid_shapes ... ok
+test emit::tests::programmatic_click_links_stay_safe_and_readable ... ok
+test emit::tests::programmatic_editor_graph_round_trips ... ok
+test emit::tests::programmatic_link_styles_drop_unwritable_values ... ok
+test emit::tests::quotes_pipes_and_hashes_round_trip_losslessly_via_entities ... ok
+test emit::tests::reserved_word_ids_survive_case_insensitively ... ok
+test emit::tests::round2_bad_style_values_drop_instead_of_corrupting ... ok
+test emit::tests::round2_empty_subgraph_title_round_trips ... ok
+test emit::tests::round2_entities_cannot_mint_control_characters ... ok
+test emit::tests::round2_entity_lookalikes_and_angle_brackets_survive ... ok
+test emit::tests::round2_keyword_named_subgraph_as_edge_source_round_trips ... ok
+test emit::tests::round3_backtick_edge_labels_and_cr_entities_are_defused ... ok
+test emit::tests::round3_old_dashed_statement_arguments_get_targeted_errors ... ok
+test emit::tests::round3_style_values_with_newlines_cannot_inject_statements ... ok
+test emit::tests::round3_subgraph_named_subgraph_survives_as_edge_source ... ok
+test emit::tests::round4_control_chars_sanitize_and_one_sided_backticks_defuse ... ok
+test emit::tests::round4_keyword_gate_is_order_independent ... ok
+test emit::tests::round4_mangled_statement_ids_error_instead_of_phantom_nodes ... ok
+test emit::tests::round4_prescan_and_main_loop_agree_on_subgraph_lines ... ok
+test emit::tests::round5_case_variant_and_padded_subgraph_keyword_ids ... ok
+test emit::tests::round5_label_edge_whitespace_and_unsupported_statements ... ok
+test emit::tests::round5_subgraph_styling_is_accepted_without_phantom_nodes ... ok
+test emit::tests::round6_case_variant_heads_route_to_the_edge_path ... ok
+test emit::tests::round6_click_named_nodes_and_case_variant_keywords ... ok
+test emit::tests::round6_seq_whitespace_only_labels_still_load ... ok
+test emit::tests::round6_subgraph_style_props_validated_and_dashed_ids_ok ... ok
+test emit::tests::round7_bare_titles_and_prop_values_never_divert ... ok
+test emit::tests::state_note_cards_and_choice_survive_as_flowchart_text ... ok
+test emit::tests::styles_and_class_assignments_round_trip_as_style_lines ... ok
+test emit::tests::unwritable_or_repeated_edge_ids_are_dropped_with_their_metadata ... ok
+test er::tests::alias_is_drawn_in_place_of_the_name ... ok
+test er::tests::all_geometry_stays_inside_canvas ... ok
+test er::tests::comment_column_follows_type_name_and_keys ... ok
+test er::tests::crowded_label_still_clears_glyphs_after_a_tight_drag ... ok
+test er::tests::cycle_is_drawn_with_plain_lines ... ok
+test er::tests::default_flow_is_top_down_like_mermaid ... ok
+test er::tests::direction_statement_turns_the_layout ... ok
+test er::tests::drag_past_origin_stays_inside_viewbox ... ok
+test er::tests::every_attribute_comment_is_drawn ... ok
+test er::tests::fixture_renders_tables_keys_and_label ... ok
+test er::tests::glyph_sizes_and_reach ... ok
+test er::tests::glyphs_fit_between_neighbouring_ports ... ok
+test er::tests::glyphs_follow_a_curving_end ... ok
+test er::tests::glyphs_paint_over_the_tables ... ok
+test er::tests::header_band_is_square_where_it_meets_the_body ... ok
+test er::tests::header_text_reads_on_every_accent ... ok
+test er::tests::labels_stay_off_their_neighbours_lines ... ok
+test er::tests::laid_out_labels_stay_on_their_line ... ok
+test er::tests::laid_out_scene_is_not_shifted ... ok
+test er::tests::layout_reserves_room_for_both_glyphs_and_the_label ... ok
+test comb::tests::combing_is_settled_after_one_pass ... ok
+test er::tests::non_identifying_relationship_is_dashed ... ok
+test er::tests::overlong_comment_is_cut_and_kept_as_tooltip ... ok
+test er::tests::relation_only_entity_renders_as_title_only_table ... ok
+test er::tests::relationships_between_the_same_entities_never_cross ... ok
+test er::tests::rerouted_relationship_follows_its_waypoints ... ok
+test er::tests::route_follows_dragged_entity ... ok
+test er::tests::route_follows_dragged_entity_top_down ... ok
+test er::tests::table_without_comments_keeps_keys_at_its_border ... ok
+test er::tests::zero_one_draws_circle ... ok
+test fold::tests::budget_holds_with_parallel_edges_across_a_fold ... ok
+test fold::tests::compact_render_carries_acc_title_and_descr ... ok
+test fold::tests::every_direction_folds_on_its_own_flow_axis ... ok
+test fold::tests::folded_chains_keep_edge_end_glyphs ... ok
+test fold::tests::labels_ride_the_crossbar_and_drag_reroutes_locally ... ok
+test fold::tests::long_chain_folds_into_balanced_bands_within_budget ... ok
+test fold::tests::lr_fold_connectors_leave_the_flow_face_not_the_breadth_face ... ok
+test fold::tests::refusals_return_byte_identical_plain_scenes ... ok
+test fold::tests::render_compact_with_matches_render_compact_and_honours_transparent ... ok
+test gitgraph::tests::a_commit_colour_is_escaped_on_its_way_into_the_attribute ... ok
+test gitgraph::tests::branch_checkout_merge ... ok
+test gitgraph::tests::branch_order_moves_lanes ... ok
+test gitgraph::tests::bt_orientation_flows_upward ... ok
+test gitgraph::tests::commit_kinds ... ok
+test gitgraph::tests::commit_kinds_have_distinct_glyphs ... ok
+test gitgraph::tests::default_orientation_is_lr ... ok
+test gitgraph::tests::forks_and_merges_are_rounded_elbows ... ok
+test gitgraph::tests::hand_built_orders_pack ... ok
+test gitgraph::tests::labels_never_overlap_and_stay_on_canvas ... ok
+test gitgraph::tests::lane_names_and_tags_read_on_white ... ok
+test gitgraph::tests::legs_sharing_a_commit_run_side_by_side ... ok
+test gitgraph::tests::linear_commits_on_main ... ok
+test gitgraph::tests::lines_pass_no_other_commit ... ok
+test gitgraph::tests::lines_take_their_lane_colour ... ok
+test gitgraph::tests::long_ids_and_names_get_room ... ok
+test gitgraph::tests::merges_and_forks_take_mermaid_elbows_whatever_the_lane_order ... ok
+test gitgraph::tests::merges_carry_no_arrowhead ... ok
+test gitgraph::tests::no_line_strikes_a_label ... ok
+test gitgraph::tests::rendering_is_deterministic ... ok
+test gitgraph::tests::scene_picks_commits_and_elbows ... ok
+test gitgraph::tests::switch_alias_for_checkout ... ok
+test gitgraph::tests::tags_pills_and_lane_guides ... ok
+test gitgraph::tests::tb_orientation_swaps_axes ... ok
+test gitgraph::tests::tb_tags_stay_on_canvas ... ok
+test gitgraph::tests::unknown_orientation_is_rejected ... ok
+test hops::tests::a_crossing_next_to_an_end_or_under_a_line_takes_no_hop ... ok
+test er::tests::no_glyph_inside_a_label_rect ... ok
+test hops::tests::a_foot_keeps_clear_of_a_crossing_beside_a_barred_one ... ok
+test hops::tests::a_foot_keeps_clear_of_a_crossing_its_bridge_gave_up ... ok
+test hops::tests::a_foot_keeps_further_from_the_corner_of_a_long_leg ... ok
+test hops::tests::a_hop_does_not_spring_from_a_line_it_cannot_step_over ... ok
+test hops::tests::a_curve_or_a_big_drawing_takes_no_hops ... ok
+test hops::tests::a_hop_keeps_clear_of_a_curve_passing_by ... ok
+test hops::tests::a_hop_keeps_clear_of_chips_borders_and_nodes ... ok
+test hops::tests::a_path_with_a_tilted_end_leg_still_takes_part ... ok
+test hops::tests::a_line_is_stepped_over_just_past_its_corner ... ok
+test hops::tests::hops_do_not_depend_on_the_order_of_the_edges ... ok
+test hops::tests::hops_over_a_bundle_join_into_one_bridge ... ok
+test hops::tests::the_level_stroke_hops_over_the_plumb_one ... ok
+test hops::tests::wider_strokes_take_a_wider_hop_or_none ... ok
+test hops::tests::a_pick_finds_the_painted_hops_on_every_fixture ... ok
+test journey::tests::acc_statements_and_tooltips_reach_the_svg ... ok
+test journey::tests::faces_trace_the_satisfaction_curve ... ok
+test journey::tests::fractional_and_out_of_range_scores_parse ... ok
+test journey::tests::frown_stays_below_the_eyes ... ok
+test journey::tests::legend_row_is_centred ... ok
+test journey::tests::long_section_names_fit_their_band ... ok
+test journey::tests::long_task_names_wrap ... ok
+test journey::tests::long_titles_fit_and_center_the_tasks ... ok
+test journey::tests::many_actor_dots_fit_their_column ... ok
+test journey::tests::missing_score_is_an_error ... ok
+test journey::tests::parses_title_sections_tasks_actors ... ok
+test journey::tests::repeated_actor_colours_take_another_mark ... ok
+test journey::tests::scene_places_everything_inside_the_canvas ... ok
+test journey::tests::score_is_clamped_and_tasks_before_section_get_a_leading_one ... ok
+test journey::tests::section_actor_and_score_colors_never_coincide ... ok
+test journey::tests::section_bands_keep_a_gutter ... ok
+test journey::tests::section_labels_read_on_every_band ... ok
+test journey::tests::task_names_wrap_balanced_and_measure_their_tags ... ok
+test journey::tests::to_svg_draws_faces_sections_and_legend ... ok
+test journey::tests::wide_legend_or_title_widens_the_canvas ... ok
+test json::tests::depth_resets_between_siblings ... ok
+test json::tests::extreme_nesting_is_an_error_not_a_stack_overflow ... ok
+test json::tests::moderate_nesting_still_parses ... ok
+test json::tests::unterminated_deep_nesting_is_an_error ... ok
+test labels::tests::a_class_relation_keeps_its_full_head_box ... ok
+test labels::tests::a_clear_label_in_a_bundle_stays_on_its_line ... ok
+test labels::tests::a_fan_label_at_its_midpoint_slot_is_stacked_afresh ... ok
+test labels::tests::a_fan_label_moved_by_the_builders_returns_to_its_middle ... ok
+test labels::tests::a_label_crossed_by_another_edge_slides_off_it ... ok
+test labels::tests::a_label_crosses_strokes_rather_than_cover_an_arrowhead ... ok
+test labels::tests::a_label_steps_beside_its_line_only_off_other_lines ... ok
+test labels::tests::a_short_label_budget_still_leaves_labels_on_their_lines ... ok
+test labels::tests::a_spent_label_budget_keeps_labels_on_their_own_lines ... ok
+test labels::tests::a_straight_linear_lr_edge_keeps_its_label_on_its_line ... ok
+test labels::tests::a_styled_label_steps_beside_a_gap_too_short_for_its_stroke ... ok
+test labels::tests::a_styled_lr_label_leaves_its_stroke_in_sight ... ok
+test labels::tests::an_axis_segment_fills_the_cells_of_its_box ... ok
+test labels::tests::an_lr_label_centres_on_the_run_clear_of_its_head ... ok
+test labels::tests::arrow_box_sits_behind_the_tip ... ok
+test labels::tests::choice_fan_labels_stack_clear_of_their_siblings_lines ... ok
+test labels::tests::choice_twin_labels_keep_beside_their_own_lines_among_more_siblings ... ok
+test labels::tests::choice_twins_label_beside_their_lines_wide_fans_spread ... ok
+test labels::tests::every_fixture_label_reads_as_its_own_lines ... ok
+test labels::tests::far_coordinates_keep_the_stroke_grid_small ... ok
+test labels::tests::floor_i64_is_the_floor_cast_everywhere ... ok
+test labels::tests::label_clashes_flag_a_label_on_a_node_or_a_head ... ok
+test labels::tests::label_stage_perf_guard ... ignored
+test labels::tests::label_stub_reads_the_edge_style ... ok
+test labels::tests::obstacle_grid_span_past_i64_cells_is_big_not_enumerated ... ok
+test labels::tests::relabel_moves_a_changed_edges_label_back_onto_its_line ... ok
+test labels::tests::relabel_moves_a_label_off_a_stroke_even_when_nothing_moved ... ok
+test labels::tests::relabel_without_changes_is_a_no_op ... ok
+test labels::tests::seg_hits_rect_clips ... ok
+test labels::tests::sibling_labels_of_a_fan_keep_apart_so_each_reads_on_its_own ... ok
+test labels::tests::spot_key_ranks_text_over_arrowheads_over_room_over_strokes ... ok
+test labels::tests::squared_box_segment_distance_needs_no_root ... ok
+test labels::tests::the_keep_out_keeps_the_yardsticks_crowd_gap ... ok
+test labels::tests::the_stroke_grid_answers_like_a_scan_of_every_segment ... ok
+test labels::tests::wide_lr_labels_step_beside_their_line_off_the_arrowhead ... ok
+test lanes::tests::a_far_reaching_back_edge_takes_a_lane ... ok
+test lanes::tests::a_lane_clears_only_what_lies_between_and_hugs_it ... ok
+test lanes::tests::a_lane_counts_the_edge_it_turns_across_at_a_shared_end ... ok
+test lanes::tests::a_lane_leaves_and_enters_along_the_sides_normal ... ok
+test lanes::tests::a_lane_straight_into_its_target_counts_the_edges_leaving_beside_it ... ok
+test lanes::tests::a_slanted_shape_s_port_span_is_its_flat_run ... ok
+test lanes::tests::a_tied_lane_takes_the_side_asked_for ... ok
+test lanes::tests::lanes_from_stacked_ends_into_one_node_run_side_by_side ... ok
+test lanes::tests::nested_lanes_keep_apart_innermost_first ... ok
+test layout::tests::a_block_order_keeps_the_walk_within_twice_the_minimum ... ok
+test layout::tests::a_block_order_starts_where_the_loose_sources_enter ... ok
+test layout::tests::a_box_seats_its_loose_parts_on_its_top_layer ... ok
+test layout::tests::a_box_source_takes_its_sink_down_with_it ... ok
+test layout::tests::a_fence_keeps_a_node_in_its_blocks_rows ... ok
+test layout::tests::a_hub_fed_box_sits_below_its_hub ... ok
+test layout::tests::a_hub_fed_column_of_frames_stays_one_column ... ok
+test layout::tests::a_hub_fed_row_of_shallow_frames_wraps_into_two_rows ... FAILED
+test layout::tests::a_label_slot_is_the_middle_of_the_run_between_the_end_blocks ... ok
+test layout::tests::a_labelled_gap_between_composites_holds_its_labels ... ok
+test layout::tests::a_labelled_gap_keeps_its_label_off_the_head ... ok
+test layout::tests::a_lane_is_kept_between_two_plain_nodes_of_one_level ... ok
+test layout::tests::a_left_note_leads_its_state_inside_a_composite_entered_from_outside ... ok
+test layout::tests::a_stacked_box_keeps_its_loose_members_below_the_hub ... ok
+test layout::tests::an_lr_gap_counts_both_heads_and_ignores_a_plain_width ... ok
+test layout::tests::bold_labels_render_as_svg_tspans_not_literal_tags ... ok
+test layout::tests::boxes_a_moved_chain_leads_through_follow_it_down_whole ... ok
+test layout::tests::choice_twins_and_too_wide_fans_still_get_their_room ... ok
+test layout::tests::cjk_labels_break_between_characters ... ok
+test layout::tests::compact_choice_fans_get_room_for_their_label_rows ... ok
+test layout::tests::components_name_each_cycle_by_its_first_vertex ... ok
+test layout::tests::edge_length_reads_both_axes_or_the_flow ... ok
+test layout::tests::end_room_widens_an_adjacent_gap_for_glyphs_and_label ... ok
+test layout::tests::large_graphs_keep_source_order_cycle_breakers ... ok
+test layout::tests::level_rows_seat_source_blocks_and_never_interleave ... ok
+test layout::tests::long_circle_labels_wrap_narrower ... ok
+test layout::tests::long_diamonds_wrap_within_the_cap_and_short_ones_stay_compact ... ok
+test layout::tests::math_spans_render_as_italic_tex_with_fences_stripped ... ok
+test layout::tests::merge_inversions_match_the_pairwise_count ... ok
+test layout::tests::plain_labels_wrap_balanced_and_only_in_the_layout ... ok
+test layout::tests::segment_box_test_is_open_and_exact ... ok
+test layout::tests::spans_interpret_bold_italic_and_keep_unknown_tags ... ok
+test layout::tests::styling_tags_do_not_inflate_text_width ... ok
+test layout::tests::swept_measures_match_the_all_pairs_ones ... ok
+test layout::tests::symbol_glyphs_are_not_under_measured ... ok
+test layout::tests::the_least_turning_order_prefers_declaration_order_among_equals ... ok
+test layout::tests::the_search_is_skipped_past_its_budget ... ok
+test layout::tests::unlabelled_diamond_is_a_compact_choice ... ok
+test layout::tests::weighted_median_and_layer_compaction ... ok
+test layout::tests::wrap_candidates_split_a_shared_layer_into_two_even_runs ... ok
+test layout::tests::wrap_text_is_greedy_keeps_breaks_and_never_splits_words ... ok
+test layout::tests::wrapping_width_is_read_from_the_source ... ok
+test levels::tests::an_own_box_edge_never_decides_block_mode ... ok
+test identity::everything_renders_as_before_with_blocks_off ... ok
+test class::tests::drag_sweeps_never_panic_and_stay_finite ... ok
+test levels::tests::stand_ins_join_a_member_pair_and_own_box_edges_are_flagged ... ok
+test levels::tests::block_mode_is_decided_by_border_links ... ok
+test levels::tests::block_mode_agrees_between_scene_and_route ... ok
+test levels::tests::the_switch_is_off_unless_asked_for_and_scoped ... ok
+test levels::tests::the_tree_has_a_level_per_non_empty_subgraph ... ok
+test markdown::tests::emphasis_follows_commonmark ... ok
+test markdown::tests::escapes_and_entities_stay_literal ... ok
+test markdown::tests::linear_matcher_agrees_with_the_reference ... ok
+test markdown::tests::lines_blocks_and_breaks ... ok
+test markdown::tests::markdown_labels_round_trip_and_rewrap_as_written ... ok
+test markdown::tests::open_detection ... ok
+test levels::tests::the_permanent_identity_rows_are_the_fixtures_outside_block_mode ... ok
+test markdown::tests::raw_backticks_and_quotes_are_errors ... ok
+test markdown::tests::wrapping_is_balanced_and_never_splits_words ... ok
+test mindmap::tests::a_chain_runs_straight_to_the_right ... ok
+test mindmap::tests::a_comb_still_gets_the_fan_layout ... ok
+test mindmap::tests::a_crowded_hub_staggers_its_branches ... ok
+test markdown::tests::pathological_runs_stay_linear ... ok
+test mindmap::tests::a_mixed_map_shares_the_circle_and_sizes_each_trunk ... ok
+test mindmap::tests::a_named_class_fill_still_gets_a_readable_ink ... ok
+test mindmap::tests::a_root_with_too_many_branches_takes_a_clean_ring ... ok
+test mindmap::tests::a_spoke_may_not_cut_a_far_subtree_between_its_boxes ... ok
+test mindmap::tests::bang_and_cloud_have_perimeters ... ok
+test mindmap::tests::branch_text_reads_on_every_accent ... ok
+test mindmap::tests::branches_run_clockwise_from_twelve_in_source_order ... ok
+test mindmap::tests::builds_tree_from_indentation ... ok
+test mindmap::tests::circle_is_a_true_circle_round_its_label ... ok
+test mindmap::tests::class_names_and_colours_are_escaped ... ok
+test mindmap::tests::classes_reach_the_svg_and_class_defs_colour_nodes ... ok
+test mindmap::tests::cloud_is_puffy_and_bang_spikes_are_even ... ok
+test mindmap::tests::decorations_before_any_node_are_ignored ... ok
+test mindmap::tests::default_rounded_and_square_draw_differently ... ok
+test mindmap::tests::icons_are_kept_and_drawn ... ok
+test mindmap::tests::multiword_text_before_paren_stays_literal ... ok
+test mindmap::tests::a_deep_bushy_tree_still_lays_out ... ok
+test mindmap::tests::radial_layout_stays_inside_canvas ... ok
+test mindmap::tests::ordinary_large_maps_use_the_fan_layout ... ok
+test mindmap::tests::random_trees_stay_clean ... ok
+test mindmap::tests::realistic_maps_use_the_fan_layout ... ok
+test mindmap::tests::ring_fallback_is_clean_too ... ok
+test mindmap::tests::root_is_the_strongest_node_and_trunks_taper ... ok
+test mindmap::tests::root_sits_near_the_centre ... ok
+test mindmap::tests::route_follows_dragged_positions ... ok
+test mindmap::tests::shapes_and_br_parse ... ok
+test mindmap::tests::ring_fallback_is_clean_on_any_tree ... ok
+test mindmap::tests::showcase_is_compact_with_even_spokes ... ok
+test mindmap::tests::svg_is_deterministic ... ok
+test mindmap::tests::the_fan_takes_an_empty_map ... ok
+test mindmap::tests::to_svg_draws_shapes_and_links ... ok
+test mindmap::tests::uniform_maps_fill_the_circle_evenly ... ok
+test mindmap::tests::wide_siblings_do_not_overlap ... ok
+test ortho::tests::a_channel_whose_label_rooms_cannot_hold_its_order_steps_under_its_labels ... ok
+test ortho::tests::a_channels_tracks_keep_a_pitch_apart_and_never_cross ... ok
+test mindmap::tests::showcase_and_a_big_crowded_map_use_the_fan_layout ... ok
+test ortho::tests::a_drifting_chain_runs_straight_where_its_rooms_allow ... ok
+test ortho::tests::a_fan_off_a_diamonds_corners_steps_clear_of_its_rows_note_cards ... ok
+test ortho::tests::a_label_follows_its_run_onto_the_new_line ... ok
+test ortho::tests::a_labelled_twin_bulges_past_its_twin_or_not_at_all ... ok
+test ortho::tests::a_step_crossing_a_kept_curve_moves_clear_of_it_in_its_room ... ok
+test ortho::tests::boxes_side_by_side_join_straight_or_by_a_midway_z ... ok
+test ortho::tests::collapse_drops_repeats_and_points_on_a_straight_leg ... ok
+test ortho::tests::edges_come_out_on_the_axes_in_every_direction ... ok
+test ortho::tests::flow_coordinates_run_downstream_in_every_direction ... ok
+test ortho::tests::segment_tests_count_proper_crossings_only ... ok
+test ortho::tests::steps_out_of_one_side_turning_one_way_never_cross_twice ... ok
+test parser::tests::a_closed_block_keeps_its_nodes_from_later_blocks ... ok
+test parser::tests::acc_before_the_header_is_not_acc ... ok
+test parser::tests::acc_descr_block_normalises_like_mermaid ... ok
+test parser::tests::acc_descr_block_one_line_and_glued_and_trailing_statements ... ok
+test parser::tests::acc_inside_multi_line_constructs_is_label_or_yaml_text ... ok
+test parser::tests::acc_inside_subgraph_sets_the_diagram_value ... ok
+test parser::tests::acc_keywords_are_case_sensitive_and_need_their_punctuation ... ok
+test parser::tests::acc_langium_values ... ok
+test parser::tests::acc_last_statement_wins ... ok
+test parser::tests::acc_line_numbers_after_a_block_stay_exact ... ok
+test ortho::tests::a_drawing_past_the_routers_cap_keeps_the_builders_curves ... ok
+test parser::tests::acc_title_and_descr_single_line ... ok
+test parser::tests::acc_title_runs_to_end_of_line_through_semicolons ... ok
+test parser::tests::acc_unclosed_block_is_a_line_numbered_error ... ok
+test parser::tests::acc_value_spacing_and_empty_values ... ok
+test parser::tests::at_brace_inside_label_text_does_not_open_shape_data ... ok
+test parser::tests::basic_parse ... ok
+test parser::tests::bidirectional_links_parse_with_glyphs_at_both_ends ... ok
+test parser::tests::acc_markup_is_escaped_plain_text ... ok
+test parser::tests::br_becomes_newline_and_grows_the_node ... ok
+test parser::tests::block_scalars_follow_js_yaml ... ok
+test parser::tests::bughunt_fixes_subgraph_edges_and_br ... ok
+test parser::tests::chains_and_semicolons ... ok
+test parser::tests::class_def_ignores_bare_comma_items_like_mermaid ... ok
+test parser::tests::classdef_default_styles_every_node_under_its_own_classes ... ok
+test parser::tests::classic_node_shapes ... ok
+test parser::tests::class_sequence_er_acc ... ok
+test parser::tests::click_callbacks_are_accepted_and_keep_their_tooltip ... ok
+test parser::tests::click_href_forms_parse_in_mermaids_order ... ok
+test parser::tests::click_keyword_is_exact_case_and_named_nodes_stay_edges ... ok
+test parser::tests::click_malformed_statements_are_line_numbered_errors ... ok
+test parser::tests::click_rejects_dangerous_urls ... ok
+test parser::tests::click_targets_ids_like_mermaid ... ok
+test parser::tests::cross_and_circle_end_markers_parse_on_every_line_style ... ok
+test parser::tests::custom_fill_reaches_the_svg ... ok
+test parser::tests::deeply_nested_subgraphs_error_instead_of_overflowing_the_stack ... ok
+test parser::tests::dotted_inline_labels_close_at_any_dotted_closer ... ok
+test parser::tests::edge_id_fan_out_chain_and_duplicates ... ok
+test parser::tests::edge_id_on_every_operator_form ... ok
+test parser::tests::edge_metadata_animation_follows_mermaids_rule ... ok
+test parser::tests::edge_metadata_curves ... ok
+test parser::tests::edge_metadata_errors_and_routing ... ok
+test parser::tests::edge_metadata_merges_and_spans_lines ... ok
+test parser::tests::edges_to_and_from_a_subgraph ... ok
+test parser::tests::er_block_rows_tokenise_like_mermaid ... ok
+test parser::tests::er_comment_survives_commas_parens_and_single_quotes ... ok
+test parser::tests::er_direction_statement_parses ... ok
+test parser::tests::er_entity_alias_parses ... ok
+test parser::tests::er_errors_have_line_numbers ... ok
+test parser::tests::er_fixture_parses_with_expected_counts ... ok
+test parser::tests::er_keys_parse_and_relation_only_entities_exist ... ok
+test parser::tests::er_quoted_entity_names_parse ... ok
+test parser::tests::er_text_cardinalities_parse ... ok
+test parser::tests::er_type_tokens_with_parens_stay_whole ... ok
+test parser::tests::errors_carry_line_numbers ... ok
+test parser::tests::every_mermaid_shape_name_maps ... ok
+test parser::tests::fanout_creates_cartesian_edges ... ok
+test parser::tests::fence_indent_recognizes_only_true_fences ... ok
+test parser::tests::flowchart_elk_is_a_flowchart_alias ... ok
+test parser::tests::deeply_nested_mindmap_errors_instead_of_overflowing ... ok
+test parser::tests::frontmatter_edge_cases_are_robust ... ok
+test parser::tests::frontmatter_preserves_line_numbers_and_rejects_when_unterminated ... ok
+test parser::tests::gitgraph_branch_order_is_an_option_not_part_of_the_name ... ok
+test parser::tests::gitgraph_default_id_skips_claimed_numbers ... ok
+test parser::tests::gitgraph_duplicate_branch_errors ... ok
+test parser::tests::gitgraph_duplicate_commit_id_errors ... ok
+test parser::tests::gitgraph_header_takes_mermaids_colon_forms ... ok
+test parser::tests::gitgraph_merge_keeps_its_type ... ok
+test parser::tests::flowchart_elk_is_not_a_header_inside_the_body_or_without_whitespace ... ok
+test parser::tests::gitgraph_merge_missing_branch_errors ... ok
+test parser::tests::gitgraph_merge_self_errors ... ok
+test parser::tests::gitgraph_quoted_names_and_messages ... ok
+test parser::tests::gitgraph_unknown_attribute_errors ... ok
+test parser::tests::gitgraph_unknown_command_errors ... ok
+test parser::tests::inline_edge_labels_and_new_link_types ... ok
+test parser::tests::keyword_heads_with_marker_operators ... ok
+test parser::tests::keyword_like_id_is_not_a_header ... ok
+test parser::tests::link_style_chain_and_mixed_fanout_order ... ok
+test parser::tests::link_style_counts_every_link_in_source_order ... ok
+test parser::tests::link_style_index_out_of_bounds_uses_mermaids_message ... ok
+test parser::tests::link_style_index_styles_one_edge_and_strips_the_trailing_semicolon ... ok
+test parser::tests::link_style_interpolate_sets_the_curve ... ok
+test parser::tests::link_style_keyword_is_exact_case_and_named_nodes_stay_edges ... ok
+test parser::tests::link_style_malformed_statements_are_errors ... ok
+test parser::tests::link_style_property_parsing ... ok
+test parser::tests::link_style_replaces_per_index_and_merges_over_default ... ok
+test parser::tests::markdown_needs_the_quote_backtick_opener ... ok
+test parser::tests::markdown_node_labels_lower_to_label_markup ... ok
+test parser::tests::markdown_edge_labels_and_subgraph_titles ... ok
+test parser::tests::markdown_node_labels_wrap ... ok
+test parser::tests::markdown_strings_protect_semicolons_and_report_errors ... ok
+test parser::tests::marker_edges_reach_subgraph_endpoints ... ok
+test parser::tests::marker_operators_no_longer_read_as_unclosed_inline_labels ... ok
+test parser::tests::mermaid_swimlane_header_fails_explicitly ... ok
+test parser::tests::multi_line_directives_parse_for_every_diagram_type ... ok
+test parser::tests::nesting_within_the_limit_still_parses ... ok
+test parser::tests::node_ids_starting_with_x_or_o_still_work ... ok
+test parser::tests::node_meta_before_its_edge_id_is_a_node ... ok
+test parser::tests::node_meta_borderless_text_shapes ... ok
+test parser::tests::node_meta_icon_and_image_keys_parse ... ok
+test parser::tests::node_meta_labels_are_markdown_unless_typed_plain ... ok
+test parser::tests::node_meta_mermaid_errors ... ok
+test parser::tests::node_meta_order_class_and_subgraphs ... ok
+test parser::tests::node_meta_multi_line_forms ... ok
+test parser::tests::node_meta_shape_and_label ... ok
+test parser::tests::node_meta_values_follow_js_yaml_and_truthiness ... ok
+test parser::tests::odd_and_trapezoid_bracket_shapes ... ok
+test parser::tests::other_types_accept_acc_without_drawing_it ... ok
+test parser::tests::parse_document_dispatches_every_parsed_header ... ok
+test parser::tests::parse_sends_every_parsed_type_to_the_right_entry_point ... ok
+test parser::tests::quoted_css_url_values_are_accepted ... ok
+test parser::tests::quoted_inline_labels_may_hold_closer_text ... ok
+test parser::tests::quoted_labels ... ok
+test parser::tests::quoted_pipe_edge_label_may_hold_a_pipe ... ok
+test parser::tests::sanitize_href_ports_braintree ... ok
+test parser::tests::sankey_accepts_both_header_spellings ... ok
+test parser::tests::sankey_comments_and_blank_lines_are_skipped ... ok
+test parser::tests::sankey_config_ignores_other_blocks_and_unknown_keys ... ok
+test parser::tests::sankey_config_keywords_ignore_case ... ok
+test parser::tests::sankey_config_only_reads_a_direct_child_of_config ... ok
+test parser::tests::sankey_config_rejects_non_finite_numbers ... ok
+test parser::tests::sankey_config_survives_a_bad_value ... ok
+test parser::tests::sankey_defaults_match_mermaid_when_there_is_no_config ... ok
+test parser::tests::sankey_label_style_reads_outlined ... ok
+test parser::tests::sankey_linkcolor_accepts_a_css_colour ... ok
+test parser::tests::sankey_node_colors_read_block_and_flow_maps ... ok
+test parser::tests::sankey_quoted_config_value_drops_a_trailing_comment ... ok
+test parser::tests::sankey_quoted_fields_keep_commas_and_escaped_quotes ... ok
+test parser::tests::sankey_reads_config_from_frontmatter ... ok
+test parser::tests::sankey_rejects_junk_after_a_closing_quote ... ok
+test parser::tests::sankey_repeated_label_reuses_one_node ... ok
+test parser::tests::sankey_row_shape_errors_carry_line_numbers ... ok
+test parser::tests::sankey_rows_build_nodes_in_first_mention_order ... ok
+test parser::tests::sankey_showvalues_accepts_yaml_booleans ... ok
+test parser::tests::semicolon_one_liners_and_header_split ... ok
+test parser::tests::semicolons_inside_labels_are_literal ... ok
+test parser::tests::state_descriptions_replace_then_stack ... ok
+test parser::tests::state_errors_carry_line_numbers ... ok
+test parser::tests::state_note_forms_mermaid_ignores_stay_harmless ... ok
+test parser::tests::state_notes_become_cards_and_v1_header_works ... ok
+test parser::tests::state_notes_join_their_states_box ... ok
+test parser::tests::state_pseudostates_are_scoped_and_shaped ... ok
+test parser::tests::state_stereotypes_and_titles ... ok
+test parser::tests::state_transition_to_composite_becomes_sub_edge ... ok
+test parser::tests::style_classdef_and_triple_colon ... ok
+test parser::tests::state_diagram_acc ... ok
+test parser::tests::subgraph_membership_nesting_titles_direction ... ok
+test parser::tests::supported_list_matches_the_dispatch_table ... ok
+test parser::tests::theme_directive_reads_init_and_frontmatter ... ok
+test parser::tests::unquoted_inline_labels_end_at_the_first_marker_closer ... ok
+test parser::tests::unsupported_diagram_types_get_explicit_errors ... ok
+test parser::tests::utf8_bom_is_stripped_for_every_diagram_type ... ok
+test parser::tests::yaml_frontmatter_is_accepted_and_dropped_for_every_diagram_type ... ok
+test pie::tests::acc_title_and_descr_reach_the_svg ... ok
+test pie::tests::all_header_forms_parse ... ok
+test pie::tests::all_text_stays_inside_the_canvas ... ok
+test pie::tests::dominant_slice_renders_as_a_visible_circle ... ok
+test pie::tests::duplicate_label_keeps_position_last_value_wins ... ok
+test pie::tests::enormous_values_do_not_blank_the_chart ... ok
+test pie::tests::errors_carry_line_numbers ... ok
+test pie::tests::fractions_sum_to_one_and_angles_are_clockwise ... ok
+test pie::tests::labels_reach_down_to_one_percent_without_overlapping ... ok
+test pie::tests::legend_and_title_are_measured_at_their_drawn_size ... ok
+test pie::tests::many_slices_wrap_the_palette ... ok
+test pie::tests::percentage_labels_read_on_every_wedge ... ok
+test pie::tests::percentages_round_halves_up_like_to_fixed ... ok
+test pie::tests::pie_showcase_parses_and_renders ... ok
+test pie::tests::separators_narrow_next_to_a_sliver ... ok
+test pie::tests::show_data_appends_values_to_the_legend ... ok
+test pie::tests::repeated_slice_colours_are_hatched_apart ... ok
+test pie::tests::showcase_labels_fit_inside_their_wedges ... ok
+test pie::tests::single_slice_renders_a_full_circle ... ok
+test pie::tests::title_line_comments_and_blanks ... ok
+test pie::tests::up_to_sixteen_slices_get_distinct_colors ... ok
+test pie::tests::zero_total_draws_outline_without_nan ... ok
+test pie::tests::zero_value_slice_is_legend_only_and_colors_stay_aligned ... ok
+test ports::tests::a_drag_s_kept_ends_stay_and_pin_the_comb ... ok
+test ports::tests::a_fans_square_paths_nest_off_their_side ... ok
+test ports::tests::a_nearly_straight_pair_is_drawn_straight ... FAILED
+test ports::tests::a_side_whose_every_end_a_drag_keeps_is_left_as_drawn ... ok
+test ports::tests::a_square_path_steers_its_ends_by_its_corners_chord ... ok
+test ports::tests::assigning_twice_changes_nothing ... ok
+test ports::tests::back_edge_never_starts_where_another_edge_arrives ... ok
+test ports::tests::ends_keep_out_of_a_title_chips_shadow ... ok
+test ports::tests::hub_ends_get_distinct_ports_in_both_modes ... ok
+test ports::tests::lone_ends_meet_their_side_in_the_middle_and_combs_space_evenly ... ok
+test ports::tests::lr_boxes_are_entered_from_the_left_by_monotone_curves ... ok
+test ports::tests::parallel_edges_keep_the_order_they_are_drawn_in ... ok
+test ports::tests::place_keeps_order_and_spacing_with_least_move ... ok
+test ports::tests::profiles_trace_the_painted_outline_and_keep_their_ends_side ... ok
+test ports::tests::spaced_ends_crossing_on_their_legs_are_put_in_order ... ok
+test ports::tests::weighted_placement_moves_the_light_ends_and_never_a_pin ... ok
+test quality::tests::a_chip_beside_a_foreign_line_is_crowded ... ok
+test quality::tests::a_pin_beside_a_frame_corner_is_counted ... ok
+test quality::tests::block_edges_read_frame_sides_and_node_sides ... ok
+test quality::tests::block_shape_reads_frames_against_their_nodes ... ok
+test quality::tests::border_crossings_name_the_side_crossed ... ok
+test quality::tests::crossing_and_clean_cases ... ok
+test quality::tests::drawn_crossings_include_level_and_plumb_edges ... ok
+test quality::tests::edge_shape_counts_legs_and_detours ... ok
+test quality::tests::end_gaps_measure_the_painted_outline ... ok
+test quality::tests::end_tilt_reads_the_drawn_heading_against_the_side ... ok
+test quality::tests::frames_are_compared_between_scene_route_and_a_drag ... ok
+test quality::tests::ink_is_the_painted_share_of_the_canvas ... ok
+test quality::tests::leaving_the_frame_both_ends_share_is_an_escape ... ok
+test quality::tests::long_parallel_cables_and_idioms ... ok
+test quality::tests::round_two_yardsticks ... ok
+test quality::tests::sideways_hairpins_are_wiggles_a_back_edges_lane_is_not ... ok
+test render::tests::advanced_showcase_parses_and_renders ... FAILED
+test render::tests::all_curve_points_inside_canvas ... ok
+test render::tests::back_edge_routes_around_widest_layer ... ok
+test render::tests::bt_and_rl_directions_do_not_panic ... ok
+test render::tests::fanout_exit_points_spread ... ok
+test render::tests::parallel_edges_are_separated ... ok
+test render::tests::state_note_cards_are_placed_and_interactive ... ok
+test render::tests::state_showcase_parses_and_renders ... ok
+test router::tests::a_class_route_keeps_its_wide_corners ... ok
+test router::tests::a_reroute_through_a_narrow_gap_trades_for_the_curve ... ok
+test router::tests::a_rerouted_end_takes_a_free_slot_on_its_side ... ok
+test router::tests::a_short_jog_after_the_port_folds_into_the_port_leg ... ok
+test router::tests::a_stair_step_merges_into_one_leg ... ok
+test ports::tests::a_corner_left_far_from_its_rounding_point_is_rounded_again ... ok
+test router::tests::a_step_between_two_ports_straightens_onto_a_shared_line ... ok
+test router::tests::an_edge_across_its_states_note_link_is_searched_round_it ... ok
+test router::tests::chips_and_borders_count_in_the_score ... ok
+test router::tests::detour_goes_round_what_a_free_curve_cuts_through ... ok
+test router::tests::distance_runs_match_a_sample_scan ... ok
+test router::tests::edges_into_a_wedged_frame_keep_out_of_the_gap ... FAILED
+test router::tests::far_apart_centres_stay_cheap ... ok
+test router::tests::fixture_drag_perf_guard ... ignored
+test router::tests::frame_mask_keeps_a_path_out_of_a_foreign_frame ... ok
+test router::tests::frame_masks_span_more_than_one_word ... ok
+test router::tests::lattice_route_goes_round_an_obstacle ... ok
+test router::tests::monotone_search_never_steps_back ... ok
+test router::tests::a_static_edge_riding_a_border_searches_past_a_first_candidate_that_loses ... ok
+test router::tests::off_box_skips_only_what_clip_misses ... ok
+test router::tests::repair_never_adds_node_crossings_on_the_fixtures ... ok
+test router::tests::route_drag_perf_guard ... ignored
+test router::tests::route_is_deterministic ... ok
+test router::tests::route_perf_guard ... ignored
+test router::tests::routed_back_edge_bows_round_in_every_direction ... ok
+test router::tests::routed_back_edge_bows_round_the_diamond ... ok
+test router::tests::routed_hub_edge_stays_out_of_foreign_frames ... ok
+test router::tests::scene_perf_guard ... ignored
+test router::tests::simplify_keeps_corners_and_drops_collinear_samples ... ok
+test router::tests::smoothing_rounds_corners_inside_the_legs ... ok
+test router::tests::spread_close_slides_a_curve_off_its_neighbour ... ok
+test router::tests::spread_moves_a_leg_off_a_frame_border ... ok
+test router::tests::spread_separates_shared_channels_port_legs_included ... ok
+test sankey::tests::a_cycle_keeps_the_column_count_bounded ... ok
+test sankey::tests::a_cycle_terminates_and_still_lays_out ... ok
+test sankey::tests::a_fixed_link_colour_cannot_inject_markup ... ok
+test sankey::tests::a_long_source_name_never_runs_across_the_next_column ... ok
+test sankey::tests::a_named_node_colour_is_kept_clear_of_too ... ok
+test sankey::tests::a_narrow_canvas_keeps_its_width_and_every_label_clear ... ok
+test sankey::tests::a_node_is_sized_by_the_larger_of_its_inflow_and_outflow ... ok
+test sankey::tests::a_node_is_tall_enough_for_its_clamped_ribbons ... ok
+test sankey::tests::a_tall_column_grows_the_canvas_instead_of_clipping ... ok
+test sankey::tests::a_zero_valued_column_does_not_pin_the_scale ... ok
+test sankey::tests::affixes_wrap_the_value ... ok
+test sankey::tests::an_overflowing_sum_still_renders_finite_geometry ... ok
+test sankey::tests::backward_sweep_removes_the_showcase_crossing ... ok
+test sankey::tests::columns_follow_the_longest_path ... ok
+test sankey::tests::computed_totals_do_not_leak_float_noise ... ok
+test sankey::tests::empty_diagram_yields_an_empty_scene ... ok
+test sankey::tests::every_alignment_places_nodes_differently ... ok
+test sankey::tests::extra_sweeps_never_add_a_crossing ... ok
+test sankey::tests::fixed_link_colour_is_used_verbatim ... ok
+test sankey::tests::flat_link_colour_emits_no_gradient ... ok
+test sankey::tests::gradient_ids_are_namespaced_per_diagram ... ok
+test sankey::tests::justify_pushes_sinks_to_the_last_column ... ok
+test sankey::tests::labels_and_values_are_escaped ... ok
+test sankey::tests::labels_are_drawn_at_mermaids_14px ... ok
+test sankey::tests::labels_hang_outside_the_diagram_at_the_last_column ... ok
+test sankey::tests::labels_never_overprint_even_when_narrow_or_long ... ok
+test sankey::tests::left_alignment_keeps_a_sink_at_its_own_depth ... ok
+test sankey::tests::linked_and_stacked_nodes_never_share_a_hue ... ok
+test sankey::tests::middle_column_labels_never_overprint_at_narrow_widths ... ok
+test sankey::tests::node_colors_override_the_palette_and_are_escaped ... ok
+test sankey::tests::outlined_labels_get_a_halo_and_follow_mermaid_sides ... ok
+test sankey::tests::random_diagrams_keep_every_label_clear ... ok
+test sankey::tests::ribbon_thickness_tracks_value ... ok
+test sankey::tests::ribbons_leave_and_enter_inside_their_nodes ... ok
+test sankey::tests::ribbons_stack_by_where_their_other_end_is ... ok
+test sankey::tests::scene_fits_everything_inside_the_canvas ... ok
+test sankey::tests::show_values_toggles_the_number_beside_a_label ... ok
+test sankey::tests::showcase_example_parses_and_renders ... ok
+test sankey::tests::svg_is_deterministic_and_gradient_ids_track_the_link_index ... ok
+test sankey::tests::thin_stacked_nodes_keep_room_for_their_labels ... ok
+test scene::tests::a11y_desc_ids_are_content_hashed_and_default_is_unchanged ... ok
+test scene::tests::a_back_edge_runs_in_a_square_lane_beside_what_lies_between ... ok
+test scene::tests::a_choice_twins_middle_label_keeps_beside_its_line ... ok
+test scene::tests::a_colour_set_through_the_public_api_cannot_close_its_attribute ... ok
+test scene::tests::a_composite_edge_to_its_own_state_drops_straight_from_the_border ... FAILED
+test scene::tests::a_cross_cluster_channel_never_doubles_back ... ok
+test scene::tests::a_cubic_the_spacing_slid_off_its_line_is_squared ... ok
+test scene::tests::a_curve_shorter_than_its_cut_keeps_its_head_on_it ... ok
+test scene::tests::a_curve_swinging_in_from_the_side_enters_its_head_straight ... ok
+test scene::tests::a_decisions_fan_leaves_on_the_axes ... ok
+test scene::tests::a_head_faces_the_end_tangent_where_the_final_straight_is_shorter_than_the_cut ... ok
+test scene::tests::a_hub_s_labels_sit_mid_curve_clear_of_their_fan_and_heads ... ok
+test scene::tests::a_labelled_lr_two_cycle_bows_apart_so_each_label_rides_its_own_line ... ok
+test scene::tests::a_labelled_twin_stays_inside_its_composite ... ok
+test scene::tests::a_lane_between_two_members_stays_in_their_box ... ok
+test scene::tests::a_lane_into_an_over_full_side_stays_on_it ... ok
+test scene::tests::a_lane_meets_a_slanted_shape_on_its_flat_run ... ok
+test scene::tests::a_lane_meets_its_ends_from_outside ... ok
+test scene::tests::a_lane_never_meets_the_flank_its_end_loops_on ... ok
+test scene::tests::a_lane_never_turns_across_an_edge_arriving_beside_its_end ... ok
+test scene::tests::a_lane_round_a_fan_meets_the_hub_on_its_side ... ok
+test scene::tests::a_lane_stays_in_its_frames_in_route_and_on_a_drag_too ... FAILED
+test scene::tests::a_level_edge_hops_over_a_plumb_one ... ok
+test scene::tests::a_member_edge_to_its_own_box_leads_to_the_box_entry_member ... ok
+test scene::tests::a_nodes_self_loops_start_and_end_on_its_border ... ok
+test scene::tests::a_note_card_beside_its_state_links_from_the_facing_side ... ok
+test router::tests::non_finite_centres_do_not_panic ... ok
+test scene::tests::a_parallel_label_and_a_loop_keep_off_the_other_lines ... ok
+test scene::tests::a_rerouted_edge_between_members_stays_in_their_frame_in_route ... ok
+test scene::tests::a_ribbon_of_leaves_is_staggered_into_rows ... ok
+test scene::tests::a_run_into_a_box_crosses_its_border_clear_of_the_run ... ok
+test scene::tests::a_self_loop_sits_where_scene_draws_it_and_moves_to_a_free_side ... ok
+test scene::tests::a_short_bowed_twin_leaves_and_enters_near_square ... ok
+test scene::tests::a_square_paths_cheap_samples_stay_on_its_spline ... ok
+test scene::tests::a_paint_squares_each_glyph_end_once ... ok
+test scene::tests::a_static_canvas_is_its_drawing_with_even_margins ... ok
+test scene::tests::a_straight_edge_into_the_largest_node_stays_straight ... ok
+test scene::tests::a_styled_invisible_link_is_picked_because_it_is_painted ... ok
+test scene::tests::a_title_overflowing_its_frame_onto_the_canvas_stays_whole ... ok
+test scene::tests::a_title_strip_leaves_no_dead_room_under_its_first_row ... ok
+test scene::tests::a_turning_curve_runs_straight_into_its_end_glyph_near_its_scene_curve ... ok
+test scene::tests::a_two_cycle_across_a_short_gap_keeps_its_twins_apart ... ok
+test scene::tests::a_two_cycle_into_a_diamond_keeps_its_twin_ends_apart ... ok
+test scene::tests::a_two_cycle_pulls_its_pair_once_whichever_edge_comes_first ... ok
+test scene::tests::a_two_cycle_runs_side_by_side_across_its_gap ... ok
+test scene::tests::a_very_wide_stroke_ends_inside_its_grown_head ... ok
+test scene::tests::a_step_curves_head_keeps_its_tip_on_the_end_point ... ok
+test scene::tests::a_wide_lr_label_takes_its_height_across_the_flow ... ok
+test scene::tests::a_wide_stroke_stops_its_width_short_under_its_own_head ... ok
+test scene::tests::a_wide_strokes_routed_head_lies_on_a_straight_stub ... ok
+test scene::tests::an_advance_route_with_a_short_last_leg_keeps_its_head_on_that_leg ... ok
+test scene::tests::an_edge_into_a_box_with_a_cycle_still_ranks_the_box_below ... ok
+test scene::tests::an_embedders_measure_gives_the_lines_its_boxes_hold ... ok
+test scene::tests::an_lr_label_beside_a_lanes_legs_gets_its_gap_widened ... ok
+test scene::tests::animated_edges_get_mermaids_class_and_one_style_block ... ok
+test scene::tests::arrow_tips_land_on_the_border_with_the_stroke_cut_under_the_head ... ok
+test scene::tests::back_edge_inside_a_box_bows_beside_it_not_round_the_diagram ... ok
+test scene::tests::bar_reach_covers_any_branch_order ... ok
+test scene::tests::bars_branching_to_bars_fit_the_same_every_time ... ok
+test scene::tests::box_edge_bezier_matches_route_geometry ... ok
+test scene::tests::box_to_box_ranking_stays_linear_and_complete ... ok
+test scene::tests::br_titles_draw_every_line_and_get_header_room_in_every_direction ... ok
+test scene::tests::class_and_er_edges_keep_their_painters_geometry ... ok
+test scene::tests::class_and_er_paths_keep_their_cubics_and_samples ... ok
+test scene::tests::click_links_reach_every_scene_builder ... ok
+test scene::tests::click_never_writes_a_dangerous_url ... ok
+test scene::tests::click_tooltips_and_callbacks_without_links ... ok
+test scene::tests::click_wraps_the_node_in_a_link ... ok
+test scene::tests::clustered_labels_and_endpoints_stay_clean ... ok
+test scene::tests::a_very_wide_strokes_head_keeps_its_tip_on_the_end_point ... ok
+test scene::tests::composite_branches_and_bar_notes_size_the_bar ... ok
+test scene::tests::control_characters_are_dropped_not_escaped ... ok
+test scene::tests::converging_labels_on_shared_targets_are_nudged_apart ... ok
+test scene::tests::cross_cluster_layout_separates_boxes_and_stays_contained ... ok
+test scene::tests::crowded_heads_narrow_so_neighbours_keep_apart ... ok
+test scene::tests::curved_edges_pick_and_bound_what_is_drawn ... ok
+test scene::tests::cut_title_lines_drop_a_dangling_separator ... ok
+test scene::tests::cylinders_fill_their_lid_centre_their_label_and_take_their_stroke ... ok
+test scene::tests::decision_labels_sit_mid_curve_clear_of_their_heads ... ok
+test scene::tests::diagrams_without_link_style_render_exactly_as_before ... ok
+test scene::tests::dotted_edges_draw_dots_that_scale_with_their_stroke ... ok
+test scene::tests::dragging_a_member_pulls_its_cluster_along ... ok
+test scene::tests::edge_at_covers_the_painted_stroke_not_just_its_centre_line ... ok
+test scene::tests::edge_curves_change_only_their_own_path ... ok
+test scene::tests::edge_end_chord_follows_the_drawn_final_stretch ... ok
+test scene::tests::edge_end_tangent_is_the_drawn_heading_into_each_end ... ok
+test scene::tests::edge_ids_become_prefixed_dom_ids ... ok
+test scene::tests::edge_markers_draw_at_the_right_ends ... ok
+test scene::tests::edge_path_d_draws_the_route_not_the_chord ... ok
+test scene::tests::colliding_label_placement_stays_near_linear ... ok
+test scene::tests::edge_to_a_far_box_routes_round_nodes_and_stops_at_its_frame ... ok
+test scene::tests::edgeless_members_pack_into_a_grid_not_one_row ... ok
+test scene::tests::edges_between_nodes_on_one_point_draw_without_panicking ... ok
+test scene::tests::edges_into_a_subgraph_rank_its_members_below_the_source ... ok
+test scene::tests::edges_reach_the_border_of_a_box_top_member ... ok
+test scene::tests::edges_to_their_own_box_stay_off_its_members_in_every_direction ... ok
+test scene::tests::empty_and_nested_empty_subgraphs_stay_finite ... ok
+test scene::tests::ends_on_a_cylinders_cap_sit_on_its_arc ... ok
+test scene::tests::equal_boxes_keep_their_declaration_order ... ok
+test scene::tests::er_and_class_edges_are_picked_at_the_width_they_are_painted ... ok
+test scene::tests::every_edge_kind_and_width_gets_one_head_size ... ok
+test scene::tests::far_apart_back_edges_and_frame_legs_square_up_alike_in_route ... FAILED
+test scene::tests::flowchart_edges_are_painted_by_edge_path_d ... ok
+test scene::tests::fork_join_branches_drop_straight_and_drags_agree ... ok
+test scene::tests::glyph_ends_sharing_a_side_are_spread_apart ... ok
+test levels::tests::the_switch_changes_nothing_outside_block_mode ... ok
+test scene::tests::hit_geometry_matches_the_drawn_shape_after_review_fixes ... ok
+test scene::tests::hit_test_picks_nodes_edges_clusters_with_z_order ... ok
+test scene::tests::hops_over_a_bundle_join_and_a_curve_keeps_its_gap ... ok
+test scene::tests::hub_fed_leaves_in_a_box_pack_into_a_grid ... ok
+test scene::tests::labels_keep_off_frame_border_lines ... ok
+test scene::tests::largest_box_is_centred_among_its_siblings ... ok
+test scene::tests::largest_node_walks_to_the_middle_of_its_rank ... ok
+test scene::tests::link_style_color_paints_only_the_label_text ... ok
+test scene::tests::link_style_colours_every_marker_kind_and_only_used_defs ... ok
+test scene::tests::link_style_colours_that_sanitise_alike_get_distinct_markers ... ok
+test scene::tests::link_style_dash_and_width_override_the_kind ... ok
+test scene::tests::link_style_effective_stroke_drives_the_marker ... ok
+test scene::tests::link_style_fill_and_escaping ... ok
+test scene::tests::link_style_interpolate_linear_draws_straight_segments ... ok
+test scene::tests::link_style_on_a_sub_edge_and_default_markers_are_deduped ... ok
+test scene::tests::link_style_paints_the_edge_and_colours_its_arrow ... ok
+test scene::tests::link_style_survives_compact_folding ... ok
+test scene::tests::link_style_with_a_width_reveals_an_invisible_link_without_markers ... ok
+test scene::tests::long_titles_are_cut_only_where_they_would_run_into_a_sibling ... ok
+test scene::tests::lr_colliding_labels_grow_their_gap_only_to_the_widest_one ... ok
+test scene::tests::lr_fan_out_labels_clear_their_ends_and_each_other ... ok
+test scene::tests::lr_gap_grows_only_for_a_label_that_does_not_fit ... ok
+test scene::tests::markdown_labels_render_as_styled_tspans ... ok
+test scene::tests::marker_free_diagrams_keep_their_exact_defs_and_titles ... ok
+test scene::tests::marquee_and_nearest_and_invisible_edges ... ok
+test scene::tests::marquee_catches_an_edge_that_crosses_without_a_vertex_inside ... ok
+test blockcheck::a_generated_sweep_keeps_the_block_invariants has been running for over 60 seconds
+test blockcheck::a_generated_sweep_keeps_the_block_invariants ... ok
+test scene::tests::nested_frames_step_by_depth_and_title_chips_take_their_fill ... ok
+test scene::tests::nested_lanes_take_the_same_sides_in_scene_and_route ... ok
+test scene::tests::node_hit_is_shape_precise_for_diamonds_and_circles ... ok
+test scene::tests::node_metadata_draws_like_the_bracket_shape ... ok
+test scene::tests::node_outline_traces_each_painted_shape ... ok
+test scene::tests::note_links_hold_their_ends_and_corners_in_scene_route_and_drag ... FAILED
+test scene::tests::note_links_match_between_scene_and_route ... FAILED
+test scene::tests::nothing_painted_falls_off_the_canvas ... ok
+test scene::tests::only_a_lone_two_cycle_skews_its_return_curve ... ok
+test scene::tests::outline_along_puts_an_end_on_the_painted_outline ... ok
+test scene::tests::picking_follows_the_hops_through_float_noise_and_ties ... ok
+test scene::tests::picking_squares_ends_only_where_it_can_change_the_answer ... ok
+test scene::tests::picking_takes_the_painted_outline_of_every_shape ... ok
+test scene::tests::route_attaches_to_node_borders ... ok
+test scene::tests::route_lanes_take_the_static_side_and_no_leg_slides_into_a_node ... ok
+test scene::tests::route_partial_falls_back_after_a_label_or_style_edit ... ok
+test scene::tests::route_partial_falls_back_when_only_subgraphs_changed ... ok
+test scene::tests::route_partial_hands_a_mostly_redrawn_frame_to_route ... ok
+test scene::tests::route_partial_keeps_unmoved_edges_and_reroutes_moved ... ok
+test scene::tests::route_partial_matches_route_on_the_dragged_node ... ok
+test scene::tests::routed_label_stays_on_the_drawn_curve ... ok
+test scene::tests::marquee_selects_an_edge_once_its_painted_stroke_touches ... ok
+test scene::tests::scene_and_render_are_consistent ... ok
+test scene::tests::scene_carries_stable_identity_and_stays_index_parallel ... ok
+test scene::tests::sibling_frames_never_intersect ... ok
+test scene::tests::squared_ends_face_the_curve_and_keep_near_it_on_every_fixture ... ok
+test scene::tests::stacked_nested_frames_clear_each_other_in_every_direction ... ok
+test scene::tests::state_composite_keeps_flow_order ... ok
+test scene::tests::sub_edges_carry_ids_and_animation ... ok
+test scene::tests::subgraph_edges_keep_their_glyphs_in_scene_and_route ... ok
+test scene::tests::subgraph_scene_wraps_members_and_nests ... ok
+test scene::tests::subgraph_titles_render_rich ... ok
+test scene::tests::svg_is_accessible_and_deterministic ... ok
+test scene::tests::svg_options_default_matches_fixed_pixel_and_responsive_overrides ... ok
+test scene::tests::svg_options_transparent_drops_only_the_canvas_rect ... ok
+test scene::tests::td_ranks_stay_vertical_and_fitting_labels_keep_their_spot ... ok
+test scene::tests::td_self_loop_labels_step_out_past_their_loop ... ok
+test scene::tests::the_layout_counts_the_edges_a_clustered_scene_draws ... ok
+test scene::tests::the_svg_pads_the_drawing_as_the_scene_and_strokes_with_the_q10_tokens ... ok
+test scene::tests::twin_lanes_leave_and_enter_in_their_nesting_order ... ok
+test scene::tests::two_way_edges_start_on_the_source_border_like_one_way_edges ... ok
+test scene::tests::valid_sizes_route_exactly_as_before ... ok
+test scene::tests::walls_of_a_box_are_straight_so_layers_cannot_bulge ... ok
+test scene::tests::wide_sibling_boxes_stack_instead_of_a_ribbon ... ok
+test seq::tests::activation_bars_span_activate_to_deactivate ... ok
+test seq::tests::activation_shorthand_and_keywords ... ok
+test seq::tests::actor_draws_as_a_stick_figure ... ok
+test seq::tests::all_eight_arrow_ops_parse ... ok
+test seq::tests::autonumber_and_all_note_forms ... ok
+test seq::tests::bars_paint_over_dividers_and_dividers_match_the_frame ... ok
+test seq::tests::columns_follow_declaration_order_and_rows_increase ... ok
+test seq::tests::dashed_lines_are_inked_at_both_ends ... ok
+test seq::tests::empty_scene_is_finite ... ok
+test seq::tests::explicit_activate_bar_starts_and_ends_at_its_messages ... ok
+test seq::tests::frame_labels_share_a_column_and_fit_their_frame ... ok
+test seq::tests::frame_labels_sit_on_white_cards ... ok
+test seq::tests::frames_parse_and_validate ... ok
+test seq::tests::head_glyph_geometry ... ok
+test seq::tests::implicit_participants_appear_in_message_order ... ok
+test seq::tests::label_cards_never_cut_an_activation_bar ... ok
+test seq::tests::long_labels_widen_the_gap ... ok
+test seq::tests::message_ends_stop_at_activation_bar_edges ... ok
+test seq::tests::message_errors_have_line_numbers ... ok
+test seq::tests::no_message_end_runs_into_a_bar ... ok
+test seq::tests::note_colour_is_no_participant_accent ... ok
+test seq::tests::note_over_same_participant_collapses_to_single ... ok
+test seq::tests::notes_and_edge_columns_stay_inside_the_canvas ... ok
+test seq::tests::notes_inside_frames_stay_inside_them ... ok
+test seq::tests::participant_and_actor_labels_read_on_every_accent ... ok
+test seq::tests::participant_boxes_mirror_below_the_lifelines ... ok
+test seq::tests::participants_aliases_and_actors ... ok
+test seq::tests::scoped_frames_cover_only_their_columns ... ok
+test seq::tests::self_message_gap_reserves_the_next_lifeline_not_its_box ... ok
+test seq::tests::self_message_stays_right_of_its_lifeline ... ok
+test seq::tests::sequence_config_reads_only_its_own_booleans ... ok
+test seq::tests::sequence_showcase_parses_and_renders ... ok
+test seq::tests::svg_has_dashes_heads_and_autonumber_prefix ... ok
+test seq::tests::trailing_comment_is_stripped ... ok
+test seq::tests::unbalanced_deactivate_is_a_line_error ... ok
+test seq::tests::unsupported_sequence_elements_error_cleanly ... ok
+test shapedata::tests::a_nested_mapping_names_the_real_cause ... ok
+test shapedata::tests::block_end_and_open_follow_the_mermaid_lexer ... ok
+test shapedata::tests::block_form_matches_js_yaml ... ok
+test shapedata::tests::flow_form_matches_js_yaml ... ok
+test shapedata::tests::json_schema_typing ... ok
+test style::tests::a_theme_keeps_text_readable_on_an_authors_fill ... ok
+test style::tests::accent_inks_read_on_white_and_keep_their_hue ... ok
+test style::tests::accent_wraps_stably ... ok
+test style::tests::cluster_frames_step_by_depth_with_borders_that_read ... ok
+test style::tests::css_colours_read_as_rgb ... ok
+test style::tests::every_accent_gets_text_reaching_aa ... ok
+test style::tests::every_shape_has_a_distinct_stroke ... ok
+test style::tests::every_theme_keeps_text_and_lines_readable ... ok
+test style::tests::flowmaid_palette_is_the_historical_colours ... ok
+test style::tests::luminance_matches_wcag_reference_values ... ok
+test style::tests::note_style_stands_apart_from_the_accents ... ok
+test style::tests::readable_on_moves_a_colour_just_far_enough ... ok
+test style::tests::text_on_keeps_white_where_it_already_passes ... ok
+test style::tests::text_on_reaches_aa_on_any_fill ... ok
+test style::tests::theme_names_read_back_and_unknown_ones_are_none ... ok
+test style::tests::theme_variables_recolour_the_shared_roles ... ok
+test style::tests::themed_palettes_paint_nodes_alike ... ok
+test style::tests::wide_accent_cycle_is_distinct_and_extends_accent ... ok
+test timeline::tests::acc_statements_reach_the_svg ... ok
+test timeline::tests::axis_is_visible_and_task_lines_stay_pale ... ok
+test timeline::tests::breaks_are_folded_and_entities_stay_literal ... ok
+test timeline::tests::colon_without_whitespace_is_literal ... ok
+test timeline::tests::continuation_line_extends_previous_period ... ok
+test timeline::tests::indented_header_keeps_direction ... ok
+test timeline::tests::long_events_and_periods_wrap ... ok
+test timeline::tests::long_titles_fit_and_center_the_content ... ok
+test timeline::tests::parses_period_and_events_inline ... ok
+test timeline::tests::periods_are_bold_and_events_regular ... ok
+test timeline::tests::periods_before_the_first_section_are_kept_with_neutral_ticks ... ok
+test timeline::tests::scene_fits_everything_inside_the_canvas ... ok
+test timeline::tests::section_labels_read_on_every_accent ... ok
+test timeline::tests::sectionless_timeline_has_no_header_band ... ok
+test timeline::tests::task_lines_never_cross_event_text ... ok
+test timeline::tests::tick_is_painted_over_its_task_line ... ok
+test timeline::tests::title_keeps_a_gap_above_the_first_band ... ok
+test timeline::tests::title_section_and_direction_are_parsed ... ok
+test timeline::tests::to_svg_draws_sections_periods_and_events ... ok
+test timeline::tests::wide_section_names_fit_their_band ... ok
+test timeline::tests::wrapped_text_is_balanced_and_keeps_its_style ... ok
+test wrap::tests::balanced_keeps_the_line_count_and_evens_the_lines ... ok
+test wrap::tests::greedy_fills_lines_and_keeps_long_words_whole ... ok
+test wrap::tests::into_lines_agrees_with_the_full_search ... ok
+test wrap::tests::wrap_block_carries_styles_across_its_breaks ... ok
+test wrap::tests::wrap_block_keeps_literal_tags_as_text ... ok
+test wrap::tests::wrap_block_leaves_no_stranded_last_word ... ok
+test scene::tests::edge_picking_matches_the_painted_strokes_on_every_fixture has been running for over 60 seconds
+test scene::tests::routing_stays_finite_for_any_node_sizes_and_coincident_centres ... ok
+test scene::tests::glyph_fan_in_never_panics_when_ports_fill_the_side has been running for over 60 seconds
+test scene::tests::glyph_fan_in_never_panics_when_ports_fill_the_side ... ok
+test scene::tests::edge_picking_matches_the_painted_strokes_on_every_fixture ... ok
+
+failures:
+
+---- casing::tests::a_line_takes_one_role_across_a_cluster_of_crossings stdout ----
+
+thread 'casing::tests::a_line_takes_one_role_across_a_cluster_of_crossings' (24966) panicked at src/casing.rs:1821:9:
+static 35
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: flowmaid::casing::tests::a_line_takes_one_role_across_a_cluster_of_crossings
+   3: flowmaid::casing::tests::a_line_takes_one_role_across_a_cluster_of_crossings::{closure#0}
+   4: <flowmaid::casing::tests::a_line_takes_one_role_across_a_cluster_of_crossings::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- casing::tests::a_short_line_keeps_at_most_one_gap stdout ----
+
+thread 'casing::tests::a_short_line_keeps_at_most_one_gap' (24971) panicked at src/casing.rs:1767:9:
+static 2
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: flowmaid::casing::tests::a_short_line_keeps_at_most_one_gap
+   3: flowmaid::casing::tests::a_short_line_keeps_at_most_one_gap::{closure#0}
+   4: <flowmaid::casing::tests::a_short_line_keeps_at_most_one_gap::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- comb::tests::a_hubs_fan_is_a_comb_in_scene_and_route stdout ----
+
+thread 'comb::tests::a_hubs_fan_is_a_comb_in_scene_and_route' (25044) panicked at src/comb.rs:2067:13:
+assertion `left == right` failed: scene: crossings inside the fan
+  left: 18
+ right: 0
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::assert_failed_inner
+   3: core::panicking::assert_failed::<usize, usize>
+   4: flowmaid::comb::tests::a_hubs_fan_is_a_comb_in_scene_and_route
+   5: flowmaid::comb::tests::a_hubs_fan_is_a_comb_in_scene_and_route::{closure#0}
+   6: <flowmaid::comb::tests::a_hubs_fan_is_a_comb_in_scene_and_route::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- layout::tests::a_hub_fed_row_of_shallow_frames_wraps_into_two_rows stdout ----
+
+thread 'layout::tests::a_hub_fed_row_of_shallow_frames_wraps_into_two_rows' (25273) panicked at src/layout.rs:7863:9:
+1174.4 x 577
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: flowmaid::layout::tests::a_hub_fed_row_of_shallow_frames_wraps_into_two_rows
+   3: flowmaid::layout::tests::a_hub_fed_row_of_shallow_frames_wraps_into_two_rows::{closure#0}
+   4: <flowmaid::layout::tests::a_hub_fed_row_of_shallow_frames_wraps_into_two_rows::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- ports::tests::a_nearly_straight_pair_is_drawn_straight stdout ----
+
+thread 'ports::tests::a_nearly_straight_pair_is_drawn_straight' (25563) panicked at src/ports.rs:2513:13:
+(302.425, 602.944271909073) (92.35, 710.5)
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: flowmaid::ports::tests::a_nearly_straight_pair_is_drawn_straight
+   3: flowmaid::ports::tests::a_nearly_straight_pair_is_drawn_straight::{closure#0}
+   4: <flowmaid::ports::tests::a_nearly_straight_pair_is_drawn_straight::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- render::tests::advanced_showcase_parses_and_renders stdout ----
+
+thread 'render::tests::advanced_showcase_parses_and_renders' (25593) panicked at src/render.rs:323:9:
+straight: (592.5137500000001, 1158.5) -> (574.2, 991.5)
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: flowmaid::render::tests::advanced_showcase_parses_and_renders
+   3: flowmaid::render::tests::advanced_showcase_parses_and_renders::{closure#0}
+   4: <flowmaid::render::tests::advanced_showcase_parses_and_renders::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- router::tests::edges_into_a_wedged_frame_keep_out_of_the_gap stdout ----
+
+thread 'router::tests::edges_into_a_wedged_frame_keep_out_of_the_gap' (25612) panicked at src/router.rs:6815:9:
+frames -1009.4 px apart
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: flowmaid::router::tests::edges_into_a_wedged_frame_keep_out_of_the_gap
+   3: flowmaid::router::tests::edges_into_a_wedged_frame_keep_out_of_the_gap::{closure#0}
+   4: <flowmaid::router::tests::edges_into_a_wedged_frame_keep_out_of_the_gap::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- scene::tests::a_composite_edge_to_its_own_state_drops_straight_from_the_border stdout ----
+
+thread 'scene::tests::a_composite_edge_to_its_own_state_drops_straight_from_the_border' (25674) panicked at src/scene.rs:18079:13:
+SceneEdge { from: "C0", to: "C0i1", bezier: [(175.4881224253925, 466.0), (180.96527777777774, 556.5), (212.37499999999997, 556.5), (212.37499999999997, 630.0)], waypoints: [(175.4881224253925, 466.0), (175.4881224253925, 542.5), (175.4881224253925, 556.5), (194.96527777777774, 556.5), (198.37499999999997, 556.5), (212.37499999999997, 556.5), (212.37499999999997, 570.5), (212.37499999999997, 630.0)], kind: Arrow, ends: EdgeEnds { start: None, end: None }, meta: EdgeMeta { id: None, animation: None, curve: None, style: LinkStyle { stroke: None, stroke_width: None, stroke_dasharray: None, fill: None, color: None } }, label: None, paint_width: None }
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: flowmaid::scene::tests::a_composite_edge_to_its_own_state_drops_straight_from_the_border
+   3: flowmaid::scene::tests::a_composite_edge_to_its_own_state_drops_straight_from_the_border::{closure#0}
+   4: <flowmaid::scene::tests::a_composite_edge_to_its_own_state_drops_straight_from_the_border::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- scene::tests::a_lane_stays_in_its_frames_in_route_and_on_a_drag_too stdout ----
+
+thread 'scene::tests::a_lane_stays_in_its_frames_in_route_and_on_a_drag_too' (25691) panicked at src/scene.rs:15580:13:
+SceneCluster { id: "Outer", x: 28.0, y: 28.0, w: 357.19000000000005, h: 588.6, title: "Outer system", depth: 0 } vs SceneCluster { id: "Outer", x: -40.10999999999996, y: 28.0, w: 291.68999999999994, h: 588.6, title: "Outer system", depth: 0 }
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: flowmaid::scene::tests::a_lane_stays_in_its_frames_in_route_and_on_a_drag_too
+   3: flowmaid::scene::tests::a_lane_stays_in_its_frames_in_route_and_on_a_drag_too::{closure#0}
+   4: <flowmaid::scene::tests::a_lane_stays_in_its_frames_in_route_and_on_a_drag_too::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- scene::tests::far_apart_back_edges_and_frame_legs_square_up_alike_in_route stdout ----
+
+thread 'scene::tests::far_apart_back_edges_and_frame_legs_square_up_alike_in_route' (25772) panicked at src/scene.rs:15474:13:
+leg at 815.3000000000001, frame at 815.8000000000001
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: flowmaid::scene::tests::far_apart_back_edges_and_frame_legs_square_up_alike_in_route
+   3: flowmaid::scene::tests::far_apart_back_edges_and_frame_legs_square_up_alike_in_route::{closure#0}
+   4: <flowmaid::scene::tests::far_apart_back_edges_and_frame_legs_square_up_alike_in_route::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- scene::tests::note_links_hold_their_ends_and_corners_in_scene_route_and_drag stdout ----
+
+thread 'scene::tests::note_links_hold_their_ends_and_corners_in_scene_route_and_drag' (26032) panicked at src/scene.rs:17482:13:
+straight-link: no link compared
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: flowmaid::scene::tests::note_links_hold_their_ends_and_corners_in_scene_route_and_drag
+   3: flowmaid::scene::tests::note_links_hold_their_ends_and_corners_in_scene_route_and_drag::{closure#0}
+   4: <flowmaid::scene::tests::note_links_hold_their_ends_and_corners_in_scene_route_and_drag::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- scene::tests::note_links_match_between_scene_and_route stdout ----
+
+thread 'scene::tests::note_links_match_between_scene_and_route' (26033) panicked at src/scene.rs:17546:17:
+assertion `left == right` failed: __note_18 -> T0: [(558.875, 549.0), (558.875, 549.0), (359.775, 683.0), (359.775, 683.0)] vs [(588.525, 568.0), (588.525, 568.0), (359.775, 683.0), (359.775, 683.0)]
+stateDiagram-v2
+[*] --> S0
+state C0 {
+  [*] --> C0i0
+  C0i0 --> C0i1
+  C0i1 --> C0i2
+  C0i1 --> C0i3
+  note right of C0i1 : n59
+}
+state C1 {
+  [*] --> C1i0
+  C1i0 --> C1i1
+  C1i1 --> C1i2
+  note left of C1i1 : n39
+}
+S0 --> C0
+C0 --> C1
+C0 --> T0
+T0 --> T1
+T1 --> T2
+note right of S0 : m61
+note left of T0 : m44
+note left of T0 : m48
+T2 --> C0 : back
+
+  left: false
+ right: true
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::assert_failed_inner
+   3: core::panicking::assert_failed::<bool, bool>
+   4: flowmaid::scene::tests::note_links_match_between_scene_and_route
+   5: flowmaid::scene::tests::note_links_match_between_scene_and_route::{closure#0}
+   6: <flowmaid::scene::tests::note_links_match_between_scene_and_route::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    casing::tests::a_line_takes_one_role_across_a_cluster_of_crossings
+    casing::tests::a_short_line_keeps_at_most_one_gap
+    comb::tests::a_hubs_fan_is_a_comb_in_scene_and_route
+    layout::tests::a_hub_fed_row_of_shallow_frames_wraps_into_two_rows
+    ports::tests::a_nearly_straight_pair_is_drawn_straight
+    render::tests::advanced_showcase_parses_and_renders
+    router::tests::edges_into_a_wedged_frame_keep_out_of_the_gap
+    scene::tests::a_composite_edge_to_its_own_state_drops_straight_from_the_border
+    scene::tests::a_lane_stays_in_its_frames_in_route_and_on_a_drag_too
+    scene::tests::far_apart_back_edges_and_frame_legs_square_up_alike_in_route
+    scene::tests::note_links_hold_their_ends_and_corners_in_scene_route_and_drag
+    scene::tests::note_links_match_between_scene_and_route
+
+test result: FAILED. 1121 passed; 12 failed; 5 ignored; 0 measured; 0 filtered out; finished in 171.92s
+
+error: test failed, to rerun pass `--lib`
+     Running unittests src/main.rs (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/target-on/debug/deps/flowmaid-0cf6d369d44a74f3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cli.rs (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/target-on/debug/deps/cli-4bd2445e714b859f)
+
+running 3 tests
+test class_diagram_of_notes_alone_renders ... ok
+test theme_flag_and_source_themes ... ok
+test transparent_flag_drops_the_background_for_every_input_mode ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/model_build.rs (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/target-on/debug/deps/model_build-02d25f833387a1e4)
+
+running 10 tests
+test architecture_is_built_from_default_and_constructors ... ok
+test class_diagram_is_built_with_ensure_class_and_constructors ... ok
+test er_entity_is_built_with_ensure_entity ... ok
+test pie_chart_is_built_from_default ... ok
+test journey_is_built_from_default_and_task_new ... ok
+test mindmap_nodes_are_built_with_add_node ... ok
+test sankey_config_is_built_from_default ... ok
+test timeline_is_built_from_default ... ok
+test sequence_default_mirrors_actors_like_the_parser ... ok
+test a_hand_built_mindmap_of_any_depth_renders ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.31s
+
+     Running tests/quality.rs (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/target-on/debug/deps/quality-874d16a212fd9cb3)
+
+running 15 tests
+test a_one_px_drag_leaves_unrelated_edges_put ... FAILED
+test channels_keep_edges_apart_and_off_chips ... FAILED
+test block_fixtures_are_not_drawn_worse ... FAILED
+test crossing_gaps_do_not_read_as_dashes ... FAILED
+test every_block_fixture_has_a_ceiling ... ok
+test every_fixture_has_a_ceiling ... ok
+test defect_baseline_gate ... FAILED
+test every_shape_end_sits_on_its_outline ... ok
+test edges_keep_off_frame_borders ... FAILED
+test long_labels_wrap_and_dense_labels_do_not_tower ... ok
+test edge_line_order_barely_moves_the_dense_layouts ... ok
+test labels_cover_nothing_they_must_not ... FAILED
+test layout_shape_gate ... ok
+test moving_a_node_declaration_barely_moves_dense_td ... ok
+test quality_gate ... FAILED
+
+failures:
+
+---- a_one_px_drag_leaves_unrelated_edges_put stdout ----
+quality/dense-lr: 1 drag jumps
+quality/dense-td: 1 drag jumps
+quality/bench-75: 50 drag jumps
+notes/spread-face: 0 drag jumps
+notes/fork-twins: 0 drag jumps
+notes/near-drag: 0 drag jumps
+
+thread 'a_one_px_drag_leaves_unrelated_edges_put' (26492) panicked at tests/quality.rs:1362:5:
+quality/dense-lr: 1 > 0 drag jumps
+  drag n11: n12 -> n30 103.0
+quality/bench-75: 50 > 13 drag jumps
+  drag user: svc1 -> logs 36.2
+  drag user: gw -> logs 28.0
+  drag ext: svc1 -> logs 36.2
+  drag ext: gw -> logs 28.0
+  drag gw: svc1 -> logs 22.4
+  drag gw: svc4 -> logs 22.4
+  drag gw: svc6 -> logs 28.0
+  drag lb: gw -> svc1 45.8
+  drag lb: gw -> svc2 24.5
+  drag lb: gw -> svc5 29.3
+  drag lb: svc1 -> logs 36.2
+  drag lb: gw -> logs 28.0
+  drag svc2: svc1 -> cache 31.2
+  drag svc2: svc4 -> logs 22.4
+  drag svc2: svc6 -> logs 28.0
+  drag svc3: svc1 -> cache 31.2
+  drag svc3: svc1 -> logs 36.2
+  drag svc3: gw -> logs 28.0
+  drag svc4: svc1 -> logs 36.2
+  drag svc4: gw -> logs 28.0
+  drag svc5: svc1 -> cache 31.2
+  drag svc5: svc3 -> queue 35.9
+  drag svc5: svc1 -> logs 36.2
+  drag svc5: gw -> logs 28.0
+  drag svc6: svc1 -> logs 36.2
+  drag svc6: svc4 -> logs 22.4
+  drag svc6: gw -> logs 28.0
+  drag db: svc1 -> logs 36.2
+  drag db: gw -> logs 28.0
+  drag cache: svc1 -> logs 36.2
+  drag cache: gw -> logs 28.0
+  drag queue: svc1 -> logs 36.2
+  drag queue: gw -> logs 28.0
+  drag objects: svc1 -> logs 36.2
+  drag objects: queue -> job1 29.8
+  drag objects: gw -> logs 28.0
+  drag metrics: svc1 -> logs 36.2
+  drag metrics: gw -> logs 28.0
+  drag alerts: svc1 -> logs 36.2
+  drag alerts: gw -> logs 28.0
+  drag dash: svc1 -> logs 36.2
+  drag dash: gw -> logs 28.0
+  drag job1: svc1 -> logs 36.2
+  drag job1: gw -> logs 28.0
+  drag job1: job3 -> logs 30.4
+  drag job2: svc1 -> logs 36.2
+  drag job2: gw -> logs 28.0
+  drag job2: job3 -> logs 30.4
+  drag job3: svc4 -> logs 22.4
+  drag job3: svc6 -> logs 28.0
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::panic_display::<alloc::string::String>
+   3: quality::a_one_px_drag_leaves_unrelated_edges_put
+   4: quality::a_one_px_drag_leaves_unrelated_edges_put::{closure#0}
+   5: <quality::a_one_px_drag_leaves_unrelated_edges_put::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- channels_keep_edges_apart_and_off_chips stdout ----
+
+thread 'channels_keep_edges_apart_and_off_chips' (26494) panicked at tests/quality.rs:793:5:
+static edge_chip 1
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: quality::channels_keep_edges_apart_and_off_chips
+   3: quality::channels_keep_edges_apart_and_off_chips::{closure#0}
+   4: <quality::channels_keep_edges_apart_and_off_chips::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- block_fixtures_are_not_drawn_worse stdout ----
+
+thread 'block_fixtures_are_not_drawn_worse' (26493) panicked at tests/quality.rs:532:5:
+block fixtures drawn worse:
+examples/advanced static: defects = 1 > ceiling 0
+examples/advanced static: overlap_pairs = 1 > ceiling 0
+notes/fork-twins static: edge_frame_pairs = 1 > ceiling 0
+notes/fork-twins static: x_drawn = 14 > ceiling 11
+notes/straight-link static: x_drawn = 1 > ceiling 0
+notes/wide-frames static: defects = 4 > ceiling 0
+notes/wide-frames static: overlap_pairs = 1 > ceiling 0
+notes/wide-frames static: hard zeros = 5 > ceiling 0
+notes/wide-frames routed: defects = 3 > ceiling 0
+notes/wide-frames routed: hard zeros = 5 > ceiling 0
+blocks/blocks-overview-actors-reversed static: x_drawn = 9 > ceiling 7
+blocks/blocks-overview-edges-reversed static: x_drawn = 9 > ceiling 7
+blocks/blocks-overview-edges-reversed routed: defects = 1 > ceiling 0
+blocks/blocks-overview-edges-reversed routed: overlap_pairs = 1 > ceiling 0
+blocks/blocks-overview-edges-rotated static: x_drawn = 9 > ceiling 7
+blocks/blocks-overview-edges-rotated routed: defects = 1 > ceiling 0
+blocks/blocks-overview-edges-rotated routed: overlap_pairs = 1 > ceiling 0
+blocks/blocks-overview-lr routed: overlap_pairs = 1 > ceiling 0
+blocks/blocks-overview-rl routed: overlap_pairs = 1 > ceiling 0
+blocks/blocks-overview-subgraphs-reversed static: x_drawn = 9 > ceiling 7
+blocks/blocks-overview-subgraphs-reversed routed: defects = 1 > ceiling 0
+blocks/blocks-overview-subgraphs-reversed routed: overlap_pairs = 1 > ceiling 0
+blocks/blocks-overview static: x_drawn = 9 > ceiling 7
+blocks/blocks-overview routed: overlap_pairs = 1 > ceiling 0
+blocks/nested-cases routed: hard zeros = 1 > ceiling 0
+blocks/nested-chain static: hard zeros = 1 > ceiling 0
+blocks/nested-chain routed: hard zeros = 1 > ceiling 0
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: quality::block_fixtures_are_not_drawn_worse
+   3: quality::block_fixtures_are_not_drawn_worse::{closure#0}
+   4: <quality::block_fixtures_are_not_drawn_worse::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- crossing_gaps_do_not_read_as_dashes stdout ----
+
+thread 'crossing_gaps_do_not_read_as_dashes' (26495) panicked at tests/quality.rs:711:5:
+static xgap_max 5
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: quality::crossing_gaps_do_not_read_as_dashes
+   3: quality::crossing_gaps_do_not_read_as_dashes::{closure#0}
+   4: <quality::crossing_gaps_do_not_read_as_dashes::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- defect_baseline_gate stdout ----
+static	end_tilt	0.0000
+static	end_tilt_max	3.5891
+static	end_gaps	0.0000
+static	end_gap_max	0.0483
+static	lat_wiggles	34.0000
+static	lat_backtrack	7880.5577
+static	own_frame_x	0.0000
+static	own_frame_len	0.0000
+static	band_pairs	164.0000
+static	band_len	65006.0000
+static	ink	0.1195
+static	idiom_ortho	185.0000
+static	idiom_scubic	0.0000
+static	idiom_spline	0.0000
+static	idiom_bow	0.0000
+static	x_drawn	390.0000
+static	end_kink	0.0000
+static	ink_out	0.0000
+static	xhops	248.0000
+static	fan_x	32.0000
+static	fan_uneven	1.0000
+static	compact_max	66.6034
+static	compact_mean	7.0021
+static	span_max	0.4624
+static	sib_stagger	2.0000
+static	title_cut	0.0000
+static	edge_len	185346.0782
+static	bends_max	19.0000
+static	detour_max	2.2034
+static	lbl_end_mean	195.2985
+static	chip_crowd	21.0000
+static	chip_gap_min	0.0000
+static	sib_side_linked	0.0000
+static	lateral_x	35.0000
+static	up_lanes	1.0000
+static	side_ends	62.0000
+static	spine_off	0.0000
+static	pin_corner	2.0000
+routed	end_tilt	0.0000
+routed	end_tilt_max	0.0000
+routed	end_gaps	0.0000
+routed	end_gap_max	0.0483
+routed	lat_wiggles	21.0000
+routed	lat_backtrack	2290.2135
+routed	own_frame_x	0.0000
+routed	own_frame_len	0.0000
+routed	band_pairs	117.0000
+routed	band_len	49860.0000
+routed	ink	0.1167
+routed	idiom_ortho	185.0000
+routed	idiom_scubic	0.0000
+routed	idiom_spline	0.0000
+routed	idiom_bow	0.0000
+routed	x_drawn	457.0000
+routed	end_kink	1.0000
+routed	ink_out	0.0000
+routed	xhops	288.0000
+routed	fan_x	64.0000
+routed	fan_uneven	3.0000
+routed	compact_max	37.8901
+routed	compact_mean	5.4030
+routed	span_max	0.4624
+routed	sib_stagger	2.0000
+routed	title_cut	0.0000
+routed	edge_len	178231.8383
+routed	bends_max	10.0000
+routed	detour_max	1.8954
+routed	lbl_end_mean	204.7920
+routed	chip_crowd	15.0000
+routed	chip_gap_min	0.0000
+routed	sib_side_linked	0.0000
+routed	lateral_x	53.0000
+routed	up_lanes	1.0000
+routed	side_ends	53.0000
+routed	spine_off	0.0000
+routed	pin_corner	7.0000
+
+thread 'defect_baseline_gate' (26496) panicked at tests/quality.rs:1134:5:
+defect baseline regressions:
+static end_tilt_max 3.59 > ceiling 0.3
+static lat_wiggles 34.00 > ceiling 15
+static lat_backtrack 7880.56 > ceiling 1870
+static band_pairs 164.00 > ceiling 132
+static fan_x 32.00 > ceiling 9
+routed lat_wiggles 21.00 > ceiling 5
+routed lat_backtrack 2290.21 > ceiling 425
+routed end_kink 1.00 > ceiling 0
+routed fan_x 64.00 > ceiling 13
+routed fan_uneven 3.00 > ceiling 2
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: quality::defect_baseline_gate
+   3: quality::defect_baseline_gate::{closure#0}
+   4: <quality::defect_baseline_gate::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- edges_keep_off_frame_borders stdout ----
+
+thread 'edges_keep_off_frame_borders' (26499) panicked at tests/quality.rs:405:5:
+routed border_len 3495
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: quality::edges_keep_off_frame_borders
+   3: quality::edges_keep_off_frame_borders::{closure#0}
+   4: <quality::edges_keep_off_frame_borders::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- labels_cover_nothing_they_must_not stdout ----
+
+thread 'labels_cover_nothing_they_must_not' (26503) panicked at tests/quality.rs:596:5:
+static lbl_edge 9 > 6
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: quality::labels_cover_nothing_they_must_not
+   3: quality::labels_cover_nothing_they_must_not::{closure#0}
+   4: <quality::labels_cover_nothing_they_must_not::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- quality_gate stdout ----
+file	mode	nodes	edges	frames	edge_node_x	edge_node_pairs	edge_frame_x	edge_frame_pairs	edge_edge_x	overlap_pairs	overlap_len	node_near	min_node_gap	min_edge_gap	node_overlap	node_frame	frame_overlap	lbl_node	lbl_lbl	lbl_chip	lbl_edge	lbl_arrow	shared_ports	arrow_on_start	wiggles	backtrack	frame_side	center_off	width	height	aspect	area_per_node	defects	corner_touch	border_runs	border_len	overlap_max	tight_pairs	tight_len	hug_runs	hug_len	hug_max	edge_chip	end_cross	xgap_max	dash_edges	lbl_crowd	ortho_edges	xnotches	end_tilt	end_tilt_max	end_gaps	end_gap_max	lat_wiggles	lat_backtrack	own_frame_x	own_frame_len	band_pairs	band_len	ink	idiom_ortho	idiom_scubic	idiom_spline	idiom_bow	x_drawn	end_kink	ink_out	xhops	fan_x	fan_uneven	compact_max	compact_mean	span_max	sib_stagger	title_cut	edge_len	bends_max	detour_max	lbl_end_mean	chip_crowd	chip_gap_min	sib_side_linked	lateral_x	up_lanes	side_ends	spine_off	pin_corner
+back-edge	static	6.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	12.89	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.04	290.00	543.70	1.87	26278.83	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3.00	0.00	0.00	0.00	0.00	0.05	0.00	0.00	0.00	0.00	0.00	0.00	0.14	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	644.73	2.00	0.97	59.26	0.00	15.36	0.00	0.00	0.00	0.00	0.00	0.00
+back-edge	routed	6.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	12.89	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.04	290.00	543.70	1.87	26278.83	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3.00	0.00	0.00	0.00	0.00	0.05	0.00	0.00	0.00	0.00	0.00	0.00	0.14	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	644.73	2.00	0.97	59.26	0.00	15.36	0.00	0.00	0.00	0.00	0.00	0.00
+bench-75	static	21.00	75.00	5.00	0.00	0.00	0.00	0.00	224.00	12.00	650.00	0.00	10.50	12.66	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.08	1560.70	1384.50	1.13	102894.72	12	1.00	5.00	706.33	174.00	41.00	4516.00	13.00	1723.60	354.81	0.00	0.00	5.00	0.00	0.00	75.00	0.00	0.00	0.00	0.00	0.05	12.00	1660.05	0.00	0.00	54.00	12872.00	0.06	75.00	0.00	0.00	0.00	224.00	0.00	0.00	132.00	14.00	0.00	66.60	21.14	0.23	0.00	0.00	44300.64	8.00	2.20	0.00	0.00	40.00	0.00	2.00	1.00	46.00	0.00	0.00
+bench-75	routed	21.00	75.00	5.00	0.00	0.00	1.00	1.00	245.00	27.00	1816.00	0.00	12.30	0.86	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.35	1560.70	1150.32	1.36	85490.65	28	1.00	10.00	1485.97	188.00	58.00	5506.00	22.00	3167.73	347.40	2.00	2.00	3.00	0.00	0.00	75.00	0.00	0.00	0.00	0.00	0.05	12.00	1307.64	0.00	0.00	52.00	14732.00	0.08	75.00	0.00	0.00	0.00	245.00	0.00	0.00	126.00	22.00	1.00	22.61	11.76	0.23	0.00	0.00	43509.87	8.00	1.90	0.00	0.00	40.00	0.00	15.00	1.00	42.00	0.00	0.00
+dense-lr	static	52.00	42.00	11.00	0.00	0.00	0.00	0.00	15.00	2.00	160.00	0.00	16.65	27.50	0.00	0.00	0.00	0.00	0.00	0.00	9.00	0.00	0.00	0.00	0.00	0.00	0.00	0.16	3088.10	3312.89	1.07	196741.24	2	0.00	0.00	0.00	104.00	6.00	944.00	0.00	0.00	0.00	0.00	0.00	1.00	0.00	0.00	39.00	0.00	0.00	3.59	0.00	0.04	4.00	1444.30	0.00	0.00	30.00	15322.00	0.06	42.00	0.00	0.00	0.00	15.00	0.00	0.00	13.00	0.00	1.00	40.16	10.29	0.24	2.00	0.00	48374.66	13.00	1.90	365.85	9.00	0.00	0.00	2.00	0.00	6.00	0.00	1.00
+dense-lr	routed	52.00	42.00	11.00	0.00	0.00	1.00	1.00	22.00	1.00	30.00	0.00	8.17	40.00	0.00	0.00	0.00	0.00	0.00	0.00	1.00	0.00	0.00	0.00	0.00	0.00	0.00	0.11	3088.10	3320.89	1.08	197216.33	2	0.00	1.00	236.78	30.00	6.00	750.00	6.00	1424.84	328.15	1.00	2.00	1.00	0.00	0.00	40.00	0.00	0.00	0.00	0.00	0.04	2.00	312.45	0.00	0.00	20.00	7992.00	0.06	42.00	0.00	0.00	0.00	23.00	0.00	0.00	18.00	3.00	1.00	37.89	10.08	0.24	2.00	0.00	46235.68	8.00	1.25	353.34	4.00	0.00	0.00	7.00	0.00	5.00	0.00	1.00
+dense-td	static	46.00	47.00	10.00	0.00	0.00	1.00	2.00	149.00	5.00	2170.00	0.00	12.41	9.86	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.01	3703.90	1815.57	2.04	146189.02	7	0.00	2.00	86.17	738.00	24.00	10514.00	6.00	1251.84	465.32	1.00	0.00	5.00	0.00	0.00	42.00	0.00	0.00	0.00	0.00	0.01	17.00	4748.21	0.00	0.00	73.00	34572.00	0.09	47.00	0.00	0.00	0.00	151.00	0.00	0.00	103.00	18.00	0.00	10.02	7.71	0.35	0.00	0.00	83830.99	19.00	2.14	583.44	9.00	2.30	0.00	31.00	0.00	9.00	0.00	1.00
+dense-td	routed	46.00	47.00	10.00	3.00	3.00	11.00	32.00	181.00	5.00	3490.00	0.00	9.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.01	3665.60	1815.57	2.02	144677.36	40	0.00	3.00	1771.95	1368.00	17.00	6076.00	18.00	6867.91	1119.33	6.00	0.00	4.00	0.00	0.00	43.00	0.00	0.00	0.00	0.00	0.01	6.00	642.13	0.00	0.00	39.00	25016.00	0.09	47.00	0.00	0.00	0.00	188.00	1.00	0.00	143.00	38.00	1.00	10.02	7.70	0.35	0.00	0.00	79782.17	10.00	1.84	609.34	9.00	3.51	0.00	31.00	0.00	5.00	0.00	1.00
+fanout-frames	static	22.00	7.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	14.00	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.09	565.50	2311.00	4.09	59403.20	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	7.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3.00	1532.00	0.15	7.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3.37	2.88	0.46	0.00	0.00	4602.28	4.00	1.00	0.00	0.00	40.00	0.00	0.00	0.00	1.00	0.00	0.00
+fanout-frames	routed	22.00	7.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	14.00	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.09	565.50	2311.00	4.09	59403.20	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3.00	1558.00	0.15	7.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3.37	2.88	0.46	0.00	0.00	4413.39	4.00	1.00	0.00	0.00	40.00	0.00	0.00	0.00	1.00	0.00	5.00
+wide-labels	static	6.00	8.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	20.25	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.46	1971.00	156.30	12.61	51343.93	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	6.00	0.00	0.00	0.00	0.00	0.00	1.00	28.00	0.00	0.00	4.00	708.00	0.21	8.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3592.77	2.00	1.12	163.23	3.00	5.02	0.00	0.00	0.00	0.00	0.00	0.00
+wide-labels	routed	6.00	8.00	0.00	0.00	0.00	0.00	0.00	1.00	0.00	0.00	0.00	16.25	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.17	1971.00	181.30	10.87	59556.43	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	6.00	0.00	0.00	0.00	0.00	0.00	1.00	28.00	0.00	0.00	3.00	562.00	0.18	8.00	0.00	0.00	0.00	1.00	0.00	0.00	1.00	1.00	0.00	0.00	0.00	0.00	0.00	0.00	3646.00	2.00	1.12	206.80	2.00	4.00	0.00	0.00	0.00	0.00	0.00	0.00
+
+thread 'quality_gate' (26507) panicked at tests/quality.rs:343:5:
+quality regressions:
+bench-75 static: defects = 12 > ceiling 4
+bench-75 static: min_edge_gap = 12.66 < floor 14.7
+bench-75 routed: edge_frame_pairs = 1 > ceiling 0
+bench-75 routed: defects = 28 > ceiling 2
+bench-75 routed: min_edge_gap = 0.86 < floor 10.6
+dense-td static: min_edge_gap = 9.86 < floor 12.1
+dense-td routed: edge_node_pairs = 3 > ceiling 0
+dense-td routed: edge_node_x = 3 > ceiling 0
+dense-td routed: edge_frame_pairs = 32 > ceiling 29
+dense-td routed: defects = 40 > ceiling 30
+dense-td routed: min_edge_gap = 0.00 < floor 12
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: quality::quality_gate
+   3: quality::quality_gate::{closure#0}
+   4: <quality::quality_gate::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    a_one_px_drag_leaves_unrelated_edges_put
+    block_fixtures_are_not_drawn_worse
+    channels_keep_edges_apart_and_off_chips
+    crossing_gaps_do_not_read_as_dashes
+    defect_baseline_gate
+    edges_keep_off_frame_borders
+    labels_cover_nothing_they_must_not
+    quality_gate
+
+test result: FAILED. 7 passed; 8 failed; 0 ignored; 0 measured; 0 filtered out; finished in 13.05s
+
+error: test failed, to rerun pass `--test quality`
+     Running tests/theme.rs (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/target-on/debug/deps/theme-f9bea54e6d5f9997)
+
+running 9 tests
+test advance_diagrams_take_an_explicit_theme ... ok
+test categories_stay_and_items_take_the_node_paint ... ok
+test a_source_theme_applies_unless_an_option_beats_it ... ok
+test style_and_link_style_colours_beat_the_theme ... ok
+test themed_marker_ids_never_collide_with_the_default_ones ... ok
+test every_diagram_type_honours_the_source_theme ... ok
+test themed_text_reads_on_what_it_is_painted_over ... ok
+test themed_lines_keep_three_to_one_on_what_they_cross ... ok
+test every_theme_renders_every_example_deterministically ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s
+
+   Doc-tests flowmaid
+
+running 3 tests
+test src/lib.rs - (line 22) ... ok
+test src/scene.rs - scene::SvgOptions::theme (line 9586) ... ok
+test src/scene.rs - scene::SvgOptions (line 9548) ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.25s
+
+error: 2 targets failed:
+    `--lib`
+    `--test quality`

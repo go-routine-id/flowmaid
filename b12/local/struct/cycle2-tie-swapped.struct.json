@@ -1,0 +1,28 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"TD",
+"nodes":[
+ {"id":"a2","label":"a2","shape":"Rect","sub":0},
+ {"id":"b1","label":"b1","shape":"Rect","sub":1},
+ {"id":"b2","label":"b2","shape":"Rect","sub":1},
+ {"id":"a1","label":"a1","shape":"Rect","sub":0}],
+"subgraphs":[
+ {"id":"A","title":"Front","parent":null,"direction":null,"nodes":[3,0]},
+ {"id":"B","title":"Back","parent":null,"direction":null,"nodes":[1,2]}],
+"edges":[
+ {"from":{"n":0},"to":{"n":1},"label":"request","kind":"Arrow","drawn":true},
+ {"from":{"n":2},"to":{"n":3},"label":"response","kind":"Arrow","drawn":true},
+ {"from":{"n":3},"to":{"n":0},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":1},"to":{"n":2},"label":null,"kind":"Arrow","drawn":true}],
+"scene":{"width":240.000,"height":520.000,
+ "nodes":[
+  {"id":"a2","x":144.000,"y":68.000,"w":54.000,"h":38.000},
+  {"id":"b1","x":42.000,"y":218.000,"w":54.000,"h":38.000},
+  {"id":"b2","x":42.000,"y":316.000,"w":54.000,"h":38.000},
+  {"id":"a1","x":144.000,"y":440.000,"w":54.000,"h":38.000}],
+ "clusters":[
+  {"id":"A","x":130.000,"y":28.000,"w":82.000,"h":464.000,"depth":0},
+  {"id":"B","x":28.000,"y":178.000,"w":82.000,"h":190.000,"depth":0}],
+ "edges":[
+  {"from":"a2","to":"b1","routed":true,"label":{"text":"request","cx":82.769,"cy":127.967,"w":60.800},"points":[[156.000,106.000],[156.000,114.991],[156.000,123.983],[147.009,123.983],[95.500,123.983],[81.500,123.983],[81.500,137.983],[81.500,218.000]]},
+  {"from":"b2","to":"a1","routed":true,"label":{"text":"response","cx":85.018,"cy":390.806,"w":71.700},"points":[[69.000,354.000],[69.000,376.817],[69.000,390.817],[83.000,390.817],[142.000,390.817],[156.000,390.817],[156.000,404.817],[156.000,440.000]]},
+  {"from":"a1","to":"a2","routed":false,"label":null,"points":[[171.000,440.000],[171.000,273.000],[171.000,273.000],[171.000,106.000]]},
+  {"from":"b1","to":"b2","routed":false,"label":null,"points":[[69.000,256.000],[69.000,286.000],[69.000,286.000],[69.000,316.000]]}]}}

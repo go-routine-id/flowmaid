@@ -1,0 +1,11 @@
+flowchart TD
+    subgraph A[Front]
+        a1 --> a2
+    end
+    subgraph B[Back]
+        b1 --> b2
+    end
+    a2 -->|request| b1
+    b2 -->|r1| a1
+    b1 -->|r2| a1
+    b2 -->|r3| a2

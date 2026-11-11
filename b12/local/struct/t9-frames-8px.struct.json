@@ -1,0 +1,22 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"TD",
+"nodes":[
+ {"id":"a","label":"a","shape":"Rect","sub":1},
+ {"id":"b","label":"b","shape":"Rect","sub":3}],
+"subgraphs":[
+ {"id":"A","title":"Alpha","parent":null,"direction":null,"nodes":[]},
+ {"id":"A1","title":"Alpha one","parent":0,"direction":null,"nodes":[0]},
+ {"id":"B","title":"Beta","parent":null,"direction":null,"nodes":[]},
+ {"id":"B1","title":"Beta one","parent":2,"direction":null,"nodes":[1]}],
+"edges":[
+ {"from":{"n":0},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true}],
+"scene":{"width":181.500,"height":356.000,
+ "nodes":[
+  {"id":"a","x":56.000,"y":108.000,"w":54.000,"h":38.000},
+  {"id":"b","x":56.000,"y":262.000,"w":54.000,"h":38.000}],
+ "clusters":[
+  {"id":"A","x":28.000,"y":28.000,"w":110.000,"h":146.000,"depth":0},
+  {"id":"B","x":28.000,"y":182.000,"w":110.000,"h":146.000,"depth":0},
+  {"id":"A1","x":42.000,"y":68.000,"w":82.000,"h":92.000,"depth":1},
+  {"id":"B1","x":42.000,"y":222.000,"w":82.000,"h":92.000,"depth":1}],
+ "edges":[
+  {"from":"a","to":"b","routed":true,"label":null,"points":[[87.514,146.000],[87.514,193.500],[87.514,207.500],[101.514,207.500],[138.500,207.500],[152.500,207.500],[152.500,221.500],[152.500,267.000],[152.500,281.000],[138.500,281.000],[110.000,281.000]]}]}}

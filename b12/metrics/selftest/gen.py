@@ -53,6 +53,19 @@ CASES = {
                ("b", "c", [(250, 80), (250, 130), (160, 130), (160, 190)], None)],
         hops={}, nested=None,
     ),
+    # BT (added for B12.0's columns). Two frames, a free node; a chip whose
+    # centre lies inside an end frame (m -> n), a chip that overlaps an end
+    # frame's border (m -> w), a chip 2 px off its own line (w -> n), an edge
+    # through a lateral side (w -> n into G2's left), one with a detour.
+    "hand4": dict(
+        W=400, H=300, dir="BT",
+        frames=[("G1", None, 20, 180, 160, 100), ("G2", None, 220, 20, 160, 100)],
+        nodes=[("m", "G1", 60, 220, 80, 40), ("n", "G2", 260, 50, 80, 40), ("w", None, 40, 60, 60, 40)],
+        edges=[("m", "n", [(100, 220), (100, 150), (350, 150), (350, 130), (300, 130), (300, 90)], ("up", 100, 195, 40, 20)),
+               ("m", "w", [(70, 220), (70, 100)], ("side", 70, 175, 40, 20)),
+               ("w", "n", [(100, 80), (260, 80)], ("far", 160, 68, 30, 20))],
+        hops={}, nested=None,
+    ),
 }
 
 

@@ -374,3 +374,46 @@ exactly on a frame's border (outside).
 * mermaid's numbers are for its default configuration as `tools/mmrender.js` runs it. Its
   boxes are larger than flowmaid's (average node side 1.16× on the analog); use `fill`,
   `edge_len_n` and the ratios for cross-engine comparison, px for flowmaid-vs-flowmaid.
+
+## B12.0 additions (2026-11-11, package b12a1-structure)
+
+Start commit of B12: `3abbfeb` (B11's head). Its CLI, `quality` example and `structdump` are kept in
+`b12/start/` (`flowmaid`, `quality`, `structdump`; `quality-038` is the example built from 0.38.0).
+
+* **Hops.** `dehop` now also bridges B11's *bridges*: a detour that leaves its line on a quarter circle of
+  radius <= `HOP_DEV` (9, flowmaid's `HOP_R_MAX`), runs level at that offset for any length and comes back
+  down on another quarter circle (`HOP_QUARTER_TOL`). The level top does not count against `HOP_SPAN`
+  (raised 26 -> 30: a half circle of radius 9 is 28.3 px). A square jog up and back is no hop. Selftest:
+  a single hop, bridges over 3 and 6 tracks, right to left, on a plumb line at radius 9, two on one leg,
+  and three shapes that must be kept. `hops` counts a bridge once. No old column moved on the 16
+  baseline SVGs (`baseline-038.tsv`, `mermaid.tsv` reproduced cell for cell).
+* **New columns** (after `warn`, so every earlier column keeps its place):
+  `lateral_x`, `lateral_edges`, `flow_x` (crossings of the border of a frame that holds exactly one end
+  of the edge, through a lateral side / the edges with one / through a flow-facing side; note links
+  counted; `borderCrossings`); `bends_max` (+ `_edge`); `detour_max` (+ `_edge`; drawn length over the
+  Manhattan distance of the drawn ends, edges of `DETOUR_MIN_LEN` = 200 px and more); `lbl_in_end`
+  (chips whose centre lies inside, or whose box overlaps the border of, a frame holding exactly one end
+  of their edge); `lbl_own_gap_max`; `breadth` (canvas extent across the flow); `bands_n`, `bands`
+  (top-level frames and free nodes grouped by overlapping flow projections, bands in flow order,
+  members by position across the flow) and `band_sets` (the same bands, members sorted by name: the
+  band order alone). Hand-checked in `selftest/` (`hand4` is new; 790 checks).
+* **`judge`**: a `must` whose bound is NA fails; a rule scoped to a name missing from the candidate table
+  fails; a third reference table (`--start`); bound kinds `{min: [..]}`, `{same_as: name}`,
+  `{within: p, of: name}`; scope lists; `--only names` (prints what it skipped); `--due S|A1|A2|R|C`
+  (leaves out the rules first due at a later checkpoint, spec 4.1); `judge --selftest` (27 checks).
+* **Rules**: `thresholds.json` (4.3 a-f, static) and `thresholds-routed.json` (4.3 h, d) are written by
+  `mkthresholds.py`; every rule names its section of the spec and its checkpoint.
+* **Reference tables**, one row per input of `b12/local/in` (92 inputs: the analog family, the repository's
+  block fixtures, the inputs of 4.3 e and f) under the name the candidate run uses:
+  `baseline-038.tsv` (0.38.0 CLI), `ref-start.tsv` (start commit), `ref-mermaid.tsv` (mermaid 12.2,
+  rendered for all 92), `ref-038-routed.tsv`, `ref-start-routed.tsv` (`quality --svg`'s `.routed.svg`).
+  The earlier 8-row tables are in `b12/wsbackup-b12a1/`.
+* **Runner**: `b12/local/run.sh` (`struct`, `fm`, `routed`, `mermaid`, `judge`, `judge-routed`).
+* Cross-checks on the start commit: `crossings` equals the harness's static `x_drawn` on the 8 metric
+  inputs (0 / 294 / 45 / 66 / 0 / 23 / 0 / 0) and on 89 of the 92 (the three others hold a subgraph
+  self-edge drawn as a zero-length path: `self-member`, `spread-face`, `state-note`); routed, the harness
+  counts one more on 7 of 92 (bench-75 344|345, fork-twins, infra-lr, the analog 25|26, infra-rl, perm-c,
+  perm-d). `hops` 197 / 55 / 20 and `warn` 0 on bench-75 / dense-td / the analog. `--check-scene` as in
+  0.38 (boxes <= 0.1 px, cylinders <= 1 px). `lateral_x` equals `critic/lateral.py` on hub5 (5), cycle2
+  (6), the public fixture (14) and `revise/lat2.py :h` on spread-bottom (1); mermaid's analog reads 0
+  with 36 flow-side crossings.

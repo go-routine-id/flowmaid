@@ -1,0 +1,24 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"TD",
+"nodes":[
+ {"id":"a","label":"a","shape":"Rect","sub":1},
+ {"id":"b","label":"b","shape":"Rect","sub":3}],
+"subgraphs":[
+ {"id":"A","title":"Alpha","parent":null,"direction":null,"nodes":[]},
+ {"id":"A1","title":"Alpha one","parent":0,"direction":null,"nodes":[0]},
+ {"id":"B","title":"Beta","parent":null,"direction":null,"nodes":[]},
+ {"id":"B1","title":"Beta one","parent":2,"direction":null,"nodes":[1]}],
+"edges":[
+ {"from":{"n":0},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":1},"to":{"n":0},"label":null,"kind":"Arrow","drawn":true}],
+"scene":{"width":197.000,"height":356.000,
+ "nodes":[
+  {"id":"a","x":71.500,"y":108.000,"w":54.000,"h":38.000},
+  {"id":"b","x":71.500,"y":262.000,"w":54.000,"h":38.000}],
+ "clusters":[
+  {"id":"A","x":43.500,"y":28.000,"w":110.000,"h":146.000,"depth":0},
+  {"id":"B","x":43.500,"y":182.000,"w":110.000,"h":146.000,"depth":0},
+  {"id":"A1","x":57.500,"y":68.000,"w":82.000,"h":92.000,"depth":1},
+  {"id":"B1","x":57.500,"y":222.000,"w":82.000,"h":92.000,"depth":1}],
+ "edges":[
+  {"from":"a","to":"b","routed":true,"label":null,"points":[[125.500,127.000],[154.000,127.000],[168.000,127.000],[168.000,141.000],[168.000,267.000],[168.000,281.000],[154.000,281.000],[125.500,281.000]]},
+  {"from":"b","to":"a","routed":true,"label":null,"points":[[71.500,281.000],[43.000,281.000],[29.000,281.000],[29.000,267.000],[29.000,141.000],[29.000,127.000],[43.000,127.000],[71.500,127.000]]}]}}

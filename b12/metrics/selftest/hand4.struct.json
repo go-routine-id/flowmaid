@@ -1,0 +1,80 @@
+{
+ "tool": "hand-written",
+ "kind": "flowchart",
+ "direction": "BT",
+ "nodes": [
+  {
+   "id": "m",
+   "label": "m",
+   "shape": "Rect",
+   "sub": 0
+  },
+  {
+   "id": "n",
+   "label": "n",
+   "shape": "Rect",
+   "sub": 1
+  },
+  {
+   "id": "w",
+   "label": "w",
+   "shape": "Rect",
+   "sub": null
+  }
+ ],
+ "subgraphs": [
+  {
+   "id": "G1",
+   "title": "G1",
+   "parent": null,
+   "direction": null,
+   "nodes": [
+    0
+   ]
+  },
+  {
+   "id": "G2",
+   "title": "G2",
+   "parent": null,
+   "direction": null,
+   "nodes": [
+    1
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "from": {
+    "n": 0
+   },
+   "to": {
+    "n": 1
+   },
+   "label": "up",
+   "kind": "Arrow",
+   "drawn": true
+  },
+  {
+   "from": {
+    "n": 0
+   },
+   "to": {
+    "n": 2
+   },
+   "label": "side",
+   "kind": "Arrow",
+   "drawn": true
+  },
+  {
+   "from": {
+    "n": 2
+   },
+   "to": {
+    "n": 1
+   },
+   "label": "far",
+   "kind": "Arrow",
+   "drawn": true
+  }
+ ]
+}

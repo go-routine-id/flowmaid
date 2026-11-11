@@ -1,0 +1,19 @@
+flowchart TD
+    X[client]
+    subgraph OUT[Platform]
+        o1[router]
+        subgraph IN[Workers]
+            i1[w1] --> i2[w2]
+        end
+        o1 --> i1
+        i2 --> o2[store]
+    end
+    subgraph SIDE[Monitoring]
+        s1[metrics] --> s2[alerts]
+    end
+    X --> o1
+    X -->|direct| i2
+    i1 -->|emit| s1
+    s2 -.->|page| X
+    i2 --> Y[report]
+    s2 --> IN

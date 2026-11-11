@@ -1,0 +1,18 @@
+flowchart LR
+    SHOP([shopper])
+    subgraph EDGE[Edge and shared services with a long title]
+        CDN[cdn]
+        PAGER[pager]
+    end
+    subgraph WEB[Storefront]
+        gate[gateway] --> cart[cart] --> db[(orders)]
+    end
+    subgraph ORD[Orders]
+        queue[queue] --> ship[shipping]
+    end
+    SHOP -->|browse| CDN
+    CDN -->|miss| gate
+    CDN -->|hook| queue
+    cart -->|page| PAGER
+    ship -.->|page| PAGER
+    db -->|order| ship

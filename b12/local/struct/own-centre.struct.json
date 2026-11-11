@@ -1,0 +1,42 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"TD",
+"nodes":[
+ {"id":"x1","label":"x1","shape":"Rect","sub":0},
+ {"id":"x2","label":"x2","shape":"Rect","sub":0},
+ {"id":"x3","label":"x3","shape":"Rect","sub":0},
+ {"id":"y1","label":"y1","shape":"Rect","sub":0},
+ {"id":"y2","label":"y2","shape":"Rect","sub":0},
+ {"id":"y3","label":"y3","shape":"Rect","sub":0},
+ {"id":"z1","label":"z1","shape":"Rect","sub":0},
+ {"id":"z2","label":"z2","shape":"Rect","sub":0},
+ {"id":"z3","label":"z3","shape":"Rect","sub":0}],
+"subgraphs":[
+ {"id":"S","title":"Service","parent":null,"direction":null,"nodes":[0,1,2,3,4,5,6,7,8]}],
+"edges":[
+ {"from":{"n":0},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":1},"to":{"n":2},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":3},"to":{"n":4},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":4},"to":{"n":5},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":6},"to":{"n":7},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":7},"to":{"n":8},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"s":0},"to":{"n":4},"label":null,"kind":"Arrow","drawn":true}],
+"scene":{"width":346.000,"height":345.000,
+ "nodes":[
+  {"id":"x1","x":42.000,"y":68.000,"w":54.000,"h":38.000},
+  {"id":"x2","x":42.000,"y":166.000,"w":54.000,"h":38.000},
+  {"id":"x3","x":42.000,"y":264.000,"w":54.000,"h":38.000},
+  {"id":"y1","x":146.000,"y":68.000,"w":54.000,"h":38.000},
+  {"id":"y2","x":146.000,"y":166.000,"w":54.000,"h":38.000},
+  {"id":"y3","x":146.000,"y":264.000,"w":54.000,"h":38.000},
+  {"id":"z1","x":250.000,"y":68.000,"w":54.000,"h":38.000},
+  {"id":"z2","x":250.000,"y":166.000,"w":54.000,"h":38.000},
+  {"id":"z3","x":250.000,"y":264.000,"w":54.000,"h":38.000}],
+ "clusters":[
+  {"id":"S","x":28.000,"y":28.000,"w":290.000,"h":288.000,"depth":0}],
+ "edges":[
+  {"from":"x1","to":"x2","routed":false,"label":null,"points":[[69.000,106.000],[69.000,136.000],[69.000,136.000],[69.000,166.000]]},
+  {"from":"x2","to":"x3","routed":false,"label":null,"points":[[69.000,204.000],[69.000,234.000],[69.000,234.000],[69.000,264.000]]},
+  {"from":"y1","to":"y2","routed":false,"label":null,"points":[[173.000,106.000],[173.000,136.000],[173.000,136.000],[173.000,166.000]]},
+  {"from":"y2","to":"y3","routed":false,"label":null,"points":[[171.444,204.000],[171.444,234.000],[171.444,234.000],[171.444,264.000]]},
+  {"from":"z1","to":"z2","routed":false,"label":null,"points":[[277.000,106.000],[277.000,136.000],[277.000,136.000],[277.000,166.000]]},
+  {"from":"z2","to":"z3","routed":false,"label":null,"points":[[277.000,204.000],[277.000,234.000],[277.000,234.000],[277.000,264.000]]},
+  {"from":"S","to":"y2","routed":true,"label":null,"points":[[173.000,316.000],[173.000,257.722],[173.000,251.500],[179.222,251.500],[185.444,251.500],[185.444,245.278],[185.444,204.000]]}]}}

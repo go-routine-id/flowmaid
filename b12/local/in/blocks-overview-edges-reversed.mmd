@@ -1,0 +1,74 @@
+%% Block layout fixture: the storefront platform of blocks-overview.mmd
+%% with its trailing edge statements in reverse order; the graph is the same.
+flowchart TD
+    SHOP([Shopper<br/>web and mobile])
+    OPS([Operations team])
+
+    subgraph EDGE[Edge and shared services]
+        CDN[CDN<br/>static assets]
+        LB[Load balancer<br/>TLS termination]
+        MAIL[Mail relay]
+        PAGER[On-call pager]
+    end
+
+    subgraph CI[Build pipeline]
+        REPO[source repository]
+        BUILD[build and test]
+        REG[(image registry)]
+        REPO --> BUILD --> REG
+    end
+
+    subgraph WEB[Storefront cluster]
+        GATE[API gateway]
+        CART[cart service]
+        SEARCH[search service]
+        GATE --> CART
+        GATE --> SEARCH
+    end
+
+    subgraph ORD[Order processing]
+        QUEUE[[order queue]]
+        SHIP[shipping worker]
+        subgraph PAY[Payments]
+            CHARGE[charge worker]
+            LEDGER[(ledger)]
+            CHARGE --> LEDGER
+        end
+        QUEUE --> CHARGE
+        QUEUE --> SHIP
+    end
+
+    subgraph DATA[Data tier]
+        DB[(orders database)]
+        CACHE[(session cache)]
+        INDEX[(search index)]
+    end
+
+    subgraph OBS[Observability]
+        METRICS[metrics store]
+        ALERT[alert rules]
+        METRICS --> ALERT
+    end
+
+    ALERT -.->|digest| MAIL
+    ALERT -->|page| PAGER
+    DATA -.->|scrape| METRICS
+    ORD -.->|scrape| METRICS
+    WEB -.->|scrape| METRICS
+    DB -->|reindex| INDEX
+    SHIP -.->|tracking mail| MAIL
+    CHARGE -.->|receipt| MAIL
+    LEDGER -->|write| DB
+    SHIP -->|write| DB
+    SEARCH -->|query| INDEX
+    CART -->|sessions| CACHE
+    CART -->|place order| QUEUE
+    REG ==>|deploy| ORD
+    REG ==>|deploy| WEB
+    LB -->|webhooks| QUEUE
+    LB -->|HTTPS| GATE
+    CDN -->|cache miss| GATE
+    OPS -.->|dashboards| OBS
+    OPS -->|merge| REPO
+    SHOP -->|checkout| LB
+    SHOP -->|browse| CDN

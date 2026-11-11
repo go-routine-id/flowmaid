@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="300" viewBox="0 0 500 300" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="Flowchart diagram">
+<title>Flowchart diagram</title>
+<rect width="500" height="300" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#44507a"/></marker><mask id="m0" maskUnits="userSpaceOnUse" x="0" y="0" width="10" height="10"><rect x="0" y="0" width="10" height="10" fill="#fff"/><circle cx="5" cy="5" r="5.00" fill="#000"/></mask></defs>
+<rect x="20.0" y="20.0" width="200.0" height="200.0" rx="8" fill="#f6f7fb" stroke="#858db0" stroke-width="1.4"/>
+<rect x="260.0" y="100.0" width="100.0" height="150.0" rx="8" fill="#f6f7fb" stroke="#858db0" stroke-width="1.4"/>
+<rect x="300.0" y="10.0" width="150.0" height="70.0" rx="8" fill="#f6f7fb" stroke="#858db0" stroke-width="1.4"/>
+<rect x="40.0" y="60.0" width="100.0" height="80.0" rx="8" fill="#f6f7fb" stroke="#858db0" stroke-width="1.4"/>
+<path d="M 130.0 250.0 L 130.0 45.0 L 350.0 45.0" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>U → R1</title></path>
+<path d="M 90.0 120.0 L 90.0 180.0 L 150.0 180.0" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>K1 → P1</title></path>
+<path d="M 340.0 160.0 L 460.0 160.0 L 460.0 200.0" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>Q1 → S</title></path>
+<path d="M 440.0 220.0 L 400.0 220.0 L 400.0 190.0 L 220.0 190.0" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>S → P: to P</title></path>
+<g><title>K1</title>
+<rect x="60.0" y="80.0" width="60.0" height="40.0" rx="5.0" fill="#eef0fb" stroke="#5b66b0" stroke-width="1.8"/>
+<text x="90.0" y="100.0" dy="0.33em" text-anchor="middle" fill="#232840">K1</text>
+</g>
+<g><title>P1</title>
+<rect x="150.0" y="160.0" width="50.0" height="40.0" rx="5.0" fill="#eef0fb" stroke="#5b66b0" stroke-width="1.8"/>
+<text x="175.0" y="180.0" dy="0.33em" text-anchor="middle" fill="#232840">P1</text>
+</g>
+<g><title>Q1</title>
+<rect x="280.0" y="140.0" width="60.0" height="40.0" rx="5.0" fill="#eef0fb" stroke="#5b66b0" stroke-width="1.8"/>
+<text x="310.0" y="160.0" dy="0.33em" text-anchor="middle" fill="#232840">Q1</text>
+</g>
+<g><title>R1</title>
+<rect x="350.0" y="25.0" width="60.0" height="40.0" rx="5.0" fill="#eef0fb" stroke="#5b66b0" stroke-width="1.8"/>
+<text x="380.0" y="45.0" dy="0.33em" text-anchor="middle" fill="#232840">R1</text>
+</g>
+<g><title>S</title>
+<rect x="440.0" y="200.0" width="40.0" height="40.0" rx="5.0" fill="#eef0fb" stroke="#5b66b0" stroke-width="1.8"/>
+<text x="460.0" y="220.0" dy="0.33em" text-anchor="middle" fill="#232840">S</text>
+</g>
+<g><title>U</title>
+<rect x="100.0" y="250.0" width="60.0" height="40.0" rx="5.0" fill="#eef0fb" stroke="#5b66b0" stroke-width="1.8"/>
+<text x="130.0" y="270.0" dy="0.33em" text-anchor="middle" fill="#232840">U</text>
+</g>
+<g><title>V</title>
+<rect x="240.0" y="30.0" width="40.0" height="30.0" rx="5.0" fill="#eef0fb" stroke="#5b66b0" stroke-width="1.8"/>
+<text x="260.0" y="45.0" dy="0.33em" text-anchor="middle" fill="#232840">V</text>
+</g>
+<rect x="330.0" y="180.0" width="40.0" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="350.0" y="190.0" dy="0.33em" text-anchor="middle" fill="#232840">to P</text>
+<rect x="26.0" y="25.0" width="30.0" height="16" rx="4" fill="#f6f7fb" fill-opacity="0.9"/>
+<text x="30.0" y="37.0" font-size="11" font-weight="bold" fill="#4a5378">P</text>
+<rect x="266.0" y="105.0" width="30.0" height="16" rx="4" fill="#f6f7fb" fill-opacity="0.9"/>
+<text x="270.0" y="117.0" font-size="11" font-weight="bold" fill="#4a5378">Q</text>
+<rect x="306.0" y="15.0" width="30.0" height="16" rx="4" fill="#f6f7fb" fill-opacity="0.9"/>
+<text x="310.0" y="27.0" font-size="11" font-weight="bold" fill="#4a5378">R</text>
+<rect x="46.0" y="65.0" width="30.0" height="16" rx="4" fill="#f6f7fb" fill-opacity="0.9"/>
+<text x="50.0" y="77.0" font-size="11" font-weight="bold" fill="#4a5378">K</text>
+</svg>

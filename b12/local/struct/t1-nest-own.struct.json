@@ -1,0 +1,28 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"TD",
+"nodes":[
+ {"id":"x","label":"x","shape":"Rect","sub":null},
+ {"id":"y","label":"y","shape":"Rect","sub":null},
+ {"id":"o1","label":"router","shape":"Rect","sub":0},
+ {"id":"i1","label":"w1","shape":"Rect","sub":1},
+ {"id":"i2","label":"w2","shape":"Rect","sub":1}],
+"subgraphs":[
+ {"id":"OUT","title":"Platform","parent":null,"direction":null,"nodes":[2]},
+ {"id":"IN","title":"Workers","parent":0,"direction":null,"nodes":[3,4]}],
+"edges":[
+ {"from":{"n":0},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":3},"to":{"n":4},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"s":0},"to":{"s":1},"label":null,"kind":"Arrow","drawn":true}],
+"scene":{"width":240.000,"height":385.000,
+ "nodes":[
+  {"id":"x","x":28.000,"y":68.000,"w":54.000,"h":38.000},
+  {"id":"y","x":28.000,"y":192.000,"w":54.000,"h":38.000},
+  {"id":"o1","x":122.650,"y":68.000,"w":68.700,"h":38.000},
+  {"id":"i1","x":130.000,"y":192.000,"w":54.000,"h":38.000},
+  {"id":"i2","x":130.000,"y":290.000,"w":54.000,"h":38.000}],
+ "clusters":[
+  {"id":"OUT","x":102.000,"y":28.000,"w":110.000,"h":328.000,"depth":0},
+  {"id":"IN","x":116.000,"y":152.000,"w":82.000,"h":190.000,"depth":1}],
+ "edges":[
+  {"from":"x","to":"y","routed":false,"label":null,"points":[[55.000,106.000],[55.000,149.000],[55.000,149.000],[55.000,192.000]]},
+  {"from":"i1","to":"i2","routed":false,"label":null,"points":[[157.000,230.000],[157.000,260.000],[157.000,260.000],[157.000,290.000]]},
+  {"from":"OUT","to":"IN","routed":false,"label":null,"points":[[157.000,356.000],[157.000,349.000],[157.000,349.000],[157.000,342.000]]}]}}

@@ -1,0 +1,7 @@
+test router::tests::fixture_drag_perf_guard ... dense-lr: route_partial worst 5.18 ms (node 14); route() worst 8.68 ms (node 14), 1 frames over 8 ms (route() re
+dense-td: route_partial worst 6.00 ms (node 41); route() worst 10.48 ms (node 40), 26 frames over 8 ms (route() reported, not asserted)
+bench-75: route_partial worst 7.19 ms (node 10); route() worst 14.53 ms (node 18), 185 frames over 8 ms (route() reported, not asserted)
+blocks/blocks-overview: route_partial worst 4.62 ms (node 13); route() worst 6.64 ms (node 14), 0 frames over 8 ms (route() reported, not asserted)
+fan-40-labelled: route_partial worst 14.98 ms (node 0); route() worst 14.95 ms (node 0), 85 frames over 8 ms (route() reported, not asserted)
+parallel-labelled: route_partial worst 12.30 ms (node 0); route() worst 12.62 ms (node 0), 4 frames over 8 ms (route() reported, not asserted)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1137 filtered out; finished in 95.56s

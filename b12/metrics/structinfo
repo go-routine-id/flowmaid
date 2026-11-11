@@ -1,0 +1,48 @@
+#!/usr/bin/env node
+'use strict';
+// structinfo - what kind of subgraph input is this? One TSV row per structure
+// file (from structdump): how many edges cross a subgraph border, which
+// subgraphs are "closed" (no node-to-node edge across their border - what
+// flowmaid 0.38 can already lay out on its own when they also carry a
+// `direction`), how many sibling pairs an edge joins.
+//   structinfo struct/*.struct.json
+const fs = require('fs'), path = require('path');
+const cols = ['name', 'kind', 'dir', 'nodes', 'edges', 'subgraphs', 'nested', 'with_direction', 'edges_inside', 'edges_cross', 'edges_to_subgraph',
+  'open_subgraphs', 'closed_subgraphs', 'closed_with_direction', 'sibling_pairs', 'sibling_pairs_linked', 'open_ids'];
+console.log(cols.join('\t'));
+for (const f of process.argv.slice(2)) {
+  const st = JSON.parse(fs.readFileSync(f, 'utf8'));
+  const SG = st.subgraphs;
+  const chainOfSub = k => { const c = []; while (k !== null && k !== undefined) { c.push(k); k = SG[k].parent; } return c; };
+  const chain = end => (end.n !== undefined ? chainOfSub(st.nodes[end.n].sub) : chainOfSub(end.s));
+  let inside = 0, cross = 0, toSub = 0;
+  const open = new Set();
+  const links = new Set();
+  for (const e of st.edges) {
+    if (e.drawn === false) continue;
+    const a = chain(e.from), b = chain(e.to);
+    const isSub = e.from.s !== undefined || e.to.s !== undefined;
+    if (isSub) toSub++;
+    // borders crossed: subgraphs holding exactly one end (an end that IS a subgraph stops at its border)
+    const A = new Set(a), B = new Set(b);
+    const crossed = [...a.filter(k => !B.has(k)), ...b.filter(k => !A.has(k))]
+      .filter(k => !(e.from.s === k || e.to.s === k));
+    if (!isSub) { if (crossed.length) cross++; else inside++; }
+    if (!isSub) for (const k of crossed) open.add(k);
+    // sibling pair joined: the two ends' ancestors just below their common parent
+    const ra = [...a].reverse(), rb = [...b].reverse();
+    let i = 0; while (i < ra.length && i < rb.length && ra[i] === rb[i]) i++;
+    if (i < ra.length && i < rb.length) links.add(Math.min(ra[i], rb[i]) + ':' + Math.max(ra[i], rb[i]));
+  }
+  let pairs = 0;
+  for (let i = 0; i < SG.length; i++) for (let j = i + 1; j < SG.length; j++) if (SG[i].parent === SG[j].parent) pairs++;
+  const closed = SG.map((_, k) => k).filter(k => !open.has(k));
+  const row = {
+    name: path.basename(f).replace(/\.struct\.json$/, ''), kind: st.kind, dir: st.direction, nodes: st.nodes.length,
+    edges: st.edges.filter(e => e.drawn !== false).length, subgraphs: SG.length, nested: SG.filter(s => s.parent !== null).length,
+    with_direction: SG.filter(s => s.direction).length, edges_inside: inside, edges_cross: cross, edges_to_subgraph: toSub,
+    open_subgraphs: open.size, closed_subgraphs: closed.length, closed_with_direction: closed.filter(k => SG[k].direction).length,
+    sibling_pairs: pairs, sibling_pairs_linked: links.size, open_ids: [...open].sort((x, y) => x - y).map(k => SG[k].id).join(',') || '-',
+  };
+  console.log(cols.map(c => row[c]).join('\t'));
+}

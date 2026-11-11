@@ -1,0 +1,183 @@
+#!/usr/bin/env node
+'use strict';
+// judge - check a blockmetrics table against the B12 acceptance rules (spec 4.3).
+//
+//   judge candidate.tsv [--baseline baseline-038.tsv] [--start ref-start.tsv] [--mermaid ref-mermaid.tsv]
+//                       [--thresholds thresholds.json] [--only name,name,...] [--due S|A1|A2|R|C] [--all] [--selftest]
+//
+// Prints one line per rule and diagram that FAILS a `must`, MISSES a `target`
+// (with --all: every rule), then a summary. Exit status 1 when a `must` fails.
+// Rows are matched by the `name` column; the candidate's `engine` column is free.
+//
+// A rule: {scope, metric, op, must, target, why}.
+//   scope   "*" (every row of the candidate table; "except": [names] leaves some out),
+//           one name, or a list of names. A named input that is missing from the
+//           candidate table is a MUST FAIL (a gate cannot pass by omission).
+//   op      "<=" or ">=" for numbers. `same_as` and `within` bring their own test.
+//   bound   a number;
+//           {ref: "baseline" | "start" | "mermaid", factor, add}  that table's value of the metric for the same name;
+//           {max: [bound, ...]}   the largest member that is not NA (NA when all are);
+//           {min: [bound, ...]}   the smallest member, NA when ANY member is NA;
+//           {same_as: name}       the (string) column equals the candidate's own row `name`;
+//           {within: 0.10, of: name}  the value lies within 10 % of the candidate's own row `name`.
+// A `must` whose bound resolves to NA is a MUST FAIL. A value that is NA (no
+// labels, no frames) is skipped under scope "*" and is a MUST FAIL for a rule
+// that names its input, unless the rule says "na_ok": true.
+// --only limits the run to the listed names and prints the names it skipped.
+// --due leaves out the rules whose "due" checkpoint (spec 4.1) comes later, and
+// prints how many; a rule without "due" is always judged.
+const fs = require('fs'), path = require('path');
+const here = __dirname;
+
+function readTable(f) {
+  const out = new Map();
+  if (!f || !fs.existsSync(f)) return out;
+  const lines = fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).map(l => l.split('\t'));
+  const head = lines.find(l => l[0] === 'name');
+  if (!head) return out;
+  for (const l of lines) if (l[0] !== 'name') out.set(l[0], Object.fromEntries(head.map((h, i) => [h, l[i]])));
+  return out;
+}
+const val = (row, m) => (row && row[m] !== undefined && row[m] !== 'NA' && row[m] !== '' ? Number(row[m]) : NaN);
+const f = v => (v === undefined ? '-' : typeof v === 'string' ? v : Number.isNaN(v) ? 'NA' : Number.isInteger(v) ? String(v) : v.toFixed(3).replace(/0+$/, '').replace(/\.$/, ''));
+
+// Evaluate the rules; returns {lines, mustFail, targetMiss, checked, skipped}.
+function judge(C, T, rules, opt) {
+  const only = opt.only ? new Set(opt.only) : null;
+  const skipped = new Set();
+  const lines = [];
+  let mustFail = 0, targetMiss = 0, checked = 0;
+  const bound = (b, name, metric) => {
+    if (b === undefined) return undefined;
+    if (typeof b === 'number') return b;
+    if (b.max) { const vs = b.max.map(x => bound(x, name, metric)).filter(x => !Number.isNaN(x)); return vs.length ? Math.max(...vs) : NaN; }
+    if (b.min) { const vs = b.min.map(x => bound(x, name, metric)); return vs.some(x => Number.isNaN(x)) ? NaN : Math.min(...vs); }
+    const tab = T[b.ref];
+    if (!tab) return NaN;
+    const v = val(tab.get(name), b.metric || metric);
+    return Number.isNaN(v) ? NaN : v * (b.factor ?? 1) + (b.add ?? 0);
+  };
+  const ok = (v, op, lim) => (op === '>=' ? v >= lim - 1e-9 : v <= lim + 1e-9);
+  const refs = (name, metric) => `[0.38 ${f(val(T.baseline.get(name), metric))}, start ${f(val(T.start.get(name), metric))}, mermaid ${f(val(T.mermaid.get(name), metric))}]`;
+  const emit = (verdict, name, r, v, must, target) => {
+    if (verdict === 'MUST FAIL') mustFail++; else if (verdict === 'target missed') targetMiss++;
+    if (verdict === 'ok' && !opt.all) return;
+    const op = r.op || '<=';
+    lines.push(`${verdict.padEnd(13)} ${name.padEnd(34)} ${r.metric.padEnd(16)} ${f(v).padStart(9)}  must ${op} ${f(must).padEnd(9)} target ${op} ${f(target).padEnd(9)} ${refs(name, r.metric)}  ${r.why || ''}`);
+  };
+  // one side of a rule (must or target) for one value: 'ok' | 'fail' | 'na' | undefined (no such side)
+  const side = (b, r, name, row) => {
+    if (b === undefined) return [undefined, undefined];
+    if (b && typeof b === 'object' && b.same_as !== undefined) {
+      const other = C.get(b.same_as);
+      if (!other || other[r.metric] === undefined) return ['na', `same as ${b.same_as}: NA`];
+      return [row[r.metric] === other[r.metric] ? 'ok' : 'fail', `= ${b.same_as}: ${other[r.metric]}`];
+    }
+    if (b && typeof b === 'object' && b.within !== undefined) {
+      const ref = val(C.get(b.of), r.metric), v = val(row, r.metric);
+      if (Number.isNaN(ref) || Number.isNaN(v)) return ['na', `within ${b.within} of ${b.of}: NA`];
+      return [Math.abs(v - ref) <= b.within * ref + 1e-9 ? 'ok' : 'fail', `${f(ref * (1 - b.within))}..${f(ref * (1 + b.within))}`];
+    }
+    const lim = bound(b, name, r.metric);
+    if (Number.isNaN(lim)) return ['na', lim];
+    return [ok(val(row, r.metric), r.op || '<=', lim) ? 'ok' : 'fail', lim];
+  };
+  const ORDER = ['S', 'A1', 'A2', 'R', 'C'];
+  let later = 0;
+  for (const r of rules) {
+    if (opt.due && r.due && ORDER.indexOf(r.due) > ORDER.indexOf(opt.due)) { later++; continue; }
+    let names;
+    if (r.scope === '*') names = [...C.keys()].filter(n => !(r.except || []).includes(n));
+    else names = Array.isArray(r.scope) ? r.scope : [r.scope];
+    const named = r.scope !== '*';
+    for (const name of names) {
+      if (only && !only.has(name)) { skipped.add(name); continue; }
+      const row = C.get(name);
+      if (!row) { checked++; emit(r.must !== undefined ? 'MUST FAIL' : 'target missed', name, { ...r, why: 'input missing from the candidate table. ' + (r.why || '') }, NaN, NaN, NaN); continue; }
+      const isString = (r.must && r.must.same_as !== undefined) || (r.target && r.target.same_as !== undefined);
+      const v = isString ? row[r.metric] : val(row, r.metric);
+      if (!isString && Number.isNaN(v)) {
+        if (!named || r.na_ok) continue; // metric not defined for this diagram (e.g. no labels)
+        checked++;
+        emit(r.must !== undefined ? 'MUST FAIL' : 'target missed', name, { ...r, why: 'value is NA. ' + (r.why || '') }, NaN, NaN, NaN);
+        continue;
+      }
+      checked++;
+      const [mv, mlim] = side(r.must, r, name, row), [tv, tlim] = side(r.target, r, name, row);
+      let verdict = 'ok';
+      if (mv === 'fail' || mv === 'na') verdict = 'MUST FAIL'; // a must without a reference value fails
+      else if (tv === 'fail') verdict = 'target missed';
+      emit(verdict, name, mv === 'na' ? { ...r, why: 'the must has no reference value (NA). ' + (r.why || '') } : r, v, mlim, tlim);
+    }
+  }
+  return { lines, mustFail, targetMiss, checked, skipped: [...skipped].sort(), later };
+}
+
+function selftest() {
+  const mk = rows => new Map(rows.map(r => [r.name, r]));
+  const C = mk([{ name: 'a', x: '10', s: 'p / q', w: '100' }, { name: 'b', x: '12', s: 'p / q', w: '109' }, { name: 'c', x: 'NA', s: 'q / p', w: '111' }]);
+  const T = { baseline: mk([{ name: 'a', x: '11' }, { name: 'b', x: '11' }]), start: mk([{ name: 'a', x: '9' }]), mermaid: mk([{ name: 'a', x: '20' }]) };
+  let bad = 0, n = 0;
+  const t = (label, rules, want, opt = {}) => {
+    n++;
+    const r = judge(C, T, rules, opt);
+    const got = [r.mustFail, r.targetMiss, r.checked];
+    if (JSON.stringify(got) !== JSON.stringify(want)) { bad++; console.log(`FAIL ${label}: got ${got}, want ${want}\n  ${r.lines.join('\n  ')}`); }
+    return r;
+  };
+  t('a number bound holds', [{ scope: 'a', metric: 'x', op: '<=', must: 10 }], [0, 0, 1]);
+  t('a number bound fails', [{ scope: 'a', metric: 'x', op: '<=', must: 9 }], [1, 0, 1]);
+  t('>= reads the other way', [{ scope: 'a', metric: 'x', op: '>=', must: 9 }], [0, 0, 1]);
+  t('a reference bound', [{ scope: 'a', metric: 'x', op: '<=', must: { ref: 'baseline', factor: 1.0 } }], [0, 0, 1]);
+  t('factor and add', [{ scope: 'a', metric: 'x', op: '<=', must: { ref: 'start', factor: 1.0, add: 0.5 } }], [1, 0, 1]);
+  t('a must whose bound is NA fails', [{ scope: 'b', metric: 'x', op: '<=', must: { ref: 'mermaid' } }], [1, 0, 1]);
+  t('min: the smaller member', [{ scope: 'a', metric: 'x', op: '<=', must: { min: [{ ref: 'baseline' }, { ref: 'start' }] } }], [1, 0, 1]);
+  t('min: NA when any member is NA', [{ scope: 'b', metric: 'x', op: '<=', must: { min: [{ ref: 'baseline', add: 5 }, { ref: 'start' }] } }], [1, 0, 1]);
+  t('max: ignores an NA member', [{ scope: 'b', metric: 'x', op: '<=', must: { max: [{ ref: 'baseline', add: 5 }, { ref: 'start' }] } }], [0, 0, 1]);
+  t('max: NA when all are NA', [{ scope: 'b', metric: 'x', op: '<=', must: { max: [{ ref: 'mermaid' }, { ref: 'start' }] } }], [1, 0, 1]);
+  t('a rule scoped to a missing input fails', [{ scope: 'zz', metric: 'x', op: '<=', must: 100 }], [1, 0, 1]);
+  t('a list scope', [{ scope: ['a', 'b', 'zz'], metric: 'x', op: '<=', must: 11 }], [2, 0, 3]);
+  t('an NA value is skipped under *', [{ scope: '*', metric: 'x', op: '<=', must: 100 }], [0, 0, 2]);
+  t('an NA value fails a named rule', [{ scope: 'c', metric: 'x', op: '<=', must: 100 }], [1, 0, 1]);
+  t('... unless the rule allows it', [{ scope: 'c', metric: 'x', op: '<=', must: 100, na_ok: true }], [0, 0, 0]);
+  t('except', [{ scope: '*', except: ['b'], metric: 'x', op: '<=', must: 10 }], [0, 0, 1]);
+  t('same_as holds', [{ scope: 'b', metric: 's', must: { same_as: 'a' } }], [0, 0, 1]);
+  t('same_as fails', [{ scope: 'c', metric: 's', must: { same_as: 'a' } }], [1, 0, 1]);
+  t('same_as a missing row fails', [{ scope: 'c', metric: 's', must: { same_as: 'zz' } }], [1, 0, 1]);
+  t('within holds', [{ scope: 'b', metric: 'w', must: { within: 0.10, of: 'a' } }], [0, 0, 1]);
+  t('within fails', [{ scope: 'c', metric: 'w', must: { within: 0.10, of: 'a' } }], [1, 0, 1]);
+  t('a missed target is no must-fail', [{ scope: 'a', metric: 'x', op: '<=', must: 10, target: 5 }], [0, 1, 1]);
+  { const r = t('--only skips the others and names them', [{ scope: '*', metric: 'x', op: '<=', must: 0 }], [1, 0, 1], { only: ['a'] }); n++; if (r.skipped.join(',') !== 'b,c') { bad++; console.log('FAIL skipped list: ' + r.skipped); } }
+  t('--only does not fail a named rule it skips', [{ scope: 'zz', metric: 'x', op: '<=', must: 0 }], [0, 0, 0], { only: ['a'] });
+  { const r = t('--due leaves the later rules out', [{ scope: 'a', metric: 'x', op: '<=', must: 0, due: 'A2' }, { scope: 'a', metric: 'x', op: '<=', must: 0, due: 'A1' }, { scope: 'a', metric: 'x', op: '<=', must: 0 }], [2, 0, 2], { due: 'A1' }); n++; if (r.later !== 1) { bad++; console.log('FAIL later count'); } }
+  console.log(bad ? `judge selftest: ${bad} of ${n} checks FAILED` : `judge selftest: all ${n} checks passed`);
+  process.exit(bad ? 1 : 0);
+}
+
+function main() {
+  const args = process.argv.slice(2);
+  const opt = { baseline: path.join(here, 'baseline-038.tsv'), start: path.join(here, 'ref-start.tsv'), mermaid: path.join(here, 'ref-mermaid.tsv'), thresholds: path.join(here, 'thresholds.json'), all: false, only: null };
+  let cand = null;
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--baseline') opt.baseline = args[++i];
+    else if (args[i] === '--start') opt.start = args[++i];
+    else if (args[i] === '--mermaid') opt.mermaid = args[++i];
+    else if (args[i] === '--thresholds') opt.thresholds = args[++i];
+    else if (args[i] === '--only') opt.only = args[++i].split(/[,\s]+/).filter(Boolean);
+    else if (args[i] === '--due') opt.due = args[++i];
+    else if (args[i] === '--all') opt.all = true;
+    else if (args[i] === '--selftest') return selftest();
+    else cand = args[i];
+  }
+  if (!cand) { console.error('usage: judge candidate.tsv [--baseline f] [--start f] [--mermaid f] [--thresholds f] [--only names] [--all]'); process.exit(2); }
+  const C = readTable(cand);
+  const T = { baseline: readTable(opt.baseline), start: readTable(opt.start), mermaid: readTable(opt.mermaid) };
+  const rules = JSON.parse(fs.readFileSync(opt.thresholds, 'utf8')).rules;
+  const r = judge(C, T, rules, opt);
+  for (const l of r.lines) console.log(l);
+  if (opt.due) console.log(`judge: --due ${opt.due}: ${r.later} rule(s) due at a later checkpoint left out`);
+  if (opt.only) console.log(`judge: --only ${opt.only.join(',')}: skipped ${r.skipped.length} input(s): ${r.skipped.join(' ') || '-'}`);
+  console.log(`judge: ${r.checked} checks on ${opt.only ? opt.only.length : C.size} diagram(s): ${r.mustFail} must-fail, ${r.targetMiss} target missed`);
+  process.exit(r.mustFail ? 1 : 0);
+}
+main();

@@ -1,0 +1,9 @@
+flowchart TD
+    a2 -->|request| b1
+    b2 -->|response| a1
+    subgraph A[Front]
+        a1 --> a2
+    end
+    subgraph B[Back]
+        b1 --> b2
+    end

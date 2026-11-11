@@ -1,0 +1,11 @@
+blockmetrics: empty-target [start]: WARN struct has 3 drawn edges, the SVG 2: edge ends from geometry
+blockmetrics: p14-empty-and-self [start]: WARN edge "A → A: self" is drawn as a zero-length path
+blockmetrics: routed-around [start]: WARN edge "C1 → C1: back" is drawn as a zero-length path
+blockmetrics: routed-around [start]: WARN edge "C1 → C1: self" is drawn as a zero-length path
+blockmetrics: self-member [start]: WARN struct has 8 drawn edges, the SVG 6: edge ends from geometry
+blockmetrics: self-member [start]: WARN edge "S → S" is drawn as a zero-length path
+blockmetrics: selfsub-nested [start]: WARN edge "S → S" is drawn as a zero-length path
+blockmetrics: spread-face [start]: WARN edge "K1 → K1: back" is drawn as a zero-length path
+blockmetrics: state-note [start]: WARN edge "Active → Active: tick" is drawn as a zero-length path
+blockmetrics: t2-self-nested [start]: WARN edge "S → S" is drawn as a zero-length path
+blockmetrics: t2b-self-nested-order [start]: WARN edge "S → S" is drawn as a zero-length path

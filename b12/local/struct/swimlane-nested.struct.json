@@ -1,0 +1,36 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"TD",
+"nodes":[
+ {"id":"a1","label":"place order","shape":"Rect","sub":1},
+ {"id":"a2","label":"pay invoice","shape":"Rect","sub":1},
+ {"id":"a3","label":"receive goods","shape":"Rect","sub":0},
+ {"id":"b1","label":"confirm order","shape":"Rect","sub":2},
+ {"id":"b2","label":"ship goods","shape":"Rect","sub":2},
+ {"id":"b3","label":"close order","shape":"Rect","sub":2}],
+"subgraphs":[
+ {"id":"A","title":"Customer","parent":null,"direction":null,"nodes":[2]},
+ {"id":"G","title":"Checkout","parent":0,"direction":null,"nodes":[0,1]},
+ {"id":"B","title":"Shop","parent":null,"direction":null,"nodes":[3,4,5]}],
+"edges":[
+ {"from":{"n":0},"to":{"n":3},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":3},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":1},"to":{"n":4},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":4},"to":{"n":2},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":2},"to":{"n":5},"label":null,"kind":"Arrow","drawn":true}],
+"scene":{"width":385.700,"height":726.000,
+ "nodes":[
+  {"id":"a1","x":56.100,"y":108.000,"w":102.500,"h":38.000},
+  {"id":"a2","x":56.000,"y":352.000,"w":102.700,"h":38.000},
+  {"id":"a3","x":47.550,"y":548.000,"w":119.600,"h":38.000},
+  {"id":"b1","x":228.700,"y":254.000,"w":115.000,"h":38.000},
+  {"id":"b2","x":236.150,"y":450.000,"w":100.100,"h":38.000},
+  {"id":"b3","x":235.350,"y":646.000,"w":101.700,"h":38.000}],
+ "clusters":[
+  {"id":"A","x":28.000,"y":28.000,"w":158.700,"h":572.000,"depth":0},
+  {"id":"B","x":214.700,"y":214.000,"w":143.000,"h":484.000,"depth":0},
+  {"id":"G","x":42.000,"y":68.000,"w":130.700,"h":336.000,"depth":1}],
+ "edges":[
+  {"from":"a1","to":"b1","routed":true,"label":null,"points":[[107.350,146.000],[107.350,185.500],[107.350,199.500],[121.350,199.500],[285.386,199.500],[299.386,199.500],[299.386,213.500],[299.386,254.000]]},
+  {"from":"b1","to":"a2","routed":true,"label":null,"points":[[286.200,292.000],[286.200,308.000],[286.200,322.000],[272.200,322.000],[121.350,322.000],[107.350,322.000],[107.350,336.000],[107.350,352.000]]},
+  {"from":"a2","to":"b2","routed":true,"label":null,"points":[[107.350,390.000],[107.350,406.000],[107.350,420.000],[121.350,420.000],[272.200,420.000],[286.200,420.000],[286.200,434.000],[286.200,450.000]]},
+  {"from":"b2","to":"a3","routed":true,"label":null,"points":[[286.200,488.000],[286.200,504.000],[286.200,518.000],[272.200,518.000],[121.350,518.000],[107.350,518.000],[107.350,532.000],[107.350,548.000]]},
+  {"from":"a3","to":"b3","routed":true,"label":null,"points":[[107.350,586.000],[107.350,602.000],[107.350,616.000],[121.350,616.000],[272.200,616.000],[286.200,616.000],[286.200,630.000],[286.200,646.000]]}]}}
