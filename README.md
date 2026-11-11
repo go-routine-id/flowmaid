@@ -12,10 +12,44 @@ A small Mermaid-like diagram engine written in pure std Rust with zero external 
 **Why flowmaid?**
 
 - **Zero dependencies**, pure std Rust (MSRV 1.75), and `wasm32` out of the box. All twelve diagram types fit in a compact wasm bundle, where mermaid.js 12.2.0 is about 5.5 MB minified (1.6 MB gzipped).
-- **Fast:** most hand-written diagrams render in under a millisecond, about **113× faster than mermaid** (see [Performance](#performance)).
+- **Fast:** most hand-written diagrams render in under a millisecond, about **113× faster than mermaid** (see [Benchmark](#benchmark)).
 - **One geometry source** for SVG export and interactive canvases: drag a node and only its edges re-route, pick what is under the pointer, save the graph back as mermaid text (see [Interactive API](#interactive-api)).
 - **Deterministic, accessible SVG:** byte-identical output for the same input, with `role="img"` and an accessible name on every diagram, and per-item `<title>`s in flowchart, state, journey and sankey diagrams.
 - **Clear errors:** parse errors carry line numbers, and the unsupported Mermaid headers flowmaid recognises fail with an explicit "not supported yet" message (see [Diagram types](#diagram-types)). UTF-8 BOMs are stripped and CRLF is fine.
+
+## Benchmark
+
+25 sample diagrams — flowcharts from a handful of nodes up to 52 nodes or 75 edges, plus every other diagram type — rendered from the same `.mmd` source. flowmaid is about **113× faster** (geometric mean) and its SVG is 1.5–25× smaller.
+
+| diagram | type | flowmaid ms | mermaid ms | speed-up × | flowmaid SVG KB | mermaid SVG KB |
+|---|---|--:|--:|--:|--:|--:|
+| advanced | flowchart | 1.38 | 101.5 | 74× | 11.5 | 58.0 |
+| architecture | architecture | 0.09 | 37.9 | 426× | 4.0 | 18.5 |
+| back-edge | flowchart | 0.28 | 48.5 | 175× | 3.7 | 78.5 |
+| bench-75 | flowchart | 37.32 | 261.9 | 7× | 59.0 | 194.6 |
+| class | class | 0.43 | 152.6 | 352× | 11.8 | 53.5 |
+| demo | flowchart | 0.29 | 50.2 | 174× | 3.7 | 78.5 |
+| dense-lr | flowchart | 20.22 | 324.0 | 16× | 45.4 | 489.0 |
+| dense-td | flowchart | 27.32 | 351.1 | 13× | 48.6 | 487.0 |
+| er | er | 0.23 | 96.9 | 425× | 14.8 | 127.3 |
+| fanout-frames | flowchart | 2.38 | 111.6 | 47× | 11.8 | 298.3 |
+| fanout | flowchart | 0.77 | 60.2 | 79× | 6.6 | 84.7 |
+| gitgraph | gitgraph | 0.06 | 19.6 | 306× | 5.8 | 13.0 |
+| journey | journey | 0.03 | 8.6 | 253× | 3.8 | 13.2 |
+| long-labels | flowchart | 0.20 | 40.3 | 199× | 3.5 | 34.7 |
+| lr | flowchart | 0.34 | 48.9 | 142× | 4.5 | 80.3 |
+| mindmap | mindmap | 0.71 | 75.2 | 106× | 8.7 | 49.0 |
+| pie | pie | 0.04 | 4.9 | 132× | 2.8 | 5.5 |
+| sankey | sankey | 0.21 | 11.7 | 55× | 6.8 | 10.3 |
+| sequence | sequence | 0.13 | 37.2 | 286× | 10.3 | 38.9 |
+| shapes | flowchart | 0.26 | 55.0 | 216× | 5.0 | 81.9 |
+| state | state | 0.82 | 111.9 | 136× | 8.5 | 70.6 |
+| stress | flowchart | 0.40 | 43.6 | 109× | 4.0 | 37.7 |
+| subgraph | flowchart | 0.41 | 56.2 | 138× | 4.6 | 38.2 |
+| timeline | timeline | 0.04 | 7.9 | 193× | 3.7 | 15.9 |
+| wide-labels | flowchart | 0.85 | 55.5 | 65× | 6.5 | 42.1 |
+
+**Method.** Each cell is the median of 30 timed renders after warm-ups (flowmaid 3, mermaid 2). flowmaid: `flowmaid::render_svg` (parse + layout + SVG string) in a release build, `cargo run --release --example bench -- files <file.mmd>...`. mermaid: `mermaid.render()` 12.2.0 (parse + layout + SVG string, including its in-browser text measurement) in headless Chromium 153 via Playwright. Speed-up = mermaid median ÷ flowmaid median. SVG KB = length of the returned SVG string. Measured on 0.39.0; 0.40.0 draws all 25 samples byte for byte the same, in the same time (each sample's fastest of three alternated rounds: 0.99× in the geometric mean). Two full runs on 0.40.0, on a busier box where both sides ran slower, gave 127× and 134×. Machine: 4 vCPUs, Intel Xeon @ 2.10 GHz, rustc 1.97; the box was shared with a background build, so expect ±20 % on both sides, and more on a single sub-millisecond row (er, gitgraph and journey took about half their 0.38.0 time in the 0.39.0 run, with no change to their code).
 
 ## Installation
 
@@ -46,7 +80,7 @@ let svg = flowmaid::render_svg("flowchart TD\nA[Start] --> B[Done]")?;
 
 ## Contents
 
-- [Installation](#installation) · [flowmaid next to mermaid](#flowmaid-next-to-mermaid) · [Usage](#usage) · [Themes](#themes)
+- [Benchmark](#benchmark) · [Installation](#installation) · [flowmaid next to mermaid](#flowmaid-next-to-mermaid) · [Usage](#usage) · [Themes](#themes)
 - [Diagram types](#diagram-types) · [Differences from mermaid](#differences-from-mermaid) · [Accessibility](#accessibility)
   - [Flowcharts](#flowcharts) · [State diagrams](#state-diagrams) · [Class diagrams](#class-diagrams) · [Entity-Relationship diagrams](#entity-relationship-diagrams) · [Sequence diagrams](#sequence-diagrams)
   - [Pie charts](#pie-charts) · [User journeys](#user-journeys) · [Git graphs](#git-graphs) · [Mindmaps](#mindmaps) · [Timeline diagrams](#timeline-diagrams) · [Sankey diagrams](#sankey-diagrams) · [Architecture diagrams](#architecture-diagrams)
@@ -87,7 +121,7 @@ The same `.mmd` source rendered by mermaid 12.2.0 (left, in headless Chromium) a
 
 </details>
 
-Rendering is about **113× faster than mermaid** (geometric mean over 25 diagrams) and the SVG is a fraction of the size — see [Performance](#performance).
+Rendering is about **113× faster than mermaid** (geometric mean over 25 diagrams) and the SVG is a fraction of the size — see [Benchmark](#benchmark).
 
 ## Usage
 
@@ -543,39 +577,7 @@ The other diagram types have their own modules (`seq`, `pie`, `journey`, `gitgra
 
 ## Performance
 
-### Next to mermaid
-
-25 sample diagrams — flowcharts from a handful of nodes up to 52 nodes or 75 edges, plus every other diagram type — rendered from the same `.mmd` source. flowmaid is about **113× faster** (geometric mean) and its SVG is 1.5–25× smaller.
-
-| diagram | type | flowmaid ms | mermaid ms | speed-up × | flowmaid SVG KB | mermaid SVG KB |
-|---|---|--:|--:|--:|--:|--:|
-| advanced | flowchart | 1.38 | 101.5 | 74× | 11.5 | 58.0 |
-| architecture | architecture | 0.09 | 37.9 | 426× | 4.0 | 18.5 |
-| back-edge | flowchart | 0.28 | 48.5 | 175× | 3.7 | 78.5 |
-| bench-75 | flowchart | 37.32 | 261.9 | 7× | 59.0 | 194.6 |
-| class | class | 0.43 | 152.6 | 352× | 11.8 | 53.5 |
-| demo | flowchart | 0.29 | 50.2 | 174× | 3.7 | 78.5 |
-| dense-lr | flowchart | 20.22 | 324.0 | 16× | 45.4 | 489.0 |
-| dense-td | flowchart | 27.32 | 351.1 | 13× | 48.6 | 487.0 |
-| er | er | 0.23 | 96.9 | 425× | 14.8 | 127.3 |
-| fanout-frames | flowchart | 2.38 | 111.6 | 47× | 11.8 | 298.3 |
-| fanout | flowchart | 0.77 | 60.2 | 79× | 6.6 | 84.7 |
-| gitgraph | gitgraph | 0.06 | 19.6 | 306× | 5.8 | 13.0 |
-| journey | journey | 0.03 | 8.6 | 253× | 3.8 | 13.2 |
-| long-labels | flowchart | 0.20 | 40.3 | 199× | 3.5 | 34.7 |
-| lr | flowchart | 0.34 | 48.9 | 142× | 4.5 | 80.3 |
-| mindmap | mindmap | 0.71 | 75.2 | 106× | 8.7 | 49.0 |
-| pie | pie | 0.04 | 4.9 | 132× | 2.8 | 5.5 |
-| sankey | sankey | 0.21 | 11.7 | 55× | 6.8 | 10.3 |
-| sequence | sequence | 0.13 | 37.2 | 286× | 10.3 | 38.9 |
-| shapes | flowchart | 0.26 | 55.0 | 216× | 5.0 | 81.9 |
-| state | state | 0.82 | 111.9 | 136× | 8.5 | 70.6 |
-| stress | flowchart | 0.40 | 43.6 | 109× | 4.0 | 37.7 |
-| subgraph | flowchart | 0.41 | 56.2 | 138× | 4.6 | 38.2 |
-| timeline | timeline | 0.04 | 7.9 | 193× | 3.7 | 15.9 |
-| wide-labels | flowchart | 0.85 | 55.5 | 65× | 6.5 | 42.1 |
-
-**Method.** Each cell is the median of 30 timed renders after warm-ups (flowmaid 3, mermaid 2). flowmaid: `flowmaid::render_svg` (parse + layout + SVG string) in a release build, `cargo run --release --example bench -- files <file.mmd>...`. mermaid: `mermaid.render()` 12.2.0 (parse + layout + SVG string, including its in-browser text measurement) in headless Chromium 153 via Playwright. Speed-up = mermaid median ÷ flowmaid median. SVG KB = length of the returned SVG string. Measured on 0.39.0; 0.40.0 draws all 25 samples byte for byte the same, in the same time (each sample's fastest of three alternated rounds: 0.99× in the geometric mean). Two full runs on 0.40.0, on a busier box where both sides ran slower, gave 127× and 134×. Machine: 4 vCPUs, Intel Xeon @ 2.10 GHz, rustc 1.97; the box was shared with a background build, so expect ±20 % on both sides, and more on a single sub-millisecond row (er, gitgraph and journey took about half their 0.38.0 time in the 0.39.0 run, with no change to their code).
+The comparison with mermaid 12.2.0, 25 diagrams by speed and SVG size, is under [Benchmark](#benchmark).
 
 ### Interactive editing
 
