@@ -288,6 +288,7 @@ impl Scene {
     /// `linkStyle` gives it a visible stroke.
     pub fn edge_at(&self, x: f64, y: f64, tol: f64) -> Option<usize> {
         let mut best: Option<(usize, f64)> = None;
+        let mut hops = HopPick::new(self);
         for (i, e) in self.edges.iter().enumerate() {
             if !edge_drawn(e) {
                 continue; // never drawn — never picked
@@ -297,7 +298,8 @@ impl Scene {
             // farther than the best pick so far are never flattened.
             let half = edge_stroke_width(e) / 2.0;
             let reach = best.map_or(tol, |(_, bd)| bd.min(tol)) + half;
-            let d = (edge_distance(e, (x, y), reach) - half).max(0.0);
+            let d = hops.distance(i, e, (x, y), reach);
+            let d = (d - half).max(0.0);
             // `<=` so a later-drawn edge wins a distance tie, matching
             // node_at's topmost-wins z-order.
             if d <= tol && best.map_or(true, |(_, bd)| d <= bd) {
@@ -351,6 +353,7 @@ impl Scene {
                 out.push(Hit::Node(i));
             }
         }
+        let mut hops = HopPick::new(self);
         for (i, e) in self.edges.iter().enumerate() {
             if !edge_drawn(e) {
                 continue; // the same edges edge_at can pick
@@ -365,7 +368,7 @@ impl Scene {
                 x1: rx1,
                 y1: ry1,
             };
-            if edge_distance(e, marquee, half) <= half {
+            if hops.distance(i, e, marquee, half) <= half {
                 out.push(Hit::Edge(i));
             }
         }
@@ -472,6 +475,8 @@ trait PickTarget: Copy {
     fn seg_dist(self, a: (f64, f64), b: (f64, f64)) -> f64;
     /// Distance from the target to the box `[x0, x1] × [y0, y1]`.
     fn box_gap(self, x0: f64, y0: f64, x1: f64, y1: f64) -> f64;
+    /// The target's own bounds, as `(x0, y0, x1, y1)`.
+    fn bounds(self) -> (f64, f64, f64, f64);
 }
 
 impl PickTarget for (f64, f64) {
@@ -483,6 +488,9 @@ impl PickTarget for (f64, f64) {
             .max(self.0 - x1)
             .max(0.0)
             .hypot((y0 - self.1).max(self.1 - y1).max(0.0))
+    }
+    fn bounds(self) -> (f64, f64, f64, f64) {
+        (self.0, self.1, self.0, self.1)
     }
 }
 
@@ -516,6 +524,181 @@ impl PickTarget for PickRect {
             .max(self.x0 - x1)
             .max(0.0)
             .hypot((y0 - self.y1).max(self.y0 - y1).max(0.0))
+    }
+    fn bounds(self) -> (f64, f64, f64, f64) {
+        (self.x0, self.y0, self.x1, self.y1)
+    }
+}
+
+/// How far (px) off its axis a leg may lie for [`HopPick`]'s quick
+/// tests to take it for a level or plumb run: more loosely than
+/// [`crate::hops`] takes its legs (to a float's noise — a routed leg
+/// from `y = 203.00000000000003` to `y = 203.0` is level there, and
+/// hops), so a test never rules out a hop the painter draws.
+const HOP_PICK_AXIS: f64 = 1e-3;
+/// Slack (px) on the reach of [`HopPick`]'s quick tests, which only
+/// rule out where no hop can be: the stretch of path a hop leaves out
+/// lies up to [`HOP_ON_LINE`] off the hop's own line (just past a
+/// corner's rounding), so a target that far beyond the hop's reach may
+/// still be on that stretch, which is not painted.
+const HOP_PICK_SLACK: f64 = HOP_ON_LINE + 0.5;
+
+/// Picking's view of the crossing hops `to_svg` paints (report M15,
+/// [`crate::hops`]): a hop's arc lies up to its radius off the edge's
+/// own path, so a pointer on it is on the stroke without being on the
+/// path. The hops are worked out at most once per pick, and only when
+/// the target comes within a hop's reach of an edge that may hop without
+/// touching its path — by the painter's own rule from the same legs
+/// ([`crate::hops::Legs::of`]), so a pick answers the hops as painted.
+struct HopPick<'a> {
+    sc: &'a Scene,
+    /// The scene draws hops at all (see [`crate::hops::legs`]).
+    on: bool,
+    /// Whether a plumb run of some edge passes near the target: without
+    /// one nothing is hopped over there. Looked up once per pick, when
+    /// first asked.
+    plumb: Option<bool>,
+    legs: Option<crate::hops::Legs>,
+}
+
+impl<'a> HopPick<'a> {
+    fn new(sc: &'a Scene) -> Self {
+        HopPick {
+            sc,
+            on: sc.edges.len() <= crate::casing::CASING_MAX_EDGES,
+            plumb: None,
+            legs: None,
+        }
+    }
+
+    /// Whether a plumb run of an edge that may be hopped over passes
+    /// within a hop's (or a bridge's last span's) reach of the target.
+    fn plumb_near<T: PickTarget>(&self, target: T, reach: f64) -> bool {
+        use crate::hops::{HOP_JOIN, HOP_R_MAX};
+        let (x0, y0, x1, y1) = target.bounds();
+        // A hop reaches its radius past the line it crosses; the lines
+        // under one bridge stand no further apart than two radii and
+        // the gap they join over.
+        let dx = reach + 2.0 * HOP_R_MAX + HOP_JOIN + HOP_PICK_SLACK;
+        let dy = reach + HOP_R_MAX + HOP_PICK_SLACK;
+        let run = |a: (f64, f64), b: (f64, f64)| {
+            (a.0 - b.0).abs() < HOP_PICK_AXIS
+                && a.0 >= x0 - dx
+                && a.0 <= x1 + dx
+                && a.1.min(b.1) <= y1 + dy
+                && a.1.max(b.1) >= y0 - dy
+        };
+        self.sc
+            .edges
+            .iter()
+            .filter(|e| crate::hops::hops_edge(e))
+            .any(|e| {
+                if e.waypoints.len() >= 2 {
+                    e.waypoints.windows(2).any(|w| run(w[0], w[1]))
+                } else {
+                    run(e.bezier[0], e.bezier[3])
+                }
+            })
+    }
+
+    /// [`edge_distance`] of edge `i` (`e`) to the stroke as painted,
+    /// hops included: where the target comes within `reach` of one of
+    /// the edge's hops, the distance to the very commands `to_svg`
+    /// strokes there ([`hopped`]) — its arcs, and not the stretch of
+    /// line under them, where the stroke it steps over is the one a
+    /// pointer is on.
+    fn distance<T: PickTarget>(&mut self, i: usize, e: &SceneEdge, target: T, reach: f64) -> f64 {
+        let d = edge_distance(e, target, reach);
+        if !self.on || !crate::hops::hops_edge(e) {
+            return d;
+        }
+        // A hop steps over a plumb run of another edge: with none near
+        // the target (looked up once per pick) there is no hop near it.
+        if self.plumb.is_none() {
+            self.plumb = Some(self.plumb_near(target, reach));
+        }
+        if self.plumb != Some(true) {
+            return d;
+        }
+        // And it sits on a level run of this edge's path, up to its
+        // radius above it: a target beside no such run is beside no hop
+        // of this edge.
+        let r = crate::hops::HOP_R_MAX;
+        let (x0, y0, x1, y1) = target.bounds();
+        let reach_s = reach + HOP_PICK_SLACK;
+        let level = |a: (f64, f64), b: (f64, f64)| {
+            (a.1 - b.1).abs() < HOP_PICK_AXIS
+                && y0 <= a.1 + reach_s
+                && y1 >= a.1 - r - reach_s
+                && x0 <= a.0.max(b.0) + reach_s
+                && x1 >= a.0.min(b.0) - reach_s
+        };
+        let beside = if e.waypoints.len() >= 2 {
+            e.waypoints.windows(2).any(|w| level(w[0], w[1]))
+        } else {
+            level(e.bezier[0], e.bezier[3])
+        };
+        if !beside {
+            return d;
+        }
+        let legs = self
+            .legs
+            .get_or_insert_with(|| crate::hops::legs_for_pick(self.sc));
+        let hops = legs.of(i);
+        let near = hops.iter().any(|h| {
+            let (lo, hi) = h.span();
+            target.box_gap(lo, h.y - h.r, hi, h.y) <= reach_s
+        });
+        if !near {
+            return d;
+        }
+        // The path with its ends squared only where that can matter
+        // here, as [`edge_distance`] has it: a target on a tip is on
+        // the stroke, and one beyond an end's reach measures the scene
+        // curve there (squaring an end costs far more than a pick).
+        let (start, segs) = plain_segs(e, |p| p);
+        let tips = [start, segs.last().map_or(start, |s| s.end())];
+        let gap = |q: (f64, f64)| target.box_gap(q.0, q.1, q.0, q.1);
+        if tips.iter().any(|&q| gap(q) <= 0.0) {
+            return 0.0;
+        }
+        let ends = squared_ends(e);
+        let end_reach = square_end_reach(e).0;
+        let (start, segs) = if (0..2).any(|k| ends[k] && gap(tips[k]) <= end_reach + reach) {
+            let (s, g, ..) = square_ends(e, start, segs);
+            (s, g)
+        } else {
+            (start, segs)
+        };
+        let Some(strokes) = hopped(start, &segs, &hops) else {
+            return d;
+        };
+        let mut best = f64::INFINITY;
+        let mut cur = start;
+        for s in strokes {
+            if best <= 0.0 {
+                break;
+            }
+            let lim = best.min(reach);
+            match s {
+                Stroke::S(Seg::L(p)) => best = best.min(target.seg_dist(cur, p)),
+                Stroke::S(seg) => {
+                    best = best.min(cubic_dist(target, &seg.cubic(cur), lim, 0));
+                }
+                Stroke::A { r, cw, to } => {
+                    let mut a = cur;
+                    for b in arc_points(cur, r, cw, to) {
+                        best = best.min(target.seg_dist(a, b));
+                        a = b;
+                    }
+                }
+            }
+            cur = match s {
+                Stroke::S(seg) => seg.end(),
+                Stroke::A { to, .. } => to,
+            };
+        }
+        best
     }
 }
 
@@ -1150,25 +1333,207 @@ fn curve_d(start: (f64, f64), segs: &[Seg], t: impl Fn((f64, f64)) -> (f64, f64)
     let s0 = t(start);
     let mut d = format!("M {:.1} {:.1}", s0.0, s0.1);
     for seg in segs {
-        match *seg {
-            Seg::L(p) => {
-                let p = t(p);
-                d.push_str(&format!(" L {:.1} {:.1}", p.0, p.1));
+        push_seg(&mut d, seg.map(&t));
+    }
+    d
+}
+
+/// Append one command to a path `d` (as [`curve_d`] writes it).
+fn push_seg(d: &mut String, seg: Seg) {
+    match seg {
+        Seg::L(p) => {
+            d.push_str(&format!(" L {:.1} {:.1}", p.0, p.1));
+        }
+        Seg::Q(c, p) => {
+            d.push_str(&format!(" Q {:.1} {:.1}, {:.1} {:.1}", c.0, c.1, p.0, p.1));
+        }
+        Seg::C(c1, c2, p) => {
+            d.push_str(&format!(
+                " C {:.1} {:.1}, {:.1} {:.1}, {:.1} {:.1}",
+                c1.0, c1.1, c2.0, c2.1, p.0, p.1
+            ));
+        }
+    }
+}
+
+/// How far (px) off a hop's line a path's point may lie where the hop
+/// leaves it or comes back: a long leg's stroke settles onto its line
+/// within a fraction of a px a few px past a corner's rounding.
+const HOP_ON_LINE: f64 = 1.0;
+
+/// The parameter at which the command `b` (as a cubic, running one way
+/// along x) passes `x`, if it does.
+fn seg_at_x(seg: Seg, b: &[(f64, f64); 4], x: f64) -> Option<f64> {
+    let (x0, x1) = (b[0].0, b[3].0);
+    if (x0 - x1).abs() < 1e-9 || x < x0.min(x1) - 1e-9 || x > x0.max(x1) + 1e-9 {
+        return None;
+    }
+    if let Seg::L(_) = seg {
+        return Some(((x - x0) / (x1 - x0)).clamp(0.0, 1.0));
+    }
+    let f = |t: f64| (cubic_at(b, t).0 - x) * (x1 - x0).signum();
+    let (mut lo, mut hi) = (0.0, 1.0);
+    for _ in 0..48 {
+        let mid = (lo + hi) / 2.0;
+        if f(mid) < 0.0 {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    Some((lo + hi) / 2.0)
+}
+
+/// One command of a stroke with its crossing hops drawn in
+/// ([`hopped`]): a command of the path itself, or a circular arc of
+/// radius `r` to `to` — clockwise on screen when `cw` — as the SVG `A`
+/// command draws it.
+#[derive(Debug, Clone, Copy)]
+enum Stroke {
+    S(Seg),
+    A { r: f64, cw: bool, to: (f64, f64) },
+}
+
+/// The path `(start, segs)` with each of `hops` (in the path's own
+/// coordinates) drawn in (report M15, [`crate::hops`]): where the path
+/// reaches a hop's near foot it leaves its line on a quarter circle up
+/// to the hop's height, runs level over what it crosses and comes down
+/// to the far foot on another (a semicircle over a single line), the
+/// stretch of line under the hop left out. A hop whose near foot the path does not
+/// pass on its line is left out and the path drawn through; `None`
+/// when it never comes down from one (the caller then draws the path
+/// plain).
+fn hopped(start: (f64, f64), segs: &[Seg], hops: &[crate::hops::Hop]) -> Option<Vec<Stroke>> {
+    let mut out = Vec::with_capacity(segs.len() + 3 * hops.len());
+    let mut cur = start;
+    // The hop the path is stepping over, and whether it runs towards
+    // larger x there.
+    let mut inside: Option<(usize, bool)> = None;
+    for &seg in segs {
+        let b = seg.cubic(cur);
+        let fwd = b[3].0 > b[0].0;
+        // Where this command meets a hop's feet: (parameter, hop, its
+        // near foot?), in the order the path passes them.
+        let mut feet: Vec<(f64, usize, bool)> = Vec::new();
+        for (h, hop) in hops.iter().enumerate() {
+            let (lo, hi) = hop.span();
+            let (near, far) = if fwd { (lo, hi) } else { (hi, lo) };
+            for (x, is_near) in [(near, true), (far, false)] {
+                if let Some(t) = seg_at_x(seg, &b, x) {
+                    if (cubic_at(&b, t).1 - hop.y).abs() < HOP_ON_LINE {
+                        feet.push((t, h, is_near));
+                    }
+                }
             }
-            Seg::Q(c, p) => {
-                let (c, p) = (t(c), t(p));
-                d.push_str(&format!(" Q {:.1} {:.1}, {:.1} {:.1}", c.0, c.1, p.0, p.1));
+        }
+        feet.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.2.cmp(&b.2)));
+        let mut from = 0.0;
+        for (t, h, is_near) in feet {
+            match (inside, is_near) {
+                (None, true) if t >= from => {
+                    if t > from {
+                        out.push(Stroke::S(seg.part(cur, from, t).1));
+                    }
+                    inside = Some((h, fwd));
+                }
+                (Some((at, way)), false) if at == h && way == fwd => {
+                    let hop = &hops[h];
+                    let (r, cw) = (hop.r, fwd);
+                    let foot = cubic_at(&b, t);
+                    let top = hop.y - r;
+                    let (a, z) = if fwd {
+                        (hop.x0, hop.x1)
+                    } else {
+                        (hop.x1, hop.x0)
+                    };
+                    // (Two quarter turns even over a single line: one
+                    // half turn between feet a diameter apart loses its
+                    // shape to the SVG's 0.1 px rounding — a chord 0.1
+                    // short of the diameter drops its crown 0.7 px.)
+                    out.push(Stroke::A {
+                        r,
+                        cw,
+                        to: (a, top),
+                    });
+                    if (z - a).abs() > 1e-9 {
+                        out.push(Stroke::S(Seg::L((z, top))));
+                    }
+                    out.push(Stroke::A { r, cw, to: foot });
+                    inside = None;
+                    from = t;
+                }
+                _ => {}
             }
-            Seg::C(c1, c2, p) => {
-                let (c1, c2, p) = (t(c1), t(c2), t(p));
-                d.push_str(&format!(
-                    " C {:.1} {:.1}, {:.1} {:.1}, {:.1} {:.1}",
-                    c1.0, c1.1, c2.0, c2.1, p.0, p.1
-                ));
-            }
+        }
+        if inside.is_none() && from < 1.0 {
+            out.push(Stroke::S(if from > 0.0 {
+                seg.part(cur, from, 1.0).1
+            } else {
+                seg
+            }));
+        }
+        cur = seg.end();
+    }
+    inside.is_none().then_some(out)
+}
+
+/// [`curve_d`] of the path `(start, segs)` with each of `hops` drawn in
+/// ([`hopped`]).
+fn hopped_d(start: (f64, f64), segs: &[Seg], hops: &[crate::hops::Hop]) -> String {
+    let strokes = match hopped(start, segs, hops) {
+        Some(s) if !hops.is_empty() => s,
+        _ => return curve_d(start, segs, |p| p),
+    };
+    let mut d = format!("M {:.1} {:.1}", start.0, start.1);
+    for s in strokes {
+        match s {
+            Stroke::S(seg) => push_seg(&mut d, seg),
+            Stroke::A { r, cw, to } => d.push_str(&format!(
+                " A {r:.1} {r:.1} 0 0 {} {:.1} {:.1}",
+                u8::from(cw),
+                to.0,
+                to.1
+            )),
         }
     }
     d
+}
+
+/// The circular arc of radius `r` from `from` to `to` (the shorter one,
+/// clockwise on screen when `cw`: an SVG `A r r 0 0 cw` command) as
+/// points along it, `from` left out — chords under 0.03 px off a hop's
+/// arc. A radius under half the chord grows to it, as the SVG's does.
+fn arc_points(from: (f64, f64), r: f64, cw: bool, to: (f64, f64)) -> Vec<(f64, f64)> {
+    /// Chords per quarter turn.
+    const CHORDS: f64 = 8.0;
+    let (hx, hy) = ((from.0 - to.0) / 2.0, (from.1 - to.1) / 2.0);
+    let half = hx.hypot(hy);
+    if half < 1e-9 {
+        return vec![to];
+    }
+    let r = r.max(half);
+    let k = ((r * r - half * half).max(0.0)).sqrt() / half;
+    let k = if cw { k } else { -k };
+    let c = (
+        k * hy + (from.0 + to.0) / 2.0,
+        -k * hx + (from.1 + to.1) / 2.0,
+    );
+    let a0 = (from.1 - c.1).atan2(from.0 - c.0);
+    let mut da = (to.1 - c.1).atan2(to.0 - c.0) - a0;
+    if cw && da < 0.0 {
+        da += std::f64::consts::TAU;
+    } else if !cw && da > 0.0 {
+        da -= std::f64::consts::TAU;
+    }
+    let n = (da.abs() / std::f64::consts::FRAC_PI_2 * CHORDS)
+        .ceil()
+        .max(1.0);
+    (1..=n as usize)
+        .map(|j| {
+            let a = a0 + da * j as f64 / n;
+            (c.0 + r * a.cos(), c.1 + r * a.sin())
+        })
+        .collect()
 }
 
 /// The commands an edge is DRAWN with, mapped through `t` (scene →
@@ -2334,25 +2699,50 @@ fn painted_path_d(e: &SceneEdge, p: &PaintedEdge, t: impl Fn((f64, f64)) -> (f64
 /// its heads then shrink onto it ([`head_sizes`]). Too short for its
 /// full cuts ([`arrow_trims`]) means whole even where its ends allow
 /// less ([`painted_trims`]): its heads shrink onto it all the same.
+#[cfg(test)]
 fn painted_path(
     e: &SceneEdge,
     p: &PaintedEdge,
     t: impl Fn((f64, f64)) -> (f64, f64),
 ) -> (String, Option<f64>) {
+    painted_path_hops(e, p, t, &[])
+}
+
+/// [`painted_path`] with the edge's crossing `hops` drawn in (scene
+/// coordinates, [`crate::hops`]; `t` a shift, as `to_svg` maps): the
+/// stroke steps over each line it crosses there ([`hopped_d`]).
+/// Painter-only, like the cuts under the heads; picking covers the hops
+/// too ([`Scene::edge_at`]).
+fn painted_path_hops(
+    e: &SceneEdge,
+    p: &PaintedEdge,
+    t: impl Fn((f64, f64)) -> (f64, f64),
+    hops: &[crate::hops::Hop],
+) -> (String, Option<f64>) {
     let (start, segs) = if p.cuts == [None, None] {
-        plain_segs(e, t)
+        plain_segs(e, &t)
     } else {
         (t(p.start), p.segs.iter().map(|s| s.map(&t)).collect())
     };
+    let o = t((0.0, 0.0));
+    let hops: Vec<crate::hops::Hop> = hops
+        .iter()
+        .map(|h| crate::hops::Hop {
+            y: h.y + o.1,
+            x0: h.x0 + o.0,
+            x1: h.x1 + o.0,
+            ..*h
+        })
+        .collect();
     let (t0, t3) = painted_trims(e, p);
     let (a0, a3) = arrow_trims(e);
     if (t0, t3) != (a0, a3) {
         if let (_, _, Some(len)) = trim_segs_or_len(start, segs.clone(), a0, a3) {
-            return (curve_d(start, &segs, |p| p), Some(len));
+            return (hopped_d(start, &segs, &hops), Some(len));
         }
     }
     let (start, segs, whole) = trim_segs_or_len(start, segs, t0, t3);
-    (curve_d(start, &segs, |p| p), whole)
+    (hopped_d(start, &segs, &hops), whole)
 }
 
 /// How far (px) the painter stops a stroke `width` px wide short of an
@@ -6446,11 +6836,15 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
         .collect();
     // The path each one is stroked with, and its length where it is too
     // short to lose its cuts (its heads shrink onto it).
+    // Where a level leg crosses a plumb one it steps over on a hop
+    // (report M15); every other crossing gets the casing's gap.
+    let hops = crate::hops::find(sc);
     let paths: Vec<Option<(String, Option<f64>)>> = sc
         .edges
         .iter()
         .zip(&painted)
-        .map(|(e, p)| p.as_ref().map(|p| painted_path(e, p, t)))
+        .enumerate()
+        .map(|(i, (e, p))| p.as_ref().map(|p| painted_path_hops(e, p, t, &hops[i])))
         .collect();
     let whole: Vec<Option<f64>> = paths.iter().map(|p| p.as_ref().and_then(|p| p.1)).collect();
     let markers = edge_markers(&sc.edges, &head_sizes(sc, &painted, &whole), &pal.line);
@@ -6458,7 +6852,7 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
         Some(p) => painted_polyline(&sc.edges[i], p),
         None => edge_polyline(&sc.edges[i]),
     };
-    let casing = crate::casing::masks(sc, &line_of, &t, dom_id);
+    let casing = crate::casing::masks(sc, &line_of, &t, dom_id, &hops);
     s.push_str(&format!(
         "<defs>{}{}{}{}{}</defs>\n",
         marker_def(
@@ -9627,6 +10021,34 @@ mod tests {
             .collect()
     }
 
+    /// The points of an edge path `d` in order: every coordinate pair of
+    /// its `M` / `L` / `Q` / `C` commands, and where each crossing hop's
+    /// arc ends (`A r r 0 0 f x y`: its radii and flags are no points).
+    fn d_points(d: &str) -> Vec<(f64, f64)> {
+        let mut out = Vec::new();
+        let (mut op, mut args): (char, Vec<f64>) = ('M', Vec::new());
+        for tok in d.split([' ', ',']).filter(|t| !t.is_empty()) {
+            match tok.parse::<f64>() {
+                Ok(v) => args.push(v),
+                Err(_) => {
+                    op = tok.chars().next().unwrap();
+                    args.clear();
+                    continue;
+                }
+            }
+            if op == 'A' {
+                if args.len() == 7 {
+                    out.push((args[5], args[6]));
+                    args.clear();
+                }
+            } else if args.len() == 2 {
+                out.push((args[0], args[1]));
+                args.clear();
+            }
+        }
+        out
+    }
+
     /// Every edge whose ink `svg` paints off its own canvas (`0 0 width
     /// height`), as "<title> by <px>": each edge path's curve to its
     /// exact extremes (every `M` / `L` point, each `C` segment's
@@ -9668,12 +10090,12 @@ mod tests {
         for p in edge_paths(svg) {
             let d = attr(p, "d").unwrap();
             let half = attr(p, "stroke-width").map_or(1.0, |v| v.parse().unwrap()) / 2.0;
-            let c = nums(&d);
-            let pts: Vec<(f64, f64)> = c.chunks(2).map(|q| (q[0], q[1])).collect();
+            let pts = d_points(&d);
             // The painted curve's extremes: `M` / `L` points as they are,
-            // a `C` segment by its exact bounds.
+            // a `C` segment by its exact bounds, a hop's arc (`A`) by its
+            // ends and its crown.
             let mut ink: Vec<(f64, f64)> = Vec::new();
-            let mut at = (0.0, 0.0);
+            let mut at: (f64, f64) = (0.0, 0.0);
             let (mut op, mut args) = ('M', Vec::new());
             for tok in d.split([' ', ',']).filter(|t| !t.is_empty()) {
                 match tok.parse::<f64>() {
@@ -9683,8 +10105,18 @@ mod tests {
                         args.clear();
                     }
                 }
-                let arity = if op == 'C' { 6 } else { 2 };
-                if args.len() == arity {
+                let arity = match op {
+                    'C' => 6,
+                    'A' => 7,
+                    _ => 2,
+                };
+                if args.len() == arity && op == 'A' {
+                    // (Upwards: a radius above the lower of its ends.)
+                    let (r, to) = (args[0], (args[5], args[6]));
+                    ink.extend([to, (to.0, at.1.max(to.1) - r)]);
+                    at = to;
+                    args.clear();
+                } else if args.len() == arity {
                     let q: Vec<(f64, f64)> = args.chunks(2).map(|q| (q[0], q[1])).collect();
                     if op == 'C' {
                         let (x0, x1, y0, y1) = cubic_bounds(&[at, q[0], q[1], q[2]]);
@@ -10760,13 +11192,44 @@ mod tests {
     }
 
     /// Points along an edge path `d` as the edge painters emit it
-    /// (`M`/`L`/`Q`/`C`, absolute), no further apart than `step` on
-    /// straight runs and finely sampled on curves.
+    /// (`M`/`L`/`Q`/`C`, and a crossing hop's circular `A`, absolute), no
+    /// further apart than `step` on straight runs and finely sampled on
+    /// curves.
     fn path_d_points(d: &str, step: f64) -> Vec<(f64, f64)> {
         let toks: Vec<&str> = d.split([' ', ',']).filter(|t| !t.is_empty()).collect();
         let num = |i: usize| toks[i].parse::<f64>().unwrap();
         let (mut out, mut cur, mut i) = (Vec::new(), (0.0, 0.0), 0);
         while i < toks.len() {
+            if toks[i] == "A" {
+                // `A r r 0 0 sweep x y`: the short arc of radius r (grown
+                // to half the chord if shorter) from the current point,
+                // as the SVG implementation notes give its centre.
+                let (r, sweep) = (num(i + 1), num(i + 5) == 1.0);
+                assert_eq!((num(i + 1), num(i + 3), num(i + 4)), (num(i + 2), 0.0, 0.0));
+                let end = (num(i + 6), num(i + 7));
+                let (hx, hy) = ((cur.0 - end.0) / 2.0, (cur.1 - end.1) / 2.0);
+                let r = r.max(hx.hypot(hy));
+                let k = ((r * r - hx * hx - hy * hy).max(0.0) / (hx * hx + hy * hy)).sqrt();
+                let k = if sweep { k } else { -k };
+                let c = (
+                    k * hy + (cur.0 + end.0) / 2.0,
+                    -k * hx + (cur.1 + end.1) / 2.0,
+                );
+                let a0 = (cur.1 - c.1).atan2(cur.0 - c.0);
+                let mut da = (end.1 - c.1).atan2(end.0 - c.0) - a0;
+                if sweep && da < 0.0 {
+                    da += std::f64::consts::TAU;
+                } else if !sweep && da > 0.0 {
+                    da -= std::f64::consts::TAU;
+                }
+                out.extend((1..=16).map(|j| {
+                    let a = a0 + da * j as f64 / 16.0;
+                    (c.0 + r * a.cos(), c.1 + r * a.sin())
+                }));
+                cur = end;
+                i += 8;
+                continue;
+            }
             let pts: Vec<(f64, f64)> = match toks[i] {
                 "M" | "L" => vec![(num(i + 1), num(i + 2))],
                 "Q" => vec![(num(i + 1), num(i + 2)), (num(i + 3), num(i + 4))],
@@ -10829,10 +11292,9 @@ mod tests {
         // whose painted stroke covers the same point (a shared trunk, a
         // crossing). A middle routed waypoint or a bezier midpoint is NOT
         // such a point: the spline through the waypoints cuts corners.
-        const TOL: f64 = 0.0;
-        // The SVG writes coordinates to 0.1, so the curve parsed back out
-        // of it sits up to ~0.07 off the one edge_at measures.
-        const SVG_PRECISION: f64 = 0.1;
+        // A flowchart or state fixture is walked as laid out, as
+        // `route()` draws it and under a drag (`route_partial`), where
+        // edges come to lie on one another (B11 review r1 #2).
         let root = env!("CARGO_MANIFEST_DIR");
         let mut files: Vec<std::path::PathBuf> = ["tests/fixtures/quality", "examples"]
             .iter()
@@ -10841,101 +11303,390 @@ mod tests {
             .filter(|p| p.extension().is_some_and(|x| x == "mmd"))
             .collect();
         files.sort();
-        let (mut graphs, mut probes) = (0, 0);
+        // Undo to_svg's margin shift to get back to scene units.
+        let shift_of = |s: &Scene| {
+            let mut bb = Bbox::new();
+            grow_canvas(&mut bb, &s.nodes, &s.edges, &s.clusters);
+            let (minx, _, miny, _) = bb.finish();
+            (MARGIN - minx, MARGIN - miny)
+        };
+        let (mut graphs, mut probes, mut hopped) = (0, 0, 0);
         for f in &files {
             let src = std::fs::read_to_string(f).unwrap();
+            let name = f.file_name().unwrap().to_string_lossy().to_string();
             use crate::model::Document;
-            let (s, svg, (tx, ty)) = match crate::parser::parse_document(&src) {
-                Ok(Document::Flowchart(g) | Document::State(g)) => {
-                    let s = scene(&g);
-                    let svg = to_svg(&s);
-                    // Undo to_svg's margin shift to get back to scene units.
-                    let mut bb = Bbox::new();
-                    grow_canvas(&mut bb, &s.nodes, &s.edges, &s.clusters);
-                    let (minx, _, miny, _) = bb.finish();
-                    (s, svg, (MARGIN - minx, MARGIN - miny))
-                }
-                // ER and class scenes pick through this same edge_at, and
-                // their painters stroke edge_path_d in scene units.
-                Ok(Document::Er(d)) => {
-                    let es = crate::er::scene(&d);
-                    let svg = crate::er::to_svg(&es);
-                    (es.scene, svg, (0.0, 0.0))
-                }
-                Ok(Document::Class(d)) => {
-                    let cs = crate::class::scene(&d);
-                    let svg = crate::class::to_svg(&cs);
-                    (cs.scene, svg, (0.0, 0.0))
-                }
-                _ => continue,
-            };
-            graphs += 1;
-            let curves: Vec<Option<Vec<(f64, f64)>>> = s
-                .edges
-                .iter()
-                .map(|e| {
-                    edge_drawn(e).then(|| {
-                        // The stroke as painted, cut short under an
-                        // arrowhead; the head inks that stretch, so the
-                        // whole curve is what a pick must cover.
-                        let painted = edge_path_d_painted(e, |p| (p.0 + tx, p.1 + ty));
-                        assert!(
-                            svg.contains(&format!("<path d=\"{painted}\"")),
-                            "{f:?}: {painted} not painted"
-                        );
-                        let d = edge_path_d(e, |p| (p.0 + tx, p.1 + ty));
-                        path_d_points(&d, 2.0)
-                            .into_iter()
-                            .map(|p| (p.0 - tx, p.1 - ty))
+            let scenes: Vec<(String, Scene, String, (f64, f64))> =
+                match crate::parser::parse_document(&src) {
+                    Ok(Document::Flowchart(g) | Document::State(g)) => {
+                        let s = scene(&g);
+                        let base: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+                        let mut all = vec![(name.clone(), s.clone())];
+                        all.push((format!("{name} route()"), route(&g, &base)));
+                        // The busiest node, dragged across the drawing.
+                        let mut deg = vec![0usize; g.nodes.len()];
+                        for e in &g.edges {
+                            deg[e.from] += 1;
+                            deg[e.to] += 1;
+                        }
+                        if let Some(v) =
+                            (0..deg.len()).max_by_key(|&v| (deg[v], std::cmp::Reverse(v)))
+                        {
+                            let mut c = base.clone();
+                            c[v] = (c[v].0 + 180.0, c[v].1 + 140.0);
+                            let part = route_partial(&g, &c, &s, &base);
+                            all.push((format!("{name} route_partial()"), part));
+                        }
+                        all.into_iter()
+                            .map(|(what, s)| {
+                                let (svg, t) = (to_svg(&s), shift_of(&s));
+                                (what, s, svg, t)
+                            })
                             .collect()
-                    })
-                })
-                .collect();
-            let covers = |j: usize, p: (f64, f64)| {
-                let c = curves[j].as_ref().expect("picked edge is painted");
-                let d = c
-                    .windows(2)
-                    .map(|w| point_seg_dist(p.0, p.1, w[0], w[1]))
-                    .fold(f64::INFINITY, f64::min);
-                d - edge_stroke_width(&s.edges[j]) / 2.0
-            };
-            let in_chip = |p: (f64, f64)| {
-                s.edges.iter().any(|e| {
-                    e.label.as_ref().is_some_and(|(text, m, w)| {
-                        let lines = 1 + text.matches("<br").count() + text.matches('\n').count();
-                        (p.0 - m.0).abs() <= w / 2.0 + 2.0
-                            && (p.1 - m.1).abs()
-                                <= LABEL_BOX_H / 2.0 + LINE_H * (lines - 1) as f64 + 2.0
-                    })
-                })
-            };
-            for (i, c) in curves.iter().enumerate() {
-                let Some(c) = c else { continue };
-                for &p in c {
-                    if s.node_at(p.0, p.1).is_some() || in_chip(p) {
-                        continue;
                     }
-                    probes += 1;
-                    let got = s.edge_at(p.0, p.1, TOL);
-                    // How far outside a painted stroke the pick lands.
-                    let off = match got {
-                        Some(j) if j == i => 0.0,
-                        Some(j) => covers(j, p),
-                        None => covers(i, p),
-                    };
-                    assert!(
-                        got.is_some() && off <= SVG_PRECISION,
-                        "{f:?}: edge {i} ({} -> {}) at {p:?} picked {got:?}, {off:.3} off its stroke",
-                        s.edges[i].from,
-                        s.edges[i].to
-                    );
-                }
+                    // ER and class scenes pick through this same edge_at, and
+                    // their painters stroke edge_path_d in scene units.
+                    Ok(Document::Er(d)) => {
+                        let es = crate::er::scene(&d);
+                        let svg = crate::er::to_svg(&es);
+                        vec![(name, es.scene, svg, (0.0, 0.0))]
+                    }
+                    Ok(Document::Class(d)) => {
+                        let cs = crate::class::scene(&d);
+                        let svg = crate::class::to_svg(&cs);
+                        vec![(name, cs.scene, svg, (0.0, 0.0))]
+                    }
+                    _ => continue,
+                };
+            graphs += 1;
+            for (what, s, svg, t) in &scenes {
+                let (p, h) = assert_picks_match_paint(what, s, svg, *t);
+                probes += p;
+                hopped += h;
             }
         }
         assert!(
-            graphs >= 15 && probes > 1000,
-            "{graphs} graphs, {probes} probes"
+            graphs >= 15 && probes > 3000 && hopped > 300,
+            "{graphs} graphs, {probes} probes, {hopped} hops"
         );
+    }
+
+    /// pick == render on one scene `s` painted as `svg`, its drawing
+    /// shifted by `(tx, ty)` there: every point of every painted edge
+    /// stroke — hops included — outside the nodes and the label chips
+    /// picks that edge at no tolerance, or another whose painted stroke
+    /// covers the point. Returns how many points it probed and how many
+    /// hops the scene paints.
+    fn assert_picks_match_paint(
+        what: &str,
+        s: &Scene,
+        svg: &str,
+        (tx, ty): (f64, f64),
+    ) -> (usize, usize) {
+        const TOL: f64 = 0.0;
+        // The SVG writes coordinates to 0.1, so the curve parsed back out
+        // of it sits up to ~0.07 off the one edge_at measures.
+        const SVG_PRECISION: f64 = 0.1;
+        // The hops the flowchart painter draws at crossings (none in
+        // an ER or class scene): painted, so picked.
+        let hops = crate::hops::find(s);
+        let hopped = hops.iter().flatten().count();
+        let curves: Vec<Option<Vec<(f64, f64)>>> = s
+            .edges
+            .iter()
+            .zip(&hops)
+            .map(|(e, hops)| {
+                edge_drawn(e).then(|| {
+                    // The stroke as painted, cut short under an
+                    // arrowhead; the head inks that stretch, so the
+                    // whole curve is what a pick must cover.
+                    let shift = |p: (f64, f64)| (p.0 + tx, p.1 + ty);
+                    let painted = painted_path_hops(e, &painted_edge(e), shift, hops).0;
+                    assert!(
+                        svg.contains(&format!("<path d=\"{painted}\"")),
+                        "{what}: {painted} not painted"
+                    );
+                    let (start, segs) = drawn_segs(e, shift);
+                    let hops: Vec<crate::hops::Hop> = hops
+                        .iter()
+                        .map(|h| crate::hops::Hop {
+                            y: h.y + ty,
+                            x0: h.x0 + tx,
+                            x1: h.x1 + tx,
+                            ..*h
+                        })
+                        .collect();
+                    let d = hopped_d(start, &segs, &hops);
+                    assert_eq!(hops.is_empty(), !d.contains(" A "), "{what}: {d}");
+                    assert_eq!(
+                        painted.matches(" A ").count(),
+                        d.matches(" A ").count(),
+                        "{what}: the stroke cut under its heads hops as the whole one"
+                    );
+                    path_d_points(&d, 2.0)
+                        .into_iter()
+                        .map(|p| (p.0 - tx, p.1 - ty))
+                        .collect()
+                })
+            })
+            .collect();
+        let covers = |j: usize, p: (f64, f64)| {
+            let c = curves[j].as_ref().expect("picked edge is painted");
+            let d = c
+                .windows(2)
+                .map(|w| point_seg_dist(p.0, p.1, w[0], w[1]))
+                .fold(f64::INFINITY, f64::min);
+            d - edge_stroke_width(&s.edges[j]) / 2.0
+        };
+        let in_chip = |p: (f64, f64)| {
+            s.edges.iter().any(|e| {
+                e.label.as_ref().is_some_and(|(text, m, w)| {
+                    let lines = 1 + text.matches("<br").count() + text.matches('\n').count();
+                    (p.0 - m.0).abs() <= w / 2.0 + 2.0
+                        && (p.1 - m.1).abs()
+                            <= LABEL_BOX_H / 2.0 + LINE_H * (lines - 1) as f64 + 2.0
+                })
+            })
+        };
+        let mut probes = 0;
+        for (i, c) in curves.iter().enumerate() {
+            let Some(c) = c else { continue };
+            for &p in c {
+                if s.node_at(p.0, p.1).is_some() || in_chip(p) {
+                    continue;
+                }
+                probes += 1;
+                let got = s.edge_at(p.0, p.1, TOL);
+                // How far outside a painted stroke the pick lands.
+                let off = match got {
+                    Some(j) if j == i => 0.0,
+                    Some(j) => covers(j, p),
+                    None => covers(i, p),
+                };
+                assert!(
+                    got.is_some() && off <= SVG_PRECISION,
+                    "{what}: edge {i} ({} -> {}) at {p:?} picked {got:?}, {off:.3} off its stroke",
+                    s.edges[i].from,
+                    s.edges[i].to
+                );
+            }
+        }
+        (probes, hopped)
+    }
+
+    /// One straight stroke of [`strokes`]: `(from, to, arrow)`.
+    type Stroked<'a> = ((f64, f64), (f64, f64), &'a str);
+
+    /// A scene of straight strokes, one per `(from, to, arrow)`: the
+    /// edges of a parsed chart (`-->` or `-.->`) redrawn along them.
+    fn strokes(lines: &[Stroked]) -> Scene {
+        let src: String = std::iter::once("flowchart TD".to_string())
+            .chain(
+                lines
+                    .iter()
+                    .enumerate()
+                    .map(|(k, l)| format!("a{k} {} b{k}", l.2)),
+            )
+            .collect::<Vec<_>>()
+            .join("\n");
+        let mut sc = scene(&parse(&src).unwrap());
+        for (e, &(a, b, _)) in sc.edges.iter_mut().zip(lines) {
+            let at = |t: f64| (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t);
+            e.bezier = [a, at(1.0 / 3.0), at(2.0 / 3.0), b];
+            e.waypoints.clear();
+            e.label = None;
+        }
+        // (Far from the strokes: the nodes take no part.)
+        for n in &mut sc.nodes {
+            (n.x, n.y) = (-1000.0, -1000.0);
+        }
+        sc
+    }
+
+    /// Report M15 (§2.10): where a level stroke crosses a plumb one it
+    /// steps over on a semicircle — two quarter turns of the hop's
+    /// radius, upwards whichever way the stroke runs — and neither line
+    /// is cut: no mask, a dotted line keeps its dots. Paint only: the
+    /// scene's geometry is the plain path a host draws from.
+    #[test]
+    fn a_level_edge_hops_over_a_plumb_one() {
+        use crate::hops::HOP_R;
+        for (from, to, sweep) in [(0.0, 300.0, 1), (300.0, 0.0, 0)] {
+            let mut sc = strokes(&[
+                ((from, 100.0), (to, 100.0), "-.->"),
+                ((120.0, 0.0), (120.0, 300.0), "-->"),
+            ]);
+            // (`to_svg` only reads the scene: its edges stay the plain
+            // strokes, which `edge_path_d` — a host's painter — draws.)
+            let svg = to_svg(&sc);
+            assert!(sc
+                .edges
+                .iter()
+                .all(|e| !edge_path_d(e, |p| p).contains(" A ")));
+            assert!(!svg.contains("<mask"), "no gap where a hop is: {svg}");
+            let paths = edge_paths(&svg);
+            let d = |k: usize| {
+                let p = paths[k];
+                p[9..9 + p[9..].find('"').unwrap()].to_string()
+            };
+            // The level one: two arcs of the hop's radius, turning the
+            // way that takes it over the top.
+            let arc = format!(" A {HOP_R:.1} {HOP_R:.1} 0 0 {sweep} ");
+            assert_eq!(d(0).matches(&arc).count(), 2, "{}", d(0));
+            assert_eq!(d(0).matches(" A ").count(), 2, "{}", d(0));
+            assert!(paths[0].contains("stroke-dasharray"), "{}", paths[0]);
+            assert!(!d(1).contains(" A "), "the plumb one runs on: {}", d(1));
+            // Its crown a radius above its line (smaller y), over the
+            // crossing; its feet a radius either side on the line.
+            let mut bb = Bbox::new();
+            grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
+            let (minx, _, miny, _) = bb.finish();
+            let (tx, ty) = (MARGIN - minx, MARGIN - miny);
+            let pts: Vec<(f64, f64)> = path_d_points(&d(0), 0.5)
+                .into_iter()
+                .map(|p| (p.0 - tx, p.1 - ty))
+                .collect();
+            let top = pts
+                .iter()
+                .copied()
+                .min_by(|a, b| a.1.total_cmp(&b.1))
+                .unwrap();
+            assert!(
+                (top.0 - 120.0).abs() < 0.3 && (top.1 - (100.0 - HOP_R)).abs() < 0.1,
+                "{top:?}"
+            );
+            assert!(pts
+                .iter()
+                .all(|p| p.1 > 100.0 - 0.1 || (p.0 - 120.0).abs() < HOP_R + 0.1));
+            // No ink on its line under the hop.
+            assert!(!pts
+                .iter()
+                .any(|p| (p.0 - 120.0).abs() < HOP_R - 0.5 && p.1 > 100.0 - 0.5));
+            // Picking follows the paint: the hop's arc (half way up it,
+            // clear of the plumb stroke under its crown) is the level
+            // edge's, the crossing under it the plumb edge's alone.
+            let up = HOP_R * std::f64::consts::FRAC_1_SQRT_2;
+            assert_eq!(sc.edge_at(120.0 - up, 100.0 - up, 0.0), Some(0));
+            assert_eq!(sc.edge_at(120.0 + up, 100.0 - up, 0.0), Some(0));
+            assert_eq!(sc.edge_at(120.0, 100.0, 0.0), Some(1));
+            assert_eq!(sc.edge_at(122.5, 100.0, 0.0), None, "under the hop");
+            assert_eq!(sc.edge_at(60.0, 100.0, 0.0), Some(0));
+            let crown = sc.hits_in_rect(119.0, 94.5, 121.0, 95.5);
+            assert_eq!(crown, vec![Hit::Edge(0), Hit::Edge(1)]);
+            // A crossing next to the plumb edge's head keeps clear of
+            // it: no hop there (and no gap either, so near an end).
+            sc.edges[1].bezier[3] = (120.0, 104.0);
+            for k in 1..3 {
+                sc.edges[1].bezier[k].1 = sc.edges[1].bezier[k].1.min(104.0);
+            }
+            assert!(!to_svg(&sc).contains(" A "));
+        }
+    }
+
+    /// Hops over a bundle of lines closer than a hop apart join into one
+    /// bridge, flat on top; and a crossing a hop cannot take — here a
+    /// slanted stroke's — keeps the casing's gap.
+    #[test]
+    fn hops_over_a_bundle_join_and_a_curve_keeps_its_gap() {
+        use crate::hops::HOP_R;
+        let sc = strokes(&[
+            ((0.0, 100.0), (400.0, 100.0), "-->"),
+            ((120.0, 0.0), (120.0, 300.0), "-->"),
+            ((132.5, 0.0), (132.5, 300.0), "-->"),
+            ((145.0, 0.0), (145.0, 300.0), "-->"),
+            ((250.0, 0.0), (262.0, 300.0), "-->"),
+        ]);
+        let svg = to_svg(&sc);
+        let paths = edge_paths(&svg);
+        let d = &paths[0][9..9 + paths[0][9..].find('"').unwrap()];
+        // One bridge: up, level over the three, down.
+        assert_eq!(d.matches(" A ").count(), 2, "{d}");
+        let mut bb = Bbox::new();
+        grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
+        let (minx, _, miny, _) = bb.finish();
+        let (tx, ty) = (MARGIN - minx, MARGIN - miny);
+        let top: Vec<(f64, f64)> = path_d_points(d, 0.5)
+            .into_iter()
+            .map(|p| (p.0 - tx, p.1 - ty))
+            .filter(|p| p.1 < 100.0 - HOP_R + 0.1)
+            .collect();
+        let (lo, hi) = top
+            .iter()
+            .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), p| {
+                (lo.min(p.0), hi.max(p.0))
+            });
+        // (To the 0.1 px the top is read at: a px of each arc's crown.)
+        assert!(
+            (lo - 120.0).abs() < 1.1 && (hi - 145.0).abs() < 1.1,
+            "{lo}..{hi}"
+        );
+        // The slanted stroke's crossing is cut as before: one mask, one
+        // hole, at that crossing.
+        assert_eq!(svg.matches("<mask").count(), 1, "{svg}");
+        assert_eq!(svg.matches("fill=\"#000\"/>").count(), 1);
+        assert_eq!(crate::casing::crossings(&sc).len(), 1);
+    }
+
+    /// B11 review r1 #1, #2: a pick answers the hops as painted where
+    /// its quick tests used to rule them out or its legs came in another
+    /// order than the painter's — a routed leg level to a float's noise
+    /// (`y = 203.00000000000003` to `y = 203.0`: the painter drew its
+    /// hop, a pick on the arc found nothing and one on the line under it
+    /// found the edge), and two plumb strokes on one line, one of them
+    /// ending by the level stroke (painted one bridge or two hops by the
+    /// order of the edges, picked the other way).
+    #[test]
+    fn picking_follows_the_hops_through_float_noise_and_ties() {
+        use crate::hops::HOP_R;
+        let shift_of = |s: &Scene| {
+            let mut bb = Bbox::new();
+            grow_canvas(&mut bb, &s.nodes, &s.edges, &s.clusters);
+            let (minx, _, miny, _) = bb.finish();
+            (MARGIN - minx, MARGIN - miny)
+        };
+        let up = HOP_R * std::f64::consts::FRAC_1_SQRT_2;
+        let mut sc = strokes(&[
+            ((0.0, 203.0), (300.0, 203.0), "-->"),
+            ((120.0, 100.0), (120.0, 300.0), "-->"),
+        ]);
+        let (a, b) = ((0.0, 203.00000000000003), (300.0, 203.0));
+        sc.edges[0].waypoints = vec![a, b];
+        sc.edges[0].bezier = [a, a, b, b];
+        let svg = to_svg(&sc);
+        assert_eq!(svg.matches(" A 5.0 5.0 0 0 1 ").count(), 2, "{svg}");
+        assert_eq!(sc.edge_at(120.0 - up, 203.0 - up, 0.0), Some(0));
+        assert_eq!(sc.edge_at(120.0 + up, 203.0 - up, 0.3), Some(0));
+        assert_eq!(sc.edge_at(122.5, 203.0, 0.0), None, "under the hop");
+        assert_eq!(sc.edge_at(120.0, 203.0, 0.0), Some(1));
+        let crown = sc.hits_in_rect(119.0, 197.5, 121.0, 198.5);
+        assert_eq!(crown, vec![Hit::Edge(0), Hit::Edge(1)]);
+        let (probes, hops) = assert_picks_match_paint("noise", &sc, &svg, shift_of(&sc));
+        assert!(probes > 100 && hops == 1);
+
+        // The tie, in several orders of its edges: the level stroke
+        // steps over the stroke at x = 78 alone (the one ending 4 px
+        // above the line at x = 100 bars a hop there), and every point
+        // of the painted strokes picks as painted.
+        let lines: [Stroked; 4] = [
+            ((100.0, 46.0), (100.0, 100.0), "---"),
+            ((0.0, 50.0), (200.0, 50.0), "---"),
+            ((78.0, 0.0), (78.0, 100.0), "---"),
+            ((100.0, 0.0), (100.0, 100.0), "---"),
+        ];
+        for order in [[0, 1, 2, 3], [3, 1, 2, 0], [1, 0, 3, 2], [2, 3, 0, 1]] {
+            let sc = strokes(&order.map(|k| lines[k]));
+            let level = order.iter().position(|&k| k == 1).unwrap();
+            let svg = to_svg(&sc);
+            assert_eq!(svg.matches(" A ").count(), 2, "{order:?}: {svg}");
+            assert_eq!(
+                sc.edge_at(78.0 - up, 50.0 - up, 0.0),
+                Some(level),
+                "{order:?}"
+            );
+            assert_eq!(sc.edge_at(80.0, 50.0, 0.0), None, "{order:?}: under it");
+            assert_eq!(sc.edge_at(90.0, 50.0, 0.0), Some(level), "{order:?}");
+            assert_eq!(sc.edge_at(90.0, 45.0, 0.5), None, "{order:?}: no bridge");
+            assert_picks_match_paint("tie", &sc, &svg, shift_of(&sc));
+        }
     }
 
     #[test]
@@ -14036,11 +14787,6 @@ mod tests {
             let rest = el.split(&format!(" {name}=\"")).nth(1)?;
             Some(rest.split('"').next()?.to_string())
         };
-        let nums = |v: &str| -> Vec<f64> {
-            v.split([' ', ','])
-                .filter_map(|t| t.parse::<f64>().ok())
-                .collect()
-        };
         let mut bb = Bbox::new();
         grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
         let (minx, _, miny, _) = bb.finish();
@@ -14055,10 +14801,7 @@ mod tests {
             let e = &sc.edges[i];
             let (s0, g0) = plain_segs(e, |q| q);
             let ends = [s0, g0.last().map_or(s0, |g| g.end())];
-            let pts: Vec<(f64, f64)> = nums(&attr(p, "d").unwrap())
-                .chunks(2)
-                .map(|q| (q[0], q[1]))
-                .collect();
+            let pts = d_points(&attr(p, "d").unwrap());
             for (key, at_start) in [("marker-start", true), ("marker-end", false)] {
                 let Some(url) = attr(p, key) else { continue };
                 let id = url.trim_start_matches("url(#").trim_end_matches(')');
@@ -17085,14 +17828,17 @@ mod tests {
         for src in &sources {
             let g = parse(src).unwrap();
             let s = scene(&g);
+            let hops = crate::hops::find(&s);
             for (i, e) in s.edges.iter().enumerate() {
                 if !edge_drawn(e) {
                     continue;
                 }
                 let half = edge_stroke_width(e) / 2.0;
                 // The curve as painted: the path `d` itself, densely
-                // sampled (written to 0.1, so up to ~0.07 off).
-                let pts = path_d_points(&edge_path_d(e, |p| p), 0.5);
+                // sampled (written to 0.1, so up to ~0.07 off), with the
+                // hops it steps over the lines it crosses on.
+                let (start, segs) = drawn_segs(e, |p| p);
+                let pts = path_d_points(&hopped_d(start, &segs, &hops[i]), 0.5);
                 let gap = |r: &[f64; 4]| {
                     pts.iter()
                         .map(|&p| PickTarget::box_gap(p, r[0], r[1], r[2], r[3]))

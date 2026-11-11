@@ -385,6 +385,9 @@ pub(crate) fn finish_held(g: &Graph, sc: &mut Scene, mode: Mode, fixed: &[bool],
     // side under the spacing get one moved clear, where that costs
     // nothing else (G4).
     crate::router::spread_close(g, sc, &cx, mode, &mut moved);
+    // Then a fan's teeth nest: the ports, the tracks and the turns of
+    // each side's ends in one order (report B4, see [`crate::comb`]).
+    crate::comb::comb(sc, &cx, &mut moved);
     glyph_stubs(sc, &cx, &mut moved);
     straight_cubics(sc, &cx);
     square_s_cubics(sc, &cx);

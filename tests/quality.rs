@@ -51,8 +51,12 @@ const CEILINGS: &[(&str, Ceil, Ceil)] = &[
     // pairs 27 -> 29 (a residual one over the pre-B10 28: `n5 -> n44`,
     // a long edge `route()` has no dummy column for, steps across the
     // gap that crosses the fewest lines, its leg through g9's corner).
-    ("dense-lr", (0, 13, 15), (0, 13, 15)),
-    ("dense-td", (0, 26, 29), (0, 29, 30)),
+    // B11 (report B4, a side's teeth in one order): dense-lr routed
+    // 13 frame pairs / 15 defects -> 11 / 13 (hub `n12`'s fan nests),
+    // dense-td static 29 -> 27 defects (28 before the package; hub
+    // `n16`'s fan no longer runs on top of itself).
+    ("dense-lr", (0, 13, 15), (0, 11, 13)),
+    ("dense-td", (0, 26, 27), (0, 29, 30)),
     ("fanout-frames", (0, 0, 0), (0, 0, 0)),
     ("wide-labels", (0, 0, 0), (0, 0, 0)), // (0,0,6) (0,0,8)
 ];
@@ -292,8 +296,13 @@ fn every_fixture_has_a_ceiling() {
 /// flow, and hub `n12`'s fan steps a track pitch apart in one channel,
 /// so four of dense-lr's fan labels (and `n25 -> n38`'s) sit over a
 /// neighbouring step where no spot along their short runs is clear;
-/// routed stays 4 (dense-lr 2 -> 3, dense-td 2 -> 1).
-const LBL_EDGE_MAX: (usize, usize) = (6, 4);
+/// routed stays 4 (dense-lr 2 -> 3, dense-td 2 -> 1). B11 review r1
+/// (#6) 4 -> 5 routed, the same trade in `route()`: hub `n12`'s
+/// over-full right side (its ports 8 px apart) is combed there too —
+/// its fan crossed itself twice, `n12 -> n30`'s stub over two tracks —
+/// and, nested, the label of `n12 -> n26` rides its step a track pitch
+/// from `n12 -> n27`'s for the whole of its run (dense-lr 3 -> 4).
+const LBL_EDGE_MAX: (usize, usize) = (6, 5);
 
 /// Most hard label hits (node, label, chip or arrowhead) over all
 /// fixtures, per mode (static, routed). None: a spot covering an
@@ -411,8 +420,16 @@ const DASH_EDGES_MAX: (usize, usize) = (0, 0);
 /// lane where `scene()` does again, round below the jobs frame, across
 /// the fan into `db`. B10 review r2: static 14 -> 9, under the
 /// pre-B10 13 (bench-75's service fans leave as bundles and step in the
-/// gap; the most gaps on one of its lines is now 9).
-const XGAP_MAX: (usize, usize) = (9, 12);
+/// gap; the most gaps on one of its lines is now 9). B11 (report M15,
+/// §2.10): 9 | 12 -> 2 | 3 — where a level leg crosses a plumb one it
+/// steps over on a hop and neither stroke is cut (351 | 406 of the
+/// fixtures' 410 | 478 crossings); a gap is left only to the crossings
+/// in a corner's rounding or next to a head. B11 review r1 (#3): 2 | 2
+/// — a line is stepped over from just past its corner on, and an edge
+/// whose end leg the outline snap tilted takes part (366 | 422 of the
+/// 409 | 471 crossings are hops); the gap next to a hop is cut into the
+/// line that does not hop there.
+const XGAP_MAX: (usize, usize) = (2, 2);
 
 /// Crossing gaps are spread so that edges stay whole lines (G1).
 #[test]
@@ -727,23 +744,69 @@ fn channels_keep_edges_apart_and_off_chips() {
 /// `alerts --> gw`; dense-td's `n43 --> n16`) the leg now runs straight
 /// to the corner beside its neighbours, a track pitch apart: band_len
 /// 71 210 | 68 660 -> 71 360 | 69 110 (same pairs).
-const DEFECT_BASELINE: [(&str, f64, f64); 16] = [
+///
+/// B11 (report B4 + M15): a side's teeth nest — its ports, tracks and
+/// turns in one order (`comb.rs`) — and its ports stand one pitch
+/// apart. New rows: `fan_x`, the crossings between two edges ending on
+/// one side of one box where three or more do, 29 | 36 before -> 14 | 25
+/// (dense-td's hub `n16` 14 | 8 -> 0 | 0; what is left crosses away from
+/// its box, where putting it in order costs a crossing elsewhere, or
+/// sits on bench-75's and dense-lr's over-full sides); `fan_uneven`,
+/// such sides whose ports are not one pitch apart, 3 | 3 before ->
+/// 1 | 2 (dense-lr's hub `n12`, seven ends on a 54 px flank, and one
+/// bench-75 side in `route()`). Lowered: x_drawn 428 | 494 -> 410 | 478
+/// (fanout-frames routed 1 -> 0: the two ends of its hub's bottom side
+/// crossed 750 px down), end_kink static 1 -> 0. Raised: band_pairs
+/// 124 | 139 -> 130 | 140 and band_len 71 360 | 69 110 -> 74 260 |
+/// 71 550 — a comb's teeth run side by side a track pitch apart where
+/// they crossed each other's stubs and tracks (dense-td static 26 -> 32
+/// pairs for 14 crossings fewer under its hub; dense-lr routed 9 662 ->
+/// 11 608 px along `n12`'s fan).
+/// `xhops` is no defect and has no row: the crossings drawn as hops
+/// (351 | 406 of the 410 | 478), see `XGAP_MAX`.
+///
+/// B11 review r1 (#4, #6): a side whose ports stand closer than the
+/// spacing clear is combed too (its stubs run side by side in any
+/// order and are no longer held against the comb), and a track beyond
+/// its room may move back towards it. Lowered: fan_x 14 | 25 -> 13 | 18
+/// (dense-lr's hub `n12` 2 -> 0 in `route()`, bench-75's `ext`, `lb`,
+/// `metrics` and `svc1` sides), x_drawn 410 | 478 -> 409 | 471, band_len
+/// 74 260 | 71 550 -> 73 420 | 71 330, lat_backtrack routed 440 -> 430.
+/// Raised: band_pairs routed 140 -> 142 — two more pairs of `n12`'s
+/// nested teeth run a track pitch apart where they crossed (dense-lr
+/// 25 -> 27).
+///
+/// B11 review r2 (#3): a side whose tracks cannot follow its turns is
+/// dealt row by row or by its tracks as they lie, each way's tracks
+/// among themselves or a pitch apart in their teeth's room, and a side
+/// is dealt again after a deal that undid a crossing (`comb.rs`; the
+/// reviewer's 120 hub fans: crossings inside a fan 104 | 150 -> 7 | 4).
+/// Here only bench-75 changes. Lowered: fan_x 13 | 18 -> 9 | 13,
+/// x_drawn 409 | 471 -> 405 | 465, band_pairs routed 142 -> 141,
+/// band_len routed 71 330 -> 71 020, lat_backtrack routed 430 -> 425.
+/// Raised: band_pairs static 130 -> 132 and band_len static 73 420 ->
+/// 74 730 — two more pairs of nested teeth run side by side a track
+/// pitch apart (bench-75's `svc5` and `svc6` edges to `logs` and to
+/// `ext`: 59 -> 61 pairs for 4 crossings fewer inside its fans).
+const DEFECT_BASELINE: [(&str, f64, f64); 18] = [
     ("end_tilt", 0.0, 0.0),
     ("end_tilt_max", 0.3, 0.6),
     ("end_gaps", 0.0, 0.0),
     ("end_gap_max", 0.1, 0.1),
     ("lat_wiggles", 15.0, 5.0),
-    ("lat_backtrack", 1_870.0, 440.0),
+    ("lat_backtrack", 1_870.0, 425.0),
     ("own_frame_x", 0.0, 0.0),
     ("own_frame_len", 0.0, 0.0),
-    ("band_pairs", 124.0, 139.0),
-    ("band_len", 71_360.0, 69_110.0),
+    ("band_pairs", 132.0, 141.0),
+    ("band_len", 74_730.0, 71_020.0),
     ("idiom_scubic", 0.0, 0.0),
     ("idiom_spline", 0.0, 0.0),
     ("idiom_bow", 0.0, 0.0),
-    ("x_drawn", 428.0, 494.0),
-    ("end_kink", 1.0, 0.0),
+    ("x_drawn", 405.0, 465.0),
+    ("end_kink", 0.0, 0.0),
     ("ink_out", 0.0, 0.0),
+    ("fan_x", 9.0, 13.0),
+    ("fan_uneven", 1.0, 2.0),
 ];
 
 /// Least mean `ink` over the fixtures (static, routed): the painted
@@ -786,7 +849,7 @@ fn defect_baseline_gate() {
             println!("{mode}\t{col}\t{got:.4}");
             // The idiom counts partition the edges: the ceilings on the
             // other three are this one's floor.
-            if col == "idiom_ortho" {
+            if col == "idiom_ortho" || col == "xhops" {
                 continue;
             }
             if col == "ink" {
@@ -964,10 +1027,18 @@ fn long_labels_wrap_and_dense_labels_do_not_tower() {
 /// n41`'s end on `n16`'s crowded side 27.7 px over, and a drag of `logs`
 /// `dash -> user`'s 40.4 px; the scene's own corners are no longer
 /// swept over hundreds of px.
+///
+/// B11 (report B4): a side's teeth are put in the order of their turns
+/// after the router and the nudge (`comb.rs`), so the base scene's
+/// order is no longer the ports stage's heading order; a side that
+/// takes one redrawn end more than it has room for round its kept ones
+/// is spaced afresh in the order it is drawn in (the kept ends close up,
+/// none changes places), where heading order re-sorted dense-td's hub
+/// `n16` (9 jumps of 20-34 px, back to 5) — and bench-75 16 -> 13.
 const DRAG_JUMPS_MAX: &[(&str, usize)] = &[
     ("quality/dense-lr", 0),
     ("quality/dense-td", 5),
-    ("quality/bench-75", 16),
+    ("quality/bench-75", 13),
     ("notes/spread-face", 0),
     ("notes/fork-twins", 0),
     ("notes/near-drag", 0),

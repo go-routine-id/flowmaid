@@ -1055,7 +1055,30 @@ fn place_ports(
                 .zip(&x)
                 .any(|(p, &t)| kept(p) && (t - split(side, p.at).0).abs() > KEPT_NUDGE);
             if thrown && !shaded && ports.iter().all(|p| p.spilled.is_none()) {
-                around_kept(&ports, kept, side, s, lo, hi).unwrap_or(x)
+                match around_kept(&ports, kept, side, s, lo, hi) {
+                    Some(x) => x,
+                    // No room round the kept ends for every redrawn one
+                    // (a hub's full side takes one end more): the side is
+                    // spaced afresh in the order it is drawn in, so the
+                    // kept ends close up but never change places. In
+                    // heading order they were re-sorted wherever a later
+                    // stage had set the base's order — a comb's teeth
+                    // nest by their turns ([`crate::comb`], report B4),
+                    // not by where each first heads — and a hub's fan
+                    // jumped two or three ports under a 1 px drag of a
+                    // node none of it touches (dense-td's `n16`: 20-34 px).
+                    None => {
+                        ports.sort_by(|a, b| {
+                            a.want
+                                .total_cmp(&b.want)
+                                .then(kept(b).cmp(&kept(a)))
+                                .then_with(|| port_order(a, b))
+                        });
+                        let d: Vec<f64> = ports.iter().map(|p| p.want).collect();
+                        let w: Vec<f64> = ports.iter().map(|p| p.weight).collect();
+                        place_weighted(&d, &w, s, lo, hi)
+                    }
+                }
             } else {
                 x
             }
