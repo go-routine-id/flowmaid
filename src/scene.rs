@@ -220,6 +220,15 @@ pub struct Scene {
     pub clusters: Vec<SceneCluster>,
     pub width: f64,
     pub height: f64,
+    /// Set by the architecture and gitGraph scene builders, whose own
+    /// painters stroke every edge plain: no crossing of such a scene is
+    /// drawn as a hop, so none is worked out for it and a pick follows
+    /// the plain strokes ([`crate::hops::legs_for_pick`]). `false` for
+    /// every scene flowmaid itself paints with [`to_svg`] (flowchart,
+    /// state, compact); handed a scene with it set, `to_svg` draws its
+    /// crossings without hops too. A class or ER scene is kept plain by
+    /// its edges' `paint_width` instead.
+    pub(crate) plain_crossings: bool,
 }
 
 /// An element picked out of a [`Scene`] by [`Scene::hit_test`] and
@@ -247,6 +256,7 @@ impl Scene {
             clusters: Vec::new(),
             width,
             height,
+            plain_crossings: false,
         }
     }
 
@@ -565,7 +575,7 @@ impl<'a> HopPick<'a> {
     fn new(sc: &'a Scene) -> Self {
         HopPick {
             sc,
-            on: sc.edges.len() <= crate::casing::CASING_MAX_EDGES,
+            on: !sc.plain_crossings && sc.edges.len() <= crate::casing::CASING_MAX_EDGES,
             plumb: None,
             legs: None,
         }
@@ -3806,6 +3816,7 @@ fn scene_from_layout(
         clusters: Vec::new(),
         width,
         height,
+        plain_crossings: false,
     }
 }
 
@@ -5219,6 +5230,7 @@ fn route_built(
         clusters,
         width: maxx + MARGIN,
         height: maxy + MARGIN,
+        plain_crossings: false,
     }
 }
 
