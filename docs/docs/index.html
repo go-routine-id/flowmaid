@@ -176,6 +176,8 @@
   td:first-child { font-weight: 600; white-space: nowrap; }
   td:nth-child(2) code { white-space: nowrap; }
 
+  main li > ul { margin: 6px 0 0; }
+
   .tip {
     margin: 18px 0 0; padding: 14px 18px; max-width: 74ch;
     background: var(--panel); border-left: 2px solid var(--accent); font-size: 14px; color: var(--dim);
@@ -251,7 +253,7 @@
       <a class="cta" href="https://docs.rs/flowmaid">API reference</a>
       <a class="cta" href="https://crates.io/crates/flowmaid">crates.io</a>
       <a class="cta" href="https://github.com/go-routine-id/flowmaid">GitHub</a>
-      <a class="cta" href="https://github.com/go-routine-id/flowmaid/blob/main/docs/ROADMAP.md">Roadmap</a>
+      <a class="cta" href="#roadmap">Roadmap</a>
     </div>
   </div>
 </header>
@@ -273,6 +275,7 @@
     <a href="#advance">Swimlanes (JSON &amp; text DSL)</a>
     <a href="#layout">How layout works</a>
     <div class="label group">More</div>
+    <a href="#roadmap">Roadmap</a>
     <a href="#ecosystem">Ecosystem</a>
     <a href="#license">License &amp; contributing</a>
   </nav>
@@ -571,8 +574,19 @@ style c fill:#fff8e1</code></pre>
   mindmap, architecture and swimlane diagrams use their own dedicated layouts.</p>
 </section>
 
-<section id="ecosystem">
+<section id="roadmap">
   <div class="label">11 · More</div>
+  <h2>Roadmap</h2>
+  <div id="roadmap-body">
+    <p>Where flowmaid is going and how far it has come: what each release brought,
+    what is being built now and what comes after. It is kept in
+    <a href="https://github.com/go-routine-id/flowmaid/blob/main/docs/ROADMAP.md">docs/ROADMAP.md</a>;
+    the diagram-type board is <a href="https://github.com/go-routine-id/flowmaid/issues/10">issue #10</a>.</p>
+  </div>
+</section>
+
+<section id="ecosystem">
+  <div class="label">12 · More</div>
   <h2>Ecosystem</h2>
   <div class="tbl"><table>
     <tr><th>Project</th><th>What it is</th></tr>
@@ -593,7 +607,7 @@ style c fill:#fff8e1</code></pre>
 </section>
 
 <section id="license">
-  <div class="label">12 · More</div>
+  <div class="label">13 · More</div>
   <h2>License &amp; contributing</h2>
   <p>flowmaid, markmaid and the playground are licensed
   <strong>GPL-3.0-or-later</strong>.</p>
@@ -601,7 +615,7 @@ style c fill:#fff8e1</code></pre>
   <a href="https://github.com/go-routine-id/flowmaid/issues">GitHub issues</a>.
   The diagram-type board lives in
   <a href="https://github.com/go-routine-id/flowmaid/issues/10">issue #10</a>, and the
-  drawing-quality roadmap in <a href="https://github.com/go-routine-id/flowmaid/blob/main/docs/ROADMAP.md">docs/ROADMAP.md</a>.
+  drawing-quality roadmap in the <a href="#roadmap">Roadmap</a> section above.
   A good bug report includes the <code>.mmd</code> source and, for rendering issues,
   a screenshot of what you got vs what you expected.</p>
 </section>
@@ -663,6 +677,125 @@ style c fill:#fff8e1</code></pre>
       });
     }, { rootMargin: "-20% 0px -70% 0px" });
     document.querySelectorAll("main section[id]").forEach(function (s) { io.observe(s); });
+  })();
+  // Roadmap: docs/ROADMAP.md is the one source. It is read from the site and
+  // drawn here, so this section follows the file without a second copy. If it
+  // cannot be read (no JavaScript, a file:// preview) the short text and link stay.
+  (function () {
+    var SOURCE = "../ROADMAP.md";
+    var ON_GITHUB = "https://github.com/go-routine-id/flowmaid/blob/main/docs/ROADMAP.md";
+    var body = document.getElementById("roadmap-body");
+    if (!body || !window.fetch) return;
+    // Whether the reader has moved the page themselves since it opened.
+    var touched = false;
+    ["wheel", "touchstart", "keydown", "mousedown"].forEach(function (t) {
+      addEventListener(t, function () { touched = true; }, { once: true, passive: true });
+    });
+
+    function esc(s) {
+      return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+    // Links are relative to docs/ROADMAP.md, so they resolve against the file on GitHub.
+    function href(u) {
+      var url;
+      try { url = new URL(u, ON_GITHUB); } catch (e) { return null; }
+      return /^https?:$/.test(url.protocol) ? url.href : null;
+    }
+    // Inline markup used by the file: `code`, [text](url) and **bold**.
+    function inline(s) {
+      var keep = [];
+      function hold(html) { keep.push(html); return "\u0000" + (keep.length - 1) + "\u0000"; }
+      s = s.replace(/`([^`]+)`/g, function (_, c) { return hold("<code>" + esc(c) + "</code>"); });
+      s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function (_, t, u) {
+        var h = href(u);
+        return h ? hold('<a href="' + esc(h) + '">') + t + hold("</a>") : t;
+      });
+      s = esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      return s.replace(/\u0000(\d+)\u0000/g, function (_, n) { return keep[+n]; });
+    }
+    function cells(row) {
+      return row.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map(function (c) { return c.trim(); });
+    }
+    function table(rows) {
+      var html = '<div class="tbl"><table><tr>';
+      cells(rows[0]).forEach(function (c) { html += "<th>" + inline(c) + "</th>"; });
+      html += "</tr>";
+      rows.slice(1).forEach(function (r) {
+        if (/^[\s|:-]+$/.test(r)) return;               // the |---| line under the head
+        html += "<tr>";
+        cells(r).forEach(function (c) { html += "<td>" + inline(c) + "</td>"; });
+        html += "</tr>";
+      });
+      return html + "</table></div>";
+    }
+    // Bullets, nested by two spaces of indent.
+    function list(items) {
+      var html = "", depth = -1;
+      items.forEach(function (it) {
+        var d = Math.min(it.d, depth + 1);
+        if (d > depth) html += "<ul><li>";
+        else {
+          html += "</li>";
+          for (; depth > d; depth--) html += "</ul></li>";
+          html += "<li>";
+        }
+        depth = d;
+        html += inline(it.t);
+      });
+      html += "</li>";
+      for (; depth > 0; depth--) html += "</ul></li>";
+      return html + "</ul>";
+    }
+    function render(md) {
+      var lines = md.replace(/\r/g, "").split("\n"), out = [], para = [], i = 0, m;
+      function flush() { if (para.length) out.push("<p>" + inline(para.join(" ")) + "</p>"); para = []; }
+      function special(l) { return /^\s*(#|\||[-*]\s)/.test(l); }
+      while (i < lines.length) {
+        var l = lines[i];
+        if (!l.trim()) { flush(); i++; }
+        else if ((m = /^(#{1,6})\s+(.*)$/.exec(l))) {
+          flush(); i++;
+          // The section has its own title, so the file's "# Roadmap" is left out.
+          var tag = m[1].length === 2 ? "h3" : "h4";
+          if (m[1].length > 1) out.push("<" + tag + ">" + inline(m[2]) + "</" + tag + ">");
+        } else if (/^\s*\|/.test(l)) {
+          flush();
+          var rows = [];
+          while (i < lines.length && /^\s*\|/.test(lines[i])) rows.push(lines[i++]);
+          out.push(table(rows));
+        } else if (/^\s*[-*]\s/.test(l)) {
+          flush();
+          var items = [];
+          while (i < lines.length && lines[i].trim() && (/^\s*[-*]\s/.test(lines[i]) || !special(lines[i]))) {
+            if ((m = /^(\s*)[-*]\s+(.*)$/.exec(lines[i]))) items.push({ d: Math.floor(m[1].length / 2), t: m[2] });
+            else items[items.length - 1].t += " " + lines[i].trim();
+            i++;
+          }
+          out.push(list(items));
+        } else { para.push(l.trim()); i++; }
+      }
+      flush();
+      return out.join("\n");
+    }
+
+    fetch(SOURCE).then(function (r) {
+      if (!r.ok) throw new Error(String(r.status));
+      return r.text();
+    }).then(function (md) {
+      var html = render(md);
+      if (!html) return;
+      var sec = body.parentNode, root = document.documentElement;
+      // A reader already past this section (a link to #ecosystem, say) keeps their place.
+      var past = sec.getBoundingClientRect().top < 0, before = sec.offsetHeight;
+      root.style.overflowAnchor = "none";
+      body.innerHTML = html +
+        '<p class="tip">This section is <a href="' + ON_GITHUB + '">docs/ROADMAP.md</a>, read from the site when the page opens.</p>';
+      if (past) window.scrollBy(0, sec.offsetHeight - before);
+      // Opened at #roadmap: the page was too short to bring the section to the top
+      // before its text arrived, so go there again now that it can.
+      else if (!touched && location.hash === "#roadmap") sec.scrollIntoView();
+      requestAnimationFrame(function () { root.style.overflowAnchor = ""; });
+    }).catch(function () { /* the short text and the link stay */ });
   })();
 </script>
 </body>
