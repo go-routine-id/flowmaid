@@ -5657,6 +5657,49 @@ fn drawn_breadth(
     }
 }
 
+/// The breadth bounds of a lane beside the members of block `box_of` (a
+/// subgraph path) in a block layout, for a lane `label_half` broad: past
+/// the nearest node outside the block on any layer of the block, on each
+/// side of the block's members, by the room the frame takes round the
+/// lane (the scene's lane pad) and the gap between frames. Open
+/// on a side with nothing there.
+fn lane_corridor(
+    at: &[Placed],
+    nc: &[Vec<usize>],
+    box_of: &[usize],
+    label_half: f64,
+) -> (f64, f64) {
+    let member = |v: usize| nc[v].starts_with(box_of);
+    let (mut l0, mut l1) = (usize::MAX, 0usize);
+    let (mut m0, mut m1) = (f64::INFINITY, f64::NEG_INFINITY);
+    for (_, p) in at.iter().enumerate().filter(|&(v, _)| member(v)) {
+        l0 = l0.min(p.layer);
+        l1 = l1.max(p.layer);
+        m0 = m0.min(p.b - p.bsize / 2.0);
+        m1 = m1.max(p.b + p.bsize / 2.0);
+    }
+    let (mut lo, mut hi) = (f64::NEG_INFINITY, f64::INFINITY);
+    if m0 > m1 {
+        return (lo, hi);
+    }
+    let room = FRAME_GAP + crate::scene::LANE_PAD + label_half;
+    for (v, p) in at.iter().enumerate() {
+        if member(v) || p.layer < l0 || p.layer > l1 {
+            continue;
+        }
+        // A node in a block of its own beside this one: that frame too.
+        let shared = nc[v].iter().zip(box_of).take_while(|(a, b)| a == b).count();
+        let pad = (nc[v].len() - shared) as f64 * FRAME_PAD;
+        let (s0, s1) = (p.b - p.bsize / 2.0 - pad, p.b + p.bsize / 2.0 + pad);
+        if s1 <= m0 {
+            lo = lo.max(s1 + room);
+        } else if s0 >= m1 {
+            hi = hi.min(s0 - room);
+        }
+    }
+    (lo, hi)
+}
+
 /// The lane of every back-edge that gets one (`(edge, lane)`; a state
 /// note card's link never does), by
 /// the rule [`crate::lanes`] states — the scene draws them, and the
@@ -5771,6 +5814,20 @@ pub(crate) fn back_lanes(
             let label = label_breadth(e.label.as_deref(), horizontal);
             let (sa, sb) = (g.nodes[e.from].shape, g.nodes[e.to].shape);
             let ports = (direct_port(sa, a, b.b), direct_port(sb, b, a.b));
+            // In a block layout the frame of the lane's block grows over
+            // the lane on every row of the block, not only on the rows
+            // of its band (`scene_clustered`): what stands beside the
+            // block on any of its rows bounds the lane, so the frame never
+            // grows over a node it does not hold. (A state's lanes inside
+            // a nested composite took the side where a state of the
+            // composite round it stood beside the composite's first row,
+            // and the composite's frame was drawn round that state.)
+            let corridor = match (blocks, node_cluster) {
+                (Some(_), Some(nc)) if !box_of.is_empty() => {
+                    lane_corridor(at, nc, &box_of, label / 2.0)
+                }
+                _ => (f64::NEG_INFINITY, f64::INFINITY),
+            };
             Want {
                 key: (a.layer - b.layer) as f64,
                 band: (b.layer as f64, a.layer as f64),
@@ -5781,6 +5838,7 @@ pub(crate) fn back_lanes(
                 label_half: label / 2.0,
                 spans: [port_span(sa, a), port_span(sb, b)],
                 ends: (e.from, e.to),
+                corridor,
             }
         })
         .collect();

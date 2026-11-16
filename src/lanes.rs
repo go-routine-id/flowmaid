@@ -522,11 +522,34 @@ pub(crate) fn crosses_at_end(xa: f64, x: f64, span: (f64, f64), f: f64) -> bool 
 /// obstacles: a gap there is a channel the forward edges use, and a lane
 /// threading it crosses them near their ends where no skeleton tells
 /// (mermaid loops round the outside too).
+#[cfg(test)]
 pub(crate) fn lane_at(
     obstacles: &[(f64, f64)],
     clear: f64,
     spans: [(f64, f64); 2],
     tie_low: bool,
+    cross: impl FnMut(f64) -> usize,
+) -> f64 {
+    lane_within(
+        obstacles,
+        clear,
+        spans,
+        tie_low,
+        (f64::NEG_INFINITY, f64::INFINITY),
+        cross,
+    )
+}
+
+/// The breadth of a back-edge's lane (see `lane_at`, the same with no
+/// corridor) kept inside `corridor` (breadth bounds, infinite when
+/// open): a side whose spots all lie past its bound is no side; with
+/// neither side left, the high bound of the obstacles as before.
+fn lane_within(
+    obstacles: &[(f64, f64)],
+    clear: f64,
+    spans: [(f64, f64); 2],
+    tie_low: bool,
+    corridor: (f64, f64),
     mut cross: impl FnMut(f64) -> usize,
 ) -> f64 {
     let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
@@ -567,11 +590,11 @@ pub(crate) fn lane_at(
     };
     if lo > hi {
         // Nothing in the way: the shortest spot anywhere.
-        return spot(f64::NEG_INFINITY, f64::INFINITY, 0.0, false).map_or(0.0, |s| s.1);
+        return spot(corridor.0, corridor.1, 0.0, false).map_or(0.0, |s| s.1);
     }
     let (low, high) = (
-        spot(f64::NEG_INFINITY, lo, lo, true),
-        spot(hi, f64::INFINITY, hi, true),
+        spot(corridor.0, lo.min(corridor.1), lo, true),
+        spot(hi.max(corridor.0), corridor.1, hi, true),
     );
     // Of the two sides' best, the cheaper; on a tie the high side, or
     // the low one when `tie_low`.
@@ -681,6 +704,12 @@ pub(crate) struct Want {
     pub spans: [(f64, f64); 2],
     /// The two end nodes, source then target.
     pub ends: (usize, usize),
+    /// Breadth bounds the lane keeps within (infinite when open): in a
+    /// block layout, a lane beside the members of its block keeps short
+    /// of what else stands beside that block on any of its rows, as the
+    /// block's frame grows over the lane on every row
+    /// ([`crate::layout::back_lanes`]).
+    pub corridor: (f64, f64),
 }
 
 /// Plan the lanes of `wants`: each one's [`Lane`], or `None` for one
@@ -792,17 +821,24 @@ pub(crate) fn plan(
             .map(|&(_, x)| if x < mid { -1 } else { 1 })
             .sum::<i32>();
         let tie_low = kin < 0;
-        let mut x = lane_at(&obs, w.clear, w.spans, tie_low, |x| cross(i, x, &placed));
+        let (clear, spans, corridor) = (w.clear, w.spans, w.corridor);
+        let mut x = lane_within(&obs, clear, spans, tie_low, corridor, |x| {
+            cross(i, x, &placed)
+        });
         let reach = (x - w.label_half - LANE_CLEAR, x + w.label_half + LANE_CLEAR);
         let local = !hits(&w.foreign, reach.0, reach.1);
         if !local {
             obs.extend_from_slice(&w.foreign);
-            x = lane_at(&obs, w.clear, w.spans, tie_low, |x| cross(i, x, &placed));
+            x = lane_within(&obs, clear, spans, tie_low, corridor, |x| {
+                cross(i, x, &placed)
+            });
         }
         // Not straight out of its own end: round those lanes too.
         if alongside.iter().any(|&(_, k)| !legless(i, x, k)) {
             obs.extend(alongside.iter().map(|&(s, _)| s));
-            x = lane_at(&obs, w.clear, w.spans, tie_low, |x| cross(i, x, &placed));
+            x = lane_within(&obs, clear, spans, tie_low, corridor, |x| {
+                cross(i, x, &placed)
+            });
         }
         out[i] = Some(Lane {
             x,
@@ -1124,6 +1160,7 @@ mod tests {
             label_half: 0.0,
             spans: [(b - 7.0, b + 7.0), (40.0, 54.0)],
             ends: (src, 9),
+            corridor: (f64::NEG_INFINITY, f64::INFINITY),
         };
         let wants = [want(1, 200.0), want(2, 290.0), want(3, 380.0)];
         let lanes = plan(&wants, |i, x, _| {
@@ -1166,6 +1203,7 @@ mod tests {
             label_half: 0.0,
             spans: [(110.0, 130.0), (110.0, 130.0)],
             ends: (0, 1),
+            corridor: (f64::NEG_INFINITY, f64::INFINITY),
         };
         let lanes = plan(&[want(3.0, (0.0, 3.0)), want(1.0, (1.0, 2.0))], |_, _, _| 0);
         let (outer, inner) = (lanes[0].unwrap().x, lanes[1].unwrap().x);

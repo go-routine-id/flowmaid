@@ -3461,7 +3461,257 @@ pub(crate) fn scene_labelled(g: &Graph, sizes: &[(f64, f64)], labels: &[String])
     };
     // (A block layout's edge stages know which upstream edges are lanes.)
     crate::edgepass::finish_blocks(g, &mut sc, blocks.as_deref());
+    if blocks.is_some() && embrace_own_edges(g, &mut sc) {
+        crate::edgepass::refit(
+            &mut sc,
+            crate::edgepass::Mode::Static,
+            g.edge_paint_width.is_none(),
+        );
+    }
     sc
+}
+
+/// A block layout's frames grown across the flow over the drawn paths
+/// of their own edges (spec 2.7 F3: a frame covers the drawn path of
+/// every edge with both ends in it, plus [`LANE_PAD`]). The layout's
+/// frames already cover the channels it laid inside them; this is the
+/// part only the edge stages decide: an edge between two members of a
+/// block that the router takes round a nested block's title chip, out
+/// past the side walls of the blocks between (blocks/nested-chain:
+/// `a -> c2` round the chip of `Inner target`, out of `Outer` too). The
+/// way it took stays; the block it belongs to grows over it, so the
+/// edge is drawn inside its block, beside the nested ones, as the
+/// channels of a flat layout are (a frame wider by the run and its pad).
+///
+/// A frame grows only where nothing foreign lies in the strip it would
+/// add: no node or frame it does not hold, no edge or label with
+/// neither end inside it, no line within [`crate::clearance::CHIP_SEP`]
+/// of its title chip where the chip moves to; else it stays as it is
+/// (and the edge outside it). Only across the flow: a path that leaves
+/// along the flow is not covered. Returns whether a frame changed.
+fn embrace_own_edges(g: &Graph, sc: &mut Scene) -> bool {
+    use crate::clearance::CHIP_SEP;
+    let horizontal = matches!(g.direction, Direction::LR | Direction::RL);
+    let nc = node_cluster_paths(g);
+    let ne = g.edges.len().min(sc.edges.len());
+    // (breadth lo, breadth hi, layer lo, layer hi) of a screen box.
+    let span = |c: &SceneCluster| {
+        if horizontal {
+            (c.y, c.y + c.h, c.x, c.x + c.w)
+        } else {
+            (c.x, c.x + c.w, c.y, c.y + c.h)
+        }
+    };
+    let flow = |p: (f64, f64)| if horizontal { (p.1, p.0) } else { p };
+    let cluster_of: Vec<Option<usize>> = g
+        .subgraphs
+        .iter()
+        .map(|s| sc.clusters.iter().position(|c| c.id == s.id))
+        .collect();
+    // Per subgraph: the breadth its own edges' drawn paths reach.
+    let mut want: Vec<Option<(f64, f64)>> = vec![None; g.subgraphs.len()];
+    let mut paths: Vec<Option<Vec<(f64, f64)>>> = vec![None; sc.edges.len()];
+    for (i, e) in g.edges.iter().enumerate().take(ne) {
+        if e.from == e.to || !edge_drawn(&sc.edges[i]) {
+            continue;
+        }
+        let common: Vec<usize> = nc[e.from]
+            .iter()
+            .zip(&nc[e.to])
+            .take_while(|(a, b)| a == b)
+            .map(|(a, _)| *a)
+            .collect();
+        for &s in &common {
+            let Some(k) = cluster_of[s] else { continue };
+            let (b0, b1, l0, l1) = span(&sc.clusters[k]);
+            let pts = paths[i].get_or_insert_with(|| edge_polyline(&sc.edges[i]));
+            for &p in pts.iter() {
+                let (b, l) = flow(p);
+                if l <= l0 || l >= l1 || (b >= b0 && b <= b1) {
+                    continue;
+                }
+                let w = want[s].get_or_insert((b0, b1));
+                w.0 = w.0.min(b - LANE_PAD);
+                w.1 = w.1.max(b + LANE_PAD);
+            }
+        }
+    }
+    if want.iter().all(Option::is_none) {
+        return false;
+    }
+    let depth: Vec<usize> = cluster_of
+        .iter()
+        .map(|k| k.map_or(0, |k| sc.clusters[k].depth))
+        .collect();
+    let ancestors = |s: usize| {
+        let mut out = vec![s];
+        let mut cur = g.subgraphs[s].parent;
+        while let Some(p) = cur {
+            out.push(p);
+            cur = g.subgraphs[p].parent;
+        }
+        out
+    };
+    // Whether scene edge `j` has an end inside subgraph `s`.
+    let end_in = |j: usize, s: usize| -> bool {
+        let e = &sc.edges[j];
+        [&e.from, &e.to].iter().any(|id| {
+            if let Some(v) = g.nodes.iter().position(|n| &n.id == *id) {
+                return nc[v].contains(&s);
+            }
+            g.subgraphs
+                .iter()
+                .position(|t| &t.id == *id)
+                .is_some_and(|t| ancestors(t).contains(&s))
+        })
+    };
+    let lines: Vec<Vec<(f64, f64)>> = sc
+        .edges
+        .iter()
+        .enumerate()
+        .map(|(j, e)| paths[j].take().unwrap_or_else(|| edge_polyline(e)))
+        .collect();
+    let mut boxes: Vec<RawBox> = cluster_of
+        .iter()
+        .map(|k| {
+            k.map(|k| {
+                let c = &sc.clusters[k];
+                (c.x, c.y, c.w, c.h)
+            })
+        })
+        .collect();
+    // Deepest first, so a parent's growth sees its children grown.
+    let mut order: Vec<usize> = (0..g.subgraphs.len())
+        .filter(|&s| want[s].is_some())
+        .collect();
+    order.sort_by_key(|&s| (std::cmp::Reverse(depth[s]), s));
+    let mut changed = false;
+    for s in order {
+        let (Some((w0, w1)), Some((x, y, w, h))) = (want[s], boxes[s]) else {
+            continue;
+        };
+        let mut trial = boxes.clone();
+        trial[s] = Some(if horizontal {
+            let (b0, b1) = (y.min(w0), (y + h).max(w1));
+            (x, b0, w, b1 - b0)
+        } else {
+            let (b0, b1) = (x.min(w0), (x + w).max(w1));
+            (b0, y, b1 - b0, h)
+        });
+        renest_boxes(g, &depth, &mut trial);
+        let fits = (0..g.subgraphs.len()).all(|t| {
+            let (Some(old), Some(new)) = (boxes[t], trial[t]) else {
+                return true;
+            };
+            old == new || strip_is_free(g, sc, &nc, &lines, t, old, new, &end_in)
+        });
+        if !fits {
+            continue;
+        }
+        // The title chips of the frames that moved keep clear of every
+        // line, as the router kept them.
+        let moved_clusters = clusters_of(g, &trial, &depth);
+        let chips_clear = (0..g.subgraphs.len()).all(|t| {
+            if boxes[t] == trial[t] {
+                return true;
+            }
+            let Some(k) = moved_clusters
+                .iter()
+                .position(|c| c.id == g.subgraphs[t].id)
+            else {
+                return true;
+            };
+            let r = title_head(&moved_clusters, k, f64::INFINITY);
+            let r = (
+                r.0 - CHIP_SEP,
+                r.1 - CHIP_SEP,
+                r.2 + CHIP_SEP,
+                r.3 + CHIP_SEP,
+            );
+            lines.iter().all(|pts| {
+                pts.iter()
+                    .all(|p| !(p.0 > r.0 && p.0 < r.2 && p.1 > r.1 && p.1 < r.3))
+            })
+        });
+        if chips_clear {
+            boxes = trial;
+            changed = true;
+        }
+    }
+    if changed {
+        sc.clusters = clusters_of(g, &boxes, &depth);
+    }
+    changed
+}
+
+/// Whether the strip that grows frame `t` from `old` to `new` holds
+/// nothing foreign ([`embrace_own_edges`]): no node outside `t`, no
+/// frame that is neither inside `t` nor round it, no point of a line
+/// (`lines`, index-parallel with `sc.edges`) or label of an edge with no
+/// end inside `t`.
+#[allow(clippy::too_many_arguments)]
+fn strip_is_free(
+    g: &Graph,
+    sc: &Scene,
+    nc: &[Vec<usize>],
+    lines: &[Vec<(f64, f64)>],
+    t: usize,
+    old: (f64, f64, f64, f64),
+    new: (f64, f64, f64, f64),
+    end_in: &dyn Fn(usize, usize) -> bool,
+) -> bool {
+    let within = |r: (f64, f64, f64, f64), p: (f64, f64)| {
+        p.0 > r.0 && p.0 < r.0 + r.2 && p.1 > r.1 && p.1 < r.1 + r.3
+    };
+    let meets = |a: (f64, f64, f64, f64), b: (f64, f64, f64, f64)| {
+        a.0 < b.0 + b.2 && b.0 < a.0 + a.2 && a.1 < b.1 + b.3 && b.1 < a.1 + a.3
+    };
+    let added = |p: (f64, f64)| within(new, p) && !within(old, p);
+    for (v, n) in sc.nodes.iter().enumerate() {
+        let r = (n.x - n.w / 2.0, n.y - n.h / 2.0, n.w, n.h);
+        if !nc[v].contains(&t) && meets(new, r) && !meets(old, r) {
+            return false;
+        }
+    }
+    for (u, c) in sc.clusters.iter().enumerate() {
+        let Some(ui) = g.subgraphs.iter().position(|s| s.id == c.id) else {
+            continue;
+        };
+        let related = {
+            let mut cur = Some(ui);
+            let mut inside = false;
+            while let Some(p) = cur {
+                inside |= p == t;
+                cur = g.subgraphs[p].parent;
+            }
+            let mut cur = Some(t);
+            let mut round = false;
+            while let Some(p) = cur {
+                round |= p == ui;
+                cur = g.subgraphs[p].parent;
+            }
+            inside || round
+        };
+        let r = (sc.clusters[u].x, c.y, c.w, c.h);
+        if !related && meets(new, r) && !meets(old, r) {
+            return false;
+        }
+    }
+    for (j, e) in sc.edges.iter().enumerate() {
+        if end_in(j, t) {
+            continue;
+        }
+        if lines[j].iter().any(|&p| added(p)) {
+            return false;
+        }
+        if let Some((_, m, w)) = &e.label {
+            let r = (m.0 - w / 2.0, m.1 - LABEL_BOX_H / 2.0, *w, LABEL_BOX_H);
+            if meets(new, r) && !meets(old, r) {
+                return false;
+            }
+        }
+    }
+    true
 }
 
 /// Whether the block layout of subgraphs applies to `g` once it is
@@ -3856,7 +4106,7 @@ const TITLE_INSET: f64 = 6.0;
 /// Height of the strip a cluster title chip occupies at the frame top.
 const TITLE_STRIP: f64 = 21.0;
 /// Half-width of the strip a channel lane needs inside its cluster box.
-const LANE_PAD: f64 = 12.0;
+pub(crate) const LANE_PAD: f64 = 12.0;
 /// A subgraph needs at least this many members fed only by one outside
 /// node before they are packed into a grid instead of sharing one rank.
 const GRID_MIN_MEMBERS: usize = 3;
@@ -8690,6 +8940,7 @@ fn route_backs(g: &Graph, flow: &[Placed]) -> Vec<Back> {
                 label_half: label / 2.0,
                 spans: [port_span(sa, a), port_span(sb, b)],
                 ends: (e.from, e.to),
+                corridor: (f64::NEG_INFINITY, f64::INFINITY),
             }
         })
         .collect();

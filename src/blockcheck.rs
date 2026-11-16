@@ -936,10 +936,8 @@ fn a_chain_out_of_a_nested_block_leaves_through_its_downstream_side() {
     // source block's remaining rows and lay beside it.)
     //
     // This is the layout's half: the subgraph path of each channel
-    // point. The drawn edge is not asserted here — the channel enters
-    // the target block under its title chip, and until entries keep
-    // clear of a title (the title-clear entries of the block edges) the
-    // router takes it round, out through the blocks' side walls.
+    // point. The drawn edge: see
+    // `an_edge_between_members_of_a_block_is_drawn_inside_it`.
     let g = fixture("blocks/nested-chain");
     let (lo, groups, _) = block_layout(&g);
     let ei = g
@@ -966,6 +964,130 @@ fn a_chain_out_of_a_nested_block_leaves_through_its_downstream_side() {
         };
         assert_eq!(path, &want, "channel point on layer {layer}");
     }
+}
+
+/// Whether every point of `pts` lies in the box `b` (to a px).
+fn all_inside(pts: &[(f64, f64)], b: (f64, f64, f64, f64)) -> bool {
+    pts.iter()
+        .all(|p| p.0 >= b.0 - 1.0 && p.0 <= b.2 + 1.0 && p.1 >= b.1 - 1.0 && p.1 <= b.3 + 1.0)
+}
+
+#[test]
+fn an_edge_between_members_of_a_block_is_drawn_inside_it() {
+    // blocks/nested-chain: `a -> c2` joins two members of `Outer` across
+    // its two nested blocks. Its channel enters `Inner target` under that
+    // block's title chip, and the router takes the edge round the chip,
+    // out past the side walls of the two nested blocks: the block both
+    // ends belong to grows over that way, so the DRAWN edge stays inside
+    // `Outer` (it ran 177 px outside it), in every direction, and the
+    // grown frame holds nothing it did not hold before.
+    let root = env!("CARGO_MANIFEST_DIR");
+    let src = std::fs::read_to_string(format!("{root}/tests/fixtures/blocks/nested-chain.mmd"))
+        .expect("the fixture");
+    for dir in ["TD", "BT", "LR", "RL"] {
+        let g = graph(&src.replace("flowchart TD", &format!("flowchart {dir}")));
+        let sc = block_scene(&g);
+        let outer = frame_box(&sc, "X");
+        for e in sc.edges.iter().take(g.edges.len()) {
+            let pts = crate::scene::edge_polyline(e);
+            assert!(
+                all_inside(&pts, outer),
+                "{dir}: {} -> {} leaves Outer {outer:?}: {:?}",
+                e.from,
+                e.to,
+                path_of(e)
+            );
+        }
+        for n in &sc.nodes {
+            let b = node_box(&sc, &n.id);
+            assert!(
+                all_inside(&[(b.0, b.1), (b.2, b.3)], outer),
+                "{dir}: {}",
+                n.id
+            );
+        }
+    }
+    let rep = crate::levels::with_blocks(true, || crate::quality::measure_source(&src, false))
+        .expect("a flowchart");
+    assert!(rep.block_mode);
+    assert_eq!(rep.statik.own_frame_x, 0, "{:?}", rep.statik.details);
+    assert_eq!(rep.statik.node_frame, 0, "{:?}", rep.statik.details);
+    assert_eq!(rep.statik.edge_frame_pairs, 0, "{:?}", rep.statik.details);
+}
+
+#[test]
+fn a_blocks_lanes_keep_short_of_what_stands_beside_it() {
+    // blocks/lane-beside: the composite `Retry` sends two transitions back
+    // up inside itself (lanes beside its states), and `Fix`, a state of
+    // the composite round it, stands beside `Retry`'s first row. The
+    // frame of `Retry` grows over its lanes on every one of its rows, so
+    // a lane on `Fix`'s side drew `Retry`'s frame round `Fix` (and the
+    // transitions into and out of `Fix` through it): the lanes take the
+    // side where nothing else stands. No node lies in a frame that does
+    // not hold it, and every lane stays in `Retry`.
+    let g = fixture("blocks/lane-beside");
+    let sc = block_scene(&g);
+    let nc = crate::scene::node_cluster_paths(&g);
+    for (si, sub) in g.subgraphs.iter().enumerate() {
+        let f = frame_box(&sc, &sub.id);
+        for (v, n) in sc.nodes.iter().enumerate() {
+            if nc[v].contains(&si) {
+                continue;
+            }
+            let b = node_box(&sc, &n.id);
+            assert!(
+                b.2 <= f.0 || b.0 >= f.2 || b.3 <= f.1 || b.1 >= f.3,
+                "{} lies in the frame of {} {f:?}",
+                n.id,
+                sub.id
+            );
+        }
+    }
+    let retry = frame_box(&sc, "Retry");
+    for (from, to) in [("Gate", "Run"), ("Gate", "Plan")] {
+        let pts = crate::scene::edge_polyline(edge(&sc, from, to));
+        assert!(all_inside(&pts, retry), "{from} -> {to}: {pts:?}");
+    }
+    let src = std::fs::read_to_string(format!(
+        "{}/tests/fixtures/blocks/lane-beside.mmd",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .expect("the fixture");
+    let rep = crate::levels::with_blocks(true, || crate::quality::measure_source(&src, false))
+        .expect("a state diagram");
+    assert!(rep.block_mode);
+    assert_eq!(rep.statik.node_frame, 0, "{:?}", rep.statik.details);
+    assert_eq!(rep.statik.edge_frame_pairs, 0, "{:?}", rep.statik.details);
+    assert_eq!(rep.statik.own_frame_x, 0, "{:?}", rep.statik.details);
+}
+
+#[test]
+fn a_step_past_a_block_keeps_out_of_its_title_strip() {
+    // quality/dense-td: `n46` above the first band sends a dotted edge to
+    // the whole block `g9` far below, and its channel runs beside the
+    // band. The step from `n46` across to that channel lies in the gap
+    // above the band: placed mid-gap it ran 1 300 px along inside the
+    // title strip of `g1`, the band's outer block, which holds neither
+    // end. It keeps out of every frame that holds neither end, and no
+    // edge of the drawing runs through such a frame.
+    let g = fixture("quality/dense-td");
+    let sc = block_scene(&g);
+    let g1 = frame_box(&sc, "g1");
+    let pts = crate::scene::edge_polyline(edge(&sc, "n46", "g9"));
+    let inside = |p: &(f64, f64)| p.0 > g1.0 && p.0 < g1.2 && p.1 > g1.1 && p.1 < g1.3;
+    assert!(
+        !pts.iter().any(inside),
+        "n46 -> g9 runs in g1 {g1:?}: {pts:?}"
+    );
+    let src = std::fs::read_to_string(format!(
+        "{}/tests/fixtures/quality/dense-td.mmd",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .expect("the fixture");
+    let rep = crate::levels::with_blocks(true, || crate::quality::measure_source(&src, false))
+        .expect("a flowchart");
+    assert!(rep.block_mode);
+    assert_eq!(rep.statik.edge_frame_pairs, 0, "{:?}", rep.statik.details);
 }
 
 #[test]
@@ -1609,6 +1731,7 @@ fn a_generated_sweep_keeps_the_block_invariants() {
                 + m.node_overlap
                 + m.node_frame
                 + m.frame_overlap
+                + m.own_frame_x
         };
         let before = zeros(&crate::levels::with_blocks(false, || {
             crate::scene::scene(&g)

@@ -821,6 +821,7 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
             walls: &walls,
             frames: &frames,
             home: &home,
+            blocks: cx.blocks,
             load: &load,
             own,
             head_leg,
@@ -1142,6 +1143,9 @@ struct Along<'a> {
     /// edge (never in its way).
     frames: &'a [(f64, f64, f64, f64)],
     home: &'a [usize],
+    /// A block layout ([`Ctx::blocks`]): a step keeps out of the frames
+    /// that hold neither of its ends ([`plan_jog`]).
+    blocks: bool,
     /// The spans of the jogs each gap holds so far.
     load: &'a std::cell::RefCell<Vec<Vec<(f64, f64)>>>,
     /// The edge's own end nodes (never in its way).
@@ -1732,8 +1736,46 @@ fn plan_jog(
     let e0 = if lo_pt.1 { l0 } else { g_lo };
     let e1 = if hi_pt.1 { l1 } else { g_hi };
     let mut want = ((e0 + e1) / 2.0).max(lo).min(hi);
-    // Off the frames' borders and title chips it passes along.
     let span = (bu.min(bv), bu.max(bv));
+    // In a block layout a step lies between the blocks: one that would lie
+    // inside a frame holding neither of its ends moves out of it, to the
+    // side of the frame nearer its place, where the room it has keeps it.
+    // A gap between two rows is the band's gap and, either side of it,
+    // the pad and title strip of the frames closing and opening there; a
+    // step placed mid-gap ran along inside the title strip of the block
+    // below (dense-td: an edge to a block past the first band, 1 300 px
+    // under that band's title). The blocks an end lies in are left alone:
+    // a hub's fan steps inside its own block, and a step into the block
+    // it enters crosses its border on the straight run. So is a step in a
+    // border's own band, which the walls below take off the border: moved
+    // out of the frame ahead of its neighbours' steps there, it no longer
+    // nested with them (quality/fanout-frames: a hub's fan into six
+    // frames and a node past them, one step 1.5 px past a frame's border,
+    // crossed its neighbour once moved).
+    if cx.blocks {
+        for (k, r) in cx.frames.iter().enumerate() {
+            let (w0, w1) = (r.2 - BORDER_CLEAR, r.3 + BORDER_CLEAR);
+            if cx.home.contains(&k)
+                || lo > hi
+                || r.1 <= span.0 + EPS
+                || r.0 >= span.1 - EPS
+                || want <= r.2 + BORDER_CLEAR
+                || want >= r.3 - BORDER_CLEAR
+            {
+                continue;
+            }
+            let (a, b) = if want - w0 > w1 - want {
+                (lo.max(w1), hi)
+            } else {
+                (lo, hi.min(w0))
+            };
+            if a <= b {
+                (lo, hi) = (a, b);
+                want = want.max(lo).min(hi);
+            }
+        }
+    }
+    // Off the frames' borders and title chips it passes along.
     for &((b0, b1), (w0, w1)) in cx.walls {
         if b1 <= span.0 + EPS || b0 >= span.1 - EPS || w1 <= lo || w0 >= hi {
             continue;

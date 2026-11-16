@@ -195,6 +195,7 @@ const BLOCK_CEILINGS: &[(&str, BlockCeil, BlockCeil)] = &[
     ("blocks/iso-nest", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
     ("blocks/iso-state", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
     ("blocks/l5loop", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/lane-beside", (4, 2, 0, 0, 2), (4, 2, 0, 0, 2)),
     ("blocks/lr", (2, 1, 0, 1, 1), (2, 1, 0, 1, 1)),
     ("blocks/nested-cases", (0, 0, 0, 5, 0), (0, 0, 0, 7, 0)),
     ("blocks/nested-chain", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),

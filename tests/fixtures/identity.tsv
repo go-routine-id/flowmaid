@@ -42,6 +42,7 @@ tests/fixtures/blocks/iso-lane.mmd	dff9f8e5b5d8b550	21f5e72d862c624b	c32a5d1fc91
 tests/fixtures/blocks/iso-nest.mmd	d63268cda2b3c1ba	87d4d14d12bd8623	189451db0c2398f1	unlinked
 tests/fixtures/blocks/iso-state.mmd	2b5d0c764bb9041b	addbe8a7e9c936f3	32555e4392989ead	unlinked
 tests/fixtures/blocks/l5loop.mmd	72ccab99f2f6ffc1	90db2a3684cdaf25	4c0e2592592585e1	blocks
+tests/fixtures/blocks/lane-beside.mmd	c35a2870f093269e	2b63576322fdc6b5	4fa342297c2fde2	blocks
 tests/fixtures/blocks/lr.mmd	d76293accf5bff18	e2a17c9c518dd2a9	86d102fc23100e68	blocks
 tests/fixtures/blocks/nested-cases.mmd	a0fecca25bd4cf75	9e41ffb0b8205b22	72127ceb0209376f	blocks
 tests/fixtures/blocks/nested-chain.mmd	4463e2779f33e35a	558282ca0330f8e0	8fb0d6931d597e47	blocks
