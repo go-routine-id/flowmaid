@@ -6516,15 +6516,24 @@ impl BlockOrder<'_> {
                 }
             }
             restore(layers, pos, &best.1);
+            // A link between two rows keeps to one side of every block
+            // that spans both ([`BlockOrder::link_sides`]).
+            self.link_sides(&path, span, layers, pos);
         }
-        // The blocks' ranks: one sequence that every layer's order is a
-        // part of.
+        self.rank_level(&path, span, layers);
+    }
+
+    /// The ranks of a level's child blocks — one sequence that every
+    /// layer's order is a part of — and the slot of each of its nodes
+    /// and channel points between them, read off the order its layers
+    /// stand in.
+    fn rank_level(&mut self, path: &[usize], (lo, hi): (usize, usize), layers: &[Vec<usize>]) {
         let k = path.len();
         let mut blocks: Vec<usize> = Vec::new();
         let mut after: Vec<(usize, usize)> = Vec::new();
         for lv in &layers[lo..=hi] {
             let mut prev: Option<usize> = None;
-            for (u, _, _) in self.units(lv, &path) {
+            for (u, _, _) in self.units(lv, path) {
                 if let OrderUnit::Block(c) = u {
                     if !blocks.contains(&c) {
                         blocks.push(c);
@@ -6550,7 +6559,7 @@ impl BlockOrder<'_> {
             rank += 1.0;
         }
         for lv in &layers[lo..=hi] {
-            let units = self.units(lv, &path);
+            let units = self.units(lv, path);
             let mut next = rank;
             for &(u, at, _) in units.iter().rev() {
                 match u {
@@ -6565,6 +6574,165 @@ impl BlockOrder<'_> {
                 }
             }
         }
+    }
+
+    /// One side per (link, block). A channel keeps one side of a child
+    /// block on every layer the two share, because it is one unit of
+    /// the level's order; a link between two rows is no unit, and its
+    /// two ends are placed each by its own barycentre — one before a
+    /// block that spans both rows, the other after it, and the link is
+    /// drawn straight through that block (dense-td as blocks: `n41 ->
+    /// n42`, 217 px through the nested block between them). So, per
+    /// child block that spans more than one layer: the level's units on
+    /// its layers that such links join (a node, a channel as a whole, a
+    /// sibling block) stand together on one side of it — the side of a
+    /// sibling block among them, whose place the level order has fixed
+    /// (none is moved when two of them stand on either side: that link
+    /// has no way round); else the side most of them stand on, the
+    /// first of them in the canonical order deciding a tie. The others
+    /// step across the block, next to it, each on its own layers:
+    /// across this block alone, so every other block keeps them where
+    /// they were. Returns whether anything moved.
+    fn link_sides(
+        &self,
+        path: &[usize],
+        (lo, hi): (usize, usize),
+        layers: &mut [Vec<usize>],
+        pos: &mut [f64],
+    ) -> bool {
+        let k = path.len();
+        let level = path.last();
+        // The level's unit an augmented node belongs to, if any.
+        let unit = |v: usize| -> Option<OrderUnit> {
+            let p = &self.apath[v];
+            if k > 0 && p.get(k - 1) != level {
+                return None;
+            }
+            match p.get(k) {
+                Some(&c) => Some(OrderUnit::Block(c)),
+                None if self.border[v] != 0 => None,
+                None if self.run[v] != usize::MAX => Some(OrderUnit::Run(self.run[v])),
+                None => Some(OrderUnit::Node(v)),
+            }
+        };
+        let mut blocks: Vec<usize> = Vec::new();
+        for lv in &layers[lo..=hi] {
+            for &v in lv {
+                if let Some(OrderUnit::Block(c)) = unit(v) {
+                    if self.bspan[c].1 > self.bspan[c].0 && !blocks.contains(&c) {
+                        blocks.push(c);
+                    }
+                }
+            }
+        }
+        blocks.sort_by_key(|&c| self.first[c]);
+        let mut any = false;
+        for b in blocks {
+            let (b0, b1) = self.bspan[b];
+            let here = OrderUnit::Block(b);
+            // The block's members on a layer, as a range of its places.
+            let range = |lv: &[usize]| -> Option<(usize, usize)> {
+                let at = lv.iter().position(|&v| unit(v) == Some(here))?;
+                let end = lv.iter().rposition(|&v| unit(v) == Some(here))?;
+                Some((at, end))
+            };
+            // The level's other units on the block's layers, each with
+            // the side it stands on (`true`: before the block) and its
+            // first member met (for the canonical order).
+            let mut ents: Vec<(OrderUnit, bool, usize)> = Vec::new();
+            for lv in &layers[b0..=b1] {
+                let Some((at, _)) = range(lv) else { continue };
+                for (i, &v) in lv.iter().enumerate() {
+                    match unit(v) {
+                        Some(u) if u != here && ents.iter().all(|e| e.0 != u) => {
+                            ents.push((u, i < at, v));
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            // Joined by a link between two of the block's layers.
+            let mut group: Vec<usize> = (0..ents.len()).collect();
+            let find = |group: &[usize], mut i: usize| {
+                while group[i] != i {
+                    i = group[i];
+                }
+                i
+            };
+            for l in b0..b1 {
+                for &x in &layers[l] {
+                    let Some(ex) = unit(x).filter(|&u| u != here) else {
+                        continue;
+                    };
+                    for &y in self.succs[x].iter().filter(|&&y| self.alayer[y] == l + 1) {
+                        let Some(ey) = unit(y).filter(|&u| u != here && u != ex) else {
+                            continue;
+                        };
+                        let (Some(i), Some(j)) = (
+                            ents.iter().position(|e| e.0 == ex),
+                            ents.iter().position(|e| e.0 == ey),
+                        ) else {
+                            continue;
+                        };
+                        let (ri, rj) = (find(&group, i), find(&group, j));
+                        if ri != rj {
+                            group[ri.max(rj)] = ri.min(rj);
+                        }
+                    }
+                }
+            }
+            for root in 0..ents.len() {
+                if find(&group, root) != root {
+                    continue;
+                }
+                let members: Vec<usize> = (0..ents.len())
+                    .filter(|&i| find(&group, i) == root)
+                    .collect();
+                let fixed = |i: usize| matches!(ents[i].0, OrderUnit::Block(_));
+                let on = |before: bool| members.iter().filter(|&&i| ents[i].1 == before).count();
+                if members.len() < 2 || on(true) == 0 || on(false) == 0 {
+                    continue;
+                }
+                let held: Vec<bool> = members
+                    .iter()
+                    .filter(|&&i| fixed(i))
+                    .map(|&i| ents[i].1)
+                    .collect();
+                let before = match (held.contains(&true), held.contains(&false)) {
+                    (true, true) => continue,
+                    (true, false) => true,
+                    (false, true) => false,
+                    (false, false) if on(true) != on(false) => on(true) > on(false),
+                    (false, false) => members
+                        .iter()
+                        .min_by_key(|&&i| self.canon[ents[i].2])
+                        .map_or(true, |&i| ents[i].1),
+                };
+                for &i in members.iter().filter(|&&i| ents[i].1 != before) {
+                    let u = ents[i].0;
+                    for lv in layers[b0..=b1].iter_mut() {
+                        let Some(from) = lv.iter().position(|&v| unit(v) == Some(u)) else {
+                            continue;
+                        };
+                        let v = lv.remove(from);
+                        match range(lv) {
+                            Some((at, _)) if before => lv.insert(at, v),
+                            Some((_, end)) => lv.insert(end + 1, v),
+                            None => lv.insert(from, v),
+                        }
+                    }
+                    any = true;
+                }
+            }
+        }
+        if any {
+            for lv in &layers[lo..=hi] {
+                for (i, &v) in lv.iter().enumerate() {
+                    pos[v] = i as f64;
+                }
+            }
+        }
+        any
     }
 
     /// The sweeps over the whole graph inside the slots the level
@@ -7030,6 +7198,14 @@ impl BlockOrder<'_> {
         self.tidy(layers, pos);
         // (Once a layout call: a later placement starts from this order.)
         self.flip_chains(layers, pos);
+        // The last exchanges place a unit by crossings alone: a link
+        // they left on either side of a block steps back to one.
+        for li in 0..self.levels.len() {
+            let (path, lo, hi) = self.levels[li].clone();
+            if self.link_sides(&path, (lo, hi), layers, pos) {
+                self.rank_level(&path, (lo, hi), layers);
+            }
+        }
     }
 }
 

@@ -1051,6 +1051,67 @@ fn assert_one_side(name: &str, g: &Graph) {
             }
         }
     }
+    // A link between two rows — a whole edge, or a channel's step
+    // between two of its points or to its end — whose two ends are units
+    // of one level stands on one side of every block of that level that
+    // spans both rows.
+    for (ei, e) in g.edges.iter().enumerate() {
+        if matches!(e.kind, crate::model::EdgeKind::Invisible) || e.from == e.to {
+            continue;
+        }
+        let (la, lb) = (lo.nodes[e.from].layer, lo.nodes[e.to].layer);
+        if la == lb || lo.edge_paths[ei].len() + 1 != la.abs_diff(lb) {
+            continue;
+        }
+        let layer_of = |k: usize| if la < lb { la + 1 + k } else { la - 1 - k };
+        // (breadth, layer, subgraph path) of each point of the edge.
+        let mut points: Vec<(f64, usize, &[usize])> = vec![(lo.nodes[e.from].b, la, &nc[e.from])];
+        for (k, (point, path)) in lo.edge_paths[ei].iter().zip(&groups[ei]).enumerate() {
+            points.push((point.0, layer_of(k), path));
+        }
+        points.push((lo.nodes[e.to].b, lb, &nc[e.to]));
+        for w in points.windows(2) {
+            let ((xa, la, pa), (xb, lb, pb)) = (w[0], w[1]);
+            if pa != pb {
+                continue;
+            }
+            for c in 0..ns {
+                let level: Option<Vec<usize>> = nc
+                    .iter()
+                    .find(|p| p.contains(&c))
+                    .map(|p| p[..p.iter().position(|&x| x == c).unwrap_or(0)].to_vec());
+                if level.as_deref() != Some(pa) {
+                    continue;
+                }
+                let (Some(&(a0, a1)), Some(&(b0, b1))) = (span.get(&(c, la)), span.get(&(c, lb)))
+                else {
+                    continue;
+                };
+                assert_eq!(
+                    xa < (a0 + a1) / 2.0,
+                    xb < (b0 + b1) / 2.0,
+                    "{name}: {} -> {} passes block {} between layers {la} and {lb}",
+                    g.nodes[e.from].id,
+                    g.nodes[e.to].id,
+                    g.subgraphs[c].id
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn a_link_between_two_rows_keeps_one_side_of_a_block() {
+    // dense-td: `n41 -> n42` joins two members of one block on
+    // neighbouring rows, and a nested block spans both rows. Each end
+    // placed by its own links, `n41` stood after that block and `n42`
+    // before it, and the link ran through it; the two now stand on one
+    // side of it, and the drawn edge keeps out of its frame.
+    let g = fixture("quality/dense-td");
+    assert_one_side("quality/dense-td", &g);
+    let sc = block_scene(&g);
+    let path = path_of(edge(&sc, "n41", "n42"));
+    assert!(!runs_through(&path, frame_box(&sc, "g10")), "{path:?}");
 }
 
 #[test]
