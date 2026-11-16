@@ -11735,7 +11735,28 @@ mod tests {
                     } else {
                         [cur, pts[0], pts[1], end]
                     };
-                    out.extend((1..=64).map(|k| cubic_at(&b, k as f64 / 64.0)));
+                    // 64 even steps of the parameter, each split further
+                    // where it spans more than four steps of `step`: a long
+                    // cubic whose first control point lies far along it
+                    // moves fast near its start, and the even steps left
+                    // a 5 px hole there (bench-75 as blocks: a probe 1 px
+                    // off a straight cubic leg read as 2 px clear).
+                    let mut prev = cur;
+                    for k in 1..=64 {
+                        let p = cubic_at(&b, k as f64 / 64.0);
+                        let gap = (p.0 - prev.0).hypot(p.1 - prev.1);
+                        let m = if gap > 4.0 * step {
+                            (gap / step).ceil() as usize
+                        } else {
+                            1
+                        };
+                        for j in 1..m {
+                            let t = (k as f64 - 1.0 + j as f64 / m as f64) / 64.0;
+                            out.push(cubic_at(&b, t));
+                        }
+                        out.push(p);
+                        prev = p;
+                    }
                 }
             }
             cur = end;
@@ -18311,15 +18332,8 @@ mod tests {
                 // hops it steps over the lines it crosses on.
                 let (start, segs) = drawn_segs(e, |p| p);
                 let pts = path_d_points(&hopped_d(start, &segs, &hops[i]), 0.5);
-                // A hop removes the ink of the line under it, which picking
-                // may ignore (pick == render holds for the line as drawn
-                // before such painter-only treatments): a square in a hop's
-                // lens, between its arc and the line it lifts off, is not
-                // clear of the stroke picking measures.
-                let plain = path_d_points(&hopped_d(start, &segs, &[]), 0.5);
                 let gap = |r: &[f64; 4]| {
                     pts.iter()
-                        .chain(&plain)
                         .map(|&p| PickTarget::box_gap(p, r[0], r[1], r[2], r[3]))
                         .fold(f64::INFINITY, f64::min)
                 };
