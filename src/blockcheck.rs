@@ -1641,10 +1641,10 @@ fn a_hubs_fan_keeps_its_order_through_the_bands() {
         "{fans:#?}"
     );
     // Every step under the hub's block keeps a track of its own: no
-    // edge of the hub runs on top of another. (The drawing's one overlap
-    // pair, as at the start, is the hub's turned `n36 -> n16` leaving its
-    // block past `g8`'s title chip beside that frame's free pin, far from
-    // the hub.)
+    // edge of the hub runs on top of another, nor any other pair (the
+    // hub's turned `n36 -> n16` leaves its block past `g8`'s title chip
+    // a port's spacing from that frame's free pin: see
+    // `a_free_pin_keeps_off_a_members_exit_past_the_chip`).
     let m = crate::quality::measure(&g, &sc);
     let on_top: Vec<&String> = m
         .details
@@ -1655,7 +1655,40 @@ fn a_hubs_fan_keeps_its_order_through_the_bands() {
         })
         .collect();
     assert!(on_top.is_empty(), "{on_top:?}");
-    assert!(m.overlap_pairs <= 1, "{:?}", m.details);
+    assert_eq!(m.overlap_pairs, 0, "{:?}", m.details);
+}
+
+#[test]
+fn a_free_pin_keeps_off_a_members_exit_past_the_chip() {
+    // dense-td as blocks: `n45 -> g8` ends on `g8`'s title side at a
+    // free pin, its channel coming down left of the frame's two-line
+    // chip; `n36`, in the frame's title row, sends the turned `n36 ->
+    // n16` up out of its top on the free stretch past the chip. Both
+    // took the first place past the chip, 5 px apart: the pin's
+    // arrowhead ran beside the exit's stroke for 24 px (the drawing's
+    // closest pair 4.99 px, its one overlap pair). The pin's gap closed
+    // by the chip and the exit, it takes the next gap, past the exit;
+    // its channel crosses the exit's leg once.
+    let g = fixture("quality/dense-td");
+    let sc = block_scene(&g);
+    let pin = path_of(edge(&sc, "n45", "g8"))
+        .last()
+        .copied()
+        .expect("a path");
+    let exit = path_of(edge(&sc, "n36", "n16"))[0];
+    let g8 = &sc.clusters[sc.clusters.iter().position(|c| c.id == "g8").expect("g8")];
+    assert!((pin.1 - g8.y).abs() < 0.5, "{pin:?} on g8's top");
+    assert!(
+        (pin.0 - exit.0).abs() >= crate::ports::PORT_SPACING - 0.5,
+        "pin {pin:?}, exit {exit:?}"
+    );
+    let m = crate::quality::measure(&g, &sc);
+    assert!(
+        m.min_edge_gap >= 12.1,
+        "{}: {:?}",
+        m.min_edge_gap,
+        m.details
+    );
 }
 
 #[test]
