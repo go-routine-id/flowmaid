@@ -1091,6 +1091,40 @@ fn a_step_past_a_block_keeps_out_of_its_title_strip() {
 }
 
 #[test]
+fn an_edge_the_repair_searches_goes_round_the_blocks_between() {
+    // quality/bench-75 (LR): `gw -> logs` joins the edge block to the ops
+    // block past the app and data blocks. Both its ends spill round the
+    // corner of an over-full side (`gw`'s right side and `logs`'s left
+    // side hold more border ends than fit), so its channel below `app`
+    // and `data` left `gw` from the bottom and climbed into `logs` from
+    // below, through `metrics`. The repair's window round the two ends
+    // held no way in that missed `metrics`, and its priced search over
+    // the whole drawing then ran the edge straight through `app` and
+    // `data`. Searched clear of every frame over the whole drawing first,
+    // it goes round them. The same holds for every drawn edge of the
+    // repository's block fixtures: none runs through a frame that holds
+    // neither of its ends (spec 4.3 f, `xframe_runs`).
+    let g = fixture("quality/bench-75");
+    let sc = block_scene(&g);
+    let pts = crate::scene::edge_polyline(edge(&sc, "gw", "logs"));
+    for f in ["app", "data", "jobs"] {
+        assert!(
+            !runs_through(&pts, frame_box(&sc, f)),
+            "gw -> logs runs through {f}: {:?}",
+            path_of(edge(&sc, "gw", "logs"))
+        );
+    }
+    for (name, g) in clustered_fixtures() {
+        if crate::compound::split(&g).is_some() || !crate::scene::block_mode(&g) {
+            continue;
+        }
+        let sc = block_scene(&g);
+        let m = crate::quality::measure(&g, &sc);
+        assert_eq!(m.edge_frame_pairs, 0, "{name}: {:?}", m.details);
+    }
+}
+
+#[test]
 fn a_chain_label_sits_outside_both_end_blocks() {
     // The label of an edge between two blocks sits on the chain's run
     // between them: its centre lies in no frame that holds exactly one

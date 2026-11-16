@@ -5420,6 +5420,21 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
         };
         // Its smoothed curve still touches something: a wider clearance.
         let wider = Try { lat: 1, ..first };
+        // In a block layout's static scene ([`Ctx::blocks`]), after the
+        // priced search below found only a way through a foreign frame:
+        // still clear of every band and foreign frame, over the whole
+        // drawing. A run through a block that holds neither end is what
+        // the block layout exists to avoid (spec 4.3 f), and the way
+        // round a block lies past the block's far side, beyond the
+        // window round the ends (bench-75's `gw -> logs`, spilled to the
+        // bottom sides of both ends: the window found no way into `logs`
+        // from below but through `metrics`, and the priced search then
+        // ran it straight through `app` and `data`).
+        let round = Try {
+            reach: work.walls_reach,
+            ..first
+        };
+        let round_on = cx.blocks && mode == Mode::Static;
         // No such path: over a wider window (the whole drawing when
         // static), bands and frames priced.
         let walls = Try {
@@ -5434,7 +5449,26 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
         };
         let mut n_found = 0;
         let mut built: Built = Vec::new();
-        for t in [first, wider, walls, back] {
+        // (Each try with whether it is `round`.)
+        let mut tries = vec![(first, false), (wider, false), (walls, false)];
+        if round_on {
+            tries.push((round, true));
+        }
+        tries.push((back, false));
+        for (t, is_round) in tries {
+            // (The whole-drawing strict try only where the priced search
+            // found a way through a foreign frame that would replace the
+            // original, one through a node: an original that only touches
+            // a title chip keeps its course, as before, rather than take
+            // a long way round across a dozen lines.)
+            if is_round
+                && !best.as_ref().is_some_and(|b| {
+                    b.0.frame > 0
+                        && (b.0.node, b.0.frame, b.0.chip) < (base0.node, base0.frame, base0.chip)
+                })
+            {
+                continue;
+            }
             // (A frame the path still enters is no matter of clearance: in
             // `route()` a wider lattice is not tried for it.)
             if t.lat == 1

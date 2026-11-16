@@ -3644,11 +3644,39 @@ fn embrace_own_edges(g: &Graph, sc: &mut Scene) -> bool {
     changed
 }
 
+/// The parts of box `new` outside box `old` (both `(x, y, w, h)`), as
+/// open `(x0, y0, x1, y1)` rects: the strips a frame grown from `old`
+/// to `new` adds on each side ([`strip_is_free`]).
+fn added_strips(old: (f64, f64, f64, f64), new: (f64, f64, f64, f64)) -> Vec<(f64, f64, f64, f64)> {
+    let (o0, o1, o2, o3) = (old.0, old.1, old.0 + old.2, old.1 + old.3);
+    let (n0, n1, n2, n3) = (new.0, new.1, new.0 + new.2, new.1 + new.3);
+    let mut out = Vec::new();
+    if n0 < o0 {
+        out.push((n0, n1, o0.min(n2), n3));
+    }
+    if n2 > o2 {
+        out.push((o2.max(n0), n1, n2, n3));
+    }
+    let (m0, m2) = (n0.max(o0), n2.min(o2));
+    if m0 < m2 {
+        if n1 < o1 {
+            out.push((m0, n1, m2, o1.min(n3)));
+        }
+        if n3 > o3 {
+            out.push((m0, o3.max(n1), m2, n3));
+        }
+    }
+    out
+}
+
 /// Whether the strip that grows frame `t` from `old` to `new` holds
 /// nothing foreign ([`embrace_own_edges`]): no node outside `t`, no
-/// frame that is neither inside `t` nor round it, no point of a line
-/// (`lines`, index-parallel with `sc.edges`) or label of an edge with no
-/// end inside `t`.
+/// frame that is neither inside `t` nor round it, no stretch of a line
+/// (`lines`, index-parallel with `sc.edges`; each segment, not only its
+/// points: a long straight run crosses the strip between two of them)
+/// or label of an edge with no end inside `t`; and no end of an edge on
+/// `t`'s own frame (a whole block's pin) that the strip would take in:
+/// the edge's head would be left inside the grown frame.
 #[allow(clippy::too_many_arguments)]
 fn strip_is_free(
     g: &Graph,
@@ -3667,6 +3695,15 @@ fn strip_is_free(
         a.0 < b.0 + b.2 && b.0 < a.0 + a.2 && a.1 < b.1 + b.3 && b.1 < a.1 + a.3
     };
     let added = |p: (f64, f64)| within(new, p) && !within(old, p);
+    let strips = added_strips(old, new);
+    let crosses_strip = |pts: &[(f64, f64)]| {
+        pts.iter().any(|&p| added(p))
+            || pts.windows(2).any(|s| {
+                strips
+                    .iter()
+                    .any(|&r| crate::layout::seg_hits_box(s[0], s[1], r))
+            })
+    };
     for (v, n) in sc.nodes.iter().enumerate() {
         let r = (n.x - n.w / 2.0, n.y - n.h / 2.0, n.w, n.h);
         if !nc[v].contains(&t) && meets(new, r) && !meets(old, r) {
@@ -3697,11 +3734,20 @@ fn strip_is_free(
             return false;
         }
     }
+    let own_id = &g.subgraphs[t].id;
     for (j, e) in sc.edges.iter().enumerate() {
         if end_in(j, t) {
+            // Its line belongs inside; only an end on this frame itself
+            // must stay on the border.
+            let pts = &lines[j];
+            let pinned =
+                |id: &String, p: Option<&(f64, f64)>| id == own_id && p.is_some_and(|&p| added(p));
+            if pinned(&e.from, pts.first()) || pinned(&e.to, pts.last()) {
+                return false;
+            }
             continue;
         }
-        if lines[j].iter().any(|&p| added(p)) {
+        if crosses_strip(&lines[j]) {
             return false;
         }
         if let Some((_, m, w)) = &e.label {
@@ -10355,6 +10401,56 @@ mod tests {
             );
         }
     }
+    #[test]
+    fn a_frame_grows_only_over_a_strip_nothing_foreign_crosses() {
+        // `embrace_own_edges`' test of the strip a frame would add: a
+        // foreign line counts by its segments (a long straight run
+        // crosses the strip between two of its points), and an edge to
+        // the whole block whose end sits on the side that moves keeps the
+        // frame where it is (its head would be left inside).
+        let src = "flowchart TD\nsubgraph S[S]\na --> b\nend\nc --> S\nd --> e";
+        let g = crate::parser::parse(src).unwrap();
+        let sc = scene(&g);
+        let nc = node_cluster_paths(&g);
+        let k = sc.clusters.iter().position(|c| c.id == "S").unwrap();
+        let c = &sc.clusters[k];
+        let old = (c.x, c.y, c.w, c.h);
+        // Two px more on the left: nothing of the drawing lies there.
+        let new = (c.x - 2.0, c.y, c.w + 2.0, c.h);
+        assert_eq!(
+            added_strips(old, new),
+            vec![(c.x - 2.0, c.y, c.x, c.y + c.h)]
+        );
+        let edge_of = |from: &str, to: &str| {
+            sc.edges
+                .iter()
+                .position(|e| e.from == from && e.to == to)
+                .unwrap_or_else(|| panic!("{from} -> {to}"))
+        };
+        let (own, pin, foreign) = (edge_of("a", "b"), edge_of("c", "S"), edge_of("d", "e"));
+        let end_in = |j: usize, _t: usize| j == own || j == pin;
+        let mid = c.y + c.h / 2.0;
+        let free =
+            |lines: &[Vec<(f64, f64)>]| strip_is_free(&g, &sc, &nc, lines, 0, old, new, &end_in);
+        let mut lines = vec![Vec::new(); sc.edges.len()];
+        assert!(free(&lines));
+        // A foreign run across the strip, its two points outside it.
+        lines[foreign] = vec![(c.x - 50.0, mid), (c.x + c.w + 50.0, mid)];
+        assert!(!free(&lines));
+        // The same run beside the strip.
+        lines[foreign] = vec![(c.x - 50.0, mid), (c.x - 10.0, mid)];
+        assert!(free(&lines));
+        // An edge to the whole block ending on the side that moves.
+        lines[pin] = vec![(c.x - 40.0, mid), (c.x, mid)];
+        assert!(!free(&lines));
+        // ... and on a side that stays.
+        lines[pin] = vec![(c.x + c.w / 2.0, c.y - 40.0), (c.x + c.w / 2.0, c.y)];
+        assert!(free(&lines));
+        // The block's own edge may lie in the strip.
+        lines[own] = vec![(c.x - 1.0, mid - 5.0), (c.x - 1.0, mid + 5.0)];
+        assert!(free(&lines));
+    }
+
     use crate::layout::{intrinsic_size, LINE_H};
     use crate::parser::parse;
 

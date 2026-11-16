@@ -5918,7 +5918,7 @@ fn node_hits(
 
 /// Does segment `p`-`q` pass through the open box `(x0, y0, x1, y1)`?
 /// (Liang-Barsky clipping.)
-fn seg_hits_box(p: (f64, f64), q: (f64, f64), r: (f64, f64, f64, f64)) -> bool {
+pub(crate) fn seg_hits_box(p: (f64, f64), q: (f64, f64), r: (f64, f64, f64, f64)) -> bool {
     let (dx, dy) = (q.0 - p.0, q.1 - p.1);
     let (mut t0, mut t1) = (0.0f64, 1.0f64);
     for (den, num) in [
