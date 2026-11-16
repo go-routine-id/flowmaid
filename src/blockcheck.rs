@@ -1646,6 +1646,27 @@ fn a_hubs_fan_keeps_its_order_through_the_bands() {
 }
 
 #[test]
+fn a_turned_step_keeps_off_the_runs_of_a_fan_it_crosses() {
+    // bench-75 as blocks: `svc3 -> metrics` turns up across the gap
+    // after the app zone to a channel point level with svc5, between the
+    // ports of `svc5 -> queue` and `svc5 -> objects`. Stepped first, its
+    // run on lay 5 px beside both their runs in for 110-150 px; the
+    // repair took those two off round svc5's corner and across the rest
+    // of its fan (fan crossings 8, the start's 6). Stepped after them it
+    // crosses as many legs and lies along none.
+    let g = fixture("quality/bench-75");
+    let sc = block_scene(&g);
+    let m = crate::quality::measure(&g, &sc);
+    assert!(m.fan_x <= 6, "{:#?}", fan_crossings(&g, &sc));
+    assert!(
+        fan_crossings(&g, &sc).iter().all(|d| !d.contains(" svc5 ")),
+        "{:#?}",
+        fan_crossings(&g, &sc)
+    );
+    assert_eq!(m.overlap_pairs, 0, "{:?}", m.details);
+}
+
+#[test]
 fn an_entry_under_a_title_chip_crosses_past_it_and_jogs_inside_the_frame() {
     // `m1`'s whole top side lies under its block's title chip. Drawn
     // into it straight, the entry ran through the chip, and the router

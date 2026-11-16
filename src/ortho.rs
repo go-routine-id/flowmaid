@@ -972,7 +972,7 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
         }
         plans.push((i, plan));
     }
-    place_tracks(&mut jogs, &kept);
+    place_tracks(&mut jogs, &kept, cx.blocks);
     uncross(&mut jogs, &kept_lines);
 
     for (i, plan) in plans {
@@ -2311,8 +2311,10 @@ pub(crate) fn channel_sizes(steps: &[(f64, f64)]) -> Vec<usize> {
 /// further out lies away from the turn, as [`crate::router`]'s nudge
 /// orders the legs of a channel — and spaced [`TRACK_PITCH`] apart (down
 /// to [`TRACK_PITCH_MIN`] in a shallow gap) as near their wanted places
-/// as the room they share allows.
-fn place_tracks(jogs: &mut [Jog], kept: &[(f64, (f64, f64))]) {
+/// as the room they share allows. In a block layout (`blocks`) the order
+/// also keeps a step's run on off the run in of the steps after it
+/// ([`part_runs`]).
+fn place_tracks(jogs: &mut [Jog], kept: &[(f64, (f64, f64))], blocks: bool) {
     let mut idx: Vec<usize> = (0..jogs.len()).collect();
     idx.sort_by(|&a, &b| {
         jogs[a]
@@ -2390,6 +2392,9 @@ fn place_tracks(jogs: &mut [Jog], kept: &[(f64, (f64, f64))]) {
         // crossed twice, the labelled fan's longest label ending its
         // step's room a track above the two before it).
         let mut order = ordered(jogs);
+        if blocks {
+            part_runs(&mut order, jogs);
+        }
         let holds = |order: &[usize], jogs: &[Jog]| {
             let mut last = f64::NEG_INFINITY;
             order.iter().all(|&k| {
@@ -2405,6 +2410,9 @@ fn place_tracks(jogs: &mut [Jog], kept: &[(f64, (f64, f64))]) {
                 j.at = j.want;
             }
             order = ordered(jogs);
+            if blocks {
+                part_runs(&mut order, jogs);
+            }
         }
         // The span the channel's tracks share: from the lowest room's
         // start to the highest room's end, each track then kept in its
@@ -2522,6 +2530,94 @@ fn place_tracks(jogs: &mut [Jog], kept: &[(f64, (f64, f64))]) {
         }
         if let Some(t) = found {
             jogs[k].at = t;
+        }
+    }
+}
+
+/// The pairs of a channel's steps, in `order` (by track), where the run
+/// on of the earlier lies along the run in of the later: their breadths
+/// within a track's pitch. Ordered the other way round the two runs
+/// share no stretch of the flow (the earlier step's run on starts past
+/// the later one's step). And the crossings among the steps' legs, with
+/// the tracks spread over the channel's rooms in that order.
+fn channel_cost(order: &[usize], jogs: &[Jog]) -> (usize, usize) {
+    let m = order.len();
+    let lo = order
+        .iter()
+        .map(|&k| jogs[k].room.0)
+        .fold(f64::INFINITY, f64::min);
+    let hi = order
+        .iter()
+        .map(|&k| jogs[k].room.1)
+        .fold(f64::NEG_INFINITY, f64::max);
+    let t = |r: usize| lo + (hi - lo) * (r as f64 + 0.5) / m as f64;
+    let step = |k: usize| (jogs[k].hi_at - jogs[k].lo_at).abs() >= EPS;
+    let (mut along, mut cross) = (0, 0);
+    for (r, &a) in order.iter().enumerate() {
+        for (s, &b) in order.iter().enumerate().skip(r + 1) {
+            if jogs[a].edge == jogs[b].edge {
+                continue;
+            }
+            if step(a) && step(b) && (jogs[a].hi_at - jogs[b].lo_at).abs() < TRACK_PITCH - EPS {
+                along += 1;
+            }
+            let (la, lb) = (jog_legs(&jogs[a], t(r)), jog_legs(&jogs[b], t(s)));
+            cross += la
+                .iter()
+                .map(|&(p, q)| lb.iter().filter(|&&(u, v)| segs_cross(p, q, u, v)).count())
+                .sum::<usize>();
+        }
+    }
+    (along, cross)
+}
+
+/// A block layout's channel in the order that keeps a step's run on off
+/// the run in of a later step ([`channel_cost`]): such a step goes right
+/// after the later one when that lays fewer runs along each other and
+/// crosses no more legs. The key of [`place_tracks`] orders by where
+/// each step turns; a step turning back across the channel whose run on
+/// ends within a pitch of where another step's run in comes from was
+/// placed first and ran along that run to its node (bench-75 as blocks:
+/// the turned-up `svc3 -> metrics` 5 px from `svc5 -> queue` and `svc5
+/// -> objects` over 110-150 px), and the router took the two off it
+/// round svc5's corner, across their fan.
+fn part_runs(order: &mut Vec<usize>, jogs: &[Jog]) {
+    let m = order.len();
+    if m < 2 {
+        return;
+    }
+    let mut now = channel_cost(order, jogs);
+    // Each kept move lowers the runs laid along each other: it ends.
+    while now.0 > 0 {
+        let mut kept = false;
+        'pairs: for r in 0..m {
+            for s in r + 1..m {
+                let (a, b) = (order[r], order[s]);
+                let along = (jogs[a].hi_at - jogs[b].lo_at).abs() < TRACK_PITCH - EPS;
+                if !along || jogs[a].edge == jogs[b].edge {
+                    continue;
+                }
+                // The earlier step right after the later one, or the
+                // later one right before it.
+                for later in [false, true] {
+                    let mut next = order.clone();
+                    if later {
+                        let k = next.remove(s);
+                        next.insert(r, k);
+                    } else {
+                        let k = next.remove(r);
+                        next.insert(s, k);
+                    }
+                    let cost = channel_cost(&next, jogs);
+                    if cost.0 < now.0 && cost.1 <= now.1 + (now.0 - cost.0) {
+                        (*order, now, kept) = (next, cost, true);
+                        break 'pairs;
+                    }
+                }
+            }
+        }
+        if !kept {
+            break;
         }
     }
 }
@@ -2977,7 +3073,7 @@ mod tests {
             .enumerate()
             .map(|(k, &(a, b))| jog(k, 0, a, b, (0.0, 200.0), 100.0))
             .collect();
-        place_tracks(&mut jogs, &[]);
+        place_tracks(&mut jogs, &[], false);
         let mut at: Vec<f64> = jogs.iter().map(|j| j.at).collect();
         at.sort_by(f64::total_cmp);
         assert!(
@@ -2995,6 +3091,50 @@ mod tests {
     }
 
     #[test]
+    fn a_turned_step_keeps_its_run_on_off_a_later_steps_run_in() {
+        // Two steps of a node's fan go down from ports at 180 and 190; a
+        // step from below turns up to end at 185, between them. Ordered
+        // by where they turn, the turned step comes first and its run on
+        // lies 5 px from both runs in, all the way to their steps. In a
+        // block layout it goes after them: as many crossings, and no run
+        // along another.
+        let fresh = || {
+            vec![
+                jog(0, 0, 190.0, 415.0, (0.0, 300.0), 150.0),
+                jog(1, 0, 180.0, 292.0, (0.0, 300.0), 150.0),
+                jog(2, 0, 388.0, 185.0, (0.0, 300.0), 150.0),
+            ]
+        };
+        let along = |jogs: &[Jog]| {
+            let mut n = 0;
+            for a in jogs {
+                for b in jogs {
+                    let near = (a.hi_at - b.lo_at).abs() < TRACK_PITCH;
+                    n += usize::from(a.edge != b.edge && near && a.at < b.at);
+                }
+            }
+            n
+        };
+        let mut before = fresh();
+        place_tracks(&mut before, &[], false);
+        assert_eq!(along(&before), 2, "the key alone");
+        let mut jogs = fresh();
+        place_tracks(&mut jogs, &[], true);
+        assert_eq!(along(&jogs), 0);
+        assert!(jogs[2].at > jogs[0].at && jogs[2].at > jogs[1].at);
+        let order: Vec<usize> = (0..3).collect();
+        let by_at = |jogs: &[Jog]| {
+            let mut o = order.clone();
+            o.sort_by(|&a, &b| jogs[a].at.total_cmp(&jogs[b].at));
+            o
+        };
+        assert!(
+            channel_cost(&by_at(&jogs), &jogs).1 <= channel_cost(&by_at(&before), &before).1,
+            "no more crossings"
+        );
+    }
+
+    #[test]
     fn a_channels_tracks_keep_a_pitch_apart_and_never_cross() {
         // Two steps turning the same way across one gap, one starting
         // further out: libavoid's order puts the one turning further out
@@ -3003,7 +3143,7 @@ mod tests {
             jog(0, 0, 0.0, 100.0, (30.0, 70.0), 50.0),
             jog(1, 0, 20.0, 120.0, (30.0, 70.0), 50.0),
         ];
-        place_tracks(&mut jogs, &[]);
+        place_tracks(&mut jogs, &[], false);
         for (i, a) in jogs.iter().enumerate() {
             assert!(
                 a.at >= a.room.0 - EPS && a.at <= a.room.1 + EPS,
@@ -3027,18 +3167,18 @@ mod tests {
             jog(0, 0, 0.0, 100.0, (30.0, 70.0), 50.0),
             jog(1, 0, 140.0, 40.0, (30.0, 70.0), 50.0),
         ];
-        place_tracks(&mut facing, &[]);
+        place_tracks(&mut facing, &[], false);
         assert!((facing[0].at - facing[1].at).abs() >= TRACK_PITCH_MIN - EPS);
         // A step in another gap is its own channel.
         let mut alone = vec![
             jog(0, 0, 0.0, 100.0, (30.0, 70.0), 50.0),
             jog(1, 1, 20.0, 120.0, (30.0, 70.0), 50.0),
         ];
-        place_tracks(&mut alone, &[]);
+        place_tracks(&mut alone, &[], false);
         assert_eq!((alone[0].at, alone[1].at), (50.0, 50.0));
         // Off a kept step a pitch away where its room allows.
         let mut off = vec![jog(0, 0, 0.0, 100.0, (30.0, 70.0), 50.0)];
-        place_tracks(&mut off, &[(50.0, (10.0, 90.0))]);
+        place_tracks(&mut off, &[(50.0, (10.0, 90.0))], false);
         assert!(
             (off[0].at - 50.0).abs() >= TRACK_PITCH - EPS,
             "{}",
@@ -3068,7 +3208,7 @@ mod tests {
             above(1, 383.0, 240.0, (105.0, 167.0)),
             above(2, 396.0, 346.0, (99.6, 108.8)),
         ];
-        place_tracks(&mut jogs, &[]);
+        place_tracks(&mut jogs, &[], false);
         for (i, a) in jogs.iter().enumerate() {
             assert!(!a.above_label, "{i}");
             assert!(a.at >= 105.0 - EPS && a.at <= 167.0 + EPS, "{i}: {}", a.at);
@@ -3089,7 +3229,7 @@ mod tests {
             above(0, 371.0, 110.0, (105.0, 145.0)),
             above(1, 383.0, 240.0, (105.0, 167.0)),
         ];
-        place_tracks(&mut fits, &[]);
+        place_tracks(&mut fits, &[], false);
         assert!(fits.iter().all(|j| j.above_label));
     }
 
