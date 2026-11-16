@@ -3577,11 +3577,22 @@ fn is_class_name_char(c: char) -> bool {
     c.is_alphanumeric() || c == '_' || c == '-'
 }
 
+/// A bare class name: runs of [`is_class_name_char`] joined by single
+/// dots, as mermaid's grammar joins them (`com.example.Order`, `A.B`).
+/// The dots are part of the name — `A.B` is one class called `A.B`, in
+/// no way tied to a class `B` or a `namespace A` — and never start or
+/// end it: `A.`, `.A` and `A..B` (the dotted line between `A` and `B`)
+/// are no names, as in mermaid.
+fn is_bare_class_name(id: &str) -> bool {
+    id.split('.')
+        .all(|part| !part.is_empty() && part.chars().all(is_class_name_char))
+}
+
 /// A class name as written, split into (id, generic): a bare name
-/// (`Animal-Name`, see [`is_class_name_char`]) or a backtick literal
-/// whose text is the id, backticks stripped as mermaid strips them
-/// (`` `Foo Bar` `` is the class `Foo Bar`, `` `Foo` `` is `Foo`),
-/// either one optionally generic (`Box~T~`, `` `Foo Bar`~T~ ``).
+/// (`Animal-Name`, `shop.Order`, see [`is_bare_class_name`]) or a
+/// backtick literal whose text is the id, backticks stripped as mermaid
+/// strips them (`` `Foo Bar` `` is the class `Foo Bar`, `` `Foo` `` is
+/// `Foo`), either one optionally generic (`Box~T~`, `` `Foo Bar`~T~ ``).
 /// `None` when it is neither.
 fn class_name(raw: &str) -> Option<(&str, Option<&str>)> {
     let raw = raw.trim();
@@ -3599,7 +3610,7 @@ fn class_name(raw: &str) -> Option<(&str, Option<&str>)> {
         return (!id.is_empty()).then_some((id, generic));
     }
     let (id, generic) = split_generic(raw);
-    (!id.is_empty() && id.chars().all(is_class_name_char)).then_some((id, generic))
+    is_bare_class_name(id).then_some((id, generic))
 }
 
 /// `Box~T~` → (`Box`, `Some("T")`): mermaid's generic class name. The
@@ -3736,9 +3747,17 @@ struct ClassOp {
 /// `o` is a valid identifier char, so an `o--` / `--o` marker only
 /// counts at an operand boundary — never inside a name like `Foo` or
 /// `my_o`. A hyphen is a boundary: mermaid reads `A-o--B` as `A-`
-/// aggregating `B`.
+/// aggregating `B`. A dot is not: it joins the parts of a dotted name
+/// ([`is_bare_class_name`]), which never starts or ends on one, so
+/// `pkg.o--B` links the class `pkg.o` and `A--o.pkg` the class `o.pkg`
+/// (mermaid's lexer takes either `o` for a glyph and gives up on the
+/// line).
+///
+/// A dotted name's single dots are no operator either: only `..` is a
+/// line, so `A.B..>C` is `A.B` depending on `C`.
 fn find_class_op(rel: &str) -> Option<ClassOp> {
     let word = |c: char| c.is_alphanumeric() || c == '_';
+    let glued = |c: char| word(c) || c == '.';
     let line_at = |j: usize| match rel.get(j..j + 2) {
         Some("--") => Some(false),
         Some("..") => Some(true),
@@ -3760,7 +3779,7 @@ fn find_class_op(rel: &str) -> Option<ClassOp> {
             None => {
                 let left = CLASS_LEFT_ENDS.iter().find(|&&(g, _)| {
                     rel[i..].starts_with(g)
-                        && (g != "o" || !prev.is_some_and(word))
+                        && (g != "o" || !prev.is_some_and(glued))
                         && line_at(i + g.len()).is_some()
                 });
                 let (left, at) = match left {
@@ -3769,10 +3788,12 @@ fn find_class_op(rel: &str) -> Option<ClassOp> {
                 };
                 if let Some(dashed) = line_at(at) {
                     let after = at + 2;
-                    // `A--oC` is a link to `oC`, as in mermaid.
+                    // `A--oC` is a link to `oC`, as in mermaid, and
+                    // `A--o.C` one to `o.C`: no name starts on a dot,
+                    // so that `o` is the first part of a dotted name.
                     let right = CLASS_RIGHT_ENDS.iter().find(|&&(g, _)| {
                         rel[after..].starts_with(g)
-                            && (g != "o" || !rel[after + 1..].starts_with(word))
+                            && (g != "o" || !rel[after + 1..].starts_with(glued))
                     });
                     return Some(ClassOp {
                         pos: i,

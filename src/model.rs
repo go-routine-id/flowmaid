@@ -303,7 +303,7 @@ impl NodeStyle {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Node {
     pub id: String,
     pub label: String,
@@ -314,7 +314,7 @@ pub struct Node {
 
 /// A node-to-node edge. `#[non_exhaustive]`: build one with
 /// [`Graph::add_edge`] / [`Graph::add_edge_with_ends`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub struct Edge {
     pub from: usize,
@@ -336,7 +336,7 @@ pub struct Edge {
 /// A `subgraph ... end` block: a titled cluster of nodes, possibly
 /// nested. Membership is by node index; nested members belong to
 /// the child, not the parent (walk `parent` links for the chain).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Subgraph {
     pub id: String,
     /// Display title; `<br/>` in the source becomes `\n` (drawn as
@@ -362,7 +362,7 @@ pub enum End {
 /// (`CF --> VPC`). Kept apart from [`Edge`] so the flat node→node
 /// path stays untouched; consumed only by the clustered scene.
 /// `#[non_exhaustive]`: the parser builds these; read their fields.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub struct SubEdge {
     pub from: End,
@@ -375,8 +375,10 @@ pub struct SubEdge {
     pub meta: EdgeMeta,
 }
 
-/// Parsed graph, ready for layout.
-#[derive(Debug, Clone, Default)]
+/// Parsed graph, ready for layout. Two graphs are equal when every
+/// field is — the same nodes, edges and subgraphs in the same order
+/// with the same settings — so equal graphs draw the same.
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Graph {
     pub direction: Direction,
     pub nodes: Vec<Node>,

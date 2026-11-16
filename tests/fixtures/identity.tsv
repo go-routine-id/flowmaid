@@ -1,5 +1,5 @@
 # Rendering identity (src/identity.rs): file, FNV-1a hash of its SVG, of route() at the scene's centres, of a route_partial() drag frame; then how the block layout sees it (blocks / unlinked / flat / -).
-# Recorded on the commit before the block layout of subgraphs was begun; re-record with FLOWMAID_RECORD_IDENTITY=1 cargo test --lib identity.
+# Recorded on the commit before the block layout of subgraphs was begun, and again from the build of the dev branch last merged in (it has no block layout); re-record with FLOWMAID_RECORD_IDENTITY=1 cargo test --lib identity.
 examples/advance_swimlane.mmd	43779caff4549e82	-	-	-
 examples/advance_terminals.mmd	cede7de991c89dee	-	-	-
 examples/advanced.mmd	bc5b0e08917ed100	3829c960a174fd1e	82a88652a186e921	blocks

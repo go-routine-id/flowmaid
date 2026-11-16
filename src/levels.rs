@@ -233,7 +233,7 @@ impl Augmented {
 /// [`Augmented::block_mode`]): the degenerate own-box pairs
 /// ([`Augmented::flagged`]), which are no links there — left out of
 /// ranking and ordering, no channel, no label slot.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct BlockLinks {
     /// Per edge of the augmented graph (missing = no): a flagged
     /// stand-in.

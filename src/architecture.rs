@@ -205,6 +205,12 @@ pub struct ArchScene {
     /// empty label), group frames, and one edge per
     /// `Architecture::edges` entry in order. An edge's `waypoints` are
     /// its routed, corner-rounded path, densely sampled at the corners.
+    ///
+    /// Pick on this scene as built, cloned or edited in place: it is
+    /// marked as stroked plain, the way [`to_svg`] here paints it. A
+    /// scene rebuilt from [`Scene::empty`] loses the mark and is picked
+    /// as the flowchart painter would draw it, with a hop where a level
+    /// edge crosses a plumb one.
     pub scene: Scene,
     /// Optional icon glyph for each service node, index-parallel with `scene.nodes`.
     pub icons: Vec<Option<String>>,
@@ -546,6 +552,8 @@ fn build(d: &Architecture) -> (ArchScene, Vec<Vec<Pt>>) {
             clusters,
             width,
             height,
+            // `to_svg` here strokes each edge as a plain polyline.
+            plain_crossings: true,
         },
         icons,
         arrow_starts,
@@ -4164,6 +4172,97 @@ mod tests {
             let (x, y) = (cx - r * d, cy - r * d);
             assert_eq!(sc.node_at(x, y).is_some(), picked, "{r}");
         }
+    }
+
+    /// An architecture drawing is stroked plain by its own painter
+    /// (`to_svg` here), so its scene takes no hops: where a level edge
+    /// crosses a plumb one, a pick follows the two straight strokes and
+    /// finds nothing on the arc a flowchart's hop would draw there.
+    #[test]
+    fn a_crossing_in_an_architecture_scene_is_picked_plain() {
+        let mut sc = scene(&arch(CORPUS)).scene;
+        assert!(sc.plain_crossings);
+        // Two straight strokes crossing in the open, as the router draws
+        // a row and a column of services joined across an empty cell.
+        let (cx, cy) = (sc.width + 200.0, sc.height + 200.0);
+        sc.edges[0].waypoints = vec![(cx - 100.0, cy), (cx + 100.0, cy)];
+        sc.edges[1].waypoints = vec![(cx, cy - 100.0), (cx, cy + 100.0)];
+        assert!(crate::hops::find(&sc).iter().all(Vec::is_empty));
+        // On the arc of the hop a flowchart would draw there (its radius
+        // out, at 45 degrees): no stroke of this drawing.
+        let k = crate::hops::HOP_R * std::f64::consts::FRAC_1_SQRT_2;
+        assert_eq!(sc.edge_at(cx + k, cy - k, 0.4), None);
+        // The strokes themselves pick where they are painted.
+        assert_eq!(sc.edge_at(cx + 30.0, cy, 0.4), Some(0));
+        assert_eq!(sc.edge_at(cx, cy + 30.0, 0.4), Some(1));
+        // The same two strokes in a scene the flowchart painter draws
+        // do hop, and the pick follows the hop.
+        sc.plain_crossings = false;
+        assert_eq!(
+            crate::hops::find(&sc).iter().map(Vec::len).sum::<usize>(),
+            1
+        );
+        assert_eq!(sc.edge_at(cx + k, cy - k, 0.4), Some(0));
+    }
+
+    /// The same on a drawing the router really makes: a row and a column
+    /// of services joined across an empty cell, `l -- r` level and
+    /// `t -- b` plumb, each one straight stroke. A point pick and a
+    /// marquee both follow the plain strokes.
+    #[test]
+    fn a_routed_architecture_crossing_is_picked_plain() {
+        let src = "architecture-beta
+            service x(server)[X]
+            service a1(server)[A1]
+            service a2(server)[A2]
+            service c1(server)[C1]
+            service c2(server)[C2]
+            service l(server)[L]
+            service r(server)[R]
+            service t(server)[T]
+            service b(server)[B]
+            x:L -- R:a1
+            a1:B -- T:a2
+            a2:B -- T:l
+            x:R -- L:c1
+            c1:B -- T:c2
+            c2:B -- T:r
+            l:B -- L:b
+            r:T -- R:t
+            l:R -- L:r
+            t:B -- T:b";
+        let mut sc = scene(&arch(src)).scene;
+        let straight = |from: &str, to: &str| {
+            let (i, e) = sc
+                .edges
+                .iter()
+                .enumerate()
+                .find(|(_, e)| e.from == from && e.to == to)
+                .unwrap();
+            assert_eq!(e.waypoints.len(), 2, "{from} -- {to}: {:?}", e.waypoints);
+            (i, e.waypoints[0], e.waypoints[1])
+        };
+        let (level, a, b) = straight("l", "r");
+        let (plumb, c, d) = straight("t", "b");
+        assert!((a.1 - b.1).abs() < 1e-9 && (c.0 - d.0).abs() < 1e-9);
+        // They cross in the open, well clear of both strokes' ends.
+        let (cx, cy) = (c.0, a.1);
+        assert!(a.0.min(b.0) + 20.0 < cx && cx < a.0.max(b.0) - 20.0);
+        assert!(c.1.min(d.1) + 20.0 < cy && cy < c.1.max(d.1) - 20.0);
+        // A point on the arc a flowchart's hop would draw there.
+        let k = crate::hops::HOP_R * std::f64::consts::FRAC_1_SQRT_2;
+        let (px, py) = (cx + k, cy - k);
+        let marquee = |sc: &Scene| sc.hits_in_rect(px - 0.3, py - 0.3, px + 0.3, py + 0.3);
+        assert!(crate::hops::find(&sc).iter().all(Vec::is_empty));
+        assert_eq!(sc.edge_at(px, py, 0.4), None);
+        assert!(marquee(&sc).is_empty(), "{:?}", marquee(&sc));
+        // On the crossing the stroke drawn later lies on top.
+        assert_eq!(sc.edge_at(cx, cy, 0.0), Some(level.max(plumb)));
+        // Were this the flowchart painter's scene, the level stroke would
+        // hop here and both picks follow it.
+        sc.plain_crossings = false;
+        assert_eq!(sc.edge_at(px, py, 0.4), Some(level));
+        assert_eq!(marquee(&sc), vec![crate::scene::Hit::Edge(level)]);
     }
 
     #[test]

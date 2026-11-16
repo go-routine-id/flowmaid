@@ -11,6 +11,9 @@
 //! before the block layout of subgraphs was begun, and the test below
 //! holds every output to it while that layout sits behind its switch:
 //! with the switch off, nothing a user can draw changes by a byte.
+//! When the `dev` branch is merged in, the table is recorded again from
+//! a build of `dev` itself (which has no block layout), never from the
+//! merged tree.
 //!
 //! The last column says how the block layout sees the file: `blocks`
 //! (a link crosses a subgraph's border: it will be laid out as blocks),

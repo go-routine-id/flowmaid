@@ -216,7 +216,8 @@ fn corners_of(e: &SceneEdge) -> Option<(Vec<Pt>, [bool; 2])> {
 /// The legs of `sc` that take part in hops ([`Legs`]); none in a
 /// drawing past the casing's cap
 /// ([`crate::casing::CASING_MAX_EDGES`]), which draws its crossings
-/// plain.
+/// plain, and none in a scene a painter of its own strokes plain
+/// (`Scene::plain_crossings`: architecture, gitGraph).
 pub(crate) fn legs(sc: &Scene) -> Legs {
     let mut out = legs_for_pick(sc);
     let by_line = |a: &Leg, b: &Leg| {
@@ -244,7 +245,7 @@ pub(crate) fn legs_for_pick(sc: &Scene) -> Legs {
         walls: Vec::new(),
         strays: Vec::new(),
     };
-    if sc.edges.len() > crate::casing::CASING_MAX_EDGES {
+    if sc.plain_crossings || sc.edges.len() > crate::casing::CASING_MAX_EDGES {
         return out;
     }
     // The drawn edges that give no legs, and the tilted end legs of
