@@ -822,6 +822,60 @@ fn a_turned_edge_of_a_whole_block_runs_up_its_channel_too() {
 }
 
 #[test]
+fn the_steps_of_a_whole_blocks_turned_edges_stay_in_their_gap() {
+    // blocks/turned-blocks: three stacked blocks, the last of which
+    // sends two edges back up (to the first block and to the node above
+    // it) while one of its members sends a third. An edge of a whole
+    // block ends on a pin within its frame's side; its channel runs
+    // beside the broader block between, so it steps across from the pin
+    // in the gap between the two frames. That step takes a track of the
+    // gap (`layout::place`, the tracks of a cut end): the frames stand
+    // far enough apart for it, and the DRAWN edge stays out of the block
+    // between. (Without the room the two frames stood a frame gap
+    // apart, and both edges took their step a few px inside the border
+    // of the block above, which holds neither end.)
+    let root = env!("CARGO_MANIFEST_DIR");
+    let src = std::fs::read_to_string(format!("{root}/tests/fixtures/blocks/turned-blocks.mmd"))
+        .expect("the fixture");
+    for dir in ["TD", "BT", "LR", "RL"] {
+        let g = graph(&src.replace("flowchart TD", &format!("flowchart {dir}")));
+        let sc = block_scene(&g);
+        let (work, ship) = (frame_box(&sc, "WORK"), frame_box(&sc, "SHIP"));
+        for to in ["INTAKE", "start"] {
+            let path = path_of(edge(&sc, "SHIP", to));
+            assert_eq!(
+                side_of(dir, ship, path[0]),
+                'u',
+                "{dir} SHIP -> {to}: {path:?}"
+            );
+            assert!(
+                !runs_through(&path, work),
+                "{dir}: SHIP -> {to} runs inside the block between: {path:?}"
+            );
+            assert!(
+                !runs_through(&path[1..], ship),
+                "{dir}: SHIP -> {to} runs back into its own block: {path:?}"
+            );
+        }
+        // The gap between the two frames holds a step's track.
+        let room = match dir {
+            "TD" => ship.1 - work.3,
+            "BT" => work.1 - ship.3,
+            "LR" => ship.0 - work.2,
+            _ => work.0 - ship.2,
+        };
+        assert!(
+            room >= crate::ortho::ROW_CLEAR + crate::ortho::TRACK_PITCH,
+            "{dir}: frames {room} px apart"
+        );
+    }
+    let rep = crate::levels::with_blocks(true, || crate::quality::measure_source(&src, false))
+        .expect("a flowchart");
+    assert!(rep.block_mode);
+    assert_eq!(rep.statik.edge_frame_pairs, 0, "{:?}", rep.statik.details);
+}
+
+#[test]
 fn a_turned_edge_one_layer_up_is_a_z_not_a_lane() {
     // A three-block cycle whose closing edge runs one layer up: it
     // crosses the gap between its two rows, no lane round the blocks.

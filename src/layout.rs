@@ -5166,12 +5166,34 @@ fn place(
         let mut need = vec![0.0f64; nlayers];
         if g.edge_paint_width.is_none() && g.drawn_edge_count() <= crate::router::ROUTE_MAX_EDGES {
             let mut spans: Vec<Vec<(f64, f64)>> = vec![Vec::new(); nlayers];
+            // A block's members across the flow: the stretch of its frame
+            // side a pin may stand on (see below).
+            let mut member_ext: BTreeMap<usize, (f64, f64)> = BTreeMap::new();
+            let mut pin_at = |c: usize, b: f64| -> f64 {
+                let (lo, hi) = *member_ext.entry(c).or_insert_with(|| {
+                    (0..n).filter(|&v| apath[v].contains(&c)).fold(
+                        (f64::INFINITY, f64::NEG_INFINITY),
+                        |(lo, hi), v| {
+                            (
+                                lo.min(bpos[v] - absize[v] / 2.0),
+                                hi.max(bpos[v] + absize[v] / 2.0),
+                            )
+                        },
+                    )
+                });
+                if lo <= hi {
+                    b.max(lo).min(hi)
+                } else {
+                    b
+                }
+            };
             for (ei, e) in g.edges.iter().enumerate() {
                 if e.from == e.to || matches!(e.kind, EdgeKind::Invisible) {
                     continue;
                 }
                 let chain = &edge_chain[ei];
-                let path: Vec<usize> = if alayer[e.from] <= alayer[e.to] {
+                let up = alayer[e.from] > alayer[e.to];
+                let path: Vec<usize> = if !up {
                     std::iter::once(e.from)
                         .chain(chain.iter().copied())
                         .chain(std::iter::once(e.to))
@@ -5182,12 +5204,52 @@ fn place(
                         .chain(std::iter::once(e.from))
                         .collect()
                 };
+                // In a block layout an edge to or from a whole block is cut
+                // back to that block's frame (`Graph::frame_cut`), and its
+                // end there is a pin on the frame side it crosses, never
+                // past the block's members (`scene::cut_to_frames`). A
+                // channel that runs beside a broader block next door lies
+                // past them, so the edge steps across between its pin and
+                // its channel in the gap at that border: a step the chain
+                // does not show (inside the block it runs on under its
+                // channel, undrawn). It takes a track of that gap like any
+                // other. Without one, two stacked blocks stood a frame gap
+                // apart with the steps of the lower block's two turned
+                // edges between them, and both were drawn inside the upper
+                // block's border (blocks/turned-blocks: `Shipping` under
+                // `Work area`, a block that holds neither end of them).
+                // Per end of the path: the cut block's layers and the gap
+                // (its lower layer) the pin's step lies in.
+                let cut_gap: [Option<(usize, usize)>; 2] = if block_paths.is_some() {
+                    let cut = g.frame_cut.get(ei).copied().unwrap_or([None, None]);
+                    let (first, last) = if up {
+                        (cut[1], cut[0])
+                    } else {
+                        (cut[0], cut[1])
+                    };
+                    [
+                        first.and_then(|c| cluster_span.get(&c).map(|s| (c, s.1 + 1))),
+                        last.and_then(|c| cluster_span.get(&c).map(|s| (c, s.0))),
+                    ]
+                } else {
+                    [None, None]
+                };
                 for w in path.windows(2) {
                     let (a, b) = (w[0], w[1]);
-                    if alayer[b] != alayer[a] + 1 || (bpos[a] - bpos[b]).abs() <= 1.0 {
+                    if alayer[b] != alayer[a] + 1 {
                         continue;
                     }
-                    spans[alayer[b]].push((bpos[a].min(bpos[b]), bpos[a].max(bpos[b])));
+                    // (The pair across a cut block's border: its step runs
+                    // from the pin, not from the undrawn run inside.)
+                    let (pa, pb) = match cut_gap {
+                        [Some((c, gap)), _] if gap == alayer[b] => (pin_at(c, bpos[b]), bpos[b]),
+                        [_, Some((c, gap))] if gap == alayer[b] => (bpos[a], pin_at(c, bpos[a])),
+                        _ => (bpos[a], bpos[b]),
+                    };
+                    if (pa - pb).abs() <= 1.0 {
+                        continue;
+                    }
+                    spans[alayer[b]].push((pa.min(pb), pa.max(pb)));
                 }
             }
             for (li, sp) in spans.iter_mut().enumerate() {

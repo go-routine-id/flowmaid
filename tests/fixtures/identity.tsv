@@ -86,6 +86,7 @@ tests/fixtures/blocks/t9b-frames-8px-lr.mmd	c5716bb6b86b621c	419c935c2bfcc37	61d
 tests/fixtures/blocks/t9c-frames-8px-two-way.mmd	a1e15d267510e536	12c91ee9c9d1030c	76f26f2111fce152	blocks
 tests/fixtures/blocks/title-entry.mmd	4874310285f9504b	c58b81fd8b78739c	a16ed42d710fc0a9	blocks
 tests/fixtures/blocks/title-hidden.mmd	20aefe8c0bde2ce4	9ea4bf5676932ea5	f3eec23a1ce597ec	blocks
+tests/fixtures/blocks/turned-blocks.mmd	d77f14477ba8afc7	72633b6838ba71ae	7c4fa37bb36654b9	blocks
 tests/fixtures/blocks/wide-stroke.mmd	a8d6f148856157f2	79f6ebc7540e57b6	b9e1b7ce9facc3e5	blocks
 tests/fixtures/fans/fan011.mmd	5ae7819cbc5bcc15	bd7a95193261abbf	6a5b6b0462bd1379	flat
 tests/fixtures/fans/fan020.mmd	cce47bc38add99be	aa621f510c5db469	18a6460ac1d22373	flat

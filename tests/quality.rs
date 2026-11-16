@@ -251,6 +251,7 @@ const BLOCK_CEILINGS: &[(&str, BlockCeil, BlockCeil)] = &[
     ),
     ("blocks/title-entry", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
     ("blocks/title-hidden", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/turned-blocks", (0, 0, 0, 6, 0), (0, 0, 0, 7, 0)),
     ("blocks/wide-stroke", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
 ];
 
