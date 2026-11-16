@@ -199,6 +199,26 @@ Date 2026-11-10. Written for an implementer who has seen none of the design work
      `b12a2-geometry` builds, the package stops as the protocol says, and the lead takes the question to the user with
      the numbers (whether those rows are judged at A2 instead). The fix rounds do not decide this themselves.
 
+- **User decision after the stop of 2026-11-16 (lead, ~12:00 UTC): "Tahan di langkah 1".** Asked whether to go on
+  to b12a2 and judge the open rows at A2/C, the user chose to hold step 1 until the fan crossings are fixed. A new
+  run of this package starts from the branch as it stands (no new baseline: `pre` stays `3abbfeb`). For it:
+  1. **Pull forward, in their smallest correct form, with tests:** the track packing of a gap (2.6 G2, B12.9), the
+     spill order and corner legs of an over-full side (2.8, B12.11), title-clear entries with their jog room (2.8
+     rule 2, the part of F2 they need, B12.11), and the X2.5 column of an inner run beside a title chip (B12.8). Name
+     in the report exactly what `b12a2-geometry` then no longer builds.
+  2. **Targets (all of A1's gate, nothing loosened):** `fan_x` 0 on the analog family and the public fixture, and
+     not above the start's own on every repository fixture (dense-td <= 1, bench-75 <= 6); `nested-chain`
+     `lateral_x` 0; `notes/nested-composite`'s choice without a shared corner; every crossing must and
+     `xframe_runs` 0 kept. The note-link and own-box cases stay under lead note 6 (judged at C, shown per fixture).
+  3. **The sweep's `frame_side` cases:** 20 of the 21 are already in the start's own layout. Blocks must add none.
+     If the pulled-forward title-clear entries do not clear the pre-existing ones, report them separately; the lead
+     takes that one question (B12.6 asks 0 on every file, which blocks alone may not reach) to the user.
+  4. **dense-td's fan cause** was shown only in part (7 fan crossings after the ortho stage; 9 to 21 under the six
+     edge-line shuffles): measure stage by stage before building, and keep the six shuffles inside the crossing must.
+  5. **Commit messages:** no name or number of the local acceptance family (D5), only the public fixture and the
+     repository fixtures. The two older messages that broke it (f1879b1, 32a3ebf) are handled at the merge: the
+     package goes to `dev` as one squashed commit with a clean message, so no history is rewritten.
+
 ## 1. Goal, the user's words, before and after, what must not change
 
 ### 1.1 Goal
