@@ -1377,6 +1377,11 @@ pub(crate) fn sweep() -> Vec<(String, String)> {
     out
 }
 
+/// The most generated diagrams of the sweep on which a block layout
+/// draws hard zeros the layout before blocks did not (a ratchet: down
+/// only, to 0 with the own-box edges and the title-clear entries).
+const SWEEP_ADDED_MAX: usize = 9;
+
 #[test]
 fn a_generated_sweep_keeps_the_block_invariants() {
     // The constants the sweep pins.
@@ -1439,6 +1444,24 @@ fn a_generated_sweep_keeps_the_block_invariants() {
         hard.iter().map(|h| h.1).sum::<usize>(),
         hard.iter().map(|h| h.2).sum::<usize>(),
     );
+    // Hard zeros are not 0 on every generated diagram yet (own-box
+    // edges, note links and entries under a title chip are drawn by
+    // the rules from before blocks until their items are built). What
+    // holds, and is held here: over the sweep a block layout draws
+    // fewer of them than the layout before blocks, on fewer diagrams,
+    // and it adds some to few diagrams (lowered only).
+    let added: Vec<&(String, usize, usize)> = hard.iter().filter(|h| h.2 > h.1).collect();
+    println!(
+        "blocks add hard zeros on {} diagrams: {added:?}",
+        added.len()
+    );
+    let (was, now): (usize, usize) = hard.iter().fold((0, 0), |a, h| (a.0 + h.1, a.1 + h.2));
+    assert!(now * 2 <= was, "hard zeros as blocks {now}, before {was}");
+    assert!(
+        hard.iter().filter(|h| h.2 > 0).count() < hard.iter().filter(|h| h.1 > 0).count(),
+        "{hard:?}"
+    );
+    assert!(added.len() <= SWEEP_ADDED_MAX, "{added:?}");
     assert!(blocks >= 120, "{blocks}");
     // The isolated ones are never laid out as blocks.
     for seed in 0..40u64 {
