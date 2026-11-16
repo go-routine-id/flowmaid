@@ -51,15 +51,26 @@ pub(crate) fn blocks_on() -> bool {
 }
 
 /// Run `f` with the switch set to `on` on this thread, and put the
-/// former value back afterwards, also when `f` unwinds.
+/// former value back afterwards, also when `f` unwinds. A change of the
+/// switch either way forgets the block frames the compound layout keeps
+/// on this thread ([`crate::compound::forget_laid`]): they were laid out
+/// under the former value.
 pub(crate) fn with_blocks<T>(on: bool, f: impl FnOnce() -> T) -> T {
     struct Reset(Option<bool>);
     impl Drop for Reset {
         fn drop(&mut self) {
+            let was = blocks_on();
             OVERRIDE.with(|c| c.set(self.0));
+            if blocks_on() != was {
+                crate::compound::forget_laid();
+            }
         }
     }
+    let was = blocks_on();
     let _reset = Reset(OVERRIDE.with(|c| c.replace(Some(on))));
+    if on != was {
+        crate::compound::forget_laid();
+    }
     f()
 }
 
