@@ -704,7 +704,7 @@ fn a_long_edge_of_a_block_layout_runs_in_a_channel() {
         let sizes = crate::layout::node_sizes(&g);
         let (lo, _, paths) =
             crate::layout::layout_clustered_ranked(&ga, &sizes, &aug.node_cluster, &rank_only);
-        let paths = paths.expect("laid out as blocks");
+        let paths = paths.expect("laid out as blocks").0;
         let card = |v: usize| {
             let n = &g.nodes[v];
             crate::style::is_note_card(&n.id, n.shape, &n.style)
@@ -923,7 +923,7 @@ fn block_layout(
     let sizes = crate::layout::node_sizes(g);
     let (lo, groups, paths) =
         crate::layout::layout_clustered_ranked(&ga, &sizes, &aug.node_cluster, &rank_only);
-    (lo, groups, paths.expect("laid out as blocks"))
+    (lo, groups, paths.expect("laid out as blocks").0)
 }
 
 #[test]
@@ -1643,6 +1643,58 @@ fn a_hubs_fan_keeps_its_order_through_the_bands() {
     // Every step under the hub's block keeps a track of its own.
     let m = crate::quality::measure(&g, &sc);
     assert_eq!(m.overlap_pairs, 0, "{:?}", m.details);
+}
+
+#[test]
+fn an_entry_under_a_title_chip_crosses_past_it_and_jogs_inside_the_frame() {
+    // `m1`'s whole top side lies under its block's title chip. Drawn
+    // into it straight, the entry ran through the chip, and the router
+    // took it round, in through the block's lateral wall. As a displaced
+    // entry (2.8 rule 2) it crosses the title side past the chip's end
+    // and steps over to its port on a track between the title strip and
+    // the title row, inside the frame, in the jog room the layout
+    // reserves for it (F2).
+    let src = "flowchart TD\n    A[source] --> M1\n    A --> M2\n    subgraph S[A block title over one member]\n        M1[m1]\n        M2[the second member]\n    end\n";
+    let g = graph(src);
+    let sc = block_scene(&g);
+    let s = sc.clusters.iter().position(|c| c.id == "S").expect("frame");
+    let f = &sc.clusters[s];
+    let m1 = sc.nodes.iter().find(|n| n.id == "M1").expect("m1");
+    let chip = crate::scene::title_head(&sc.clusters, s, sc.width);
+    assert!(
+        chip.0 <= m1.x - m1.w / 2.0 && chip.2 >= m1.x + m1.w / 2.0,
+        "{chip:?}"
+    );
+    // The jog room: the frame reaches a track further above its row.
+    let room = (m1.y - m1.h / 2.0) - f.y;
+    assert!(
+        room >= crate::layout::CLUSTER_HEADER + crate::layout::FRAME_PAD + crate::ortho::ROW_CLEAR
+            - 0.5,
+        "{room}"
+    );
+    let e = sc
+        .edges
+        .iter()
+        .find(|e| e.from == "A" && e.to == "M1")
+        .expect("edge");
+    let c = crate::router::ortho_corners(e).expect("on the axes");
+    // Where it crosses the frame's top: past the chip.
+    let cross = c
+        .windows(2)
+        .find(|w| (w[0].1 - f.y) * (w[1].1 - f.y) < 0.0)
+        .expect("crosses the title side");
+    assert!(cross[0].0 > chip.2, "{c:?} {chip:?}");
+    // Every corner below the frame's top lies inside the frame.
+    for p in c.iter().filter(|p| p.1 > f.y) {
+        assert!(p.0 > f.x && p.0 < f.x + f.w, "{c:?}");
+    }
+    let m = crate::quality::measure(&g, &sc);
+    assert_eq!(
+        (m.lateral_x, m.edge_chip, m.x_drawn),
+        (0, 0, 0),
+        "{:?}",
+        m.details
+    );
 }
 
 #[test]

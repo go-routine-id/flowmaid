@@ -1170,7 +1170,7 @@ fn place_ports(
     let shaping = flow && spill_over && judge.is_none();
     let mut groups = side_groups(sc, cx);
     if spill_over {
-        spill(sc, &mut groups);
+        spill(sc, &mut groups, cx.blocks);
     }
     // Sides a self-loop starts and ends on: its two ends are no part of
     // the group, so an end there is not alone and keeps its place.
@@ -1243,7 +1243,39 @@ fn place_ports(
         // centre and the flow through it jogged). A back-edge's lane
         // keeps the port at its span's edge, a note card's link the
         // spot its elbow was drawn to.
-        let lone = shaped && ports.len() == 1 && free_end(sc, cx, &ports[0]);
+        // In a block layout a lone end on a side of a compact shape with
+        // no straight run (a choice's facet) that sits within
+        // [`PORT_SPACING`] of another side's end (where the builders
+        // leaned them: the ports of that side then close up on the
+        // corner the two share),
+        // meets its side in the middle as well (B12 2.8): left where the
+        // builder leaned it, an entry from above stood 1 px from a return
+        // leaving the facet beside it (notes/nested-composite: `K0_c`).
+        let cornered = || {
+            let EndRef::Node(v) = end else { return false };
+            let at = ports[0].at;
+            cx.blocks
+                && spill_over
+                && judge.is_none()
+                && prof.straight().is_none()
+                && sc.edges.iter().enumerate().any(|(j, e)| {
+                    j != ports[0].edge
+                        && cx.ends.get(j).copied().flatten().is_some_and(|(f, t)| {
+                            [(f, end_point(sc, j, true)), (t, end_point(sc, j, false))]
+                                .into_iter()
+                                .any(|(r, p)| {
+                                    r == EndRef::Node(v)
+                                        && end_side(sc, r, p) != side
+                                        && (p.0 - at.0).hypot(p.1 - at.1) < PORT_SPACING
+                                })
+                        })
+                        && e.from != e.to
+                })
+        };
+        let lone = (shaped || prof.straight().is_none() && cx.blocks)
+            && ports.len() == 1
+            && free_end(sc, cx, &ports[0])
+            && (shaped || cornered());
         if ports.len() < 2 && !shaded && !lone && !ports.iter().any(|p| p.spilled.is_some()) {
             continue;
         }
@@ -2122,7 +2154,7 @@ fn heading_on(side: Side, p: Pt, q: Pt) -> f64 {
 /// what fits at [`PORT_MIN_SPACING`]: a hub with a dozen edges on one
 /// short side otherwise squeezes them into one blob. A moved end starts
 /// at the corner it came round.
-fn spill(sc: &Scene, groups: &mut BTreeMap<(EndRef, Side), Vec<PortEnd>>) {
+fn spill(sc: &Scene, groups: &mut BTreeMap<(EndRef, Side), Vec<PortEnd>>, blocks: bool) {
     let cap_of = |key: (EndRef, Side)| {
         let (lo, hi, _, _) = span(sc, key.0, key.1);
         capacity(hi - lo)
@@ -2182,6 +2214,15 @@ fn spill(sc: &Scene, groups: &mut BTreeMap<(EndRef, Side), Vec<PortEnd>>) {
         for (ns, mut p) in out {
             let (nlo, nhi, _, _) = span(sc, end, ns);
             p.want = if near_low { nlo } else { nhi };
+            // In a block layout an end spilled onto a side no other end
+            // takes meets it in the middle (B12 2.8): at the side's end
+            // next to the corner it shared the corner with the outermost
+            // end left on the full side, 1-2 px apart on a small
+            // diamond's two facets (notes/nested-composite: the choice
+            // `K0_c`, an entry from above and a return to the left).
+            if blocks && groups.get(&(end, ns)).map_or(true, Vec::is_empty) {
+                p.want = (nlo + nhi) / 2.0;
+            }
             p.key = heading_on(ns, join(ns, p.want, split(ns, p.at).1), p.steer);
             p.spilled = Some(side);
             groups.entry((end, ns)).or_default().push(p);

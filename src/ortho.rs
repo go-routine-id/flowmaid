@@ -584,6 +584,7 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
     };
     let stubs = breadth_stubs(sc, cx, dir, &boxes);
     let end_stubs = breadth_ends(sc, cx, dir, &boxes);
+    let titles = TitleSides::of(sc, cx, dir, &frames);
     let mut jogs: Vec<Jog> = Vec::new();
     let mut plans: Vec<(usize, Vec<Corner>)> = Vec::new();
     // The edges between one pair of ends, either way round (twins): a
@@ -822,6 +823,8 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
         } else {
             Vec::new()
         };
+        // Clear of the title chips whose sides it crosses (B12 2.8).
+        let cols = titles.clear(i, f0, &cols, f3);
         let mut home: Vec<usize> = Vec::new();
         for end in [from, to] {
             let fr = match end {
@@ -1305,6 +1308,211 @@ fn breadth_stubs(sc: &Scene, cx: &Ctx, dir: Direction, boxes: &[Rect]) -> Vec<Op
         out[m.edge] = Some(edge + m.out * (ROW_CLEAR + rank as f64 * TRACK_PITCH));
     }
     out
+}
+
+/// The title sides of a block layout's frames (TD / BT; B12 2.8,
+/// "Title-clear entries", rules 2 and 3 in their smallest form): an
+/// edge that crosses a frame's title side into it (or out of it) at a
+/// breadth within the frame's title chip widened by [`CHIP_CLEAR`] —
+/// an entry to a member whose side lies under the chip, or a run of the
+/// frame's own on its title row to a member behind it — is *displaced*:
+/// it crosses the side at a column past the chip's end, the columns of
+/// one side [`TRACK_PITCH`] apart in the order of the breadths they
+/// replace, and steps over to its own breadth inside the frame, in the
+/// jog room between the title strip and the title row that the layout
+/// reserves for them (`layout::title_jogs`). Through the chip, the
+/// router took such an edge round it and in through the frame's lateral
+/// wall, or jogged under it from a column past every other entry of the
+/// side, across them (blocks/nested-chain: `a -> c2` through the left
+/// walls of both inner blocks). A column that would leave the frame is
+/// not taken: the edge is drawn as before.
+/// A frame's title side as [`TitleSides`] reads it.
+type TitleSide = (f64, f64, f64, f64, (f64, f64));
+
+struct TitleSides {
+    /// Per frame: its breadth span, the flow coordinate of its title
+    /// side, which way along the flow the frame lies from it, and the
+    /// chip's breadth span widened by [`CHIP_CLEAR`] (flow coordinates),
+    /// when it has a title on a flow side.
+    sides: Vec<Option<TitleSide>>,
+    /// The displaced crossings: (edge, frame) -> the column it takes.
+    cols: std::collections::BTreeMap<(usize, usize), f64>,
+}
+
+impl TitleSides {
+    fn of(sc: &Scene, cx: &Ctx, dir: Direction, frames: &[Rect]) -> TitleSides {
+        let mut out = TitleSides {
+            sides: Vec::new(),
+            cols: std::collections::BTreeMap::new(),
+        };
+        if !cx.blocks || !matches!(dir, Direction::TD | Direction::BT) || sc.clusters.is_empty() {
+            return out;
+        }
+        let right = sc.width;
+        out.sides = (0..sc.clusters.len())
+            .map(|ci| {
+                if sc.clusters[ci].title.trim().is_empty() {
+                    return None;
+                }
+                let r = frames[ci];
+                let h = flow_rect(dir, crate::scene::title_head(&sc.clusters, ci, right));
+                // The side the chip sits on, and which way along the flow
+                // the frame lies from it.
+                let (t, inward) = if (h.2 - r.2).abs() <= (r.3 - h.3).abs() {
+                    (r.2, 1.0)
+                } else {
+                    (r.3, -1.0)
+                };
+                Some((r.0, r.1, t, inward, (h.0 - CHIP_CLEAR, h.1 + CHIP_CLEAR)))
+            })
+            .collect();
+        // Every displaced crossing, by frame: (breadth it replaces, edge);
+        // and the breadths the side's other crossings take past the chip.
+        let mut by: std::collections::BTreeMap<usize, Vec<(f64, usize)>> =
+            std::collections::BTreeMap::new();
+        let mut taken: std::collections::BTreeMap<usize, Vec<f64>> =
+            std::collections::BTreeMap::new();
+        for (i, e) in sc.edges.iter().enumerate() {
+            if !cx.drawn.get(i).copied().unwrap_or(false)
+                || e.waypoints.len() < 2 && e.bezier[0] == e.bezier[3]
+            {
+                continue;
+            }
+            let pts: Vec<Pt> = if e.waypoints.len() >= 2 {
+                e.waypoints.iter().map(|&p| to_flow(dir, p)).collect()
+            } else {
+                vec![to_flow(dir, e.bezier[0]), to_flow(dir, e.bezier[3])]
+            };
+            // Only an end on a side that lies wholly under the chip: the
+            // ports stage keeps the others' ends on the free stretch
+            // beside it (rule 1), and drawn displaced as well, the
+            // entries of a fan into a narrow block's partly shaded
+            // member crossed each other above it (dense-td's `n43`).
+            let shaded = |end: Option<EndRef>, k: usize| {
+                let (Some(EndRef::Node(v)), Some((_, _, _, _, (c0, c1)))) = (end, out.sides[k])
+                else {
+                    return false;
+                };
+                let r = flow_rect(dir, end_rect(sc, EndRef::Node(v)));
+                r.0 >= c0 && r.1 <= c1
+            };
+            let ends = cx.ends.get(i).copied().flatten();
+            for (k, b, displaced) in out.all_crossings(&pts) {
+                let end = ends.map(|(f, t)| {
+                    let t_flow = flow_rect(dir, end_rect(sc, t));
+                    if b >= t_flow.0 && b <= t_flow.1 {
+                        t
+                    } else {
+                        f
+                    }
+                });
+                if displaced && shaded(end, k) {
+                    by.entry(k).or_default().push((b, i));
+                } else {
+                    taken.entry(k).or_default().push(b);
+                }
+            }
+        }
+        for (k, mut v) in by {
+            let Some((_, f1, _, _, (_, c1))) = out.sides[k] else {
+                continue;
+            };
+            let taken = taken.remove(&k).unwrap_or_default();
+            v.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
+            // The nearest free columns past the chip, in the order of
+            // the breadths they replace, a track apart and a track off
+            // the side's other crossings; the first a corner's rounding
+            // past the chip's clearance, so the turn onto the track under
+            // the chip stays out of the chip's ring.
+            let mut next = c1 + crate::router::CORNER_R;
+            for &(_, i) in &v {
+                let mut col = next;
+                while let Some(&o) = taken.iter().find(|&&o| (o - col).abs() < TRACK_PITCH) {
+                    col = o + TRACK_PITCH;
+                }
+                if col > f1 - crate::scene::LANE_PAD {
+                    break;
+                }
+                out.cols.entry((i, k)).or_insert(col);
+                next = col + TRACK_PITCH;
+            }
+        }
+        out
+    }
+
+    /// The displaced crossings of a path through `pts` (flow
+    /// coordinates): (frame, breadth it would cross the title side at).
+    fn crossings(&self, pts: &[Pt]) -> Vec<(usize, f64)> {
+        self.all_crossings(pts)
+            .into_iter()
+            .filter(|c| c.2)
+            .map(|c| (c.0, c.1))
+            .collect()
+    }
+
+    /// Every crossing of a title side by a path through `pts` (flow
+    /// coordinates) inside the frame's breadth: (frame, breadth, whether
+    /// it is displaced: under the chip).
+    fn all_crossings(&self, pts: &[Pt]) -> Vec<(usize, f64, bool)> {
+        let mut out = Vec::new();
+        for (k, side) in self.sides.iter().enumerate() {
+            let Some((f0, f1, t, inward, (c0, c1))) = *side else {
+                continue;
+            };
+            let last = pts.len().saturating_sub(1);
+            for (j, w) in pts.windows(2).enumerate() {
+                let (a, b) = (w[0], w[1]);
+                if (a.1 - t) * (b.1 - t) >= 0.0 {
+                    continue;
+                }
+                // The end inside the frame sets the breadth it crosses at.
+                let (p, at) = if (b.1 - t) * inward > 0.0 {
+                    (b, j + 1)
+                } else {
+                    (a, j)
+                };
+                // Displaced only where that end is the edge's own, a port
+                // of the title row's (an entry, or an exit going back up):
+                // a run's column under the chip is the coordinates' to
+                // move (X2.5), and jogged clear of it here, the runs of a
+                // fan into a block crossed each other above it (dense-td).
+                let port = at == 0 || at == last;
+                if p.0 > f0 && p.0 < f1 {
+                    out.push((k, p.0, port && p.0 > c0 && p.0 < c1));
+                }
+            }
+        }
+        out
+    }
+
+    /// The columns of edge `i`'s path from `f0` through `cols` to `f3`
+    /// (flow coordinates), with a column past the chip of each title
+    /// side it crosses displaced.
+    fn clear(&self, i: usize, f0: Pt, cols: &[Pt], f3: Pt) -> Vec<Pt> {
+        if self.cols.is_empty() {
+            return cols.to_vec();
+        }
+        let pts: Vec<Pt> = std::iter::once(f0)
+            .chain(cols.iter().copied())
+            .chain(std::iter::once(f3))
+            .collect();
+        let mut out: Vec<Pt> = Vec::with_capacity(cols.len() + 2);
+        for (j, w) in pts.windows(2).enumerate() {
+            if j > 0 {
+                out.push(w[0]);
+            }
+            let (a, b) = (w[0], w[1]);
+            for (k, side) in self.sides.iter().enumerate() {
+                let (Some((_, _, t, _, _)), Some(&col)) = (side, self.cols.get(&(i, k))) else {
+                    continue;
+                };
+                if (a.1 - t) * (b.1 - t) < 0.0 && self.crossings(&[a, b]).iter().any(|c| c.0 == k) {
+                    out.push((col, *t));
+                }
+            }
+        }
+        out
+    }
 }
 
 /// Per edge, in a block layout ([`Ctx::blocks`]): the breadth (flow

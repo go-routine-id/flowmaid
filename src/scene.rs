@@ -4235,7 +4235,12 @@ fn scene_clustered(
         };
         ga.frame_cut[ei] = [cut(g.sub_edges[i].from), cut(g.sub_edges[i].to)];
     }
-    let (lo, groups, block_paths) = layout_clustered_ranked(&ga, sizes, &node_cluster, &rank_only);
+    let (lo, groups, blocks) = layout_clustered_ranked(&ga, sizes, &node_cluster, &rank_only);
+    // (A block layout's jog room per frame: `layout::title_jogs`.)
+    let (block_paths, title_jog) = match blocks {
+        Some((paths, jog)) => (Some(paths), jog),
+        None => (None, Vec::new()),
+    };
     // (What the layout did, not what it was asked: a test compares it
     // with what the other entry points decide.)
     #[cfg(test)]
@@ -4276,7 +4281,7 @@ fn scene_clustered(
     // y in LR/RL).
     let frames: Vec<RawBox>;
     sc.clusters = {
-        let (mut boxes, depth) = cluster_raw_boxes(g, &sc.nodes);
+        let (mut boxes, depth) = cluster_boxes_with_jogs(g, &sc.nodes, &title_jog);
         // Member-only boxes: what a widened frame must stay clear of.
         let raw = boxes.clone();
         for si in 0..g.subgraphs.len() {
@@ -4349,7 +4354,7 @@ fn scene_clustered(
     // rank gap the layout left, not diagonally across other nodes.
     let stand_edges = sc.edges.split_off(ne);
     if !g.sub_edges.is_empty() {
-        let (raw, _) = cluster_raw_boxes(g, &sc.nodes);
+        let (raw, _) = cluster_boxes_with_jogs(g, &sc.nodes, &title_jog);
         let end_placed = |end: End| -> Option<(Placed, Shape)> {
             match end {
                 End::Node(v) => Some((
@@ -6126,6 +6131,17 @@ fn seg_meets_rect(a: (f64, f64), b: (f64, f64), r: (f64, f64, f64, f64)) -> bool
 /// parent encloses its children's boxes. `None` = empty subgraph.
 /// Also returns each subgraph's nesting depth.
 fn cluster_raw_boxes(g: &Graph, nodes: &[SceneNode]) -> (Vec<RawBox>, Vec<usize>) {
+    cluster_boxes_with_jogs(g, nodes, &[])
+}
+
+/// [`cluster_raw_boxes`] with each frame grown on its title side by its
+/// block layout's jog room (`jog`, by subgraph; missing entries 0: see
+/// `layout::title_jogs`), its ancestors wrapping the grown box.
+fn cluster_boxes_with_jogs(
+    g: &Graph,
+    nodes: &[SceneNode],
+    jog: &[f64],
+) -> (Vec<RawBox>, Vec<usize>) {
     let nsub = g.subgraphs.len();
     let mut depth = vec![0usize; nsub];
     for i in 0..nsub {
@@ -6157,11 +6173,14 @@ fn cluster_raw_boxes(g: &Graph, nodes: &[SceneNode]) -> (Vec<RawBox>, Vec<usize>
             continue; // empty subgraph: nothing to wrap
         }
         let (minx, maxx, miny, maxy) = bb.finish();
+        // (Summed in this order, as before the jog room: without one the
+        // box is the same to the last bit.)
+        let jog = jog.get(i).copied().unwrap_or(0.0);
         boxes[i] = Some((
             minx - SUB_PAD,
-            miny - SUB_PAD - SUB_HEADER - title_extra(&g.subgraphs[i].title),
+            miny - SUB_PAD - SUB_HEADER - title_extra(&g.subgraphs[i].title) - jog,
             (maxx - minx) + 2.0 * SUB_PAD,
-            (maxy - miny) + 2.0 * SUB_PAD + SUB_HEADER + title_extra(&g.subgraphs[i].title),
+            (maxy - miny) + 2.0 * SUB_PAD + SUB_HEADER + title_extra(&g.subgraphs[i].title) + jog,
         ));
     }
     (boxes, depth)
@@ -18292,8 +18311,15 @@ mod tests {
                 // hops it steps over the lines it crosses on.
                 let (start, segs) = drawn_segs(e, |p| p);
                 let pts = path_d_points(&hopped_d(start, &segs, &hops[i]), 0.5);
+                // A hop removes the ink of the line under it, which picking
+                // may ignore (pick == render holds for the line as drawn
+                // before such painter-only treatments): a square in a hop's
+                // lens, between its arc and the line it lifts off, is not
+                // clear of the stroke picking measures.
+                let plain = path_d_points(&hopped_d(start, &segs, &[]), 0.5);
                 let gap = |r: &[f64; 4]| {
                     pts.iter()
+                        .chain(&plain)
                         .map(|&p| PickTarget::box_gap(p, r[0], r[1], r[2], r[3]))
                         .fold(f64::INFINITY, f64::min)
                 };

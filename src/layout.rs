@@ -1577,7 +1577,7 @@ pub(crate) fn layout_clustered_ranked(
     sizes: &[(f64, f64)],
     node_cluster: &[Vec<usize>],
     rank_only: &[RankGroup],
-) -> (LayoutResult, EdgeGroups, Option<BlockPaths>) {
+) -> (LayoutResult, EdgeGroups, Option<(BlockPaths, Vec<f64>)>) {
     layout_core(
         g,
         sizes,
@@ -1593,7 +1593,7 @@ fn layout_core(
     node_cluster: Option<&[Vec<usize>]>,
     rank_only: &[RankGroup],
     blocks: Option<BlockLinks>,
-) -> (LayoutResult, EdgeGroups, Option<BlockPaths>) {
+) -> (LayoutResult, EdgeGroups, Option<(BlockPaths, Vec<f64>)>) {
     assert_eq!(
         sizes.len(),
         g.nodes.len(),
@@ -1636,13 +1636,15 @@ fn layout_core(
         work: SEARCH_WORK,
     };
     if !search {
-        return (st.best.lo, st.best.groups, st.rk.blocks.map(|b| b.paths));
+        let blocks = st.rk.blocks.map(|b| (b.paths, st.best.title_jog));
+        return (st.best.lo, st.best.groups, blocks);
     }
     if st.best.lo.total_b > RIBBON_ENTRY * st.best.depth {
         narrow(g, sizes, node_cluster, &mut st);
     }
     centre_largest(g, sizes, node_cluster, &mut st);
-    (st.best.lo, st.best.groups, st.rk.blocks.map(|b| b.paths))
+    let blocks = st.rk.blocks.map(|b| (b.paths, st.best.title_jog));
+    (st.best.lo, st.best.groups, blocks)
 }
 
 /// Is `g` small enough for the layout search ([`SEARCH_MAX_ELEMENTS`])?
@@ -4013,6 +4015,9 @@ struct Placement {
     depth: f64,
     /// A block layout's final order ([`OrderSeed`]).
     order: Option<OrderSeed>,
+    /// A block layout's jog room per subgraph ([`title_jogs`]; empty
+    /// outside block layouts and in LR / RL).
+    title_jog: Vec<f64>,
 }
 
 /// Steps 3 to 5 for one layering: dummy chains, ordering and
@@ -4780,6 +4785,48 @@ fn place(
             }
         }
     }
+
+    // A block layout's jog room (B12 F2): what each frame grows on its
+    // title side, reserved here on its title row's slot and reach, and
+    // added to the frame by the scene ([`title_jogs`]).
+    let title_jog: Vec<f64> = match (block_paths, node_cluster) {
+        (Some(_), Some(nc)) if !horizontal => {
+            let jog = title_jogs(
+                g,
+                &TitleRows {
+                    nc,
+                    apath: &apath,
+                    alayer: &alayer,
+                    absize: &absize,
+                    bpos: &bpos,
+                    border: &border_side,
+                    preds: &preds,
+                    succs: &succs,
+                    cluster_span: &cluster_span,
+                    n,
+                },
+            );
+            let bt = matches!(g.direction, Direction::BT);
+            for v in 0..n {
+                for &c in &nc[v] {
+                    let Some(&(lo, hi)) = cluster_span.get(&c) else {
+                        continue;
+                    };
+                    if jog[c] > 0.0 && alayer[v] == if bt { hi } else { lo } {
+                        if bt {
+                            lextra[v].1 += jog[c];
+                            reach[v].1 += jog[c];
+                        } else {
+                            lextra[v].0 += jog[c];
+                            reach[v].0 += jog[c];
+                        }
+                    }
+                }
+            }
+            jog
+        }
+        _ => Vec::new(),
+    };
 
     // Layer positions (l axis): each layer is as tall as its tallest
     // REAL node (dummies contribute zero layer-size).
@@ -5557,7 +5604,124 @@ fn place(
         ext,
         depth,
         order,
+        title_jog,
     }
+}
+
+/// What [`title_jogs`] reads of a placement.
+struct TitleRows<'a> {
+    nc: &'a [Vec<usize>],
+    apath: &'a [Vec<usize>],
+    alayer: &'a [usize],
+    absize: &'a [f64],
+    bpos: &'a [f64],
+    border: &'a [u8],
+    preds: &'a [Vec<usize>],
+    succs: &'a [Vec<usize>],
+    cluster_span: &'a std::collections::BTreeMap<usize, (usize, usize)>,
+    n: usize,
+}
+
+/// A block layout's jog room per subgraph (B12 F2, TD / BT): the room
+/// its frame grows on its title side, between the title strip and the
+/// title row, where the edges that cross that side under the title
+/// chip jog clear of it ([`crate::ortho`]'s displaced crossings).
+///
+/// Its chip spans the frame's left inset and the title's width (the
+/// frame's left: its members' boxes, and the channel points inside it,
+/// as the scene wraps them), widened by [`crate::ortho::CHIP_CLEAR`].
+/// A member of the title row takes the entries that cross the title
+/// side into it (in TD the links from the layer before, from outside
+/// the block; in BT from the layer after) on the free stretch of its
+/// side beside the chip, as many as [`crate::ports::PORT_SPACING`]
+/// holds there (`cap`); the rest are displaced. So is each run of the
+/// block's own on its title row whose column lies under the chip (to a
+/// member behind the title row: it crosses the title side at its column
+/// past the chip and jogs over to its run). With `k` displaced, the
+/// frame grows by [`crate::ortho::ROW_CLEAR`] and a
+/// [`crate::ortho::TRACK_PITCH`] for each one past the first: the
+/// strip leaves 19 px between the chip and the row, and a displaced
+/// entry takes the chip's clearance, its track and a head's straight
+/// run into its port. Without displaced crossings a frame keeps its
+/// height.
+fn title_jogs(g: &Graph, t: &TitleRows) -> Vec<f64> {
+    use crate::clearance::{CHIP_INSET_X, CHIP_PAD_W};
+    let ns = g.subgraphs.len();
+    let mut jog = vec![0.0f64; ns];
+    let bt = matches!(g.direction, Direction::BT);
+    for (&c, &(lo, hi)) in t.cluster_span {
+        let title = &g.subgraphs[c].title;
+        if title.trim().is_empty() {
+            continue;
+        }
+        let row = if bt { hi } else { lo };
+        // The frame's left, as the scene wraps it.
+        let mut left = f64::INFINITY;
+        for v in 0..t.n {
+            if t.nc[v].contains(&c) {
+                left = left.min(t.bpos[v] - t.absize[v] / 2.0 - FRAME_PAD);
+            }
+        }
+        for d in t.n..t.bpos.len() {
+            if t.border[d] == 0 && t.apath[d].contains(&c) {
+                left = left.min(t.bpos[d] - crate::scene::LANE_PAD);
+            }
+        }
+        if !left.is_finite() {
+            continue;
+        }
+        let chip_lo = left + CHIP_INSET_X - crate::ortho::CHIP_CLEAR;
+        let chip_hi = left
+            + CHIP_INSET_X
+            + text_width(title) * TITLE_SCALE
+            + CHIP_PAD_W
+            + crate::ortho::CHIP_CLEAR;
+        let path_len = t.apath.iter().enumerate().find_map(|(v, p)| {
+            (v < t.n && t.nc[v].contains(&c)).then(|| p.iter().position(|&x| x == c).map(|i| i + 1))
+        });
+        let Some(Some(depth)) = path_len else {
+            continue;
+        };
+        let mut k = 0usize;
+        for v in 0..t.bpos.len() {
+            if t.alayer[v] != row || t.border[v] != 0 || t.apath[v].len() != depth {
+                continue;
+            }
+            if t.apath[v].last() != Some(&c) {
+                continue;
+            }
+            let (m0, m1) = (t.bpos[v] - t.absize[v] / 2.0, t.bpos[v] + t.absize[v] / 2.0);
+            if v >= t.n {
+                // A run of the block's own under the chip.
+                k += usize::from(t.bpos[v] > chip_lo && t.bpos[v] < chip_hi);
+                continue;
+            }
+            let from = if bt { &t.succs[v] } else { &t.preds[v] };
+            let border = from
+                .iter()
+                .filter(|&&u| {
+                    t.border[u] == 0
+                        && t.alayer[u] != row
+                        && !t.apath[u].contains(&c)
+                        && !(u < t.n && t.nc[u].contains(&c))
+                })
+                .count();
+            if border == 0 || m1 <= chip_lo || m0 >= chip_hi {
+                continue;
+            }
+            let free = (m1 - chip_hi).max(chip_lo - m0);
+            let cap = if free < 0.0 {
+                0
+            } else {
+                (free / crate::ports::PORT_SPACING).floor() as usize + 1
+            };
+            k += border.saturating_sub(cap);
+        }
+        if k > 0 {
+            jog[c] = crate::ortho::ROW_CLEAR + (k - 1) as f64 * crate::ortho::TRACK_PITCH;
+        }
+    }
+    jog
 }
 
 /// The largest node outside every subgraph, when there clearly is one:
