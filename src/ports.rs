@@ -775,6 +775,173 @@ pub(crate) fn assign(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
     place_ports(g, sc, cx, mode, moved, true, true, None);
     if cx.blocks {
         free_pins(sc, cx, moved);
+        order_pins(sc, cx, moved);
+    }
+}
+
+/// A block layout's free pin ([`free_pins`]): edge `i`'s end (`src`:
+/// its start) on the whole block it joins, lying on that block's frame
+/// (not an edge to the block's own member, which meets the border from
+/// inside, nor a note card's link, whose end is a pin of its own: see
+/// [`NOTE_WEIGHT`]). Its frame, side, and its point.
+fn pin_of(sc: &Scene, cx: &Ctx, i: usize, src: bool) -> Option<(usize, Side, Pt)> {
+    let flag = |v: &[bool]| v.get(i).copied().unwrap_or(false);
+    let (from, to) = cx.ends.get(i).copied().flatten()?;
+    if !flag(&cx.drawn) || flag(&cx.fixed) || flag(&cx.held) || note_link(sc, cx, i) {
+        return None;
+    }
+    let (end, other) = if src { (from, to) } else { (to, from) };
+    let EndRef::Frame(ci) = end else {
+        return None;
+    };
+    if crate::edgepass::holds_other(cx, end, other) {
+        return None;
+    }
+    let r = end_rect(sc, end);
+    let p = end_point(sc, i, src);
+    let side = side_of(r, p);
+    let border = match side {
+        Side::Top => r.1,
+        Side::Bottom => r.3,
+        Side::Left => r.0,
+        Side::Right => r.2,
+    };
+    ((split(side, p).1 - border).abs() <= ON_BOX).then_some((ci, side, p))
+}
+
+/// The point edge `i`'s path comes from into its end `src` (its start
+/// when `src`): the next waypoint, or the curve's other end.
+fn approach(e: &SceneEdge, src: bool) -> Pt {
+    let n = e.waypoints.len();
+    match (n >= 2, src) {
+        (true, true) => e.waypoints[1],
+        (true, false) => e.waypoints[n - 2],
+        (false, true) => e.bezier[3],
+        (false, false) => e.bezier[0],
+    }
+}
+
+/// Spec 2.8, free pins in order: the free pins of one frame side that
+/// stand next to each other (nothing else crosses the side between
+/// them) take their places in the order their channels come in along
+/// the side, so the steps the ortho stage draws into them nest instead
+/// of crossing (a stress diagram's `Producer one -> POOL` stepped across
+/// `Producer two`'s pin to the far side of it). Only the pins' own
+/// places are exchanged: what else crosses the side keeps its place
+/// and no pin passes it, so no crossing with anything else is added.
+fn order_pins(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
+    // (frame, side) -> its pins: (place along the side, approach, edge,
+    // start).
+    type Pins = std::collections::BTreeMap<(usize, Side), Vec<(f64, f64, usize, bool)>>;
+    let mut groups: Pins = Pins::new();
+    for i in 0..sc.edges.len() {
+        for src in [true, false] {
+            if let Some((ci, side, p)) = pin_of(sc, cx, i, src) {
+                let key = split(side, approach(&sc.edges[i], src)).0;
+                groups
+                    .entry((ci, side))
+                    .or_default()
+                    .push((split(side, p).0, key, i, src));
+            }
+        }
+    }
+    for ((ci, side), mut pins) in groups {
+        if pins.len() < 2 {
+            continue;
+        }
+        let r = end_rect(sc, EndRef::Frame(ci));
+        let line = split(side, end_point(sc, pins[0].2, pins[0].3)).1;
+        let (t0, t1) = split_range(side, r);
+        let mine = |j: usize| pins.iter().any(|p| p.2 == j);
+        // Where the other drawn edges cross the side's line.
+        let mut taken: Vec<f64> = Vec::new();
+        for j in (0..sc.edges.len()).filter(|&j| !mine(j)) {
+            if !cx.drawn.get(j).copied().unwrap_or(false) {
+                continue;
+            }
+            for w in edge_polyline(&sc.edges[j]).windows(2) {
+                let ((ta, na), (tb, nb)) = (split(side, w[0]), split(side, w[1]));
+                if (na - line) * (nb - line) > 0.0 || (na == line && nb == line) {
+                    continue;
+                }
+                let t = if (nb - na).abs() < PORT_EPS {
+                    ta
+                } else {
+                    ta + (tb - ta) * (line - na) / (nb - na)
+                };
+                if t > t0 && t < t1 {
+                    taken.push(t);
+                }
+            }
+        }
+        pins.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.2.cmp(&b.2)));
+        // Runs of pins with nothing else crossing between them.
+        let mut runs: Vec<Vec<(f64, f64, usize, bool)>> = Vec::new();
+        for p in pins {
+            let split_here = runs.last().and_then(|r| r.last()).is_some_and(|q| {
+                taken
+                    .iter()
+                    .any(|&o| o > q.0 - PORT_EPS && o < p.0 + PORT_EPS)
+            });
+            match runs.last_mut() {
+                Some(run) if !split_here => run.push(p),
+                _ => runs.push(vec![p]),
+            }
+        }
+        for run in runs.into_iter().filter(|r| r.len() >= 2) {
+            let places: Vec<f64> = run.iter().map(|p| p.0).collect();
+            let mut by_key = run.clone();
+            by_key.sort_by(|a, b| a.1.total_cmp(&b.1).then(a.0.total_cmp(&b.0)));
+            if by_key
+                .iter()
+                .zip(&places)
+                .all(|(p, &t)| (t - p.0).abs() <= PORT_EPS)
+            {
+                continue;
+            }
+            // Kept when the run's edges, as the builders drew them, cross
+            // each other less (the order of the channels' first points
+            // is only a proxy for where the paths go).
+            let edges: Vec<usize> = run.iter().map(|p| p.2).collect();
+            let crossings = |sc: &Scene| {
+                let lines: Vec<Vec<Pt>> =
+                    edges.iter().map(|&i| edge_polyline(&sc.edges[i])).collect();
+                let mut n = 0;
+                for a in 0..lines.len() {
+                    for b in a + 1..lines.len() {
+                        for u in lines[a].windows(2) {
+                            for v in lines[b].windows(2) {
+                                n += usize::from(segs_cross(u[0], u[1], v[0], v[1]));
+                            }
+                        }
+                    }
+                }
+                n
+            };
+            let before = crossings(sc);
+            let was: Vec<SceneEdge> = edges.iter().map(|&i| sc.edges[i].clone()).collect();
+            for (k, &(at, _, i, src)) in by_key.iter().enumerate() {
+                let t = places[k];
+                if (t - at).abs() <= PORT_EPS {
+                    continue;
+                }
+                let p = end_point(sc, i, src);
+                let new = join(side, t, line);
+                let delta = (new.0 - p.0, new.1 - p.1);
+                move_end(&mut sc.edges[i], src, p, delta, side, false, true);
+            }
+            if crossings(sc) < before {
+                for &i in &edges {
+                    if let Some(m) = moved.get_mut(i) {
+                        *m = true;
+                    }
+                }
+            } else {
+                for (&i, e) in edges.iter().zip(was) {
+                    sc.edges[i] = e;
+                }
+            }
+        }
     }
 }
 
@@ -2586,6 +2753,34 @@ mod tests {
         let m = crate::quality::measure(&g, &sc);
         assert_eq!(m.shared_ports, 0, "{:?}", m.details);
         assert_eq!(m.fan_x, 0, "{:?}", m.details);
+    }
+
+    #[test]
+    fn a_frame_sides_free_pins_take_the_order_their_channels_come_in() {
+        // blocks/state-note as blocks: `Active --> Review` and `Review
+        // --> Active` both have their end on `Review`'s top side, next to
+        // each other, and their pins stood the other way round from where
+        // their channels come in: the two crossed in the gap above the
+        // frame (fan_x). The pins exchange places; nothing else crosses
+        // the side between them, so nothing else is crossed instead.
+        let g = crate::blockcheck::fixture("blocks/state-note");
+        let sc = crate::levels::with_blocks(true, || scene(&g));
+        let m = crate::quality::measure(&g, &sc);
+        assert_eq!(m.fan_x, 0, "{:?}", m.details);
+        assert_eq!(m.x_drawn, 0, "{:?}", m.details);
+        let line = |from: &str, to: &str| {
+            let e = sc
+                .edges
+                .iter()
+                .find(|e| e.from == from && e.to == to)
+                .unwrap_or_else(|| panic!("{from} -> {to}"));
+            edge_polyline(e)
+        };
+        let (a, b) = (line("Active", "Review"), line("Review", "Active"));
+        let crossing = a
+            .windows(2)
+            .any(|u| b.windows(2).any(|v| segs_cross(u[0], u[1], v[0], v[1])));
+        assert!(!crossing, "{a:?}\n{b:?}");
     }
 
     /// The drawn start / end of an edge.
