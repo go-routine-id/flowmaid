@@ -4659,71 +4659,6 @@ fn place(
     // vertical run and centres nodes over their aligned neighbours.
     // The far ends of a compact branch point's fan whose labels need
     // to sit side by side get the room (see `fan_label_room`).
-    let spaced = fan_label_room(g, back, &layers, &alayer, &absize, &alsize, n, horizontal);
-    // A self-looped node keeps its loop's reach (and NODE_SEP) from its
-    // high-side neighbour, where the scene draws the loop (report P0
-    // #13: a channel beside it ran through the loop's apex). A
-    // separation size counts on both sides; a node with no high-side
-    // neighbour needs none. The node's own half of the gap between
-    // neighbours (`pair_sep`: GAP_B / 2) already lies past its side, so
-    // only what the loop reaches beyond it widens the node (stress's
-    // `A ==> D` channel ran 54 px past the loop's apex, the canvas 72 px
-    // wider than it needed).
-    let loops = crate::scene::loop_reach(g);
-    let spaced = if loops.iter().any(|&r| r > 0.0) {
-        let mut sep = spaced.unwrap_or_else(|| absize.clone());
-        for lay in &layers {
-            for w in lay.windows(2) {
-                let v = w[0];
-                if v < n && loops[v] > 0.0 {
-                    let past = (loops[v] + NODE_SEP - GAP_B / 2.0).max(0.0);
-                    sep[v] = sep[v].max(absize[v] + 2.0 * past);
-                }
-            }
-        }
-        Some(sep)
-    } else {
-        spaced
-    };
-    let bsep: &[f64] = spaced.as_deref().unwrap_or(&absize);
-    let mut bpos = coordinates_bk(
-        n,
-        na,
-        nlayers,
-        &layers,
-        preds_c,
-        succs_c,
-        &alayer,
-        bsep,
-        if clustered { Some(&apath) } else { None },
-        if clustered { Some(&border_side) } else { None },
-        if clustered && horizontal {
-            Some(header.as_slice())
-        } else {
-            None
-        },
-    );
-    if opts.compact {
-        compact_breadth(
-            n,
-            &layers,
-            preds_c,
-            succs_c,
-            &alayer,
-            bsep,
-            if clustered { Some(&apath) } else { None },
-            if clustered { Some(&border_side) } else { None },
-            if clustered && horizontal {
-                Some(header.as_slice())
-            } else {
-                None
-            },
-            &mut bpos,
-        );
-    }
-    // ... then slides inside its layer's free room towards the breadth
-    // centre of everything drawn (D4); the order stays, so no crossing
-    // appears.
     let chains_b = |bpos: &[f64]| -> (f64, f64) {
         drawn_breadth(
             g,
@@ -4736,53 +4671,185 @@ fn place(
             block_paths,
         )
     };
-    // A node already on a straight run with a neighbour stays: sliding it
-    // would kink that edge into an S (G8).
-    let aligned = |v: usize, bpos: &[f64]| {
-        preds[v]
-            .iter()
-            .chain(&succs[v])
-            .any(|&u| (bpos[u] - bpos[v]).abs() < ALIGN_EPS)
-    };
-    if let Some(v) = big.filter(|&v| !aligned(v, &bpos)) {
-        let ext = chains_b(&bpos);
-        let lay = &layers[alayer[v]];
-        let s = lay.iter().position(|&w| w == v).unwrap_or(0);
-        let ap = if clustered {
-            Some(apath.as_slice())
-        } else {
-            None
-        };
-        let bs = if clustered {
-            Some(border_side.as_slice())
-        } else {
-            None
-        };
-        let hb = if clustered && horizontal {
-            Some(header.as_slice())
-        } else {
-            None
-        };
-        let half = absize[v] / 2.0;
-        let lo = match s.checked_sub(1).map(|i| lay[i]) {
-            Some(l) => bpos[l] + pair_sep(l, v, n, bsep, ap, bs, hb),
-            None => ext.0 + half,
-        };
-        let hi = match lay.get(s + 1) {
-            Some(&r) => bpos[r] - pair_sep(v, r, n, bsep, ap, bs, hb),
-            None => ext.1 - half,
-        };
-        // Only as far as needed: into the middle CENTRE_SLIDE_BAND of
-        // the breadth, so its edges keep their angles where they can.
-        let (mid, band) = (
-            (ext.0 + ext.1) / 2.0,
-            (ext.1 - ext.0) / 2.0 * CENTRE_SLIDE_BAND,
-        );
-        if lo <= hi {
-            let to = bpos[v].max(mid - band).min(mid + band).max(lo).min(hi);
-            if (to - bpos[v]).abs() >= CENTRE_SLIDE_MIN_MOVE {
-                bpos[v] = to;
+    // (A function of the layers: X2.5 below may move a run and place
+    // them again.)
+    let breadth = |layers: &[Vec<usize>], widen: &[(usize, f64)]| -> Vec<f64> {
+        let spaced = fan_label_room(g, back, layers, &alayer, &absize, &alsize, n, horizontal);
+        // A self-looped node keeps its loop's reach (and NODE_SEP) from its
+        // high-side neighbour, where the scene draws the loop (report P0
+        // #13: a channel beside it ran through the loop's apex). A
+        // separation size counts on both sides; a node with no high-side
+        // neighbour needs none. The node's own half of the gap between
+        // neighbours (`pair_sep`: GAP_B / 2) already lies past its side, so
+        // only what the loop reaches beyond it widens the node (stress's
+        // `A ==> D` channel ran 54 px past the loop's apex, the canvas 72 px
+        // wider than it needed).
+        let loops = crate::scene::loop_reach(g);
+        let spaced = if loops.iter().any(|&r| r > 0.0) {
+            let mut sep = spaced.unwrap_or_else(|| absize.clone());
+            for lay in layers {
+                for w in lay.windows(2) {
+                    let v = w[0];
+                    if v < n && loops[v] > 0.0 {
+                        let past = (loops[v] + NODE_SEP - GAP_B / 2.0).max(0.0);
+                        sep[v] = sep[v].max(absize[v] + 2.0 * past);
+                    }
+                }
             }
+            Some(sep)
+        } else {
+            spaced
+        };
+        // (X2.2 for a run past a title chip: the room it keeps from the
+        // unit before it.)
+        let spaced = if widen.is_empty() {
+            spaced
+        } else {
+            let mut sep = spaced.unwrap_or_else(|| absize.clone());
+            for &(v, w) in widen {
+                sep[v] += w;
+            }
+            Some(sep)
+        };
+        let bsep: &[f64] = spaced.as_deref().unwrap_or(&absize);
+        let mut bpos = coordinates_bk(
+            n,
+            na,
+            nlayers,
+            layers,
+            preds_c,
+            succs_c,
+            &alayer,
+            bsep,
+            if clustered { Some(&apath) } else { None },
+            if clustered { Some(&border_side) } else { None },
+            if clustered && horizontal {
+                Some(header.as_slice())
+            } else {
+                None
+            },
+        );
+        if opts.compact {
+            compact_breadth(
+                n,
+                layers,
+                preds_c,
+                succs_c,
+                &alayer,
+                bsep,
+                if clustered { Some(&apath) } else { None },
+                if clustered { Some(&border_side) } else { None },
+                if clustered && horizontal {
+                    Some(header.as_slice())
+                } else {
+                    None
+                },
+                &mut bpos,
+            );
+        }
+        // ... then slides inside its layer's free room towards the breadth
+        // centre of everything drawn (D4); the order stays, so no crossing
+        // appears.
+        // A node already on a straight run with a neighbour stays: sliding it
+        // would kink that edge into an S (G8).
+        let aligned = |v: usize, bpos: &[f64]| {
+            preds[v]
+                .iter()
+                .chain(&succs[v])
+                .any(|&u| (bpos[u] - bpos[v]).abs() < ALIGN_EPS)
+        };
+        if let Some(v) = big.filter(|&v| !aligned(v, &bpos)) {
+            let ext = chains_b(&bpos);
+            let lay = &layers[alayer[v]];
+            let s = lay.iter().position(|&w| w == v).unwrap_or(0);
+            let ap = if clustered {
+                Some(apath.as_slice())
+            } else {
+                None
+            };
+            let bs = if clustered {
+                Some(border_side.as_slice())
+            } else {
+                None
+            };
+            let hb = if clustered && horizontal {
+                Some(header.as_slice())
+            } else {
+                None
+            };
+            let half = absize[v] / 2.0;
+            let lo = match s.checked_sub(1).map(|i| lay[i]) {
+                Some(l) => bpos[l] + pair_sep(l, v, n, bsep, ap, bs, hb),
+                None => ext.0 + half,
+            };
+            let hi = match lay.get(s + 1) {
+                Some(&r) => bpos[r] - pair_sep(v, r, n, bsep, ap, bs, hb),
+                None => ext.1 - half,
+            };
+            // Only as far as needed: into the middle CENTRE_SLIDE_BAND of
+            // the breadth, so its edges keep their angles where they can.
+            let (mid, band) = (
+                (ext.0 + ext.1) / 2.0,
+                (ext.1 - ext.0) / 2.0 * CENTRE_SLIDE_BAND,
+            );
+            if lo <= hi {
+                let to = bpos[v].max(mid - band).min(mid + band).max(lo).min(hi);
+                if (to - bpos[v]).abs() >= CENTRE_SLIDE_MIN_MOVE {
+                    bpos[v] = to;
+                }
+            }
+        }
+        bpos
+    };
+    let mut bpos = breadth(&layers, &[]);
+    let mut seed_layers: Option<Vec<Vec<usize>>> = None;
+    // X2.5 (B12, block layouts in TD / BT): a run to a member behind a
+    // block's title row whose column lies under the block's title chip
+    // crosses the title side there, and the router takes it round the
+    // chip through a lateral wall. Its channel moves past the chip in
+    // the order ([`BlockOrder::clear_titles`]), and the breadths are
+    // placed again.
+    if let (Some(order), Some(nc), false) = (block_order.as_ref(), node_cluster, horizontal) {
+        let under = runs_under_titles(
+            g,
+            &TitleRows {
+                nc,
+                apath: &apath,
+                alayer: &alayer,
+                absize: &absize,
+                bpos: &bpos,
+                border: &border_side,
+                preds: &preds,
+                succs: &succs,
+                cluster_span: &cluster_span,
+                n,
+            },
+        );
+        let before = layers.clone();
+        if !under.is_empty() && order.clear_titles(&under, &bpos, &absize, &mut layers, &mut pos) {
+            bpos = breadth(&layers, &[]);
+            // (The later placements of the layout call start from the
+            // order as the level orders left it: each moves its own runs.)
+            seed_layers = Some(before);
+        }
+        let widen = title_room(
+            g,
+            &TitleRows {
+                nc,
+                apath: &apath,
+                alayer: &alayer,
+                absize: &absize,
+                bpos: &bpos,
+                border: &border_side,
+                preds: &preds,
+                succs: &succs,
+                cluster_span: &cluster_span,
+                n,
+            },
+            &layers,
+        );
+        if !widen.is_empty() {
+            bpos = breadth(&layers, &widen);
         }
     }
 
@@ -5584,7 +5651,9 @@ fn place(
         })
         .collect();
     let order: Option<OrderSeed> = block_paths.map(|_| {
-        layers
+        seed_layers
+            .as_ref()
+            .unwrap_or(&layers)
             .iter()
             .map(|lv| lv.iter().filter_map(|&v| element(v)).collect())
             .collect()
@@ -5606,6 +5675,155 @@ fn place(
         order,
         title_jog,
     }
+}
+
+/// A block's title chip as a block layout's placement sees it (TD /
+/// BT; [`title_chip`]).
+struct TitleChip {
+    /// The block's title row: its first layer (TD), its last (BT).
+    row: usize,
+    /// The block's depth: the length of its members' subgraph path up to
+    /// and including it.
+    depth: usize,
+    /// The chip's breadth interval, widened by
+    /// [`crate::ortho::CHIP_CLEAR`].
+    lo: f64,
+    hi: f64,
+}
+
+/// Block `c`'s title chip ([`TitleChip`]): it spans the frame's left
+/// inset and the title's width (the frame's left: its members' boxes,
+/// and the channel points inside it, as the scene wraps them). None for
+/// a block without a title or without members.
+fn title_chip(g: &Graph, t: &TitleRows, c: usize) -> Option<TitleChip> {
+    use crate::clearance::{CHIP_INSET_X, CHIP_PAD_W};
+    let title = &g.subgraphs[c].title;
+    if title.trim().is_empty() {
+        return None;
+    }
+    let &(lo, hi) = t.cluster_span.get(&c)?;
+    let row = if matches!(g.direction, Direction::BT) {
+        hi
+    } else {
+        lo
+    };
+    let mut left = f64::INFINITY;
+    for v in 0..t.n {
+        if t.nc[v].contains(&c) {
+            left = left.min(t.bpos[v] - t.absize[v] / 2.0 - FRAME_PAD);
+        }
+    }
+    for d in t.n..t.bpos.len() {
+        if t.border[d] == 0 && t.apath[d].contains(&c) {
+            left = left.min(t.bpos[d] - crate::scene::LANE_PAD);
+        }
+    }
+    if !left.is_finite() {
+        return None;
+    }
+    let depth = t.apath.iter().enumerate().find_map(|(v, p)| {
+        (v < t.n && t.nc[v].contains(&c)).then(|| p.iter().position(|&x| x == c).map(|i| i + 1))
+    })??;
+    Some(TitleChip {
+        row,
+        depth,
+        lo: left + CHIP_INSET_X - crate::ortho::CHIP_CLEAR,
+        hi: left
+            + CHIP_INSET_X
+            + text_width(title) * TITLE_SCALE
+            + CHIP_PAD_W
+            + crate::ortho::CHIP_CLEAR,
+    })
+}
+
+/// A block layout's channel points that stand under a title chip (TD /
+/// BT, B12 X2.5): per block, each dummy of the block's own level on its
+/// title row whose column lies in the chip's interval — a run to a
+/// member behind the title row, which crosses the title side under the
+/// chip. With the right end of the chip's interval.
+fn runs_under_titles(g: &Graph, t: &TitleRows) -> Vec<(usize, f64)> {
+    let mut out = Vec::new();
+    for &c in t.cluster_span.keys() {
+        let Some(chip) = title_chip(g, t, c) else {
+            continue;
+        };
+        for d in t.n..t.bpos.len() {
+            if t.alayer[d] == chip.row
+                && t.border[d] == 0
+                && t.apath[d].len() == chip.depth
+                && t.apath[d].last() == Some(&c)
+                && t.bpos[d] > chip.lo
+                && t.bpos[d] < chip.hi
+            {
+                out.push((d, chip.hi));
+            }
+        }
+    }
+    out
+}
+
+/// The most a run's column moves for the room past a title chip
+/// ([`title_room`]): two node gaps. A run that a long chip would push
+/// further keeps its column (X2.2's frame breadth for a chip wider than
+/// its block is not built): pushed past the chip of a long title over a
+/// narrow block, a turned edge's run widened the drawing of one local
+/// acceptance input by 13 %, past the 10 % its permutations may differ.
+const TITLE_ROOM_MAX: f64 = 2.0 * GAP_B;
+
+/// X2.2 for the runs of a block layout that cross a title side past the
+/// chip (TD / BT): such a run's column keeps clear of the chip and of the
+/// columns the block's displaced entries take past it
+/// ([`crate::ortho`]'s title sides: the first a corner's rounding past
+/// the chip's clearance, the next a track apart), so the entries jog in
+/// to their ports without crossing it. Per run on a title row short of
+/// that column, with a unit of its block before it there: the breadth
+/// its element widens by so that its least distance from that unit
+/// reaches the column. (blocks/nested-chain: past `Inner target`'s chip
+/// `a -> c2` ran down 1 px clear of it, and `b2 -> c`, displaced, took
+/// the column past the run and crossed it twice.)
+fn title_room(g: &Graph, t: &TitleRows, layers: &[Vec<usize>]) -> Vec<(usize, f64)> {
+    let counts = title_counts(g, t);
+    let mut out = Vec::new();
+    for &c in t.cluster_span.keys() {
+        let Some(chip) = title_chip(g, t, c) else {
+            continue;
+        };
+        let k = counts[c].0;
+        let need = if k == 0 {
+            chip.hi
+        } else {
+            chip.hi + crate::router::CORNER_R + k as f64 * crate::ortho::TRACK_PITCH
+        };
+        let lv = &layers[chip.row];
+        for (i, &d) in lv.iter().enumerate() {
+            if d < t.n
+                || t.border[d] != 0
+                || t.apath[d].len() != chip.depth
+                || t.apath[d].last() != Some(&c)
+                || t.bpos[d] <= chip.lo
+                || t.bpos[d] >= need
+            {
+                continue;
+            }
+            let Some(&u) = i.checked_sub(1).map(|j| &lv[j]) else {
+                continue;
+            };
+            let inside = if u < t.n {
+                t.nc[u].contains(&c)
+            } else {
+                t.border[u] == 0 && t.apath[u].contains(&c)
+            };
+            if !inside {
+                continue;
+            }
+            let least = pair_sep(u, d, t.n, t.absize, Some(t.apath), Some(t.border), None);
+            let short = need - t.bpos[u] - least;
+            if short > 0.0 && short <= TITLE_ROOM_MAX {
+                out.push((d, 2.0 * short));
+            }
+        }
+    }
+    out
 }
 
 /// What [`title_jogs`] reads of a placement.
@@ -5645,44 +5863,34 @@ struct TitleRows<'a> {
 /// run into its port. Without displaced crossings a frame keeps its
 /// height.
 fn title_jogs(g: &Graph, t: &TitleRows) -> Vec<f64> {
-    use crate::clearance::{CHIP_INSET_X, CHIP_PAD_W};
+    title_counts(g, t)
+        .into_iter()
+        .map(|(entries, runs)| match entries + runs {
+            0 => 0.0,
+            k => crate::ortho::ROW_CLEAR + (k - 1) as f64 * crate::ortho::TRACK_PITCH,
+        })
+        .collect()
+}
+
+/// Per block (TD / BT): the entries its title row takes that the free
+/// stretch beside the title chip cannot hold — displaced, each crosses
+/// the title side at a column of its own past the chip — and its runs
+/// under the chip ([`title_jogs`]).
+fn title_counts(g: &Graph, t: &TitleRows) -> Vec<(usize, usize)> {
     let ns = g.subgraphs.len();
-    let mut jog = vec![0.0f64; ns];
+    let mut counts = vec![(0usize, 0usize); ns];
     let bt = matches!(g.direction, Direction::BT);
-    for (&c, &(lo, hi)) in t.cluster_span {
-        let title = &g.subgraphs[c].title;
-        if title.trim().is_empty() {
-            continue;
-        }
-        let row = if bt { hi } else { lo };
-        // The frame's left, as the scene wraps it.
-        let mut left = f64::INFINITY;
-        for v in 0..t.n {
-            if t.nc[v].contains(&c) {
-                left = left.min(t.bpos[v] - t.absize[v] / 2.0 - FRAME_PAD);
-            }
-        }
-        for d in t.n..t.bpos.len() {
-            if t.border[d] == 0 && t.apath[d].contains(&c) {
-                left = left.min(t.bpos[d] - crate::scene::LANE_PAD);
-            }
-        }
-        if !left.is_finite() {
-            continue;
-        }
-        let chip_lo = left + CHIP_INSET_X - crate::ortho::CHIP_CLEAR;
-        let chip_hi = left
-            + CHIP_INSET_X
-            + text_width(title) * TITLE_SCALE
-            + CHIP_PAD_W
-            + crate::ortho::CHIP_CLEAR;
-        let path_len = t.apath.iter().enumerate().find_map(|(v, p)| {
-            (v < t.n && t.nc[v].contains(&c)).then(|| p.iter().position(|&x| x == c).map(|i| i + 1))
-        });
-        let Some(Some(depth)) = path_len else {
+    for &c in t.cluster_span.keys() {
+        let Some(TitleChip {
+            row,
+            depth,
+            lo: chip_lo,
+            hi: chip_hi,
+        }) = title_chip(g, t, c)
+        else {
             continue;
         };
-        let mut k = 0usize;
+        let (mut k, mut runs) = (0usize, 0usize);
         for v in 0..t.bpos.len() {
             if t.alayer[v] != row || t.border[v] != 0 || t.apath[v].len() != depth {
                 continue;
@@ -5693,7 +5901,7 @@ fn title_jogs(g: &Graph, t: &TitleRows) -> Vec<f64> {
             let (m0, m1) = (t.bpos[v] - t.absize[v] / 2.0, t.bpos[v] + t.absize[v] / 2.0);
             if v >= t.n {
                 // A run of the block's own under the chip.
-                k += usize::from(t.bpos[v] > chip_lo && t.bpos[v] < chip_hi);
+                runs += usize::from(t.bpos[v] > chip_lo && t.bpos[v] < chip_hi);
                 continue;
             }
             let from = if bt { &t.succs[v] } else { &t.preds[v] };
@@ -5717,11 +5925,9 @@ fn title_jogs(g: &Graph, t: &TitleRows) -> Vec<f64> {
             };
             k += border.saturating_sub(cap);
         }
-        if k > 0 {
-            jog[c] = crate::ortho::ROW_CLEAR + (k - 1) as f64 * crate::ortho::TRACK_PITCH;
-        }
+        counts[c] = (k, runs);
     }
-    jog
+    counts
 }
 
 /// The largest node outside every subgraph, when there clearly is one:
@@ -7704,6 +7910,141 @@ impl BlockOrder<'_> {
                 }
             }
         }
+    }
+
+    /// Dummy `d` moved, on its layer and inside its own level, to the
+    /// first place whose units all stand left of column `x` by their
+    /// middles in `bpos` (each unit as its members stand: a block stays
+    /// whole).
+    fn move_to_column(
+        &self,
+        d: usize,
+        x: f64,
+        bpos: &[f64],
+        layers: &mut [Vec<usize>],
+        pos: &mut [f64],
+    ) {
+        let l = self.alayer[d];
+        let Some(at) = layers[l].iter().position(|&v| v == d) else {
+            return;
+        };
+        layers[l].remove(at);
+        let units = self.units(&layers[l], &self.apath[d]);
+        let mut to = units.first().map_or(at, |u| u.1);
+        for &(_, start, len) in &units {
+            let mid = layers[l][start..start + len]
+                .iter()
+                .map(|&v| bpos[v])
+                .sum::<f64>()
+                / len as f64;
+            if mid < x {
+                to = start + len;
+            }
+        }
+        layers[l].insert(to.min(layers[l].len()), d);
+        for (i, &v) in layers[l].iter().enumerate() {
+            pos[v] = i as f64;
+        }
+    }
+
+    /// X2.5 in the order (B12, block layouts in TD / BT). A channel whose
+    /// run stands under a block's title chip (`under`: a dummy of the run
+    /// on the block's title row and the right end of the chip's interval,
+    /// as the breadths `bpos` placed them; `size` the elements' breadths)
+    /// would cross the title side there, and the router takes it round
+    /// the chip through a lateral wall. It moves past the chip: to the
+    /// column right of the nearest unit of its title row that reaches
+    /// past the chip's end, else right of the row's last unit — first its
+    /// run in the block alone, then every dummy of the channel, each to
+    /// the place on its layer in its own level that column gives
+    /// ([`BlockOrder::move_to_column`]). A move is kept when neither the
+    /// layered crossings nor the fans' crossings rise, the nearest column
+    /// first. (blocks/nested-chain: `a -> c2` ran down beside `c` under
+    /// `Inner target`'s chip, and out of and into the two inner blocks
+    /// through their left walls; mermaid runs it down their right side.)
+    /// Returns whether the order changed.
+    fn clear_titles(
+        &self,
+        under: &[(usize, f64)],
+        bpos: &[f64],
+        size: &[f64],
+        layers: &mut [Vec<usize>],
+        pos: &mut [f64],
+    ) -> bool {
+        let mut cross = self.crossings(layers, pos, 0, self.nlayers);
+        let mut fans = self.fan_crossings(layers, pos);
+        let mut done: Vec<usize> = Vec::new();
+        let mut changed = false;
+        for &(d, chip_hi) in under {
+            let ch = self.chain_of[d];
+            if ch == usize::MAX || done.contains(&ch) {
+                continue;
+            }
+            done.push(ch);
+            let l = self.alayer[d];
+            // The columns past the chip, nearest first.
+            let units = self.units(&layers[l], &self.apath[d]);
+            let mut cols: Vec<f64> = Vec::new();
+            for (k, &(_, start, len)) in units.iter().enumerate() {
+                let members = &layers[l][start..start + len];
+                if members.contains(&d) {
+                    continue;
+                }
+                let right = members
+                    .iter()
+                    .map(|&v| bpos[v] + size[v] / 2.0)
+                    .fold(f64::NEG_INFINITY, f64::max);
+                if right + GAP_B / 2.0 >= chip_hi || k + 1 == units.len() {
+                    cols.push(right + GAP_B / 4.0);
+                }
+            }
+            let run: Vec<usize> = (0..self.alayer.len())
+                .filter(|&v| self.run[v] != usize::MAX && self.run[v] == self.run[d])
+                .collect();
+            // The whole channel only when both its ends lie in the level
+            // that holds the block: then the levels it passes are the
+            // block's siblings. A channel from further out runs through
+            // levels a hub's fan shares, and moved to their far side it
+            // left the order the fan's comb was laid out in (dense-td:
+            // `n16 -> n35` past `n16 -> n32`, and the turned `n36 -> n16`
+            // was rerouted across the fan).
+            let parent = &self.apath[d][..self.apath[d].len().saturating_sub(1)];
+            let (top, bottom, _) = &self.chains[ch];
+            let local =
+                self.apath[*top].starts_with(parent) && self.apath[*bottom].starts_with(parent);
+            let chain = if local {
+                self.chains[ch].2.clone()
+            } else {
+                run.clone()
+            };
+            'cols: for x in cols {
+                for moved in [&run, &chain] {
+                    let before: Vec<Vec<usize>> = moved
+                        .iter()
+                        .map(|&v| layers[self.alayer[v]].clone())
+                        .collect();
+                    for &v in moved.iter() {
+                        self.move_to_column(v, x, bpos, layers, pos);
+                    }
+                    let (c, f) = (
+                        self.crossings(layers, pos, 0, self.nlayers),
+                        self.fan_crossings(layers, pos),
+                    );
+                    if c <= cross && f <= fans {
+                        (cross, fans, changed) = (c, f, true);
+                        break 'cols;
+                    }
+                    for (&v, lv) in moved.iter().zip(before).rev() {
+                        let l = self.alayer[v];
+                        layers[l] = lv;
+                        for (i, &w) in layers[l].iter().enumerate() {
+                            pos[w] = i as f64;
+                        }
+                    }
+                }
+            }
+        }
+        changed
     }
 }
 

@@ -1224,8 +1224,18 @@ fn place_ports(
         // A straight side right under a frame's title: its ends keep
         // out of the chip's shadow, so no edge reaches them past the
         // frame's name (G6).
+        // In a block layout the chip of a frame whose title row the node
+        // stands in shades its side facing the chip whatever the jog
+        // room's depth (B12 2.7 F2, title-clear rule 1): an edge out of
+        // that side crosses the title side there.
+        let deep: Vec<bool> = match end {
+            EndRef::Node(v) if cx.blocks => (0..heads.len())
+                .map(|ci| title_row_side(sc, cx, v, ci, side, heads[ci]))
+                .collect(),
+            _ => Vec::new(),
+        };
         let (lo, hi, shaded) = match prof.straight() {
-            Some(n) => unshaded(&heads, side, n, (lo, hi), ports.len()),
+            Some(n) => unshaded(&heads, &deep, side, n, (lo, hi), ports.len()),
             None => (lo, hi, false),
         };
         let shaded = shaded && ports.iter().any(|p| p.want < lo || p.want > hi);
@@ -1977,6 +1987,7 @@ fn title_heads(sc: &Scene) -> Vec<(f64, f64, f64, f64)> {
 /// over-full side, which would stand on that first entry's column.)
 fn unshaded(
     heads: &[(f64, f64, f64, f64)],
+    deep: &[bool],
     side: Side,
     n: f64,
     (lo, hi): (f64, f64),
@@ -1990,10 +2001,10 @@ fn unshaded(
     };
     let mut free = vec![(lo, hi)];
     let mut shaded = false;
-    for &h in heads {
+    for (ci, &h) in heads.iter().enumerate() {
         let (t0, n0) = split(side, (h.0, h.1));
         let (t1, n1) = split(side, (h.2, h.3));
-        if n1 + CHIP_SEP <= a || n0 - CHIP_SEP >= b {
+        if !deep.get(ci).copied().unwrap_or(false) && (n1 + CHIP_SEP <= a || n0 - CHIP_SEP >= b) {
             continue;
         }
         let (c0, c1) = (t0 - CHIP_SEP, t1 + CHIP_SEP);
@@ -2016,6 +2027,51 @@ fn unshaded(
         Some((p, q)) if shaded => (p, q, true),
         _ => (lo, hi, false),
     }
+}
+
+/// Whether node `v`'s `side` faces the title chip `head` of frame `ci`
+/// across that frame's title row (B12 2.1): the frame holds `v`, the
+/// chip lies out from the side, and no other node of the frame stands
+/// between the side and the chip across `v`'s middle. An edge out of
+/// that side crosses the frame's title side however deep below its chip
+/// the node stands.
+fn title_row_side(
+    sc: &Scene,
+    cx: &Ctx,
+    v: usize,
+    ci: usize,
+    side: Side,
+    head: (f64, f64, f64, f64),
+) -> bool {
+    if !cx.node_frames.get(v).is_some_and(|f| f.contains(&ci)) {
+        return false;
+    }
+    let r = end_rect(sc, EndRef::Node(v));
+    let sgn = out_sign(side);
+    let (_, n) = split(side, ((r.0 + r.2) / 2.0, (r.1 + r.3) / 2.0));
+    let edge = if sgn > 0.0 {
+        split(side, (r.2, r.3)).1.max(split(side, (r.0, r.1)).1)
+    } else {
+        split(side, (r.2, r.3)).1.min(split(side, (r.0, r.1)).1)
+    };
+    let (_, h0) = split(side, (head.0, head.1));
+    let (_, h1) = split(side, (head.2, head.3));
+    let chip = if sgn > 0.0 { h0.min(h1) } else { h0.max(h1) };
+    if (chip - edge) * sgn <= 0.0 || (n - edge) * sgn > 0.0 {
+        return false;
+    }
+    let mid = split(side, ((r.0 + r.2) / 2.0, (r.1 + r.3) / 2.0)).0;
+    !(0..sc.nodes.len()).any(|w| {
+        if w == v || !cx.node_frames.get(w).is_some_and(|f| f.contains(&ci)) {
+            return false;
+        }
+        let b = end_rect(sc, EndRef::Node(w));
+        let (t0, n0) = split(side, (b.0, b.1));
+        let (t1, n1) = split(side, (b.2, b.3));
+        let (tl, th) = (t0.min(t1), t0.max(t1));
+        let near = if sgn > 0.0 { n0.min(n1) } else { n0.max(n1) };
+        mid >= tl && mid <= th && (near - edge) * sgn >= 0.0 && (chip - near) * sgn > 0.0
+    })
 }
 
 /// What a label box of width `w` centred at `m` would hit: nodes, frame
@@ -2730,14 +2786,14 @@ mod tests {
         // Chip header over x 0..100, ending 10 px above a top side
         // spanning x 50..250.
         let heads = [(0.0, 0.0, 100.0, 20.0)];
-        let (lo, hi, shaded) = unshaded(&heads, Side::Top, 30.0, (58.0, 242.0), 2);
+        let (lo, hi, shaded) = unshaded(&heads, &[], Side::Top, 30.0, (58.0, 242.0), 2);
         assert!(shaded);
         assert!(lo >= 100.0 + CHIP_SEP && hi == 242.0, "{lo} {hi}");
         // Far below the chip: no shade.
-        let (lo, hi, shaded) = unshaded(&heads, Side::Top, 300.0, (58.0, 242.0), 2);
+        let (lo, hi, shaded) = unshaded(&heads, &[], Side::Top, 300.0, (58.0, 242.0), 2);
         assert!(!shaded && lo == 58.0 && hi == 242.0);
         // No room past the chip for the ends: the side stays whole.
-        let (lo, hi, _) = unshaded(&heads, Side::Top, 30.0, (58.0, 110.0), 2);
+        let (lo, hi, _) = unshaded(&heads, &[], Side::Top, 30.0, (58.0, 110.0), 2);
         assert!(lo == 58.0 && hi == 110.0);
     }
 

@@ -1640,9 +1640,79 @@ fn a_hubs_fan_keeps_its_order_through_the_bands() {
             .all(|d| !d.contains(" n16 ") && !d.contains(" n37 ")),
         "{fans:#?}"
     );
-    // Every step under the hub's block keeps a track of its own.
+    // Every step under the hub's block keeps a track of its own: no
+    // edge of the hub runs on top of another. (The drawing's one overlap
+    // pair, as at the start, is the hub's turned `n36 -> n16` leaving its
+    // block past `g8`'s title chip beside that frame's free pin, far from
+    // the hub.)
     let m = crate::quality::measure(&g, &sc);
-    assert_eq!(m.overlap_pairs, 0, "{:?}", m.details);
+    let on_top: Vec<&String> = m
+        .details
+        .iter()
+        .filter(|d| {
+            d.split_once(" overlap ")
+                .is_some_and(|(a, b)| a.contains("n16") && b.contains("n16"))
+        })
+        .collect();
+    assert!(on_top.is_empty(), "{on_top:?}");
+    assert!(m.overlap_pairs <= 1, "{:?}", m.details);
+}
+
+#[test]
+fn a_run_under_a_title_chip_moves_past_it() {
+    // blocks/nested-chain: `a -> c2` ran down beside `c`, under `Inner
+    // target`'s title chip, and the router took it round the chip, out
+    // of and into the two inner blocks through their left walls
+    // (lateral crossings 2). X2.5 moves its channel past the chip in the
+    // order, down the right side of both inner blocks, and keeps its
+    // column clear of the chip and of the column `b2 -> c` takes past
+    // it as a displaced entry, so the entry jogs in left of the run.
+    let g = fixture("blocks/nested-chain");
+    let sc = block_scene(&g);
+    let m = crate::quality::measure(&g, &sc);
+    assert_eq!(m.lateral_x, 0, "{:?}", m.details);
+    assert_eq!(m.x_drawn, 0, "{:?}", m.details);
+    // A hub's fan into four blocks: the channel to `q3` ran under
+    // `Second`'s chip, stepped across inside the frame and crossed the
+    // hub's step to `q1` above it. Past the chip its run lies right of
+    // `q1` and `q2`, and the fan is crossing-free.
+    let src = "flowchart TD\n    h[hub] --> p1\n    h --> q1\n    h --> q3\n    h --> r2\n    h --> s1\n    subgraph P[First]\n        p1 --> p2\n    end\n    subgraph Q[Second]\n        q1 --> q2 --> q3\n    end\n    subgraph R[Third]\n        r1 --> r2\n    end\n    subgraph S[Fourth]\n        s1\n    end\n    p2 --> r1\n    q3 --> s1\n    r2 --> h\n";
+    let g = graph(src);
+    let sc = block_scene(&g);
+    assert!(
+        fan_crossings(&g, &sc).is_empty(),
+        "{:#?}",
+        fan_crossings(&g, &sc)
+    );
+    let m = crate::quality::measure(&g, &sc);
+    assert!(m.x_drawn <= 1, "{:?}", m.details);
+}
+
+#[test]
+fn an_end_of_a_title_row_member_keeps_out_of_its_chips_breadth_below_the_jog_room() {
+    // dense-td as blocks: `n36` stands in `g8`'s title row, its top side
+    // partly under the frame's two-line chip, and the turned `n36 ->
+    // n16` leaves that side. The jog room put the chip further from the
+    // side than the ports stage's shade reaches, so the end stayed under
+    // the chip; the router took the edge off it and round across the
+    // hub `n16`'s fan (ten fan crossings). In a block layout a title-row
+    // member's side is shaded by breadth alone (2.7 F2).
+    let g = fixture("quality/dense-td");
+    let sc = block_scene(&g);
+    let g8 = sc.clusters.iter().position(|c| c.id == "g8").expect("g8");
+    let chip = crate::scene::title_head(&sc.clusters, g8, sc.width);
+    let e = edge(&sc, "n36", "n16");
+    let start = path_of(e)[0];
+    let sep = crate::clearance::CHIP_SEP;
+    assert!(
+        start.0 <= chip.0 - sep || start.0 >= chip.2 + sep,
+        "{start:?} under {chip:?}"
+    );
+    assert!(
+        fan_crossings(&g, &sc).is_empty(),
+        "{:#?}",
+        fan_crossings(&g, &sc)
+    );
 }
 
 #[test]

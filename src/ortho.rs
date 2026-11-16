@@ -818,7 +818,23 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
                     own: [ends_of(from), ends_of(to)],
                     edge: i,
                 };
-                straighten(&room, f0.0, &cols, f3.0)
+                // A column whose run crosses a block's title side keeps
+                // the place the layout gave it past the chip and the
+                // columns of the block's displaced entries (X2.2, X2.5).
+                // Straightened towards its neighbours it moved back into
+                // that room (blocks/nested-chain: `a -> c2` 1 px past the
+                // chip, `b2 -> c` displaced past it and across it).
+                let pts: Vec<Pt> = std::iter::once(f0)
+                    .chain(cols.iter().copied())
+                    .chain(std::iter::once(f3))
+                    .collect();
+                let pinned: Vec<bool> = (1..pts.len() - 1)
+                    .map(|k| {
+                        !titles.all_crossings(&pts[k - 1..=k]).is_empty()
+                            || !titles.all_crossings(&pts[k..=k + 1]).is_empty()
+                    })
+                    .collect();
+                straighten(&room, f0.0, &cols, f3.0, &pinned)
             }
         } else {
             Vec::new()
@@ -845,6 +861,7 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
             own,
             head_leg,
             lines: &lines,
+            titles: &titles,
         };
         // The label's spot along the flow and its half extent there.
         let label = e.label.as_ref().map(|(_, c, w)| {
@@ -1178,6 +1195,8 @@ struct Along<'a> {
     /// Every edge's line as the stage found it (flow coordinates; empty
     /// where none is judged), for the gap a long run steps across in.
     lines: &'a [Vec<Pt>],
+    /// The frames' title sides (a block layout's; [`TitleSides`]).
+    titles: &'a TitleSides,
 }
 
 impl Along<'_> {
@@ -1310,25 +1329,28 @@ fn breadth_stubs(sc: &Scene, cx: &Ctx, dir: Direction, boxes: &[Rect]) -> Vec<Op
     out
 }
 
-/// The title sides of a block layout's frames (TD / BT; B12 2.8,
-/// "Title-clear entries", rules 2 and 3 in their smallest form): an
-/// edge that crosses a frame's title side into it (or out of it) at a
-/// breadth within the frame's title chip widened by [`CHIP_CLEAR`] —
-/// an entry to a member whose side lies under the chip, or a run of the
-/// frame's own on its title row to a member behind it — is *displaced*:
-/// it crosses the side at a column past the chip's end, the columns of
-/// one side [`TRACK_PITCH`] apart in the order of the breadths they
-/// replace, and steps over to its own breadth inside the frame, in the
-/// jog room between the title strip and the title row that the layout
-/// reserves for them (`layout::title_jogs`). Through the chip, the
-/// router took such an edge round it and in through the frame's lateral
-/// wall, or jogged under it from a column past every other entry of the
-/// side, across them (blocks/nested-chain: `a -> c2` through the left
-/// walls of both inner blocks). A column that would leave the frame is
-/// not taken: the edge is drawn as before.
-/// A frame's title side as [`TitleSides`] reads it.
+/// A frame's title side as [`TitleSides`] reads it (flow coordinates):
+/// the frame's breadth span, the flow coordinate of its title side,
+/// which way along the flow the frame lies from it, and the chip's
+/// breadth span widened by [`CHIP_CLEAR`].
 type TitleSide = (f64, f64, f64, f64, (f64, f64));
 
+/// The title sides of a block layout's frames (TD / BT; B12 2.8,
+/// "Title-clear entries", rule 2 in its smallest form): an edge end on a
+/// side of a member of the frame's title row that lies wholly under the
+/// frame's title chip widened by [`CHIP_CLEAR`] — an entry into such a
+/// member, or an exit out of it going back up — is *displaced*: the edge
+/// crosses the title side at a column past the chip's end, the columns
+/// of one side [`TRACK_PITCH`] apart in the order of the breadths they
+/// replace, and steps over to its port inside the frame, in the jog room
+/// between the title strip and the title row that the layout reserves
+/// for them (`layout::title_jogs`). Through the chip, the router took
+/// such an edge round it and in through the frame's lateral wall. Only
+/// edge ends are displaced: a run of the frame's own under the chip is
+/// the layout's to move past it (X2.5, `layout::BlockOrder`'s
+/// `clear_titles`), and a channel column that crosses a title side keeps
+/// the column the layout gave it ([`straighten`]'s pins). A column that
+/// would leave the frame is not taken: the edge is drawn as before.
 struct TitleSides {
     /// Per frame: its breadth span, the flow coordinate of its title
     /// side, which way along the flow the frame lies from it, and the
@@ -1752,17 +1774,29 @@ fn flow_path(
         // passed on the run's own line where that runs clear of the boxes
         // to the next stop: the layout's dummies drift a few px from
         // layer to layer, and a step for each read as a ragged line.
-        let q =
-            if !port && turn != Some(q) && (q.0 - cur.0 .0).abs() < 2.0 * crate::router::CORNER_R {
-                let next = stops.get(si + 1).map_or(q.1, |n| n.0 .1);
-                if cx.clear_run(cur.0 .0, cur.0 .1, next) {
-                    (cur.0 .0, q.1)
-                } else {
-                    q
-                }
+        // (Not a column whose run crosses a block's title side: the
+        // layout placed it past the chip and the columns of the block's
+        // displaced entries, X2.2 and X2.5; on the run's line it moved
+        // back into their room.)
+        let titled = || {
+            let next = stops.get(si + 1).map_or(q, |n| n.0);
+            !cx.titles.all_crossings(&[cur.0, q]).is_empty()
+                || !cx.titles.all_crossings(&[q, next]).is_empty()
+        };
+        let q = if !port
+            && turn != Some(q)
+            && (q.0 - cur.0 .0).abs() < 2.0 * crate::router::CORNER_R
+            && !titled()
+        {
+            let next = stops.get(si + 1).map_or(q.1, |n| n.0 .1);
+            if cx.clear_run(cur.0 .0, cur.0 .1, next) {
+                (cur.0 .0, q.1)
             } else {
                 q
-            };
+            }
+        } else {
+            q
+        };
         if (q.0 - cur.0 .0).abs() > ALIGNED {
             if (q.1 - cur.0 .1) * h <= EPS {
                 return None;
@@ -1883,9 +1917,19 @@ impl ColumnRoom<'_> {
 /// dummy chain a whole box gap off its neighbours and drifts it from
 /// layer to layer; on the axes each drift is a step, and a chain the
 /// layout ordered past a row's last box ran its gap's width out beyond
-/// it, widening the drawing.
-fn straighten(room: &ColumnRoom, from: f64, cols: &[Pt], to: f64) -> Vec<Pt> {
-    let slots: Vec<(f64, f64)> = cols.iter().map(|&q| room.slot(q)).collect();
+/// it, widening the drawing. A `pinned` column keeps its breadth.
+fn straighten(room: &ColumnRoom, from: f64, cols: &[Pt], to: f64, pinned: &[bool]) -> Vec<Pt> {
+    let slots: Vec<(f64, f64)> = cols
+        .iter()
+        .enumerate()
+        .map(|(k, &q)| {
+            if pinned.get(k).copied().unwrap_or(false) {
+                (q.0, q.0)
+            } else {
+                room.slot(q)
+            }
+        })
+        .collect();
     let mut out: Vec<Pt> = cols.to_vec();
     let mut prev = from;
     let mut s = 0;
@@ -3401,7 +3445,7 @@ mod tests {
                 own: [None, None],
                 edge: 0,
             };
-            straighten(&r, 100.0, &cols, 100.0)
+            straighten(&r, 100.0, &cols, 100.0, &[])
         };
         // Nothing beside it: one straight run under its source.
         assert!(room(&[]).iter().all(|q| q.0 == 100.0));
