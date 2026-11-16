@@ -2020,14 +2020,20 @@ fn move_end(
     let (dt, _) = split(side, delta);
     // In a block layout (`columns`) a long edge's points are still the
     // layout's columns when the ports are first set, each in the place
-    // the ordering gave it among the other channels of its row: they
-    // stay, and the ortho stage steps from the moved end to the first
-    // of them (a column a corner's reach off its port is drawn on the
-    // port's line there anyway). Slid along with the end, the channel
-    // of an edge to a whole block followed its pin off the title chip
-    // across the channel beside it, and the two crossed twice (the
-    // public fixture's `deploy` and `webhooks`).
-    let laid = columns && n >= 3 && crate::router::ortho_corners(e).is_none();
+    // the ordering gave it among the other channels of its row. An end
+    // moved further than the ends of a side are ever spread
+    // ([`PORT_EVEN_MAX`]) leaves them there, and the ortho stage steps
+    // from the moved end to the first of them: the channels of one row
+    // stand a dummy's breadth and a gap apart, a little more than that,
+    // so a column that follows its end further passes the channel
+    // beside it. Slid along with the end, the channel of an edge to a
+    // whole block followed its pin off the title chip across the
+    // channel beside it, and the two crossed twice (the public
+    // fixture's `deploy` and `webhooks`). (Nearer than that the column
+    // follows as ever: a diamond's end slides along a slanted face, and
+    // its leg stays on its axis only with its column under it.)
+    let laid =
+        columns && n >= 3 && dt.abs() > PORT_EVEN_MAX && crate::router::ortho_corners(e).is_none();
     let mut k = 1;
     while k + 1 < n && !laid {
         let j = if src { k } else { n - 1 - k };

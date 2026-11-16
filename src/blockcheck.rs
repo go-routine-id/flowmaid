@@ -1130,68 +1130,6 @@ fn a_pin_moved_off_a_title_leaves_its_channel_in_place() {
 }
 
 #[test]
-fn a_step_between_blocks_keeps_out_of_their_frames() {
-    // dense-td's `n46 --> g9` passes the first band on its way down:
-    // its step from under `n46` to its channel beside the band lies
-    // above the band's frame, not inside its title strip (mid-gap
-    // between the two rows is inside the frame where three frames nest
-    // under a gap as deep as its two tracks: the step ran 1 300 px
-    // along under the band's own title).
-    let g = fixture("quality/dense-td");
-    let sc = block_scene(&g);
-    let band = frame_box(&sc, "g1");
-    let pts = path_of(edge(&sc, "n46", "g9"));
-    let inside = |p: (f64, f64)| {
-        p.0 > band.0 + 1.0 && p.0 < band.2 - 1.0 && p.1 > band.1 + 1.0 && p.1 < band.3 - 1.0
-    };
-    assert!(
-        pts.iter().all(|&p| !inside(p)),
-        "n46 -> g9 runs inside the first band's frame {band:?}: {pts:?}"
-    );
-}
-
-#[test]
-fn a_fan_of_a_block_layout_takes_its_ports_as_its_turns_nest() {
-    // One source feeding six frames and a node past them, left to
-    // right: the steps of its fan nest by how far each edge goes, and
-    // its ends take their ports in that order. In the order of where
-    // each edge heads (the angle of its chord), the edge to the node —
-    // deeper than the frames' borders — took a port between two of
-    // theirs and crossed them.
-    let g = fixture("quality/fanout-frames");
-    let sc = block_scene(&g);
-    let fan: Vec<&SceneEdge> = sc.edges.iter().filter(|e| e.from == "n0").collect();
-    assert!(fan.len() >= 6);
-    let ends: Vec<(f64, f64)> = fan
-        .iter()
-        .map(|e| {
-            let p = path_of(e);
-            (p[0].1, p[p.len() - 1].1)
-        })
-        .collect();
-    let hub = node_box(&sc, "n0");
-    let right: Vec<&(f64, f64)> = fan
-        .iter()
-        .zip(&ends)
-        .filter(|(e, _)| (path_of(e)[0].0 - hub.2).abs() < 1.5)
-        .map(|(_, y)| y)
-        .collect();
-    assert!(right.len() >= 5, "{right:?}");
-    for a in &right {
-        for b in &right {
-            assert!(
-                (a.0 - b.0) * (a.1 - b.1) >= 0.0,
-                "ports at {} and {} lead to {} and {}",
-                a.0,
-                b.0,
-                a.1,
-                b.1
-            );
-        }
-    }
-}
-
-#[test]
 fn the_start_order_ignores_edge_statement_order() {
     // The public fixture with its edge lines reversed, and rotated, is
     // the same graph: the same order on every layer.

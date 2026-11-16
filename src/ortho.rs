@@ -435,88 +435,6 @@ fn untangle(sc: &Scene, cx: &Ctx, before: &[Geo]) -> Vec<(usize, bool, Pt)> {
                 }
             }
         }
-        // A block layout's fan: the ends of one side take the places
-        // they hold in the order their first turns nest — those turning
-        // towards the side's start by how soon they turn, the soonest
-        // first, then those running straight on, then those turning
-        // towards its end, the latest first. The ports stage orders a
-        // side by where each edge heads, as the angle of its chord;
-        // two edges off one side to ends at different depths (a frame's
-        // border and a node beyond it) head one way round and nest the
-        // other, and crossed once where neither stage looked (a hub
-        // feeding six frames and a node past them: three crossings).
-        // Only ends this stage drew are moved, among their own places,
-        // and the second pass keeps the change only if fewer lines
-        // cross.
-        if cx.blocks {
-            let mut key = |e: &End| -> Option<(i8, f64)> {
-                let l = line(e.edge);
-                if l.len() < 2 {
-                    return None;
-                }
-                let (p, q) = if e.src {
-                    (l[0], l[1])
-                } else {
-                    (l[l.len() - 1], l[l.len() - 2])
-                };
-                // The first leg runs out along the side's normal: how
-                // far, and which way the path turns after it.
-                let out = match s {
-                    Side::Top | Side::Bottom => (q.1 - p.1).abs(),
-                    Side::Left | Side::Right => (q.0 - p.0).abs(),
-                };
-                if (tangent(*s, q) - tangent(*s, p)).abs() > EPS {
-                    return None;
-                }
-                let turn = match l.len() {
-                    2 => 0.0,
-                    _ => {
-                        let r = if e.src { l[2] } else { l[l.len() - 3] };
-                        tangent(*s, r) - tangent(*s, q)
-                    }
-                };
-                Some(if turn < -EPS {
-                    (-1, out)
-                } else if turn > EPS {
-                    (1, -out)
-                } else {
-                    (0, 0.0)
-                })
-            };
-            let mut fan: Vec<(usize, (i8, f64))> = ends
-                .iter()
-                .enumerate()
-                .filter(|(_, e)| e.movable && !taken(&moves, e))
-                .filter_map(|(i, e)| key(e).map(|k| (i, k)))
-                .collect();
-            if fan.len() >= 2 {
-                let mut places: Vec<Pt> = fan.iter().map(|&(i, _)| ends[i].at).collect();
-                places.sort_by(|a, b| tangent(*s, *a).total_cmp(&tangent(*s, *b)));
-                let before: Vec<usize> = {
-                    let mut by: Vec<usize> = fan.iter().map(|f| f.0).collect();
-                    by.sort_by(|&a, &b| {
-                        tangent(*s, ends[a].at).total_cmp(&tangent(*s, ends[b].at))
-                    });
-                    by
-                };
-                fan.sort_by(|a, b| {
-                    a.1 .0
-                        .cmp(&b.1 .0)
-                        .then(a.1 .1.total_cmp(&b.1 .1))
-                        .then_with(|| {
-                            tangent(*s, ends[a.0].at).total_cmp(&tangent(*s, ends[b.0].at))
-                        })
-                });
-                if fan.iter().map(|f| f.0).ne(before.iter().copied()) {
-                    for (&(i, _), &to) in fan.iter().zip(&places) {
-                        let e = &ends[i];
-                        if (tangent(*s, e.at) - tangent(*s, to)).abs() > EPS {
-                            moves.push((e.edge, e.src, to));
-                        }
-                    }
-                }
-            }
-        }
         if !any_note || !flat(*end) {
             continue;
         }
@@ -893,29 +811,6 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
             };
             home.extend(fr.into_iter().flatten().copied());
         }
-        // A block layout: the frames both ends lie in. A step across
-        // keeps out of every other frame ([`plan_jog`]). (An end on a
-        // frame's own border lies outside that frame, unless the frame
-        // holds the other end.)
-        let inner: Option<Vec<usize>> = cx.blocks.then(|| {
-            let of = |end: EndRef, other: EndRef| -> Vec<usize> {
-                match end {
-                    EndRef::Node(v) => cx.node_frames.get(v).cloned().unwrap_or_default(),
-                    EndRef::Frame(c) => {
-                        let own = crate::edgepass::holds_other(cx, end, other);
-                        cx.frame_anc
-                            .get(c)
-                            .into_iter()
-                            .flatten()
-                            .copied()
-                            .filter(|&f| f != c || own)
-                            .collect()
-                    }
-                }
-            };
-            let (a, b) = (of(from, to), of(to, from));
-            a.into_iter().filter(|f| b.contains(f)).collect()
-        });
         let head_leg = HEAD_LEG.max(crate::scene::edge_head_len(e) + crate::router::CORNER_R);
         let ctx = Along {
             gaps: &gaps,
@@ -923,7 +818,6 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
             walls: &walls,
             frames: &frames,
             home: &home,
-            inner: inner.as_deref(),
             load: &load,
             own,
             head_leg,
@@ -1245,10 +1139,6 @@ struct Along<'a> {
     /// edge (never in its way).
     frames: &'a [(f64, f64, f64, f64)],
     home: &'a [usize],
-    /// In a block layout, the frames that hold both ends of the edge
-    /// (`None` before blocks): a step across lies in one of these or
-    /// in none ([`plan_jog`]).
-    inner: Option<&'a [usize]>,
     /// The spans of the jogs each gap holds so far.
     load: &'a std::cell::RefCell<Vec<Vec<(f64, f64)>>>,
     /// The edge's own end nodes (never in its way).
@@ -1839,43 +1729,8 @@ fn plan_jog(
     let e0 = if lo_pt.1 { l0 } else { g_lo };
     let e1 = if hi_pt.1 { l1 } else { g_hi };
     let mut want = ((e0 + e1) / 2.0).max(lo).min(hi);
-    let span = (bu.min(bv), bu.max(bv));
-    // First, a block layout's step lies between the blocks: one that
-    // would lie inside a frame that does not hold both its ends — the
-    // block it leaves and the block it enters too: it crosses their
-    // borders on its straight runs — moves out of it, to the side of
-    // the frame nearer its place. A gap between two rows is the band's
-    // gap and, either side of it, the pad and title strip of the frames
-    // closing and opening there; a step placed mid-gap ran along inside
-    // the strip of the block below (dense-td: an edge past the first
-    // band, 1 300 px under that band's own title). (A frame that leaves
-    // the step no room at all — two frames side by side over the whole
-    // gap, a row gap inside the block it enters — is passed as before
-    // blocks.)
-    if let Some(inner) = cx.inner {
-        for (k, r) in cx.frames.iter().enumerate() {
-            let (w0, w1) = (r.2 - BORDER_CLEAR, r.3 + BORDER_CLEAR);
-            if inner.contains(&k)
-                || lo > hi
-                || r.1 <= span.0 + EPS
-                || r.0 >= span.1 - EPS
-                || want <= w0
-                || want >= w1
-            {
-                continue;
-            }
-            let (a, b) = if want - w0 > w1 - want {
-                (lo.max(w1), hi)
-            } else {
-                (lo, hi.min(w0))
-            };
-            if a <= b {
-                (lo, hi) = (a, b);
-                want = want.max(lo).min(hi);
-            }
-        }
-    }
     // Off the frames' borders and title chips it passes along.
+    let span = (bu.min(bv), bu.max(bv));
     for &((b0, b1), (w0, w1)) in cx.walls {
         if b1 <= span.0 + EPS || b0 >= span.1 - EPS || w1 <= lo || w0 >= hi {
             continue;
