@@ -415,12 +415,17 @@ pub(crate) enum Entry {
     Partial,
 }
 
+/// One record of [`note_used`]: (entry, nodes and edges of the graph
+/// it was given, block mode).
+#[cfg(test)]
+pub(crate) type Used = (Entry, usize, usize, bool);
+
 #[cfg(test)]
 thread_local! {
     /// What each entry point decided, in call order: (entry, nodes and
     /// edges of the graph it was given, block mode). `None` while no
     /// test is recording.
-    static USED: std::cell::RefCell<Option<Vec<(Entry, usize, usize, bool)>>> =
+    static USED: std::cell::RefCell<Option<Vec<Used>>> =
         const { std::cell::RefCell::new(None) };
 }
 
@@ -448,7 +453,7 @@ pub(crate) fn note_used(entry: Entry, g: &Graph, on: impl FnOnce() -> bool) {
 /// it, on unwind too.
 #[cfg(test)]
 pub(crate) fn recording<T>(f: impl FnOnce() -> T) -> T {
-    struct Restore(Option<Vec<(Entry, usize, usize, bool)>>);
+    struct Restore(Option<Vec<Used>>);
     impl Drop for Restore {
         fn drop(&mut self) {
             let old = self.0.take();
@@ -461,7 +466,7 @@ pub(crate) fn recording<T>(f: impl FnOnce() -> T) -> T {
 
 /// The record since the last call, emptied.
 #[cfg(test)]
-pub(crate) fn take_used() -> Vec<(Entry, usize, usize, bool)> {
+pub(crate) fn take_used() -> Vec<Used> {
     USED.with(|u| {
         u.borrow_mut()
             .as_mut()
@@ -843,7 +848,7 @@ mod tests {
                     }
                     route_partial(&g, &moved, &base, &at);
                     let by_partial = take_used();
-                    let part = |u: &(Entry, usize, usize, bool)| (u.1, u.2, u.3);
+                    let part = |u: &Used| (u.1, u.2, u.3);
                     let scene_parts: Vec<_> = by_scene.iter().map(part).collect();
                     assert!(by_scene.iter().all(|u| u.0 == Entry::Scene), "{name}");
                     assert_eq!(

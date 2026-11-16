@@ -1061,6 +1061,136 @@ fn the_level_order_keeps_the_public_fixture_within_its_crossings() {
     }
 }
 
+/// How often the drawn paths of two edges cross (their corner or
+/// waypoint polylines, segment by segment).
+fn crossings_between(a: &SceneEdge, b: &SceneEdge) -> usize {
+    let cross = |p: (f64, f64), q: (f64, f64), r: (f64, f64), s: (f64, f64)| {
+        let side = |a: (f64, f64), b: (f64, f64), c: (f64, f64)| {
+            (b.0 - a.0) * (c.1 - a.1) - (b.1 - a.1) * (c.0 - a.0)
+        };
+        side(p, q, r) * side(p, q, s) < 0.0 && side(r, s, p) * side(r, s, q) < 0.0
+    };
+    let (pa, pb) = (path_of(a), path_of(b));
+    pa.windows(2)
+        .map(|u| {
+            pb.windows(2)
+                .filter(|v| cross(u[0], u[1], v[0], v[1]))
+                .count()
+        })
+        .sum()
+}
+
+#[test]
+fn a_band_gap_holds_its_steps_between_the_frames() {
+    // The room for the steps across a gap is measured from frame to
+    // frame where frames close and open on the gap: the steps between
+    // two bands of nested frames keep a track each. Measured from row
+    // to row, the pads and title strips of dense-td's second and third
+    // band took the room, fifteen steps shared 30 px and crossed twice
+    // a pair: 151 crossings as drawn where the release before blocks
+    // has 66 (the must of the dense fixture: 1.1 x that + 2).
+    let root = env!("CARGO_MANIFEST_DIR");
+    let src =
+        std::fs::read_to_string(format!("{root}/tests/fixtures/quality/dense-td.mmd")).unwrap();
+    let rep = crate::levels::with_blocks(true, || crate::quality::measure_source(&src, false))
+        .expect("a flowchart");
+    assert!(
+        rep.statik.x_drawn <= 74,
+        "dense-td: {} crossings",
+        rep.statik.x_drawn
+    );
+    // A small one: a fan and an edge across it out of one block into
+    // the next, both with a frame nested on the facing rows. The gap
+    // between the two outer frames has the room of their steps (the
+    // frames' own floor is 8 px).
+    let g = graph(
+        "flowchart TD\n subgraph A[Above]\n  subgraph AI[Inner above]\n   a1\n   a2\n   a3\n  end\n end\n subgraph B[Below]\n  subgraph BI[Inner below]\n   b1\n   b2\n   b3\n  end\n end\n a1 --> b1\n a1 --> b2\n a1 --> b3\n a3 --> b1\n",
+    );
+    let sc = block_scene(&g);
+    let (above, below) = (frame_box(&sc, "A"), frame_box(&sc, "B"));
+    let room = below.1 - above.3;
+    assert!(
+        room >= crate::ortho::ROW_CLEAR + crate::ortho::TRACK_PITCH,
+        "frames {room} px apart"
+    );
+}
+
+#[test]
+fn a_pin_moved_off_a_title_leaves_its_channel_in_place() {
+    // `REG ==> ORD` ends on the frame of the order block, its channel
+    // left of the channel of `LB --> QUEUE`, which enters the block's
+    // first member beside it. The ports stage moves the pin out from
+    // under the block's title; the channel keeps the column the
+    // ordering gave it (slid along with the pin it crossed the channel
+    // beside it, and the two crossed twice).
+    let g = fixture("blocks/blocks-overview");
+    let sc = block_scene(&g);
+    let (deploy, hooks) = (edge(&sc, "REG", "ORD"), edge(&sc, "LB", "QUEUE"));
+    assert_eq!(crossings_between(deploy, hooks), 0);
+}
+
+#[test]
+fn a_step_between_blocks_keeps_out_of_their_frames() {
+    // dense-td's `n46 --> g9` passes the first band on its way down:
+    // its step from under `n46` to its channel beside the band lies
+    // above the band's frame, not inside its title strip (mid-gap
+    // between the two rows is inside the frame where three frames nest
+    // under a gap as deep as its two tracks: the step ran 1 300 px
+    // along under the band's own title).
+    let g = fixture("quality/dense-td");
+    let sc = block_scene(&g);
+    let band = frame_box(&sc, "g1");
+    let pts = path_of(edge(&sc, "n46", "g9"));
+    let inside = |p: (f64, f64)| {
+        p.0 > band.0 + 1.0 && p.0 < band.2 - 1.0 && p.1 > band.1 + 1.0 && p.1 < band.3 - 1.0
+    };
+    assert!(
+        pts.iter().all(|&p| !inside(p)),
+        "n46 -> g9 runs inside the first band's frame {band:?}: {pts:?}"
+    );
+}
+
+#[test]
+fn a_fan_of_a_block_layout_takes_its_ports_as_its_turns_nest() {
+    // One source feeding six frames and a node past them, left to
+    // right: the steps of its fan nest by how far each edge goes, and
+    // its ends take their ports in that order. In the order of where
+    // each edge heads (the angle of its chord), the edge to the node —
+    // deeper than the frames' borders — took a port between two of
+    // theirs and crossed them.
+    let g = fixture("quality/fanout-frames");
+    let sc = block_scene(&g);
+    let fan: Vec<&SceneEdge> = sc.edges.iter().filter(|e| e.from == "n0").collect();
+    assert!(fan.len() >= 6);
+    let ends: Vec<(f64, f64)> = fan
+        .iter()
+        .map(|e| {
+            let p = path_of(e);
+            (p[0].1, p[p.len() - 1].1)
+        })
+        .collect();
+    let hub = node_box(&sc, "n0");
+    let right: Vec<&(f64, f64)> = fan
+        .iter()
+        .zip(&ends)
+        .filter(|(e, _)| (path_of(e)[0].0 - hub.2).abs() < 1.5)
+        .map(|(_, y)| y)
+        .collect();
+    assert!(right.len() >= 5, "{right:?}");
+    for a in &right {
+        for b in &right {
+            assert!(
+                (a.0 - b.0) * (a.1 - b.1) >= 0.0,
+                "ports at {} and {} lead to {} and {}",
+                a.0,
+                b.0,
+                a.1,
+                b.1
+            );
+        }
+    }
+}
+
 #[test]
 fn the_start_order_ignores_edge_statement_order() {
     // The public fixture with its edge lines reversed, and rotated, is

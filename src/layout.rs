@@ -5329,6 +5329,22 @@ fn place(
             if !judged && li > 0 && track_need[li] > 0.0 {
                 let prev = lcoord[li - 1] + prev_after;
                 cursor = cursor.max(prev + track_need[li]);
+                // A block layout's tracks lie between the frames: where
+                // a frame closes on the layer before or opens on this
+                // one, the steps across the gap run between the two
+                // borders, and the room is measured from frame to frame
+                // (pads and title strips included, as `reach_of` reads
+                // them). Measured from row to row, as above, the nested
+                // frames of two bands took the room themselves: the
+                // fifteen steps between dense-td's second and third
+                // band shared 30 px, ran on top of each other and
+                // crossed twice a pair (94 crossings after the ortho
+                // stage; 36 with the room).
+                if block_paths.is_some() {
+                    let at =
+                        lcoord[li - 1] + reach_of(li - 1, 1) + track_need[li] + reach_of(li, 0);
+                    cursor = cursor.max(at - before);
+                }
             }
             prev_after = after;
             lcoord[li] = cursor + before;
@@ -5908,6 +5924,10 @@ pub(crate) type OrderSeed = Vec<Vec<(usize, usize)>>;
 /// wall has none).
 type ElementOf<'a> = &'a dyn Fn(usize) -> Option<(usize, usize)>;
 
+/// Two neighbouring units of a level on one layer, each as the
+/// `(start, len)` range of its members in the layer.
+type UnitPair = ((usize, usize), (usize, usize));
+
 /// A unit of a level on one layer, as the level's ordering sees it.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum OrderUnit {
@@ -6256,9 +6276,9 @@ impl BlockOrder<'_> {
     fn exchange_delta(
         &self,
         layer: &[usize],
-        (a, b): ((usize, usize), (usize, usize)),
+        (a, b): UnitPair,
         pos: &[f64],
-        beside: [Option<((usize, usize), (usize, usize))>; 2],
+        beside: [Option<UnitPair>; 2],
         scratch: &mut (Vec<usize>, Vec<usize>),
     ) -> isize {
         let mut delta = 0isize;

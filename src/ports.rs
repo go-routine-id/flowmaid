@@ -2018,8 +2018,18 @@ fn move_end(
     // instead of kinking back (never the far end itself).
     let (ot, _) = split(side, old);
     let (dt, _) = split(side, delta);
+    // In a block layout (`columns`) a long edge's points are still the
+    // layout's columns when the ports are first set, each in the place
+    // the ordering gave it among the other channels of its row: they
+    // stay, and the ortho stage steps from the moved end to the first
+    // of them (a column a corner's reach off its port is drawn on the
+    // port's line there anyway). Slid along with the end, the channel
+    // of an edge to a whole block followed its pin off the title chip
+    // across the channel beside it, and the two crossed twice (the
+    // public fixture's `deploy` and `webhooks`).
+    let laid = columns && n >= 3 && crate::router::ortho_corners(e).is_none();
     let mut k = 1;
-    while k + 1 < n {
+    while k + 1 < n && !laid {
         let j = if src { k } else { n - 1 - k };
         let (nt, nn) = split(side, e.waypoints[j]);
         if (nt - ot).abs() >= STUB_EPS {
