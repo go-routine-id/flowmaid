@@ -1057,7 +1057,7 @@ fn place_ports(
         // out of the chip's shadow, so no edge reaches them past the
         // frame's name (G6).
         let (lo, hi, shaded) = match prof.straight() {
-            Some(n) => unshaded(&heads, side, n, (lo, hi), ports.len(), CHIP_SEP),
+            Some(n) => unshaded(&heads, side, n, (lo, hi), ports.len()),
             None => (lo, hi, false),
         };
         let shaded = shaded && ports.iter().any(|p| p.want < lo || p.want > hi);
@@ -1752,25 +1752,22 @@ fn title_heads(sc: &Scene) -> Vec<(f64, f64, f64, f64)> {
 
 /// The usable tangent range `lo..hi` of a straight side at normal `n`,
 /// less the stretch a title chip shades (within [`CHIP_SHADE`] out of
-/// the side and `clear` along it): the longer free part when it
-/// still holds `k` ends [`PORT_SPACING`] apart, else the whole range.
-/// `true` when a chip shades the side.
+/// the side and [`CHIP_SEP`] along it, the room the router asks of a
+/// stroke beside a chip): the longer free part when it still holds `k`
+/// ends [`PORT_SPACING`] apart, else the whole range. `true` when a chip
+/// shades the side.
 ///
-/// `clear` is [`CHIP_SEP`], the room the router asks of a stroke beside
-/// a chip. (That leaves the first free port exactly on the router's
-/// limit: where its stroke touches the chip's ring it counts as running
-/// along the frame's name and is rerouted, round to a lateral side of
-/// the node — hub5 as blocks, three of the hub's five edges. Clearing
-/// by [`crate::ortho::CHIP_CLEAR`] instead enters those through the top
-/// side; it waits for the pins of an over-full side, which then stand
-/// on the first entry's column: see the checkpoint report.)
+/// (That leaves the first free port exactly on the router's limit: in a
+/// block layout a stroke there that touches the chip's ring counts as
+/// running along the frame's name and is rerouted round to a lateral
+/// side of its node. Clearing by more is left to the pins of an
+/// over-full side, which would stand on that first entry's column.)
 fn unshaded(
     heads: &[(f64, f64, f64, f64)],
     side: Side,
     n: f64,
     (lo, hi): (f64, f64),
     k: usize,
-    clear: f64,
 ) -> (f64, f64, bool) {
     let sgn = out_sign(side);
     let (a, b) = if sgn > 0.0 {
@@ -1786,7 +1783,7 @@ fn unshaded(
         if n1 + CHIP_SEP <= a || n0 - CHIP_SEP >= b {
             continue;
         }
-        let (c0, c1) = (t0 - clear, t1 + clear);
+        let (c0, c1) = (t0 - CHIP_SEP, t1 + CHIP_SEP);
         if c1 <= lo || c0 >= hi {
             continue;
         }
@@ -2511,20 +2508,15 @@ mod tests {
         // Chip header over x 0..100, ending 10 px above a top side
         // spanning x 50..250.
         let heads = [(0.0, 0.0, 100.0, 20.0)];
-        let (lo, hi, shaded) = unshaded(&heads, Side::Top, 30.0, (58.0, 242.0), 2, CHIP_SEP);
+        let (lo, hi, shaded) = unshaded(&heads, Side::Top, 30.0, (58.0, 242.0), 2);
         assert!(shaded);
         assert!(lo >= 100.0 + CHIP_SEP && hi == 242.0, "{lo} {hi}");
         // Far below the chip: no shade.
-        let (lo, hi, shaded) = unshaded(&heads, Side::Top, 300.0, (58.0, 242.0), 2, CHIP_SEP);
+        let (lo, hi, shaded) = unshaded(&heads, Side::Top, 300.0, (58.0, 242.0), 2);
         assert!(!shaded && lo == 58.0 && hi == 242.0);
         // No room past the chip for the ends: the side stays whole.
-        let (lo, hi, _) = unshaded(&heads, Side::Top, 30.0, (58.0, 110.0), 2, CHIP_SEP);
+        let (lo, hi, _) = unshaded(&heads, Side::Top, 30.0, (58.0, 110.0), 2);
         assert!(lo == 58.0 && hi == 110.0);
-        // A block layout's ports keep a little air past the router's
-        // limit.
-        let clear = crate::ortho::CHIP_CLEAR;
-        let (lo, _, shaded) = unshaded(&heads, Side::Top, 30.0, (58.0, 242.0), 2, clear);
-        assert!(shaded && lo > 100.0 + CHIP_SEP, "{lo}");
     }
 
     #[test]
