@@ -2325,3 +2325,40 @@ fn jog_room_counts_only_what_crosses_the_title_side() {
     let got = jog_room(&g, &sc, "S");
     assert!(got.abs() < 0.01, "broad member: {got}");
 }
+
+#[test]
+fn sibling_frames_of_a_band_start_level_in_scene_and_route() {
+    // X4: on a layer that is the first row of two or more sibling
+    // blocks, the blocks' frames start level, whatever the height of
+    // their first-row members; on a last row shared by blocks that do
+    // not share their first row, they end level. The public fixture's
+    // build pipeline (one-line first row) stands beside the shared
+    // services (two-line first row): they started 10 px apart and read
+    // as interleaved. `route()` at the scene's centres draws the same
+    // frames along the flow: the shift is in the layout, not a frame
+    // rule.
+    for name in [
+        "blocks/blocks-overview",
+        "blocks/blocks-overview-bt",
+        "blocks/blocks-overview-edges-reversed",
+        "blocks/blocks-overview-subgraphs-reversed",
+        "notes/spread-bottom",
+        "notes/spread-face",
+        "quality/dense-lr",
+    ] {
+        let g = fixture(name);
+        let sc = block_scene(&g);
+        let q = crate::quality::measure(&g, &sc);
+        assert_eq!(q.sib_stagger, 0, "{name}");
+        let centres: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let routed = crate::levels::with_blocks(true, || crate::scene::route(&g, &centres));
+        let rq = crate::quality::measure(&g, &routed);
+        assert_eq!(rq.sib_stagger, 0, "{name} routed");
+    }
+    // By name: the two sibling frames of the public fixture's first band
+    // start on one line.
+    let g = fixture("blocks/blocks-overview");
+    let sc = block_scene(&g);
+    let (a, b) = (frame_box(&sc, "CI"), frame_box(&sc, "EDGE"));
+    assert!((a.1 - b.1).abs() < 0.5, "build pipeline {a:?} shared services {b:?}");
+}
