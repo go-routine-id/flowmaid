@@ -145,6 +145,46 @@ Date 2026-11-10. Written for an implementer who has seen none of the design work
   `dev` (0.39.0, 0.40.0) into it; the lead does that between packages, so every before/after comparison of this package
   keeps `3abbfeb` as its "before".
 
+- **After fix round 1 (lead, 2026-11-16 ~04:30 UTC; read the rewritten `reports/checkpoint-A1.md` first).** Every
+  crossing must holds now and none of A1's crossing stop rules fires (dense-td 151 -> 64 against a must of 74.6).
+  The gate is still open on `xframe_runs`, `fan_x`, the `bands` string of perm-c, static hard zeros and two tests.
+  No threshold changes. Decisions for the next round and for whoever verifies it:
+  1. **`bands` on perm-c: O4b stands.** 4.3 (b)'s `same_as` and 2.4 O4b contradict each other where a permutation
+     reverses the declaration of units whose order changes no crossing. Source order among crossing-neutral units is
+     the rule the user sees (and what mermaid does), so the judge's check is corrected, not the layout: across
+     permutations the bands must hold the same units and stand in the same order along the flow, canvas breadth
+     within 10 %; inside a band two units may swap only if the judge shows the swap changes no layered crossing.
+     Change the judge so (it lives in the workspace), keep the old string in its output as information, and say in
+     the report which pairs were accepted as crossing-neutral and why. Any other difference in a band stays a must
+     fail.
+  2. **A direct link is a run.** 2.4's "one side per (run, block)" was written for channels. It holds for a link
+     between two units on adjacent rows as well: a block of the same level that spans both rows and holds neither
+     end must not stand between the two ends (dense-td `n41 -> n42`, 217 px through a nested sibling). This is
+     structure and belongs to this package: build it in the ordering, with a test.
+  3. **`comb::combing_is_settled_after_one_pass` is this round's own regression**: find the cause and fix it in this
+     package. A test that passed at the start and fails now is never "not built yet".
+  4. **`router::edges_into_a_wedged_frame_keep_out_of_the_gap`**: the block layering stacks the two frames, so the
+     wedge is gone. Keep the test as written for the path outside block mode (it must pass there), and re-read it
+     in block mode on a fixture the lane rule (2.3 L4) leaves side by side, so that the rule it guards is still
+     tested where a wedge can exist. If no such fixture has a wedge, say so in the report with the inputs tried.
+  5. **`xframe_runs` and `fan_x` are first due at A1 (4.1's table) and stay so.** Their open cases wait for
+     title-clear entries and the spill order (2.8) and for the track packing of a gap (2.6 G2): pull forward what
+     these two rows need, as the first lead note already allows, in the smallest form that meets them, and name
+     exactly what `b12a2-geometry` then no longer builds. The pair of ortho rules tried and taken out in `3ae7829`
+     may come back together with the packing it lacked.
+  6. **What is judged later, by the spec's own table "which rows are due where":** the own-box rules and note links
+     (2.8, B12.14) are due at C, everything of `route()` at R. A must that is open at A1 only on such an input
+     (`blocks/own-centre`, `blocks/self-member`, `blocks/sub-nested-self`, the note links of the `notes/` fixtures,
+     any routed number) is not a reason to fail A1, **provided the report shows, per fixture and per failing must,
+     that the cause is that rule and nothing else** (the offending path and what draws it). `notes/wide-frames`
+     going from 0 to 2 hard zeros is not covered until that is shown: blocks added them, so find out what draws
+     them. Everything else in A1's row must hold.
+  7. **The starts table is not monotone** (v2: 22 with 4 to 8 starts, 15 with 9; dense-td: 37 with 2, 64 with 3 or
+     more). The pin `BLOCK_ORDER_STARTS = 9` stays for now, inside the time limits. Report the table again at the end
+     of this round and at A2; measure dense-td's crossings under the test's six shuffles (it is part of A1's stop
+     rule and was not measured). If a result still swings by more than a third with the number of starts at A2,
+     the choice among starts is revisited there (it then has drawn geometry to judge by).
+
 ## 1. Goal, the user's words, before and after, what must not change
 
 ### 1.1 Goal
