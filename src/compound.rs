@@ -825,6 +825,14 @@ thread_local! {
     static LAID: std::cell::RefCell<Vec<Laid>> = const { std::cell::RefCell::new(Vec::new()) };
 }
 
+/// Forget every frame [`LAID`] keeps on this thread. The layout that drew
+/// them also reads the block layout's switch, which the memo's key does
+/// not hold: a change of the switch calls this
+/// ([`crate::levels::with_blocks`]).
+pub(crate) fn forget_laid() {
+    LAID.with(|m| m.borrow_mut().clear());
+}
+
 /// Keep the frame `(w, h)` the static layout drew round a block's part
 /// `pg` for these node sizes and labels ([`LAID`]).
 fn keep_laid(pg: &Graph, sizes: Vec<(f64, f64)>, labels: Vec<String>, frame: (f64, f64)) {
@@ -1553,5 +1561,76 @@ mod tests {
         );
         let m = crate::quality::measure(&g, &scene(&g));
         assert_eq!((m.wiggles, m.frame_side, m.lat_wiggles), (0, 0, 0), "{m:?}");
+    }
+
+    /// Review of the merge with the block layout: the frames [`LAID`]
+    /// keeps were laid out under the block switch of the call that kept
+    /// them. A thread that draws a graph in one mode and routes it in
+    /// the other must not fit a bar to the other mode's frame: the
+    /// switch's change forgets them, so each mode routes as it does on
+    /// a thread of its own.
+    #[test]
+    fn the_kept_block_frames_follow_the_block_switch() {
+        let sources = [
+            "stateDiagram-v2\n[*] --> f\nstate f <<fork>>\nf --> B0\nf --> Q1\nf --> Q0\n\
+             state B0 {\n  direction BT\n  B0_0 --> B0_1\n  B0_1 --> B0_2 : go\n\
+             state B0_fk <<fork>>\n  B0_2 --> B0_fk\n  B0_fk --> B0_x\n  B0_fk --> B0_y\n\
+             state B0i {\n    direction BT\n    B0i_0 --> B0i_1 : a longer label here\n\
+             B0i_1 --> B0i_2 : go\n    B0i_2 --> B0i_3 : a longer label here\n\
+             B0i_3 --> B0i_4\n    B0i_4 --> B0i_0 : back\n  }\n  B0_2 --> B0i\n}\n\
+             state j <<join>>\nB0 --> j\nQ1 --> j\nQ0 --> j\nj --> [*]",
+            "stateDiagram-v2\n[*] --> f\nstate f <<fork>>\nf --> B0 : x\nf --> B1\n\
+             state B0 {\n  direction LR\n  B0_0 --> B0_1\n  B0_1 --> B0_2 : go\n\
+             B0_2 --> B0_3 : a longer label here\n  B0_3 --> B0_4 : go\n\
+             state B0_fk <<fork>>\n  B0_4 --> B0_fk\n  B0_fk --> B0_x\n  B0_fk --> B0_y\n\
+             state B0i {\n    direction LR\n    B0i_0 --> B0i_1\n    B0i_1 --> B0i_2\n\
+             B0i_2 --> B0i_3 : a longer label here\n  }\n  B0_4 --> B0i\n}\n\
+             state B1 {\n  direction RL\n  B1_0 --> B1_1 : go\n  B1_1 --> B1_2\n\
+             state B1_fk <<fork>>\n  B1_2 --> B1_fk\n  B1_fk --> B1_x\n  B1_fk --> B1_y\n\
+             note right of B1_0 : a note\n}\n\
+             state j <<join>>\nB0 --> j\nB1 --> j\nj --> [*]",
+        ];
+        use crate::levels::with_blocks;
+        for src in sources {
+            let g = state(src);
+            let c: Vec<(f64, f64)> = (0..g.nodes.len())
+                .map(|i| (140.0 * i as f64, 90.0 * (i % 3) as f64))
+                .collect();
+            let drawn = |sc: &Scene| format!("{sc:?}");
+            // Each mode on a thread of its own: nothing kept from the other.
+            let alone = |on: bool| {
+                let (g, c) = (g.clone(), c.clone());
+                std::thread::spawn(move || {
+                    with_blocks(on, || {
+                        let base = scene(&g);
+                        let at: Vec<(f64, f64)> = base.nodes.iter().map(|n| (n.x, n.y)).collect();
+                        let routed = route(&g, &c);
+                        let partial = route_partial(&g, &c, &base, &at);
+                        (format!("{routed:?}"), format!("{partial:?}"))
+                    })
+                })
+                .join()
+                .unwrap()
+            };
+            for on in [false, true] {
+                let (routed, partial) = alone(on);
+                // This thread: the other mode draws the graph first.
+                with_blocks(!on, || scene(&g));
+                let (r, p) = with_blocks(on, || {
+                    let base = scene(&g);
+                    let at: Vec<(f64, f64)> = base.nodes.iter().map(|n| (n.x, n.y)).collect();
+                    with_blocks(!on, || scene(&g));
+                    (
+                        drawn(&route(&g, &c)),
+                        drawn(&route_partial(&g, &c, &base, &at)),
+                    )
+                });
+                assert_eq!(
+                    r, routed,
+                    "blocks {on}: route() after the other mode's scene()"
+                );
+                assert_eq!(p, partial, "blocks {on}: route_partial() likewise");
+            }
+        }
     }
 }
