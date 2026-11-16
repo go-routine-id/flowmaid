@@ -185,6 +185,20 @@ Date 2026-11-10. Written for an implementer who has seen none of the design work
      rule and was not measured). If a result still swings by more than a third with the number of starts at A2,
      the choice among starts is revisited there (it then has drawn geometry to judge by).
 
+- **After verify#2 (lead, 2026-11-16 ~07:25 UTC).** The round's report was accurate and the progress is real (analog
+  15 crossings against mermaid's 16; the comb regression and s4-state fixed). The gate is still open. No threshold and
+  no due point changes. Order of work for rounds 3 and 4:
+  1. **First the structural defects, which no later item will fix:** a node drawn inside a frame that does not hold it
+     (`node_frame`, bulk `5a10594f…`), an edge between two members of one block drawn outside that block
+     (`blocks/nested-chain`, generated `g126`, `g059`, `g195`), and a turned edge of a whole block running inside a
+     block that holds neither end (`y2-turned-blocks`; take it into `tests/fixtures/blocks/` under a neutral name, it
+     holds nothing of the local inputs). Each gets a test that checks the **drawn** edge, not only the layout's paths.
+  2. **Then `xframe_runs` and `fan_x`** with the pulled-forward geometry the first lead note allows (title-clear
+     entries, the track packing of a gap, free pins in full). The crossing musts must keep holding.
+  3. If after round 4 the only open musts are cases whose cause is shown, per fixture, to be geometry that
+     `b12a2-geometry` builds, the package stops as the protocol says, and the lead takes the question to the user with
+     the numbers (whether those rows are judged at A2 instead). The fix rounds do not decide this themselves.
+
 ## 1. Goal, the user's words, before and after, what must not change
 
 ### 1.1 Goal
