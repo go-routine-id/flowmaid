@@ -5219,7 +5219,16 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
         if simple_all.is_empty() || lane(i) {
             return false;
         }
-        let many = mode == Mode::Static && sc.edges[i].label.is_none();
+        // (Not in a block layout: there every edge runs where the block
+        // ordering put it, down its dummy chain or as a Z across the
+        // gap between its two rows, and that ordering counted its
+        // crossings; a way round the crowd found edge by edge took no
+        // account of the fan it belongs to. dense-td's turned edge
+        // `n36 -> n16`, searched for its crossings, came back square
+        // across all five siblings of its fan, twice each; bench-75's
+        // fans out of its stacked members, searched one by one, crossed
+        // 27 times where the ortho stage drew them crossing once.)
+        let many = mode == Mode::Static && sc.edges[i].label.is_none() && !cx.blocks;
         let a = &simple_all[i];
         let ends = |k: usize| cx.ends.get(k).copied().flatten();
         let shares = |j: usize| match (ends(i), ends(j)) {

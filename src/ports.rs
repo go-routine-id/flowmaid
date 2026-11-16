@@ -1247,7 +1247,20 @@ fn place_ports(
         if ports.len() < 2 && !shaded && !lone && !ports.iter().any(|p| p.spilled.is_some()) {
             continue;
         }
-        ports.sort_by(port_order);
+        if cx.blocks && !spill_over && judge.is_none() {
+            // `respace` in a block layout: the side keeps the order its
+            // ends are drawn in (ties, a rerouted end landed on a taken
+            // port, by heading). The ortho stage drew each of them down
+            // its channel and nested their steps by where they turn; a
+            // heading read off the chord of a long path through its
+            // first and last corners does not see that turn, and
+            // re-sorted by it, an end the repair never touched swapped
+            // past four of its fan's (dense-td: `n33 -> n16`, a turned
+            // edge whose last step turns away from where it came from).
+            ports.sort_by(|a, b| a.want.total_cmp(&b.want).then_with(|| port_order(a, b)));
+        } else {
+            ports.sort_by(port_order);
+        }
         // Spacing keeps parallel edges in the order they are drawn;
         // only `reorder` re-places them in the order they head.
         if judge.is_none() {

@@ -1610,6 +1610,41 @@ fn a_member_a_channel_holds_out_of_place_goes_back_with_it() {
     }
 }
 
+/// The fan crossings of a drawn scene (`quality`'s `fan_x` details),
+/// as `(owner side, edge, edge)`.
+fn fan_crossings(g: &Graph, sc: &Scene) -> Vec<String> {
+    crate::quality::measure(g, sc)
+        .details
+        .into_iter()
+        .filter(|d| d.starts_with("fan_x"))
+        .collect()
+}
+
+#[test]
+fn a_hubs_fan_keeps_its_order_through_the_bands() {
+    // dense-td's hub `n16` sends twelve edges out of its block's bottom
+    // side through two bands and takes three turned ones back. Drawn as
+    // blocks its fan crossed itself 18 times: the nine steps under its
+    // block shared room for seven, the outer two 4 px apart (the gap's
+    // tracks: G2), the repair took the outermost off along a frame
+    // border and round the crowd, the respacing re-sorted the side by
+    // chords, and the ordering left two channels of one fan crossed
+    // where they run through three levels into one node (O6). The start
+    // drew it with one fan crossing, a turned edge's into the hub.
+    let g = fixture("quality/dense-td");
+    let sc = block_scene(&g);
+    let fans = fan_crossings(&g, &sc);
+    assert!(fans.len() <= 1, "{fans:#?}");
+    assert!(
+        fans.iter()
+            .all(|d| !d.contains(" n16 ") && !d.contains(" n37 ")),
+        "{fans:#?}"
+    );
+    // Every step under the hub's block keeps a track of its own.
+    let m = crate::quality::measure(&g, &sc);
+    assert_eq!(m.overlap_pairs, 0, "{:?}", m.details);
+}
+
 #[test]
 fn a_narrowing_candidate_starts_from_the_winning_order() {
     // dense-td's first placement as blocks is a ribbon over 7 000 px

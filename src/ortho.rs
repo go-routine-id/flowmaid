@@ -69,6 +69,16 @@ const BARE_LEG: f64 = crate::router::CORNER_R / 2.0;
 /// Room (px) a jog keeps from a frame's border it passes along: the
 /// router's frame ring.
 const BORDER_CLEAR: f64 = crate::clearance::FRAME_SEP / 2.0 + SEP_AIR;
+/// [`BORDER_CLEAR`] in a block layout (B12 G2): a frame's whole
+/// clearance and air, past the router's frame band
+/// ([`crate::clearance::CLEAR_GAP`]) even where the router judges the
+/// path simplified (a rounded corner cut short tilts the run beside it
+/// a px or two towards the border), so a track the layout made room
+/// for is not a border ride the repair then reroutes. At
+/// [`BORDER_CLEAR`] the first track of a fan stepping under a block ran
+/// 7.5 px under its border for 570 px, and the repair took it off,
+/// across the rest of the fan (dense-td).
+const BLOCK_BORDER_CLEAR: f64 = crate::clearance::FRAME_SEP + SEP_AIR;
 /// Room (px) a jog keeps from a frame's title chip — and, in a block
 /// layout, a port from a chip's shadow ([`crate::ports`]): the room the
 /// router asks for and a little air, so a stroke placed by it does not
@@ -528,10 +538,15 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
     let mut walls: Vec<Wall> = Vec::new();
     if !sc.clusters.is_empty() {
         let right = sc.width;
+        let clear = if cx.blocks {
+            BLOCK_BORDER_CLEAR
+        } else {
+            BORDER_CLEAR
+        };
         for (ci, c) in sc.clusters.iter().enumerate() {
             let r = flow_rect(dir, (c.x, c.y, c.x + c.w, c.y + c.h));
             for l in [r.2, r.3] {
-                walls.push(((r.0, r.1), (l - BORDER_CLEAR, l + BORDER_CLEAR)));
+                walls.push(((r.0, r.1), (l - clear, l + clear)));
             }
             let h = flow_rect(dir, crate::scene::title_head(&sc.clusters, ci, right));
             walls.push(((h.0, h.1), (h.2 - CHIP_CLEAR, h.3 + CHIP_CLEAR)));
@@ -568,6 +583,7 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
         Vec::new()
     };
     let stubs = breadth_stubs(sc, cx, dir, &boxes);
+    let end_stubs = breadth_ends(sc, cx, dir, &boxes);
     let mut jogs: Vec<Jog> = Vec::new();
     let mut plans: Vec<(usize, Vec<Corner>)> = Vec::new();
     // The edges between one pair of ends, either way round (twins): a
@@ -928,7 +944,10 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
             &cols,
             (f3, n3, glyph.1),
             label,
-            stubs.get(i).copied().flatten(),
+            (
+                stubs.get(i).copied().flatten(),
+                end_stubs.get(i).copied().flatten(),
+            ),
             &mut jogs,
         );
         let Some(plan) = plan else { continue };
@@ -1288,6 +1307,118 @@ fn breadth_stubs(sc: &Scene, cx: &Ctx, dir: Direction, boxes: &[Rect]) -> Vec<Op
     out
 }
 
+/// Per edge, in a block layout ([`Ctx::blocks`]): the breadth (flow
+/// coordinates) of the run its end takes into a breadth side, where the
+/// straight leg off its run onto that side would pass through another
+/// box (B12 2.8, an over-full side's corner legs). A block whose members
+/// stand side by side across the flow (a `direction` block, stacked in
+/// the other direction) spills the ends of its members' over-full flow
+/// sides round their corners, and the leg from the run into a spilled
+/// end then crossed the members stacked beside it (bench-75: the edges
+/// into `db` and `cache` dropped through `queue` and `db`, 11 boxes hit,
+/// which the router rerouted one by one, out of their fans' order).
+/// The end takes its last run in the gap beside its side instead, just
+/// outside it, a track further out for every end of that side reached
+/// before it along the flow, so the runs nest round each other's turns,
+/// and the step to it is taken in the gap before the end's row. As for
+/// starts ([`breadth_stubs`]), once one end of a side would pass through
+/// a box, every end into that side takes its run so. Outside a block
+/// layout every end keeps its turn (`None`).
+fn breadth_ends(sc: &Scene, cx: &Ctx, dir: Direction, boxes: &[Rect]) -> Vec<Option<f64>> {
+    let mut out = vec![None; sc.edges.len()];
+    if !cx.blocks {
+        return out;
+    }
+    struct End {
+        edge: usize,
+        end: EndRef,
+        side: Side,
+        at: f64,
+        way: f64,
+        blocked: bool,
+        port: f64,
+        out: f64,
+    }
+    let mut ends: Vec<End> = Vec::new();
+    let clear = EDGE_SEP / 2.0;
+    for (i, e) in sc.edges.iter().enumerate() {
+        let Some((from, to)) = cx.ends.get(i).copied().flatten() else {
+            continue;
+        };
+        if !cx.drawn.get(i).copied().unwrap_or(false)
+            || cx.fixed.get(i).copied().unwrap_or(false)
+            || e.meta.curve.is_some()
+            || from == to
+            || crate::ports::note_link(sc, cx, i)
+            || crate::edgepass::holds_other(cx, to, from)
+            || (!e.waypoints.is_empty() && crate::router::ortho_corners(e).is_some())
+        {
+            continue;
+        }
+        let (p0, p3) = if e.waypoints.len() >= 2 {
+            (e.waypoints[0], e.waypoints[e.waypoints.len() - 1])
+        } else {
+            (e.bezier[0], e.bezier[3])
+        };
+        let (f0, f3) = (to_flow(dir, p0), to_flow(dir, p3));
+        let way = (f3.1 - f0.1).signum();
+        let side = match to {
+            EndRef::Node(v) => crate::ports::outline_side(sc.nodes[v].shape, end_rect(sc, to), p3),
+            EndRef::Frame(_) => side_of(end_rect(sc, to), p3),
+        };
+        let n = flow_normal(dir, side);
+        if way == 0.0 || n.1 != 0.0 || n.0 == 0.0 {
+            continue;
+        }
+        // The column the run passes last, and the leg from it onto the
+        // side, turning off the flow just short of the end.
+        let last = if e.waypoints.len() >= 3 {
+            to_flow(dir, e.waypoints[e.waypoints.len() - 2]).0
+        } else {
+            f0.0
+        };
+        let own = [from, to].map(|r| match r {
+            EndRef::Node(v) => Some(v),
+            EndRef::Frame(_) => None,
+        });
+        let (b0, b1) = (f3.0.min(last), f3.0.max(last));
+        let blocked = (last - f3.0) * n.0 > 0.0
+            && boxes.iter().enumerate().any(|(k, r)| {
+                !own.contains(&Some(k))
+                    && f3.1 > r.2 - clear
+                    && f3.1 < r.3 + clear
+                    && b1 > r.0 - clear
+                    && b0 < r.1 + clear
+            });
+        ends.push(End {
+            edge: i,
+            end: to,
+            side,
+            at: f3.1,
+            way,
+            blocked,
+            port: f3.0,
+            out: n.0,
+        });
+    }
+    for m in &ends {
+        let group = || ends.iter().filter(|o| o.end == m.end && o.side == m.side);
+        if !group().any(|o| o.blocked) {
+            continue;
+        }
+        let edge = group()
+            .map(|o| o.port * m.out)
+            .fold(f64::NEG_INFINITY, f64::max)
+            * m.out;
+        let rank = group()
+            .filter(|o| o.way == m.way && (o.at - m.at) * m.way < -EPS)
+            .count();
+        let lead = HEAD_LEG.max(ROW_CLEAR);
+        out[m.edge] = Some(edge + m.out * (lead + rank as f64 * TRACK_PITCH));
+    }
+    out
+}
+
 /// The corners of an edge from `a` (point, its side's outward normal,
 /// a glyph on it; flow coordinates) through each column of `cols` (a
 /// dummy chain's points) to `b`: along the flow, with a jog in a gap
@@ -1305,7 +1436,7 @@ fn flow_path(
     cols: &[Pt],
     b: (Pt, Pt, bool),
     label: Option<(f64, f64)>,
-    stub: Option<f64>,
+    (stub, end_stub): (Option<f64>, Option<f64>),
     jogs: &mut Vec<Jog>,
 ) -> Option<Vec<Corner>> {
     let ((p0, n0, g0), (p3, n3, g3)) = (a, b);
@@ -1335,7 +1466,10 @@ fn flow_path(
     let start = if n0 == (0.0, h) {
         (p0, true, g0)
     } else if across(n0) {
-        let b = if cols.is_empty() && across(n3) {
+        // (Two breadth sides with a stub at either end, in a block layout
+        // ([`breadth_ends`]): each end's own run, a step between.)
+        let stubbed = cx.blocks && (stub.is_some() || end_stub.is_some());
+        let b = if cols.is_empty() && across(n3) && !stubbed {
             if n0.0 == -n3.0 && ahead(p0.0, (p0.0 + p3.0) / 2.0, n0.0) {
                 (p0.0 + p3.0) / 2.0
             } else if n0.0 == n3.0 {
@@ -1376,7 +1510,16 @@ fn flow_path(
         ((p3, true, g3), None)
     } else if across(n3) {
         let run = if cols.is_empty() { start.0 .0 } else { last_b };
-        let b = if ahead(p3.0, run, n3.0) {
+        let b = if let Some(x) = end_stub {
+            // Its run beside its side ([`breadth_ends`]), at least its
+            // own lead out.
+            let least = p3.0 + n3.0 * lead(g3);
+            if n3.0 > 0.0 {
+                x.max(least)
+            } else {
+                x.min(least)
+            }
+        } else if ahead(p3.0, run, n3.0) {
             run
         } else {
             p3.0 + n3.0 * lead(g3)
@@ -1754,13 +1897,13 @@ fn plan_jog(
     // crossed its neighbour once moved).
     if cx.blocks {
         for (k, r) in cx.frames.iter().enumerate() {
-            let (w0, w1) = (r.2 - BORDER_CLEAR, r.3 + BORDER_CLEAR);
+            let (w0, w1) = (r.2 - BLOCK_BORDER_CLEAR, r.3 + BLOCK_BORDER_CLEAR);
             if cx.home.contains(&k)
                 || lo > hi
                 || r.1 <= span.0 + EPS
                 || r.0 >= span.1 - EPS
-                || want <= r.2 + BORDER_CLEAR
-                || want >= r.3 - BORDER_CLEAR
+                || want <= r.2 + BLOCK_BORDER_CLEAR
+                || want >= r.3 - BLOCK_BORDER_CLEAR
             {
                 continue;
             }
@@ -1901,6 +2044,59 @@ fn across_flow(p0: Pt, h0: f64, p3: Pt, h3: f64) -> Option<Vec<Corner>> {
     ])
 }
 
+/// How far a channel of [`place_tracks`] reaches once a jog meeting the
+/// runs at breadths `lo_at` (from the low flow side) and `hi_at` (on to
+/// the high side) reaches furthest in it: its span's far end, and
+/// whether its run on to the high side leaves from there.
+fn channel_reach(lo_at: f64, hi_at: f64) -> (f64, bool) {
+    (lo_at.max(hi_at), hi_at >= lo_at)
+}
+
+/// Whether the next jog of a gap (by where its span starts; meeting the
+/// runs at `lo_at` and `hi_at`) joins the channel reaching `reach`
+/// ([`channel_reach`]) in [`place_tracks`]: its span starts within a
+/// track's pitch of the channel's, and the two do not only touch where
+/// both turn the same way (a fork: two channels).
+fn joins_channel(reach: (f64, bool), lo_at: f64, hi_at: f64) -> bool {
+    let start = lo_at.min(hi_at);
+    let near_hi = hi_at <= lo_at;
+    let fork = start >= reach.0 + 1.0 && near_hi == reach.1;
+    start < reach.0 + TRACK_PITCH && !fork
+}
+
+/// The channels [`place_tracks`] forms of one gap's steps, each given by
+/// where it meets the runs from the low flow side and on to the high
+/// side (breadth): their sizes, in the order of their first steps. Each
+/// step of a channel takes a track of its own, so the largest is the
+/// tracks the gap needs (a block layout's room, B12 G2: see
+/// `layout::place`).
+pub(crate) fn channel_sizes(steps: &[(f64, f64)]) -> Vec<usize> {
+    let mut idx: Vec<usize> = (0..steps.len()).collect();
+    idx.sort_by(|&a, &b| {
+        let start = |k: usize| steps[k].0.min(steps[k].1);
+        start(a).total_cmp(&start(b)).then(a.cmp(&b))
+    });
+    let mut sizes = Vec::new();
+    let mut s = 0;
+    while s < idx.len() {
+        let mut reach = channel_reach(steps[idx[s]].0, steps[idx[s]].1);
+        let mut t = s + 1;
+        while t < idx.len() {
+            let (lo_at, hi_at) = steps[idx[t]];
+            if !joins_channel(reach, lo_at, hi_at) {
+                break;
+            }
+            if lo_at.max(hi_at) > reach.0 {
+                reach = channel_reach(lo_at, hi_at);
+            }
+            t += 1;
+        }
+        sizes.push(t - s);
+        s = t;
+    }
+    sizes
+}
+
 /// Put each gap's jogs on their tracks: the jogs whose spans overlap
 /// (within a track's pitch) form a channel, ordered so their turns do
 /// not cross — of two jogs turning the same way, the one turning
@@ -1927,18 +2123,15 @@ fn place_tracks(jogs: &mut [Jog], kept: &[(f64, (f64, f64))]) {
         // dozen-edge hub's two halves of a fan took twice the tracks the
         // gap holds, and the router rerouted the steps squeezed out.)
         let gap = jogs[idx[s]].gap;
-        let far = |j: &Jog| (j.span().1, j.hi_at >= j.lo_at);
-        let (mut reach, mut reach_hi) = far(&jogs[idx[s]]);
+        let mut reach = channel_reach(jogs[idx[s]].lo_at, jogs[idx[s]].hi_at);
         let mut t = s + 1;
         while t < idx.len() && jogs[idx[t]].gap == gap {
             let j = &jogs[idx[t]];
-            let near_hi = j.hi_at <= j.lo_at;
-            let fork = j.span().0 >= reach + 1.0 && near_hi == reach_hi;
-            if j.span().0 >= reach + TRACK_PITCH || fork {
+            if !joins_channel(reach, j.lo_at, j.hi_at) {
                 break;
             }
-            if j.span().1 > reach {
-                (reach, reach_hi) = far(j);
+            if j.span().1 > reach.0 {
+                reach = channel_reach(j.lo_at, j.hi_at);
             }
             t += 1;
         }
@@ -2559,6 +2752,38 @@ mod tests {
         // A gap too shallow for both steps.
         let near = ((0.0, 40.0), (0.0, -1.0), true);
         assert!(twin_bulge(a, near, 10.0, across, head_leg).is_none());
+    }
+
+    #[test]
+    fn a_staircase_of_steps_is_one_channel_a_track_each() {
+        // A hub's fan stepping one way under its block: each step
+        // overlaps the next only, so no point lies under more than two,
+        // but their order nests all of them: one channel, a track a
+        // step (B12 G2). The layout reserves its gap by that count.
+        let stair: Vec<(f64, f64)> = (0..6)
+            .map(|k| (300.0 + 40.0 * k as f64, 220.0 + 40.0 * k as f64))
+            .collect();
+        assert_eq!(channel_sizes(&stair), vec![6]);
+        let mut jogs: Vec<Jog> = stair
+            .iter()
+            .enumerate()
+            .map(|(k, &(a, b))| jog(k, 0, a, b, (0.0, 200.0), 100.0))
+            .collect();
+        place_tracks(&mut jogs, &[]);
+        let mut at: Vec<f64> = jogs.iter().map(|j| j.at).collect();
+        at.sort_by(f64::total_cmp);
+        assert!(
+            at.windows(2).all(|w| w[1] - w[0] >= TRACK_PITCH - EPS),
+            "{at:?}"
+        );
+        // Steps a pitch and more apart are channels of their own, and
+        // two that only meet where both turn the same way fork.
+        assert_eq!(
+            channel_sizes(&[(0.0, 100.0), (130.0, 230.0), (250.0, 330.0)]),
+            vec![1, 1, 1]
+        );
+        assert_eq!(channel_sizes(&[(100.0, 0.0), (101.0, 200.0)]), vec![1, 1]);
+        assert_eq!(channel_sizes(&[]), Vec::<usize>::new());
     }
 
     #[test]

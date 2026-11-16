@@ -4473,9 +4473,28 @@ fn place(
                     rspan[r] = (rspan[r].0.min(alayer[d]), rspan[r].1.max(alayer[d]));
                 }
             }
+            let mut chains: Vec<(usize, usize, Vec<usize>)> = Vec::new();
+            let mut chain_of = vec![usize::MAX; na];
+            for chain in &edge_chain {
+                let mut ds = chain.clone();
+                ds.sort_by_key(|&d| alayer[d]);
+                let (Some(&first), Some(&last)) = (ds.first(), ds.last()) else {
+                    continue;
+                };
+                let (Some(&top), Some(&bottom)) = (preds[first].first(), succs[last].first())
+                else {
+                    continue;
+                };
+                for &d in &ds {
+                    chain_of[d] = chains.len();
+                }
+                chains.push((top, bottom, ds));
+            }
             Some(BlockOrder {
                 bspan,
                 rspan,
+                chains,
+                chain_of,
                 apath: &apath,
                 border: &border_side,
                 preds: &preds,
@@ -5249,22 +5268,45 @@ fn place(
                     if (pa - pb).abs() <= 1.0 {
                         continue;
                     }
-                    spans[alayer[b]].push((pa.min(pb), pa.max(pb)));
+                    spans[alayer[b]].push((pa, pb));
                 }
             }
             for (li, sp) in spans.iter_mut().enumerate() {
-                // The most spans over one point: the tracks the gap needs.
-                let mut ev: Vec<(f64, i32)> = Vec::with_capacity(2 * sp.len());
-                for &(a, b) in sp.iter() {
-                    ev.push((a, 1));
-                    ev.push((b, -1));
+                // The tracks the gap needs. Outside a block layout: the
+                // most spans over one point.
+                let mut most = 0usize;
+                if block_paths.is_none() {
+                    let mut ev: Vec<(f64, i32)> = Vec::with_capacity(2 * sp.len());
+                    for &(a, b) in sp.iter() {
+                        ev.push((a.min(b), 1));
+                        ev.push((a.max(b), -1));
+                    }
+                    ev.sort_by(|x, y| x.0.total_cmp(&y.0).then(x.1.cmp(&y.1)));
+                    let mut cur = 0i32;
+                    for (_, d) in ev {
+                        cur += d;
+                        most = most.max(cur.max(0) as usize);
+                    }
+                } else {
+                    // A block layout's gap (B12 G2): its largest channel as
+                    // the ortho stage packs it (`ortho::channel_sizes`),
+                    // one track per step. The steps of a channel nest,
+                    // every one on its own track, also where two of them
+                    // never meet over one point: a hub's fan stepping down
+                    // a staircase into the gap under its block is a chain
+                    // of steps each overlapping the next, and its order
+                    // asks one track a step. Counted by the most over one
+                    // point, dense-td's fan of nine steps under its
+                    // second band was given room for seven; its two
+                    // outermost steps shared a track 4 px apart, the
+                    // router rerouted one of them, and the fan crossed
+                    // itself sixteen times.
+                    most = crate::ortho::channel_sizes(sp)
+                        .into_iter()
+                        .max()
+                        .unwrap_or(0);
                 }
-                ev.sort_by(|x, y| x.0.total_cmp(&y.0).then(x.1.cmp(&y.1)));
-                let (mut cur, mut most) = (0i32, 0i32);
-                for (_, d) in ev {
-                    cur += d;
-                    most = most.max(cur);
-                }
+                let most = most as i32;
                 if most >= 1 {
                     need[li] = crate::ortho::ROW_CLEAR
                         + crate::ortho::HEAD_LEG
@@ -6091,6 +6133,13 @@ struct BlockOrder<'a> {
     bspan: Vec<(usize, usize)>,
     /// Per run: the layers its dummies stand on.
     rspan: Vec<(usize, usize)>,
+    /// Every channel: its node on the layer before its first dummy, its
+    /// node on the layer after its last, and its dummies by layer
+    /// ([`BlockOrder::untangle_fans`]).
+    chains: Vec<(usize, usize, Vec<usize>)>,
+    /// Per augmented node: its channel (index into `chains`), or
+    /// `usize::MAX`.
+    chain_of: Vec<usize>,
 }
 
 impl BlockOrder<'_> {
@@ -7282,6 +7331,7 @@ impl BlockOrder<'_> {
                 self.settle(layers, pos);
             }
             self.tidy(layers, pos);
+            self.untangle_fans(layers, pos);
             return;
         }
         self.canonical(layers, pos);
@@ -7326,6 +7376,170 @@ impl BlockOrder<'_> {
                 self.rank_level(&path, (lo, hi), layers);
             }
         }
+        self.untangle_fans(layers, pos);
+    }
+
+    /// The two ends of the link from `u` to `v` (on the next layer) as
+    /// fans read them: its channel's two nodes, or `u` and `v`.
+    fn link_ends(&self, u: usize, v: usize) -> (usize, usize) {
+        let c = if self.chain_of[u] != usize::MAX {
+            self.chain_of[u]
+        } else {
+            self.chain_of[v]
+        };
+        match self.chains.get(c) {
+            Some(&(top, bottom, _)) => (top, bottom),
+            None => (u, v),
+        }
+    }
+
+    /// Layered crossings between two links of one fan: two links whose
+    /// edges leave one node on the same side or reach one on the same
+    /// side (the same upper or the same lower node; parallel edges
+    /// aside), per gap.
+    fn fan_crossings(&self, layers: &[Vec<usize>], pos: &[f64]) -> usize {
+        let mut total = 0;
+        let mut links: Vec<(f64, f64, (usize, usize))> = Vec::new();
+        for li in 0..self.nlayers.saturating_sub(1) {
+            links.clear();
+            for &u in &layers[li] {
+                for &v in &self.succs[u] {
+                    if self.alayer[v] == li + 1 {
+                        links.push((pos[u], pos[v], self.link_ends(u, v)));
+                    }
+                }
+            }
+            for (i, a) in links.iter().enumerate() {
+                for b in &links[i + 1..] {
+                    let fan = (a.2 .0 == b.2 .0) != (a.2 .1 == b.2 .1);
+                    if fan && (a.0 - b.0) * (a.1 - b.1) < 0.0 {
+                        total += 1;
+                    }
+                }
+            }
+        }
+        total
+    }
+
+    /// O6 across levels: two channels of one fan (the same upper or the
+    /// same lower node) that cross in the layered order change places
+    /// on the layers between their crossing and the node they share,
+    /// where they stand next to each other on every one of those layers
+    /// inside the same level, when that lowers the fans' crossings and
+    /// not the drawing's. The level orders and the sweeps judge every
+    /// crossing alike, and an exchange of two neighbours moves a channel
+    /// on one level only, so a crossing two channels of a fan make at
+    /// one level stays wherever the channel pair spans several (dense-td:
+    /// `n20 -> n37` and `n16 -> n37` cross under their block and run
+    /// side by side through three levels into `n37`, the hub `n16`'s
+    /// edge to `n37` and its turned edge from `n36` cross over `n36`).
+    /// Drawn, such a crossing is one in a fan, which no later stage
+    /// takes out. Each change kept lowers the fans' crossings, so it
+    /// ends.
+    fn untangle_fans(&self, layers: &mut [Vec<usize>], pos: &mut [f64]) {
+        let n = self.chains.len();
+        if n < 2 {
+            return;
+        }
+        let mut fans = self.fan_crossings(layers, pos);
+        if fans == 0 {
+            return;
+        }
+        let mut cross = self.crossings(layers, pos, 0, self.nlayers);
+        let mut tries = 0;
+        let mut kept = true;
+        while kept && fans > 0 && tries < FAN_TRIES {
+            kept = false;
+            for a in 0..n {
+                for b in a + 1..n {
+                    let (ta, ba, da) = &self.chains[a];
+                    let (tb, bb, db) = &self.chains[b];
+                    let (up, down) = (ta == tb, ba == bb);
+                    if up == down {
+                        continue;
+                    }
+                    let la: Vec<usize> = da.iter().map(|&d| self.alayer[d]).collect();
+                    let lb: Vec<usize> = db.iter().map(|&d| self.alayer[d]).collect();
+                    let (lo, hi) = (la[0].max(lb[0]), la[la.len() - 1].min(lb[lb.len() - 1]));
+                    if lo > hi {
+                        continue;
+                    }
+                    let at = |ds: &[usize], ls: &[usize], l: usize| ds[l - ls[0]];
+                    // Their order on each layer both stand on, from the
+                    // shared node's side: where it first flips is the
+                    // crossing, and the layers before it change places.
+                    let range: Vec<usize> = if down {
+                        (lo..=hi).rev().collect()
+                    } else {
+                        (lo..=hi).collect()
+                    };
+                    let left = |l: usize| pos[at(da, &la, l)] < pos[at(db, &lb, l)];
+                    let first = left(range[0]);
+                    let flip = range.iter().position(|&l| left(l) != first);
+                    // Past the last layer both stand on: the far ends.
+                    let far_flip = || {
+                        let l = if down { lo } else { hi };
+                        let (fa, fb) = if down {
+                            (
+                                if la[0] == l { *ta } else { at(da, &la, l - 1) },
+                                if lb[0] == l { *tb } else { at(db, &lb, l - 1) },
+                            )
+                        } else {
+                            (
+                                if la[la.len() - 1] == l {
+                                    *ba
+                                } else {
+                                    at(da, &la, l + 1)
+                                },
+                                if lb[lb.len() - 1] == l {
+                                    *bb
+                                } else {
+                                    at(db, &lb, l + 1)
+                                },
+                            )
+                        };
+                        fa != fb && (pos[fa] < pos[fb]) != first
+                    };
+                    let upto = match flip {
+                        Some(k) => k,
+                        None if far_flip() => range.len(),
+                        None => continue,
+                    };
+                    let swap: Vec<usize> = range[..upto].to_vec();
+                    let movable = swap.iter().all(|&l| {
+                        let (x, y) = (at(da, &la, l), at(db, &lb, l));
+                        (pos[x] - pos[y]).abs() == 1.0 && self.apath[x] == self.apath[y]
+                    });
+                    if !movable {
+                        continue;
+                    }
+                    tries += 1;
+                    let exchange = |layers: &mut [Vec<usize>], pos: &mut [f64]| {
+                        for &l in &swap {
+                            let (x, y) = (at(da, &la, l), at(db, &lb, l));
+                            let (px, py) = (pos[x] as usize, pos[y] as usize);
+                            layers[l].swap(px, py);
+                            pos[x] = py as f64;
+                            pos[y] = px as f64;
+                        }
+                    };
+                    exchange(layers, pos);
+                    let (f, c) = (
+                        self.fan_crossings(layers, pos),
+                        self.crossings(layers, pos, 0, self.nlayers),
+                    );
+                    if f < fans && c <= cross {
+                        (fans, cross) = (f, c);
+                        kept = true;
+                    } else {
+                        exchange(layers, pos);
+                    }
+                    if tries >= FAN_TRIES {
+                        return;
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -7350,6 +7564,10 @@ const EXCHANGE_PASSES: usize = 8;
 const FLIP_TRIES: usize = 12;
 /// Most rounds of the sweeps inside the slots.
 const SLOT_ROUNDS: usize = 16;
+/// Most exchanges [`BlockOrder::untangle_fans`] tries in one ordering:
+/// each costs a count of the layered crossings, so a drawing with many
+/// fans pays a bounded price (dense-td tries 6).
+const FAN_TRIES: usize = 64;
 
 /// Reorder one layer by the weighted median of each node's neighbour
 /// positions (dagre's heuristic — more robust to outliers than the
