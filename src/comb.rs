@@ -519,65 +519,81 @@ pub(crate) fn comb(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
         // (A side past the frame's budget is left as the stages before
         // drew it, its ports evened neither.)
         let mut afford = true;
-        // A deal that leaves the side with fewer crossings is kept, and
-        // the side is looked at again as it then stands: with its ports
-        // in the order of its tracks, say, a deal that had no answer
-        // before may have one. Every deal kept undoes a crossing, so
-        // the rounds end; [`ROUNDS`] bounds what a side may cost.
-        for _ in 0..if dragging { 1 } else { ROUNDS } {
-            let mut tried: Vec<Vec<Redraw>> = Vec::new();
-            let mut combed = false;
-            // (Looked at once a deal has an answer: most sides are in
-            // order.)
-            let mut crossed: Option<bool> = None;
-            for (order, deal) in DEALS {
-                let Some(plan) = plan_side(sc, &teeth, fr, order, deal) else {
-                    continue;
-                };
-                if plan.is_empty() {
-                    // In order under a deal that puts its tracks in
-                    // order: nothing left to comb. (Under any other, the
-                    // deal merely changes nothing here.)
-                    if matches!(deal, Deal::Anchored | Deal::Fitted) {
+        // In a block layout the side is dealt once more after its ports
+        // were evened: a deal is judged at the ports the side holds, and
+        // one refused at the uneven ports may be kept at the even ones —
+        // left at one go, a second run of the stage found it (dense-td
+        // as blocks: the two arrivals on `n42`'s top side, the crossing
+        // between them kept by the first run and undone by the second).
+        for dealt_again in [false, true] {
+            if dealt_again {
+                teeth = teeth_of(sc, cx, &members, fr, line_n);
+            }
+            // A deal that leaves the side with fewer crossings is kept, and
+            // the side is looked at again as it then stands: with its ports
+            // in the order of its tracks, say, a deal that had no answer
+            // before may have one. Every deal kept undoes a crossing, so
+            // the rounds end; [`ROUNDS`] bounds what a side may cost.
+            for _ in 0..if dragging { 1 } else { ROUNDS } {
+                let mut tried: Vec<Vec<Redraw>> = Vec::new();
+                let mut combed = false;
+                // (Looked at once a deal has an answer: most sides are in
+                // order.)
+                let mut crossed: Option<bool> = None;
+                for (order, deal) in DEALS {
+                    let Some(plan) = plan_side(sc, &teeth, fr, order, deal) else {
+                        continue;
+                    };
+                    if plan.is_empty() {
+                        // In order under a deal that puts its tracks in
+                        // order: nothing left to comb. (Under any other, the
+                        // deal merely changes nothing here.)
+                        if matches!(deal, Deal::Anchored | Deal::Fitted) {
+                            break;
+                        }
+                        continue;
+                    }
+                    // Where nothing crosses the legs a deal redraws, none
+                    // leaves the side with fewer crossings.
+                    let world = world.get_or_insert_with(|| World::new(sc, cx));
+                    if !*crossed.get_or_insert_with(|| is_crossed(world, &teeth, fr)) {
                         break;
                     }
-                    continue;
+                    if tried.iter().any(|p| same_plan(p, &plan)) {
+                        continue;
+                    }
+                    afford = budget.take(world, &plan);
+                    if !afford {
+                        break;
+                    }
+                    if keeps(sc, world, &plan, &members, true) {
+                        apply(sc, world, moved, &plan);
+                        combed = true;
+                        break;
+                    }
+                    tried.push(plan);
                 }
-                // Where nothing crosses the legs a deal redraws, none
-                // leaves the side with fewer crossings.
-                let world = world.get_or_insert_with(|| World::new(sc, cx));
-                if !*crossed.get_or_insert_with(|| is_crossed(world, &teeth, fr)) {
+                if !combed {
                     break;
                 }
-                if tried.iter().any(|p| same_plan(p, &plan)) {
-                    continue;
-                }
-                afford = budget.take(world, &plan);
-                if !afford {
-                    break;
-                }
-                if keeps(sc, world, &plan, &members, true) {
-                    apply(sc, world, moved, &plan);
-                    combed = true;
-                    break;
-                }
-                tried.push(plan);
+                teeth = teeth_of(sc, cx, &members, fr, line_n);
             }
-            if !combed {
+            if !afford {
                 break;
             }
-            teeth = teeth_of(sc, cx, &members, fr, line_n);
-        }
-        if !afford {
-            continue;
-        }
-        // Then its ports one pitch apart (report B4, §2.4: a hub's ports
-        // in one even band), where the stages after the ports stage
-        // left them otherwise and nothing gets worse for it.
-        if let Some(plan) = plan_even(sc, &teeth, fr) {
-            let world = world.get_or_insert_with(|| World::new(sc, cx));
-            if budget.take(world, &plan) && keeps(sc, world, &plan, &members, false) {
-                apply(sc, world, moved, &plan);
+            // Then its ports one pitch apart (report B4, §2.4: a hub's ports
+            // in one even band), where the stages after the ports stage
+            // left them otherwise and nothing gets worse for it.
+            let mut evened = false;
+            if let Some(plan) = plan_even(sc, &teeth, fr) {
+                let world = world.get_or_insert_with(|| World::new(sc, cx));
+                if budget.take(world, &plan) && keeps(sc, world, &plan, &members, false) {
+                    apply(sc, world, moved, &plan);
+                    evened = true;
+                }
+            }
+            if !(evened && cx.blocks) {
+                break;
             }
         }
     }
@@ -2256,6 +2272,44 @@ mod tests {
             assert_eq!(changed, 0, "{name}");
             assert!(moved.iter().all(|m| !m), "{name}");
         }
+    }
+
+    #[test]
+    fn a_block_layouts_comb_is_settled_after_one_pass() {
+        // The same of a block layout: a side whose ports the stage
+        // evened is dealt once more at those ports. (Dealt once,
+        // dense-td's `n42` kept a crossing between the two arrivals on
+        // its top side — refused at the ports the nudge left, kept at
+        // the even ones — which a second run of the stage then undid.)
+        crate::levels::with_blocks(true, || {
+            for name in [
+                "quality/dense-td",
+                "quality/bench-75",
+                "quality/fanout-frames",
+                "blocks/blocks-overview",
+                "blocks/hub5",
+            ] {
+                let g = crate::blockcheck::fixture(name);
+                assert!(crate::scene::block_mode(&g), "{name}");
+                let mut sc = scene(&g);
+                let cx = crate::edgepass::ctx(&g, &sc);
+                let before: Vec<(Vec<Pt>, [Pt; 4])> = sc
+                    .edges
+                    .iter()
+                    .map(|e| (e.waypoints.clone(), e.bezier))
+                    .collect();
+                let mut moved = vec![false; sc.edges.len()];
+                comb(&mut sc, &cx, &mut moved);
+                let changed: Vec<String> = sc
+                    .edges
+                    .iter()
+                    .zip(&before)
+                    .filter(|(e, b)| e.waypoints != b.0 || e.bezier != b.1)
+                    .map(|(e, _)| format!("{} -> {}", e.from, e.to))
+                    .collect();
+                assert!(changed.is_empty(), "{name}: {changed:?}");
+            }
+        });
     }
 
     /// A hub fan of the reviewer's set (`tests/fixtures/fans`: one hub,
