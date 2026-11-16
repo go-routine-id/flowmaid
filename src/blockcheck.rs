@@ -1956,8 +1956,75 @@ pub(crate) fn sweep() -> Vec<(String, String)> {
 
 /// The most generated diagrams of the sweep on which a block layout
 /// draws hard zeros the layout before blocks did not (a ratchet: down
-/// only, to 0 with the own-box edges and the title-clear entries).
-const SWEEP_ADDED_MAX: usize = 9;
+/// only, to 0 with the note links of B12.14). Each one's cause is
+/// pinned by the sweep: a note card's link sharing its state's port
+/// with another card's (seven state diagrams), or a whole block's end
+/// on a lateral side of its frame on a level the lane rule dissolved,
+/// where the other end lies within the block's layers (`flow 23 RL`).
+const SWEEP_ADDED_MAX: usize = 8;
+
+/// The hard zeros a block layout adds to a generated diagram (`was`
+/// before blocks, `is` as blocks) have one of two causes, both judged
+/// later by the spec's table: a note card's link sharing its state's
+/// port with another card's link (the note links are B12.14's, lead
+/// note 6: judged at checkpoint C), and a whole block's end on a
+/// lateral side of its frame where the lane rule dissolved the block's
+/// level and the other end lies within the block's layers (spec 2.8
+/// allows a lateral side there: no side of the frame faces the other
+/// end along the flow; the layout before blocks happened to put that
+/// end past the block). No other kind is added.
+fn assert_added_zeros(
+    name: &str,
+    g: &Graph,
+    l: &Layerings,
+    was: &crate::quality::Metrics,
+    is: &crate::quality::Metrics,
+) {
+    for (kind, a, b) in [
+        ("edge_node_x", was.edge_node_x, is.edge_node_x),
+        ("wiggles", was.wiggles, is.wiggles),
+        ("node_overlap", was.node_overlap, is.node_overlap),
+        ("node_frame", was.node_frame, is.node_frame),
+        ("frame_overlap", was.frame_overlap, is.frame_overlap),
+        ("own_frame_x", was.own_frame_x, is.own_frame_x),
+    ] {
+        assert!(b <= a, "{name}: {kind} {a} -> {b}\n{:#?}", is.details);
+    }
+    let card = |id: &str| {
+        g.node_index(id).is_some_and(|v| {
+            let n = &g.nodes[v];
+            crate::style::is_note_card(&n.id, n.shape, &n.style)
+        })
+    };
+    let new = |d: &&String| !was.details.contains(d);
+    for d in is.details.iter().filter(new) {
+        let w: Vec<&str> = d.split(' ').collect();
+        if w[0] == "port" {
+            assert!(
+                w.len() == 4 && card(w[2]) && card(w[3]),
+                "{name}: a shared port that is no pair of note links: {d}"
+            );
+        }
+        if w.len() == 2 && w[1] == "frame_side" {
+            let (a, b) = w[0].split_once("->").expect("an edge");
+            let sub = |id: &str| g.subgraphs.iter().position(|s| s.id == id);
+            let (s, other) = match (sub(a), sub(b)) {
+                (Some(s), None) => (s, b),
+                (None, Some(s)) => (s, a),
+                _ => panic!("{name}: a frame end between two blocks: {d}"),
+            };
+            assert!(
+                l.lanes.contains(&g.subgraphs[s].parent),
+                "{name}: a frame end on a lateral side, its level not dissolved: {d}"
+            );
+            let (r0, r1) = rows(g, l, &g.subgraphs[s].id);
+            assert!(
+                (r0..=r1).contains(&row(g, l, other)),
+                "{name}: a frame end on a lateral side, the other end past the block: {d}"
+            );
+        }
+    }
+}
 
 #[test]
 fn a_generated_sweep_keeps_the_block_invariants() {
@@ -1989,8 +2056,7 @@ fn a_generated_sweep_keeps_the_block_invariants() {
         }
         blocks += 1;
         assert_one_side(&format!("{name}\n{src}"), &g);
-        let zeros = |sc: &Scene| {
-            let m = crate::quality::measure(&g, sc);
+        let zeros = |m: &crate::quality::Metrics| {
             m.edge_node_x
                 + m.shared_ports
                 + m.arrow_on_start
@@ -2001,10 +2067,15 @@ fn a_generated_sweep_keeps_the_block_invariants() {
                 + m.frame_overlap
                 + m.own_frame_x
         };
-        let before = zeros(&crate::levels::with_blocks(false, || {
-            crate::scene::scene(&g)
-        }));
-        let now = zeros(&sc);
+        let was = crate::quality::measure(
+            &g,
+            &crate::levels::with_blocks(false, || crate::scene::scene(&g)),
+        );
+        let is = crate::quality::measure(&g, &sc);
+        let (before, now) = (zeros(&was), zeros(&is));
+        if now > before {
+            assert_added_zeros(&format!("{name}\n{src}"), &g, &l, &was, &is);
+        }
         if before + now > 0 {
             hard.push((name, before, now));
         }
@@ -2028,6 +2099,7 @@ fn a_generated_sweep_keeps_the_block_invariants() {
     // holds, and is held here: over the sweep a block layout draws
     // fewer of them than the layout before blocks, on fewer diagrams,
     // and it adds some to few diagrams (lowered only).
+    // What they add is named (`assert_added_zeros`).
     let added: Vec<&(String, usize, usize)> = hard.iter().filter(|h| h.2 > h.1).collect();
     println!(
         "blocks add hard zeros on {} diagrams: {added:?}",
