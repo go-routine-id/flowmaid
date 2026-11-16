@@ -69,8 +69,11 @@ const BARE_LEG: f64 = crate::router::CORNER_R / 2.0;
 /// Room (px) a jog keeps from a frame's border it passes along: the
 /// router's frame ring.
 const BORDER_CLEAR: f64 = crate::clearance::FRAME_SEP / 2.0 + SEP_AIR;
-/// Room (px) a jog keeps from a frame's title chip.
-const CHIP_CLEAR: f64 = crate::clearance::CHIP_SEP + SEP_AIR;
+/// Room (px) a jog keeps from a frame's title chip — and, in a block
+/// layout, a port from a chip's shadow ([`crate::ports`]): the room the
+/// router asks for and a little air, so a stroke placed by it does not
+/// sit exactly on the router's limit.
+pub(crate) const CHIP_CLEAR: f64 = crate::clearance::CHIP_SEP + SEP_AIR;
 /// Room (px) a step across keeps from the label of its own edge riding
 /// the run below it (the label stage's own gap).
 const LABEL_SEP: f64 = crate::labels::LABEL_GAP;

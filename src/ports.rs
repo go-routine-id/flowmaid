@@ -773,6 +773,175 @@ fn capacity(len: f64) -> usize {
 /// Both modes run the same rule.
 pub(crate) fn assign(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut [bool]) {
     place_ports(g, sc, cx, mode, moved, true, true, None);
+    if cx.blocks {
+        free_pins(sc, cx, moved);
+    }
+}
+
+/// A block layout's *free pins*: the end of an edge to (or from) a
+/// whole block lies on the block's frame where its channel was cut
+/// (`scene::cut_to_frames`), wherever that happened to be. Once the
+/// ports of the block's members are placed, a pin that stands within a
+/// port's spacing ([`PORT_SPACING`]) of something else crossing that
+/// frame side — the entry of an edge into one of the block's members,
+/// another channel, another pin — or under the frame's title chip moves
+/// along the side to the nearest place clear of them, a port's spacing
+/// inside the corners, without changing places with any of them: it
+/// keeps to the gap between the crossings on either side of it (one it
+/// stands on counts as on the side away from where the pin's own
+/// channel comes in), so moving it adds no crossing. It stays where it
+/// is when that gap has no such place. (On the entry column of an edge
+/// into a member, the two ran on top of each other into the frame: the
+/// router then took one of them another way, across the fan it belongs
+/// to.)
+fn free_pins(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
+    let flag = |v: &[bool], i: usize| v.get(i).copied().unwrap_or(false);
+    let heads = title_heads(sc);
+    for i in 0..sc.edges.len() {
+        let Some((from, to)) = cx.ends.get(i).copied().flatten() else {
+            continue;
+        };
+        if !flag(&cx.drawn, i) || flag(&cx.fixed, i) || flag(&cx.held, i) {
+            continue;
+        }
+        for (src, end, other) in [(true, from, to), (false, to, from)] {
+            let EndRef::Frame(ci) = end else {
+                continue;
+            };
+            // (An edge to the block's own member meets the border from
+            // inside: no pin.)
+            if crate::edgepass::holds_other(cx, end, other) {
+                continue;
+            }
+            let r = end_rect(sc, end);
+            let p = end_point(sc, i, src);
+            let side = side_of(r, p);
+            let (at, line) = split(side, p);
+            let border = match side {
+                Side::Top => r.1,
+                Side::Bottom => r.3,
+                Side::Left => r.0,
+                Side::Right => r.2,
+            };
+            let (t0, t1) = split_range(side, r);
+            let (lo, hi) = (t0 + PORT_SPACING, t1 - PORT_SPACING);
+            if (line - border).abs() > ON_BOX || hi <= lo {
+                continue;
+            }
+            // Where the other drawn edges cross (or end on) the side's
+            // line, and where those that end on a member of this block
+            // from outside it enter that member: the ortho stage draws
+            // such an edge's last leg at its port.
+            let mut taken: Vec<f64> = Vec::new();
+            for j in (0..sc.edges.len()).filter(|&j| j != i && flag(&cx.drawn, j)) {
+                for w in edge_polyline(&sc.edges[j]).windows(2) {
+                    let ((ta, na), (tb, nb)) = (split(side, w[0]), split(side, w[1]));
+                    if (na - line) * (nb - line) > 0.0 || (na == line && nb == line) {
+                        continue;
+                    }
+                    let t = if (nb - na).abs() < PORT_EPS {
+                        ta
+                    } else {
+                        ta + (tb - ta) * (line - na) / (nb - na)
+                    };
+                    if t > t0 && t < t1 {
+                        taken.push(t);
+                    }
+                }
+                let inside = |e: EndRef| match e {
+                    EndRef::Node(v) => cx.node_frames.get(v).is_some_and(|f| f.contains(&ci)),
+                    EndRef::Frame(_) => false,
+                };
+                if let Some((a, b)) = cx.ends.get(j).copied().flatten() {
+                    for (s, x, y) in [(true, a, b), (false, b, a)] {
+                        if inside(x) && !inside(y) {
+                            taken.push(split(side, end_point(sc, j, s)).0);
+                        }
+                    }
+                }
+            }
+            // The frame's own title chip, on its top side.
+            let chip = heads.get(ci).filter(|_| side == Side::Top).map(|h| {
+                (
+                    h.0 - crate::ortho::CHIP_CLEAR,
+                    h.2 + crate::ortho::CHIP_CLEAR,
+                )
+            });
+            // The way its own channel comes in along the side.
+            let e = &sc.edges[i];
+            let n = e.waypoints.len();
+            let before = match (n >= 2, src) {
+                (true, true) => e.waypoints[1],
+                (true, false) => e.waypoints[n - 2],
+                (false, true) => e.bezier[3],
+                (false, false) => e.bezier[0],
+            };
+            let from_low = split(side, before).0 < at;
+            let Some(t) = pin_place(at, (lo, hi), &taken, chip, from_low) else {
+                continue;
+            };
+            let new = join(side, t, line);
+            let delta = (new.0 - p.0, new.1 - p.1);
+            move_end(&mut sc.edges[i], src, p, delta, side, false, true);
+            if let Some(m) = moved.get_mut(i) {
+                *m = true;
+            }
+        }
+    }
+}
+
+/// Where a free pin at `at` on a side whose usable range is `side`
+/// goes ([`free_pins`]): `None` where it stands clear already — a
+/// port's spacing from each of `taken` (what else crosses the side) and
+/// outside `chip` (the title chip's stretch with its clearance) — or
+/// has nowhere to go; else the nearest place clear of them inside the
+/// gap between the crossings on either side of it, the lower of two
+/// equally near. A crossing it stands on lies above it when its own
+/// channel comes in from below along the side (`from_low`), else below.
+fn pin_place(
+    at: f64,
+    (lo, hi): (f64, f64),
+    taken: &[f64],
+    chip: Option<(f64, f64)>,
+    from_low: bool,
+) -> Option<f64> {
+    let clear = |t: f64| {
+        taken
+            .iter()
+            .all(|&o| (t - o).abs() >= PORT_SPACING - PORT_EPS)
+            && chip.map_or(true, |(c0, c1)| t <= c0 + PORT_EPS || t >= c1 - PORT_EPS)
+    };
+    if at >= lo - PORT_EPS && at <= hi + PORT_EPS && clear(at) {
+        return None;
+    }
+    let mut gap = (lo, hi);
+    for &o in taken {
+        let above = if (o - at).abs() <= PORT_EPS {
+            from_low
+        } else {
+            o > at
+        };
+        if above {
+            gap.1 = gap.1.min(o - PORT_SPACING);
+        } else {
+            gap.0 = gap.0.max(o + PORT_SPACING);
+        }
+    }
+    if gap.0 > gap.1 {
+        return None;
+    }
+    let mut cands: Vec<f64> = [at.clamp(gap.0, gap.1), gap.0, gap.1]
+        .into_iter()
+        .chain(chip.into_iter().flat_map(|(c0, c1)| [c0, c1]))
+        .filter(|&t| t >= gap.0 - PORT_EPS && t <= gap.1 + PORT_EPS && clear(t))
+        .collect();
+    cands.sort_by(|a, b| {
+        (a - at)
+            .abs()
+            .total_cmp(&(b - at).abs())
+            .then(a.total_cmp(b))
+    });
+    cands.first().copied()
 }
 
 /// Space again the ends the router left too close, after it ran: the
@@ -888,7 +1057,7 @@ fn place_ports(
         // out of the chip's shadow, so no edge reaches them past the
         // frame's name (G6).
         let (lo, hi, shaded) = match prof.straight() {
-            Some(n) => unshaded(&heads, side, n, lo, hi, ports.len()),
+            Some(n) => unshaded(&heads, side, n, (lo, hi), ports.len(), CHIP_SEP),
             None => (lo, hi, false),
         };
         let shaded = shaded && ports.iter().any(|p| p.want < lo || p.want > hi);
@@ -1583,16 +1752,25 @@ fn title_heads(sc: &Scene) -> Vec<(f64, f64, f64, f64)> {
 
 /// The usable tangent range `lo..hi` of a straight side at normal `n`,
 /// less the stretch a title chip shades (within [`CHIP_SHADE`] out of
-/// the side and [`CHIP_SEP`] along it): the longer free part when it
+/// the side and `clear` along it): the longer free part when it
 /// still holds `k` ends [`PORT_SPACING`] apart, else the whole range.
 /// `true` when a chip shades the side.
+///
+/// `clear` is [`CHIP_SEP`], the room the router asks of a stroke beside
+/// a chip. (That leaves the first free port exactly on the router's
+/// limit: where its stroke touches the chip's ring it counts as running
+/// along the frame's name and is rerouted, round to a lateral side of
+/// the node — hub5 as blocks, three of the hub's five edges. Clearing
+/// by [`crate::ortho::CHIP_CLEAR`] instead enters those through the top
+/// side; it waits for the pins of an over-full side, which then stand
+/// on the first entry's column: see the checkpoint report.)
 fn unshaded(
     heads: &[(f64, f64, f64, f64)],
     side: Side,
     n: f64,
-    lo: f64,
-    hi: f64,
+    (lo, hi): (f64, f64),
     k: usize,
+    clear: f64,
 ) -> (f64, f64, bool) {
     let sgn = out_sign(side);
     let (a, b) = if sgn > 0.0 {
@@ -1608,7 +1786,7 @@ fn unshaded(
         if n1 + CHIP_SEP <= a || n0 - CHIP_SEP >= b {
             continue;
         }
-        let (c0, c1) = (t0 - CHIP_SEP, t1 + CHIP_SEP);
+        let (c0, c1) = (t0 - clear, t1 + clear);
         if c1 <= lo || c0 >= hi {
             continue;
         }
@@ -2333,15 +2511,89 @@ mod tests {
         // Chip header over x 0..100, ending 10 px above a top side
         // spanning x 50..250.
         let heads = [(0.0, 0.0, 100.0, 20.0)];
-        let (lo, hi, shaded) = unshaded(&heads, Side::Top, 30.0, 58.0, 242.0, 2);
+        let (lo, hi, shaded) = unshaded(&heads, Side::Top, 30.0, (58.0, 242.0), 2, CHIP_SEP);
         assert!(shaded);
         assert!(lo >= 100.0 + CHIP_SEP && hi == 242.0, "{lo} {hi}");
         // Far below the chip: no shade.
-        let (lo, hi, shaded) = unshaded(&heads, Side::Top, 300.0, 58.0, 242.0, 2);
+        let (lo, hi, shaded) = unshaded(&heads, Side::Top, 300.0, (58.0, 242.0), 2, CHIP_SEP);
         assert!(!shaded && lo == 58.0 && hi == 242.0);
         // No room past the chip for the ends: the side stays whole.
-        let (lo, hi, _) = unshaded(&heads, Side::Top, 30.0, 58.0, 110.0, 2);
+        let (lo, hi, _) = unshaded(&heads, Side::Top, 30.0, (58.0, 110.0), 2, CHIP_SEP);
         assert!(lo == 58.0 && hi == 110.0);
+        // A block layout's ports keep a little air past the router's
+        // limit.
+        let clear = crate::ortho::CHIP_CLEAR;
+        let (lo, _, shaded) = unshaded(&heads, Side::Top, 30.0, (58.0, 242.0), 2, clear);
+        assert!(shaded && lo > 100.0 + CHIP_SEP, "{lo}");
+    }
+
+    #[test]
+    fn a_free_pin_moves_clear_within_its_gap() {
+        let s = PORT_SPACING;
+        // Clear of everything: it stays.
+        assert_eq!(
+            pin_place(100.0, (20.0, 300.0), &[60.0, 140.0], None, true),
+            None
+        );
+        // On the column of an entry, its channel coming in from below
+        // along the side: a spacing before the entry; from above, a
+        // spacing past it.
+        assert_eq!(
+            pin_place(100.0, (20.0, 300.0), &[100.0], None, true),
+            Some(100.0 - s)
+        );
+        assert_eq!(
+            pin_place(100.0, (20.0, 300.0), &[100.0], None, false),
+            Some(100.0 + s)
+        );
+        // Too near an entry beside it: away from that one, as far as a
+        // spacing — never past the crossing on its other side.
+        assert_eq!(
+            pin_place(100.0, (20.0, 300.0), &[102.0], None, false),
+            Some(102.0 - s)
+        );
+        assert_eq!(
+            pin_place(
+                100.0,
+                (20.0, 300.0),
+                &[102.0, 102.0 - 2.0 * s + 3.0],
+                None,
+                false
+            ),
+            None
+        );
+        // Under the title chip: past its end, when no crossing lies
+        // between.
+        assert_eq!(
+            pin_place(50.0, (20.0, 300.0), &[], Some((6.0, 90.0)), true),
+            Some(90.0)
+        );
+        assert_eq!(
+            pin_place(50.0, (20.0, 300.0), &[80.0], Some((6.0, 90.0)), true),
+            None,
+            "an entry between it and the chip's end: it keeps its place"
+        );
+        // The gap closed by the chip below and an entry above (a first
+        // member's ports fill the stretch the chip leaves): it stays.
+        assert_eq!(
+            pin_place(100.0, (20.0, 300.0), &[100.0], Some((6.0, 99.5)), true),
+            None
+        );
+        // Inside the corner's inset: back to it.
+        assert_eq!(pin_place(10.0, (20.0, 300.0), &[], None, true), Some(20.0));
+    }
+
+    #[test]
+    fn a_block_layouts_pins_share_no_port() {
+        // A composite's transition out leaves its frame clear of the
+        // links that leave the same side (notes/spread-face as blocks:
+        // one stood on another's place, and the pair crossed inside the
+        // fan of that side).
+        let g = crate::blockcheck::fixture("notes/spread-face");
+        let sc = crate::levels::with_blocks(true, || scene(&g));
+        let m = crate::quality::measure(&g, &sc);
+        assert_eq!(m.shared_ports, 0, "{:?}", m.details);
+        assert_eq!(m.fan_x, 0, "{:?}", m.details);
     }
 
     /// The drawn start / end of an edge.
