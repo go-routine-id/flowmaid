@@ -825,8 +825,9 @@ fn approach(e: &SceneEdge, src: bool) -> Pt {
 /// stand next to each other (nothing else crosses the side between
 /// them) take their places in the order their channels come in along
 /// the side, so the steps the ortho stage draws into them nest instead
-/// of crossing (a stress diagram's `Producer one -> POOL` stepped across
-/// `Producer two`'s pin to the far side of it). Only the pins' own
+/// of crossing (blocks/state-note: `Active --> Review` and `Review -->
+/// Active` crossed above `Review`, their pins the other way round from
+/// their channels). Only the pins' own
 /// places are exchanged: what else crosses the side keeps its place
 /// and no pin passes it, so no crossing with anything else is added.
 fn order_pins(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
