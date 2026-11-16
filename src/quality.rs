@@ -605,7 +605,10 @@ impl Metrics {
 }
 
 /// Both measurements of one diagram plus the interactive-path cost.
+/// Built by [`measure_source`] only; it gains fields as the harness
+/// learns to compare more, so it is `#[non_exhaustive]`.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct Report {
     /// The static layout (`scene::scene`).
     pub statik: Metrics,
