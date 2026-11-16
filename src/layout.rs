@@ -4817,6 +4817,88 @@ fn place(
         if !widen.is_empty() {
             bpos = breadth(&layers, &widen);
         }
+        // B12 F1: a block's frame is at least as broad as its title
+        // ([`crate::scene::title_fit_width`]), grown equally on both sides
+        // of its members. A wall of a block holds its frame's side
+        // `FRAME_PAD - BORDER_GAP` past itself (the frame's pad round the
+        // members against the wall's gap to them); where the grown frame
+        // reaches past that, the wall takes the excess (half of it on
+        // each side: the members and what stands outside the wall each
+        // move half of it away), so the frame clears whatever stands
+        // beside the block, and the breadths are placed again. A frame
+        // whose walls already hold it (its channels inside keep them
+        // apart, as the scene's frame then covers them too) changes
+        // nothing. Once more if that placement left an excess still.
+        let ns = g.subgraphs.len();
+        let mut room_l = vec![0.0f64; ns];
+        let mut room_r = vec![0.0f64; ns];
+        for _ in 0..TITLE_FIT_PASSES {
+            let (mut wall_l, mut wall_r) = (vec![f64::INFINITY; ns], vec![f64::NEG_INFINITY; ns]);
+            for (d, side, path) in &border_meta {
+                if let Some(&c) = path.last() {
+                    if *side == 1 {
+                        wall_l[c] = wall_l[c].min(bpos[*d]);
+                    } else {
+                        wall_r[c] = wall_r[c].max(bpos[*d]);
+                    }
+                }
+            }
+            let held = FRAME_PAD - BORDER_GAP;
+            let mut grew = false;
+            for (c, f) in f1_breadths(g, n, &bpos, &absize).iter().enumerate() {
+                let &Some((lo, hi, short)) = f else {
+                    continue;
+                };
+                if short <= 0.0 || !wall_l[c].is_finite() || !wall_r[c].is_finite() {
+                    continue;
+                }
+                let over_l = (wall_l[c] - held) - lo;
+                let over_r = hi - (wall_r[c] + held);
+                if over_l > TITLE_FIT_EPS {
+                    room_l[c] += over_l;
+                    grew = true;
+                }
+                if over_r > TITLE_FIT_EPS {
+                    room_r[c] += over_r;
+                    grew = true;
+                }
+            }
+            if !grew {
+                break;
+            }
+            let mut room = widen.clone();
+            for (d, side, path) in &border_meta {
+                if let Some(&c) = path.last() {
+                    let r = if *side == 1 { room_l[c] } else { room_r[c] };
+                    if r > 0.0 {
+                        room.push((*d, r));
+                    }
+                }
+            }
+            bpos = breadth(&layers, &room);
+        }
+    }
+    // The same in LR / RL, where the title runs along the flow: a frame
+    // is at least as long as its title, grown equally upstream and
+    // downstream, so the frames opening and closing next to it along
+    // the flow keep their gap ([`f1_flow_short`]; the layer lines read
+    // the frames' reach).
+    if let (Some(_), Some(nc), true) = (block_paths, node_cluster, horizontal) {
+        let gap_l = g.rank_gap.unwrap_or(GAP_L);
+        let short = f1_flow_short(g, nc, n, &layers, &alayer, &alsize, &cluster_span, gap_l);
+        for v in 0..n {
+            for &c in &nc[v] {
+                let (Some(&s), Some(&(lo, hi))) = (short.get(c), cluster_span.get(&c)) else {
+                    continue;
+                };
+                if s > 0.0 && alayer[v] == lo {
+                    reach[v].0 += s / 2.0;
+                }
+                if s > 0.0 && alayer[v] == hi {
+                    reach[v].1 += s / 2.0;
+                }
+            }
+        }
     }
 
     // A block layout's jog room (B12 F2): what each frame grows on its
@@ -5643,6 +5725,107 @@ fn place(
     }
 }
 
+/// Placements a block layout makes for its frames' title breadth (B12
+/// F1, TD / BT; see `place`): the first widens the walls a grown frame
+/// reaches past, the second only where that placement left an excess.
+const TITLE_FIT_PASSES: usize = 2;
+/// Excess (px) under which a grown frame counts as held by its walls
+/// already: float noise of the breadth placement.
+const TITLE_FIT_EPS: f64 = 0.5;
+
+/// Each block's F1 frame across the flow at these breadths (TD / BT;
+/// `scene::frame_boxes` in layout coordinates, without the jog room,
+/// which grows the frame along the flow): its direct members' boxes
+/// and its nested frames with [`FRAME_PAD`] round them, deepest first,
+/// grown equally on both sides to [`crate::scene::title_fit_width`].
+/// Per subgraph `(lo, hi, shortfall)`: the grown box and what it grew
+/// by. `None` for a block without members.
+fn f1_breadths(g: &Graph, n: usize, bpos: &[f64], absize: &[f64]) -> Vec<Option<(f64, f64, f64)>> {
+    let ns = g.subgraphs.len();
+    let mut depth = vec![0usize; ns];
+    for (i, d) in depth.iter_mut().enumerate() {
+        let mut p = g.subgraphs[i].parent;
+        while let Some(pi) = p {
+            *d += 1;
+            p = g.subgraphs[pi].parent;
+        }
+    }
+    let mut order: Vec<usize> = (0..ns).collect();
+    order.sort_by_key(|&i| std::cmp::Reverse(depth[i]));
+    let mut boxes: Vec<Option<(f64, f64, f64)>> = vec![None; ns];
+    for &i in &order {
+        let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
+        for &v in g.subgraphs[i].nodes.iter().filter(|&&v| v < n) {
+            lo = lo.min(bpos[v] - absize[v] / 2.0);
+            hi = hi.max(bpos[v] + absize[v] / 2.0);
+        }
+        for (j, s) in g.subgraphs.iter().enumerate() {
+            if let (Some(i2), Some((a, b, _))) = (s.parent, boxes[j]) {
+                if i2 == i {
+                    lo = lo.min(a);
+                    hi = hi.max(b);
+                }
+            }
+        }
+        if lo > hi {
+            continue;
+        }
+        let (mut lo, mut hi) = (lo - FRAME_PAD, hi + FRAME_PAD);
+        let short = (crate::scene::title_fit_width(&g.subgraphs[i].title) - (hi - lo)).max(0.0);
+        lo -= short / 2.0;
+        hi += short / 2.0;
+        boxes[i] = Some((lo, hi, short));
+    }
+    boxes
+}
+
+/// Per block of an LR / RL block layout: how much shorter along the flow
+/// its frame could be than its title ([`crate::scene::title_fit_width`];
+/// B12 F2's title length), read before the layer lines from a lower
+/// bound of the frame's length: the halves of its members on its first
+/// and last layer, and between them every layer's slot and a
+/// [`GAP_L`]-sized gap (`gap_l`), as the layer lines space them at the
+/// least, with [`FRAME_PAD`] at both ends. The frame grows equally
+/// upstream and downstream by what the drawing actually lacks, which is
+/// never more than this. 0 for a block without a title.
+#[allow(clippy::too_many_arguments)] // internal: one bundle of layered-graph state
+fn f1_flow_short(
+    g: &Graph,
+    nc: &[Vec<usize>],
+    n: usize,
+    layers: &[Vec<usize>],
+    alayer: &[usize],
+    alsize: &[f64],
+    cluster_span: &BTreeMap<usize, (usize, usize)>,
+    gap_l: f64,
+) -> Vec<f64> {
+    let mut short = vec![0.0f64; g.subgraphs.len()];
+    let slot = |li: usize| -> f64 {
+        layers[li]
+            .iter()
+            .map(|&v| alsize[v] / 2.0)
+            .fold(0.0f64, f64::max)
+    };
+    for (&c, &(lo, hi)) in cluster_span {
+        let least = crate::scene::title_fit_width(&g.subgraphs[c].title);
+        if least <= 0.0 {
+            continue;
+        }
+        let half = |li: usize| -> f64 {
+            (0..n)
+                .filter(|&v| alayer[v] == li && nc[v].contains(&c))
+                .map(|v| alsize[v] / 2.0)
+                .fold(0.0f64, f64::max)
+        };
+        let mut length = half(lo) + half(hi);
+        for li in lo..hi {
+            length += slot(li) + gap_l + slot(li + 1);
+        }
+        short[c] = (least - (length + 2.0 * FRAME_PAD)).max(0.0);
+    }
+    short
+}
+
 /// A block's title chip as a block layout's placement sees it (TD /
 /// BT; [`title_chip`]).
 struct TitleChip {
@@ -5658,9 +5841,9 @@ struct TitleChip {
 }
 
 /// Block `c`'s title chip ([`TitleChip`]): it spans the frame's left
-/// inset and the title's width (the frame's left: its members' boxes,
-/// and the channel points inside it, as the scene wraps them). None for
-/// a block without a title or without members.
+/// inset and the title's width (the frame's left: its F1 box, and the
+/// channel points inside it, as the scene wraps them). None for a block
+/// without a title or without members.
 fn title_chip(g: &Graph, t: &TitleRows, c: usize) -> Option<TitleChip> {
     use crate::clearance::{CHIP_INSET_X, CHIP_PAD_W};
     let title = &g.subgraphs[c].title;
@@ -5673,12 +5856,13 @@ fn title_chip(g: &Graph, t: &TitleRows, c: usize) -> Option<TitleChip> {
     } else {
         lo
     };
-    let mut left = f64::INFINITY;
-    for v in 0..t.n {
-        if t.nc[v].contains(&c) {
-            left = left.min(t.bpos[v] - t.absize[v] / 2.0 - FRAME_PAD);
-        }
-    }
+    // The F1 frame's left (its members, its nested frames, grown to its
+    // title's breadth: [`f1_breadths`]), then the channels inside it.
+    let mut left = f1_breadths(g, t.n, t.bpos, t.absize)
+        .get(c)
+        .copied()
+        .flatten()
+        .map_or(f64::INFINITY, |f| f.0);
     for d in t.n..t.bpos.len() {
         if t.border[d] == 0 && t.apath[d].contains(&c) {
             left = left.min(t.bpos[d] - crate::scene::LANE_PAD);
@@ -5792,6 +5976,22 @@ fn title_room(g: &Graph, t: &TitleRows, layers: &[Vec<usize>]) -> Vec<(usize, f6
     out
 }
 
+/// `cap(m)` of B12 F2: how many entries a title-row member's side
+/// `(m0, m1)` (its breadth range) takes beside its block's title chip
+/// `(lo, hi)` (the chip's breadth interval, widened by
+/// [`crate::ortho::CHIP_CLEAR`]): one per [`crate::ports::PORT_SPACING`]
+/// along the longer free stretch, and one more for its first; 0 when
+/// the chip covers the whole side. The entries past it are displaced
+/// ([`title_jogs`]).
+pub(crate) fn title_cap((m0, m1): (f64, f64), (lo, hi): (f64, f64)) -> usize {
+    let free = (m1 - hi).max(lo - m0);
+    if free < 0.0 {
+        0
+    } else {
+        (free / crate::ports::PORT_SPACING).floor() as usize + 1
+    }
+}
+
 /// What [`title_jogs`] reads of a placement.
 struct TitleRows<'a> {
     nc: &'a [Vec<usize>],
@@ -5883,13 +6083,7 @@ fn title_counts(g: &Graph, t: &TitleRows) -> Vec<(usize, usize)> {
             if border == 0 || m1 <= chip_lo || m0 >= chip_hi {
                 continue;
             }
-            let free = (m1 - chip_hi).max(chip_lo - m0);
-            let cap = if free < 0.0 {
-                0
-            } else {
-                (free / crate::ports::PORT_SPACING).floor() as usize + 1
-            };
-            k += border.saturating_sub(cap);
+            k += border.saturating_sub(title_cap((m0, m1), (chip_lo, chip_hi)));
         }
         counts[c] = (k, runs);
     }

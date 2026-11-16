@@ -4292,7 +4292,7 @@ fn scene_clustered(
     // y in LR/RL).
     let frames: Vec<RawBox>;
     sc.clusters = {
-        let (mut boxes, depth) = cluster_boxes_with_jogs(g, &sc.nodes, &title_jog);
+        let (mut boxes, depth) = frame_boxes(g, &sc.nodes, &title_jog, block_paths.is_some());
         // Member-only boxes: what a widened frame must stay clear of.
         let raw = boxes.clone();
         for si in 0..g.subgraphs.len() {
@@ -4365,7 +4365,7 @@ fn scene_clustered(
     // rank gap the layout left, not diagonally across other nodes.
     let stand_edges = sc.edges.split_off(ne);
     if !g.sub_edges.is_empty() {
-        let (raw, _) = cluster_boxes_with_jogs(g, &sc.nodes, &title_jog);
+        let (raw, _) = frame_boxes(g, &sc.nodes, &title_jog, block_paths.is_some());
         let end_placed = |end: End| -> Option<(Placed, Shape)> {
             match end {
                 End::Node(v) => Some((
@@ -6181,16 +6181,57 @@ fn seg_meets_rect(a: (f64, f64), b: (f64, f64), r: (f64, f64, f64, f64)) -> bool
 /// parent encloses its children's boxes. `None` = empty subgraph.
 /// Also returns each subgraph's nesting depth.
 fn cluster_raw_boxes(g: &Graph, nodes: &[SceneNode]) -> (Vec<RawBox>, Vec<usize>) {
-    cluster_boxes_with_jogs(g, nodes, &[])
+    frame_boxes(g, nodes, &[], false)
 }
 
-/// [`cluster_raw_boxes`] with each frame grown on its title side by its
-/// block layout's jog room (`jog`, by subgraph; missing entries 0: see
-/// `layout::title_jogs`), its ancestors wrapping the grown box.
-fn cluster_boxes_with_jogs(
+/// The least width (px, on screen) of a block's frame in a block
+/// layout (B12 F1, F2): its title chip as [`fit_cluster_title`]
+/// measures it, with a [`TITLE_INSET`] on both sides, so the title is
+/// drawn whole inside its own frame. In TD / BT that is the frame's
+/// breadth, in LR / RL its length along the flow: the title runs along
+/// the screen's x axis in every direction. 0 for a block without a
+/// title. The layout reserves it (`layout::frame_title_room`).
+pub(crate) fn title_fit_width(title: &str) -> f64 {
+    if title.trim().is_empty() {
+        return 0.0;
+    }
+    text_width(title) * TITLE_SCALE + 8.0 + 2.0 * TITLE_INSET
+}
+
+/// How far a frame's top border lies above its first row's box without
+/// jog room: its pad and its title strip (`frame_boxes`). Test-only.
+#[cfg(test)]
+pub(crate) fn frame_head_room(title: &str) -> f64 {
+    SUB_PAD + SUB_HEADER + title_extra(title)
+}
+
+/// The frame function of a block layout's first two steps (B12 F1,
+/// F2): per subgraph its box `(x, y, w, h)` from its own members'
+/// boxes (`nodes`, the scene's current positions), its title and the
+/// growth `jog` (by subgraph; missing entries 0) its block's displaced
+/// title-side entries take; deepest first, so an ancestor wraps the
+/// grown box. Also each subgraph's nesting depth.
+///
+/// - *F1*: the members' boxes (nested frames included) with
+///   [`SUB_PAD`] round them and the title strip ([`SUB_HEADER`], plus
+///   a line per `<br/>`) on the screen top. With `title_fit` (a block
+///   layout) a frame narrower than [`title_fit_width`] grows equally on
+///   both sides to it: a block's title is never cut while its frame can
+///   grow (0.38 cut a title wider than its block where the canvas
+///   ended, and a one-column LR block's title ran over its neighbour).
+/// - *F2*: the jog room, on the title side (`layout::title_jogs`): the
+///   track room in which the entries that cannot cross the title side
+///   beside the chip jog to their ports.
+///
+/// Nothing else is read: no edge path, no neighbouring frame (the
+/// growth over inner legs and the stop at siblings come after, in the
+/// caller). Without `title_fit` and without jog room it is
+/// [`cluster_raw_boxes`] to the last bit.
+fn frame_boxes(
     g: &Graph,
     nodes: &[SceneNode],
     jog: &[f64],
+    title_fit: bool,
 ) -> (Vec<RawBox>, Vec<usize>) {
     let nsub = g.subgraphs.len();
     let mut depth = vec![0usize; nsub];
@@ -6226,10 +6267,20 @@ fn cluster_boxes_with_jogs(
         // (Summed in this order, as before the jog room: without one the
         // box is the same to the last bit.)
         let jog = jog.get(i).copied().unwrap_or(0.0);
+        let (mut x, mut w) = (minx - SUB_PAD, (maxx - minx) + 2.0 * SUB_PAD);
+        let least = if title_fit {
+            title_fit_width(&g.subgraphs[i].title)
+        } else {
+            0.0
+        };
+        if w < least {
+            x -= (least - w) / 2.0;
+            w = least;
+        }
         boxes[i] = Some((
-            minx - SUB_PAD,
+            x,
             miny - SUB_PAD - SUB_HEADER - title_extra(&g.subgraphs[i].title) - jog,
-            (maxx - minx) + 2.0 * SUB_PAD,
+            w,
             (maxy - miny) + 2.0 * SUB_PAD + SUB_HEADER + title_extra(&g.subgraphs[i].title) + jog,
         ));
     }
@@ -13930,20 +13981,29 @@ mod tests {
     #[test]
     fn a_title_overflowing_its_frame_onto_the_canvas_stays_whole() {
         let long = "a long subgraph title, wider than its box";
-        let s = scene(
+        let g = parse(&format!(
             // The node label kept on one line (it would wrap at the
             // default width), so it reaches past the title.
-            &parse(&format!(
-                "%%{{init: {{\"flowchart\": {{\"wrappingWidth\": 2000}}}}}}%%\n\
-                 flowchart TB\nsubgraph R [\"{long}\"]\n  r\nend\n\
-                 r --> w[\"a node label that is far wider than the subgraph title above it, so \
-                 the canvas reaches well past the title\"]"
-            ))
-            .unwrap(),
-        );
+            "%%{{init: {{\"flowchart\": {{\"wrappingWidth\": 2000}}}}}}%%\n\
+             flowchart TB\nsubgraph R [\"{long}\"]\n  r\nend\n\
+             r --> w[\"a node label that is far wider than the subgraph title above it, so \
+             the canvas reaches well past the title\"]"
+        ))
+        .unwrap();
+        // Outside a block layout the frame keeps its members' breadth and
+        // the title runs past it onto the canvas, whole.
+        let s = crate::levels::with_blocks(false, || scene(&g));
         let ri = s.clusters.iter().position(|c| c.id == "R").unwrap();
         let c = &s.clusters[ri];
         assert!(text_width(long) * TITLE_SCALE + 8.0 > c.w - 2.0 * TITLE_INSET);
+        assert_eq!(fit_cluster_title(&s.clusters, ri, canvas_right(&s)), long);
+        assert!(to_svg(&s).contains(&format!("{long}</text>")));
+        // Laid out as blocks (`r --> w` crosses the frame) the frame
+        // grows to its title instead (B12 F1): whole, inside its frame.
+        let s = crate::levels::with_blocks(true, || scene(&g));
+        let ri = s.clusters.iter().position(|c| c.id == "R").unwrap();
+        let c = &s.clusters[ri];
+        assert!(text_width(long) * TITLE_SCALE + 8.0 <= c.w - 2.0 * TITLE_INSET + 0.01);
         assert_eq!(fit_cluster_title(&s.clusters, ri, canvas_right(&s)), long);
         assert!(to_svg(&s).contains(&format!("{long}</text>")));
     }

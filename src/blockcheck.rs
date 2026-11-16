@@ -2119,3 +2119,209 @@ fn a_generated_sweep_keeps_the_block_invariants() {
         assert!(!crate::scene::block_mode(&g), "isolated {seed}");
     }
 }
+
+// --- Frames: their box (F1) and their jog room (F2), static scene.
+
+/// The members' boxes of frame `id` as (x0, y0, x1, y1).
+fn members_box(g: &Graph, sc: &Scene, id: &str) -> (f64, f64, f64, f64) {
+    let paths = crate::scene::node_cluster_paths(g);
+    let si = g
+        .subgraphs
+        .iter()
+        .position(|s| s.id == id)
+        .unwrap_or_else(|| panic!("no subgraph {id}"));
+    let mut b = (
+        f64::INFINITY,
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+        f64::NEG_INFINITY,
+    );
+    for (v, n) in sc.nodes.iter().enumerate() {
+        if paths[v].contains(&si) {
+            b.0 = b.0.min(n.x - n.w / 2.0);
+            b.1 = b.1.min(n.y - n.h / 2.0);
+            b.2 = b.2.max(n.x + n.w / 2.0);
+            b.3 = b.3.max(n.y + n.h / 2.0);
+        }
+    }
+    b
+}
+
+/// `src` with its first line's direction replaced by `dir`.
+fn in_direction(src: &str, dir: &str) -> String {
+    let (head, rest) = src.split_once('\n').expect("more than one line");
+    let kind = head.split_whitespace().next().expect("a header");
+    format!("{kind} {dir}\n{rest}")
+}
+
+/// No two frames of `sc` that do not nest overlap, and every title is
+/// drawn whole.
+fn assert_frames_clear(name: &str, sc: &Scene) {
+    let within = |a: &crate::scene::SceneCluster, b: &crate::scene::SceneCluster| {
+        a.x >= b.x - 0.01
+            && a.y >= b.y - 0.01
+            && a.x + a.w <= b.x + b.w + 0.01
+            && a.y + a.h <= b.y + b.h + 0.01
+    };
+    for (i, a) in sc.clusters.iter().enumerate() {
+        assert_eq!(
+            crate::scene::fit_cluster_title(&sc.clusters, i, sc.width),
+            a.title,
+            "{name}: {} cut",
+            a.id
+        );
+        for b in &sc.clusters[i + 1..] {
+            let meet = a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+            assert!(
+                !meet || within(a, b) || within(b, a),
+                "{name}: {} meets {}",
+                a.id,
+                b.id
+            );
+        }
+    }
+}
+
+#[test]
+fn a_frame_is_as_broad_as_its_title() {
+    // title-hidden: the title is broader than the block's two rows.
+    // Before, the frame was as broad as its members and the title was
+    // cut with an ellipsis where the canvas ended. In a block layout the
+    // frame grows equally on both sides to its title (F1), and the
+    // layout keeps that room beside the block.
+    let src = std::fs::read_to_string(format!(
+        "{}/tests/fixtures/blocks/title-hidden.mmd",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    for dir in ["TD", "BT"] {
+        let g = graph(&in_direction(&src, dir));
+        let sc = block_scene(&g);
+        let f = frame_box(&sc, "S");
+        let least = crate::scene::title_fit_width(&g.subgraphs[0].title);
+        assert!(f.2 - f.0 >= least - 0.01, "{dir}: {f:?} < {least}");
+        // Grown equally on both sides of its members.
+        let m = members_box(&g, &sc, "S");
+        assert!(
+            ((f.0 + f.2) / 2.0 - (m.0 + m.2) / 2.0).abs() < 0.01,
+            "{dir}: {f:?} {m:?}"
+        );
+        assert_frames_clear(dir, &sc);
+        let q = crate::quality::measure(&g, &sc);
+        assert_eq!(
+            (q.title_cut, q.frame_overlap, q.node_frame),
+            (0, 0, 0),
+            "{dir}"
+        );
+        // Outside a block layout the frame is its members' box.
+        let off = crate::levels::with_blocks(false, || crate::scene::scene(&g));
+        let f = frame_box(&off, "S");
+        let m = members_box(&g, &off, "S");
+        assert!(f.2 - f.0 < least, "{dir}: {f:?} {m:?}");
+    }
+}
+
+#[test]
+fn an_lr_frame_is_as_long_as_its_title() {
+    // blocks/lr: `Edge and shared services with a long title` holds one
+    // column of two nodes. Before, the frame was one column long and
+    // the title ran out over the next frame. In LR / RL the title runs
+    // along the flow: the frame is as long as its title (F2), grown
+    // equally upstream and downstream, and the layer lines keep the
+    // frames next to it a frame gap away.
+    let src = std::fs::read_to_string(format!(
+        "{}/tests/fixtures/blocks/lr.mmd",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    for dir in ["LR", "RL"] {
+        let g = graph(&in_direction(&src, dir));
+        let sc = block_scene(&g);
+        let edge_block = g.subgraphs.iter().find(|s| s.id == "EDGE").unwrap();
+        let f = frame_box(&sc, "EDGE");
+        let least = crate::scene::title_fit_width(&edge_block.title);
+        assert!(f.2 - f.0 >= least - 0.01, "{dir}: {f:?} < {least}");
+        let m = members_box(&g, &sc, "EDGE");
+        assert!(
+            ((f.0 + f.2) / 2.0 - (m.0 + m.2) / 2.0).abs() < 0.01,
+            "{dir}: {f:?} {m:?}"
+        );
+        assert_frames_clear(dir, &sc);
+        // Nothing outside the block stands on its grown frame.
+        for n in &sc.nodes {
+            if ["CDN", "PAGER"].contains(&n.id.as_str()) {
+                continue;
+            }
+            let b = node_box(&sc, &n.id);
+            assert!(
+                b.2 <= f.0 || b.0 >= f.2 || b.3 <= f.1 || b.1 >= f.3,
+                "{dir}: {} on {f:?}",
+                n.id
+            );
+        }
+        let q = crate::quality::measure(&g, &sc);
+        assert_eq!(
+            (q.title_cut, q.frame_overlap, q.node_frame),
+            (0, 0, 0),
+            "{dir}"
+        );
+    }
+}
+
+#[test]
+fn titles_are_drawn_whole_in_every_direction() {
+    // F1 and F2 together: on the three title fixtures no frame title is
+    // cut and no two frames meet, in all four directions.
+    for name in ["title-entry", "title-hidden", "lr"] {
+        let src = std::fs::read_to_string(format!(
+            "{}/tests/fixtures/blocks/{name}.mmd",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        for dir in ["TD", "BT", "LR", "RL"] {
+            let g = graph(&in_direction(&src, dir));
+            let sc = block_scene(&g);
+            let what = format!("{name} {dir}");
+            assert_frames_clear(&what, &sc);
+            let q = crate::quality::measure(&g, &sc);
+            assert_eq!((q.title_cut, q.frame_overlap), (0, 0), "{what}");
+        }
+    }
+}
+
+/// The jog room of frame `id` in `sc`: how far its top border lies
+/// above its first row past its pad and title strip (TD).
+fn jog_room(g: &Graph, sc: &Scene, id: &str) -> f64 {
+    let s = g.subgraphs.iter().find(|s| s.id == id).unwrap();
+    let f = frame_box(sc, id);
+    let m = members_box(g, sc, id);
+    m.1 - f.1 - crate::scene::frame_head_room(&s.title)
+}
+
+#[test]
+fn jog_room_counts_only_what_crosses_the_title_side() {
+    // title-entry: the two-line title covers both members of the title
+    // row, each fed from above, so both entries are displaced and jog
+    // in beside the chip: ROW_CLEAR and one TRACK_PITCH more (F2).
+    let g = fixture("blocks/title-entry");
+    let sc = block_scene(&g);
+    let want = crate::ortho::ROW_CLEAR + crate::ortho::TRACK_PITCH;
+    let got = jog_room(&g, &sc, "S");
+    assert!((got - want).abs() < 0.01, "title-entry: {got} != {want}");
+    // A title-row hub whose exits all leave downstream crosses nothing
+    // on the title side: no jog room.
+    let g = graph(
+        "flowchart TD\n    subgraph S[\"A long block title over its hub member\"]\n        H[hub]\n    end\n    H --> a\n    H --> b\n    H --> c\n",
+    );
+    let sc = block_scene(&g);
+    let got = jog_room(&g, &sc, "S");
+    assert!(got.abs() < 0.01, "hub: {got}");
+    // Three entries that fit beside a short title on a broad member: no
+    // jog room either.
+    let g = graph(
+        "flowchart TD\n    a --> M\n    b --> M\n    c --> M\n    subgraph S[T]\n        M[a broad member with a label far longer than its block's title]\n    end\n",
+    );
+    let sc = block_scene(&g);
+    let got = jog_room(&g, &sc, "S");
+    assert!(got.abs() < 0.01, "broad member: {got}");
+}
