@@ -98,6 +98,17 @@ pub(crate) const FRAME_PAD: f64 = 14.0;
 /// Least room between two frames stacked along the layer axis (and
 /// between a lane-widened frame and its sibling, see `scene_clustered`).
 pub(crate) const FRAME_GAP: f64 = 8.0;
+
+/// Least gap (px) along the flow between two frames of a block layout
+/// that a link joins, the one closing on a layer and the other opening
+/// on the next (B12 G1): one pixel more than the gap from which
+/// `route()` reads two boxes as ranked one after the other
+/// ([`crate::scene::FLOW_MIN_GAP`]). With the bare [`FRAME_GAP`] two
+/// linked blocks with nested frames on their facing rows stood 8 px
+/// apart, and `route()` at the scene's own centres took them for
+/// neighbours side by side and drew the link out of a lateral wall; the
+/// extra pixel keeps that comparison off an equality.
+const LINKED_FRAME_GAP: f64 = crate::scene::FLOW_MIN_GAP + 1.0;
 /// Breadth-to-depth ratio a narrowed drawing aims for: narrowing rounds
 /// stop once it is reached (G12).
 const ASPECT_TARGET: f64 = 2.5;
@@ -5488,6 +5499,37 @@ fn place(
     // dense-td — a 4.06 : 1 ribbon — went 3.9 : 1 with the head room and
     // stayed 6 768 px broad, and with the strips' dead room gone its
     // stacked candidates' skeletons, a row nearer, cut 8 more boxes.)
+    // A block layout's gaps between two linked frames (B12 G1): per
+    // layer, whether a link joins a frame that closes on the layer
+    // before to one that opens on this one (either way along the flow:
+    // a turned link counts too).
+    let linked_frames: Vec<bool> = match (block_paths, node_cluster) {
+        (Some(_), Some(nc)) => {
+            let mut out = vec![false; nlayers];
+            for e in &g.edges {
+                let (a, b) = (e.from, e.to);
+                if a >= n || b >= n || alayer[a].abs_diff(alayer[b]) != 1 {
+                    continue;
+                }
+                let (u, v) = if alayer[a] < alayer[b] {
+                    (a, b)
+                } else {
+                    (b, a)
+                };
+                let closes = nc[u].iter().any(|c| {
+                    !nc[v].contains(c) && cluster_span.get(c).is_some_and(|s| s.1 == alayer[u])
+                });
+                let opens = nc[v].iter().any(|c| {
+                    !nc[u].contains(c) && cluster_span.get(c).is_some_and(|s| s.0 == alayer[v])
+                });
+                if closes && opens {
+                    out[alayer[v]] = true;
+                }
+            }
+            out
+        }
+        _ => Vec::new(),
+    };
     let layer_lines = |judged: bool| -> (Vec<f64>, f64) {
         let mut lcoord = vec![0.0f64; nlayers];
         let mut cursor = MARGIN;
@@ -5510,7 +5552,12 @@ fn place(
                 })
                 .fold((0.0f64, 0.0f64), |a, b| (a.0.max(b.0), a.1.max(b.1)));
             if clustered && li > 0 {
-                let at = lcoord[li - 1] + reach_of(li - 1, 1) + reach_of(li, 0) + FRAME_GAP;
+                let gap = if linked_frames.get(li).copied().unwrap_or(false) {
+                    LINKED_FRAME_GAP
+                } else {
+                    FRAME_GAP
+                };
+                let at = lcoord[li - 1] + reach_of(li - 1, 1) + reach_of(li, 0) + gap;
                 if at > cursor + before {
                     cursor = at - before;
                 }

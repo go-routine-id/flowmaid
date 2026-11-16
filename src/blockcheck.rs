@@ -2325,3 +2325,39 @@ fn jog_room_counts_only_what_crosses_the_title_side() {
     let got = jog_room(&g, &sc, "S");
     assert!(got.abs() < 0.01, "broad member: {got}");
 }
+
+#[test]
+fn linked_frames_stand_further_apart_than_route_reads_as_stacked() {
+    // G1's floor: two frames a link joins, one closing on a layer and
+    // the other opening on the next, stand more than
+    // `scene::FLOW_MIN_GAP` apart along the flow, so `route()` at the
+    // scene's centres reads the two blocks as one after the other (with
+    // the bare `FRAME_GAP` of 8 px it read them as neighbours). The
+    // nested frames on both facing rows, the LR copy and the two-way
+    // variant, in all four directions.
+    for name in [
+        "t9-frames-8px",
+        "t9b-frames-8px-lr",
+        "t9c-frames-8px-two-way",
+    ] {
+        let src = std::fs::read_to_string(format!(
+            "{}/tests/fixtures/blocks/{name}.mmd",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        for dir in ["TD", "BT", "LR", "RL"] {
+            let g = graph(&in_direction(&src, dir));
+            let sc = block_scene(&g);
+            let (a, b) = (frame_box(&sc, "A"), frame_box(&sc, "B"));
+            let gap = if matches!(dir, "TD" | "BT") {
+                (b.1 - a.3).max(a.1 - b.3)
+            } else {
+                (b.0 - a.2).max(a.0 - b.2)
+            };
+            assert!(
+                gap > crate::scene::FLOW_MIN_GAP,
+                "{name} {dir}: frames {gap} px apart"
+            );
+        }
+    }
+}

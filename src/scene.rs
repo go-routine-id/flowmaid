@@ -9454,7 +9454,7 @@ fn cross_cluster_route(
 
 /// Smallest border gap along the flow (px) for which two boxes count as
 /// ranked one after the other; closer than that they sit side by side.
-const FLOW_MIN_GAP: f64 = 12.0;
+pub(crate) const FLOW_MIN_GAP: f64 = 12.0;
 /// Preferred tangent length of a free curve (px), capped at half the
 /// border gap so the curve never doubles back (G8).
 const TANGENT_MIN: f64 = 24.0;
