@@ -134,6 +134,17 @@ Date 2026-11-10. Written for an implementer who has seen none of the design work
    the last edge kinds, runs the acceptance, flips the default and releases 0.40.0. Items, checkpoints and each
    package's own acceptance are in 4.1, 4.2 and section 5.
 
+- **Resume note (lead, 2026-11-16).** Work on this package was paused on 2026-11-11 in the middle of its first fix
+  round and resumes now. What is on the branch: the package's six commits, then `fd8c7ba`, which is the interrupted fix
+  round's uncommitted work committed exactly as it stood (it compiles with the switch off and on; nothing else about it
+  was checked, and it is not complete). Whoever fixes next: read `git show fd8c7ba` against the verifier's findings
+  first, keep what is right, redo what is not, and finish the round with new commits on top (do not amend or drop
+  `fd8c7ba`; the lead tidies the history when the package passes). The decisions of "After checkpoint A1's first report"
+  above still hold, including the stop rule for dense-td: try to fix it inside the design; if that cannot be done, stop
+  and report numbers and pictures, never loosen a gate. The branch is still based on `3abbfeb` on purpose: do not merge
+  `dev` (0.39.0, 0.40.0) into it; the lead does that between packages, so every before/after comparison of this package
+  keeps `3abbfeb` as its "before".
+
 ## 1. Goal, the user's words, before and after, what must not change
 
 ### 1.1 Goal
