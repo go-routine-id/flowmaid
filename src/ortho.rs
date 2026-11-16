@@ -824,7 +824,7 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
             Vec::new()
         };
         // Clear of the title chips whose sides it crosses (B12 2.8).
-        let cols = titles.clear(i, f0, &cols, f3);
+        let cols = titles.clear(i, f0, cols, f3);
         let mut home: Vec<usize> = Vec::new();
         for end in [from, to] {
             let fr = match end {
@@ -1488,9 +1488,9 @@ impl TitleSides {
     /// The columns of edge `i`'s path from `f0` through `cols` to `f3`
     /// (flow coordinates), with a column past the chip of each title
     /// side it crosses displaced.
-    fn clear(&self, i: usize, f0: Pt, cols: &[Pt], f3: Pt) -> Vec<Pt> {
+    fn clear(&self, i: usize, f0: Pt, cols: Vec<Pt>, f3: Pt) -> Vec<Pt> {
         if self.cols.is_empty() {
-            return cols.to_vec();
+            return cols;
         }
         let pts: Vec<Pt> = std::iter::once(f0)
             .chain(cols.iter().copied())

@@ -1698,6 +1698,29 @@ fn an_entry_under_a_title_chip_crosses_past_it_and_jogs_inside_the_frame() {
 }
 
 #[test]
+fn a_choices_spilled_and_cornered_ends_keep_off_each_other() {
+    // notes/nested-composite: the 28 px choice `K0_c` takes an entry from
+    // above and sends two returns out to the left. The entry stood where
+    // the builder leaned it, on the facet next to the left vertex, 1 px
+    // from a return's end there (a shared port, an arrow on a start).
+    // As a lone end of its side it meets that side in the middle.
+    let g = fixture("notes/nested-composite");
+    let m = crate::quality::measure(&g, &block_scene(&g));
+    assert_eq!(
+        (m.shared_ports, m.arrow_on_start),
+        (0, 0),
+        "{:?}",
+        m.details
+    );
+    // notes/fork-twins: two note links of one state no longer share
+    // their port either (spilled onto a side of their own, they stood at
+    // its corner).
+    let g = fixture("notes/fork-twins");
+    let m = crate::quality::measure(&g, &block_scene(&g));
+    assert_eq!(m.shared_ports, 0, "{:?}", m.details);
+}
+
+#[test]
 fn a_narrowing_candidate_starts_from_the_winning_order() {
     // dense-td's first placement as blocks is a ribbon over 7 000 px
     // broad. Narrowing still gives breadth back: its candidates start
