@@ -755,6 +755,72 @@ fn a_turned_edge_runs_up_its_channel_through_flow_sides() {
     }
 }
 
+/// Whether the polyline `path` runs through the inside of box `b` (a
+/// px in from its sides).
+fn runs_through(path: &[(f64, f64)], b: (f64, f64, f64, f64)) -> bool {
+    let b = (b.0 + 1.0, b.1 + 1.0, b.2 - 1.0, b.3 - 1.0);
+    path.windows(2).any(|w| {
+        // Sampled: the stretches are axis legs and short roundings.
+        let steps = ((w[1].0 - w[0].0).abs().max((w[1].1 - w[0].1).abs()) / 2.0).ceil() as usize;
+        (0..=steps.max(1)).any(|k| {
+            let t = k as f64 / steps.max(1) as f64;
+            let p = (
+                w[0].0 + (w[1].0 - w[0].0) * t,
+                w[0].1 + (w[1].1 - w[0].1) * t,
+            );
+            p.0 > b.0 && p.0 < b.2 && p.1 > b.1 && p.1 < b.3
+        })
+    })
+}
+
+#[test]
+fn a_turned_edge_of_a_whole_block_runs_up_its_channel_too() {
+    // An edge from a whole block that the layering turned is its
+    // stand-in's channel, cut back to the block's frame like a forward
+    // one: out of the frame's upstream side, beside the block between,
+    // into its target's downstream side. (Cut for a forward channel
+    // only, it was drawn as one curve from frame to node, straight
+    // through that block.)
+    let src = "flowchart TD\ntop --> A\nsubgraph A[First]\na1 --> a2\nend\n\
+               subgraph B[Second]\nb1 --> b2\nend\nA --> B\nB --> top\n";
+    for dir in ["TD", "BT", "LR", "RL"] {
+        let g = graph(&src.replace("flowchart TD", &format!("flowchart {dir}")));
+        let sc = block_scene(&g);
+        let path = path_of(edge(&sc, "B", "top"));
+        assert_eq!(
+            side_of(dir, frame_box(&sc, "B"), path[0]),
+            'u',
+            "{dir}: {path:?}"
+        );
+        assert_eq!(
+            side_of(dir, node_box(&sc, "top"), path[path.len() - 1]),
+            'd',
+            "{dir}: {path:?}"
+        );
+        assert!(
+            !runs_through(&path, frame_box(&sc, "A")),
+            "{dir}: through the block between: {path:?}"
+        );
+    }
+    // A state diagram: `Running --> Idle` past the composite `Review`,
+    // which holds a note card on its last row.
+    let src = "stateDiagram-v2\n[*] --> Idle\nIdle --> Review : submit\nstate Review {\n\
+               [*] --> Queue\nQueue --> Check\nCheck --> Approve : ok\nCheck --> Reject : bad\n\
+               Check --> Escalate\nnote right of Check : four eyes\n}\n\
+               Review --> Running : approved\nstate Running {\n[*] --> Boot\nBoot --> Serve\n\
+               Serve --> Drain : stop\nstate Serve {\n[*] --> Warm\nWarm --> Hot\n}\n}\n\
+               Running --> Failed : crash\nFailed --> Review : retry\nRunning --> Idle : done\n\
+               Reject --> Idle\nnote left of Failed : pager\nFailed --> [*]\n";
+    let rep = crate::levels::with_blocks(true, || crate::quality::measure_source(src, false))
+        .expect("a state diagram");
+    assert!(rep.block_mode);
+    let sc = &rep.static_scene;
+    let path = path_of(edge(sc, "Running", "Idle"));
+    assert_eq!(side_of("TD", frame_box(sc, "Running"), path[0]), 'u');
+    assert!(!runs_through(&path, frame_box(sc, "Review")), "{path:?}");
+    assert_eq!(rep.statik.edge_frame_pairs, 0, "{:?}", rep.statik.details);
+}
+
 #[test]
 fn a_turned_edge_one_layer_up_is_a_z_not_a_lane() {
     // A three-block cycle whose closing edge runs one layer up: it

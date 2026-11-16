@@ -4142,6 +4142,7 @@ fn scene_clustered(
                     &frames,
                     e.from,
                     e.to,
+                    block_paths.is_some(),
                 )
             });
             let (pts, wps) = match routed {
@@ -4215,24 +4216,41 @@ fn scene_clustered(
 /// (kept within the frame). `None` without a channel, or when the run
 /// doesn't cross the side (the boxes aren't stacked along the flow) or
 /// too little of it is left to curve.
+///
+/// In a block layout (`blocks`) a channel that runs against the flow —
+/// the stand-in of an edge the layering turned — is cut the same way,
+/// seen from the other end of the flow: it leaves its source box by the
+/// upstream side and enters its target box by the downstream one.
+/// (Refused like a channel that turns back, the edge was drawn as one
+/// curve from frame to frame, straight through whatever block stood
+/// between: a state diagram's `Running --> Idle` through the composite
+/// between the two.)
 fn cut_to_frames(
     dir: Direction,
     wps: &[(f64, f64)],
     frames: &[RawBox],
     from: End,
     to: End,
+    blocks: bool,
 ) -> Option<Vec<(f64, f64)>> {
     if wps.len() < 3 {
         return None;
     }
+    let mut pts: Vec<(f64, f64)> = wps.iter().map(|&p| to_flow(dir, p)).collect();
+    // Against the flow all the way, in a block layout: mirrored along
+    // the flow, it is a channel running forward.
+    let up = blocks
+        && pts.windows(2).all(|w| w[1].1 <= w[0].1)
+        && pts.first().zip(pts.last()).is_some_and(|(a, b)| b.1 < a.1);
+    let turn = |(b, l): (f64, f64)| if up { (b, -l) } else { (b, l) };
     // Flow-space extent of a box end: (breadth lo, hi, layer lo, hi).
     let span = |end: End| -> Option<Option<(f64, f64, f64, f64)>> {
         match end {
             End::Node(_) => Some(None),
             End::Sub(s) => {
                 let (x, y, w, h) = frames.get(s).copied().flatten()?;
-                let (b0, l0) = to_flow(dir, (x, y));
-                let (b1, l1) = to_flow(dir, (x + w, y + h));
+                let (b0, l0) = turn(to_flow(dir, (x, y)));
+                let (b1, l1) = turn(to_flow(dir, (x + w, y + h)));
                 Some(Some((b0.min(b1), b0.max(b1), l0.min(l1), l0.max(l1))))
             }
         }
@@ -4241,7 +4259,9 @@ fn cut_to_frames(
     let clamp = |b: f64, (b0, b1, _, _): (f64, f64, f64, f64)| {
         b.max(b0 + SUB_PAD).min((b1 - SUB_PAD).max(b0 + SUB_PAD))
     };
-    let mut pts: Vec<(f64, f64)> = wps.iter().map(|&p| to_flow(dir, p)).collect();
+    for p in pts.iter_mut() {
+        *p = turn(*p);
+    }
     // The channel runs forward along the flow, or this isn't one.
     if pts.windows(2).any(|w| w[1].1 < w[0].1) {
         return None;
@@ -4267,7 +4287,7 @@ fn cut_to_frames(
     if pts.len() < 3 {
         return None;
     }
-    Some(pts.into_iter().map(|p| from_flow(dir, p)).collect())
+    Some(pts.into_iter().map(|p| from_flow(dir, turn(p))).collect())
 }
 
 /// A straight stub between member `n` and the frame `f` of a box
