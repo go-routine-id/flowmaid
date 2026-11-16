@@ -6783,8 +6783,45 @@ mod tests {
     /// synthetic stand-in, generic ids): the static scene keeps them off
     /// the gap between the frames, never riding a border or cramped
     /// beside each other there (G4 over G6, the narrow-channel rule).
+    ///
+    /// The layout before blocks: as blocks the two frames are stacked
+    /// along the flow and no wedge is left to test, so the body runs
+    /// with the block layout switched off. Where a block layout does
+    /// leave two linked frames side by side — a level the lane rule
+    /// keeps as lanes — the rule is tested by
+    /// `edges_between_two_lanes_keep_off_their_gap_as_blocks`.
     #[test]
     fn edges_into_a_wedged_frame_keep_out_of_the_gap() {
+        crate::levels::with_blocks(false, wedged_frame);
+    }
+
+    /// The narrow-channel rule in a block layout: the lane rule leaves
+    /// the two blocks of a ping-pong side by side, 20 px apart, and
+    /// every edge between them crosses that gap — none rides a frame's
+    /// border there or runs cramped beside another.
+    #[test]
+    fn edges_between_two_lanes_keep_off_their_gap_as_blocks() {
+        for name in ["blocks/swimlane", "blocks/swim-cycle"] {
+            let g = crate::blockcheck::fixture(name);
+            let sc = crate::levels::with_blocks(true, || scene(&g));
+            let frame = |id: &str| sc.clusters.iter().find(|c| c.id == id).expect("frame");
+            let (a, b) = (frame("A"), frame("B"));
+            let gap = b.x - (a.x + a.w);
+            assert!(
+                gap > 0.0 && gap < 2.0 * FRAME_SEP,
+                "{name}: frames {gap:.1} px apart"
+            );
+            let m = crate::quality::measure(&g, &sc);
+            for d in &m.details {
+                assert!(
+                    !(d.contains(" border ") || d.contains(" tight ")),
+                    "{name}: {d}"
+                );
+            }
+        }
+    }
+
+    fn wedged_frame() {
         let src = "flowchart TB
   subgraph g0[Lorem]
     subgraph g1[Ipsum]

@@ -880,6 +880,12 @@ fn a_chain_out_of_a_nested_block_leaves_through_its_downstream_side() {
     // crosses both frames on their flow-facing sides. (With "the
     // target's path wins" the channel took the outer block's path on the
     // source block's remaining rows and lay beside it.)
+    //
+    // This is the layout's half: the subgraph path of each channel
+    // point. The drawn edge is not asserted here — the channel enters
+    // the target block under its title chip, and until entries keep
+    // clear of a title (the title-clear entries of the block edges) the
+    // router takes it round, out through the blocks' side walls.
     let g = fixture("blocks/nested-chain");
     let (lo, groups, _) = block_layout(&g);
     let ei = g
