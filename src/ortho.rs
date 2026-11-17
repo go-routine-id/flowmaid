@@ -1439,7 +1439,8 @@ impl TitleSides {
             let Some((_, f1, _, _, (_, c1))) = out.sides[k] else {
                 continue;
             };
-            let taken = taken.remove(&k).unwrap_or_default();
+            let mut taken = taken.remove(&k).unwrap_or_default();
+            taken.sort_by(f64::total_cmp);
             v.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
             // The nearest free columns past the chip, in the order of
             // the breadths they replace, a track apart and a track off
@@ -1448,10 +1449,7 @@ impl TitleSides {
             // the chip stays out of the chip's ring.
             let mut next = c1 + crate::router::CORNER_R;
             for &(b, i) in &v {
-                let mut col = next;
-                while let Some(&o) = taken.iter().find(|&&o| (o - col).abs() < TRACK_PITCH) {
-                    col = o + TRACK_PITCH;
-                }
+                let col = column_clear_of(next, &taken);
                 if col > f1 - crate::scene::LANE_PAD {
                     break;
                 }
@@ -2358,6 +2356,28 @@ pub(crate) fn channel_sizes(steps: &[(f64, f64)]) -> Vec<usize> {
     sizes
 }
 
+/// The first column at or past `from` that lies a [`TRACK_PITCH`] or
+/// more from every one of `taken` (ascending): a column within a pitch
+/// of one moves on to a pitch past it, which can bring it within a
+/// pitch of the next. One pass over `taken` in order finds it: the
+/// column only moves forward, so a crossing it has passed stays behind
+/// it, and once it stands a pitch short of the next crossing it stands
+/// clear of every later one. (Searched again from the start after each
+/// move until nothing was near, as `TitleSides::of` did, the loop
+/// never ended once `o + TRACK_PITCH` rounded back within a pitch of
+/// `o`: at a breadth of 1e16 the sum loses the half pixel. The result
+/// is the same column wherever that search ended.)
+fn column_clear_of(from: f64, taken: &[f64]) -> f64 {
+    debug_assert!(taken.windows(2).all(|w| w[0].total_cmp(&w[1]).is_le()));
+    let mut col = from;
+    for &o in taken {
+        if (o - col).abs() < TRACK_PITCH {
+            col = o + TRACK_PITCH;
+        }
+    }
+    col
+}
+
 /// `group` (a channel's jogs, [`place_tracks`]) split into the sets
 /// whose rooms chain, in a block layout (`blocks`); else as it is.
 ///
@@ -2968,6 +2988,49 @@ fn nearest_on(pts: &[Pt], p: Pt) -> Pt {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_displaced_column_is_found_in_one_pass_and_always_ends() {
+        // The search it replaces: from the start again after every move,
+        // until no crossing is within a pitch (bounded here; unbounded it
+        // never ended once `o + TRACK_PITCH` rounded back within a pitch
+        // of `o`).
+        let search = |from: f64, taken: &[f64]| {
+            let mut col = from;
+            for _ in 0..10_000 {
+                match taken.iter().find(|&&o| (o - col).abs() < TRACK_PITCH) {
+                    Some(&o) => col = o + TRACK_PITCH,
+                    None => return Some(col),
+                }
+            }
+            None
+        };
+        // Deterministic draws of up to eight crossings near the start.
+        let mut x: u64 = 0x9e37_79b9_7f4a_7c15;
+        let mut draw = || {
+            x = x
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            (x >> 33) as f64 / (1u64 << 31) as f64
+        };
+        for _ in 0..2000 {
+            let from = 100.0 + 50.0 * draw();
+            let n = (draw() * 9.0) as usize;
+            let mut taken: Vec<f64> = (0..n).map(|_| 80.0 + 120.0 * draw()).collect();
+            let want = search(from, &taken).expect("the old search ends here");
+            taken.sort_by(f64::total_cmp);
+            let got = column_clear_of(from, &taken);
+            assert_eq!(got.to_bits(), want.to_bits(), "{from} {taken:?}");
+            assert!(got >= from && taken.iter().all(|&o| (o - got).abs() >= TRACK_PITCH));
+        }
+        // Where a pitch is lost to rounding the old search went round
+        // for ever; one pass ends past the crossing.
+        let o = 1e16;
+        assert!((o + TRACK_PITCH) - o < TRACK_PITCH);
+        assert_eq!(search(o, &[o]), None);
+        let col = column_clear_of(o, &[o - 4.0, o]);
+        assert!(col > o);
+    }
     use crate::parser::parse;
     use crate::scene::scene;
 
