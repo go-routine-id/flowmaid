@@ -2396,30 +2396,55 @@ fn column_clear_of(from: f64, taken: &[f64]) -> f64 {
 /// leg). Sets whose plain rooms do not chain lie apart whatever their
 /// channels do (a frame's border or title strip between them: the jog
 /// room's steps and the steps between two stacked frames).
-fn split_by_room(jogs: &[Jog], mut group: Vec<usize>, blocks: bool) -> Vec<Vec<usize>> {
+///
+/// Two steps chain only where they would stack: their spans meet (within
+/// a track's pitch, as a channel's do) and so do their rooms (within the
+/// least pitch). A step whose room reaches past a frame's wall, beside
+/// the frame, chained the frame's jog room to the gap above it through
+/// rooms alone, though it met neither of the steps it chained across:
+/// stacked as one set, a displaced entry's step in the jog room ordered
+/// among the gap's steps clamped the gap's steps on its far side onto
+/// one track at their rooms' end, two long runs on top of each other
+/// that the router took round the frame's lateral wall (drawn BT: the
+/// exit of a title-row member wholly under its frame's chip, displaced
+/// past the chip, then along the gap above the frame on the run of
+/// another block's link to a frame further up; see
+/// `tests::a_jog_room_step_does_not_chain_a_gaps_steps_onto_one_track`).
+fn split_by_room(jogs: &[Jog], group: Vec<usize>, blocks: bool) -> Vec<Vec<usize>> {
     if !blocks || group.len() < 2 {
         return vec![group];
     }
     let room = |k: usize| jogs[k].plain.0;
-    group.sort_by(|&a, &b| {
-        room(a)
-            .0
-            .total_cmp(&room(b).0)
-            .then(jogs[a].span().0.total_cmp(&jogs[b].span().0))
-            .then(a.cmp(&b))
-    });
-    let mut out: Vec<Vec<usize>> = Vec::new();
-    let mut reach = f64::NEG_INFINITY;
-    for k in group {
-        let (lo, hi) = room(k);
-        match out.last_mut() {
-            Some(last) if lo < reach + TRACK_PITCH_MIN => {
-                last.push(k);
-                reach = reach.max(hi);
+    let n = group.len();
+    let mut root: Vec<usize> = (0..n).collect();
+    fn find(root: &mut [usize], mut a: usize) -> usize {
+        while root[a] != a {
+            root[a] = root[root[a]];
+            a = root[a];
+        }
+        a
+    }
+    for a in 0..n {
+        for b in a + 1..n {
+            let (sa, sb) = (jogs[group[a]].span(), jogs[group[b]].span());
+            let (ra, rb) = (room(group[a]), room(group[b]));
+            let spans = sa.0 < sb.1 + TRACK_PITCH && sb.0 < sa.1 + TRACK_PITCH;
+            let rooms = ra.0 < rb.1 + TRACK_PITCH_MIN && rb.0 < ra.1 + TRACK_PITCH_MIN;
+            if spans && rooms {
+                let (x, y) = (find(&mut root, a), find(&mut root, b));
+                root[x.max(y)] = x.min(y);
             }
-            _ => {
-                out.push(vec![k]);
-                reach = hi;
+        }
+    }
+    let mut out: Vec<Vec<usize>> = Vec::new();
+    let mut at: Vec<Option<usize>> = vec![None; n];
+    for a in 0..n {
+        let r = find(&mut root, a);
+        match at[r] {
+            Some(s) => out[s].push(group[a]),
+            None => {
+                at[r] = Some(out.len());
+                out.push(vec![group[a]]);
             }
         }
     }
@@ -3279,6 +3304,56 @@ mod tests {
         );
         assert_eq!(channel_sizes(&[(100.0, 0.0), (101.0, 200.0)]), vec![1, 1]);
         assert_eq!(channel_sizes(&[]), Vec::<usize>::new());
+    }
+
+    #[test]
+    fn a_jog_room_step_does_not_chain_a_gaps_steps_onto_one_track() {
+        // Drawn BT (flow coordinates): a frame's top wall at -621, its jog
+        // room under the title strip, the next frame's bottom wall at
+        // -534, the gap between them. Step 1 is a displaced exit's step
+        // in the jog room (from its port at 1634 out past the chip to
+        // 1814); step 2 the same edge's run on along the gap (1814 ->
+        // 842); step 3 another block's link along the gap (2859 -> 868),
+        // steps 4 and 5 two more in the gap; step 0 runs beside the frame
+        // (814 .. 1264), its room reaching down past the wall. Step 0
+        // meets the jog room's step only through its room: their spans
+        // lie apart. Chained through it into one set, step 1 sat among
+        // the gap's steps in their order and clamped steps 2 and 3 onto
+        // one track at their rooms' end.
+        let fresh = || {
+            vec![
+                jog(0, 0, 1264.0, 814.0, (-690.4, -548.3), -611.4),
+                jog(1, 0, 1634.0, 1814.0, (-695.9, -677.9), -677.9),
+                jog(1, 0, 1814.0, 842.0, (-606.8, -548.3), -570.5),
+                jog(2, 0, 2859.0, 868.0, (-606.8, -558.8), -606.8),
+                jog(3, 0, 1138.0, 1819.0, (-606.8, -532.3), -602.9),
+                jog(4, 0, 3000.0, 2237.0, (-606.8, -541.8), -606.8),
+            ]
+        };
+        let mut jogs = fresh();
+        place_tracks(&mut jogs, &[], true);
+        for (a, x) in jogs.iter().enumerate() {
+            for (b, y) in jogs.iter().enumerate().skip(a + 1) {
+                let (sx, sy) = (x.span(), y.span());
+                if x.edge != y.edge && sx.0 < sy.1 && sy.0 < sx.1 && x.room.1 > y.room.0 {
+                    assert!(
+                        (x.at - y.at).abs() >= TRACK_PITCH_MIN - EPS,
+                        "steps {a} and {b} on one track: {} / {}",
+                        x.at,
+                        y.at
+                    );
+                }
+            }
+        }
+        // The jog room's step keeps its place; every step its room.
+        assert_eq!(jogs[1].at, -677.9);
+        for j in &jogs {
+            assert!(j.at >= j.room.0 - EPS && j.at <= j.room.1 + EPS);
+        }
+        // Outside a block layout the channel is one set, as before.
+        let mut flat = fresh();
+        place_tracks(&mut flat, &[], false);
+        assert_eq!(flat.len(), 6);
     }
 
     #[test]
