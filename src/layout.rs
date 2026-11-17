@@ -1299,8 +1299,12 @@ fn line_width(s: &str) -> f64 {
 /// advance widths (its AFM, per 1000 em) at [`TEXT_CALIBRATION`] px,
 /// rounded up to 0.1 px, so the estimate never falls short of a browser
 /// drawing the line in Helvetica or a metric-compatible face (Arial,
-/// Liberation Sans) by more than a glyph's ink past its advance.
-/// Characters outside the table count as a wide lowercase letter.
+/// Liberation Sans) by more than a glyph's ink past its advance. ASCII
+/// is read exactly; the accented Latin letters, basic Greek and
+/// Cyrillic and the common punctuation from [`BOLD_WIDTHS`]; any other
+/// character as wide as the widest of its kind: a lowercase letter an
+/// `m`, anything else (a capital, a letter of a script without case, a
+/// symbol) an em.
 fn bold_line_width(s: &str) -> f64 {
     const EM: f64 = TEXT_CALIBRATION;
     s.chars()
@@ -1339,10 +1343,44 @@ fn bold_line_width(s: &str) -> f64 {
             '—' => EM,
             '\u{2190}'..='\u{21FF}' | '\u{2600}'..='\u{27BF}' => EM,
             c if (c as u32) >= 0x2E80 => 14.0,
-            _ => 8.6,
+            c if c.is_ascii() => 8.6,
+            // Combining marks ride on the letter before them.
+            '\u{0300}'..='\u{036F}' => 0.0,
+            c => BOLD_WIDTHS
+                .iter()
+                .find(|(_, cs)| cs.contains(c))
+                .map_or(if c.is_lowercase() { 12.5 } else { EM }, |&(w, _)| w),
         })
         .sum()
 }
+
+/// Bold advances (px at [`TEXT_CALIBRATION`]) of the characters past
+/// ASCII a title is most often written in, for [`bold_line_width`]: the
+/// Latin-1 and Latin Extended-A letters (and the Latin Extended
+/// Additional ones Vietnamese uses), basic Greek and Cyrillic, and the
+/// common punctuation, as Chromium draws them in Liberation Sans Bold
+/// (metric-compatible with Helvetica Bold, whose AFM gives the same
+/// advances where it has the glyph), each rounded up to the next of a
+/// few steps. (Counted as a lowercase letter, `Ш`, `Щ`, `Ж` fell 5 px
+/// and more short each, and a title of capitals like them ran 40 px
+/// past its frame.)
+const BOLD_WIDTHS: &[(f64, &str)] = &[
+    (3.9, "ÌÍÎÏìíîïĨĩĪīĬĭĮįİıĵĺļłſΐΙΪίιϊІЇіјḬḭḮḯḷḹḻḽẛỈỉỊị‘’‚‛′‵"),
+    (4.7, "¡¦¨²³´·¸¹ţŧ·їḟṫṭṯṱẗ‐‑․‧‹›"),
+    (5.5, "ªºľŕŗřṙṛṝṟẜẝ•"),
+    (7.0, "°ŀťźżžΊέεζξτгзктѓќẑẓẕ‖“”„‟″‴‶‸"),
+    (7.8, "¢£¤¥§«¯±¶»àáâãäåçèéêë÷ýÿāăąćĉċčēĕėęěĳĴķĸśŝşšŷγθλνςЈаесухэѐёєѕўḁḉḕḗḙḛḝḱḳḵṡṣṥṧṩṽṿẋẍẏẙẚẟạảấầẩẫậắằẳẵặẹẻẽếềểễệỳỵỷỹỻỼỽ‒–‗†‡€"),
+    (8.6, "¬µ¿×ßðñòóôõöøùúûüþđĝğġģĥħĹĻĽĿŁńņňŋōŏőŢŤŦũūŭůűųŹŻŽΓΖΣΤήΰβδηκμουχϋόύЃЌГКТнопрчяђћџḃḅḇḋḍḏḑḓḞḡḣḥḧḩḫḶḸḺḼṅṇṉṋṍṏṑṓṕṗṪṬṮṰṳṵṷṹṻẐẒẔẖọỏốồổỗộụủ‣‥"),
+    (9.4, "ÈÉÊËÝÞĒĔĖĘĚŚŜŞŠŶŸΕΛΞΡΥΧΫάαρЀЁЅЎЕЗРУХбвдийлцьѝḔḖḘḚḜṔṖṠṢṤṦṨṼṾẊẌẎẸẺẼẾỀỂỄỆỲỴỶỸỿ‷"),
+    (10.2, "ÀÁÂÃÄÅÇÐÑÙÚÛÜĀĂĄĆĈĊČĎďĐĤĦĶŃŅŇŉŊŔŖŘŨŪŬŮŰŲΆΑΒΔΗΚΝΠσφЄЍЏАБВДИЙЛНПСЧЬЭЯжḀḂḄḆḈḊḌḎḐḒḢḤḦḨḪḰḲḴṄṆṈṊṘṚṜṞṲṴṶṸṺẞẠẢẤẦẨẪẬẮẰẲẴẶớờởỡợỤỦứừửữựỾ"),
+    (10.9, "©®ÒÓÔÕÖØĜĞĠĢŌŎŐŵΘΟπψОЦмъḠṌṎṐṒẁẃẅẇẉẘỌỎỐỒỔỖỘỺ"),
+    (11.7, "¼½¾ĲΌΜΦΨΩМшḾṀṂỨỪỬỮỰ"),
+    (12.5, "æΈΏωώЂЋФЪфщыюḿṁṃỚỜỞỠỢ"),
+    (13.3, "œŴΉΎЖњẀẂẄẆẈ"),
+    (14.0, "ÆŒЫљ—―…‰™"),
+    (14.6, "ШЩЮ"),
+    (15.4, "ЉЊ"),
+];
 
 /// Intrinsic node size (width, height) in pixels, based on shape,
 /// the estimated widest-line width, and the number of label lines.
@@ -10556,13 +10594,24 @@ mod tests {
             ("Edge and shared services with a long title", 239.06),
             ("second line of the title", 127.01),
             ("Outer", 32.33),
+            // Past ASCII ([`BOLD_WIDTHS`]): wide Cyrillic capitals and
+            // accented ones, which a lowercase letter's width left 40 px
+            // and 3 px short, and the scripts and marks around them.
+            ("ШИРОКАЯ ЩЕДРАЯ ЖИЗНЬ ШУМНОГО МОСКВЫ", 292.36),
+            ("ÖSTERREICH ÜBERSICHT ÄMTER ÖFFNUNG ÆØÅ", 294.33),
+            ("широкая щедрая жизнь", 140.30),
+            ("ΑΘΗΝΑ ΚΑΙ ΘΕΣΣΑΛΟΝΙΚΗ", 157.77),
+            ("Dịch vụ thanh toán", 108.00),
+            ("Œuvres complètes — été", 143.05),
         ];
         for (title, ink) in measured {
             let bold = bold_text_width(title) * TITLE_SCALE;
             // Never short by more than a glyph's ink past its advance
-            // (`getBBox` holds the ink), never more than 2 % over.
+            // (`getBBox` holds the ink), never more than 2 % over (the
+            // table past ASCII rounds each advance up to a step: 4 %).
+            let over = if title.is_ascii() { 1.02 } else { 1.04 };
             assert!(bold >= ink - 1.0, "{title}: {bold} < {ink}");
-            assert!(bold <= ink * 1.02, "{title}: {bold} > {ink}");
+            assert!(bold <= ink * over, "{title}: {bold} > {ink}");
         }
         // The regular estimate falls short of a long bold title by more
         // than a chip's pad and a frame's inset together: why a block's
