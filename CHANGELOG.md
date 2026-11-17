@@ -18,6 +18,28 @@ project adheres to [Semantic Versioning](https://semver.org/).
   a node since the last drag) no longer has to copy each diagram's
   counting rule to avoid a panic, and a mindmap's mismatch is now told
   apart from an empty mindmap. The `route` functions are unchanged.
+- **`Scene::origin`**: the top-left corner of a scene's canvas, `(0, 0)`
+  for every laid-out scene and negative on an axis where a routed
+  drawing reaches past the top-left margin (see Fixed).
+
+### Fixed
+
+- **A drag past the top-left no longer moves the rest of the drawing**
+  (#76). `route()` and `route_partial()` (and the class and ER `route`)
+  keep every position as given, but the SVG moved the whole drawing
+  onto a canvas starting at `0 0`: a class or ER diagram's when a box
+  was dragged past the top-left margin, a flowchart's or state
+  diagram's by however far its routed drawing started off the margin.
+  So the dragged node lagged the pointer and a host had to infer the
+  offset to map the pointer back. Now the SVG's user space is scene
+  space for a routed scene: every node is drawn at the position given,
+  nothing else moves, and the `viewBox` carries the offset, starting
+  at a negative origin where the drawing reaches past the margin (by
+  exactly that much, also `Scene::origin`; the canvas grows up and
+  left). Picking agrees with the drawn coordinates. Static `scene()`
+  output is byte for byte as before, and so is every routed SVG whose
+  `viewBox` stays at `0 0`; the others draw the same picture as before,
+  with the offset in the `viewBox` instead of in every coordinate.
 
 ### Documentation
 

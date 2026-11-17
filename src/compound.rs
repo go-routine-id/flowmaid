@@ -656,6 +656,8 @@ fn join(g: &Graph, split: &Split, blocks: &[Scene], rest: &Scene) -> Option<Scen
         clusters: clusters.into_iter().map(|(_, c)| c).collect(),
         width,
         height,
+        origin: (0.0, 0.0),
+        routed: false,
         plain_crossings: false,
     })
 }
@@ -949,6 +951,8 @@ fn part_base(
         clusters,
         width: base.width,
         height: base.height,
+        origin: base.origin,
+        routed: false,
         plain_crossings: false,
     })
 }

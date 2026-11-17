@@ -552,6 +552,8 @@ fn build(d: &Architecture) -> (ArchScene, Vec<Vec<Pt>>) {
             clusters,
             width,
             height,
+            origin: (0.0, 0.0),
+            routed: false,
             // `to_svg` here strokes each edge as a plain polyline.
             plain_crossings: true,
         },

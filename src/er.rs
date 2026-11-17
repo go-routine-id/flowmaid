@@ -17,7 +17,8 @@ use crate::layout::{text_width, LABEL_BOX_H};
 use crate::model::{Attr, Card, EdgeKind, Entity, ErDiagram, Graph, Shape};
 use crate::scene::{
     all_finite, edge_path_d, edge_polyline, edge_stroke_width, escape, fit_top_left, route_sized,
-    scene_sized, seg_aabb, svg_label_box, svg_open_a11y, A11y, Scene, SceneEdge, SvgOptions,
+    scene_sized, seg_aabb, svg_label_box, svg_open_canvas, top_left_canvas, A11y, Scene, SceneEdge,
+    SvgOptions,
 };
 use crate::style::Palette;
 
@@ -164,7 +165,12 @@ pub fn scene(d: &ErDiagram) -> ErScene {
 /// returns `None` instead.
 pub fn route(d: &ErDiagram, centers: &[(f64, f64)]) -> ErScene {
     let (g, tables, sizes) = build(d);
-    assemble(d, tables, route_sized(&g, centers, &sizes), &g)
+    let mut es = assemble(d, tables, route_sized(&g, centers, &sizes), &g);
+    // Positions stay as given (#76): the canvas grows up or left over
+    // whatever reaches past its top-left margin.
+    let (origin, width, height) = top_left_canvas(&es.scene);
+    (es.scene.origin, es.scene.width, es.scene.height) = (origin, width, height);
+    es
 }
 
 /// [`route`] that never panics: `None` when `centers` does not hold
@@ -392,10 +398,11 @@ fn fit_comment(c: &str) -> (String, Option<String>) {
 
 /// Serialise any ER arrangement (automatic or dragged) to SVG.
 ///
-/// A node dragged left of or above the origin shifts the whole drawing
-/// right/down onto the canvas, so SVG coordinates can then differ from
-/// scene coordinates by that offset: map pointer events through the
-/// rendered SVG, as with [`crate::scene::to_svg`].
+/// A [`route`] scene keeps its coordinates: a box dragged past the
+/// top-left margin grows the canvas up or left instead of moving the
+/// drawing, and the `viewBox` starts at [`Scene::origin`], so SVG user
+/// space is scene space and a pointer maps through the `viewBox` straight
+/// into scene coordinates for picking, as with [`crate::scene::to_svg`].
 pub fn to_svg(es: &ErScene) -> String {
     to_svg_with(es, &SvgOptions::default())
 }
@@ -408,11 +415,20 @@ pub fn to_svg_with(es: &ErScene, opts: &SvgOptions) -> String {
 /// [`to_svg_with`] plus mermaid's `accTitle` / `accDescr` (see [`A11y`]).
 pub(crate) fn to_svg_a11y_with(es: &ErScene, a11y: &A11y, opts: &SvgOptions) -> String {
     let (title, desc) = a11y.resolve("Entity-relationship diagram");
-    let fitted = fit_top_left(&es.scene);
-    let sc = &*fitted;
+    let canvas = fit_top_left(&es.scene);
+    let sc = &*canvas.scene;
     let pal = opts.palette();
     let mut s = String::new();
-    svg_open_a11y(&mut s, sc.width, sc.height, 13, &title, desc, opts);
+    svg_open_canvas(
+        &mut s,
+        canvas.origin,
+        canvas.width,
+        canvas.height,
+        13,
+        &title,
+        desc,
+        opts,
+    );
 
     // Relationship lines (under the tables). A rerouted relationship
     // follows its waypoints, like a flowchart edge.
@@ -1175,8 +1191,8 @@ mod tests {
     #[test]
     fn drag_past_origin_stays_inside_viewbox() {
         // A table dragged left of and/or above the canvas origin (the
-        // playground's drag path) must not be clipped by the `0 0 W H`
-        // viewBox — nor may any text, edge or marker it pulls along.
+        // playground's drag path) must not be clipped by the viewBox — nor
+        // may any text, edge or marker it pulls along.
         // The last case keeps the centre in bounds but the box past it.
         let d = fixture();
         let sc = scene(&d);
@@ -1191,15 +1207,63 @@ mod tests {
         crate::scene::assert_drawn_inside_canvas(&to_svg(&sc));
     }
 
+    /// A table dragged past the top-left margin stays exactly where the
+    /// host put it (#76): no other table moves, the canvas grows up and
+    /// left by what reaches past the margin (`Scene::origin`, the
+    /// `viewBox` origin), and a pick at its drawn box's centre picks it.
+    #[test]
+    fn drag_past_top_left_keeps_every_position() {
+        let d = fixture();
+        let laid = scene(&d);
+        let c: Vec<(f64, f64)> = laid.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
+        for to in [(-120.0, -80.0), (-120.0, c[0].1), (c[0].0, -80.0)] {
+            let mut moved = c.clone();
+            moved[0] = to;
+            let es = route(&d, &moved);
+            for (i, n) in es.scene.nodes.iter().enumerate() {
+                assert_eq!((n.x, n.y), moved[i], "{to:?}: node {i} moved");
+            }
+            let mut bb = crate::scene::Bbox::new();
+            crate::scene::grow_scene(
+                &mut bb,
+                &es.scene.nodes,
+                &es.scene.edges,
+                &es.scene.clusters,
+            );
+            let m = crate::scene::MARGIN;
+            let over = ((bb.0 - m).min(0.0), (bb.2 - m).min(0.0));
+            assert_eq!(es.scene.origin, over, "{to:?}");
+            let svg = to_svg(&es);
+            let (vx, vy, vw, vh) = crate::scene::view_box(&svg);
+            assert!(
+                (vx - over.0).abs() <= 0.05 && (vy - over.1).abs() <= 0.05,
+                "{to:?}"
+            );
+            assert!((vw - es.scene.width).abs() <= 0.5 && (vh - es.scene.height).abs() <= 0.5);
+            crate::scene::assert_drawn_inside_canvas(&svg);
+            // Tables are drawn in node order: the first box is table 0's.
+            let rect = svg
+                .lines()
+                .find(|l| l.starts_with("<rect x=") && l.contains("rx=\"4\" fill=\"#ffffff\""))
+                .unwrap();
+            let (x, y) = crate::scene::rect_centre(rect);
+            assert!((x - to.0).abs() <= 0.1 && (y - to.1).abs() <= 0.1, "{rect}");
+            assert_eq!(es.scene.node_at(x, y), Some(0), "{to:?}");
+        }
+        assert_eq!(route(&d, &c).scene.origin, (0.0, 0.0));
+    }
+
     #[test]
     fn laid_out_scene_is_not_shifted() {
         // The shift only kicks in past the origin: a laid-out scene
         // renders byte-for-byte as before.
         let sc = scene(&fixture());
-        assert!(matches!(
-            fit_top_left(&sc.scene),
-            std::borrow::Cow::Borrowed(_)
-        ));
+        let fitted = fit_top_left(&sc.scene);
+        assert!(matches!(fitted.scene, std::borrow::Cow::Borrowed(_)));
+        assert_eq!(
+            (fitted.origin, fitted.width, fitted.height),
+            ((0.0, 0.0), sc.scene.width, sc.scene.height)
+        );
     }
 
     /// Report Q5: entity headers hard-coded white text on their accent,

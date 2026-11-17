@@ -33,8 +33,8 @@ use crate::model::{
 };
 use crate::scene::{
     all_finite, edge_end_chord, edge_path_d, edge_polyline, edge_stroke_width, escape,
-    fit_top_left, route_sized, sample_cubic, scene_sized, svg_label_box, svg_open_a11y,
-    svg_text_multiline, A11y, Scene, SceneEdge, SceneNode, SvgOptions,
+    fit_top_left, route_sized, sample_cubic, scene_sized, svg_label_box, svg_open_canvas,
+    svg_text_multiline, top_left_canvas, A11y, Fitted, Scene, SceneEdge, SceneNode, SvgOptions,
 };
 use crate::style::{ItemPaint, Palette};
 
@@ -218,7 +218,12 @@ pub fn route(d: &ClassDiagram, centers: &[(f64, f64)]) -> ClassScene {
         all.extend(note_fallback(d, centers, &b.sizes));
     }
     let sc = route_sized(&b.g, &all, &b.sizes);
-    assemble(d, b, sc, Mode::Routed)
+    let mut cs = assemble(d, b, sc, Mode::Routed);
+    // Positions stay as given (#76): the canvas grows up or left over
+    // whatever reaches past its top-left margin.
+    let (origin, width, height) = top_left_canvas(&cs.scene);
+    (cs.scene.origin, cs.scene.width, cs.scene.height) = (origin, width, height);
+    cs
 }
 
 /// [`route`] that never panics: `None` when `centers` holds neither one
@@ -3813,10 +3818,11 @@ fn note_size(text: &str) -> (f64, f64) {
 
 /// Serialise any class arrangement (automatic or dragged) to SVG.
 ///
-/// A node dragged left of or above the origin shifts the whole drawing
-/// right/down onto the canvas, so SVG coordinates can then differ from
-/// scene coordinates by that offset: map pointer events through the
-/// rendered SVG, as with [`crate::scene::to_svg`].
+/// A [`route`] scene keeps its coordinates: a box dragged past the
+/// top-left margin grows the canvas up or left instead of moving the
+/// drawing, and the `viewBox` starts at [`Scene::origin`], so SVG user
+/// space is scene space and a pointer maps through the `viewBox` straight
+/// into scene coordinates for picking, as with [`crate::scene::to_svg`].
 pub fn to_svg(cs: &ClassScene) -> String {
     to_svg_with(cs, &SvgOptions::default())
 }
@@ -3829,11 +3835,20 @@ pub fn to_svg_with(cs: &ClassScene, opts: &SvgOptions) -> String {
 /// [`to_svg_with`] plus mermaid's `accTitle` / `accDescr` (see [`A11y`]).
 pub(crate) fn to_svg_a11y_with(cs: &ClassScene, a11y: &A11y, opts: &SvgOptions) -> String {
     let (title, desc) = a11y.resolve("Class diagram");
-    let fitted = fit_top_left(&cs.scene);
-    let sc = &*fitted;
+    let canvas = fit_top_left(&cs.scene);
+    let sc = &*canvas.scene;
     let pal = opts.palette();
     let mut s = String::new();
-    svg_open_a11y(&mut s, sc.width, sc.height, 13, &title, desc, opts);
+    svg_open_canvas(
+        &mut s,
+        canvas.origin,
+        canvas.width,
+        canvas.height,
+        13,
+        &title,
+        desc,
+        opts,
+    );
 
     // Relationship lines and note connectors first, under the boxes —
     // drawn as routed (a rerouted edge follows its waypoints around
@@ -3901,7 +3916,7 @@ pub(crate) fn to_svg_a11y_with(cs: &ClassScene, a11y: &A11y, opts: &SvgOptions) 
     for (rel, spots) in cs.rels.iter().zip(place_cards(sc, &cs.rels, &heads)) {
         for (text, at) in [(&rel.from_card, spots[0]), (&rel.to_card, spots[1])] {
             if let (Some(text), Some(at)) = (text, at) {
-                card_text(&mut s, at, text, sc.width, sc.height, &pal.text);
+                card_text(&mut s, at, text, &canvas, &pal.text);
             }
         }
     }
@@ -4063,12 +4078,13 @@ fn write_head(s: &mut String, h: &Head, pal: &Palette) {
     }
 }
 
-fn card_text(s: &mut String, at: (f64, f64), text: &str, cw: f64, ch: f64, ink: &str) {
+fn card_text(s: &mut String, at: (f64, f64), text: &str, canvas: &Fitted, ink: &str) {
     // Clamp to the canvas so a long cardinality can't spill off-edge
     // (the scene bbox is sized for boxes/edges, not these labels).
     let hw = card_w(text) / 2.0;
-    let px = at.0.clamp(hw, (cw - hw).max(hw));
-    let py = at.1.clamp(7.0, (ch - 7.0).max(7.0));
+    let ((x0, y0), cw, ch) = (canvas.origin, canvas.width, canvas.height);
+    let px = at.0.clamp(x0 + hw, x0 + (cw - hw).max(hw));
+    let py = at.1.clamp(y0 + 7.0, y0 + (ch - 7.0).max(7.0));
     s.push_str(&format!(
         "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"middle\" \
          fill=\"{}\" font-size=\"{}\">{}</text>\n",
@@ -4229,8 +4245,8 @@ fn heads_of(sc: &Scene, rels: &[RelStyle]) -> Vec<Head> {
 
 /// Centres of the cardinalities of every relationship of `cs` as
 /// `[from_card, to_card]` (`None` where there is none), exactly where
-/// [`to_svg`] draws them (before its canvas clamp and any shift for
-/// nodes dragged past the origin), for 11 px text.
+/// [`to_svg`] draws them (before its clamp to the canvas), for 11 px
+/// text.
 pub fn card_spots(cs: &ClassScene) -> Vec<[Option<(f64, f64)>; 2]> {
     let heads = heads_of(&cs.scene, &cs.rels);
     place_cards(&cs.scene, &cs.rels, &heads)
@@ -7210,8 +7226,8 @@ mod tests {
     #[test]
     fn drag_past_origin_stays_inside_viewbox() {
         // A class dragged left of and/or above the canvas origin (the
-        // playground's drag path) must not be clipped by the `0 0 W H`
-        // viewBox — nor may any text, edge or marker it pulls along.
+        // playground's drag path) must not be clipped by the viewBox — nor
+        // may any text, edge or marker it pulls along.
         // The last case keeps the centre in bounds but the box past it.
         let d = cd(include_str!("../examples/class.mmd"));
         let sc = scene(&d);
@@ -7226,15 +7242,80 @@ mod tests {
         crate::scene::assert_drawn_inside_canvas(&to_svg(&sc));
     }
 
+    /// A class dragged past the top-left margin stays exactly where the
+    /// host put it (#76): no other box moves, the canvas grows up and left
+    /// by what reaches past the margin (`Scene::origin`, the `viewBox`
+    /// origin), and a pick at its drawn box's centre picks it.
+    #[test]
+    fn drag_past_top_left_keeps_every_position() {
+        let d = cd(include_str!("../examples/class.mmd"));
+        let laid = scene(&d);
+        let c: Vec<(f64, f64)> = laid.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
+        for to in [(-120.0, -80.0), (-120.0, c[0].1), (c[0].0, -80.0)] {
+            let mut moved = c.clone();
+            moved[0] = to;
+            let cs = route(&d, &moved);
+            for (i, n) in cs.scene.nodes.iter().enumerate() {
+                assert_eq!((n.x, n.y), moved[i], "{to:?}: node {i} moved");
+            }
+            let mut bb = crate::scene::Bbox::new();
+            crate::scene::grow_scene(
+                &mut bb,
+                &cs.scene.nodes,
+                &cs.scene.edges,
+                &cs.scene.clusters,
+            );
+            let m = crate::scene::MARGIN;
+            let over = ((bb.0 - m).min(0.0), (bb.2 - m).min(0.0));
+            assert_eq!(cs.scene.origin, over, "{to:?}");
+            let n0 = &cs.scene.nodes[0];
+            assert!(cs.scene.origin.0 <= to.0 - n0.w / 2.0 - m + 1e-9 || to.0 > 0.0);
+            assert!(cs.scene.origin.1 <= to.1 - n0.h / 2.0 - m + 1e-9 || to.1 > 0.0);
+            let svg = to_svg(&cs);
+            let (vx, vy, vw, vh) = crate::scene::view_box(&svg);
+            assert!(
+                (vx - over.0).abs() <= 0.05 && (vy - over.1).abs() <= 0.05,
+                "{to:?}"
+            );
+            assert!((vw - cs.scene.width).abs() <= 0.5 && (vh - cs.scene.height).abs() <= 0.5);
+            crate::scene::assert_drawn_inside_canvas(&svg);
+            // Boxes are drawn in node order: the first box is class 0's.
+            let rect = svg
+                .lines()
+                .find(|l| l.starts_with("<rect x=") && l.contains("rx=\"4\" fill=\"#ffffff\""))
+                .unwrap();
+            let (x, y) = crate::scene::rect_centre(rect);
+            assert!((x - to.0).abs() <= 0.1 && (y - to.1).abs() <= 0.1, "{rect}");
+            assert_eq!(cs.scene.node_at(x, y), Some(0), "{to:?}");
+            // The cardinalities sit where `card_spots` puts them.
+            let mut cards = 0;
+            for (rel, spots) in cs.rels.iter().zip(card_spots(&cs)) {
+                for (text, at) in [(&rel.from_card, spots[0]), (&rel.to_card, spots[1])] {
+                    if let (Some(_), Some(at)) = (text, at) {
+                        let drawn =
+                            format!("<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\"", at.0, at.1);
+                        assert!(svg.contains(&drawn), "{to:?}: {drawn}");
+                        cards += 1;
+                    }
+                }
+            }
+            assert!(cards > 0);
+        }
+        // In bounds, the canvas stays at the origin.
+        assert_eq!(route(&d, &c).scene.origin, (0.0, 0.0));
+    }
+
     #[test]
     fn laid_out_scene_is_not_shifted() {
         // The shift only kicks in past the origin: a laid-out scene
         // renders byte-for-byte as before.
         let sc = scene(&cd(include_str!("../examples/class.mmd")));
-        assert!(matches!(
-            fit_top_left(&sc.scene),
-            std::borrow::Cow::Borrowed(_)
-        ));
+        let fitted = fit_top_left(&sc.scene);
+        assert!(matches!(fitted.scene, std::borrow::Cow::Borrowed(_)));
+        assert_eq!(
+            (fitted.origin, fitted.width, fitted.height),
+            ((0.0, 0.0), sc.scene.width, sc.scene.height)
+        );
     }
 
     /// The verifier's inheritance fan of eight subclasses with a note on

@@ -220,6 +220,25 @@ pub struct Scene {
     pub clusters: Vec<SceneCluster>,
     pub width: f64,
     pub height: f64,
+    /// The canvas's top-left corner in scene coordinates: the canvas
+    /// spans `origin.0 ..= origin.0 + width` and `origin.1 ..= origin.1 +
+    /// height`. `(0, 0)` for a laid-out scene. [`route`] and
+    /// [`route_partial`] (and the class and ER `route`) keep every
+    /// position as given; where the drawing then reaches into the canvas
+    /// margin at the left or top (a node dragged past it), the canvas
+    /// grows that way instead, and `origin` is negative on that axis by
+    /// as much as the drawing and its margin reach past zero. Nothing is
+    /// moved: the SVG's user space is scene space and its `viewBox` starts
+    /// at `origin` there (a routed flowchart's `viewBox` is fitted to the
+    /// drawing as before, so on an axis that does not overflow it may
+    /// start inside this canvas). Pointer coordinates map through the
+    /// `viewBox` straight into scene coordinates for picking.
+    pub origin: (f64, f64),
+    /// Set by the edge stages of [`route`] / [`route_partial`] (and of the
+    /// class and ER `route`): its positions are the host's, so the SVG
+    /// writers keep them and frame the drawing with the `viewBox`
+    /// ([`Scene::origin`]) rather than moving it onto the canvas.
+    pub(crate) routed: bool,
     /// Set by the architecture and gitGraph scene builders, whose own
     /// painters stroke every edge plain: no crossing of such a scene is
     /// drawn as a hop, so none is worked out for it and a pick follows
@@ -256,6 +275,8 @@ impl Scene {
             clusters: Vec::new(),
             width,
             height,
+            origin: (0.0, 0.0),
+            routed: false,
             plain_crossings: false,
         }
     }
@@ -4150,6 +4171,8 @@ fn scene_from_layout(
         clusters: Vec::new(),
         width,
         height,
+        origin: (0.0, 0.0),
+        routed: false,
         plain_crossings: false,
     }
 }
@@ -5091,28 +5114,77 @@ pub(crate) fn flip_scene(sc: &mut Scene, extent: f64, horizontal: bool) {
     }
 }
 
-/// `sc` moved right/down just enough that nothing sits inside the
-/// top-left `MARGIN` gutter, canvas grown to match. [`route`] keeps
-/// caller positions verbatim, so a node dragged past the origin would
-/// otherwise fall outside the `0 0 W H` viewBox of renderers that
-/// draw `width`/`height` as-is (class, ER). Scenes already clear of
-/// the gutter — every laid-out one — come back untouched.
-pub(crate) fn fit_top_left(sc: &Scene) -> std::borrow::Cow<'_, Scene> {
+/// A class or ER scene as its painter draws it on its canvas (the
+/// painter draws `width` × `height` as-is, see [`fit_top_left`]).
+pub(crate) struct Fitted<'a> {
+    /// The scene to paint.
+    pub(crate) scene: std::borrow::Cow<'a, Scene>,
+    /// The canvas: its top-left corner (the `viewBox` origin) and size.
+    pub(crate) origin: (f64, f64),
+    pub(crate) width: f64,
+    pub(crate) height: f64,
+}
+
+/// The canvas a class or ER painter draws `sc` on, so that nothing sits
+/// inside the top-left `MARGIN` gutter. A routed scene ([`route`] keeps
+/// caller positions verbatim) keeps its coordinates: its canvas grows up
+/// and left over what reaches into the gutter ([`top_left_canvas`]), the
+/// `viewBox` origin going negative (#76). Any other scene that reaches
+/// into it is moved right/down just enough, its canvas grown to match,
+/// as always. Scenes already clear of the gutter — every laid-out one —
+/// come back untouched.
+pub(crate) fn fit_top_left(sc: &Scene) -> Fitted<'_> {
+    let borrowed = |origin, width, height| Fitted {
+        scene: std::borrow::Cow::Borrowed(sc),
+        origin,
+        width,
+        height,
+    };
+    if sc.routed {
+        let (origin, width, height) = top_left_canvas(sc);
+        return borrowed(origin, width, height);
+    }
     let mut bb = Bbox::new();
     grow_scene(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
     if !bb.0.is_finite() {
-        return std::borrow::Cow::Borrowed(sc);
+        return borrowed(sc.origin, sc.width, sc.height);
     }
     let dx = (MARGIN - bb.0).max(0.0);
     let dy = (MARGIN - bb.2).max(0.0);
     if dx == 0.0 && dy == 0.0 {
-        return std::borrow::Cow::Borrowed(sc);
+        return borrowed(sc.origin, sc.width, sc.height);
     }
     let mut out = sc.clone();
     shift_scene(&mut out, dx, dy);
     out.width += dx;
     out.height += dy;
-    std::borrow::Cow::Owned(out)
+    let (origin, width, height) = (out.origin, out.width, out.height);
+    Fitted {
+        scene: std::borrow::Cow::Owned(out),
+        origin,
+        width,
+        height,
+    }
+}
+
+/// `sc`'s canvas (origin, width, height) grown up and left over whatever
+/// of the drawing (as [`grow_scene`] bounds it) reaches into the top-left
+/// `MARGIN` gutter, nothing moved: the class and ER `route` set it on
+/// their scene, and their painters draw on it. The far sides stay where
+/// they are; a canvas already holding the drawing comes back as it is.
+pub(crate) fn top_left_canvas(sc: &Scene) -> ((f64, f64), f64, f64) {
+    let mut bb = Bbox::new();
+    grow_scene(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
+    if !bb.0.is_finite() {
+        return (sc.origin, sc.width, sc.height);
+    }
+    let ox = sc.origin.0.min(bb.0 - MARGIN);
+    let oy = sc.origin.1.min(bb.2 - MARGIN);
+    (
+        (ox, oy),
+        sc.width + (sc.origin.0 - ox),
+        sc.height + (sc.origin.1 - oy),
+    )
 }
 
 pub(crate) fn shift_scene(sc: &mut Scene, dx: f64, dy: f64) {
@@ -5140,8 +5212,9 @@ pub(crate) fn shift_scene(sc: &mut Scene, dx: f64, dy: f64) {
 /// Re-route edges for custom node positions (e.g. after a drag).
 /// `centers[i]` = centre of node i in final coordinates. Node
 /// positions are NOT normalised (they stay exactly as given) so the
-/// diagram doesn't "swim" while dragging; `to_svg` handles
-/// translation at export time.
+/// diagram doesn't "swim" while dragging, and [`to_svg`] draws them at
+/// those coordinates: a drawing that reaches past the top-left margin
+/// grows the canvas up or left ([`Scene::origin`]) and moves nothing.
 ///
 /// # Panics
 ///
@@ -5656,6 +5729,8 @@ fn route_built(
         clusters,
         width: maxx + MARGIN,
         height: maxy + MARGIN,
+        origin: (0.0, 0.0),
+        routed: false,
         plain_crossings: false,
     }
 }
@@ -6012,6 +6087,7 @@ pub(crate) fn route_partial_with(
     // refit grows it for whatever the drag pushed outward.
     sc.width = base.width;
     sc.height = base.height;
+    sc.origin = base.origin;
     crate::edgepass::finish_held(g, &mut sc, crate::edgepass::Mode::Routed, &fixed, &held);
     sc
 }
@@ -7254,9 +7330,28 @@ fn edge_animation_css(edges: &[SceneEdge], diagram_id: Option<&str>) -> String {
     )
 }
 
-/// Serialise any Scene (automatic or dragged) to SVG. Content is
-/// translated to start inside the SVG's 16 px padding, so negative
-/// coordinates are safe.
+/// How [`to_svg`] puts a drawing onto its canvas on one axis, `fit` being
+/// how far the drawing starts short of [`MARGIN`] (negative: past it):
+/// (shift of the drawing, `viewBox` origin). A routed scene keeps its
+/// coordinates, the `viewBox` starting `fit` before zero; any other is
+/// moved by `fit`, as is a routed one a float-noise `fit` away
+/// ([`crate::edgepass::FIT_EPS`]) from its place, so its output stays
+/// byte for byte.
+fn view_shift(routed: bool, fit: f64) -> (f64, f64) {
+    if routed && fit.abs() > crate::edgepass::FIT_EPS {
+        (0.0, -fit)
+    } else {
+        (fit, 0.0)
+    }
+}
+
+/// Serialise any Scene (automatic or dragged) to SVG. The canvas is the
+/// drawing with a margin all round, so negative coordinates are safe.
+/// A [`route`] / [`route_partial`] scene keeps its coordinates: SVG user
+/// space is scene space, and the `viewBox` origin is where the canvas
+/// starts (negative where the drawing reaches past zero), so a host maps
+/// pointer coordinates through the `viewBox` straight into scene
+/// coordinates for picking. A laid-out scene starts at `0 0`.
 /// The accessible name is `"Flowchart diagram"`; use [`to_svg_titled`]
 /// for another diagram class (e.g. state machines).
 pub fn to_svg(sc: &Scene) -> String {
@@ -7293,8 +7388,13 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
     let mut bb = Bbox::new();
     grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
     let (minx, maxx, miny, maxy) = bb.finish();
-    let tx = MARGIN - minx;
-    let ty = MARGIN - miny;
+    // The canvas holds the drawing and its MARGIN all round. A routed
+    // scene's positions are the host's and stay as they are (#76): the
+    // `viewBox` starts where its canvas does. Any other drawing is moved
+    // to start MARGIN in, as it always was (a laid-out one is there
+    // already).
+    let (tx, ox) = view_shift(sc.routed, MARGIN - minx);
+    let (ty, oy) = view_shift(sc.routed, MARGIN - miny);
     let width = (maxx - minx) + 2.0 * MARGIN;
     let height = (maxy - miny) + 2.0 * MARGIN;
     let t = |p: (f64, f64)| (p.0 + tx, p.1 + ty);
@@ -7318,7 +7418,17 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
     let dom_id = diagram_dom_id(sc, title, desc);
     let dom_id = dom_id.as_deref();
     let mut s = String::new();
-    svg_open_root(&mut s, width, height, 14, title, desc, dom_id, opts);
+    svg_open_root(
+        &mut s,
+        (ox, oy),
+        width,
+        height,
+        14,
+        title,
+        desc,
+        dom_id,
+        opts,
+    );
     // Each drawn edge's stroke, worked out once for the casing, the
     // heads and the paths.
     let painted: Vec<Option<PaintedEdge>> = sc
@@ -10191,7 +10301,47 @@ pub(crate) fn svg_open_a11y(
     desc: Option<&str>,
     opts: &SvgOptions,
 ) {
-    svg_open_root(s, width, height, font_size, title, desc, None, opts);
+    svg_open_root(
+        s,
+        (0.0, 0.0),
+        width,
+        height,
+        font_size,
+        title,
+        desc,
+        None,
+        opts,
+    );
+}
+
+/// [`svg_open_a11y`] for a canvas whose top-left corner is `origin`
+/// (the `viewBox` origin): a routed class or ER scene's ([`Scene::origin`]).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn svg_open_canvas(
+    s: &mut String,
+    origin: (f64, f64),
+    width: f64,
+    height: f64,
+    font_size: u32,
+    title: &str,
+    desc: Option<&str>,
+    opts: &SvgOptions,
+) {
+    svg_open_root(s, origin, width, height, font_size, title, desc, None, opts);
+}
+
+/// A `viewBox` origin coordinate as written: `0` at zero (so a canvas at
+/// the origin writes `0 0`, byte for byte as before), else to 0.1 px
+/// like every coordinate, without a trailing `.0`.
+fn view_origin(v: f64) -> String {
+    let r = (v * 10.0).round() / 10.0;
+    if r == 0.0 {
+        "0".to_string()
+    } else if r.fract() == 0.0 {
+        format!("{r:.0}")
+    } else {
+        format!("{r:.1}")
+    }
 }
 
 /// [`svg_open_a11y`] plus an optional root `id` (the per-diagram id
@@ -10199,6 +10349,7 @@ pub(crate) fn svg_open_a11y(
 #[allow(clippy::too_many_arguments)]
 fn svg_open_root(
     s: &mut String,
+    origin: (f64, f64),
     width: f64,
     height: f64,
     font_size: u32,
@@ -10229,13 +10380,15 @@ fn svg_open_root(
     });
     s.push_str(&format!(
         "<svg{id} xmlns=\"http://www.w3.org/2000/svg\" width=\"{w}\" height=\"{h}\" \
-         viewBox=\"0 0 {vw:.0} {vh:.0}\"{par} font-family=\"Helvetica, Arial, sans-serif\" \
+         viewBox=\"{ox} {oy} {vw:.0} {vh:.0}\"{par} font-family=\"Helvetica, Arial, sans-serif\" \
          font-size=\"{fs}\" role=\"img\" aria-label=\"{t}\"{described}>\n",
         id = root_id
             .map(|i| format!(" id=\"{}\"", escape(i)))
             .unwrap_or_default(),
         w = w_attr,
         h = h_attr,
+        ox = view_origin(origin.0),
+        oy = view_origin(origin.1),
         vw = width,
         vh = height,
         fs = font_size,
@@ -10253,8 +10406,19 @@ fn svg_open_root(
     // its own colour; the default keeps it for byte-identical output.
     // Its colour is the theme's (white unless a theme says otherwise).
     if !opts.transparent {
+        // From the canvas's corner: `0 0`, written as before, needs no
+        // `x` / `y`.
+        let at = if view_origin(origin.0) == "0" && view_origin(origin.1) == "0" {
+            String::new()
+        } else {
+            format!(
+                "x=\"{}\" y=\"{}\" ",
+                view_origin(origin.0),
+                view_origin(origin.1)
+            )
+        };
         s.push_str(&format!(
-            "<rect width=\"{:.0}\" height=\"{:.0}\" fill=\"{}\"/>\n",
+            "<rect {at}width=\"{:.0}\" height=\"{:.0}\" fill=\"{}\"/>\n",
             width,
             height,
             opts.palette().background
@@ -10476,10 +10640,11 @@ pub(crate) fn escape(s: &str) -> String {
         .replace('\'', "&#39;")
 }
 
-/// Test helper for renderers that draw `width` × `height` as a
-/// `0 0 W H` viewBox (class, ER): panics unless every drawn coordinate
-/// — `x`/`y`/`x1`…`cy` attributes, rect far corners, path `d` points
-/// and polygon `points` — lies on that canvas.
+/// Test helper for renderers that draw their canvas as the `viewBox`
+/// (class, ER: `width` × `height` from [`Scene::origin`], `0 0` for a
+/// laid-out scene): panics unless every drawn coordinate — `x`/`y`/
+/// `x1`…`cy` attributes, rect far corners, path `d` points and polygon
+/// `points` — lies on that canvas.
 #[cfg(test)]
 pub(crate) fn assert_drawn_inside_canvas(svg: &str) {
     fn attr<'a>(line: &'a str, name: &str) -> Option<&'a str> {
@@ -10491,14 +10656,12 @@ pub(crate) fn assert_drawn_inside_canvas(svg: &str) {
         v.parse().unwrap_or_else(|_| panic!("not a number: {v:?}"))
     }
     let root = svg.lines().find(|l| l.starts_with("<svg ")).unwrap();
-    let (w, h) = (
-        num(attr(root, "width").unwrap()),
-        num(attr(root, "height").unwrap()),
-    );
+    let vb: Vec<f64> = attr(root, "viewBox").unwrap().split(' ').map(num).collect();
+    let (x0, y0, w, h) = (vb[0], vb[1], vb[2], vb[3]);
     let check = |line: &str, x: f64, y: f64| {
         assert!(
-            (0.0..=w).contains(&x) && (0.0..=h).contains(&y),
-            "({x}, {y}) is off the {w}×{h} canvas: {line}"
+            (x0..=x0 + w).contains(&x) && (y0..=y0 + h).contains(&y),
+            "({x}, {y}) is off the {w}×{h} canvas at ({x0}, {y0}): {line}"
         );
     };
     for line in svg
@@ -10529,6 +10692,46 @@ pub(crate) fn assert_drawn_inside_canvas(svg: &str) {
             }
         }
     }
+}
+
+/// Test helper: what [`to_svg`] adds to `sc`'s coordinates to draw them
+/// ([`view_shift`]): the move onto the canvas of a laid-out scene, none
+/// for a routed one, whose `viewBox` carries it instead.
+#[cfg(test)]
+pub(crate) fn svg_shift(sc: &Scene) -> (f64, f64) {
+    let mut bb = Bbox::new();
+    grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
+    let (minx, _, miny, _) = bb.finish();
+    (
+        view_shift(sc.routed, MARGIN - minx).0,
+        view_shift(sc.routed, MARGIN - miny).0,
+    )
+}
+
+/// Test helper: an SVG's `viewBox`, as (x, y, width, height).
+#[cfg(test)]
+pub(crate) fn view_box(svg: &str) -> (f64, f64, f64, f64) {
+    let root = svg.lines().find(|l| l.starts_with("<svg ")).unwrap();
+    let i = root.find(" viewBox=\"").unwrap() + " viewBox=\"".len();
+    let v: Vec<f64> = root[i..i + root[i..].find('"').unwrap()]
+        .split(' ')
+        .map(|t| t.parse().unwrap())
+        .collect();
+    (v[0], v[1], v[2], v[3])
+}
+
+/// Test helper: the centre of the `<rect x y width height>` on `line`.
+#[cfg(test)]
+pub(crate) fn rect_centre(line: &str) -> (f64, f64) {
+    let num = |k: &str| -> f64 {
+        let pat = format!(" {k}=\"");
+        let i = line.find(&pat).unwrap_or_else(|| panic!("no {k}: {line}")) + pat.len();
+        line[i..i + line[i..].find('"').unwrap()].parse().unwrap()
+    };
+    (
+        num("x") + num("width") / 2.0,
+        num("y") + num("height") / 2.0,
+    )
 }
 
 #[cfg(test)]
@@ -10671,7 +10874,7 @@ mod tests {
                 .collect()
         };
         let vb = nums(&attr(svg.lines().next().unwrap(), "viewBox").expect("viewBox"));
-        let (w, h) = (vb[2], vb[3]);
+        let (x0, y0, w, h) = (vb[0], vb[1], vb[2], vb[3]);
         // Marker id -> (view box, refX, refY, px).
         let markers: HashMap<String, (Vec<f64>, f64, f64, f64)> = svg
             .split("<marker ")
@@ -10734,10 +10937,10 @@ mod tests {
             let mut worst = f64::NEG_INFINITY;
             let mut off = |q: (f64, f64), pad: f64| {
                 worst = worst
-                    .max(pad - q.0)
-                    .max(pad - q.1)
-                    .max(q.0 + pad - w)
-                    .max(q.1 + pad - h);
+                    .max(pad - (q.0 - x0))
+                    .max(pad - (q.1 - y0))
+                    .max(q.0 + pad - (x0 + w))
+                    .max(q.1 + pad - (y0 + h));
             };
             for &q in &ink {
                 off(q, half);
@@ -11040,10 +11243,7 @@ mod tests {
             "a routed edge"
         );
         let svg = to_svg(&sc);
-        let mut bb = Bbox::new();
-        grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
-        let (minx, _, miny, _) = bb.finish();
-        let (tx, ty) = (MARGIN - minx, MARGIN - miny);
+        let (tx, ty) = svg_shift(&sc);
         let paths = edge_paths(&svg);
         assert_eq!(paths.len(), sc.edges.len());
         for (e, p) in sc.edges.iter().zip(paths) {
@@ -11933,12 +12133,7 @@ mod tests {
             .collect();
         files.sort();
         // Undo to_svg's margin shift to get back to scene units.
-        let shift_of = |s: &Scene| {
-            let mut bb = Bbox::new();
-            grow_canvas(&mut bb, &s.nodes, &s.edges, &s.clusters);
-            let (minx, _, miny, _) = bb.finish();
-            (MARGIN - minx, MARGIN - miny)
-        };
+        let shift_of = svg_shift;
         let (mut graphs, mut probes, mut hopped) = (0, 0, 0);
         for f in &files {
             let src = std::fs::read_to_string(f).unwrap();
@@ -12166,10 +12361,7 @@ mod tests {
             assert!(!d(1).contains(" A "), "the plumb one runs on: {}", d(1));
             // Its crown a radius above its line (smaller y), over the
             // crossing; its feet a radius either side on the line.
-            let mut bb = Bbox::new();
-            grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
-            let (minx, _, miny, _) = bb.finish();
-            let (tx, ty) = (MARGIN - minx, MARGIN - miny);
+            let (tx, ty) = svg_shift(&sc);
             let pts: Vec<(f64, f64)> = path_d_points(&d(0), 0.5)
                 .into_iter()
                 .map(|p| (p.0 - tx, p.1 - ty))
@@ -12229,10 +12421,7 @@ mod tests {
         let d = &paths[0][9..9 + paths[0][9..].find('"').unwrap()];
         // One bridge: up, level over the three, down.
         assert_eq!(d.matches(" A ").count(), 2, "{d}");
-        let mut bb = Bbox::new();
-        grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
-        let (minx, _, miny, _) = bb.finish();
-        let (tx, ty) = (MARGIN - minx, MARGIN - miny);
+        let (tx, ty) = svg_shift(&sc);
         let top: Vec<(f64, f64)> = path_d_points(d, 0.5)
             .into_iter()
             .map(|p| (p.0 - tx, p.1 - ty))
@@ -12266,12 +12455,7 @@ mod tests {
     #[test]
     fn picking_follows_the_hops_through_float_noise_and_ties() {
         use crate::hops::HOP_R;
-        let shift_of = |s: &Scene| {
-            let mut bb = Bbox::new();
-            grow_canvas(&mut bb, &s.nodes, &s.edges, &s.clusters);
-            let (minx, _, miny, _) = bb.finish();
-            (MARGIN - minx, MARGIN - miny)
-        };
+        let shift_of = svg_shift;
         let up = HOP_R * std::f64::consts::FRAC_1_SQRT_2;
         let mut sc = strokes(&[
             ((0.0, 203.0), (300.0, 203.0), "-->"),
@@ -14371,10 +14555,8 @@ mod tests {
             let svg = to_svg(&sc);
             let pts = painted_points(edge_paths(&svg)[0]);
             // SVG coordinates: the drawing starts MARGIN in.
-            let mut bb = Bbox::new();
-            grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
-            let (minx, _, miny, _) = bb.finish();
-            let t = |p: (f64, f64)| (p.0 + MARGIN - minx, p.1 + MARGIN - miny);
+            let (tx, ty) = svg_shift(&sc);
+            let t = |p: (f64, f64)| (p.0 + tx, p.1 + ty);
             let b = &sc.nodes[1];
             let top = t((b.x, b.y - b.h / 2.0)).1;
             // The stroke stops ARROW_TRIM short, heading straight down;
@@ -15076,11 +15258,8 @@ mod tests {
             "<marker id=\"arrow-t8-s14\" viewBox=\"0 0 10 10\" refX=\"4.286\" refY=\"5\" \
              markerUnits=\"userSpaceOnUse\" markerWidth=\"14\" markerHeight=\"14\""
         ));
-        let mut bb = Bbox::new();
-        grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
-        let (minx, _, _, _) = bb.finish();
         let d = &sc.nodes[3];
-        let left = d.x - d.w / 2.0 + MARGIN - minx;
+        let left = d.x - d.w / 2.0 + svg_shift(&sc).0;
         let pts = painted_points(paths[1]);
         let end = pts[pts.len() - 1];
         assert!((left - end.0 - 8.0).abs() < 0.11, "{end:?} vs {left}");
@@ -15314,10 +15493,15 @@ mod tests {
                 let mut bb = Bbox::new();
                 grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
                 let (minx, maxx, miny, maxy) = bb.finish();
-                if maxx + MARGIN > sc.width + 1e-6 || maxy + MARGIN > sc.height + 1e-6 {
+                let (ox, oy) = sc.origin;
+                if maxx + MARGIN > ox + sc.width + 1e-6
+                    || maxy + MARGIN > oy + sc.height + 1e-6
+                    || minx - MARGIN < ox - 1e-6
+                    || miny - MARGIN < oy - 1e-6
+                {
                     bad.push(format!(
-                        "{name} {mode}: canvas {}x{} short",
-                        sc.width, sc.height
+                        "{name} {mode}: canvas {}x{} at {:?} short",
+                        sc.width, sc.height, sc.origin
                     ));
                 }
                 if *mode == "static" && (minx < MARGIN - 1e-6 || miny < MARGIN - 1e-6) {
@@ -15396,17 +15580,30 @@ mod tests {
             let r = route(&g, &centres);
             let mut bb = Bbox::new();
             grow_canvas(&mut bb, &r.nodes, &r.edges, &r.clusters);
-            let (_, maxx, _, maxy) = bb.finish();
+            let (minx, maxx, miny, maxy) = bb.finish();
+            // Its far sides reach MARGIN past the drawing; its origin
+            // stays at zero unless the drawing reaches into the margin
+            // there, and then lies exactly MARGIN before it (#76).
             assert!(
-                (r.width - maxx - MARGIN).abs() < 1e-6,
-                "{name}: routed width {}",
-                r.width
+                (r.origin.0 + r.width - maxx - MARGIN).abs() < 1e-6,
+                "{name}: routed width {} from {}",
+                r.width,
+                r.origin.0
             );
             assert!(
-                (r.height - maxy - MARGIN).abs() < 1e-6,
-                "{name}: routed height {}",
-                r.height
+                (r.origin.1 + r.height - maxy - MARGIN).abs() < 1e-6,
+                "{name}: routed height {} from {}",
+                r.height,
+                r.origin.1
             );
+            let want = |min: f64| {
+                if min - MARGIN < -1e-6 {
+                    min - MARGIN
+                } else {
+                    0.0
+                }
+            };
+            assert_eq!(r.origin, (want(minx), want(miny)), "{name}: routed origin");
         }
         // The report's yardsticks: B3's lanes run beside what lies between
         // a back-edge's ends, not round its ends' own boxes (demo 383 ->
@@ -15459,10 +15656,8 @@ mod tests {
             let rest = el.split(&format!(" {name}=\"")).nth(1)?;
             Some(rest.split('"').next()?.to_string())
         };
-        let mut bb = Bbox::new();
-        grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
-        let (minx, _, miny, _) = bb.finish();
-        let t = |p: (f64, f64)| (p.0 + MARGIN - minx, p.1 + MARGIN - miny);
+        let (tx, ty) = svg_shift(sc);
+        let t = |p: (f64, f64)| (p.0 + tx, p.1 + ty);
         let drawn: Vec<usize> = (0..sc.edges.len())
             .filter(|&i| edge_drawn(&sc.edges[i]))
             .collect();
@@ -15596,10 +15791,8 @@ mod tests {
                     }
                 }
                 for (what, sc) in &frames {
-                    let mut bb = Bbox::new();
-                    grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
-                    let (minx, _, miny, _) = bb.finish();
-                    let back = |p: (f64, f64)| (p.0 - MARGIN + minx, p.1 - MARGIN + miny);
+                    let (tx, ty) = svg_shift(sc);
+                    let back = |p: (f64, f64)| (p.0 - tx, p.1 - ty);
                     for (i, at_start, tip, end, d, want) in painted_heads(sc) {
                         let e = &sc.edges[i];
                         let err = (tip.0 - want.0).hypot(tip.1 - want.1);
@@ -15693,10 +15886,8 @@ mod tests {
                     }
                 }
                 for (what, sc) in &frames {
-                    let mut bb = Bbox::new();
-                    grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
-                    let (minx, _, miny, _) = bb.finish();
-                    let back = |p: (f64, f64)| (p.0 - MARGIN + minx, p.1 - MARGIN + miny);
+                    let (tx, ty) = svg_shift(sc);
+                    let back = |p: (f64, f64)| (p.0 - tx, p.1 - ty);
                     for (i, at_start, tip, end, _, want) in painted_heads(sc) {
                         let e = &sc.edges[i];
                         let err = (tip.0 - want.0).hypot(tip.1 - want.1);
@@ -18666,7 +18857,7 @@ mod tests {
         let svg = crate::class::to_svg(&cs);
         let fitted = fit_top_left(&cs.scene);
         let mut widths = Vec::new();
-        for (j, e) in fitted.edges.iter().enumerate() {
+        for (j, e) in fitted.scene.edges.iter().enumerate() {
             let w = edge_stroke_width(e);
             let painted = format!(
                 "<path d=\"{}\" fill=\"none\" stroke=\"{EDGE_COLOR}\" stroke-width=\"{w}\"",
@@ -18705,7 +18896,7 @@ mod tests {
         };
         let es = crate::er::scene(&d);
         let svg = crate::er::to_svg(&es);
-        for e in &fit_top_left(&es.scene).edges {
+        for e in &fit_top_left(&es.scene).scene.edges {
             let w = edge_stroke_width(e);
             assert_eq!(w, 1.7);
             assert!(svg.contains(&format!(
@@ -18713,6 +18904,131 @@ mod tests {
                 edge_path_d(e, |p| p)
             )));
         }
+    }
+
+    /// A node dragged past the top-left margin stays exactly where the
+    /// host put it (#76), in the scene and in the SVG: no other node
+    /// moves, the canvas grows up and left by what the drawing and its
+    /// margin reach past zero (`Scene::origin`, the `viewBox` origin), and
+    /// a pick at a node's drawn centre picks it. For `route()` and
+    /// `route_partial()`, flowchart and state.
+    #[test]
+    fn drag_past_top_left_keeps_every_position() {
+        let srcs = [
+            "flowchart TD\nA[Alpha] --> B[Beta]\nB --> C[Gamma]\nA --> C",
+            "flowchart LR\nA[Alpha] --> B[Beta]\nsubgraph S [Box]\nB --> C[Gamma]\nend",
+            "stateDiagram-v2\n[*] --> Idle\nIdle --> Busy\nBusy --> Idle\nBusy --> Done\nDone --> [*]",
+        ];
+        for src in srcs {
+            let g = match crate::parser::parse_document(src).unwrap() {
+                crate::model::Document::Flowchart(g) | crate::model::Document::State(g) => g,
+                _ => unreachable!(),
+            };
+            let laid = scene(&g);
+            let c: Vec<(f64, f64)> = laid.nodes.iter().map(|n| (n.x, n.y)).collect();
+            // The first node with a label of its own (a state's `[*]` has none).
+            let k = (0..g.nodes.len())
+                .find(|&i| {
+                    !laid.nodes[i].label.is_empty() && laid.nodes[i].shape != Shape::StateStart
+                })
+                .unwrap();
+            let last = c.len() - 1;
+            for (who, to) in [
+                (k, (-60.0, -40.0)),
+                (k, (-60.0, c[k].1)),
+                (k, (c[k].0, -45.0)),
+                (last, (c[last].0, -30.0)),
+            ] {
+                let mut d = c.clone();
+                d[who] = to;
+                let partial = route_partial(&g, &d, &laid, &c);
+                for (how, sc) in [("route", route(&g, &d)), ("route_partial", partial)] {
+                    let what = format!("{src:?} {how}: node {who} to {to:?}");
+                    for (i, n) in sc.nodes.iter().enumerate() {
+                        assert_eq!((n.x, n.y), d[i], "{what}: node {i} moved");
+                    }
+                    let mut bb = Bbox::new();
+                    grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
+                    let (minx, maxx, miny, maxy) = bb.finish();
+                    // The overflow: what the drawing and its margin reach
+                    // past zero, on each axis.
+                    let over = ((minx - MARGIN).min(0.0), (miny - MARGIN).min(0.0));
+                    assert_eq!(sc.origin, over, "{what}");
+                    assert!(sc.origin.0 < 0.0 || sc.origin.1 < 0.0, "{what}");
+                    assert!(sc.origin.0 + sc.width >= maxx + MARGIN, "{what}");
+                    assert!(sc.origin.1 + sc.height >= maxy + MARGIN, "{what}");
+                    let svg = to_svg(&sc);
+                    let (vx, vy, vw, vh) = view_box(&svg);
+                    // Fitted to the drawing: on an overflowing axis it
+                    // starts at the overflow.
+                    assert!((vx - (minx - MARGIN)).abs() <= 0.05, "{what}: {vx}");
+                    assert!((vy - (miny - MARGIN)).abs() <= 0.05, "{what}: {vy}");
+                    assert!((vw - (maxx - minx + 2.0 * MARGIN)).abs() <= 0.5, "{what}");
+                    assert!((vh - (maxy - miny + 2.0 * MARGIN)).abs() <= 0.5, "{what}");
+                    if over.0 < 0.0 {
+                        assert!((vx - over.0).abs() <= 0.05, "{what}");
+                    }
+                    if over.1 < 0.0 {
+                        assert!((vy - over.1).abs() <= 0.05, "{what}");
+                    }
+                    crate::scene::assert_drawn_inside_canvas(&svg);
+                    // Every labelled box is drawn at its scene centre, and
+                    // a pick there (SVG user space is scene space) picks it.
+                    let lines: Vec<&str> = svg.lines().collect();
+                    let mut picked = Vec::new();
+                    for (i, n) in sc.nodes.iter().enumerate() {
+                        if n.label.is_empty() || n.label.contains('\n') {
+                            continue;
+                        }
+                        let title = format!("<g><title>{}</title>", n.label);
+                        let Some(at) = lines.iter().position(|l| *l == title) else {
+                            continue;
+                        };
+                        let Some(rect) = lines[at + 1..].iter().find(|l| l.starts_with("<rect "))
+                        else {
+                            continue;
+                        };
+                        let (x, y) = rect_centre(rect);
+                        assert!(
+                            (x - d[i].0).abs() <= 0.1 && (y - d[i].1).abs() <= 0.1,
+                            "{what}: node {i} drawn at ({x}, {y}), placed at {:?}",
+                            d[i]
+                        );
+                        assert_eq!(sc.node_at(x, y), Some(i), "{what}: pick node {i}");
+                        assert_eq!(sc.hit_test(x, y, 2.0), Some(Hit::Node(i)), "{what}");
+                        picked.push(i);
+                    }
+                    assert!(picked.contains(&who) || who == last, "{what}: {picked:?}");
+                    assert!(picked.len() >= 2, "{what}: {picked:?}");
+                }
+            }
+        }
+    }
+
+    /// Drags that leave the top-left margin alone keep a canvas at the
+    /// origin: the scene's `origin` stays `(0, 0)` and its canvas as
+    /// before (#76 changes nothing there).
+    #[test]
+    fn drag_inside_keeps_the_origin() {
+        let g = parse("flowchart TD\nA[Alpha] --> B[Beta]\nB --> C[Gamma]").unwrap();
+        let laid = scene(&g);
+        let c: Vec<(f64, f64)> = laid.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let mut d = c.clone();
+        d[1].0 += 80.0;
+        d[1].1 += 15.0;
+        for sc in [
+            route(&g, &c),
+            route(&g, &d),
+            route_partial(&g, &d, &laid, &c),
+        ] {
+            assert_eq!(sc.origin, (0.0, 0.0));
+            let svg = to_svg(&sc);
+            let (vx, vy, ..) = view_box(&svg);
+            assert!(vx >= 0.0 && vy >= 0.0, "{svg}");
+            assert!(svg.contains("<rect width=\""), "background at the origin");
+        }
+        assert_eq!(laid.origin, (0.0, 0.0));
+        assert!(to_svg(&laid).contains(" viewBox=\"0 0 "));
     }
 
     /// Whether `e` is drawn on the axes (report §2.1, B1): a path whose

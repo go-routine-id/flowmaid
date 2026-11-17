@@ -826,6 +826,8 @@ pub fn scene(d: &GitGraph) -> GitScene {
             clusters: Vec::new(),
             width,
             height,
+            origin: (0.0, 0.0),
+            routed: false,
             // `to_svg` here strokes each link plain.
             plain_crossings: true,
         },
