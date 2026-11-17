@@ -6267,6 +6267,12 @@ pub(crate) fn frame_head_room(title: &str) -> f64 {
 ///   both sides to it: a block's title is never cut while its frame can
 ///   grow (0.38 cut a title wider than its block where the canvas
 ///   ended, and a one-column LR block's title ran over its neighbour).
+///   Not yet built with it: the layout keeps the gap beside a grown
+///   frame clear of the frame, not of the edge labels it places there
+///   (an LR frame grown along the flow can take a label in: B12 G3), and
+///   a frame grown to its title leaves no column past the chip for an
+///   entry the chip covers (the router takes it in through a lateral
+///   wall: X2.2's breadth).
 /// - *F2*: the jog room, on the title side (`layout::title_jogs`): the
 ///   track room in which the entries that cannot cross the title side
 ///   beside the chip jog to their ports.
