@@ -2531,6 +2531,43 @@ fn an_edge_between_stacked_blocks_crosses_their_title_sides_past_the_chips() {
 }
 
 #[test]
+fn a_two_way_pair_between_blocks_keeps_its_steps_in_one_channel() {
+    // blocks/twoway-noted drawn LR or RL: the pair's two steps share the
+    // gap between the blocks, the labelled return's room above its label
+    // apart from the forward step's room but both plain rooms meeting.
+    // Split into two channels by the rooms above their labels, the
+    // return kept that room beside an unlabelled step and the two were
+    // stacked in the order of their rooms, not of their turns: they
+    // crossed, `uncross` swapped their ends, and the return ran up
+    // `K1`'s wall (a border run of 62 px) to a stepped end in `K0`.
+    // Split by their plain rooms they are one channel again, and the
+    // pair is drawn as two straight runs.
+    let src = std::fs::read_to_string(format!(
+        "{}/tests/fixtures/blocks/twoway-noted.mmd",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    for dir in ["LR", "RL"] {
+        let g = graph(&src.replace("direction LR", &format!("direction {dir}")));
+        let sc = block_scene(&g);
+        let q = crate::quality::measure(&g, &sc);
+        assert_eq!((q.border_runs, q.x_drawn), (0, 0), "{dir}");
+        for e in sc.edges.iter().filter(|e| {
+            (e.from.as_str(), e.to.as_str()) == ("K0", "K1")
+                || (e.from.as_str(), e.to.as_str()) == ("K1", "K0")
+        }) {
+            let p = path_of(e);
+            assert!(
+                p.windows(2).all(|w| (w[0].1 - w[1].1).abs() < 0.5),
+                "{dir}: {} -> {} is not one straight run: {p:?}",
+                e.from,
+                e.to
+            );
+        }
+    }
+}
+
+#[test]
 fn a_displaced_end_never_steps_back_over_another_edges_crossing_of_its_title_side() {
     // blocks/lr drawn BT: `pager`'s top lies partly under the chip of a
     // frame grown for the columns past it (X2.2), `ship -> pager` takes

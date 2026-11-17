@@ -2360,22 +2360,38 @@ pub(crate) fn channel_sizes(steps: &[(f64, f64)]) -> Vec<usize> {
 
 /// `group` (a channel's jogs, [`place_tracks`]) split into the sets
 /// whose rooms chain, in a block layout (`blocks`); else as it is.
+///
+/// A jog's room here is its plain room ([`Jog::plain`]), the widest
+/// [`place_channel`] may give it, not the room above its label it has
+/// now: a channel drops its steps back to their plain rooms when one of
+/// them is not drawn above its label or their order does not hold, and
+/// orders them by where they turn so their legs do not cross. Split by
+/// the rooms above their labels, a labelled step left alone in its set
+/// kept that room beside an unlabelled one, and two sets were stacked
+/// in the order of their rooms instead of their turns: a two-way pair
+/// between two blocks crossed, `uncross` swapped its ends and it was
+/// drawn as two stepped Zs, one up the target block's wall
+/// (blocks/twoway-noted drawn LR; a labelled return between a hub's
+/// labelled fan's steps went under the fan's last one, across its
+/// leg). Sets whose plain rooms do not chain lie apart whatever their
+/// channels do (a frame's border or title strip between them: the jog
+/// room's steps and the steps between two stacked frames).
 fn split_by_room(jogs: &[Jog], mut group: Vec<usize>, blocks: bool) -> Vec<Vec<usize>> {
     if !blocks || group.len() < 2 {
         return vec![group];
     }
+    let room = |k: usize| jogs[k].plain.0;
     group.sort_by(|&a, &b| {
-        jogs[a]
-            .room
+        room(a)
             .0
-            .total_cmp(&jogs[b].room.0)
+            .total_cmp(&room(b).0)
             .then(jogs[a].span().0.total_cmp(&jogs[b].span().0))
             .then(a.cmp(&b))
     });
     let mut out: Vec<Vec<usize>> = Vec::new();
     let mut reach = f64::NEG_INFINITY;
     for k in group {
-        let (lo, hi) = jogs[k].room;
+        let (lo, hi) = room(k);
         match out.last_mut() {
             Some(last) if lo < reach + TRACK_PITCH_MIN => {
                 last.push(k);
@@ -2584,13 +2600,14 @@ fn place_tracks(jogs: &mut [Jog], kept: &[(f64, (f64, f64))], blocks: bool) {
         s = t;
         // In a block layout one gap holds a frame's title strip and jog
         // room as well as the space between the frames: a channel's
-        // steps whose rooms do not meet (a two-way pair's steps between
-        // two stacked frames and its displaced steps in the lower
-        // frame's jog room) never share a track, and ordered as one
-        // stack they interleaved, the jog room's two steps 5 px apart
-        // (blocks/t9c-frames-8px-two-way drawn TD), which the router
-        // then took round the frames' lateral walls. Each set of steps
-        // whose rooms chain is a channel of its own there.
+        // steps whose plain rooms do not meet (a two-way pair's steps
+        // between two stacked frames and its displaced steps in the
+        // lower frame's jog room) never share a track, and ordered as
+        // one stack they interleaved, the jog room's two steps 5 px
+        // apart (blocks/t9c-frames-8px-two-way drawn TD), which the
+        // router then took round the frames' lateral walls. Each set of
+        // steps whose plain rooms chain is a channel of its own there
+        // ([`split_by_room`]).
         for group in split_by_room(jogs, group, blocks) {
             if group.len() > 1 {
                 place_channel(jogs, group, blocks);
