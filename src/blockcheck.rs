@@ -2475,6 +2475,64 @@ fn linked_frames_stand_further_apart_than_route_reads_as_stacked() {
     }
 }
 
+#[test]
+fn an_edge_between_stacked_blocks_crosses_their_title_sides_past_the_chips() {
+    // Two stacked blocks, each with a nested frame whose title chip
+    // covers its one member's flow side: the link leaves the lower
+    // block's title side (BT) or enters the upper one's (TD) at a
+    // column past the chip (2.8 rule 2) and steps back to its port in
+    // the gap between the two frames, where the layout keeps a track's
+    // room for that step (G1, G2). Before, the frame was too narrow for
+    // a column past the chip, the gap kept its bare floor, and drawn
+    // BT the link left `Alpha one` and `Alpha` through their right
+    // lateral walls and came into `Beta` and `Beta one` through theirs
+    // (4 lateral crossings; the package's start drew it up between the
+    // frames). No lateral crossing, and no line within `CHIP_SEP` of a
+    // title's ink (measured bold, as it is drawn), in any direction. The
+    // two-way variant only keeps clear of the titles: drawn TD or BT, its
+    // turned edge still goes round the right of both blocks (2 lateral
+    // crossings, 4 before), its step and its twin's sharing one gap.
+    for name in [
+        "t9-frames-8px",
+        "t9b-frames-8px-lr",
+        "t9c-frames-8px-two-way",
+    ] {
+        let src = std::fs::read_to_string(format!(
+            "{}/tests/fixtures/blocks/{name}.mmd",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        for dir in ["TD", "BT", "LR", "RL"] {
+            let g = graph(&in_direction(&src, dir));
+            let sc = block_scene(&g);
+            let q = crate::quality::measure(&g, &sc);
+            let two_way = name == "t9c-frames-8px-two-way" && matches!(dir, "TD" | "BT");
+            assert!(
+                q.lateral_x == 0 || two_way && q.lateral_x <= 2,
+                "{name} {dir}: lateral_x {}",
+                q.lateral_x
+            );
+            assert_eq!((q.edge_chip, q.frame_side), (0, 0), "{name} {dir}");
+            for c in &sc.clusters {
+                let ink = crate::layout::bold_text_width(&c.title) * crate::layout::TITLE_SCALE;
+                let ink_box = (c.x + 10.0, c.y + 5.0, c.x + 10.0 + ink, c.y + 21.0);
+                for e in &sc.edges {
+                    for w in path_of(e).windows(2) {
+                        let d = seg_box_dist(w[0], w[1], ink_box);
+                        assert!(
+                            d >= crate::clearance::CHIP_SEP - 0.5,
+                            "{name} {dir}: {} -> {} {d:.1} px from {}'s title",
+                            e.from,
+                            e.to,
+                            c.id
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
 // --- One frame function in three entry points (B12.10, F1 and F2).
 
 /// `src` with the direction of its `flowchart` header (the first line

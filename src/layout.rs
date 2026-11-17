@@ -4968,7 +4968,29 @@ fn place(
             }
             let held = FRAME_PAD - BORDER_GAP;
             let mut grew = false;
-            for (c, f) in f1_breadths(g, n, &bpos, &absize).iter().enumerate() {
+            // The displaced entries of each block at these breadths: a
+            // frame its members make broader than its title holds their
+            // columns too (X2.2; `f1_breadths`).
+            let cols: Vec<usize> = title_counts(
+                g,
+                &TitleRows {
+                    nc,
+                    apath: &apath,
+                    alayer: &alayer,
+                    absize: &absize,
+                    bpos: &bpos,
+                    border: &border_side,
+                    preds: &preds,
+                    succs: &succs,
+                    edge_chain: &edge_chain,
+                    cluster_span: &cluster_span,
+                    n,
+                },
+            )
+            .into_iter()
+            .map(|(entries, runs)| entries + runs)
+            .collect();
+            for (c, f) in f1_breadths(g, n, &bpos, &absize, &cols).iter().enumerate() {
                 let &Some((lo, hi, short)) = f else {
                     continue;
                 };
@@ -5470,6 +5492,39 @@ fn place(
     let track_need: Vec<f64> = {
         let mut need = vec![0.0f64; nlayers];
         if g.edge_paint_width.is_none() && g.drawn_edge_count() <= crate::router::ROUTE_MAX_EDGES {
+            // A block layout's displaced title-side entries (B12 2.8 rule
+            // 2): each crosses its block's title side at a column past
+            // the chip, so its step across the gap before that side runs
+            // from the breadth it comes from to that column, not to its
+            // member's own. Counted from the member, an entry straight
+            // above (below, BT) its port stepped nowhere, the gap between
+            // the two frames kept its bare floor, and the step back from
+            // the column had no room between their borders: the edge ran
+            // along the next block's title strip instead
+            // (blocks/t9-frames-8px drawn BT).
+            let displaced: BTreeMap<(usize, usize), f64> = match (block_paths, node_cluster) {
+                (Some(_), Some(nc)) if !horizontal => title_entries(
+                    g,
+                    &TitleRows {
+                        nc,
+                        apath: &apath,
+                        alayer: &alayer,
+                        absize: &absize,
+                        bpos: &bpos,
+                        border: &border_side,
+                        preds: &preds,
+                        succs: &succs,
+                        edge_chain: &edge_chain,
+                        cluster_span: &cluster_span,
+                        n,
+                    },
+                )
+                .1
+                .into_iter()
+                .map(|(ei, end, col)| ((ei, end), col))
+                .collect(),
+                _ => BTreeMap::new(),
+            };
             let mut spans: Vec<Vec<(f64, f64)>> = vec![Vec::new(); nlayers];
             // A block's members across the flow: the stretch of its frame
             // side a pin may stand on (see below).
@@ -5539,18 +5594,32 @@ fn place(
                 } else {
                     [None, None]
                 };
-                for w in path.windows(2) {
+                // The path's first and last element as displaced ends
+                // (in path order: the upper end first).
+                let (first_end, last_end) = if up { (1, 0) } else { (0, 1) };
+                let last = path.len() - 1;
+                for (j, w) in path.windows(2).enumerate() {
                     let (a, b) = (w[0], w[1]);
                     if alayer[b] != alayer[a] + 1 {
                         continue;
                     }
                     // (The pair across a cut block's border: its step runs
                     // from the pin, not from the undrawn run inside.)
-                    let (pa, pb) = match cut_gap {
+                    let (mut pa, mut pb) = match cut_gap {
                         [Some((c, gap)), _] if gap == alayer[b] => (pin_at(c, bpos[b]), bpos[b]),
                         [_, Some((c, gap))] if gap == alayer[b] => (bpos[a], pin_at(c, bpos[a])),
                         _ => (bpos[a], bpos[b]),
                     };
+                    if j == 0 {
+                        if let Some(&col) = displaced.get(&(ei, first_end)) {
+                            pa = col;
+                        }
+                    }
+                    if j + 1 == last {
+                        if let Some(&col) = displaced.get(&(ei, last_end)) {
+                            pb = col;
+                        }
+                    }
                     if (pa - pb).abs() <= 1.0 {
                         continue;
                     }
@@ -5897,10 +5966,19 @@ const TITLE_FIT_EPS: f64 = 0.5;
 /// `scene::frame_boxes` in layout coordinates, without the jog room,
 /// which grows the frame along the flow): its direct members' boxes
 /// and its nested frames with [`FRAME_PAD`] round them, deepest first,
-/// grown equally on both sides to [`crate::scene::title_fit_width`].
+/// grown equally on both sides to [`crate::scene::title_fit_width`],
+/// and, for a frame so grown whose title row takes `cols` displaced
+/// entries (by subgraph; missing 0), to the columns past its chip
+/// ([`crate::scene::title_column_width`]).
 /// Per subgraph `(lo, hi, shortfall)`: the grown box and what it grew
 /// by. `None` for a block without members.
-fn f1_breadths(g: &Graph, n: usize, bpos: &[f64], absize: &[f64]) -> Vec<Option<(f64, f64, f64)>> {
+fn f1_breadths(
+    g: &Graph,
+    n: usize,
+    bpos: &[f64],
+    absize: &[f64],
+    cols: &[usize],
+) -> Vec<Option<(f64, f64, f64)>> {
     let ns = g.subgraphs.len();
     let mut depth = vec![0usize; ns];
     for (i, d) in depth.iter_mut().enumerate() {
@@ -5931,9 +6009,22 @@ fn f1_breadths(g: &Graph, n: usize, bpos: &[f64], absize: &[f64]) -> Vec<Option<
             continue;
         }
         let (mut lo, mut hi) = (lo - FRAME_PAD, hi + FRAME_PAD);
-        let short = (crate::scene::title_fit_width(&g.subgraphs[i].title) - (hi - lo)).max(0.0);
+        let title = &g.subgraphs[i].title;
+        let least = crate::scene::title_fit_width(title);
+        let short = (least - (hi - lo)).max(0.0);
         lo -= short / 2.0;
         hi += short / 2.0;
+        // A frame its members make broader than its title, with
+        // displaced entries: as broad as their columns past the chip,
+        // grown on the chip's far side (`scene::frame_boxes`).
+        let k = cols.get(i).copied().unwrap_or(0);
+        let more = if short > 0.0 {
+            0.0
+        } else {
+            (crate::scene::title_column_width(title, k) - (hi - lo)).max(0.0)
+        };
+        hi += more;
+        let short = short + more;
         boxes[i] = Some((lo, hi, short));
     }
     boxes
@@ -6022,7 +6113,7 @@ fn title_chip(g: &Graph, t: &TitleRows, c: usize) -> Option<TitleChip> {
     // title's breadth: [`f1_breadths`]), then the channels inside it.
     // A frame grown to its title measures the title as it is drawn,
     // bold, as the scene does (`scene::title_text_width`).
-    let f1 = f1_breadths(g, t.n, t.bpos, t.absize)
+    let f1 = f1_breadths(g, t.n, t.bpos, t.absize, &[])
         .get(c)
         .copied()
         .flatten();
@@ -6228,11 +6319,30 @@ fn title_jogs(g: &Graph, t: &TitleRows) -> Vec<f64> {
 /// could not count them. A run under the chip is a dummy of a drawn
 /// part of a chain: not inside the frame a stand-in is cut back to.
 fn title_counts(g: &Graph, t: &TitleRows) -> Vec<(usize, usize)> {
+    title_entries(g, t).0
+}
+
+/// A displaced title-side entry ([`title_entries`]): its edge, which end
+/// of it lies on the title row, the column it crosses the title side at.
+type Displaced = (usize, usize, f64);
+
+/// [`title_counts`], and the displaced entries themselves: per entry its
+/// edge, which end of it lies on the title row (0 its source, 1 its
+/// target) and the column past the chip it crosses the title side at,
+/// as `ortho`'s title sides take them — the first a corner's rounding
+/// ([`crate::router::CORNER_R`]) past the chip's clearance, each next a
+/// [`crate::ortho::TRACK_PITCH`] further, in the order of the members
+/// and then of the breadths they come from. Of a member's entries the
+/// free stretch beside the chip holds the ones nearest it (the ports
+/// stage puts them there); the rest, on the chip's side, are displaced.
+fn title_entries(g: &Graph, t: &TitleRows) -> (Vec<(usize, usize)>, Vec<Displaced>) {
     let ns = g.subgraphs.len();
     let mut counts = vec![(0usize, 0usize); ns];
+    let mut displaced: Vec<Displaced> = Vec::new();
     let bt = matches!(g.direction, Direction::BT);
-    // Per real node, the layered neighbour of each edge drawn to it.
-    let mut ends: Vec<Vec<usize>> = vec![Vec::new(); t.n];
+    // Per real node, the layered neighbour of each edge drawn to it, with
+    // the edge and which of its ends the node is.
+    let mut ends: Vec<Vec<(usize, usize, usize)>> = vec![Vec::new(); t.n];
     // Per dummy, the frames its stand-in is cut back to (none for an edge's).
     let mut cut_of: Vec<[Option<usize>; 2]> = vec![[None, None]; t.bpos.len()];
     for (ei, e) in g.edges.iter().enumerate() {
@@ -6257,7 +6367,7 @@ fn title_counts(g: &Graph, t: &TitleRows) -> Vec<(usize, usize)> {
                 _ if t.preds[v].contains(&other) || t.succs[v].contains(&other) => other,
                 _ => continue,
             };
-            ends[v].push(u);
+            ends[v].push((u, ei, end));
         }
     }
     for &c in t.cluster_span.keys() {
@@ -6271,6 +6381,9 @@ fn title_counts(g: &Graph, t: &TitleRows) -> Vec<(usize, usize)> {
             continue;
         };
         let (mut k, mut runs) = (0usize, 0usize);
+        // This block's displaced entries: (member breadth, breadth the
+        // entry comes from, edge, end).
+        let mut out: Vec<(f64, f64, usize, usize)> = Vec::new();
         for v in 0..t.bpos.len() {
             if t.alayer[v] != row || t.border[v] != 0 || t.apath[v].len() != depth {
                 continue;
@@ -6285,9 +6398,10 @@ fn title_counts(g: &Graph, t: &TitleRows) -> Vec<(usize, usize)> {
                 runs += usize::from(drawn && t.bpos[v] > chip_lo && t.bpos[v] < chip_hi);
                 continue;
             }
-            let border = ends[v]
+            let mut border: Vec<(usize, usize, usize)> = ends[v]
                 .iter()
-                .filter(|&&u| {
+                .copied()
+                .filter(|&(u, _, _)| {
                     let title_side = if bt {
                         t.alayer[u] > row
                     } else {
@@ -6298,15 +6412,43 @@ fn title_counts(g: &Graph, t: &TitleRows) -> Vec<(usize, usize)> {
                         && !t.apath[u].contains(&c)
                         && !(u < t.n && t.nc[u].contains(&c))
                 })
-                .count();
-            if border == 0 || m1 <= chip_lo || m0 >= chip_hi {
+                .collect();
+            if border.is_empty() || m1 <= chip_lo || m0 >= chip_hi {
                 continue;
             }
-            k += border.saturating_sub(title_cap((m0, m1), (chip_lo, chip_hi)));
+            let over = border
+                .len()
+                .saturating_sub(title_cap((m0, m1), (chip_lo, chip_hi)));
+            k += over;
+            // The free stretch holds the entries nearest it: those on the
+            // chip's side of the member are displaced.
+            let free_right = m1 - chip_hi >= chip_lo - m0;
+            border.sort_by(|a, b| {
+                let key = |x: &(usize, usize, usize)| {
+                    if free_right {
+                        t.bpos[x.0]
+                    } else {
+                        -t.bpos[x.0]
+                    }
+                };
+                key(a).total_cmp(&key(b)).then(a.1.cmp(&b.1))
+            });
+            for &(u, ei, end) in border.iter().take(over) {
+                out.push((t.bpos[v], t.bpos[u], ei, end));
+            }
+        }
+        out.sort_by(|a, b| {
+            a.0.total_cmp(&b.0)
+                .then(a.1.total_cmp(&b.1))
+                .then(a.2.cmp(&b.2))
+        });
+        for (j, &(_, _, ei, end)) in out.iter().enumerate() {
+            let col = chip_hi + crate::router::CORNER_R + j as f64 * crate::ortho::TRACK_PITCH;
+            displaced.push((ei, end, col));
         }
         counts[c] = (k, runs);
     }
-    counts
+    (counts, displaced)
 }
 
 /// The largest node outside every subgraph, when there clearly is one:

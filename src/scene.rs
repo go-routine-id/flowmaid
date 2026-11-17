@@ -4499,11 +4499,13 @@ fn scene_clustered(
         renest_boxes(g, &depth, &mut boxes);
         // A frame F1 grew to its title stays title-bound only while what
         // it covers besides (the channels inside it) leaves it no broader
-        // than the title: a broader one keeps the estimate every frame has.
+        // than the frame function made it (its title, and the columns of
+        // its displaced entries past the chip): a broader one keeps the
+        // estimate every frame has.
         let mut bound = bound;
         for (si, b) in bound.iter_mut().enumerate() {
-            if let Some((_, _, w, _)) = boxes[si] {
-                *b = *b && w <= title_fit_width(&g.subgraphs[si].title) + TITLE_BOUND_EPS;
+            if let (Some((_, _, w, _)), Some((_, _, w0, _))) = (boxes[si], raw[si]) {
+                *b = *b && w <= w0 + TITLE_BOUND_EPS;
             }
         }
         let out = clusters_of(g, &boxes, &depth, &bound);
@@ -6233,6 +6235,9 @@ fn keep_inner_room(
         };
         let (ob0, ob1, ol0, ol1) = span(o);
         let (fb0, fb1, fl0, fl1) = span(&clusters[k]);
+        // (The frame function's width: a title-bound frame stays so while
+        // the room kept below leaves it no broader.)
+        let w0 = clusters[k].w;
         let (mut b0, mut b1) = (fb0, fb1);
         for (i, e) in edges.iter().enumerate() {
             if !kept.get(i).copied().unwrap_or(false) {
@@ -6273,7 +6278,7 @@ fn keep_inner_room(
             (c.x, c.w) = (b0, b1 - b0);
         }
         if c.bold_title {
-            c.bold_title = c.w <= title_fit_width(&c.title) + TITLE_BOUND_EPS;
+            c.bold_title = c.w <= w0 + TITLE_BOUND_EPS;
         }
     }
 }
@@ -6501,6 +6506,47 @@ pub(crate) fn title_fit_width(title: &str) -> f64 {
     crate::layout::bold_text_width(title) * TITLE_SCALE + 8.0 + 2.0 * TITLE_INSET
 }
 
+/// How many displaced title-side entries a frame's jog room `jog` holds
+/// (B12 F2: [`crate::ortho::ROW_CLEAR`] for the first, a
+/// [`crate::ortho::TRACK_PITCH`] for each past it; 0 without jog room).
+pub(crate) fn jog_entries(jog: f64) -> usize {
+    if jog <= 0.0 {
+        return 0;
+    }
+    ((jog - crate::ortho::ROW_CLEAR) / crate::ortho::TRACK_PITCH).round() as usize + 1
+}
+
+/// The least breadth (px) of a block's frame whose title row takes `k`
+/// displaced entries (B12 F2, X2.2's breadth): its chip
+/// ([`crate::clearance::CHIP_INSET_X`], the title as it is drawn, bold,
+/// [`crate::clearance::CHIP_PAD_W`]) and, past the chip's clearance
+/// [`crate::ortho::CHIP_CLEAR`], a corner's rounding
+/// ([`crate::router::CORNER_R`]) to the first displaced column, a
+/// [`crate::ortho::TRACK_PITCH`] to each next one and [`LANE_PAD`] to
+/// the frame's side: where `ortho` crosses such an entry over the title
+/// side (its title sides take no column that would leave the frame). A
+/// frame its members make broader than its title but not that broad
+/// grows to it on the chip's far side ([`frame_boxes`]), and the layout
+/// reserves it (`layout::f1_breadths`): without the column the router
+/// took the entry round the chip and through the frame's lateral wall
+/// (blocks/t9-frames-8px drawn BT). A frame F1 grew to its title is not
+/// grown for them (not built: the 26.5 px it adds to a title-bound
+/// frame put the hub-fed row of `layout`'s narrowing test past its
+/// bound), and its entries still go round. 0 without displaced entries.
+pub(crate) fn title_column_width(title: &str, k: usize) -> f64 {
+    use crate::clearance::{CHIP_INSET_X, CHIP_PAD_W};
+    if k == 0 || title.trim().is_empty() {
+        return 0.0;
+    }
+    CHIP_INSET_X
+        + crate::layout::bold_text_width(title) * TITLE_SCALE
+        + CHIP_PAD_W
+        + crate::ortho::CHIP_CLEAR
+        + crate::router::CORNER_R
+        + (k - 1) as f64 * crate::ortho::TRACK_PITCH
+        + LANE_PAD
+}
+
 /// How far a frame's top border lies above its first row's box without
 /// jog room: its pad and its title strip (`frame_boxes`). Test-only.
 #[cfg(test)]
@@ -6522,12 +6568,15 @@ pub(crate) fn frame_head_room(title: &str) -> f64 {
 ///   both sides to it: a block's title is never cut while its frame can
 ///   grow (0.38 cut a title wider than its block where the canvas
 ///   ended, and a one-column LR block's title ran over its neighbour).
+///   A frame its members make broader than its title but too narrow
+///   for the columns its displaced entries cross the title side at is
+///   grown on the chip's far side to them ([`title_column_width`]).
 ///   Not yet built with it: the layout keeps the gap beside a grown
 ///   frame clear of the frame, not of the edge labels it places there
 ///   (an LR frame grown along the flow can take a label in: B12 G3), and
 ///   a frame grown to its title leaves no column past the chip for an
 ///   entry the chip covers (the router takes it in through a lateral
-///   wall: X2.2's breadth).
+///   wall: X2.2's breadth for such a frame).
 /// - *F2*: the jog room, on the title side (`layout::title_jogs`): the
 ///   track room in which the entries that cannot cross the title side
 ///   beside the chip jog to their ports.
@@ -6588,6 +6637,20 @@ fn frame_boxes(
             x -= (least - w) / 2.0;
             w = least;
             bound[i] = true;
+        }
+        // A frame its members make broader than its title, with
+        // displaced entries: as broad as their columns past the chip
+        // (X2.2's breadth), grown on the chip's far side, so the chip and
+        // the members under it keep the places F2 counted them at. (A
+        // frame grown to its title is not grown for them: its title
+        // row's entries still go round, see `title_column_width`.)
+        let cols = if title_fit && !bound[i] {
+            title_column_width(&g.subgraphs[i].title, jog_entries(jog))
+        } else {
+            0.0
+        };
+        if cols > w {
+            w = cols;
         }
         boxes[i] = Some((
             x,
@@ -6674,14 +6737,14 @@ fn route_lane_clusters(
     }
     renest_boxes(g, depth, &mut boxes);
     // A frame F1 grew to its title stays title-bound only while what it
-    // covers besides leaves it no broader than the title, as in
-    // `scene_clustered`.
+    // covers besides leaves it no broader than the frame function made
+    // it, as in `scene_clustered`.
     let bound: Vec<bool> = bound
         .iter()
         .zip(&boxes)
-        .zip(&g.subgraphs)
-        .map(|((&b, f), s)| {
-            b && f.is_some_and(|(_, _, w, _)| w <= title_fit_width(&s.title) + TITLE_BOUND_EPS)
+        .zip(raw)
+        .map(|((&b, f), f0)| {
+            b && matches!((f, f0), (Some((_, _, w, _)), Some((_, _, w0, _))) if *w <= *w0 + TITLE_BOUND_EPS)
         })
         .collect();
     clusters_of(g, &boxes, depth, &bound)
