@@ -3482,6 +3482,7 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
             let rest = rest.trim();
             // `class Name {` opens a block; `class Name` just declares.
             if let Some(name) = rest.strip_suffix('{') {
+                check_declared_name(name, lineno)?;
                 let ci = declare_class(&mut d, name.trim());
                 open = Some((ci, lineno));
             } else {
@@ -3498,6 +3499,7 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
                     c == ',' && !depth_odd && !in_tick
                 });
                 for name in names.map(str::trim).filter(|n| !n.is_empty()) {
+                    check_declared_name(name, lineno)?;
                     declare_class(&mut d, name);
                 }
             }
@@ -3507,6 +3509,7 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
         if let Some(a) = line.strip_prefix("<<").and_then(|r| r.split_once(">>")) {
             let (a, name) = (a.0.trim(), a.1.trim());
             if !a.is_empty() && !name.is_empty() {
+                check_declared_name(name, lineno)?;
                 let ci = declare_class(&mut d, name);
                 d.classes[ci].annotations.push(a.to_string());
                 continue;
@@ -3637,11 +3640,43 @@ fn ensure_generic_class(d: &mut ClassDiagram, id: &str, generic: Option<&str>) -
 }
 
 /// The class a `class …` / `<<stereotype>> …` statement declares. Any
-/// text is taken as a name there, as it always was; a [`class_name`]
-/// spelling is read as one (backticks stripped, generic split off).
+/// text is taken as a name there, as it always was, but for a stray dot
+/// ([`check_declared_name`]); a [`class_name`] spelling is read as one
+/// (backticks stripped, generic split off).
 fn declare_class(d: &mut ClassDiagram, name: &str) -> usize {
     let (id, generic) = class_name(name).unwrap_or_else(|| split_generic(name));
     ensure_generic_class(d, id, generic)
+}
+
+/// Mermaid's parse error for a `class …` / `<<stereotype>> …` statement
+/// whose name starts or ends with a dot or has two in a row (`A.`, `.A`,
+/// `A..B`, `A...B`, `A.B.`): a dot only joins the parts of a dotted name
+/// ([`is_bare_class_name`], `a.b.C`) and `..` is the dotted line, so
+/// mermaid rejects such a declaration where flowmaid used to take the
+/// name as written. A backtick name (`` `A.` ``) is taken as written, as
+/// in mermaid, and only the name itself is read, before its generic
+/// (`~T~`), label (`["…"]`) or `:::` style.
+fn check_declared_name(name: &str, lineno: usize) -> Result<(), ParseError> {
+    let name = name.trim();
+    if name.starts_with('`') {
+        return Ok(());
+    }
+    let end = ["~", "[", ":::"]
+        .iter()
+        .filter_map(|m| name.find(m))
+        .min()
+        .unwrap_or(name.len());
+    let bare = &name[..end];
+    if bare.contains('.') && bare.split('.').any(|part| part.trim().is_empty()) {
+        return Err(err(
+            lineno,
+            format!(
+                "'{bare}' is no class name: a dot joins two parts of a name, \
+                 as in 'com.example.Order', and '..' is the dotted line"
+            ),
+        ));
+    }
+    Ok(())
 }
 
 /// The stereotype of a `<<interface>>` member line, without guillemets.

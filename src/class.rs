@@ -4908,6 +4908,98 @@ mod tests {
         }
     }
 
+    /// A `class` (or `<<stereotype>>`) statement whose name starts or ends
+    /// with a dot or has two in a row is a parse error, as in mermaid 12.2
+    /// (each form below checked against it); the dotted names mermaid
+    /// takes, and backtick names, still parse.
+    #[test]
+    fn declared_names_with_a_stray_dot_are_errors() {
+        for (bad, line) in [
+            ("class A.", 2),
+            ("class .A", 2),
+            ("class A..B", 2),
+            ("class A...B", 2),
+            ("class A....B", 2),
+            ("class A..", 2),
+            ("class ..A", 2),
+            ("class A.B.", 2),
+            ("class .A.B", 2),
+            ("class A..B.C", 2),
+            ("class .", 2),
+            ("class A .", 2),
+            ("class  .A", 2),
+            ("class A . . B", 2),
+            ("class A-.", 2),
+            ("class A.~T~", 2),
+            ("class A.B.~T~", 2),
+            ("class A..B~T~", 2),
+            ("class A.:::foo", 2),
+            ("class A.B.:::foo", 2),
+            ("class A..B:::foo", 2),
+            ("class A.[\"lbl\"]", 2),
+            ("class A., B", 2),
+            ("class A, B.", 2),
+            ("class A, .B", 2),
+            ("class A. {\n}", 2),
+            ("class .A {\n}", 2),
+            ("class A...B {\n}", 2),
+            ("<<interface>> A.", 2),
+            ("<<interface>> .A", 2),
+            ("class A\nclass B.", 3),
+            ("class A.\nA --> B", 2),
+        ] {
+            let e = parse_document(&format!("classDiagram\n{bad}"))
+                .err()
+                .unwrap_or_else(|| panic!("{bad:?} parsed"));
+            assert_eq!(e.line, line, "{bad:?}: {e}");
+            assert!(e.message.contains("is no class name"), "{bad:?}: {e}");
+        }
+        // The error names what it read as the name.
+        let e = parse_document("classDiagram\nclass A..B~T~").unwrap_err();
+        assert!(e.message.starts_with("'A..B' is no class name"), "{e}");
+        for (good, names) in [
+            ("class A.B", vec!["A.B"]),
+            ("class a.b.C", vec!["a.b.C"]),
+            ("class A.-B", vec!["A.-B"]),
+            ("class A-.B", vec!["A-.B"]),
+            ("class A._B", vec!["A._B"]),
+            ("class A.1", vec!["A.1"]),
+            ("class 1.A", vec!["1.A"]),
+            ("class A.-", vec!["A.-"]),
+            ("class A.B-", vec!["A.B-"]),
+            ("class A.B~T~", vec!["A.B"]),
+            ("class Map~a.b~", vec!["Map"]),
+            ("class A.B {\n+x int\n}", vec!["A.B"]),
+            ("class A.B.C {\n}", vec!["A.B.C"]),
+            ("class `A.`", vec!["A."]),
+            ("class `.A`", vec![".A"]),
+            ("class `A..B`", vec!["A..B"]),
+            ("class A.B {\n}\n<<interface>> A.B", vec!["A.B"]),
+            ("A.B --> C", vec!["A.B", "C"]),
+            ("A..B", vec!["A", "B"]),
+        ] {
+            let d = cd(&format!("classDiagram\n{good}"));
+            let got: Vec<&str> = d.classes.iter().map(|c| c.name.as_str()).collect();
+            assert_eq!(got, names, "{good:?}");
+        }
+        // Mermaid takes these too (spaces round a dot, a label, a style);
+        // flowmaid keeps parsing them as it did.
+        for good in [
+            "class A. B",
+            "class A .B",
+            "class A . B",
+            "class A.B[\"lbl\"]",
+            "class A.B[\"x.y\"]",
+            "class A[\"x.\"]",
+            "class A.B:::foo",
+        ] {
+            assert!(
+                parse_document(&format!("classDiagram\n{good}")).is_ok(),
+                "{good:?}"
+            );
+        }
+    }
+
     /// Backtick names are mermaid's literal class names: the text
     /// between the backticks is the class, so it may hold spaces,
     /// colons, quotes or operators.

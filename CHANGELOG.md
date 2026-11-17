@@ -39,7 +39,18 @@ project adheres to [Semantic Versioning](https://semver.org/).
   left). Picking agrees with the drawn coordinates. Static `scene()`
   output is byte for byte as before, and so is every routed SVG whose
   `viewBox` stays at `0 0`; the others draw the same picture as before,
-  with the offset in the `viewBox` instead of in every coordinate.
+  with the offset in the `viewBox` instead of in every coordinate (a
+  class diagram's cardinalities are now placed on the scene as it
+  stands, where `class::card_spots` reports them, so after such a drag
+  one can sit elsewhere than before).
+- **Class diagrams: a declared name with a stray dot is an error, as in
+  mermaid.** `class A.`, `class .A`, `class A..B`, `class A...B`, `class
+  A.B.` (and the same in a `class … {` block, a `class A, B.` list, a
+  name with a generic, label or `:::` style, and `<<interface>> A.`)
+  give a parse error naming the line, as mermaid 12.2 does; they were
+  taken as a class of that name. Dotted names mermaid takes still work
+  (`class a.b.C`, `class A.B~T~`, `class A.-B`), and so do backtick
+  names (`` class `A.` ``).
 
 ### Documentation
 
