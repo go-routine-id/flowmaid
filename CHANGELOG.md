@@ -27,25 +27,20 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- **A drag past the top-left no longer moves the rest of the drawing**
-  (#76). `route()` and `route_partial()` (and the class and ER `route`)
-  keep every position as given, but the SVG moved the whole drawing
-  onto a canvas starting at `0 0`: a class or ER diagram's when a box
-  was dragged past the top-left margin, a flowchart's or state
-  diagram's by however far its routed drawing started off the margin.
-  So the dragged node lagged the pointer and a host had to infer the
-  offset to map the pointer back. Now the SVG's user space is scene
-  space for a routed scene: every node is drawn at the position given,
-  nothing else moves, and the `viewBox` carries the offset, starting
-  at a negative origin where the drawing reaches past the margin (by
-  exactly that much, also `Scene::origin`; the canvas grows up and
-  left). Picking agrees with the drawn coordinates. Static `scene()`
-  output is byte for byte as before, and so is every routed SVG whose
-  `viewBox` stays at `0 0`; the others draw the same picture as before,
-  with the offset in the `viewBox` instead of in every coordinate (a
-  class diagram's cardinalities are now placed on the scene as it
-  stands, where `class::card_spots` reports them, so after such a drag
-  one can sit elsewhere than before).
+- **A routed SVG draws every node where the host put it** (#76).
+  `route()`, `route_partial()` and the class and ER `route` keep their
+  positions, but the SVG moved the whole drawing to start at the margin
+  of a `0 0` canvas: after a drag past the top-left margin, and for a
+  flowchart or state diagram whenever its routed drawing did not start
+  at the margin, even an undragged `route()` at the laid-out centres
+  (nodes up to about 100 px from where the static SVG draws them). So
+  a dragged node lagged the pointer. Now SVG user space is scene space
+  and the `viewBox` carries the offset (negative past the top-left
+  margin; `Scene::origin` holds the canvas corner); picking agrees. Static output is
+  unchanged, and so is every routed SVG whose `viewBox` starts at `0 0`.
+  Other routed SVGs draw the same picture with new bytes; only a class
+  diagram dragged past the top-left can place a cardinality elsewhere,
+  where `class::card_spots` reports it.
 - **Class diagrams: a declared name with a stray dot is an error, as in
   mermaid.** `class A.`, `class .A`, `class A..B`, `class A...B`, `class
   A.B.` (and the same in a `class … {` block, a `class A, B.` list, a

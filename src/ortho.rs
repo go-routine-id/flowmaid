@@ -537,7 +537,7 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
     // their title chips (breadth span, flow span).
     let mut walls: Vec<Wall> = Vec::new();
     if !sc.clusters.is_empty() {
-        let right = sc.width;
+        let right = sc.origin.0 + sc.width;
         let clear = if cx.blocks {
             BLOCK_BORDER_CLEAR
         } else {
@@ -1370,7 +1370,7 @@ impl TitleSides {
         if !cx.blocks || !matches!(dir, Direction::TD | Direction::BT) || sc.clusters.is_empty() {
             return out;
         }
-        let right = sc.width;
+        let right = sc.origin.0 + sc.width;
         out.sides = (0..sc.clusters.len())
             .map(|ci| {
                 if sc.clusters[ci].title.trim().is_empty() {

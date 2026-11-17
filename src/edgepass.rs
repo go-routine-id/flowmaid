@@ -1227,10 +1227,12 @@ pub(crate) fn refit(sc: &mut Scene, mode: Mode, static_fit: bool) {
         // The host's positions stay as given (#76): a drawing reaching
         // into the top-left margin grows the canvas up or left (its
         // origin goes negative) and moves nothing; the far sides only
-        // grow, as before. Float noise past the margin is no overflow.
+        // grow, as before. An overflow that does not show in the SVG is
+        // none: `to_svg` moves such a drawing onto the margin as before.
         let far = (sc.origin.0 + sc.width, sc.origin.1 + sc.height);
         let past = |min: f64, o: f64| {
-            if MARGIN - min > FIT_EPS {
+            let reach = MARGIN - min;
+            if reach > 0.0 && crate::scene::offset_shows(reach) {
                 o.min(min - MARGIN)
             } else {
                 o
@@ -1257,7 +1259,7 @@ pub(crate) fn refit(sc: &mut Scene, mode: Mode, static_fit: bool) {
 
 /// How far (px) [`refit`] lets a static flowchart's drawing sit off its
 /// exact fit before it moves it: float noise, far below a pixel.
-pub(crate) const FIT_EPS: f64 = 1e-6;
+const FIT_EPS: f64 = 1e-6;
 
 #[cfg(test)]
 mod tests {
