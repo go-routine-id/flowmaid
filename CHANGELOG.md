@@ -35,10 +35,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
   onto a `0 0` canvas, by an amount it did not expose, so a dragged node
   lagged the pointer. Now a routed drawing that reaches past the margin,
   on either axis, keeps its coordinates on both, and the `viewBox` starts
-  the margin before the drawing: before zero by the overflow, as
-  `Scene::origin` does, and on a flowchart's other axis after zero where
-  the drawing starts further in. SVG user space is then scene space, so a
-  pick at a node's drawn centre picks it. Static output is unchanged, and
+  the margin before the drawing: before zero by the overflow, and on a
+  flowchart's other axis after zero where the drawing starts further in.
+  SVG user space is then scene space, so a pointer mapped through the
+  `viewBox` lands on scene coordinates and a pick at a node's drawn centre
+  picks it. Map through the `viewBox`, not `Scene::origin`: the origin
+  keeps the furthest overflow of a chain of `route_partial` frames, so it
+  can lie before the `viewBox` of a later frame. Static output is unchanged, and
   so is every routed SVG that does not reach past the top-left margin. A
   routed class diagram that reaches past it can draw a cardinality
   elsewhere, at the spot `class::card_spots` reports, and the glyph of a

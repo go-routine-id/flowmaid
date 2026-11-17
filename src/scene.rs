@@ -238,14 +238,17 @@ pub struct Scene {
     /// drawing instead: where a routed drawing reaches
     /// past the top-left margin, on either axis, it keeps the drawing's
     /// coordinates on both axes and starts the `viewBox` the margin before
-    /// the drawing (at `origin` on an axis that overflows, possibly after
+    /// the drawing (before zero on an axis that overflows, possibly after
     /// zero on the other); any other drawing it moves onto the margin of a
     /// `0 0` `viewBox`, as it always did (so after a chain of
     /// [`route_partial`] frames whose base overflowed, `origin` can be
     /// negative while the `viewBox` starts at `0 0`). So wherever the
     /// `viewBox` does not start at `0 0`, SVG user space is scene space: a
     /// host maps a pointer through the `viewBox` (the SVG's screen
-    /// transform) straight into scene coordinates for picking.
+    /// transform) straight into scene coordinates for picking. Map through
+    /// the `viewBox`, not through `origin`: `origin` keeps the furthest
+    /// overflow of a chain of [`route_partial`] frames, so it can lie
+    /// before the `viewBox` origin of a later frame.
     pub origin: (f64, f64),
     /// Set by the edge stages of [`route`] / [`route_partial`] (and of the
     /// class and ER `route`): its positions are the host's, so where the
