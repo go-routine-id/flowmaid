@@ -301,6 +301,11 @@ const NUDGE_SCORES: usize = 5;
 /// better than a line squeezed along a border (G4 over G6, which asks
 /// for a clear channel).
 const HUG_TRADE: f64 = 120.0;
+
+/// What a TD or BT block layout takes off [`CLEAR_GAP`] before a run
+/// beside a frame's border counts as riding it ([`World::hug_gap`]): the
+/// half pixel of air `ortho::TRACK_PITCH` adds to a stroke's clearance.
+const HUG_AIR: f64 = 0.5;
 /// The clearance multiplier of the retry when the first route's
 /// smoothed curve still touches something.
 const RETRY_CLEAR_SCALE: f64 = 1.5;
@@ -567,6 +572,16 @@ struct World {
     /// ([`NODE_CLEARANCE`]), as the wider rule costs a drag frame
     /// reroutes that lie on other edges instead (G1, G13).
     chip_reach: f64,
+    /// How near (px) a run beside a frame's border must come to it to
+    /// count as riding it ([`side_run`]; a node's side: [`CLEAR_GAP`]):
+    /// [`CLEAR_GAP`], and in a TD or BT block layout half a pixel less
+    /// ([`HUG_AIR`]). There a frame grown over an inner leg (B12 2.7 F3)
+    /// stands exactly [`crate::scene::LANE_PAD`] (= [`CLEAR_GAP`]) off the
+    /// leg's column, and the simplified path's rounded corner put the
+    /// leg's middle a fraction of a pixel inside that: a long chain
+    /// column beside a frame's wall read as riding it, the labelled edge
+    /// was searched for room and left the frame through that wall.
+    hug_gap: f64,
     /// Every node's box, index-parallel with `sc.nodes`, then the box of
     /// every self-loop (report P0 #13): a loop is drawn beside its node,
     /// and a path through it reads as running through the node.
@@ -792,6 +807,7 @@ impl World {
             dir: g.direction,
             flow: g.edge_paint_width.is_none(),
             chip_reach: CHIP_SEP,
+            hug_gap: CLEAR_GAP,
             nodes,
             owner,
             frames,
@@ -1001,18 +1017,18 @@ impl World {
             .iter()
             .enumerate()
             .filter(|(f, _)| !end_frames.contains(&Some(*f)))
-            .map(|(_, &r)| r)
+            .map(|(_, &r)| (r, self.hug_gap))
             .chain(
                 self.nodes
                     .iter()
                     .enumerate()
                     .filter(|(v, _)| !ends.contains(&Some(self.owner[*v])))
-                    .map(|(_, n)| n.0),
+                    .map(|(_, n)| (n.0, CLEAR_GAP)),
             );
-        for r in sides.filter(|_| s.node == 0) {
+        for (r, gap) in sides.filter(|_| s.node == 0) {
             if overlaps(probe, grow(r, EPS)) {
                 self.look(simple.len());
-                s.hug += side_run(r, simple, &own).round() as usize;
+                s.hug += side_run(r, simple, &own, gap).round() as usize;
             }
         }
         // Backtracking along the flow, both ways, as the harness counts.
@@ -1657,11 +1673,12 @@ fn detour(
 }
 
 /// How long (px) the polyline `pts` runs along the sides of `r`,
-/// nearly parallel to one and within [`CLEAR_GAP`] of it (inside or
-/// out), not counting what lies within [`PORT_ZONE`] of a rect in `own`
-/// (the edge's own ends): summed over the sides ridden for more than
-/// [`TIGHT_RUN_MIN`], as the harness counts a hug.
-fn side_run(r: R, pts: &[Pt], own: &[R]) -> f64 {
+/// nearly parallel to one and within `gap` of it (inside or out;
+/// [`CLEAR_GAP`], see [`World::hug_gap`]), not counting what lies within
+/// [`PORT_ZONE`] of a rect in `own` (the edge's own ends): summed over
+/// the sides ridden for more than [`TIGHT_RUN_MIN`], as the harness
+/// counts a hug.
+fn side_run(r: R, pts: &[Pt], own: &[R], gap: f64) -> f64 {
     // Per side (top, bottom, left, right): px along it.
     let mut run = [0.0f64; 4];
     for w in pts.windows(2) {
@@ -1704,7 +1721,7 @@ fn side_run(r: R, pts: &[Pt], own: &[R]) -> f64 {
         }
         let len = (b - a - cut).max(0.0);
         for (k, line) in lines.into_iter().enumerate() {
-            if (c - line).abs() < CLEAR_GAP {
+            if (c - line).abs() < gap {
                 run[k0 + k] += len;
             }
         }
@@ -5168,6 +5185,14 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
     if mode == Mode::Routed {
         w.chip_reach = NODE_CLEARANCE;
     }
+    if cx.blocks
+        && matches!(
+            g.direction,
+            crate::model::Direction::TD | crate::model::Direction::BT
+        )
+    {
+        w.hug_gap = CLEAR_GAP - HUG_AIR;
+    }
     let infos: Vec<Option<Info>> = (0..ne).map(|i| info_of(g, &w, cx, i)).collect();
     let polys: Vec<Vec<Pt>> = sc.edges.iter().map(edge_polyline).collect();
     let mut accepted = Accepted::new(ne, w.outer);
@@ -6523,6 +6548,7 @@ mod tests {
             dir: crate::model::Direction::LR,
             flow: true,
             chip_reach: CHIP_SEP,
+            hug_gap: CLEAR_GAP,
             nodes: nodes.iter().map(|&r| (r, Shape::Rect)).collect(),
             owner: (0..nodes.len()).collect(),
             frames: frames.to_vec(),
@@ -6679,6 +6705,23 @@ mod tests {
     }
 
     #[test]
+    fn a_leg_a_clearance_inside_a_frame_wall_rides_it_only_outside_a_block_layout() {
+        // A frame grown over an inner leg stands `LANE_PAD` off the leg's
+        // column; the simplified path's rounded corner leaves the middle
+        // of a long leg a fraction of a pixel nearer (here 11.9 px). At
+        // `CLEAR_GAP` that reads as riding the wall; in a TD or BT block
+        // layout ([`World::hug_gap`]) it does not, and a run that really
+        // comes nearer than half a pixel inside the clearance still does.
+        let frame = (100.0, 100.0, 300.0, 400.0);
+        let leg = |x: f64| vec![(x, 120.0), (x + 0.2, 266.0)];
+        let at = 300.0 - crate::scene::LANE_PAD;
+        assert!(side_run(frame, &leg(at), &[], CLEAR_GAP) > TIGHT_RUN_MIN);
+        assert_eq!(side_run(frame, &leg(at), &[], CLEAR_GAP - HUG_AIR), 0.0);
+        let near = 300.0 - 11.0;
+        assert!(side_run(frame, &leg(near), &[], CLEAR_GAP - HUG_AIR) > TIGHT_RUN_MIN);
+    }
+
+    #[test]
     fn spread_moves_a_leg_off_a_frame_border() {
         let frame = (100.0, 100.0, 300.0, 300.0);
         let (a, b) = ((0.0, 30.0, 20.0, 70.0), (420.0, 330.0, 440.0, 370.0));
@@ -6692,14 +6735,14 @@ mod tests {
             (400.0, 350.0),
             (420.0, 350.0),
         ];
-        assert!(side_run(frame, &path, &[]) > TIGHT_RUN_MIN);
+        assert!(side_run(frame, &path, &[], CLEAR_GAP) > TIGHT_RUN_MIN);
         let infos = vec![info(EndRef::Node(0), EndRef::Node(1))];
         let mut routes = vec![Some(path)];
         spread_all(&w, &infos, &mut routes);
         let moved = routes[0].as_ref().unwrap();
         assert!(moved[2].1 <= 100.0 - FRAME_SEP, "{moved:?}");
         assert_eq!(moved[2].1, moved[3].1, "the leg stays straight");
-        assert_eq!(side_run(frame, moved, &[]), 0.0);
+        assert_eq!(side_run(frame, moved, &[], CLEAR_GAP), 0.0);
         // The ports stay where they are.
         assert_eq!((moved[0], moved[5]), ((20.0, 50.0), (420.0, 350.0)));
     }
