@@ -974,6 +974,29 @@ pub fn text_width(s: &str) -> f64 {
         .fold(0.0, f64::max)
 }
 
+/// [`text_width`] for text drawn bold throughout, as a subgraph title is
+/// (`font-weight="bold"`): the widest line's advances from
+/// [`bold_line_width`]'s Helvetica-Bold table, in px at
+/// [`TEXT_CALIBRATION`]. Style tags are interpreted (every run is bold
+/// already), their characters count zero.
+///
+/// [`text_width`]'s ~6% for a `<b>` run is too little for a whole bold
+/// line: Helvetica-Bold advances run about 10% past the regular ones on
+/// lowercase text (`n`, `o`, `u` 611 against 556 per 1000 em, `r` 389
+/// against 333), so a frame sized by the regular estimate let a long
+/// bold title run past its border (blocks/title-hidden: 12 px at the
+/// title font).
+pub(crate) fn bold_text_width(s: &str) -> f64 {
+    s.split('\n')
+        .map(|l| {
+            if !l.contains(['<', '$']) {
+                return bold_line_width(l);
+            }
+            spans(l).iter().map(|(t, _, _)| bold_line_width(t)).sum()
+        })
+        .fold(0.0, f64::max)
+}
+
 /// Split one label line into styled runs `(text, bold, italic)`,
 /// interpreting `<b>`/`<strong>` and `<i>`/`<em>` tags the way
 /// mermaid does. Unknown tags stay literal text; unclosed tags just
@@ -1268,6 +1291,55 @@ fn line_width(s: &str) -> f64 {
             '\u{2190}'..='\u{21FF}' | '\u{2600}'..='\u{27BF}' => EM,
             c if (c as u32) >= 0x2E80 => 14.0, // CJK, emoji, wide symbols
             _ => 7.8,
+        })
+        .sum()
+}
+
+/// [`line_width`] for a bold line ([`bold_text_width`]): Helvetica-Bold
+/// advance widths (its AFM, per 1000 em) at [`TEXT_CALIBRATION`] px,
+/// rounded up to 0.1 px, so the estimate never falls short of a browser
+/// drawing the line in Helvetica or a metric-compatible face (Arial,
+/// Liberation Sans) by more than a glyph's ink past its advance.
+/// Characters outside the table count as a wide lowercase letter.
+fn bold_line_width(s: &str) -> f64 {
+    const EM: f64 = TEXT_CALIBRATION;
+    s.chars()
+        .map(|c| match c {
+            // 278
+            'i' | 'j' | 'l' | ' ' | '.' | ',' | '/' | '\\' | 'I' | '\'' | '|' => 3.9,
+            // 333
+            '!' | ':' | ';' | 'f' | 't' | '(' | ')' | '[' | ']' | '-' | '`' => 4.7,
+            // 389
+            'r' | '*' | '{' | '}' => 5.5,
+            '"' => 6.7,
+            'z' => 7.0,
+            // 556
+            'a' | 'c' | 'e' | 'k' | 's' | 'v' | 'x' | 'y' | 'J' | '0'..='9' | '#' | '$' | '_' => {
+                7.8
+            }
+            // 584
+            '+' | '<' | '=' | '>' | '~' | '^' => 8.2,
+            // 611
+            'b' | 'd' | 'g' | 'h' | 'n' | 'o' | 'p' | 'q' | 'u' | '?' | 'F' | 'L' | 'T' | 'Z' => {
+                8.6
+            }
+            // 667
+            'E' | 'P' | 'S' | 'V' | 'X' | 'Y' => 9.4,
+            // 722
+            'A' | 'B' | 'C' | 'D' | 'H' | 'K' | 'N' | 'R' | 'U' | '&' => 10.2,
+            // 778
+            'w' | 'G' | 'O' | 'Q' => 10.9,
+            'M' => 11.7,
+            'm' | '%' => 12.5,
+            'W' => 13.3,
+            '@' => 13.7,
+            // As [`line_width`]: joiners draw nothing, symbols and wide
+            // scripts take about an em.
+            '\u{200D}' | '\u{FE0F}' => 0.0,
+            '—' => EM,
+            '\u{2190}'..='\u{21FF}' | '\u{2600}'..='\u{27BF}' => EM,
+            c if (c as u32) >= 0x2E80 => 14.0,
+            _ => 8.6,
         })
         .sum()
 }
@@ -5889,7 +5961,9 @@ struct TitleChip {
 
 /// Block `c`'s title chip ([`TitleChip`]): it spans the frame's left
 /// inset and the title's width (the frame's left: its F1 box, and the
-/// channel points inside it, as the scene wraps them). None for a block
+/// channel points inside it, as the scene wraps them), measured bold
+/// for a frame F1 grows to its title and nothing makes broader, as the
+/// scene measures it (`scene::title_text_width`). None for a block
 /// without a title or without members.
 fn title_chip(g: &Graph, t: &TitleRows, c: usize) -> Option<TitleChip> {
     use crate::clearance::{CHIP_INSET_X, CHIP_PAD_W};
@@ -5905,16 +5979,28 @@ fn title_chip(g: &Graph, t: &TitleRows, c: usize) -> Option<TitleChip> {
     };
     // The F1 frame's left (its members, its nested frames, grown to its
     // title's breadth: [`f1_breadths`]), then the channels inside it.
-    let mut left = f1_breadths(g, t.n, t.bpos, t.absize)
+    // A frame grown to its title measures the title as it is drawn,
+    // bold, as the scene does (`scene::title_text_width`).
+    let f1 = f1_breadths(g, t.n, t.bpos, t.absize)
         .get(c)
         .copied()
-        .flatten()
-        .map_or(f64::INFINITY, |f| f.0);
+        .flatten();
+    let (mut left, mut right) = f1.map_or((f64::INFINITY, f64::NEG_INFINITY), |f| (f.0, f.1));
     for d in t.n..t.bpos.len() {
         if t.border[d] == 0 && t.apath[d].contains(&c) {
             left = left.min(t.bpos[d] - crate::scene::LANE_PAD);
+            right = right.max(t.bpos[d] + crate::scene::LANE_PAD);
         }
     }
+    // Title-bound: F1 grew the frame to its title and the channels in it
+    // leave it no broader (`scene::title_text_width`).
+    let bound = f1.is_some_and(|f| f.2 > 0.0)
+        && right - left <= crate::scene::title_fit_width(title) + TITLE_FIT_EPS;
+    let width = if bound {
+        bold_text_width(title)
+    } else {
+        text_width(title)
+    } * TITLE_SCALE;
     if !left.is_finite() {
         return None;
     }
@@ -5925,11 +6011,7 @@ fn title_chip(g: &Graph, t: &TitleRows, c: usize) -> Option<TitleChip> {
         row,
         depth,
         lo: left + CHIP_INSET_X - crate::ortho::CHIP_CLEAR,
-        hi: left
-            + CHIP_INSET_X
-            + text_width(title) * TITLE_SCALE
-            + CHIP_PAD_W
-            + crate::ortho::CHIP_CLEAR,
+        hi: left + CHIP_INSET_X + width + CHIP_PAD_W + crate::ortho::CHIP_CLEAR,
     })
 }
 
@@ -10451,6 +10533,48 @@ mod tests {
         assert!(
             tagged < plain * 1.1,
             "tags themselves must not count: {tagged} vs {plain}"
+        );
+    }
+
+    #[test]
+    fn a_bold_title_is_measured_as_a_browser_draws_it() {
+        // Widths (px at the 12 px title font, bold) that Chromium draws
+        // these repository fixtures' subgraph titles at in the face
+        // `Helvetica` resolves to on a Linux box (Liberation Sans Bold,
+        // metric-compatible with Helvetica Bold): measured once with
+        // `getBBox`, so this test does not grade the estimate by itself.
+        let measured = [
+            ("A long block title that covers the whole first row", 273.59),
+            (
+                "A long block title that covers the first member and more",
+                318.61,
+            ),
+            (
+                "A nested block whose title runs far past its one member",
+                318.63,
+            ),
+            ("Edge and shared services with a long title", 239.06),
+            ("second line of the title", 127.01),
+            ("Outer", 32.33),
+        ];
+        for (title, ink) in measured {
+            let bold = bold_text_width(title) * TITLE_SCALE;
+            // Never short by more than a glyph's ink past its advance
+            // (`getBBox` holds the ink), never more than 2 % over.
+            assert!(bold >= ink - 1.0, "{title}: {bold} < {ink}");
+            assert!(bold <= ink * 1.02, "{title}: {bold} > {ink}");
+        }
+        // The regular estimate falls short of a long bold title by more
+        // than a chip's pad and a frame's inset together: why a block's
+        // frame is sized by the bold one.
+        let (title, ink) = measured[0];
+        assert!(text_width(title) * TITLE_SCALE + 10.0 < ink);
+        // Tags are read, not measured; a multi-line title takes its
+        // widest line.
+        assert_eq!(bold_text_width("<b>Outer</b>"), bold_text_width("Outer"));
+        assert_eq!(
+            bold_text_width("Outer\nsecond line of the title"),
+            bold_text_width("second line of the title")
         );
     }
 

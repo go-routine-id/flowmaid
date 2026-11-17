@@ -334,6 +334,7 @@ fn build(d: &Architecture) -> (ArchScene, Vec<Vec<Pt>>) {
                 h: f.y1 - f.y0,
                 title: titles[g].clone(),
                 depth: t.depth[g],
+                bold_title: false,
             }
         })
         .collect();

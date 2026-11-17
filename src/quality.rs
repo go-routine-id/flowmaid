@@ -14,7 +14,7 @@
 //! Not a stable API: names, fields and thresholds change whenever the
 //! crew tightens the gate.
 
-use crate::layout::{text_width, title_extra, LABEL_BOX_H, TITLE_SCALE};
+use crate::layout::{title_extra, LABEL_BOX_H};
 use crate::model::{Direction, EdgeCurve, Graph, Shape};
 use crate::parser::parse_document;
 use crate::scene::{
@@ -1650,7 +1650,7 @@ pub fn measure(g: &Graph, sc: &Scene) -> Metrics {
             Rect(
                 x,
                 y,
-                x + text_width(&title) * TITLE_SCALE + CHIP_PAD_W,
+                x + scene::title_text_width(c, &title) + CHIP_PAD_W,
                 y + CHIP_H + title_extra(&title),
             )
         })

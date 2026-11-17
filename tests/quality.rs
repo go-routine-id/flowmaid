@@ -200,6 +200,7 @@ const BLOCK_CEILINGS: &[(&str, BlockCeil, BlockCeil)] = &[
     ("blocks/nested-cases", (0, 0, 0, 5, 0), (0, 0, 0, 7, 0)),
     ("blocks/nested-chain", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
     ("blocks/nested-self-only", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+    ("blocks/nested-wide-title", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
     ("blocks/nested", (0, 0, 0, 0, 0), (0, 0, 0, 1, 1)),
     ("blocks/note-edge-row", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
     ("blocks/own-centre", (2, 0, 1, 0, 1), (2, 0, 1, 0, 1)),

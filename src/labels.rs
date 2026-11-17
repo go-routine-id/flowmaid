@@ -30,9 +30,7 @@
 //! first, and a few rounds let a label take a spot another one left.
 
 use crate::edgepass::Ctx;
-use crate::layout::{
-    is_branch_point, text_width, title_extra, LABEL_BOX_H, LABEL_CLEAR, LINE_H, TITLE_SCALE,
-};
+use crate::layout::{is_branch_point, title_extra, LABEL_BOX_H, LABEL_CLEAR, LINE_H};
 use crate::model::{EdgeKind, Graph};
 use crate::scene::{
     basis_sample, edge_drawn, edge_polyline, fit_cluster_title, label_stub, shift_scene, Bbox,
@@ -1063,7 +1061,7 @@ pub(crate) fn chip_rect(clusters: &[SceneCluster], ci: usize, canvas_right: f64)
     (
         x,
         y,
-        x + text_width(&title) * TITLE_SCALE + CHIP_PAD_W,
+        x + crate::scene::title_text_width(c, &title) + CHIP_PAD_W,
         y + CHIP_H + title_extra(&title),
     )
 }

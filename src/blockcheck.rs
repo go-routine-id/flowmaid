@@ -2289,6 +2289,119 @@ fn titles_are_drawn_whole_in_every_direction() {
     }
 }
 
+#[test]
+fn a_frame_holds_its_bold_title_as_a_browser_draws_it() {
+    // A frame's title is drawn bold. Grown to the regular estimate, a
+    // long title ran 6-15 px past its frame's right border in a browser
+    // (title-hidden 12 px, title-entry 8, lr 6, a nested block's 14),
+    // and an edge kept off the estimated chip ran through its last
+    // word (nested-wide-title: `src -> a1`). The widths below are what
+    // Chromium draws these titles at (12 px bold, Liberation Sans,
+    // Helvetica's metrics; the widest line), measured once, so the test
+    // does not grade the estimate with itself.
+    let ink_of = |title: &str| -> Option<f64> {
+        [
+            ("A long block title that covers the whole first row", 273.59),
+            (
+                "A long block title that covers the first member and more",
+                318.61,
+            ),
+            (
+                "A nested block whose title runs far past its one member",
+                318.63,
+            ),
+            ("Edge and shared services with a long title", 239.06),
+        ]
+        .iter()
+        .find(|(t, _)| title.split('\n').next() == Some(*t))
+        .map(|&(_, w)| w)
+    };
+    let mut seen_bold = 0;
+    for name in ["title-hidden", "title-entry", "lr", "nested-wide-title"] {
+        let src = std::fs::read_to_string(format!(
+            "{}/tests/fixtures/blocks/{name}.mmd",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        for dir in ["TD", "BT", "LR", "RL"] {
+            let g = graph(&in_direction(&src, dir));
+            let sc = block_scene(&g);
+            let what = format!("{name} {dir}");
+            let mut seen = 0;
+            for c in &sc.clusters {
+                let Some(ink) = ink_of(&c.title) else {
+                    continue;
+                };
+                seen += 1;
+                // The text starts 10 px in (`to_svg`: the chip's inset
+                // and pad); its ink ends a chip pad and a title inset
+                // short of the right border, as F1 sizes the frame.
+                let room = c.x + c.w - (c.x + 10.0 + ink);
+                assert!(
+                    room >= 4.0 + 6.0 - 1.0,
+                    "{what}: {}'s title ends {room:.1} px from its border",
+                    c.id
+                );
+                // Drawn whole, not cut to fit.
+                let i = sc.clusters.iter().position(|o| o.id == c.id).unwrap();
+                assert_eq!(
+                    crate::scene::fit_cluster_title(&sc.clusters, i, sc.width),
+                    c.title,
+                    "{what}"
+                );
+                // Grown to its title (a frame its members leave broader
+                // keeps the estimate every frame has), the frame measures
+                // it bold: the chip edges keep clear of holds the ink, and
+                // so does the chip `to_svg` paints under it.
+                let least = crate::scene::title_fit_width(&c.title);
+                assert!(!c.bold_title || c.w <= least + 0.5, "{what}: {}", c.id);
+                assert!(c.bold_title || c.w >= least - 0.01, "{what}: {}", c.id);
+                let ink_right = c.x + 10.0 + ink;
+                if c.bold_title {
+                    seen_bold += 1;
+                    let head = crate::scene::title_head(&sc.clusters, i, f64::INFINITY);
+                    assert!(head.2 >= ink_right, "{what}: chip {head:?} < {ink_right}");
+                    let painted = crate::scene::title_text_width(c, &c.title) + 8.0;
+                    assert!(c.x + 6.0 + painted >= ink_right, "{what}: painted chip");
+                    // No drawn line comes within CHIP_SEP of the ink.
+                    let ink_box = (c.x + 10.0, c.y + 5.0, ink_right, c.y + 21.0);
+                    for e in &sc.edges {
+                        for w in path_of(e).windows(2) {
+                            let d = seg_box_dist(w[0], w[1], ink_box);
+                            assert!(
+                                d >= crate::clearance::CHIP_SEP - 0.5,
+                                "{what}: {} -> {} {d:.1} px from {}'s title",
+                                e.from,
+                                e.to,
+                                c.id
+                            );
+                        }
+                    }
+                }
+            }
+            assert_eq!(seen, 1, "{what}");
+            assert_frames_clear(&what, &sc);
+        }
+    }
+    // Every one of them is grown to its title somewhere.
+    assert!(seen_bold >= 8, "{seen_bold}");
+}
+
+/// Distance from segment `a`-`b` to the box `r` (x0, y0, x1, y1), 0
+/// where they meet: the least over points 0.25 px apart along it.
+fn seg_box_dist(a: (f64, f64), b: (f64, f64), r: (f64, f64, f64, f64)) -> f64 {
+    let n = ((b.0 - a.0).hypot(b.1 - a.1) / 0.25).ceil().max(1.0) as usize;
+    (0..=n)
+        .map(|k| {
+            let t = k as f64 / n as f64;
+            let (x, y) = (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t);
+            let dx = (r.0 - x).max(0.0).max(x - r.2);
+            let dy = (r.1 - y).max(0.0).max(y - r.3);
+            dx.hypot(dy)
+        })
+        .fold(f64::INFINITY, f64::min)
+}
+
 /// The jog room of frame `id` in `sc`: how far its top border lies
 /// above its first row past its pad and title strip (TD).
 fn jog_room(g: &Graph, sc: &Scene, id: &str) -> f64 {
