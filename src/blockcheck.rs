@@ -2489,9 +2489,11 @@ fn an_edge_between_stacked_blocks_crosses_their_title_sides_past_the_chips() {
     // (4 lateral crossings; the package's start drew it up between the
     // frames). No lateral crossing, and no line within `CHIP_SEP` of a
     // title's ink (measured bold, as it is drawn), in any direction. The
-    // two-way variant only keeps clear of the titles: drawn TD or BT, its
-    // turned edge still goes round the right of both blocks (2 lateral
-    // crossings, 4 before), its step and its twin's sharing one gap.
+    // two-way variant too: drawn TD or BT its turned edge went round the
+    // right of both blocks (2 lateral crossings), the steps of the pair
+    // in the jog room and between the frames placed as one stack of
+    // tracks, its two jog-room steps 5 px apart; each room's steps are a
+    // channel of their own now (`ortho::place_tracks`).
     for name in [
         "t9-frames-8px",
         "t9b-frames-8px-lr",
@@ -2506,12 +2508,7 @@ fn an_edge_between_stacked_blocks_crosses_their_title_sides_past_the_chips() {
             let g = graph(&in_direction(&src, dir));
             let sc = block_scene(&g);
             let q = crate::quality::measure(&g, &sc);
-            let two_way = name == "t9c-frames-8px-two-way" && matches!(dir, "TD" | "BT");
-            assert!(
-                q.lateral_x == 0 || two_way && q.lateral_x <= 2,
-                "{name} {dir}: lateral_x {}",
-                q.lateral_x
-            );
+            assert_eq!(q.lateral_x, 0, "{name} {dir}: lateral_x");
             assert_eq!((q.edge_chip, q.frame_side), (0, 0), "{name} {dir}");
             for c in &sc.clusters {
                 let ink = crate::layout::bold_text_width(&c.title) * crate::layout::TITLE_SCALE;
