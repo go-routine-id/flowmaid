@@ -9,15 +9,18 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- **A `route` that never panics** (#110): `scene::try_route`,
-  `class::try_route`, `er::try_route` and `mindmap::try_route` return
-  `None` when the positions are not ones `route` accepts (one per node;
-  for a class diagram one per class, or per class and note) or a
-  coordinate is not finite, and otherwise exactly what `route` returns.
-  A host whose position list is out of date for a moment (an edit added
-  a node since the last drag) no longer has to copy each diagram's
-  counting rule to avoid a panic, and a mindmap's mismatch is now told
-  apart from an empty mindmap. The `route` functions are unchanged.
+- **`try_route`: `route` for positions that may not fit the diagram**
+  (#110). `scene::try_route`, `class::try_route`, `er::try_route` and
+  `mindmap::try_route` return `None` where `route` would panic on the
+  position count (one per node; for a class diagram one per class, or
+  per class and note), and for a coordinate that is not finite or lies
+  more than a million px from zero (routing such a position can panic or
+  exhaust memory); otherwise exactly what `route` returns. A host whose
+  position list is out of date for a moment (an edit added a node since
+  the last drag) no longer has to copy each diagram's counting rule, and
+  a mindmap's mismatch, where `mindmap::route` draws an empty scene, is
+  now told apart from an empty mindmap. The `route` functions are
+  unchanged.
 - **`Scene::origin`**: the top-left corner of a scene's canvas, `(0, 0)`
   for every laid-out scene and negative on an axis where a routed
   drawing reaches past the top-left margin (see Fixed).

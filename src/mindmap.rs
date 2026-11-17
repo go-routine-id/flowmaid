@@ -1794,11 +1794,14 @@ pub fn route(d: &Mindmap, pos: &[(f64, f64)]) -> MindScene {
 }
 
 /// [`route`] that tells a wrong position count from an empty mindmap:
-/// `None` when `pos` does not hold exactly one centre per node, or holds
-/// a coordinate that is not finite (NaN, infinite); otherwise exactly
-/// what [`route`] returns (for an empty mindmap and no positions, its
-/// empty scene). For a host whose positions can be out of date for a
-/// moment, such as after an edit that added a node since the last drag.
+/// `None` when `pos` does not hold exactly one centre per node (where
+/// [`route`] draws an empty scene), and, as the other diagram types'
+/// `try_route` (see [`crate::scene::try_route`]), when a coordinate is
+/// not finite (NaN, infinite) or lies more than a million px (`1e6`)
+/// from zero. Otherwise exactly what [`route`] returns (for an empty
+/// mindmap and no positions, its empty scene). For a host whose
+/// positions can be out of date for a moment, such as after an edit that
+/// added a node since the last drag.
 ///
 /// ```
 /// use flowmaid::{mindmap, model::Document, parser::parse_document};
@@ -1813,7 +1816,7 @@ pub fn route(d: &Mindmap, pos: &[(f64, f64)]) -> MindScene {
 /// assert!(mindmap::try_route(&d, &pos[..1]).is_none());
 /// ```
 pub fn try_route(d: &Mindmap, pos: &[(f64, f64)]) -> Option<MindScene> {
-    (pos.len() == d.nodes.len() && crate::scene::all_finite(pos)).then(|| route(d, pos))
+    (pos.len() == d.nodes.len() && crate::scene::routable(pos)).then(|| route(d, pos))
 }
 
 // ------------------------------------------------------------------

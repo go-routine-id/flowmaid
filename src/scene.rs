@@ -5225,11 +5225,14 @@ pub fn route(g: &Graph, centers: &[(f64, f64)]) -> Scene {
     route_labelled(g, centers, &sizes, &labels)
 }
 
-/// [`route`] that never panics: `None` when `centers` does not hold
-/// exactly one centre per node of `g`, or holds a coordinate that is
-/// not finite (NaN, infinite); otherwise exactly what [`route`]
-/// returns. For a host whose positions can be out of date for a moment,
-/// such as after an edit that added a node since the last drag.
+/// [`route`] for positions that may not fit `g`: `None`, where [`route`]
+/// would panic, when `centers` does not hold exactly one centre per node
+/// of `g`. Also `None` when a coordinate is not finite (NaN, infinite) or
+/// lies more than a million px (`1e6`) from zero, far past any drawing a
+/// host shows: routing such a position can panic, or run out of memory,
+/// as the size of the drawing grows with it. Otherwise exactly what
+/// [`route`] returns. For a host whose positions can be out of date for
+/// a moment, such as after an edit that added a node since the last drag.
 ///
 /// ```
 /// use flowmaid::{parser::parse, scene};
@@ -5242,13 +5245,25 @@ pub fn route(g: &Graph, centers: &[(f64, f64)]) -> Scene {
 /// assert!(scene::try_route(&g, &centers[..1]).is_none());
 /// ```
 pub fn try_route(g: &Graph, centers: &[(f64, f64)]) -> Option<Scene> {
-    (centers.len() == g.nodes.len() && all_finite(centers)).then(|| route(g, centers))
+    (centers.len() == g.nodes.len() && routable(centers)).then(|| route(g, centers))
 }
 
-/// Whether every coordinate of `points` is finite: the positions the
-/// fallible `try_route` of each diagram type hands to its `route`.
-pub(crate) fn all_finite(points: &[(f64, f64)]) -> bool {
-    points.iter().all(|p| p.0.is_finite() && p.1.is_finite())
+/// How far from zero (px) a coordinate may lie for the fallible
+/// `try_route` of each diagram type to route it: a million px, far past
+/// any drawing a host shows (a laid-out chain of 2000 nodes spans some
+/// 260 000 px). Every type routes positions anywhere within it without a
+/// panic (`tests/fallible_route.rs`); far beyond it, routing can panic
+/// on float overflow or exhaust memory (an ER line's label spots grow
+/// with its length).
+const ROUTE_REACH: f64 = 1.0e6;
+
+/// Whether the fallible `try_route` of each diagram type hands `points`
+/// to its `route`: every coordinate finite and at most [`ROUTE_REACH`]
+/// from zero (NaN fails the test too).
+pub(crate) fn routable(points: &[(f64, f64)]) -> bool {
+    points
+        .iter()
+        .all(|p| p.0.abs() <= ROUTE_REACH && p.1.abs() <= ROUTE_REACH)
 }
 
 /// Same as [`route`] but with caller-provided node sizes (a fork/join

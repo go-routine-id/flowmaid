@@ -32,9 +32,9 @@ use crate::model::{
     RelKind, Shape,
 };
 use crate::scene::{
-    all_finite, edge_end_chord, edge_path_d, edge_polyline, edge_stroke_width, escape,
-    fit_top_left, route_sized, sample_cubic, scene_sized, svg_label_box, svg_open_canvas,
-    svg_text_multiline, top_left_canvas, A11y, Fitted, Scene, SceneEdge, SceneNode, SvgOptions,
+    edge_end_chord, edge_path_d, edge_polyline, edge_stroke_width, escape, fit_top_left, routable,
+    route_sized, sample_cubic, scene_sized, svg_label_box, svg_open_canvas, svg_text_multiline,
+    top_left_canvas, A11y, Fitted, Scene, SceneEdge, SceneNode, SvgOptions,
 };
 use crate::style::{ItemPaint, Palette};
 
@@ -226,9 +226,11 @@ pub fn route(d: &ClassDiagram, centers: &[(f64, f64)]) -> ClassScene {
     cs
 }
 
-/// [`route`] that never panics: `None` when `centers` holds neither one
-/// centre per class nor one per class and note, or holds a coordinate
-/// that is not finite (NaN, infinite); otherwise exactly what [`route`]
+/// [`route`] for positions that may not fit `d`: `None`, where [`route`]
+/// would panic, when `centers` holds neither one centre per class nor one
+/// per class and note. Also `None` when a coordinate is not finite (NaN,
+/// infinite) or lies more than a million px (`1e6`) from zero, as
+/// [`crate::scene::try_route`] has it. Otherwise exactly what [`route`]
 /// returns. For a host whose positions can be out of date for a moment,
 /// such as after an edit that added a class since the last drag.
 ///
@@ -249,7 +251,7 @@ pub fn route(d: &ClassDiagram, centers: &[(f64, f64)]) -> ClassScene {
 pub fn try_route(d: &ClassDiagram, centers: &[(f64, f64)]) -> Option<ClassScene> {
     let n = d.classes.len();
     let counted = centers.len() == n || centers.len() == n + d.notes.len();
-    (counted && all_finite(centers)).then(|| route(d, centers))
+    (counted && routable(centers)).then(|| route(d, centers))
 }
 
 /// Note centres for a [`route`] call that passed class centres only:

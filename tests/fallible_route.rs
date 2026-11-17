@@ -1,7 +1,7 @@
-//! The non-panicking `try_route` of every diagram type with a `route`
-//! (issue #110), through the public API: `None` for a position count
-//! `route` does not accept, and exactly `route`'s result for one it
-//! does.
+//! The fallible `try_route` of every diagram type with a `route` (issue
+//! #110), through the public API: `None` for a position count `route`
+//! does not accept, or a coordinate that is not finite or lies more than
+//! a million px from zero, and exactly `route`'s result otherwise.
 
 use flowmaid::model::{ClassDiagram, Document, ErDiagram, Graph, Mindmap};
 use flowmaid::parser::parse_document;
@@ -213,6 +213,59 @@ fn non_finite_positions_give_no_scene() {
                 pos[0].1 = bad;
                 assert_eq!(try_and_compare(&d, &pos), None, "{src}: y = {bad}");
             }
+        }
+    }
+}
+
+/// Positions anywhere within a million px of zero are routed, exactly as
+/// `route` routes them and without a panic, by every type: every node in
+/// one far corner, nodes spread across the whole range, one node far off
+/// the rest. A coordinate past that reach, up to `f64::MAX`, gives no
+/// scene (routing one can panic or exhaust memory).
+#[test]
+fn far_positions_route_within_reach_and_give_no_scene_past_it() {
+    const REACH: f64 = 1.0e6;
+    for src in [
+        include_str!("../examples/demo.mmd"),
+        include_str!("../examples/subgraph.mmd"),
+        include_str!("../examples/state.mmd"),
+        include_str!("../examples/class.mmd"),
+        "classDiagram\nA <|-- B\nnote for A \"on A\"\nnote \"free\"",
+        include_str!("../examples/er.mmd"),
+        include_str!("../examples/mindmap.mmd"),
+    ] {
+        let d = parse(src);
+        let (laid, counts) = laid_out(&d).unwrap();
+        for k in counts {
+            let at = positions(&laid, k);
+            let mut one_off = at.clone();
+            one_off[0] = (-REACH, REACH);
+            let within: [Vec<(f64, f64)>; 4] = [
+                vec![(REACH, REACH); k],
+                vec![(-REACH, -REACH); k],
+                (0..k)
+                    .map(|i| match i % 4 {
+                        0 => (-REACH, -REACH),
+                        1 => (REACH, REACH),
+                        2 => (-REACH, REACH),
+                        _ => (REACH, -REACH),
+                    })
+                    .collect(),
+                one_off,
+            ];
+            for pos in &within {
+                assert_eq!(try_and_compare(&d, pos), Some(true), "{src}: {pos:?}");
+            }
+            for past in [REACH + 1.0, -REACH - 1.0, 1.0e12, f64::MAX, f64::MIN] {
+                let mut pos = at.clone();
+                pos[k - 1].0 = past;
+                assert_eq!(try_and_compare(&d, &pos), None, "{src}: x = {past}");
+                let mut pos = at.clone();
+                pos[0].1 = past;
+                assert_eq!(try_and_compare(&d, &pos), None, "{src}: y = {past}");
+            }
+            let all_far: Vec<(f64, f64)> = vec![(f64::MAX, f64::MIN); k];
+            assert_eq!(try_and_compare(&d, &all_far), None, "{src}");
         }
     }
 }

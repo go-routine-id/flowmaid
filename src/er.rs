@@ -16,7 +16,7 @@
 use crate::layout::{text_width, LABEL_BOX_H};
 use crate::model::{Attr, Card, EdgeKind, Entity, ErDiagram, Graph, Shape};
 use crate::scene::{
-    all_finite, edge_path_d, edge_polyline, edge_stroke_width, escape, fit_top_left, route_sized,
+    edge_path_d, edge_polyline, edge_stroke_width, escape, fit_top_left, routable, route_sized,
     scene_sized, seg_aabb, svg_label_box, svg_open_canvas, top_left_canvas, A11y, Scene, SceneEdge,
     SvgOptions,
 };
@@ -173,11 +173,14 @@ pub fn route(d: &ErDiagram, centers: &[(f64, f64)]) -> ErScene {
     es
 }
 
-/// [`route`] that never panics: `None` when `centers` does not hold
-/// exactly one centre per entity, or holds a coordinate that is not
-/// finite (NaN, infinite); otherwise exactly what [`route`] returns. For
-/// a host whose positions can be out of date for a moment, such as after
-/// an edit that added an entity since the last drag.
+/// [`route`] for positions that may not fit `d`: `None`, where [`route`]
+/// would panic, when `centers` does not hold exactly one centre per
+/// entity. Also `None` when a coordinate is not finite (NaN, infinite) or
+/// lies more than a million px (`1e6`) from zero, as
+/// [`crate::scene::try_route`] has it (far beyond it, routing can run out
+/// of memory). Otherwise exactly what [`route`] returns. For a host whose
+/// positions can be out of date for a moment, such as after an edit that
+/// added an entity since the last drag.
 ///
 /// ```
 /// use flowmaid::{er, model::Document, parser::parse_document};
@@ -192,7 +195,7 @@ pub fn route(d: &ErDiagram, centers: &[(f64, f64)]) -> ErScene {
 /// assert!(er::try_route(&d, &centers[..1]).is_none());
 /// ```
 pub fn try_route(d: &ErDiagram, centers: &[(f64, f64)]) -> Option<ErScene> {
-    (centers.len() == d.entities.len() && all_finite(centers)).then(|| route(d, centers))
+    (centers.len() == d.entities.len() && routable(centers)).then(|| route(d, centers))
 }
 
 fn assemble(d: &ErDiagram, tables: Vec<ErTable>, mut scene: Scene, g: &Graph) -> ErScene {
