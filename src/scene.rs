@@ -231,9 +231,11 @@ pub struct Scene {
     /// grows: a [`route_partial`] keeps its base's canvas. An overflow
     /// under the 0.1 px the SVG is written to is none.
     ///
-    /// A class or ER SVG is drawn on this canvas (its `viewBox`) at the
-    /// scene's coordinates. A flowchart or state SVG ([`to_svg`]) fits its
-    /// `viewBox` to the drawing instead: where a routed drawing reaches
+    /// A class or ER SVG is drawn on this canvas (its `viewBox`), a
+    /// routed scene at its coordinates (a laid-out one that reaches into
+    /// the top-left margin is moved out of it, as it always was). A
+    /// flowchart or state SVG ([`to_svg`]) fits its `viewBox` to the
+    /// drawing instead: where a routed drawing reaches
     /// past the top-left margin, on either axis, it keeps the drawing's
     /// coordinates on both axes and starts the `viewBox` the margin before
     /// the drawing (at `origin` on an axis that overflows, possibly after
