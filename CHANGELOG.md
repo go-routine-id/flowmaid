@@ -23,7 +23,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
   unchanged.
 - **`Scene::origin`**: the top-left corner of a scene's canvas, `(0, 0)`
   for every laid-out scene and negative on an axis where a routed
-  drawing reaches past the top-left margin (see Fixed).
+  drawing reaches past the top-left margin (see Fixed). Like `width` and
+  `height` it only grows, so a `route_partial` frame keeps its base's.
 
 ### Fixed
 
@@ -32,12 +33,17 @@ project adheres to [Semantic Versioning](https://semver.org/).
   class and ER `route` keep their positions, but where the routed drawing
   reached past the top-left margin the SVG moved all of it right or down
   onto a `0 0` canvas, by an amount it did not expose, so a dragged node
-  lagged the pointer. Now the drawing keeps its coordinates on that axis
-  and the `viewBox` starts before zero by the overflow, as
-  `Scene::origin` does; picking agrees. Static output is unchanged, and
+  lagged the pointer. Now a routed drawing that reaches past the margin,
+  on either axis, keeps its coordinates on both, and the `viewBox` starts
+  the margin before the drawing: before zero by the overflow, as
+  `Scene::origin` does, and on a flowchart's other axis after zero where
+  the drawing starts further in. SVG user space is then scene space, so a
+  pick at a node's drawn centre picks it. Static output is unchanged, and
   so is every routed SVG that does not reach past the top-left margin. A
-  class diagram dragged past it can place a cardinality elsewhere, where
-  `class::card_spots` reports it.
+  routed class diagram that reaches past it can draw a cardinality
+  elsewhere, at the spot `class::card_spots` reports, and the glyph of a
+  relation squeezed between two overlapping boxes can point the other
+  way.
 - **Class diagrams: a declared name with a stray dot is an error, as in
   mermaid.** `class A.`, `class .A`, `class A..B`, `class A...B`, `class
   A.B.`, and a dot after a name's generic, label, `:::` style or
