@@ -43,12 +43,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
   where `class::card_spots` reports it.
 - **Class diagrams: a declared name with a stray dot is an error, as in
   mermaid.** `class A.`, `class .A`, `class A..B`, `class A...B`, `class
-  A.B.` (and the same in a `class … {` block, a `class A, B.` list, a
-  name with a generic, label or `:::` style, and `<<interface>> A.`)
-  give a parse error naming the line, as mermaid 12.2 does; they were
-  taken as a class of that name. Dotted names mermaid takes still work
-  (`class a.b.C`, `class A.B~T~`, `class A.-B`), and so do backtick
-  names (`` class `A.` ``).
+  A.B.`, and a dot after a name's generic, label, `:::` style or
+  backtick part (`class A~T~.`, `class A["x"].`, `class A:::foo.`,
+  `` class `A`.B ``), also in a `class … {` block, a `class A, B.` list
+  or `<<interface>> A~T~.`, now give a parse error naming the line, as
+  mermaid 12.2 does; they were taken as a class of that name. Dotted
+  names mermaid takes still work (`class a.b.C`, `class A.B~T~`,
+  `` class A.`B` ``, `class A.-B`), and so do dots inside a backtick
+  name, generic or label (`` class `A.` ``, `class Map~a.b~`,
+  `class A["x.y"]`).
 
 ### Documentation
 

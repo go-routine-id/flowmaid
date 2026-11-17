@@ -4956,9 +4956,85 @@ mod tests {
             assert_eq!(e.line, line, "{bad:?}: {e}");
             assert!(e.message.contains("is no class name"), "{bad:?}: {e}");
         }
+        // A dot after the name's generic, label, `:::` style or backtick
+        // part, which end it in mermaid's grammar (each form checked
+        // against mermaid 12.2 too), or before anything but a name part.
+        for (bad, line) in [
+            ("class A~T~.", 2),
+            ("class A~T~. {\n}", 2),
+            ("class A~T~.{\n}", 2),
+            ("class A~T~. {\n+x int\n}", 2),
+            ("class A~T~..B", 2),
+            ("class A~T~..", 2),
+            ("class A~T~.B", 2),
+            ("class A~T~ .", 2),
+            ("class A~T~\t.", 2),
+            ("class A~T~ . B", 2),
+            ("class A ~T~.", 2),
+            ("class A~T~.~U~", 2),
+            ("class A~T~B.C", 2),
+            ("class A.B~T~.", 2),
+            ("class A.B~T~.C", 2),
+            ("class A.B~T~..C", 2),
+            ("class A.B~T~.D~U~", 2),
+            ("class List~List~a.b~~", 2),
+            ("<<interface>> A~T~.", 2),
+            ("class A[\"lbl\"].", 2),
+            ("class A.B[\"lbl\"].", 2),
+            ("class A[\"x\"] .", 2),
+            ("class A[\"x\"]\t.", 2),
+            ("class A [\"x\"].", 2),
+            ("class A[\"x\"].B", 2),
+            ("class A[\"lbl\"] . B", 2),
+            ("class A[\"x]y\"].", 2),
+            ("class A[x].", 2),
+            ("class A[\"x\"]. {\n}", 2),
+            ("class A~T~[\"x\"].", 2),
+            ("class A:::foo.", 2),
+            ("class A.B:::foo.", 2),
+            ("class A:::foo .", 2),
+            ("class A:::foo.bar", 2),
+            ("class A:::a.b", 2),
+            ("class A:::foo.B", 2),
+            ("class A:::foo. {\n}", 2),
+            ("class A~T~.:::foo", 2),
+            ("class A~T~:::foo.", 2),
+            ("class A[\"x\"]:::foo.", 2),
+            ("class `A`.", 2),
+            ("class `A` .", 2),
+            ("class `A`.B", 2),
+            ("class `A` . B", 2),
+            ("class `A`.B {\n}", 2),
+            ("class `A`.`B`", 2),
+            ("class `A`B.C", 2),
+            ("class A.`B`.C", 2),
+            ("class `A`~T~.", 2),
+            ("class `A`[\"x\"].", 2),
+            ("class `A`:::foo.", 2),
+            ("class .`A`", 2),
+            ("<<interface>> `A`.", 2),
+            ("class A.;", 2),
+            ("class A.B.;", 2),
+            ("class A.$", 2),
+            ("class A~T.", 2),
+            ("class A[x.", 2),
+            ("class A, B~T~.", 2),
+            ("class A\nclass B~T~.", 3),
+        ] {
+            let e = parse_document(&format!("classDiagram\n{bad}"))
+                .err()
+                .unwrap_or_else(|| panic!("{bad:?} parsed"));
+            assert_eq!(e.line, line, "{bad:?}: {e}");
+            assert!(e.message.contains("is no class name"), "{bad:?}: {e}");
+        }
         // The error names what it read as the name.
         let e = parse_document("classDiagram\nclass A..B~T~").unwrap_err();
         assert!(e.message.starts_with("'A..B' is no class name"), "{e}");
+        let e = parse_document("classDiagram\nclass A~T~.B").unwrap_err();
+        assert!(e.message.starts_with("'A~T~.B' is no class name"), "{e}");
+        assert!(e
+            .message
+            .contains("generic, label, ':::' style or backtick"));
         for (good, names) in [
             ("class A.B", vec!["A.B"]),
             ("class a.b.C", vec!["a.b.C"]),
@@ -4984,16 +5060,46 @@ mod tests {
             let got: Vec<&str> = d.classes.iter().map(|c| c.name.as_str()).collect();
             assert_eq!(got, names, "{good:?}");
         }
-        // Mermaid takes these too (spaces round a dot, a label, a style);
-        // flowmaid keeps parsing them as it did.
+        // Mermaid takes these too (spaces round a dot, a dot before a
+        // backtick name, a label, a style, dots inside a generic, label
+        // or backtick name, an open backtick name); flowmaid keeps parsing
+        // them as it did.
         for good in [
             "class A. B",
             "class A .B",
             "class A . B",
+            "class A.\tB",
+            "class A.\u{a0}B",
             "class A.B[\"lbl\"]",
+            "class A.B [\"lbl\"]",
             "class A.B[\"x.y\"]",
             "class A[\"x.\"]",
             "class A.B:::foo",
+            "class A.B~T~:::foo",
+            "class A.B~T~[\"x\"]",
+            "class A.B~T~ {\n}",
+            "class A.B.C~T~",
+            "class A.B ~T~",
+            "class A . B ~T~ [\"x\"] :::foo",
+            "class A.`B`",
+            "class A . `B`",
+            "class A.`B`~T~",
+            "class A.B`C`",
+            "class A`.B`",
+            "class `A.B`",
+            "class `A`~T~",
+            "class `A` ~T~",
+            "class `A`[\"x\"]",
+            "class `A`:::foo",
+            "class `A.",
+            "class A.`B",
+            "class A.日本",
+            "class A.µ",
+            "class A.1.2",
+            "class A1.2B",
+            "class -.A",
+            "class A.-.B",
+            "class A.B-.C",
         ] {
             assert!(
                 parse_document(&format!("classDiagram\n{good}")).is_ok(),

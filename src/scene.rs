@@ -5139,8 +5139,9 @@ pub(crate) struct Fitted<'a> {
 /// gutter ([`top_left_canvas`]), the `viewBox` origin going negative
 /// (#76); any other scene that reaches into it, or a routed one by less
 /// than shows, is moved right/down just enough, its canvas grown to
-/// match, as always. Scenes already clear of the gutter — every laid-out
-/// one — come back untouched.
+/// match, as always. Scenes already clear of the gutter, as most
+/// laid-out ones are (a laid-out class scene whose drawing reaches into
+/// it is moved as it always was), come back untouched.
 pub(crate) fn fit_top_left(sc: &Scene) -> Fitted<'_> {
     let mut bb = Bbox::new();
     grow_scene(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
