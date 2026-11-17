@@ -5033,6 +5033,21 @@ mod tests {
         assert!(e.message.starts_with("'A..B' is no class name"), "{e}");
         let e = parse_document("classDiagram\nclass A~T~.B").unwrap_err();
         assert!(e.message.starts_with("'A~T~.B' is no class name"), "{e}");
+        // Without a one-line body, and whole where the dot follows an
+        // unclosed generic or label.
+        for (bad, named) in [
+            ("class A. {}", "'A.'"),
+            ("class A.. {}", "'A..'"),
+            ("class A.B. {}", "'A.B.'"),
+            ("class A~T.", "'A~T.'"),
+            ("class A[x.", "'A[x.'"),
+        ] {
+            let e = parse_document(&format!("classDiagram\n{bad}")).unwrap_err();
+            assert!(
+                e.message.starts_with(&format!("{named} is no class name")),
+                "{bad:?}: {e}"
+            );
+        }
         assert!(e
             .message
             .contains("generic, label, ':::' style or backtick"));

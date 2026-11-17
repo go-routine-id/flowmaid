@@ -3662,16 +3662,18 @@ fn check_declared_name(name: &str, lineno: usize) -> Result<(), ParseError> {
     let message = match stray_dot(name) {
         None => return Ok(()),
         Some(StrayDot::InName) => {
-            // The name as far as its generic, label or style.
-            let end = ["~", "[", ":::"]
+            // The name as far as its generic, label, style or one-line
+            // body (`class A. {}`), where the stray dot lies before it.
+            let end = ["~", "[", ":::", "{"]
                 .iter()
                 .filter_map(|m| name.find(m))
+                .filter(|&j| name[..j].contains('.'))
                 .min()
                 .unwrap_or(name.len());
             format!(
                 "'{}' is no class name: a dot joins two parts of a name, \
                  as in 'com.example.Order', and '..' is the dotted line",
-                &name[..end]
+                name[..end].trim_end()
             )
         }
         Some(StrayDot::AfterName) => format!(
