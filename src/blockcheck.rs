@@ -2666,8 +2666,17 @@ fn a_title_rows_ports_clear_the_titles_ink() {
             .iter()
             .filter(|c| only.map_or(true, |o| c.id == o))
         {
+            // The text as `to_svg` paints it: from half the chip's
+            // padding in, bold, the chip's height down.
+            use crate::clearance::{CHIP_H, CHIP_INSET_X, CHIP_INSET_Y, CHIP_PAD_W};
             let ink = crate::layout::bold_text_width(&c.title) * crate::layout::TITLE_SCALE;
-            let ink_box = (c.x + 10.0, c.y + 5.0, c.x + 10.0 + ink, c.y + 21.0);
+            let x0 = c.x + CHIP_INSET_X + CHIP_PAD_W / 2.0;
+            let ink_box = (
+                x0,
+                c.y + CHIP_INSET_Y,
+                x0 + ink,
+                c.y + CHIP_INSET_Y + CHIP_H,
+            );
             // (A link to the frame itself ends on its border, above the
             // title's text.)
             for e in sc

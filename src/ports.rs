@@ -3219,6 +3219,41 @@ mod tests {
         assert!(lo == 58.0 && hi == 110.0);
     }
 
+    /// `unshaded_fit` tells a side the chip leaves no room on from one
+    /// it does not shade, so a block layout's cut past a title's ink can
+    /// fall back to the cut past the chip alone (`place_ports`).
+    #[test]
+    fn a_cut_that_leaves_no_room_for_the_ends_is_told_apart() {
+        let clear = crate::ortho::CHIP_CLEAR;
+        // The chip as drawn over x 0..100 and as far as its bold text,
+        // 0..108; the top side 30 px down spans x 58..140.
+        let chip = [(0.0, 0.0, 100.0, 20.0)];
+        let ink = [(0.0, 0.0, 108.0, 20.0)];
+        let side = (58.0, 140.0);
+        // Past the ink and its clearance, 114.5..140 holds two ends but
+        // not three.
+        let fit = unshaded_fit(&ink, &[], Side::Top, 30.0, side, 2, clear);
+        assert_eq!(fit, Some((108.0 + clear, 140.0, true)));
+        assert_eq!(
+            unshaded_fit(&ink, &[], Side::Top, 30.0, side, 3, clear),
+            None
+        );
+        // Then the cut past the chip alone still holds the three.
+        let (lo, hi, shaded) = unshaded(&chip, &[], Side::Top, 30.0, side, 3, CHIP_SEP);
+        assert!(shaded && lo == 100.0 + CHIP_SEP && hi == 140.0, "{lo} {hi}");
+        // A side no chip shades is whole, never `None`.
+        assert_eq!(
+            unshaded_fit(&ink, &[], Side::Top, 300.0, side, 9, clear),
+            Some((58.0, 140.0, false))
+        );
+        // `unshaded` keeps the whole side where `unshaded_fit` finds no
+        // room.
+        assert_eq!(
+            unshaded(&ink, &[], Side::Top, 30.0, side, 3, clear),
+            (58.0, 140.0, false)
+        );
+    }
+
     #[test]
     fn a_free_pin_moves_clear_within_its_gap() {
         let s = PORT_SPACING;

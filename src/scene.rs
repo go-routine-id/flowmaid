@@ -14529,6 +14529,43 @@ mod tests {
     }
 
     #[test]
+    fn an_inked_title_head_reaches_the_bold_text_of_a_frame_not_grown_to_it() {
+        use crate::clearance::{CHIP_INSET_X, CHIP_PAD_W};
+        let mk = |bold_title: bool| SceneCluster {
+            id: "K".into(),
+            x: 0.0,
+            y: 0.0,
+            w: 400.0,
+            h: 80.0,
+            title: "Order processing".into(),
+            depth: 0,
+            bold_title,
+        };
+        // `to_svg` paints the title bold from half the chip's padding in.
+        let ink_end = |c: &SceneCluster| {
+            c.x + CHIP_INSET_X
+                + CHIP_PAD_W / 2.0
+                + crate::layout::bold_text_width(&c.title) * TITLE_SCALE
+        };
+        // Not grown to its title: the chip is measured at the regular
+        // width and ends short of the bold text; the inked head reaches it.
+        let plain = [mk(false)];
+        let chip = title_head(&plain, 0, f64::INFINITY);
+        let inked = title_head_inked(&plain, 0, f64::INFINITY);
+        assert!(chip.2 < ink_end(&plain[0]), "{chip:?}");
+        assert!((inked.2 - ink_end(&plain[0])).abs() < 1e-9, "{inked:?}");
+        assert_eq!((inked.0, inked.1, inked.3), (chip.0, chip.1, chip.3));
+        // Grown to its title: the chip is measured bold and already holds
+        // the text and its padding; the inked head is the chip.
+        let grown = [mk(true)];
+        assert_eq!(
+            title_head_inked(&grown, 0, f64::INFINITY),
+            title_head(&grown, 0, f64::INFINITY)
+        );
+        assert!(title_head(&grown, 0, f64::INFINITY).2 > ink_end(&grown[0]));
+    }
+
+    #[test]
     fn cut_title_lines_drop_a_dangling_separator() {
         let mk = |id: &str, x: f64, title: &str| SceneCluster {
             id: id.into(),
