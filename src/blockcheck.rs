@@ -2612,3 +2612,53 @@ fn a_one_px_drag_keeps_a_frame_grown_to_its_title() {
         }
     }
 }
+
+#[test]
+fn a_label_keeps_off_the_blocks_that_hold_one_end_of_its_edge() {
+    // B12 G3: a label sits on the part of its edge outside its end
+    // blocks (the frames holding one end and not the other). blocks/lr
+    // drawn LR grows `Edge and shared services with a long title` along
+    // the flow to its title (F2), over the middle of `SHOP -> CDN` and
+    // `CDN -> gate`, whose labels sat inside it; `cart -> PAGER`'s sat
+    // inside Storefront. Each now sits in the gap between the frames.
+    let src = std::fs::read_to_string(format!(
+        "{}/tests/fixtures/blocks/lr.mmd",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    for dir in ["LR", "RL"] {
+        let g = graph(&in_direction(&src, dir));
+        let sc = block_scene(&g);
+        let paths = crate::scene::node_cluster_paths(&g);
+        for (from, to) in [("SHOP", "CDN"), ("CDN", "gate"), ("cart", "PAGER")] {
+            let e = sc
+                .edges
+                .iter()
+                .find(|e| e.from == from && e.to == to)
+                .unwrap();
+            let (_, (x, y), w) = e.label.clone().unwrap();
+            let chip = (
+                x - w / 2.0,
+                y - crate::layout::LABEL_BOX_H / 2.0,
+                x + w / 2.0,
+                y + crate::layout::LABEL_BOX_H / 2.0,
+            );
+            let (a, b) = (
+                &paths[g.node_index(from).unwrap()],
+                &paths[g.node_index(to).unwrap()],
+            );
+            for s in a
+                .iter()
+                .filter(|s| !b.contains(s))
+                .chain(b.iter().filter(|s| !a.contains(s)))
+            {
+                let f = frame_box(&sc, &g.subgraphs[*s].id);
+                assert!(
+                    chip.2 <= f.0 || chip.0 >= f.2 || chip.3 <= f.1 || chip.1 >= f.3,
+                    "{dir}: {from} -> {to}'s label {chip:?} meets {}'s frame {f:?}",
+                    g.subgraphs[*s].id
+                );
+            }
+        }
+    }
+}

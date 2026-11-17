@@ -4199,6 +4199,123 @@ const GRID_MIN_MEMBERS: usize = 3;
 /// as one row, and packing them only trades breadth for depth.
 const GRID_MIN_EDGELESS: usize = 4;
 
+/// B12 G3 for the static scene: the label of an edge between two units
+/// of a block layout sits on the part of the edge outside its *end
+/// blocks* (the frames that hold one of its ends and not the other), not
+/// inside one or on its border ([`label_off_frames`]). A chain's slot
+/// already lies there ([`crate::layout::label_slot`]); a short edge's lay
+/// in its middle, which an end block grown to its title (B12 F1, F2) can
+/// hold: blocks/lr drawn LR put two labels inside `Edge and shared
+/// services`. The layout keeps that run as long as the label needs: its
+/// labelled gaps are measured from the frames (`layout::place`'s layer
+/// lines). The label stage keeps to the same rule when it re-places a
+/// label (`labels::place_long`).
+fn labels_off_end_blocks(
+    node_cluster: &[Vec<usize>],
+    g: &Graph,
+    edges: &mut [SceneEdge],
+    clusters: &[SceneCluster],
+) {
+    let frame = |s: usize| clusters.iter().find(|c| c.id == g.subgraphs[s].id);
+    for (e, se) in g.edges.iter().zip(edges.iter_mut()) {
+        if e.from == e.to || e.from >= node_cluster.len() || e.to >= node_cluster.len() {
+            continue;
+        }
+        let Some((_, at, w)) = se.label.clone() else {
+            continue;
+        };
+        let (a, b) = (&node_cluster[e.from], &node_cluster[e.to]);
+        let ends: Vec<(f64, f64, f64, f64)> = a
+            .iter()
+            .filter(|s| !b.contains(s))
+            .chain(b.iter().filter(|s| !a.contains(s)))
+            .filter_map(|&s| frame(s))
+            .map(|c| (c.x, c.y, c.x + c.w, c.y + c.h))
+            .collect();
+        let path = if se.waypoints.len() >= 2 {
+            se.waypoints.clone()
+        } else {
+            sample_cubic(&se.bezier, 24)
+        };
+        if let (Some(to), Some(l)) = (label_off_frames(&path, at, w, &ends), se.label.as_mut()) {
+            l.1 = to;
+        }
+    }
+}
+
+/// Where a label of width `w` at `at` on the path `path` moves to keep
+/// off the frames `rects` (x0, y0, x1, y1): `None` when its chip meets
+/// none of them, or when no stretch of the path lies outside them all;
+/// else the middle, by length, of the longest such stretch (B12 G3).
+pub(crate) fn label_off_frames(
+    path: &[(f64, f64)],
+    at: (f64, f64),
+    w: f64,
+    rects: &[(f64, f64, f64, f64)],
+) -> Option<(f64, f64)> {
+    let half = (w / 2.0, LABEL_BOX_H / 2.0);
+    let meets = |r: &(f64, f64, f64, f64)| {
+        at.0 + half.0 > r.0 && at.0 - half.0 < r.2 && at.1 + half.1 > r.1 && at.1 - half.1 < r.3
+    };
+    if !rects.iter().any(meets) {
+        return None;
+    }
+    // The path, 2 px a step, and the longest stretch of it whose points
+    // lie outside every frame.
+    let mut pts: Vec<(f64, f64)> = Vec::new();
+    for s in path.windows(2) {
+        let len = (s[1].0 - s[0].0).hypot(s[1].1 - s[0].1);
+        let n = (len / 2.0).ceil().max(1.0) as usize;
+        for k in 0..n {
+            let t = k as f64 / n as f64;
+            pts.push((
+                s[0].0 + (s[1].0 - s[0].0) * t,
+                s[0].1 + (s[1].1 - s[0].1) * t,
+            ));
+        }
+    }
+    pts.extend(path.last().copied());
+    let inside = |p: (f64, f64)| {
+        rects
+            .iter()
+            .any(|r| p.0 > r.0 && p.0 < r.2 && p.1 > r.1 && p.1 < r.3)
+    };
+    let step = |k: usize| (pts[k].0 - pts[k - 1].0).hypot(pts[k].1 - pts[k - 1].1);
+    // The longest stretch so far (first point, last point, length) and
+    // the one the walk is on (first point, length).
+    let mut best: Option<(usize, usize, f64)> = None;
+    let mut run: Option<(usize, f64)> = None;
+    for i in 0..pts.len() {
+        if inside(pts[i]) {
+            run = None;
+            continue;
+        }
+        let (start, len) = match run {
+            Some((s, l)) => (s, l + step(i)),
+            None => (i, 0.0),
+        };
+        run = Some((start, len));
+        if best.map_or(true, |b| len > b.2) {
+            best = Some((start, i, len));
+        }
+    }
+    let (s, t, len) = best.filter(|b| b.2 > 0.0)?;
+    // Its middle by length.
+    let mut acc = 0.0;
+    for k in s + 1..=t {
+        let d = step(k);
+        if acc + d >= len / 2.0 {
+            let f = if d > 0.0 { (len / 2.0 - acc) / d } else { 0.0 };
+            return Some((
+                pts[k - 1].0 + (pts[k].0 - pts[k - 1].0) * f,
+                pts[k - 1].1 + (pts[k].1 - pts[k - 1].1) * f,
+            ));
+        }
+        acc += d;
+    }
+    Some(pts[t])
+}
+
 /// Global cluster-aware pipeline: lay every real node out in ONE
 /// Sugiyama pass (no supernode collapse) with subgraph members kept
 /// contiguous, then wrap each subgraph around its final members. This
@@ -4401,6 +4518,11 @@ fn scene_clustered(
     // flow, the edge is drawn like mermaid's: towards the member the
     // layout ranked it onto, cut at the frame — so it runs through the
     // rank gap the layout left, not diagonally across other nodes.
+    // B12 G3: a label stays off the blocks that hold only one end of
+    // its edge.
+    if block_paths.is_some() {
+        labels_off_end_blocks(&node_cluster, g, &mut sc.edges[..ne], &sc.clusters);
+    }
     let stand_edges = sc.edges.split_off(ne);
     if !g.sub_edges.is_empty() {
         let (raw, _, _) = frame_boxes(g, &sc.nodes, &title_jog, block_paths.is_some());
