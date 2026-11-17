@@ -14,8 +14,8 @@ use crate::edgepass::{end_rect, normal, side_of, Ctx, EndRef, Mode, Side};
 use crate::layout::LABEL_BOX_H;
 use crate::model::{Direction, Graph, Marker, Shape};
 use crate::scene::{
-    edge_drawn, edge_polyline, grow_scene, title_head, Bbox, Scene, SceneEdge, ARROW_MARKER_PX,
-    GLYPH_PORT_GAP, MARGIN, SLANT_MAX,
+    edge_drawn, edge_polyline, grow_scene, title_head, title_head_inked, Bbox, Scene, SceneEdge,
+    ARROW_MARKER_PX, GLYPH_PORT_GAP, MARGIN, SLANT_MAX,
 };
 use std::collections::BTreeMap;
 
@@ -967,7 +967,7 @@ fn order_pins(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
 /// to.)
 fn free_pins(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
     let flag = |v: &[bool], i: usize| v.get(i).copied().unwrap_or(false);
-    let heads = title_heads(sc);
+    let heads = title_heads(sc, cx.blocks);
     for i in 0..sc.edges.len() {
         let Some((from, to)) = cx.ends.get(i).copied().flatten() else {
             continue;
@@ -1268,7 +1268,7 @@ fn title_side_over_full(
 /// and leave such a run as the ports stage dealt it (the routed half is
 /// B12.13's).
 fn title_side_columns(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
-    let heads = title_heads(sc);
+    let heads = title_heads(sc, cx.blocks);
     let flag = |v: &[bool], i: usize| v.get(i).copied().unwrap_or(false);
     for ci in 0..sc.clusters.len() {
         let Some(&head) = heads.get(ci) else {
@@ -1534,7 +1534,14 @@ fn place_ports(
 
     // Per edge: the move of its start and of its end.
     let mut deltas: Vec<[Pt; 2]> = vec![[(0.0, 0.0); 2]; sc.edges.len()];
-    let heads = title_heads(sc);
+    let heads = title_heads(sc, false);
+    // In a block layout, the chips as far as their titles' ink: what a
+    // title-row member's ports clear ([`title_heads`]).
+    let inked = if cx.blocks {
+        title_heads(sc, true)
+    } else {
+        Vec::new()
+    };
     for key in order {
         let (end, side) = key;
         let Some(mut ports) = groups.remove(&key) else {
@@ -1584,7 +1591,7 @@ fn place_ports(
                 && side == Side::Top
                 && matches!(g.direction, Direction::TD | Direction::BT)
                 && deep.iter().enumerate().any(|(ci, &d)| {
-                    d && title_side_over_full(sc, cx, ci, heads[ci], (lo, hi), ports.len())
+                    d && title_side_over_full(sc, cx, ci, inked[ci], (lo, hi), ports.len())
                 })
         };
         let clear = if !cx.blocks || !matches!(end, EndRef::Node(_)) || over_full() {
@@ -1593,6 +1600,14 @@ fn place_ports(
             crate::ortho::CHIP_CLEAR
         };
         let (lo, hi, shaded) = match prof.straight() {
+            // Cut at `ortho`'s clearance past the titles' ink; where that
+            // leaves no stretch for the side's ends, today's cut stays,
+            // as on an over-full side.
+            Some(n) if clear == crate::ortho::CHIP_CLEAR => {
+                unshaded_fit(&inked, &deep, side, n, (lo, hi), ports.len(), clear).unwrap_or_else(
+                    || unshaded(&heads, &deep, side, n, (lo, hi), ports.len(), CHIP_SEP),
+                )
+            }
             Some(n) => unshaded(&heads, &deep, side, n, (lo, hi), ports.len(), clear),
             None => (lo, hi, false),
         };
@@ -2318,8 +2333,18 @@ fn snap_straight_pairs(
 /// the router's port stub plus the spacing an edge keeps off a chip.
 const CHIP_SHADE: f64 = NODE_SEP + CHIP_SEP + PORT_SPACING;
 
-/// Every frame's title header ([`crate::scene::title_head`]).
-fn title_heads(sc: &Scene) -> Vec<(f64, f64, f64, f64)> {
+/// Every frame's title header ([`crate::scene::title_head`]); in a
+/// block layout (`inked`, [`Ctx::blocks`]) as wide as the title's bold
+/// ink ([`crate::scene::title_head_inked`]). There a title-row member's
+/// ports, the frame's free pins and the columns [`title_side_columns`]
+/// deals start a clearance past the chip ([`unshaded`]): measured at the
+/// regular width the chip ends short of the bold text a frame not grown
+/// to its title is painted with, and the first entry past it ran a px
+/// or two from the title's last letter (blocks/blocks-overview drawn
+/// TD: `CART --> QUEUE` 2 px from `Order processing`; quality/dense-lr
+/// drawn BT and TD, under `consectetur ipsum` and `ullamco tempor
+/// magna`).
+fn title_heads(sc: &Scene, inked: bool) -> Vec<(f64, f64, f64, f64)> {
     if sc.clusters.is_empty() {
         return Vec::new();
     }
@@ -2327,7 +2352,13 @@ fn title_heads(sc: &Scene) -> Vec<(f64, f64, f64, f64)> {
     grow_scene(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
     let right = bb.finish().1 + MARGIN;
     (0..sc.clusters.len())
-        .map(|ci| title_head(&sc.clusters, ci, right))
+        .map(|ci| {
+            if inked {
+                title_head_inked(&sc.clusters, ci, right)
+            } else {
+                title_head(&sc.clusters, ci, right)
+            }
+        })
         .collect()
 }
 
@@ -2355,6 +2386,11 @@ fn title_heads(sc: &Scene) -> Vec<(f64, f64, f64, f64)> {
 /// (blocks/hub5 TD: `HUB --> b1` into b1's top in the scene, into its
 /// left side in `route()` at the same centres). The routed half is
 /// B12.13's, with the block paths `route()` does not carry yet.
+///
+/// There the chips are measured as far as their titles' ink
+/// ([`title_heads`]); where that cut leaves no free part for the ends
+/// ([`unshaded_fit`]), `place_ports` keeps the cut at [`CHIP_SEP`] past
+/// the chip alone, as on an over-full title side.
 fn unshaded(
     heads: &[(f64, f64, f64, f64)],
     deep: &[bool],
@@ -2364,6 +2400,20 @@ fn unshaded(
     k: usize,
     clear: f64,
 ) -> (f64, f64, bool) {
+    unshaded_fit(heads, deep, side, n, (lo, hi), k, clear).unwrap_or((lo, hi, false))
+}
+
+/// [`unshaded`], but `None` where a chip shades the side and no free part
+/// of it holds the `k` ends.
+fn unshaded_fit(
+    heads: &[(f64, f64, f64, f64)],
+    deep: &[bool],
+    side: Side,
+    n: f64,
+    (lo, hi): (f64, f64),
+    k: usize,
+    clear: f64,
+) -> Option<(f64, f64, bool)> {
     let sgn = out_sign(side);
     let (a, b) = if sgn > 0.0 {
         (n, n + CHIP_SHADE)
@@ -2390,13 +2440,14 @@ fn unshaded(
             .collect();
     }
     let need = PORT_SPACING * k.saturating_sub(1) as f64;
-    match free
+    let best = free
         .into_iter()
         .filter(|(p, q)| q - p >= need)
-        .max_by(|x, y| (x.1 - x.0).total_cmp(&(y.1 - y.0)))
-    {
-        Some((p, q)) if shaded => (p, q, true),
-        _ => (lo, hi, false),
+        .max_by(|x, y| (x.1 - x.0).total_cmp(&(y.1 - y.0)));
+    match best {
+        Some((p, q)) if shaded => Some((p, q, true)),
+        None if shaded => None,
+        _ => Some((lo, hi, false)),
     }
 }
 

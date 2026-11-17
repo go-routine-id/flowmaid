@@ -3295,16 +3295,46 @@ pub(crate) fn title_head(
     ci: usize,
     canvas_right: f64,
 ) -> (f64, f64, f64, f64) {
+    title_head_measured(clusters, ci, canvas_right, false)
+}
+
+/// [`title_head`] reaching as far as the title's ink: `to_svg` paints
+/// every frame title `font-weight="bold"` from half the chip's padding
+/// in, while a frame not grown to its title
+/// ([`SceneCluster::bold_title`]) sizes its chip at the regular width
+/// ([`title_text_width`]), which the bold text outruns by about a tenth
+/// of its width (blocks/blocks-overview's `Order processing`: its ink
+/// ends 5 px past the chip). Here the chip ends where the drawn chip or
+/// the drawn text ends, whichever is farther
+/// ([`crate::layout::bold_text_width`]). For a rule that sets a line a
+/// clearance past the chip: measured at the chip alone, a block
+/// layout's port there stood a px or two from the title's last letter
+/// (`ports`).
+pub(crate) fn title_head_inked(
+    clusters: &[SceneCluster],
+    ci: usize,
+    canvas_right: f64,
+) -> (f64, f64, f64, f64) {
+    title_head_measured(clusters, ci, canvas_right, true)
+}
+
+/// [`title_head`]; with `inked`, [`title_head_inked`].
+fn title_head_measured(
+    clusters: &[SceneCluster],
+    ci: usize,
+    canvas_right: f64,
+    inked: bool,
+) -> (f64, f64, f64, f64) {
     use crate::clearance::{CHIP_H, CHIP_INSET_X, CHIP_INSET_Y, CHIP_PAD_W};
     let c = &clusters[ci];
     let title = fit_cluster_title(clusters, ci, canvas_right);
     let (x, y) = (c.x + CHIP_INSET_X, c.y + CHIP_INSET_Y);
-    (
-        x,
-        c.y,
-        x + title_text_width(c, &title) + CHIP_PAD_W,
-        y + CHIP_H + title_extra(&title),
-    )
+    let mut x1 = x + title_text_width(c, &title) + CHIP_PAD_W;
+    if inked {
+        let ink = crate::layout::bold_text_width(&title) * TITLE_SCALE;
+        x1 = x1.max(x + CHIP_PAD_W / 2.0 + ink);
+    }
+    (x, c.y, x1, y + CHIP_H + title_extra(&title))
 }
 
 /// The width (px) frame `c` measures `title` (its title, or a cut of it,

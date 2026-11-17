@@ -2592,13 +2592,18 @@ fn a_title_rows_first_free_entry_clears_the_chip_ring() {
 
 #[test]
 fn a_frames_pins_and_its_title_rows_entries_take_columns_apart() {
-    // The public fixture and its permutations drawn TD: `REG ==> ORD`'s
-    // free pin and `CART --> QUEUE`'s entry into the title-row member
-    // `QUEUE` both took the first free column past `ORD`'s chip, the two
-    // strokes on top of each other, and the router took the entry round
-    // into `QUEUE`'s left side. Dealt the columns past the chip as one
-    // set, in the order their channels come in, the entry comes in from
-    // above beside the pin, and the steps into them nest.
+    // The public fixture and its permutations drawn TD, `ORD` titled
+    // short enough (`Orders`) that `QUEUE`'s top past the title holds
+    // its two entries and `ORD`'s free pin: `REG ==> ORD`'s pin and
+    // `CART --> QUEUE`'s entry into the title-row member `QUEUE` both
+    // took the first free column past `ORD`'s chip, the two strokes on
+    // top of each other, and the router took the entry round into
+    // `QUEUE`'s left side. Dealt the columns past the chip as one set,
+    // in the order their channels come in, the entry comes in from
+    // above beside the pin, and the steps into them nest. (Under the
+    // fixture's own title that stretch, measured to the title's bold
+    // ink, holds two columns, not three, and the entry keeps its way
+    // into `QUEUE`'s left side: `a_title_rows_ports_clear_the_titles_ink`.)
     for name in [
         "blocks-overview",
         "blocks-overview-actors-reversed",
@@ -2606,7 +2611,14 @@ fn a_frames_pins_and_its_title_rows_entries_take_columns_apart() {
         "blocks-overview-edges-rotated",
         "blocks-overview-subgraphs-reversed",
     ] {
-        let g = fixture(&format!("blocks/{name}"));
+        let path = format!(
+            "{}/tests/fixtures/blocks/{name}.mmd",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let src = std::fs::read_to_string(&path).unwrap();
+        let short = src.replace("subgraph ORD[Order processing]", "subgraph ORD[Orders]");
+        assert_ne!(short, src, "{name}");
+        let g = graph(&short);
         let sc = block_scene(&g);
         let q = crate::quality::measure(&g, &sc);
         assert_eq!(q.overlap_pairs, 0, "{name}: {:?}", q.details);
@@ -2628,6 +2640,105 @@ fn a_frames_pins_and_its_title_rows_entries_take_columns_apart() {
             "{name}: pin {pin:?}, entry {entry:?}"
         );
     }
+}
+
+#[test]
+fn a_title_rows_ports_clear_the_titles_ink() {
+    // `to_svg` paints every frame title bold, while a frame not grown to
+    // its title measures its chip at the regular width, which the bold
+    // text outruns by about a tenth of its width. A block layout's
+    // title-row member's ports, cut a clearance past the chip measured
+    // that way, and the columns the frame's pins and those entries are
+    // dealt from, put the first entry past the chip a px or two from the
+    // title's last letter, or through it: the public fixture and its
+    // permutations drawn TD (`CART --> QUEUE` beside `Order
+    // processing`), quality/dense-lr drawn BT and TD, and a hub's entry
+    // into a long-titled block's title row (straight through the title).
+    // Measured to the title's ink, no line comes within `CHIP_SEP` of a
+    // title's ink in these drawings; where the stretch past the ink
+    // cannot hold a side's ends, the cut at the chip alone stays and the
+    // entry takes the way it took before the cut moved (`CART --> QUEUE`
+    // into `QUEUE`'s left side; the hub's entry into `metrics` through
+    // the block's left wall, under the title).
+    let clear = |what: &str, sc: &Scene, only: Option<&str>| {
+        for c in sc
+            .clusters
+            .iter()
+            .filter(|c| only.map_or(true, |o| c.id == o))
+        {
+            let ink = crate::layout::bold_text_width(&c.title) * crate::layout::TITLE_SCALE;
+            let ink_box = (c.x + 10.0, c.y + 5.0, c.x + 10.0 + ink, c.y + 21.0);
+            // (A link to the frame itself ends on its border, above the
+            // title's text.)
+            for e in sc
+                .edges
+                .iter()
+                .filter(|e| crate::scene::edge_drawn(e) && e.from != c.id && e.to != c.id)
+            {
+                for w in path_of(e).windows(2) {
+                    let d = seg_box_dist(w[0], w[1], ink_box);
+                    assert!(
+                        d >= crate::clearance::CHIP_SEP - 0.5,
+                        "{what}: {} -> {} {d:.1} px from {}'s title",
+                        e.from,
+                        e.to,
+                        c.id
+                    );
+                }
+            }
+        }
+    };
+    for name in [
+        "blocks-overview",
+        "blocks-overview-actors-reversed",
+        "blocks-overview-edges-reversed",
+        "blocks-overview-edges-rotated",
+        "blocks-overview-subgraphs-reversed",
+    ] {
+        let g = fixture(&format!("blocks/{name}"));
+        let sc = block_scene(&g);
+        clear(name, &sc, None);
+        let q = crate::quality::measure(&g, &sc);
+        assert_eq!(q.overlap_pairs, 0, "{name}: {:?}", q.details);
+        assert!(q.x_drawn <= 6, "{name}: x_drawn {}", q.x_drawn);
+    }
+    let src = std::fs::read_to_string(format!(
+        "{}/tests/fixtures/quality/dense-lr.mmd",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    for dir in ["TD", "BT"] {
+        let sc = block_scene(&graph(&in_direction(&src, dir)));
+        clear(&format!("dense-lr {dir}"), &sc, None);
+    }
+    let hub = "flowchart TD
+    ext1[External caller one] --> ORD
+    ext2[External caller two] --> ORD
+    hub[Hub service] --> q1
+    hub --> q2
+    hub --> ORD
+    subgraph ORD[Order processing and fulfilment pipeline]
+        q1[queue]
+        q2[charge]
+        q3[ship]
+        q1 --> q3
+        q2 --> q3
+    end
+    subgraph OBS[Observability stack with a long title]
+        m1[metrics]
+        m2[logs]
+    end
+    hub --> m1
+    ext1 --> m1
+    ext2 --> OBS
+    q3 --> m2
+";
+    // (`ORD`'s title: `hub --> q1` is displaced past the chip by
+    // `ortho`'s title sides, measured at the chip alone, and passes 3 px
+    // from the title's end, as it did before the ports moved; measured to
+    // the ink there the displaced columns of quality/dense-td drawn TD
+    // fan out across each other.)
+    clear("hub", &block_scene(&graph(hub)), Some("OBS"));
 }
 
 #[test]
