@@ -2722,15 +2722,28 @@ fn a_label_keeps_off_the_blocks_that_hold_one_end_of_its_edge() {
     // drawn LR grows `Edge and shared services with a long title` along
     // the flow to its title (F2), over the middle of `SHOP -> CDN` and
     // `CDN -> gate`, whose labels sat inside it; `cart -> PAGER`'s sat
-    // inside Storefront. Each now sits in the gap between the frames.
+    // inside Storefront. Each now sits in the gap between the frames,
+    // in `scene()` and in `route()` at the scene's own centres (which
+    // put `browse` inside the grown frame until it kept the rule too).
     let src = std::fs::read_to_string(format!(
         "{}/tests/fixtures/blocks/lr.mmd",
         env!("CARGO_MANIFEST_DIR")
     ))
     .unwrap();
-    for dir in ["LR", "RL"] {
+    for (dir, routed) in [("LR", false), ("RL", false), ("LR", true), ("RL", true)] {
         let g = graph(&in_direction(&src, dir));
         let sc = block_scene(&g);
+        let sc = if routed {
+            let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+            crate::levels::with_blocks(true, || crate::scene::route(&g, &at))
+        } else {
+            sc
+        };
+        let dir = if routed {
+            format!("{dir} routed")
+        } else {
+            dir.to_string()
+        };
         let paths = crate::scene::node_cluster_paths(&g);
         for (from, to) in [("SHOP", "CDN"), ("CDN", "gate"), ("cart", "PAGER")] {
             let e = sc

@@ -5786,6 +5786,15 @@ fn route_built(
     if place_labels {
         avoid_label_overlaps(&nodes, &clusters, &mut edges, LABEL_ROUTE_WORK);
     }
+    // B12 G3, as the static scene keeps it: in a block layout a label
+    // stays off the frames that hold only one end of its edge (blocks/lr
+    // drawn LR: `route()` at the scene's own centres put `browse` inside
+    // `Edge and shared services with a long title`, which `scene()`
+    // keeps it out of).
+    if blocks && place_labels {
+        let ne = g.edges.len().min(edges.len());
+        labels_off_end_blocks(&node_cluster_paths(g), g, &mut edges[..ne], &clusters);
+    }
     // The boxes and labels only: the edge stages' refit grows the canvas
     // over every edge as painted (`edgepass::refit`), never over a
     // curve's control points (report Q2), as in the static scene.
