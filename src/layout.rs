@@ -4908,6 +4908,7 @@ fn place(
                 border: &border_side,
                 preds: &preds,
                 succs: &succs,
+                edge_chain: &edge_chain,
                 cluster_span: &cluster_span,
                 n,
             },
@@ -4930,6 +4931,7 @@ fn place(
                 border: &border_side,
                 preds: &preds,
                 succs: &succs,
+                edge_chain: &edge_chain,
                 cluster_span: &cluster_span,
                 n,
             },
@@ -5038,6 +5040,7 @@ fn place(
                     border: &border_side,
                     preds: &preds,
                     succs: &succs,
+                    edge_chain: &edge_chain,
                     cluster_span: &cluster_span,
                     n,
                 },
@@ -6169,6 +6172,8 @@ struct TitleRows<'a> {
     border: &'a [u8],
     preds: &'a [Vec<usize>],
     succs: &'a [Vec<usize>],
+    /// Per edge, its dummy chain in its from-to order.
+    edge_chain: &'a [Vec<usize>],
     cluster_span: &'a std::collections::BTreeMap<usize, (usize, usize)>,
     n: usize,
 }
@@ -6209,10 +6214,52 @@ fn title_jogs(g: &Graph, t: &TitleRows) -> Vec<f64> {
 /// stretch beside the title chip cannot hold — displaced, each crosses
 /// the title side at a column of its own past the chip — and its runs
 /// under the chip ([`title_jogs`]).
+///
+/// An entry is a drawn edge's end on a member of the title row whose
+/// layered neighbour (the first or last dummy of its chain, or its other
+/// end) lies outside the block on the title side's layer before (TD) or
+/// after (BT): B12 F2 counts the drawn real edges that cross the title
+/// side, and nothing else. An invisible link draws nothing; a stand-in
+/// of an edge to a whole subgraph ends on that subgraph's frame (its
+/// cut end, `Graph::frame_cut`), not on its proxy member; a rank-only
+/// pair is no edge. Counted as entries, those three reserved jog room
+/// no entry takes (a block a hub feeds as a whole grew a track per
+/// proxy pair), and `route()`, which reads its classes from the boxes,
+/// could not count them. A run under the chip is a dummy of a drawn
+/// part of a chain: not inside the frame a stand-in is cut back to.
 fn title_counts(g: &Graph, t: &TitleRows) -> Vec<(usize, usize)> {
     let ns = g.subgraphs.len();
     let mut counts = vec![(0usize, 0usize); ns];
     let bt = matches!(g.direction, Direction::BT);
+    // Per real node, the layered neighbour of each edge drawn to it.
+    let mut ends: Vec<Vec<usize>> = vec![Vec::new(); t.n];
+    // Per dummy, the frames its stand-in is cut back to (none for an edge's).
+    let mut cut_of: Vec<[Option<usize>; 2]> = vec![[None, None]; t.bpos.len()];
+    for (ei, e) in g.edges.iter().enumerate() {
+        if e.from == e.to || matches!(e.kind, EdgeKind::Invisible) {
+            continue;
+        }
+        let cut = g.frame_cut.get(ei).copied().unwrap_or([None, None]);
+        let chain = t.edge_chain.get(ei).map_or(&[][..], |c| c.as_slice());
+        for &d in chain {
+            if let Some(slot) = cut_of.get_mut(d) {
+                *slot = cut;
+            }
+        }
+        for (end, v, other) in [(0, e.from, e.to), (1, e.to, e.from)] {
+            if cut[end].is_some() || v >= t.n {
+                continue;
+            }
+            let u = match (end, chain.first(), chain.last()) {
+                (0, Some(&d), _) | (1, _, Some(&d)) => d,
+                // Adjacent layers: the other end, when the layered graph
+                // links the two (not a lane, not a flagged stand-in).
+                _ if t.preds[v].contains(&other) || t.succs[v].contains(&other) => other,
+                _ => continue,
+            };
+            ends[v].push(u);
+        }
+    }
     for &c in t.cluster_span.keys() {
         let Some(TitleChip {
             row,
@@ -6233,16 +6280,21 @@ fn title_counts(g: &Graph, t: &TitleRows) -> Vec<(usize, usize)> {
             }
             let (m0, m1) = (t.bpos[v] - t.absize[v] / 2.0, t.bpos[v] + t.absize[v] / 2.0);
             if v >= t.n {
-                // A run of the block's own under the chip.
-                runs += usize::from(t.bpos[v] > chip_lo && t.bpos[v] < chip_hi);
+                // A run of the block's own under the chip, where drawn.
+                let drawn = !cut_of[v].iter().flatten().any(|s| t.apath[v].contains(s));
+                runs += usize::from(drawn && t.bpos[v] > chip_lo && t.bpos[v] < chip_hi);
                 continue;
             }
-            let from = if bt { &t.succs[v] } else { &t.preds[v] };
-            let border = from
+            let border = ends[v]
                 .iter()
                 .filter(|&&u| {
-                    t.border[u] == 0
-                        && t.alayer[u] != row
+                    let title_side = if bt {
+                        t.alayer[u] > row
+                    } else {
+                        t.alayer[u] < row
+                    };
+                    title_side
+                        && t.border[u] == 0
                         && !t.apath[u].contains(&c)
                         && !(u < t.n && t.nc[u].contains(&c))
                 })

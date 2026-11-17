@@ -2474,3 +2474,141 @@ fn linked_frames_stand_further_apart_than_route_reads_as_stacked() {
         }
     }
 }
+
+// --- One frame function in three entry points (B12.10, F1 and F2).
+
+/// `src` with the direction of its `flowchart` header (the first line
+/// that is not a comment) replaced by `dir`.
+fn header_direction(src: &str, dir: &str) -> String {
+    let mut done = false;
+    src.lines()
+        .map(|l| {
+            let t = l.trim_start();
+            if done || t.starts_with("%%") || t.is_empty() {
+                return l.to_string();
+            }
+            done = true;
+            let kind = t.split_whitespace().next().unwrap_or("flowchart");
+            format!("{kind} {dir}")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// The frames of `scene()` and of `route()` at the scene's own centres,
+/// matched by id: (id, scene box, route box) as (x0, y0, x1, y1).
+type FramePair = (String, (f64, f64, f64, f64), (f64, f64, f64, f64));
+
+fn scene_and_route_frames(g: &Graph) -> (Scene, Scene, Vec<FramePair>) {
+    let sc = block_scene(g);
+    let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+    let rt = crate::levels::with_blocks(true, || crate::scene::route(g, &at));
+    let pairs = sc
+        .clusters
+        .iter()
+        .map(|c| (c.id.clone(), frame_box(&sc, &c.id), frame_box(&rt, &c.id)))
+        .collect();
+    (sc, rt, pairs)
+}
+
+#[test]
+fn frames_agree_between_scene_and_route_along_the_flow() {
+    // `route()` at the scene's own centres draws a block layout's frames
+    // by the function `scene()` draws them with: as broad (TD / BT) or
+    // as long (LR / RL) as the title (F1), and grown on the title side by
+    // the jog room of the displaced entries (F2), counted from the boxes
+    // where the layout counts it from its layers. Before, `route()`
+    // wrapped the members only: a frame grown to a long title lost
+    // 80-260 px and its title was cut again. Along the flow the two are
+    // equal to 0.5 px, and across it `route()`'s frame is at least the
+    // F1 box (what `scene()` grows it by besides, over the channels the
+    // layout laid inside it, `route()` does not draw yet: F3). The title
+    // fixtures by name, the nested one and the public fixture.
+    for name in [
+        "lr",
+        "title-hidden",
+        "title-entry",
+        "nested-wide-title",
+        "blocks-overview",
+    ] {
+        let src = std::fs::read_to_string(format!(
+            "{}/tests/fixtures/blocks/{name}.mmd",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        for dir in ["TD", "BT", "LR", "RL"] {
+            // (The public fixture drawn BT: the layout's run to SHIP stands
+            // under Order processing's chip off SHIP's own column, where
+            // `route()` cannot see it, so its frame has a track more jog
+            // room in `scene()`; `route_title_jogs`.)
+            if name == "blocks-overview" && dir == "BT" {
+                continue;
+            }
+            let g = graph(&header_direction(&src, dir));
+            let (_, rt, pairs) = scene_and_route_frames(&g);
+            let vertical = matches!(dir, "TD" | "BT");
+            for (id, s, r) in pairs {
+                let what = format!("{name} {dir} {id}: scene {s:?} route {r:?}");
+                let (along, across) = if vertical {
+                    ((s.1 - r.1, s.3 - r.3), (r.0, r.2))
+                } else {
+                    ((s.0 - r.0, s.2 - r.2), (r.1, r.3))
+                };
+                assert!(along.0.abs() <= 0.5 && along.1.abs() <= 0.5, "{what}");
+                let sub = g.subgraphs.iter().find(|x| x.id == id).unwrap();
+                if vertical {
+                    let least = crate::scene::title_fit_width(&sub.title);
+                    assert!(across.1 - across.0 >= least - 0.01, "{what}");
+                }
+            }
+            let q = crate::quality::measure(&g, &rt);
+            assert_eq!(q.title_cut, 0, "{name} {dir}: route() cuts a title");
+        }
+    }
+}
+
+#[test]
+fn a_one_px_drag_keeps_a_frame_grown_to_its_title() {
+    // `route_partial()` redraws a frame that holds a moved node by the
+    // same frame function (F1, F2) and grows it back over the room its
+    // kept edges take inside it (F3 of the paths it keeps), so a 1 px
+    // drag of any node moves no frame by more than 1.5 px (dfr_own's
+    // bound). Before, a frame grown to its title dropped to its members
+    // on the first pixel: nested-wide-title 258 px, title-hidden 75,
+    // title-entry LR 61.
+    for (name, dirs) in [
+        ("nested-wide-title", &["TD", "LR"][..]),
+        ("title-hidden", &["TD", "BT", "LR"][..]),
+        ("title-entry", &["TD", "LR"][..]),
+    ] {
+        let src = std::fs::read_to_string(format!(
+            "{}/tests/fixtures/blocks/{name}.mmd",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        for dir in dirs {
+            let g = graph(&in_direction(&src, dir));
+            let sc = block_scene(&g);
+            let base: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+            for v in 0..base.len() {
+                let mut at = base.clone();
+                at[v].0 += 1.0;
+                let p = crate::levels::with_blocks(true, || {
+                    crate::scene::route_partial(&g, &at, &sc, &base)
+                });
+                for c in &sc.clusters {
+                    let (a, b) = (frame_box(&sc, &c.id), frame_box(&p, &c.id));
+                    let moved = [a.0 - b.0, a.1 - b.1, a.2 - b.2, a.3 - b.3]
+                        .iter()
+                        .fold(0.0f64, |m, d| m.max(d.abs()));
+                    assert!(
+                        moved <= 1.5,
+                        "{name} {dir}: dragging {} moves {} by {moved}: {a:?} -> {b:?}",
+                        sc.nodes[v].id,
+                        c.id
+                    );
+                }
+            }
+        }
+    }
+}
