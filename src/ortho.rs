@@ -2379,7 +2379,9 @@ fn column_clear_of(from: f64, taken: &[f64]) -> f64 {
 }
 
 /// `group` (a channel's jogs, [`place_tracks`]) split into the sets
-/// whose rooms chain, in a block layout (`blocks`); else as it is.
+/// whose rooms chain, in a block layout (`blocks`, [`Ctx::blocks`]: the
+/// static scene's; `route()` and `route_partial()` stack a channel as
+/// one set until they carry the block paths, B12.13); else as it is.
 ///
 /// A jog's room here is its plain room ([`Jog::plain`]), the widest
 /// [`place_channel`] may give it, not the room above its label it has

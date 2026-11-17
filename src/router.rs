@@ -580,7 +580,10 @@ struct World {
     /// leg's column, and the simplified path's rounded corner put the
     /// leg's middle a fraction of a pixel inside that: a long chain
     /// column beside a frame's wall read as riding it, the labelled edge
-    /// was searched for room and left the frame through that wall.
+    /// was searched for room and left the frame through that wall. "A
+    /// block layout" is `Ctx::blocks`, which only the static scene sets:
+    /// `route()` and `route_partial()` keep [`CLEAR_GAP`] (the routed
+    /// half is B12.13's).
     hug_gap: f64,
     /// Every node's box, index-parallel with `sc.nodes`, then the box of
     /// every self-loop (report P0 #13): a loop is drawn beside its node,

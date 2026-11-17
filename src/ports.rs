@@ -1262,6 +1262,11 @@ fn title_side_over_full(
 /// stays on its member's port range. Where neither fits the run is left
 /// as it is: [`place_ports`] has then kept today's cut on that member's
 /// side ([`title_side_over_full`]). Nothing else on the side moves.
+///
+/// Static scene only, like every rule keyed on [`Ctx::blocks`]: `route()`
+/// and `route_partial()` build their context without the block paths
+/// and leave such a run as the ports stage dealt it (the routed half is
+/// B12.13's).
 fn title_side_columns(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
     let heads = title_heads(sc);
     let flag = |v: &[bool], i: usize| v.get(i).copied().unwrap_or(false);
@@ -2342,6 +2347,14 @@ fn title_heads(sc: &Scene) -> Vec<(f64, f64, f64, f64)> {
 /// running along the frame's name and was rerouted round to a lateral
 /// side of its node (a hub's entries into three blocks' title rows,
 /// through their left walls).
+///
+/// "A block layout" is [`Ctx::blocks`], which only the static scene sets
+/// (`edgepass::finish_blocks`): `route()`, `route_sized()` and
+/// `route_partial()` still cut at [`CHIP_SEP`], so a block drawing's
+/// entry next to a chip may leave its node by another side once dragged
+/// (blocks/hub5 TD: `HUB --> b1` into b1's top in the scene, into its
+/// left side in `route()` at the same centres). The routed half is
+/// B12.13's, with the block paths `route()` does not carry yet.
 fn unshaded(
     heads: &[(f64, f64, f64, f64)],
     deep: &[bool],
