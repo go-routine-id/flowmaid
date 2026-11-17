@@ -3015,6 +3015,8 @@ fn nearest_on(pts: &[Pt], p: Pt) -> Pt {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::parser::parse;
+    use crate::scene::scene;
 
     #[test]
     fn a_displaced_column_is_found_in_one_pass_and_always_ends() {
@@ -3058,8 +3060,6 @@ mod tests {
         let col = column_clear_of(o, &[o - 4.0, o]);
         assert!(col > o);
     }
-    use crate::parser::parse;
-    use crate::scene::scene;
 
     const DIRS: [Direction; 4] = [Direction::TD, Direction::BT, Direction::LR, Direction::RL];
 
@@ -3310,28 +3310,32 @@ mod tests {
 
     #[test]
     fn a_jog_room_step_does_not_chain_a_gaps_steps_onto_one_track() {
-        // Drawn BT (flow coordinates): a frame's top wall at -621, its jog
-        // room under the title strip, the next frame's bottom wall at
-        // -534, the gap between them. Step 1 is a displaced exit's step
-        // in the jog room (from its port at 1634 out past the chip to
-        // 1814); step 2 the same edge's run on along the gap (1814 ->
-        // 842); step 3 another block's link along the gap (2859 -> 868),
-        // steps 4 and 5 two more in the gap; step 0 runs beside the frame
-        // (814 .. 1264), its room reaching down past the wall. Step 0
-        // meets the jog room's step only through its room: their spans
-        // lie apart. Chained through it into one set, step 1 sat among
-        // the gap's steps in their order and clamped steps 2 and 3 onto
-        // one track at their rooms' end.
+        // One gap's channel (flow coordinates, synthetic): steps 2 to 5
+        // run along the space between two stacked frames, their rooms
+        // from 100; step 1 is a displaced exit's step in the lower
+        // frame's jog room under its title strip (room 10 .. 28), and
+        // step 2 the same edge's run on along the space between the
+        // frames; step 0 runs beside the lower frame, its room reaching
+        // from that space down past the frame's wall to the jog room's
+        // breadths, its span apart from step 1's. Step 0 meets the jog
+        // room's step only through its room. Chained through it into one
+        // set, step 1 sat among the other steps in their order and
+        // clamped two of them onto one track at their rooms' end.
         let fresh = || {
             vec![
-                jog(0, 0, 1264.0, 814.0, (-690.4, -548.3), -611.4),
-                jog(1, 0, 1634.0, 1814.0, (-695.9, -677.9), -677.9),
-                jog(1, 0, 1814.0, 842.0, (-606.8, -548.3), -570.5),
-                jog(2, 0, 2859.0, 868.0, (-606.8, -558.8), -606.8),
-                jog(3, 0, 1138.0, 1819.0, (-606.8, -532.3), -602.9),
-                jog(4, 0, 3000.0, 2237.0, (-606.8, -541.8), -606.8),
+                jog(0, 0, 600.0, 200.0, (15.0, 160.0), 95.0),
+                jog(1, 0, 900.0, 1100.0, (10.0, 28.0), 28.0),
+                jog(1, 0, 1100.0, 220.0, (100.0, 160.0), 130.0),
+                jog(2, 0, 2000.0, 240.0, (100.0, 150.0), 100.0),
+                jog(3, 0, 500.0, 1110.0, (100.0, 175.0), 104.0),
+                jog(4, 0, 2300.0, 1500.0, (100.0, 165.0), 100.0),
             ]
         };
+        // The jog room's step is a set of its own; the others are one.
+        let mut sets = split_by_room(&fresh(), (0..6).collect(), true);
+        sets.iter_mut().for_each(|s| s.sort_unstable());
+        sets.sort();
+        assert_eq!(sets, vec![vec![0, 2, 3, 4, 5], vec![1]]);
         let mut jogs = fresh();
         place_tracks(&mut jogs, &[], true);
         for (a, x) in jogs.iter().enumerate() {
@@ -3348,14 +3352,32 @@ mod tests {
             }
         }
         // The jog room's step keeps its place; every step its room.
-        assert_eq!(jogs[1].at, -677.9);
+        assert_eq!(jogs[1].at, 28.0);
         for j in &jogs {
             assert!(j.at >= j.room.0 - EPS && j.at <= j.room.1 + EPS);
         }
-        // Outside a block layout the channel is one set, as before.
+        // Outside a block layout the six are one channel stacked as one
+        // set, as before: what `place_channel` gives the whole group.
+        assert_eq!(
+            split_by_room(&fresh(), (0..6).collect(), false),
+            vec![(0..6).collect::<Vec<usize>>()]
+        );
         let mut flat = fresh();
         place_tracks(&mut flat, &[], false);
-        assert_eq!(flat.len(), 6);
+        let mut one = fresh();
+        let mut group: Vec<usize> = (0..6).collect();
+        group.sort_by(|&a, &b| one[a].span().0.total_cmp(&one[b].span().0));
+        place_channel(&mut one, group, false);
+        for (k, (f, o)) in flat.iter().zip(&one).enumerate() {
+            assert_eq!(
+                f.at.to_bits(),
+                o.at.to_bits(),
+                "step {k}: {} / {}",
+                f.at,
+                o.at
+            );
+        }
+        assert!(flat.iter().zip(&jogs).any(|(f, j)| f.at != j.at));
     }
 
     #[test]
