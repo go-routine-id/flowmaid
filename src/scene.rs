@@ -231,20 +231,22 @@ pub struct Scene {
     /// grows: a [`route_partial`] keeps its base's canvas. An overflow
     /// under the 0.1 px the SVG is written to is none.
     ///
-    /// The SVG writers draw a routed scene in scene coordinates and frame
-    /// it with the `viewBox`, so a host maps a pointer through the
+    /// On an axis where a routed drawing reaches past the top-left margin
+    /// the SVG writers keep its coordinates and start the `viewBox` before
+    /// zero by the overflow, so a host maps a pointer through the
     /// `viewBox` (the SVG's screen transform) straight into scene
-    /// coordinates for picking. A class or ER `viewBox` is this canvas. A
-    /// flowchart's is fitted to the drawing, as before: it starts at
-    /// `origin` on an axis where a [`route`] drawing overflows, and may
-    /// start inside the canvas on another (where the drawing starts
-    /// further in than the margin) or after a chain of [`route_partial`]
-    /// frames.
+    /// coordinates for picking. On any other axis the drawing is written
+    /// as before: a class or ER `viewBox` is this canvas, and a
+    /// flowchart's starts at `0` with the drawing moved onto its margin
+    /// (`to_svg` fits a flowchart's canvas to the drawing, so after a
+    /// chain of [`route_partial`] frames its `viewBox` can start after
+    /// `origin`).
     pub origin: (f64, f64),
     /// Set by the edge stages of [`route`] / [`route_partial`] (and of the
-    /// class and ER `route`): its positions are the host's, so the SVG
-    /// writers keep them and frame the drawing with the `viewBox`
-    /// ([`Scene::origin`]) rather than moving it onto the canvas.
+    /// class and ER `route`): its positions are the host's, so where the
+    /// drawing reaches past the top-left margin the SVG writers keep them
+    /// and start the `viewBox` before zero ([`Scene::origin`]) rather than
+    /// moving the drawing onto the canvas.
     pub(crate) routed: bool,
     /// Set by the architecture and gitGraph scene builders, whose own
     /// painters stroke every edge plain: no crossing of such a scene is
@@ -5238,9 +5240,10 @@ pub(crate) fn shift_scene(sc: &mut Scene, dx: f64, dy: f64) {
 /// Re-route edges for custom node positions (e.g. after a drag).
 /// `centers[i]` = centre of node i in final coordinates. Node
 /// positions are NOT normalised (they stay exactly as given) so the
-/// diagram doesn't "swim" while dragging, and [`to_svg`] draws them at
-/// those coordinates: a drawing that reaches past the top-left margin
-/// grows the canvas up or left ([`Scene::origin`]) and moves nothing.
+/// diagram doesn't "swim" while dragging. Where the drawing reaches past
+/// the top-left margin, the canvas grows up or left ([`Scene::origin`])
+/// and [`to_svg`] draws it at those coordinates, moving nothing (#76);
+/// any other routed drawing it moves onto its margin, as it always did.
 ///
 /// # Panics
 ///
@@ -7381,14 +7384,14 @@ pub(crate) fn offset_shows(v: f64) -> bool {
 }
 
 /// How [`to_svg`] puts a drawing onto its canvas on one axis, `fit` being
-/// how far the drawing starts short of [`MARGIN`] (negative: past it):
-/// (shift of the drawing, `viewBox` origin). A routed scene keeps its
-/// coordinates, the `viewBox` starting `fit` before zero; any other is
-/// moved by `fit`, as is a routed one whose `fit` does not show
-/// ([`offset_shows`]): its `viewBox` starts at `0 0` and its output is
-/// byte for byte as before.
+/// how far the drawing starts short of [`MARGIN`] (positive: it reaches
+/// past the margin by `fit`, negative: it starts further in): (shift of
+/// the drawing, `viewBox` origin). A routed drawing that reaches past the
+/// margin by as much as shows ([`offset_shows`]) keeps its coordinates,
+/// the `viewBox` starting `fit` before zero (#76); any other is moved by
+/// `fit`, its `viewBox` at `0`, byte for byte as before.
 fn view_shift(routed: bool, fit: f64) -> (f64, f64) {
-    if routed && offset_shows(fit) {
+    if routed && fit > 0.0 && offset_shows(fit) {
         (0.0, -fit)
     } else {
         (fit, 0.0)
@@ -7397,13 +7400,14 @@ fn view_shift(routed: bool, fit: f64) -> (f64, f64) {
 
 /// Serialise any Scene (automatic or dragged) to SVG. The canvas is the
 /// drawing with a margin all round, so negative coordinates are safe.
-/// A [`route`] / [`route_partial`] scene keeps its coordinates: SVG user
-/// space is scene space and the `viewBox` starts where the canvas does,
-/// at the margin before the drawing (negative where it reaches past
-/// zero, see [`Scene::origin`]), so a host maps pointer coordinates
-/// through the `viewBox` straight into scene coordinates for picking. A
-/// laid-out scene, and a routed one off its margin by less than the 0.1
-/// px the SVG is written to, starts at `0 0`, moved onto the margin.
+/// The drawing is moved to start that margin in on a `0 0` canvas, as it
+/// always was, except where a [`route`] / [`route_partial`] drawing
+/// reaches past the top-left margin: on that axis it keeps its
+/// coordinates and the `viewBox` starts before zero by the overflow (see
+/// [`Scene::origin`]), so a dragged node stays where the host put it and
+/// a host maps pointer coordinates through the `viewBox` into scene
+/// coordinates for picking. An overflow under the 0.1 px the SVG is
+/// written to is none.
 /// The accessible name is `"Flowchart diagram"`; use [`to_svg_titled`]
 /// for another diagram class (e.g. state machines).
 pub fn to_svg(sc: &Scene) -> String {
@@ -7440,11 +7444,11 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
     let mut bb = Bbox::new();
     grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
     let (minx, maxx, miny, maxy) = bb.finish();
-    // The canvas holds the drawing and its MARGIN all round. A routed
-    // scene's positions are the host's and stay as they are (#76): the
-    // `viewBox` starts where its canvas does. Any other drawing is moved
-    // to start MARGIN in, as it always was (a laid-out one is there
-    // already).
+    // The canvas holds the drawing and its MARGIN all round. The drawing
+    // is moved to start MARGIN in, as it always was (a laid-out one is
+    // there already), except on an axis where a routed drawing reaches
+    // past that margin: the host's positions stay as they are there and
+    // the `viewBox` starts before zero (#76).
     let (tx, ox) = view_shift(sc.routed, MARGIN - minx);
     let (ty, oy) = view_shift(sc.routed, MARGIN - miny);
     let width = (maxx - minx) + 2.0 * MARGIN;
@@ -10747,8 +10751,9 @@ pub(crate) fn assert_drawn_inside_canvas(svg: &str) {
 }
 
 /// Test helper: what [`to_svg`] adds to `sc`'s coordinates to draw them
-/// ([`view_shift`]): the move onto the canvas of a laid-out scene, none
-/// for a routed one, whose `viewBox` carries it instead.
+/// ([`view_shift`]): the move onto the canvas, none on an axis where a
+/// routed drawing reaches past the top-left margin (its `viewBox` carries
+/// the overflow instead).
 #[cfg(test)]
 pub(crate) fn svg_shift(sc: &Scene) -> (f64, f64) {
     let mut bb = Bbox::new();
@@ -19012,21 +19017,27 @@ mod tests {
                     assert!(sc.origin.1 + sc.height >= maxy + MARGIN, "{what}");
                     let svg = to_svg(&sc);
                     let (vx, vy, vw, vh) = view_box(&svg);
-                    // Fitted to the drawing: on an overflowing axis it
-                    // starts at the overflow.
-                    assert!((vx - (minx - MARGIN)).abs() <= 0.05, "{what}: {vx}");
-                    assert!((vy - (miny - MARGIN)).abs() <= 0.05, "{what}: {vy}");
+                    // Fitted to the drawing. On an overflowing axis the
+                    // drawing keeps its coordinates and the `viewBox`
+                    // starts at the overflow; on the other it starts at 0,
+                    // the drawing moved onto its margin as before.
+                    let shift = svg_shift(&sc);
+                    for (o, v, t, min) in [(over.0, vx, shift.0, minx), (over.1, vy, shift.1, miny)]
+                    {
+                        if o < 0.0 {
+                            assert!((v - o).abs() <= 0.05, "{what}: {v} {o}");
+                            assert_eq!(t, 0.0, "{what}");
+                        } else {
+                            assert_eq!(v, 0.0, "{what}");
+                            assert_eq!(t, MARGIN - min, "{what}");
+                        }
+                    }
                     assert!((vw - (maxx - minx + 2.0 * MARGIN)).abs() <= 0.5, "{what}");
                     assert!((vh - (maxy - miny + 2.0 * MARGIN)).abs() <= 0.5, "{what}");
-                    if over.0 < 0.0 {
-                        assert!((vx - over.0).abs() <= 0.05, "{what}");
-                    }
-                    if over.1 < 0.0 {
-                        assert!((vy - over.1).abs() <= 0.05, "{what}");
-                    }
                     crate::scene::assert_drawn_inside_canvas(&svg);
-                    // Every labelled box is drawn at its scene centre, and
-                    // a pick there (SVG user space is scene space) picks it.
+                    // Every labelled box is drawn at its scene centre (on
+                    // an overflowing axis SVG user space is scene space),
+                    // and a pick there picks it.
                     let lines: Vec<&str> = svg.lines().collect();
                     let mut picked = Vec::new();
                     for (i, n) in sc.nodes.iter().enumerate() {
@@ -19042,6 +19053,7 @@ mod tests {
                             continue;
                         };
                         let (x, y) = rect_centre(rect);
+                        let (x, y) = (x - shift.0, y - shift.1);
                         assert!(
                             (x - d[i].0).abs() <= 0.1 && (y - d[i].1).abs() <= 0.1,
                             "{what}: node {i} drawn at ({x}, {y}), placed at {:?}",
@@ -19061,10 +19073,11 @@ mod tests {
     /// A routed drawing off its margin by less than the 0.1 px the SVG
     /// is written to — float noise, or a few hundredths of a px — is
     /// written byte for byte as before (moved onto the margin, `viewBox`
-    /// at `0 0`), and its scene origin stays `(0, 0)`; one off by a
-    /// visible amount keeps its coordinates (#76). Flowchart (`to_svg`,
-    /// with the edge stage's canvas) and class / ER (`fit_top_left`,
-    /// `top_left_canvas`), past the margin and inside it.
+    /// at `0 0`), and its scene origin stays `(0, 0)`; one that reaches
+    /// past the margin by a visible amount keeps its coordinates on that
+    /// axis (#76), and one that starts further in than the margin is
+    /// moved onto it as before. Flowchart (`to_svg`, with the edge
+    /// stage's canvas) and class / ER (`fit_top_left`, `top_left_canvas`).
     #[test]
     fn routed_offset_under_print_precision_is_written_as_before() {
         let g = parse("flowchart TD\nA[Alpha] --> B[Beta]\nB --> C[Gamma]\nA --> C").unwrap();
@@ -19104,19 +19117,31 @@ mod tests {
             let svg = to_svg(&sc);
             let (vx, vy, ..) = view_box(&svg);
             let (fx, fy) = start(&sc);
+            let shift = svg_shift(&sc);
+            // Only the axis that reaches past the margin by as much as
+            // shows keeps its coordinates, its `viewBox` before zero and
+            // the canvas grown up or left; the other is written as before.
+            let keeps = |m: f64| m < MARGIN && offset_shows(MARGIN - m);
+            for (m, v, t, o) in [
+                (fx, vx, shift.0, sc.origin.0),
+                (fy, vy, shift.1, sc.origin.1),
+            ] {
+                if keeps(m) {
+                    assert!((v - (m - MARGIN)).abs() <= 0.05, "{off}: {v}");
+                    assert_eq!(t, 0.0, "{off}");
+                    assert_eq!(o, m - MARGIN, "{off}");
+                } else {
+                    assert_eq!(v, 0.0, "{off}");
+                    assert_eq!(t, MARGIN - m, "{off}");
+                    assert_eq!(o, 0.0, "{off}");
+                }
+            }
+            assert_eq!(keeps(fx) || keeps(fy), shows, "{off}");
             if shows {
                 assert_ne!(svg, as_before(&sc), "{off}");
-                assert!((vx - (fx - MARGIN)).abs() <= 0.05, "{off}: {vx}");
-                assert!((vy - (fy - MARGIN)).abs() <= 0.05, "{off}: {vy}");
-                assert_eq!(svg_shift(&sc), (0.0, 0.0), "{off}");
-                // Only the axis that reaches past the margin grows the
-                // canvas up or left.
-                let over = |m: f64| if m < MARGIN { m - MARGIN } else { 0.0 };
-                assert_eq!(sc.origin, (over(fx), over(fy)), "{off}");
             } else {
                 assert_eq!(svg, as_before(&sc), "{off}");
                 assert!(svg.contains(" viewBox=\"0 0 "), "{off}");
-                assert_eq!(sc.origin, (0.0, 0.0), "{off}");
             }
         }
         // Class and ER: the painter's canvas, and the one `route` sets.
@@ -19158,8 +19183,10 @@ mod tests {
     }
 
     /// Drags that leave the top-left margin alone keep a canvas at the
-    /// origin: the scene's `origin` stays `(0, 0)` and its canvas as
-    /// before (#76 changes nothing there).
+    /// origin: the scene's `origin` stays `(0, 0)` and the SVG is written
+    /// byte for byte as before (#76 changes nothing there), also when the
+    /// drawing then starts further in than the margin (every node moved
+    /// right and down): it is moved onto the margin as it always was.
     #[test]
     fn drag_inside_keeps_the_origin() {
         let g = parse("flowchart TD\nA[Alpha] --> B[Beta]\nB --> C[Gamma]").unwrap();
@@ -19168,16 +19195,22 @@ mod tests {
         let mut d = c.clone();
         d[1].0 += 80.0;
         d[1].1 += 15.0;
+        let inward: Vec<(f64, f64)> = c.iter().map(|p| (p.0 + 40.0, p.1 + 25.0)).collect();
         for sc in [
             route(&g, &c),
             route(&g, &d),
             route_partial(&g, &d, &laid, &c),
+            route(&g, &inward),
+            route_partial(&g, &inward, &laid, &c),
         ] {
             assert_eq!(sc.origin, (0.0, 0.0));
             let svg = to_svg(&sc);
-            let (vx, vy, ..) = view_box(&svg);
-            assert!(vx >= 0.0 && vy >= 0.0, "{svg}");
+            assert!(svg.contains(" viewBox=\"0 0 "), "{svg}");
             assert!(svg.contains("<rect width=\""), "background at the origin");
+            // Written byte for byte as a scene not made by `route` is.
+            let mut plain = sc.clone();
+            plain.routed = false;
+            assert_eq!(svg, to_svg(&plain));
         }
         assert_eq!(laid.origin, (0.0, 0.0));
         assert!(to_svg(&laid).contains(" viewBox=\"0 0 "));

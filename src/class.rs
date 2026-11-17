@@ -3824,7 +3824,8 @@ fn note_size(text: &str) -> (f64, f64) {
 /// top-left margin grows the canvas up or left instead of moving the
 /// drawing, and the `viewBox` starts at [`Scene::origin`], so SVG user
 /// space is scene space and a pointer maps through the `viewBox` straight
-/// into scene coordinates for picking, as with [`crate::scene::to_svg`].
+/// into scene coordinates for picking (as with [`crate::scene::to_svg`]
+/// past the top-left margin).
 pub fn to_svg(cs: &ClassScene) -> String {
     to_svg_with(cs, &SvgOptions::default())
 }

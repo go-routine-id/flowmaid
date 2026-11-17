@@ -27,20 +27,17 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- **A routed SVG draws every node where the host put it** (#76).
-  `route()`, `route_partial()` and the class and ER `route` keep their
-  positions, but the SVG moved the whole drawing to start at the margin
-  of a `0 0` canvas: after a drag past the top-left margin, and for a
-  flowchart or state diagram whenever its routed drawing did not start
-  at the margin, even an undragged `route()` at the laid-out centres
-  (nodes up to about 100 px from where the static SVG draws them). So
-  a dragged node lagged the pointer. Now SVG user space is scene space
-  and the `viewBox` carries the offset (negative past the top-left
-  margin; `Scene::origin` holds the canvas corner); picking agrees. Static output is
-  unchanged, and so is every routed SVG whose `viewBox` starts at `0 0`.
-  Other routed SVGs draw the same picture with new bytes; only a class
-  diagram dragged past the top-left can place a cardinality elsewhere,
-  where `class::card_spots` reports it.
+- **A drag past the top-left margin no longer moves the rest of the
+  drawing** (#76). `route()`, `route_partial()`, `route_sized()` and the
+  class and ER `route` keep their positions, but where the routed drawing
+  reached past the top-left margin the SVG moved all of it right or down
+  onto a `0 0` canvas, by an amount it did not expose, so a dragged node
+  lagged the pointer. Now the drawing keeps its coordinates on that axis
+  and the `viewBox` starts before zero by the overflow, as
+  `Scene::origin` does; picking agrees. Static output is unchanged, and
+  so is every routed SVG that does not reach past the top-left margin. A
+  class diagram dragged past it can place a cardinality elsewhere, where
+  `class::card_spots` reports it.
 - **Class diagrams: a declared name with a stray dot is an error, as in
   mermaid.** `class A.`, `class .A`, `class A..B`, `class A...B`, `class
   A.B.`, and a dot after a name's generic, label, `:::` style or
