@@ -5142,9 +5142,40 @@ pub(crate) fn shift_scene(sc: &mut Scene, dx: f64, dy: f64) {
 /// positions are NOT normalised (they stay exactly as given) so the
 /// diagram doesn't "swim" while dragging; `to_svg` handles
 /// translation at export time.
+///
+/// # Panics
+///
+/// When `centers.len()` differs from the graph's node count;
+/// [`try_route`] returns `None` instead.
 pub fn route(g: &Graph, centers: &[(f64, f64)]) -> Scene {
     let (labels, sizes) = crate::layout::node_texts(g);
     route_labelled(g, centers, &sizes, &labels)
+}
+
+/// [`route`] that never panics: `None` when `centers` does not hold
+/// exactly one centre per node of `g`, or holds a coordinate that is
+/// not finite (NaN, infinite); otherwise exactly what [`route`]
+/// returns. For a host whose positions can be out of date for a moment,
+/// such as after an edit that added a node since the last drag.
+///
+/// ```
+/// use flowmaid::{parser::parse, scene};
+///
+/// let g = parse("flowchart TD\nA --> B").unwrap();
+/// let laid = scene::scene(&g);
+/// let centers: Vec<(f64, f64)> = laid.nodes.iter().map(|n| (n.x, n.y)).collect();
+/// assert!(scene::try_route(&g, &centers).is_some());
+/// // One position short: no scene, and no panic.
+/// assert!(scene::try_route(&g, &centers[..1]).is_none());
+/// ```
+pub fn try_route(g: &Graph, centers: &[(f64, f64)]) -> Option<Scene> {
+    (centers.len() == g.nodes.len() && all_finite(centers)).then(|| route(g, centers))
+}
+
+/// Whether every coordinate of `points` is finite: the positions the
+/// fallible `try_route` of each diagram type hands to its `route`.
+pub(crate) fn all_finite(points: &[(f64, f64)]) -> bool {
+    points.iter().all(|p| p.0.is_finite() && p.1.is_finite())
 }
 
 /// Same as [`route`] but with caller-provided node sizes (a fork/join

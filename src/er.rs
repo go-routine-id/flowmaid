@@ -16,8 +16,8 @@
 use crate::layout::{text_width, LABEL_BOX_H};
 use crate::model::{Attr, Card, EdgeKind, Entity, ErDiagram, Graph, Shape};
 use crate::scene::{
-    edge_path_d, edge_polyline, edge_stroke_width, escape, fit_top_left, route_sized, scene_sized,
-    seg_aabb, svg_label_box, svg_open_a11y, A11y, Scene, SceneEdge, SvgOptions,
+    all_finite, edge_path_d, edge_polyline, edge_stroke_width, escape, fit_top_left, route_sized,
+    scene_sized, seg_aabb, svg_label_box, svg_open_a11y, A11y, Scene, SceneEdge, SvgOptions,
 };
 use crate::style::Palette;
 
@@ -157,9 +157,36 @@ pub fn scene(d: &ErDiagram) -> ErScene {
 
 /// Re-route relationships for custom entity positions (drags).
 /// `centers[i]` = centre of entity i in final coordinates.
+///
+/// # Panics
+///
+/// When `centers` does not hold one centre per entity; [`try_route`]
+/// returns `None` instead.
 pub fn route(d: &ErDiagram, centers: &[(f64, f64)]) -> ErScene {
     let (g, tables, sizes) = build(d);
     assemble(d, tables, route_sized(&g, centers, &sizes), &g)
+}
+
+/// [`route`] that never panics: `None` when `centers` does not hold
+/// exactly one centre per entity, or holds a coordinate that is not
+/// finite (NaN, infinite); otherwise exactly what [`route`] returns. For
+/// a host whose positions can be out of date for a moment, such as after
+/// an edit that added an entity since the last drag.
+///
+/// ```
+/// use flowmaid::{er, model::Document, parser::parse_document};
+///
+/// let Ok(Document::Er(d)) = parse_document("erDiagram\nA ||--o{ B : has") else {
+///     unreachable!()
+/// };
+/// let laid = er::scene(&d);
+/// let centers: Vec<(f64, f64)> = laid.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
+/// assert!(er::try_route(&d, &centers).is_some());
+/// // One position short: no scene, and no panic.
+/// assert!(er::try_route(&d, &centers[..1]).is_none());
+/// ```
+pub fn try_route(d: &ErDiagram, centers: &[(f64, f64)]) -> Option<ErScene> {
+    (centers.len() == d.entities.len() && all_finite(centers)).then(|| route(d, centers))
 }
 
 fn assemble(d: &ErDiagram, tables: Vec<ErTable>, mut scene: Scene, g: &Graph) -> ErScene {

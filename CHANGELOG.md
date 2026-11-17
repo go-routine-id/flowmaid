@@ -7,6 +7,18 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **A `route` that never panics** (#110): `scene::try_route`,
+  `class::try_route`, `er::try_route` and `mindmap::try_route` return
+  `None` when the positions are not ones `route` accepts (one per node;
+  for a class diagram one per class, or per class and note) or a
+  coordinate is not finite, and otherwise exactly what `route` returns.
+  A host whose position list is out of date for a moment (an edit added
+  a node since the last drag) no longer has to copy each diagram's
+  counting rule to avoid a panic, and a mindmap's mismatch is now told
+  apart from an empty mindmap. The `route` functions are unchanged.
+
 ### Documentation
 
 - **Roadmap page** (`docs/ROADMAP.md`, linked from the README): what the

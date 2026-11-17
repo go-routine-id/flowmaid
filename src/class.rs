@@ -32,9 +32,9 @@ use crate::model::{
     RelKind, Shape,
 };
 use crate::scene::{
-    edge_end_chord, edge_path_d, edge_polyline, edge_stroke_width, escape, fit_top_left,
-    route_sized, sample_cubic, scene_sized, svg_label_box, svg_open_a11y, svg_text_multiline, A11y,
-    Scene, SceneEdge, SceneNode, SvgOptions,
+    all_finite, edge_end_chord, edge_path_d, edge_polyline, edge_stroke_width, escape,
+    fit_top_left, route_sized, sample_cubic, scene_sized, svg_label_box, svg_open_a11y,
+    svg_text_multiline, A11y, Scene, SceneEdge, SceneNode, SvgOptions,
 };
 use crate::style::{ItemPaint, Palette};
 
@@ -205,7 +205,7 @@ pub fn scene(d: &ClassDiagram) -> ClassScene {
 /// # Panics
 ///
 /// When `centers` holds neither one centre per class nor one per
-/// class and note.
+/// class and note; [`try_route`] returns `None` instead.
 pub fn route(d: &ClassDiagram, centers: &[(f64, f64)]) -> ClassScene {
     let b = build(d);
     let n = d.classes.len();
@@ -219,6 +219,32 @@ pub fn route(d: &ClassDiagram, centers: &[(f64, f64)]) -> ClassScene {
     }
     let sc = route_sized(&b.g, &all, &b.sizes);
     assemble(d, b, sc, Mode::Routed)
+}
+
+/// [`route`] that never panics: `None` when `centers` holds neither one
+/// centre per class nor one per class and note, or holds a coordinate
+/// that is not finite (NaN, infinite); otherwise exactly what [`route`]
+/// returns. For a host whose positions can be out of date for a moment,
+/// such as after an edit that added a class since the last drag.
+///
+/// ```
+/// use flowmaid::{class, model::Document, parser::parse_document};
+///
+/// let Ok(Document::Class(d)) = parse_document("classDiagram\nA <|-- B\nnote for A \"n\"") else {
+///     unreachable!()
+/// };
+/// let laid = class::scene(&d);
+/// let all: Vec<(f64, f64)> = laid.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
+/// // Classes and notes, or the classes only (notes placed beside them).
+/// assert!(class::try_route(&d, &all).is_some());
+/// assert!(class::try_route(&d, &all[..2]).is_some());
+/// // One position short of the classes: no scene, and no panic.
+/// assert!(class::try_route(&d, &all[..1]).is_none());
+/// ```
+pub fn try_route(d: &ClassDiagram, centers: &[(f64, f64)]) -> Option<ClassScene> {
+    let n = d.classes.len();
+    let counted = centers.len() == n || centers.len() == n + d.notes.len();
+    (counted && all_finite(centers)).then(|| route(d, centers))
 }
 
 /// Note centres for a [`route`] call that passed class centres only:
