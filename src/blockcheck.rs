@@ -2568,6 +2568,69 @@ fn a_two_way_pair_between_blocks_keeps_its_steps_in_one_channel() {
 }
 
 #[test]
+fn a_title_rows_first_free_entry_clears_the_chip_ring() {
+    // blocks/hub5: the hub's entries into `b1`, `d1` and `e1` stood on
+    // the first free port past each block's title chip, exactly on the
+    // router's limit round the chip; the stroke touched the chip's ring
+    // and the router took all three round into their members' left
+    // sides through the frames' left walls. Cut at the clearance the
+    // layout and `ortho` measure the chip with, they come in from above.
+    let g = fixture("blocks/hub5");
+    let sc = block_scene(&g);
+    let q = crate::quality::measure(&g, &sc);
+    assert_eq!((q.lateral_x, q.side_ends), (0, 0), "{:?}", q.details);
+    for to in ["b1", "d1", "e1"] {
+        let p = path_of(edge(&sc, "HUB", to));
+        let end = *p.last().unwrap();
+        assert_eq!(
+            side_of("TD", node_box(&sc, to), end),
+            'u',
+            "HUB -> {to}: {p:?}"
+        );
+    }
+}
+
+#[test]
+fn a_frames_pins_and_its_title_rows_entries_take_columns_apart() {
+    // The public fixture and its permutations drawn TD: `REG ==> ORD`'s
+    // free pin and `CART --> QUEUE`'s entry into the title-row member
+    // `QUEUE` both took the first free column past `ORD`'s chip, the two
+    // strokes on top of each other, and the router took the entry round
+    // into `QUEUE`'s left side. Dealt the columns past the chip as one
+    // set, in the order their channels come in, the entry comes in from
+    // above beside the pin, and the steps into them nest.
+    for name in [
+        "blocks-overview",
+        "blocks-overview-actors-reversed",
+        "blocks-overview-edges-reversed",
+        "blocks-overview-edges-rotated",
+        "blocks-overview-subgraphs-reversed",
+    ] {
+        let g = fixture(&format!("blocks/{name}"));
+        let sc = block_scene(&g);
+        let q = crate::quality::measure(&g, &sc);
+        assert_eq!(q.overlap_pairs, 0, "{name}: {:?}", q.details);
+        assert!(
+            q.min_edge_gap >= 12.0,
+            "{name}: min_edge_gap {}",
+            q.min_edge_gap
+        );
+        assert!(q.x_drawn <= 6, "{name}: x_drawn {}", q.x_drawn);
+        let entry = *path_of(edge(&sc, "CART", "QUEUE")).last().unwrap();
+        assert_eq!(
+            side_of("TD", node_box(&sc, "QUEUE"), entry),
+            'u',
+            "{name}: {entry:?}"
+        );
+        let pin = *path_of(edge(&sc, "REG", "ORD")).last().unwrap();
+        assert!(
+            (pin.0 - entry.0).abs() >= crate::ortho::TRACK_PITCH - 0.01,
+            "{name}: pin {pin:?}, entry {entry:?}"
+        );
+    }
+}
+
+#[test]
 fn a_displaced_end_never_steps_back_over_another_edges_crossing_of_its_title_side() {
     // blocks/lr drawn BT: `pager`'s top lies partly under the chip of a
     // frame grown for the columns past it (X2.2), `ship -> pager` takes

@@ -12,7 +12,7 @@
 use crate::clearance::{CHIP_SEP, EDGE_SPACING, NODE_SEP};
 use crate::edgepass::{end_rect, normal, side_of, Ctx, EndRef, Mode, Side};
 use crate::layout::LABEL_BOX_H;
-use crate::model::{Graph, Marker, Shape};
+use crate::model::{Direction, Graph, Marker, Shape};
 use crate::scene::{
     edge_drawn, edge_polyline, grow_scene, title_head, Bbox, Scene, SceneEdge, ARROW_MARKER_PX,
     GLYPH_PORT_GAP, MARGIN, SLANT_MAX,
@@ -776,6 +776,9 @@ pub(crate) fn assign(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
     if cx.blocks {
         free_pins(sc, cx, moved);
         order_pins(sc, cx, moved);
+        if matches!(g.direction, Direction::TD | Direction::BT) {
+            title_side_columns(sc, cx, moved);
+        }
     }
 }
 
@@ -1197,6 +1200,253 @@ fn pin_past(
     (inside && off_chip).then_some(start)
 }
 
+/// The columns of frame `ci`'s free pins on its top side ([`pin_of`]):
+/// (column, edge, which end).
+fn title_pins(sc: &Scene, cx: &Ctx, ci: usize) -> Vec<(f64, usize, bool)> {
+    let mut out = Vec::new();
+    for i in 0..sc.edges.len() {
+        for src in [true, false] {
+            if let Some((c, Side::Top, p)) = pin_of(sc, cx, i, src) {
+                if c == ci {
+                    out.push((p.0, i, src));
+                }
+            }
+        }
+    }
+    out
+}
+
+/// Whether a title-row member's top side, whose port range is `range`
+/// and which holds `k` ends, cannot take them and the free pins of
+/// frame `ci` (title chip `head`) standing past the chip within its
+/// reach a [`crate::ortho::TRACK_PITCH`] apart past the chip's clearance
+/// ([`title_side_columns`]). `false` where no such pin stands there.
+fn title_side_over_full(
+    sc: &Scene,
+    cx: &Ctx,
+    ci: usize,
+    head: (f64, f64, f64, f64),
+    (lo, hi): (f64, f64),
+    k: usize,
+) -> bool {
+    let c1 = head.2 + crate::ortho::CHIP_CLEAR;
+    if c1 >= hi || lo >= c1 {
+        return false;
+    }
+    let pins = title_pins(sc, cx, ci)
+        .into_iter()
+        .filter(|&(t, _, _)| t >= head.2 - PORT_EPS && t < hi + PORT_SPACING)
+        .count();
+    pins > 0 && (k + pins - 1) as f64 * crate::ortho::TRACK_PITCH > hi - c1 + PORT_EPS
+}
+
+/// B12 2.8, free pins and title-clear entries as one set of columns: on
+/// a block's title side (its top, in TD and BT; in LR and RL the title
+/// strip lies on a lateral side and the rule is void) the stretch past the
+/// title chip carries both the frame's own free pins and the entries of
+/// its title-row members whose side the chip shades in part, and both
+/// are drawn past the chip at the first free place, each on its own
+/// ([`free_pins`] keeps a pin off the chip; [`unshaded`] starts a
+/// member's ports at the chip's clearance). There they took the same
+/// column (blocks/blocks-overview: `REG ==> ORD`'s pin and `CART -->
+/// QUEUE`'s entry at 628.5, the two strokes on top of each other, the
+/// router then taking the entry round into the member's lateral side).
+/// Where a pin and such an entry (an edge from outside the frame: it
+/// crosses the title side) stand closer than a port's spacing, the run
+/// of them whose neighbours stand that close is dealt its columns again,
+/// from where it starts (not before the chip's clearance) up to a port's
+/// spacing short of the side's next crossing, in the order their
+/// channels come in along the side (so the steps the ortho stage draws
+/// into them nest), [`PORT_SPACING`] apart, or a
+/// [`crate::ortho::TRACK_PITCH`] apart where that does not fit; an entry
+/// stays on its member's port range. Where neither fits the run is left
+/// as it is: [`place_ports`] has then kept today's cut on that member's
+/// side ([`title_side_over_full`]). Nothing else on the side moves.
+fn title_side_columns(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
+    let heads = title_heads(sc);
+    let flag = |v: &[bool], i: usize| v.get(i).copied().unwrap_or(false);
+    for ci in 0..sc.clusters.len() {
+        let Some(&head) = heads.get(ci) else {
+            continue;
+        };
+        let r = end_rect(sc, EndRef::Frame(ci));
+        // Only a chip on the frame's top side.
+        if sc.clusters[ci].title.trim().is_empty() || head.1 > r.1 + PORT_SPACING {
+            continue;
+        }
+        let c1 = head.2 + crate::ortho::CHIP_CLEAR;
+        let line = r.1;
+        let end_at = r.2 - PORT_SPACING;
+        // (column, lower and upper bound, edge, which end, approach)
+        let mut set: Vec<(f64, f64, f64, usize, bool, f64)> = Vec::new();
+        for (t, i, src) in title_pins(sc, cx, ci) {
+            if t >= head.2 - PORT_EPS && flag(&cx.drawn, i) {
+                let key = split(Side::Top, approach(&sc.edges[i], src)).0;
+                set.push((t, c1, end_at, i, src, key));
+            }
+        }
+        if set.is_empty() {
+            continue;
+        }
+        let pins = set.len();
+        // Whether an end lies outside the frame: an entry from it crosses
+        // the title side.
+        let outside = |e: EndRef| match e {
+            EndRef::Node(u) => !cx.node_frames.get(u).is_some_and(|f| f.contains(&ci)),
+            EndRef::Frame(d) => d != ci && !cx.frame_anc.get(d).is_some_and(|f| f.contains(&ci)),
+        };
+        for v in (0..sc.nodes.len()).filter(|&v| title_row_side(sc, cx, v, ci, Side::Top, head)) {
+            let (lo, hi, _, prof) = span(sc, EndRef::Node(v), Side::Top);
+            if prof.straight().is_none() || hi <= c1 || lo >= c1 {
+                continue;
+            }
+            for i in 0..sc.edges.len() {
+                if !flag(&cx.drawn, i) || flag(&cx.fixed, i) || flag(&cx.held, i) {
+                    continue;
+                }
+                let Some((f, t)) = cx.ends.get(i).copied().flatten() else {
+                    continue;
+                };
+                for (src, end, other) in [(true, f, t), (false, t, f)] {
+                    if end != EndRef::Node(v) || !outside(other) {
+                        continue;
+                    }
+                    let p = end_point(sc, i, src);
+                    if end_side(sc, end, p) != Side::Top {
+                        continue;
+                    }
+                    let key = split(Side::Top, approach(&sc.edges[i], src)).0;
+                    set.push((p.0, c1.max(lo), hi.min(end_at), i, src, key));
+                }
+            }
+        }
+        if set.len() == pins {
+            continue;
+        }
+        // The runs of the set whose neighbours stand closer than a port's
+        // spacing; a run that holds a pin and an entry is dealt again.
+        let mut by_col: Vec<usize> = (0..set.len()).collect();
+        by_col.sort_by(|&a, &b| set[a].0.total_cmp(&set[b].0).then(a.cmp(&b)));
+        let mut runs: Vec<Vec<usize>> = Vec::new();
+        for &k in &by_col {
+            match runs.last_mut() {
+                Some(run) if set[k].0 - set[*run.last().unwrap()].0 < PORT_SPACING - PORT_EPS => {
+                    run.push(k)
+                }
+                _ => runs.push(vec![k]),
+            }
+        }
+        // The other drawn edges' crossings of the side's line. (Not those
+        // of the set: an entry's builder path crosses the line wherever
+        // it slants, and its leg is drawn straight up from its port.)
+        let mine = |j: usize| set.iter().any(|x| x.3 == j);
+        let mut foreign: Vec<f64> = Vec::new();
+        for j in (0..sc.edges.len()).filter(|&j| !mine(j) && flag(&cx.drawn, j)) {
+            for w in edge_polyline(&sc.edges[j]).windows(2) {
+                let ((ta, na), (tb, nb)) = (split(Side::Top, w[0]), split(Side::Top, w[1]));
+                if (na - line) * (nb - line) > 0.0 || (na == line && nb == line) {
+                    continue;
+                }
+                let t = if (nb - na).abs() < PORT_EPS {
+                    ta
+                } else {
+                    ta + (tb - ta) * (line - na) / (nb - na)
+                };
+                if t > head.2 && t < r.2 {
+                    foreign.push(t);
+                }
+            }
+        }
+        let mut dealt: Vec<usize> = Vec::new();
+        for mut run in runs {
+            if run.iter().any(|&k| dealt.contains(&k))
+                || !run.iter().any(|&k| k < pins)
+                || !run.iter().any(|&k| k >= pins)
+            {
+                continue;
+            }
+            // Dealt from where the run starts (not before the chip's
+            // clearance) up to a port's spacing short of what crosses the
+            // side next; a run that would run into the set's next end
+            // takes that end in and is dealt again.
+            let cols = loop {
+                let first = set[run[0]].0;
+                let last = set[*run.last().unwrap()].0;
+                let (mut floor, mut wall) = (c1, end_at);
+                let mut next: Option<usize> = None;
+                for &t in &foreign {
+                    if t < first - PORT_EPS {
+                        floor = floor.max(t + PORT_SPACING);
+                    } else if t > last + PORT_EPS {
+                        wall = wall.min(t - PORT_SPACING);
+                    }
+                }
+                for &k in &by_col {
+                    if run.contains(&k) {
+                        continue;
+                    }
+                    let t = set[k].0;
+                    if t < first - PORT_EPS {
+                        floor = floor.max(t + PORT_SPACING);
+                    } else if t - PORT_SPACING < wall {
+                        wall = t - PORT_SPACING;
+                        next = Some(k);
+                    }
+                }
+                let mut order = run.clone();
+                order.sort_by(|&a, &b| {
+                    set[a]
+                        .5
+                        .total_cmp(&set[b].5)
+                        .then(set[a].0.total_cmp(&set[b].0))
+                        .then(set[a].3.cmp(&set[b].3))
+                });
+                let start = floor.max(first);
+                let deal = |pitch: f64| -> Option<Vec<f64>> {
+                    let mut out = Vec::with_capacity(order.len());
+                    let mut at = start;
+                    for &k in &order {
+                        let (_, lo, hi, _, _, _) = set[k];
+                        let t = lo.max(at);
+                        if t > hi.min(wall) + PORT_EPS {
+                            return None;
+                        }
+                        out.push(t);
+                        at = t + pitch;
+                    }
+                    Some(out)
+                };
+                match deal(PORT_SPACING).or_else(|| deal(crate::ortho::TRACK_PITCH)) {
+                    Some(cols) => break Some((order, cols)),
+                    None => match next {
+                        Some(k) => {
+                            run.push(k);
+                            run.sort_by(|&a, &b| set[a].0.total_cmp(&set[b].0).then(a.cmp(&b)));
+                        }
+                        None => break None,
+                    },
+                }
+            };
+            dealt.extend(run.iter().copied());
+            let Some((order, cols)) = cols else {
+                continue;
+            };
+            for (&k, &t) in order.iter().zip(&cols) {
+                let (at, _, _, i, src, _) = set[k];
+                if (t - at).abs() <= PORT_EPS {
+                    continue;
+                }
+                let p = end_point(sc, i, src);
+                let delta = (t - p.0, 0.0);
+                move_end(&mut sc.edges[i], src, p, delta, Side::Top, false, true);
+                if let Some(m) = moved.get_mut(i) {
+                    *m = true;
+                }
+            }
+        }
+    }
+}
+
 /// Space again the ends the router left too close, after it ran: the
 /// same rule as [`assign`], but an over-full side keeps its ends. A
 /// rerouted path leaves its port straight along a planned lattice leg,
@@ -1319,8 +1569,26 @@ fn place_ports(
                 .collect(),
             _ => Vec::new(),
         };
+        // In a block layout the chip is cleared by `ortho`'s clearance
+        // ([`unshaded`]); on a title-row member's side that the frame's
+        // own pins share and that cannot hold its ends and those pins a
+        // track apart past the chip ([`title_side_columns`]), today's cut
+        // stays (that side is a displaced member's, B12 2.8 rule 2).
+        let over_full = || {
+            prof.straight().is_some()
+                && side == Side::Top
+                && matches!(g.direction, Direction::TD | Direction::BT)
+                && deep.iter().enumerate().any(|(ci, &d)| {
+                    d && title_side_over_full(sc, cx, ci, heads[ci], (lo, hi), ports.len())
+                })
+        };
+        let clear = if !cx.blocks || !matches!(end, EndRef::Node(_)) || over_full() {
+            CHIP_SEP
+        } else {
+            crate::ortho::CHIP_CLEAR
+        };
         let (lo, hi, shaded) = match prof.straight() {
-            Some(n) => unshaded(&heads, &deep, side, n, (lo, hi), ports.len()),
+            Some(n) => unshaded(&heads, &deep, side, n, (lo, hi), ports.len(), clear),
             None => (lo, hi, false),
         };
         let shaded = shaded && ports.iter().any(|p| p.want < lo || p.want > hi);
@@ -2060,16 +2328,20 @@ fn title_heads(sc: &Scene) -> Vec<(f64, f64, f64, f64)> {
 
 /// The usable tangent range `lo..hi` of a straight side at normal `n`,
 /// less the stretch a title chip shades (within [`CHIP_SHADE`] out of
-/// the side and [`CHIP_SEP`] along it, the room the router asks of a
-/// stroke beside a chip): the longer free part when it still holds `k`
-/// ends [`PORT_SPACING`] apart, else the whole range. `true` when a chip
-/// shades the side.
+/// the side and `clear` along it): the longer free part when it still
+/// holds `k` ends [`PORT_SPACING`] apart, else the whole range. `true`
+/// when a chip shades the side.
 ///
-/// (That leaves the first free port exactly on the router's limit: in a
-/// block layout a stroke there that touches the chip's ring counts as
-/// running along the frame's name and is rerouted round to a lateral
-/// side of its node. Clearing by more is left to the pins of an
-/// over-full side, which would stand on that first entry's column.)
+/// `clear` is [`CHIP_SEP`], the room the router asks of a stroke beside
+/// a chip, outside a block layout; in one it is
+/// [`crate::ortho::CHIP_CLEAR`], the clearance the layout's jog room
+/// (`layout::title_cap`) and `ortho`'s title sides measure the chip
+/// with (B12 2.7 F2: one free stretch for the three). Cut at
+/// [`CHIP_SEP`], a block's first free port stood exactly on the router's
+/// limit, and a stroke there that touched the chip's ring counted as
+/// running along the frame's name and was rerouted round to a lateral
+/// side of its node (a hub's entries into three blocks' title rows,
+/// through their left walls).
 fn unshaded(
     heads: &[(f64, f64, f64, f64)],
     deep: &[bool],
@@ -2077,6 +2349,7 @@ fn unshaded(
     n: f64,
     (lo, hi): (f64, f64),
     k: usize,
+    clear: f64,
 ) -> (f64, f64, bool) {
     let sgn = out_sign(side);
     let (a, b) = if sgn > 0.0 {
@@ -2092,7 +2365,7 @@ fn unshaded(
         if !deep.get(ci).copied().unwrap_or(false) && (n1 + CHIP_SEP <= a || n0 - CHIP_SEP >= b) {
             continue;
         }
-        let (c0, c1) = (t0 - CHIP_SEP, t1 + CHIP_SEP);
+        let (c0, c1) = (t0 - clear, t1 + clear);
         if c1 <= lo || c0 >= hi {
             continue;
         }
@@ -2871,14 +3144,14 @@ mod tests {
         // Chip header over x 0..100, ending 10 px above a top side
         // spanning x 50..250.
         let heads = [(0.0, 0.0, 100.0, 20.0)];
-        let (lo, hi, shaded) = unshaded(&heads, &[], Side::Top, 30.0, (58.0, 242.0), 2);
+        let (lo, hi, shaded) = unshaded(&heads, &[], Side::Top, 30.0, (58.0, 242.0), 2, CHIP_SEP);
         assert!(shaded);
         assert!(lo >= 100.0 + CHIP_SEP && hi == 242.0, "{lo} {hi}");
         // Far below the chip: no shade.
-        let (lo, hi, shaded) = unshaded(&heads, &[], Side::Top, 300.0, (58.0, 242.0), 2);
+        let (lo, hi, shaded) = unshaded(&heads, &[], Side::Top, 300.0, (58.0, 242.0), 2, CHIP_SEP);
         assert!(!shaded && lo == 58.0 && hi == 242.0);
         // No room past the chip for the ends: the side stays whole.
-        let (lo, hi, _) = unshaded(&heads, &[], Side::Top, 30.0, (58.0, 110.0), 2);
+        let (lo, hi, _) = unshaded(&heads, &[], Side::Top, 30.0, (58.0, 110.0), 2, CHIP_SEP);
         assert!(lo == 58.0 && hi == 110.0);
     }
 
