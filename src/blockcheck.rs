@@ -2533,6 +2533,69 @@ fn an_edge_between_stacked_blocks_crosses_their_title_sides_past_the_chips() {
     }
 }
 
+#[test]
+fn a_displaced_end_never_steps_back_over_another_edges_crossing_of_its_title_side() {
+    // blocks/lr drawn BT: `pager`'s top lies partly under the chip of a
+    // frame grown for the columns past it (X2.2), `ship -> pager` takes
+    // the free stretch past the chip, and `cdn`'s exits lie wholly under
+    // the chip at the frame's other end. Displaced to the first free
+    // column past the chip, `cdn -> gateway` went out past `ship ->
+    // pager`'s crossing and back over it inside the frame, and `cart ->
+    // pager`, left no column, was rerouted round into pager's right
+    // side through a path that ran on past its stub and doubled back
+    // (3 crossings; the package's start and the head before X2.2's room
+    // had 1). A displaced column never lies past another edge's crossing
+    // of the side between the end's port and the column, and no drawn
+    // path runs back over itself, in any block fixture's direction.
+    let src = std::fs::read_to_string(format!(
+        "{}/tests/fixtures/blocks/lr.mmd",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    let g = graph(&in_direction(&src, "BT"));
+    let sc = block_scene(&g);
+    let q = crate::quality::measure(&g, &sc);
+    assert!(q.x_drawn <= 1, "lr BT: x_drawn {}", q.x_drawn);
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/blocks");
+    let mut names: Vec<_> = std::fs::read_dir(&dir)
+        .unwrap()
+        .filter_map(|d| d.ok()?.file_name().into_string().ok())
+        .filter(|n| n.ends_with(".mmd"))
+        .collect();
+    names.sort();
+    for name in names {
+        let src = std::fs::read_to_string(dir.join(&name)).unwrap();
+        if !src.trim_start().starts_with("flowchart") {
+            continue;
+        }
+        for d in ["TD", "BT", "LR", "RL"] {
+            let sc = block_scene(&graph(&in_direction(&src, d)));
+            for e in &sc.edges {
+                let p = path_of(e);
+                for w in p.windows(3) {
+                    let (a, b) = (
+                        (w[1].0 - w[0].0, w[1].1 - w[0].1),
+                        (w[2].0 - w[1].0, w[2].1 - w[1].1),
+                    );
+                    let (la, lb) = (a.0.hypot(a.1), b.0.hypot(b.1));
+                    if la < 0.5 || lb < 0.5 {
+                        continue;
+                    }
+                    let cos = (a.0 * b.0 + a.1 * b.1) / (la * lb);
+                    assert!(
+                        cos > -0.95,
+                        "{name} {d}: {} -> {} doubles back at ({:.1}, {:.1})",
+                        e.from,
+                        e.to,
+                        w[1].0,
+                        w[1].1
+                    );
+                }
+            }
+        }
+    }
+}
+
 // --- One frame function in three entry points (B12.10, F1 and F2).
 
 /// `src` with the direction of its `flowchart` header (the first line

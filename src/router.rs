@@ -2675,6 +2675,36 @@ fn search(
     Some((pts, sk, gk))
 }
 
+/// `pts` without the spikes of a search's path: the middle of three
+/// points on one axis-aligned line that lies beyond both others, where
+/// the path runs on and turns straight back. A goal stub is reached only
+/// from outside its node, so where a lattice line ran between a side
+/// and its stub the search went past the stub and came back onto it at
+/// no bend's cost, and the drawn path doubled back over itself into
+/// the side (blocks/lr drawn BT, `cart -> pager` 4 px past its stub and
+/// back). Without the spike the leg runs straight into the port, the
+/// stub as long as the room before the corner. A block layout's static
+/// scene ([`Env::blocks`]).
+fn despike(pts: Vec<Pt>) -> Vec<Pt> {
+    let beyond = |a: f64, b: f64, c: f64| (b - a) * (b - c) > EPS;
+    let spike = |a: Pt, b: Pt, p: Pt| {
+        (a.0 - b.0).abs() < EPS && (b.0 - p.0).abs() < EPS && beyond(a.1, b.1, p.1)
+            || (a.1 - b.1).abs() < EPS && (b.1 - p.1).abs() < EPS && beyond(a.0, b.0, p.0)
+    };
+    let mut out: Vec<Pt> = Vec::with_capacity(pts.len());
+    for p in pts {
+        // (Popped until none is left: the stub a spike ran past is the
+        // next one's tip.)
+        while out.len() >= 2 && spike(out[out.len() - 2], out[out.len() - 1], p) {
+            out.pop();
+        }
+        if out.last().map_or(true, |&q| dist(p, q) >= EPS) {
+            out.push(p);
+        }
+    }
+    out
+}
+
 /// Drop the middle of three points on one axis-aligned line when it lies
 /// between the other two, and repeated points.
 fn collapse(pts: Vec<Pt>) -> Vec<Pt> {
@@ -2986,6 +3016,9 @@ struct Env<'a> {
     built: &'a mut Built,
     work: &'a mut Work,
     sc: &'a mut Scratch,
+    /// The scene is a block layout's static one ([`Ctx::blocks`]): a
+    /// found path loses its spikes ([`despike`]).
+    blocks: bool,
 }
 
 /// Route edge `me` (drawn as `e`) under try `t`, returning its corner
@@ -3097,6 +3130,7 @@ fn route_edge(
     let mut pts = vec![starts[sk].port];
     pts.extend(path);
     pts.push(goals[gk].port);
+    let pts = if env.blocks { despike(pts) } else { pts };
     let pts = straighten(w, info.ends.0, env.taken, me, collapse(pts));
     let mut back: Vec<Pt> = pts.into_iter().rev().collect();
     back = straighten(w, info.ends.1, env.taken, me, back);
@@ -5523,6 +5557,7 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
                 built: &mut built,
                 work: &mut work,
                 sc: &mut scratch,
+                blocks: cx.blocks,
             };
             let Some(corners) = route_edge(&mut env, info, i, e, t) else {
                 continue;
@@ -5742,6 +5777,7 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
                         built: &mut built,
                         work: &mut work,
                         sc: &mut scratch,
+                        blocks: cx.blocks,
                     };
                     let Some(corners) = route_edge(&mut env, jinfo, j, &sc.edges[j], t) else {
                         continue;
@@ -7036,6 +7072,37 @@ mod tests {
                 assert!(n <= 1, "B2 -> K1_0 across {} {n} times", note.from);
             }
         }
+    }
+
+    #[test]
+    fn a_found_path_loses_the_spike_past_its_stub() {
+        // The search reached `cart -> pager`'s goal stub (364.75, 715.5)
+        // on pager's right side from a lattice line between the side and
+        // the stub, past the stub and back (blocks/lr drawn BT before
+        // X2.2's columns were kept off other crossings).
+        let pts = vec![
+            (229.9, 465.25),
+            (229.9, 485.75),
+            (362.75, 485.75),
+            (362.75, 715.5),
+            (364.75, 715.5),
+            (368.3, 715.5),
+            (364.75, 715.5),
+            (344.0, 715.5),
+        ];
+        assert_eq!(
+            despike(pts),
+            vec![
+                (229.9, 465.25),
+                (229.9, 485.75),
+                (362.75, 485.75),
+                (362.75, 715.5),
+                (344.0, 715.5)
+            ]
+        );
+        // A path without a spike is kept as it is.
+        let plain = vec![(0.0, 0.0), (0.0, 10.0), (5.0, 10.0), (5.0, 20.0)];
+        assert_eq!(despike(plain.clone()), plain);
     }
 
     #[test]

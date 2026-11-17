@@ -1447,12 +1447,21 @@ impl TitleSides {
             // past the chip's clearance, so the turn onto the track under
             // the chip stays out of the chip's ring.
             let mut next = c1 + crate::router::CORNER_R;
-            for &(_, i) in &v {
+            for &(b, i) in &v {
                 let mut col = next;
                 while let Some(&o) = taken.iter().find(|&&o| (o - col).abs() < TRACK_PITCH) {
                     col = o + TRACK_PITCH;
                 }
                 if col > f1 - crate::scene::LANE_PAD {
+                    break;
+                }
+                // Nor past another edge's crossing of the side between
+                // its port and the column: its step back to the port
+                // would cross that edge's run inside the frame
+                // (blocks/lr drawn BT, `cdn -> gateway` out past
+                // `ship -> pager` and back over it and `cart -> pager`).
+                // Drawn as before; so is every entry after it.
+                if taken.iter().any(|&o| (o - b) * (o - col) < 0.0) {
                     break;
                 }
                 out.cols.entry((i, k)).or_insert(col);
