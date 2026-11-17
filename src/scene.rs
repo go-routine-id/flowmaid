@@ -6795,20 +6795,14 @@ fn route_frame_base(g: &Graph, nodes: &[SceneNode], blocks: bool) -> FrameBase {
 /// member's unit by [`FLOW_MIN_GAP`] (R2's test, on the F1 boxes `f1`):
 /// it crosses the title side. A member of the title row whose side the
 /// chip covers takes as many as the free stretch beside the chip holds
-/// ([`crate::layout::title_cap`]); the rest are displaced. An entry into
-/// a member behind the title row whose column the chip covers is a run
-/// under the chip, displaced as well (the layout's run stands in that
-/// column unless the order moved it). With `k` displaced the frame grows
-/// by [`crate::ortho::ROW_CLEAR`] and a [`crate::ortho::TRACK_PITCH`] for
-/// each past the first. The chip is measured bold for a frame F1 grew to
-/// its title (`bound`), as the painter draws it, at the F1 box's left.
-///
-/// Where `scene()`'s frame is broader than its F1 box (a channel the
-/// layout laid inside it beside its outermost member, which `route()`
-/// does not draw: B12 F3), its chip stands further left and can cover a
-/// member this count leaves beside it, and the two frames then differ
-/// along the flow by a track or two; so can a run the layout's order
-/// moved off its member's column.
+/// ([`crate::layout::title_cap`]); the rest are displaced. With `k`
+/// displaced the frame grows by [`crate::ortho::ROW_CLEAR`] and a
+/// [`crate::ortho::TRACK_PITCH`] for each past the first. The chip is
+/// measured bold for a frame F1 grew to its title (`bound`), at the F1
+/// box's left: the layout counts from the same chip and the same entries
+/// (`layout::title_entries`), so at the scene's centres the two frames
+/// agree along the flow. (A run to a member behind the title row needs
+/// no jog room, B12 2.5 X2.5: neither counts it.)
 fn route_title_jogs(g: &Graph, nodes: &[SceneNode], f1: &[RawBox], bound: &[bool]) -> Vec<f64> {
     use crate::clearance::{CHIP_INSET_X, CHIP_PAD_W};
     if matches!(g.direction, Direction::LR | Direction::RL) {
@@ -6890,15 +6884,8 @@ fn route_title_jogs(g: &Graph, nodes: &[SceneNode], f1: &[RawBox], bound: &[bool
             if border == 0 {
                 continue;
             }
-            if paths[m].last() == Some(&c) && on_row(m) {
-                if mx + mw > chip.0 && mx < chip.1 {
-                    k += border.saturating_sub(crate::layout::title_cap((mx, mx + mw), chip));
-                }
-            } else if !on_row(m) && m_under(mx + mw / 2.0, chip) {
-                // A run of the block's own to a member behind its title
-                // row, straight down that member's column (the layout's
-                // run stands there unless the order moved it).
-                k += border;
+            if paths[m].last() == Some(&c) && on_row(m) && mx + mw > chip.0 && mx < chip.1 {
+                k += border.saturating_sub(crate::layout::title_cap((mx, mx + mw), chip));
             }
         }
         if k > 0 {
@@ -6906,11 +6893,6 @@ fn route_title_jogs(g: &Graph, nodes: &[SceneNode], f1: &[RawBox], bound: &[bool
         }
     }
     jog
-}
-
-/// Whether breadth `b` lies strictly inside a title chip's interval.
-fn m_under(b: f64, (lo, hi): (f64, f64)) -> bool {
-    b > lo && b < hi
 }
 
 /// Where a back-edge lane's label lies across the flow, `(centre, half

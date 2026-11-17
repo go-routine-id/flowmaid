@@ -4986,10 +4986,7 @@ fn place(
                     cluster_span: &cluster_span,
                     n,
                 },
-            )
-            .into_iter()
-            .map(|(entries, runs)| entries + runs)
-            .collect();
+            );
             for (c, f) in f1_breadths(g, n, &bpos, &absize, &cols).iter().enumerate() {
                 let &Some((lo, hi, short)) = f else {
                     continue;
@@ -6092,12 +6089,17 @@ struct TitleChip {
 }
 
 /// Block `c`'s title chip ([`TitleChip`]): it spans the frame's left
-/// inset and the title's width (the frame's left: its F1 box, and the
-/// channel points inside it, as the scene wraps them), measured bold
-/// for a frame F1 grows to its title and nothing makes broader, as the
-/// scene measures it (`scene::title_text_width`). None for a block
+/// inset and the title's width, measured bold for a frame F1 grows to
+/// its title. `drawn`: the chip as the scene draws it, at the left of
+/// the frame that wraps the channel points inside it too, and measured
+/// bold only while those leave the frame as broad as its title (what a
+/// run's column must clear, X2.5). Else the chip of the F1 box, which
+/// F2 counts the displaced entries by (B12 2.7: never from the grown
+/// frame, so `route()`, which has no channel points, counts the same
+/// from the boxes; a channel that widens the frame moves its chip left,
+/// which only frees entries the count displaced). None for a block
 /// without a title or without members.
-fn title_chip(g: &Graph, t: &TitleRows, c: usize) -> Option<TitleChip> {
+fn title_chip(g: &Graph, t: &TitleRows, c: usize, drawn: bool) -> Option<TitleChip> {
     use crate::clearance::{CHIP_INSET_X, CHIP_PAD_W};
     let title = &g.subgraphs[c].title;
     if title.trim().is_empty() {
@@ -6118,16 +6120,18 @@ fn title_chip(g: &Graph, t: &TitleRows, c: usize) -> Option<TitleChip> {
         .copied()
         .flatten();
     let (mut left, mut right) = f1.map_or((f64::INFINITY, f64::NEG_INFINITY), |f| (f.0, f.1));
-    for d in t.n..t.bpos.len() {
-        if t.border[d] == 0 && t.apath[d].contains(&c) {
-            left = left.min(t.bpos[d] - crate::scene::LANE_PAD);
-            right = right.max(t.bpos[d] + crate::scene::LANE_PAD);
+    if drawn {
+        for d in t.n..t.bpos.len() {
+            if t.border[d] == 0 && t.apath[d].contains(&c) {
+                left = left.min(t.bpos[d] - crate::scene::LANE_PAD);
+                right = right.max(t.bpos[d] + crate::scene::LANE_PAD);
+            }
         }
     }
-    // Title-bound: F1 grew the frame to its title and the channels in it
-    // leave it no broader (`scene::title_text_width`).
+    // Title-bound: F1 grew the frame to its title and (drawn) the
+    // channels in it leave it no broader (`scene::title_text_width`).
     let bound = f1.is_some_and(|f| f.2 > 0.0)
-        && right - left <= crate::scene::title_fit_width(title) + TITLE_FIT_EPS;
+        && (!drawn || right - left <= crate::scene::title_fit_width(title) + TITLE_FIT_EPS);
     let width = if bound {
         bold_text_width(title)
     } else {
@@ -6155,7 +6159,7 @@ fn title_chip(g: &Graph, t: &TitleRows, c: usize) -> Option<TitleChip> {
 fn runs_under_titles(g: &Graph, t: &TitleRows) -> Vec<(usize, f64)> {
     let mut out = Vec::new();
     for &c in t.cluster_span.keys() {
-        let Some(chip) = title_chip(g, t, c) else {
+        let Some(chip) = title_chip(g, t, c, true) else {
             continue;
         };
         for d in t.n..t.bpos.len() {
@@ -6196,10 +6200,10 @@ fn title_room(g: &Graph, t: &TitleRows, layers: &[Vec<usize>]) -> Vec<(usize, f6
     let counts = title_counts(g, t);
     let mut out = Vec::new();
     for &c in t.cluster_span.keys() {
-        let Some(chip) = title_chip(g, t, c) else {
+        let Some(chip) = title_chip(g, t, c, true) else {
             continue;
         };
-        let k = counts[c].0;
+        let k = counts[c];
         let need = if k == 0 {
             chip.hi
         } else {
@@ -6275,17 +6279,17 @@ struct TitleRows<'a> {
 /// chip jog clear of it ([`crate::ortho`]'s displaced crossings).
 ///
 /// Its chip spans the frame's left inset and the title's width (the
-/// frame's left: its members' boxes, and the channel points inside it,
-/// as the scene wraps them), widened by [`crate::ortho::CHIP_CLEAR`].
+/// frame's left: its F1 box, [`title_chip`]), widened by
+/// [`crate::ortho::CHIP_CLEAR`].
 /// A member of the title row takes the entries that cross the title
 /// side into it (in TD the links from the layer before, from outside
 /// the block; in BT from the layer after) on the free stretch of its
 /// side beside the chip, as many as [`crate::ports::PORT_SPACING`]
-/// holds there (`cap`); the rest are displaced. So is each run of the
-/// block's own on its title row whose column lies under the chip (to a
-/// member behind the title row: it crosses the title side at its column
-/// past the chip and jogs over to its run). With `k` displaced, the
-/// frame grows by [`crate::ortho::ROW_CLEAR`] and a
+/// holds there (`cap`); the rest are displaced. (A run of the block's
+/// own to a member behind the title row crosses the title side at the
+/// column X2.5 gives it past the chip and needs no jog room, B12 2.5: it
+/// is not counted, and `route()`, which has no runs, counts the same.)
+/// With `k` displaced, the frame grows by [`crate::ortho::ROW_CLEAR`] and a
 /// [`crate::ortho::TRACK_PITCH`] for each one past the first: the
 /// strip leaves 19 px between the chip and the row, and a displaced
 /// entry takes the chip's clearance, its track and a head's straight
@@ -6294,7 +6298,7 @@ struct TitleRows<'a> {
 fn title_jogs(g: &Graph, t: &TitleRows) -> Vec<f64> {
     title_counts(g, t)
         .into_iter()
-        .map(|(entries, runs)| match entries + runs {
+        .map(|k| match k {
             0 => 0.0,
             k => crate::ortho::ROW_CLEAR + (k - 1) as f64 * crate::ortho::TRACK_PITCH,
         })
@@ -6302,9 +6306,9 @@ fn title_jogs(g: &Graph, t: &TitleRows) -> Vec<f64> {
 }
 
 /// Per block (TD / BT): the entries its title row takes that the free
-/// stretch beside the title chip cannot hold — displaced, each crosses
-/// the title side at a column of its own past the chip — and its runs
-/// under the chip ([`title_jogs`]).
+/// stretch beside the title chip of its F1 box cannot hold — displaced,
+/// each crosses the title side at a column of its own past the chip
+/// ([`title_jogs`]).
 ///
 /// An entry is a drawn edge's end on a member of the title row whose
 /// layered neighbour (the first or last dummy of its chain, or its other
@@ -6316,9 +6320,8 @@ fn title_jogs(g: &Graph, t: &TitleRows) -> Vec<f64> {
 /// pair is no edge. Counted as entries, those three reserved jog room
 /// no entry takes (a block a hub feeds as a whole grew a track per
 /// proxy pair), and `route()`, which reads its classes from the boxes,
-/// could not count them. A run under the chip is a dummy of a drawn
-/// part of a chain: not inside the frame a stand-in is cut back to.
-fn title_counts(g: &Graph, t: &TitleRows) -> Vec<(usize, usize)> {
+/// could not count them.
+fn title_counts(g: &Graph, t: &TitleRows) -> Vec<usize> {
     title_entries(g, t).0
 }
 
@@ -6335,27 +6338,20 @@ type Displaced = (usize, usize, f64);
 /// and then of the breadths they come from. Of a member's entries the
 /// free stretch beside the chip holds the ones nearest it (the ports
 /// stage puts them there); the rest, on the chip's side, are displaced.
-fn title_entries(g: &Graph, t: &TitleRows) -> (Vec<(usize, usize)>, Vec<Displaced>) {
+fn title_entries(g: &Graph, t: &TitleRows) -> (Vec<usize>, Vec<Displaced>) {
     let ns = g.subgraphs.len();
-    let mut counts = vec![(0usize, 0usize); ns];
+    let mut counts = vec![0usize; ns];
     let mut displaced: Vec<Displaced> = Vec::new();
     let bt = matches!(g.direction, Direction::BT);
     // Per real node, the layered neighbour of each edge drawn to it, with
     // the edge and which of its ends the node is.
     let mut ends: Vec<Vec<(usize, usize, usize)>> = vec![Vec::new(); t.n];
-    // Per dummy, the frames its stand-in is cut back to (none for an edge's).
-    let mut cut_of: Vec<[Option<usize>; 2]> = vec![[None, None]; t.bpos.len()];
     for (ei, e) in g.edges.iter().enumerate() {
         if e.from == e.to || matches!(e.kind, EdgeKind::Invisible) {
             continue;
         }
         let cut = g.frame_cut.get(ei).copied().unwrap_or([None, None]);
         let chain = t.edge_chain.get(ei).map_or(&[][..], |c| c.as_slice());
-        for &d in chain {
-            if let Some(slot) = cut_of.get_mut(d) {
-                *slot = cut;
-            }
-        }
         for (end, v, other) in [(0, e.from, e.to), (1, e.to, e.from)] {
             if cut[end].is_some() || v >= t.n {
                 continue;
@@ -6376,15 +6372,15 @@ fn title_entries(g: &Graph, t: &TitleRows) -> (Vec<(usize, usize)>, Vec<Displace
             depth,
             lo: chip_lo,
             hi: chip_hi,
-        }) = title_chip(g, t, c)
+        }) = title_chip(g, t, c, false)
         else {
             continue;
         };
-        let (mut k, mut runs) = (0usize, 0usize);
+        let mut k = 0usize;
         // This block's displaced entries: (member breadth, breadth the
         // entry comes from, edge, end).
         let mut out: Vec<(f64, f64, usize, usize)> = Vec::new();
-        for v in 0..t.bpos.len() {
+        for v in 0..t.n {
             if t.alayer[v] != row || t.border[v] != 0 || t.apath[v].len() != depth {
                 continue;
             }
@@ -6392,12 +6388,6 @@ fn title_entries(g: &Graph, t: &TitleRows) -> (Vec<(usize, usize)>, Vec<Displace
                 continue;
             }
             let (m0, m1) = (t.bpos[v] - t.absize[v] / 2.0, t.bpos[v] + t.absize[v] / 2.0);
-            if v >= t.n {
-                // A run of the block's own under the chip, where drawn.
-                let drawn = !cut_of[v].iter().flatten().any(|s| t.apath[v].contains(s));
-                runs += usize::from(drawn && t.bpos[v] > chip_lo && t.bpos[v] < chip_hi);
-                continue;
-            }
             let mut border: Vec<(usize, usize, usize)> = ends[v]
                 .iter()
                 .copied()
@@ -6446,7 +6436,7 @@ fn title_entries(g: &Graph, t: &TitleRows) -> (Vec<(usize, usize)>, Vec<Displace
             let col = chip_hi + crate::router::CORNER_R + j as f64 * crate::ortho::TRACK_PITCH;
             displaced.push((ei, end, col));
         }
-        counts[c] = (k, runs);
+        counts[c] = k;
     }
     (counts, displaced)
 }

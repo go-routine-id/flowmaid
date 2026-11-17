@@ -2570,6 +2570,57 @@ fn scene_and_route_frames(g: &Graph) -> (Scene, Scene, Vec<FramePair>) {
 }
 
 #[test]
+fn frames_agree_between_scene_and_route_along_the_flow_on_every_fixture() {
+    // B12.10's check on every block fixture in all four directions:
+    // along the flow `route()`'s frames at the scene's centres are
+    // `scene()`'s to 0.5 px. Both count a frame's displaced entries (F2)
+    // from its F1 box, entries into its title row only. Before, the
+    // layout read the chip at the frame the channels inside it widen
+    // and counted the runs of its own under that chip, which `route()`
+    // cannot see, and 20 of the 258 block-mode copies drew a track or
+    // more of jog room `route()` did not (the public fixture drawn BT,
+    // dense-td 37.5 px, bench-75 BT 75 px).
+    for dir_name in ["blocks", "quality", "notes"] {
+        let dir = format!("{}/tests/fixtures/{dir_name}", env!("CARGO_MANIFEST_DIR"));
+        let mut files: Vec<_> = std::fs::read_dir(&dir)
+            .unwrap()
+            .map(|e| e.unwrap().path())
+            .filter(|p| p.extension().is_some_and(|x| x == "mmd"))
+            .collect();
+        files.sort();
+        for path in files {
+            let src = std::fs::read_to_string(&path).unwrap();
+            let name = path.file_stem().unwrap().to_string_lossy().to_string();
+            for dir in ["TD", "BT", "LR", "RL"] {
+                let g = match crate::parser::parse_document(&header_direction(&src, dir)) {
+                    Ok(Document::Flowchart(g)) | Ok(Document::State(g)) => g,
+                    _ => continue,
+                };
+                if g.subgraphs.is_empty() || !crate::levels::Augmented::of(&g).block_mode(&g) {
+                    continue;
+                }
+                let vertical = matches!(
+                    g.direction,
+                    crate::model::Direction::TD | crate::model::Direction::BT
+                );
+                let (_, _, pairs) = scene_and_route_frames(&g);
+                for (id, s, r) in pairs {
+                    let along = if vertical {
+                        (s.1 - r.1).abs().max((s.3 - r.3).abs())
+                    } else {
+                        (s.0 - r.0).abs().max((s.2 - r.2).abs())
+                    };
+                    assert!(
+                        along <= 0.5,
+                        "{dir_name}/{name} {dir} {id}: scene {s:?} route {r:?}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn frames_agree_between_scene_and_route_along_the_flow() {
     // `route()` at the scene's own centres draws a block layout's frames
     // by the function `scene()` draws them with: as broad (TD / BT) or
@@ -2595,13 +2646,6 @@ fn frames_agree_between_scene_and_route_along_the_flow() {
         ))
         .unwrap();
         for dir in ["TD", "BT", "LR", "RL"] {
-            // (The public fixture drawn BT: the layout's run to SHIP stands
-            // under Order processing's chip off SHIP's own column, where
-            // `route()` cannot see it, so its frame has a track more jog
-            // room in `scene()`; `route_title_jogs`.)
-            if name == "blocks-overview" && dir == "BT" {
-                continue;
-            }
             let g = graph(&header_direction(&src, dir));
             let (_, rt, pairs) = scene_and_route_frames(&g);
             let vertical = matches!(dir, "TD" | "BT");
