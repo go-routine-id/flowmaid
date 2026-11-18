@@ -1714,7 +1714,9 @@ fn link_width(depth: usize) -> f64 {
 /// `i`, in world coords). Used for interactive drag: the caller moves a
 /// centre and the connectors are recomputed to follow, without touching
 /// the layout. Positions are taken as-is (not re-normalised), so
-/// dragging never makes the diagram slide. `pos` must match node count.
+/// dragging never makes the diagram slide. `pos` must match node count:
+/// any other count gives an empty scene, as an empty mindmap does
+/// ([`try_route`] tells the two apart).
 pub fn route(d: &Mindmap, pos: &[(f64, f64)]) -> MindScene {
     if d.nodes.is_empty() || pos.len() != d.nodes.len() {
         return MindScene {
@@ -1789,6 +1791,32 @@ pub fn route(d: &Mindmap, pos: &[(f64, f64)]) -> MindScene {
         nodes,
         edges,
     }
+}
+
+/// [`route`] that tells a wrong position count from an empty mindmap:
+/// `None` when `pos` does not hold exactly one centre per node (where
+/// [`route`] draws an empty scene), and, as the other diagram types'
+/// `try_route` (see [`crate::scene::try_route`]), when a coordinate is
+/// not finite (NaN, infinite) or lies more than a million px (`1e6`)
+/// from zero. Otherwise exactly what [`route`] returns (for an empty
+/// mindmap and no positions, its empty scene). For a host whose
+/// positions can be out of date for a moment, such as after an edit that
+/// added a node since the last drag.
+///
+/// ```
+/// use flowmaid::{mindmap, model::Document, parser::parse_document};
+///
+/// let Ok(Document::Mindmap(d)) = parse_document("mindmap\n  root\n    child") else {
+///     unreachable!()
+/// };
+/// let laid = mindmap::scene(&d);
+/// let pos: Vec<(f64, f64)> = laid.nodes.iter().map(|n| (n.cx(), n.cy())).collect();
+/// assert!(mindmap::try_route(&d, &pos).is_some());
+/// // One position short: no scene, where `route` draws an empty one.
+/// assert!(mindmap::try_route(&d, &pos[..1]).is_none());
+/// ```
+pub fn try_route(d: &Mindmap, pos: &[(f64, f64)]) -> Option<MindScene> {
+    (pos.len() == d.nodes.len() && crate::scene::routable(pos)).then(|| route(d, pos))
 }
 
 // ------------------------------------------------------------------

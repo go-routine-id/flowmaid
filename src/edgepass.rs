@@ -1252,12 +1252,17 @@ const STUB_ON_LINE: f64 = 0.01;
 /// drawing, or past a curve's control points, is dropped: report Q2),
 /// and a host drawing the scene on its `width` × `height` sees the
 /// canvas `to_svg` writes, coordinate for coordinate. A `Routed` scene
-/// is never shifted: its node positions are the host's, exactly as given
-/// (the export handles a negative origin, see `fit_top_left`); its canvas
-/// only grows. `static_fit` is false for an ER or class scene, whose
-/// painter draws `width` × `height` as-is, padded its own way: it is
-/// shifted only out of negative space and its canvas only grows.
+/// is never shifted: its node positions are the host's, exactly as given;
+/// its canvas only grows, up or left too (a negative [`Scene::origin`],
+/// #76) where the drawing reaches into the margin there. `static_fit` is
+/// false for an ER or class scene, whose painter draws `width` × `height`
+/// as-is, padded its own way (its `route` sets the origin, see
+/// [`crate::scene::top_left_canvas`]): it is shifted only out of negative
+/// space and its canvas only grows.
 pub(crate) fn refit(sc: &mut Scene, mode: Mode, static_fit: bool) {
+    if mode == Mode::Routed {
+        sc.routed = true;
+    }
     let mut bb = Bbox::new();
     grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
     if !bb.0.is_finite() {
@@ -1282,6 +1287,26 @@ pub(crate) fn refit(sc: &mut Scene, mode: Mode, static_fit: bool) {
         if (sc.height - h).abs() > FIT_EPS {
             sc.height = h;
         }
+        return;
+    }
+    if mode == Mode::Routed && static_fit {
+        // The host's positions stay as given (#76): a drawing reaching
+        // into the top-left margin grows the canvas up or left (its
+        // origin goes negative) and moves nothing; the far sides only
+        // grow, as before. An overflow that does not show in the SVG is
+        // none: `to_svg` moves such a drawing onto the margin as before.
+        let far = (sc.origin.0 + sc.width, sc.origin.1 + sc.height);
+        let past = |min: f64, o: f64| {
+            let reach = MARGIN - min;
+            if reach > 0.0 && crate::scene::offset_shows(reach) {
+                o.min(min - MARGIN)
+            } else {
+                o
+            }
+        };
+        sc.origin = (past(minx, sc.origin.0), past(miny, sc.origin.1));
+        sc.width = far.0.max(maxx + MARGIN) - sc.origin.0;
+        sc.height = far.1.max(maxy + MARGIN) - sc.origin.1;
         return;
     }
     let floor = if static_fit { MARGIN } else { 0.0 };

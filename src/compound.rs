@@ -597,23 +597,29 @@ fn sub_slots(g: &Graph, sc: &Scene) -> Vec<Option<usize>> {
 
 /// The parts' scenes joined into one for `g` (module docs): each node
 /// and edge where the part holding it drew it, ids as `g` names them,
-/// the frames outermost-first at their depths in `g`, the canvas the
-/// largest part's (the caller refits it). `None` when a part's scene
-/// does not line up with the part.
+/// the frames outermost-first at their depths in `g`, the canvas one
+/// that holds every part's (the caller refits it): from the smallest
+/// part origin ([`Scene::origin`], negative where a routed part reaches
+/// past the top-left margin) to the farthest part edge. `None` when a
+/// part's scene does not line up with the part.
 fn join(g: &Graph, split: &Split, blocks: &[Scene], rest: &Scene) -> Option<Scene> {
     let mut nodes: Vec<Option<SceneNode>> = vec![None; g.nodes.len()];
     let mut edges: Vec<Option<SceneEdge>> = vec![None; g.edges.len()];
     let mut subs: Vec<Option<SceneEdge>> = vec![None; g.sub_edges.len()];
     let mut clusters: Vec<(usize, SceneCluster)> = Vec::new();
-    let (mut width, mut height) = (0.0f64, 0.0f64);
+    // The canvas: its top-left corner and its far edges.
+    let (mut origin, mut far) = ((0.0f64, 0.0f64), (0.0f64, 0.0f64));
     let named = |j: usize, mut e: SceneEdge| {
         e.from = end_id(g, g.sub_edges[j].from);
         e.to = end_id(g, g.sub_edges[j].to);
         e
     };
     for (part, sc) in split.with(blocks, rest) {
-        width = width.max(sc.width);
-        height = height.max(sc.height);
+        origin = (origin.0.min(sc.origin.0), origin.1.min(sc.origin.1));
+        far = (
+            far.0.max(sc.origin.0 + sc.width),
+            far.1.max(sc.origin.1 + sc.height),
+        );
         for (k, s) in part.nodes.iter().enumerate() {
             if let Slot::Node(v) = *s {
                 nodes[v] = Some(sc.nodes.get(k)?.clone());
@@ -654,8 +660,10 @@ fn join(g: &Graph, split: &Split, blocks: &[Scene], rest: &Scene) -> Option<Scen
         nodes,
         edges,
         clusters: clusters.into_iter().map(|(_, c)| c).collect(),
-        width,
-        height,
+        width: far.0 - origin.0,
+        height: far.1 - origin.1,
+        origin,
+        routed: false,
         plain_crossings: false,
         block_layout: false,
     })
@@ -950,6 +958,8 @@ fn part_base(
         clusters,
         width: base.width,
         height: base.height,
+        origin: base.origin,
+        routed: false,
         plain_crossings: false,
         block_layout: false,
     })
@@ -1149,6 +1159,73 @@ mod tests {
     }
 
     const STATE: &str = include_str!("../examples/state.mmd");
+
+    /// A block layout's routed canvas (#76): a node dragged past the
+    /// top-left margin grows it up and left to the margin before the
+    /// drawing, its far sides MARGIN past the drawing, as for a flat
+    /// graph; a `route_partial` frame on that frame keeps its canvas
+    /// (it only grows). The parts' canvases are joined from their own
+    /// origins, not as if each started at zero.
+    #[test]
+    fn a_routed_block_layout_canvas_holds_its_drawing() {
+        use crate::scene::{grow_canvas, Bbox, MARGIN};
+        let g = state(STATE);
+        assert_eq!(blocks(&g), vec![true]);
+        let laid = scene(&g);
+        let c: Vec<(f64, f64)> = laid.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let k = (0..c.len())
+            .find(|&i| !laid.nodes[i].label.is_empty())
+            .unwrap();
+        let drawn = |sc: &Scene| {
+            let mut bb = Bbox::new();
+            grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
+            bb.finish()
+        };
+        let mut d1 = c.clone();
+        d1[k] = (-300.0, -200.0);
+        let mut d2 = c.clone();
+        d2[k] = (-40.0, -30.0);
+        let r = route(&g, &d1);
+        let (minx, maxx, miny, maxy) = drawn(&r);
+        assert_eq!(r.origin, (minx - MARGIN, miny - MARGIN));
+        assert!(
+            (r.origin.0 + r.width - (maxx + MARGIN)).abs() < 1e-6,
+            "{}",
+            r.width
+        );
+        assert!(
+            (r.origin.1 + r.height - (maxy + MARGIN)).abs() < 1e-6,
+            "{}",
+            r.height
+        );
+        let f1 = route_partial(&g, &d1, &laid, &c);
+        let (minx, maxx, miny, maxy) = drawn(&f1);
+        assert_eq!(f1.origin, (minx - MARGIN, miny - MARGIN));
+        let far = |sc: &Scene| (sc.origin.0 + sc.width, sc.origin.1 + sc.height);
+        let want = (
+            laid.width.max(maxx + MARGIN),
+            laid.height.max(maxy + MARGIN),
+        );
+        assert!(
+            (far(&f1).0 - want.0).abs() < 1e-6,
+            "{:?} {want:?}",
+            far(&f1)
+        );
+        assert!(
+            (far(&f1).1 - want.1).abs() < 1e-6,
+            "{:?} {want:?}",
+            far(&f1)
+        );
+        let f2 = route_partial(&g, &d2, &f1, &d1);
+        assert_eq!(f2.origin, f1.origin);
+        let (minx, maxx, miny, maxy) = drawn(&f2);
+        assert!(f2.origin.0 <= minx - MARGIN && f2.origin.1 <= miny - MARGIN);
+        assert!(far(&f2).0 >= maxx + MARGIN - 1e-6 && far(&f2).1 >= maxy + MARGIN - 1e-6);
+        assert!(far(&f2).0 <= far(&f1).0.max(maxx + MARGIN) + 1e-6);
+        assert!(far(&f2).1 <= far(&f1).1.max(maxy + MARGIN) + 1e-6);
+        // Laid out, the canvas is the drawing's, at the origin.
+        assert_eq!(laid.origin, (0.0, 0.0));
+    }
 
     #[test]
     fn a_state_composite_flows_in_its_own_direction() {
