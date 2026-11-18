@@ -1269,6 +1269,7 @@ fn title_side_over_full(
 /// B12.13's).
 fn title_side_columns(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
     let heads = title_heads(sc, cx.blocks);
+    let plain = title_heads(sc, false);
     let flag = |v: &[bool], i: usize| v.get(i).copied().unwrap_or(false);
     for ci in 0..sc.clusters.len() {
         let Some(&head) = heads.get(ci) else {
@@ -1284,8 +1285,17 @@ fn title_side_columns(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
         let end_at = r.2 - PORT_SPACING;
         // (column, lower and upper bound, edge, which end, approach)
         let mut set: Vec<(f64, f64, f64, usize, bool, f64)> = Vec::new();
+        // The pins past the chip as drawn: those under it end on the
+        // border beside the title, as they always did. (A pin under the
+        // bold ink that runs past the chip is dealt with the entries all
+        // the same: left out, it kept its place there while the entries
+        // were dealt past the ink beside it, and the channel nudge then
+        // pushed it in among them, 5 px from one: a fan of four under
+        // `Shipping and returns desk`. Dealt with them, it comes in past
+        // them, in the order the channels come in.)
+        let past = plain.get(ci).map_or(head.2, |p| p.2);
         for (t, i, src) in title_pins(sc, cx, ci) {
-            if t >= head.2 - PORT_EPS && flag(&cx.drawn, i) {
+            if t >= past - PORT_EPS && flag(&cx.drawn, i) {
                 let key = split(Side::Top, approach(&sc.edges[i], src)).0;
                 set.push((t, c1, end_at, i, src, key));
             }
@@ -1600,13 +1610,21 @@ fn place_ports(
             crate::ortho::CHIP_CLEAR
         };
         let (lo, hi, shaded) = match prof.straight() {
-            // Cut at `ortho`'s clearance past the titles' ink; where that
-            // leaves no stretch for the side's ends, today's cut stays,
-            // as on an over-full side.
-            Some(n) if clear == crate::ortho::CHIP_CLEAR => {
-                unshaded_fit(&inked, &deep, side, n, (lo, hi), ports.len(), clear).unwrap_or_else(
-                    || unshaded(&heads, &deep, side, n, (lo, hi), ports.len(), CHIP_SEP),
-                )
+            // In a block layout the cut lies past the titles' ink: at
+            // `ortho`'s clearance, else (an over-full side, or a stretch
+            // that cannot hold the side's ends there) at [`CHIP_SEP`];
+            // where neither holds them, 7122a53's cut past the chip
+            // alone stays. (A title whose bold text overhangs its chip
+            // by more than [`CHIP_SEP`] put that cut under its ink:
+            // `Mammoth Wombat Pipeline Overview` overhangs by 8.9 px.)
+            Some(n) if cx.blocks && matches!(end, EndRef::Node(_)) => {
+                let k = ports.len();
+                let cut = |by| unshaded_fit(&inked, &deep, side, n, (lo, hi), k, by);
+                (clear == crate::ortho::CHIP_CLEAR)
+                    .then(|| cut(clear))
+                    .flatten()
+                    .or_else(|| cut(CHIP_SEP))
+                    .unwrap_or_else(|| unshaded(&heads, &deep, side, n, (lo, hi), k, CHIP_SEP))
             }
             Some(n) => unshaded(&heads, &deep, side, n, (lo, hi), ports.len(), clear),
             None => (lo, hi, false),
@@ -2389,8 +2407,9 @@ fn title_heads(sc: &Scene, inked: bool) -> Vec<(f64, f64, f64, f64)> {
 ///
 /// There the chips are measured as far as their titles' ink
 /// ([`title_heads`]); where that cut leaves no free part for the ends
-/// ([`unshaded_fit`]), `place_ports` keeps the cut at [`CHIP_SEP`] past
-/// the chip alone, as on an over-full title side.
+/// ([`unshaded_fit`]), `place_ports` cuts at [`CHIP_SEP`] past the ink,
+/// as on an over-full title side, and only where that leaves none
+/// either, at [`CHIP_SEP`] past the chip alone.
 fn unshaded(
     heads: &[(f64, f64, f64, f64)],
     deep: &[bool],

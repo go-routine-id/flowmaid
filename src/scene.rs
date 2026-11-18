@@ -3318,8 +3318,22 @@ pub(crate) fn title_head_inked(
     title_head_measured(clusters, ci, canvas_right, true)
 }
 
-/// [`title_head`]; with `inked`, [`title_head_inked`].
-fn title_head_measured(
+/// [`title_head`]; with `inked`, [`title_head_inked`]. The measure of a
+/// chip the edge stages of a block layout's static scene keep their
+/// lines clear of, with `inked` = [`crate::edgepass::Ctx::blocks`]: the
+/// ports stage (the cut of a title-row member's side, the frame's free
+/// pins and the columns it deals), `ortho`'s jog walls and the columns
+/// of its displaced entries, the router's channel nudge (which spaces
+/// and re-deals a side's ends) and close-pair spread, and the comb.
+/// Measured at the chip in one stage and at the ink in the next, a
+/// later stage moved a line the earlier one had set clear of the ink
+/// back under it: the nudge slid a title-row member's entry from the
+/// ports stage's cut past `Shipping and returns desk`'s ink back to its
+/// own clearance past the chip at the regular width, onto the title's
+/// last letter. (The router's repair searches round the chip at the
+/// regular width; the nudge after it keeps its legs off the ink, see
+/// `router::repair`.)
+pub(crate) fn title_head_measured(
     clusters: &[SceneCluster],
     ci: usize,
     canvas_right: f64,

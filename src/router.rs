@@ -80,7 +80,8 @@ use crate::clearance::{
     PORT_ZONE, SAMPLE_STEP, TIGHT_RUN_MIN, WIGGLE_TOL,
 };
 use crate::scene::{
-    edge_drawn, edge_polyline, grow_scene, title_head, Bbox, Scene, ARROW_MARKER_PX, MARGIN,
+    edge_drawn, edge_polyline, grow_scene, title_head, title_head_measured, Bbox, Scene,
+    ARROW_MARKER_PX, MARGIN,
 };
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
@@ -501,6 +502,13 @@ struct Score {
     frame: usize,
     /// Frame title chips the path touches (G6).
     chip: usize,
+    /// In a block layout's static scene, the titles' bold ink past their
+    /// chips the path comes within `chip_reach` of ([`World::inks`]):
+    /// below a chip hit, so the nudge never trades the graze for a run
+    /// through the chip (a displaced entry's step merged away, straight
+    /// through `Mammoth Wombat Pipeline Overview`), and no reason to
+    /// reroute ([`Score::hard`]).
+    ink: usize,
     /// px of path outside the innermost frame holding both its ends
     /// (report §2.2): an edge between two members of a box belongs
     /// inside it, as much as an edge keeps out of a box it has no end
@@ -594,6 +602,15 @@ struct World {
     owner: Vec<usize>,
     frames: Vec<R>,
     chips: Vec<R>,
+    /// In a block layout's static scene ([`World::new`]'s `inked`), per
+    /// frame (index-parallel with `frames`): the stretch of its title's
+    /// bold ink past the chip `chips` measures at the regular width,
+    /// where the ink outruns it ([`crate::scene::title_head_measured`]).
+    /// The channel nudge keeps every leg off it as off the chip
+    /// ([`spread`]), and the scoring counts a path that comes within
+    /// `chip_reach` of it ([`Score::ink`]); a path that ends on the frame
+    /// itself never reaches it (see [`World::ink_of`]). Empty elsewhere.
+    inks: Vec<Option<R>>,
     /// (edge, label box) of every labelled edge, as placed so far.
     labels: Vec<(usize, R)>,
     /// The drawing's bounds plus [`ROUTE_OUTER`]: the lattice never
@@ -750,7 +767,11 @@ fn end_node(e: EndRef) -> Option<usize> {
 }
 
 impl World {
-    fn new(g: &Graph, sc: &Scene) -> World {
+    /// The world of `sc`; with `inked` (a block layout's static scene,
+    /// [`Ctx::blocks`]) it also holds the stretch of each title's bold
+    /// ink past its chip ([`World::inks`]), which the ports stage cut a
+    /// title-row member's side past.
+    fn new(g: &Graph, sc: &Scene, inked: bool) -> World {
         let mut nodes: Vec<(R, Shape)> = sc
             .nodes
             .iter()
@@ -793,9 +814,21 @@ impl World {
         let (minx, maxx, miny, maxy) = bb.finish();
         // Title chips with the header corner they sit in, as `to_svg`
         // draws them (same math as the harness).
-        let chips = (0..sc.clusters.len())
+        let chips: Vec<R> = (0..sc.clusters.len())
             .map(|ci| title_head(&sc.clusters, ci, maxx + MARGIN))
             .collect();
+        let inks = if inked {
+            chips
+                .iter()
+                .enumerate()
+                .map(|(ci, c)| {
+                    let h = title_head_measured(&sc.clusters, ci, maxx + MARGIN, true);
+                    (h.2 > c.2).then_some((c.2, h.1, h.2, h.3))
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
         let labels = sc
             .edges
             .iter()
@@ -815,6 +848,7 @@ impl World {
             owner,
             frames,
             chips,
+            inks,
             labels,
             outer: grow((minx, miny, maxx, maxy), ROUTE_OUTER),
             looks: std::cell::Cell::new(0),
@@ -850,6 +884,20 @@ impl World {
             .map(|&(r, _)| (r, clear))
             .chain(self.chips.iter().map(|&r| (r, chip)))
             .collect()
+    }
+
+    /// The ink past frame `k`'s chip ([`World::inks`]) as a path that
+    /// ends on frame `k` itself (`own`) or not sees it: none for the
+    /// frame's own pin. A pin on the frame's title side ends on its
+    /// border, above the title's text, which stands
+    /// [`crate::clearance::CHIP_INSET_Y`] and more under it, out of the
+    /// pin's reach; the pin keeps clear of the chip as before. (Fenced at
+    /// the ink, blocks/blocks-overview drawn TD's `REG --> ORD` pin, a
+    /// px past `Order processing`'s ink and a port's spacing from `LB -->
+    /// QUEUE`'s crossing, was pushed past both, and that entry took a new
+    /// step.)
+    fn ink_of(&self, k: usize, own: bool) -> Option<R> {
+        self.inks.get(k).copied().flatten().filter(|_| !own)
     }
 
     /// Whether a stub at `p` of an edge `info` stands in the open: off
@@ -989,6 +1037,16 @@ impl World {
                     .any(|w| !off_box(w[0], w[1], g) && clip(w[0], w[1], g).is_some())
             {
                 s.chip += 1;
+            }
+            // And the title's ink past it, in a block layout.
+            if let Some(g) = self.ink_of(f, own).map(|r| grow(r, self.chip_reach)) {
+                if overlaps(grow(bb, EPS), g)
+                    && pts
+                        .windows(2)
+                        .any(|w| !off_box(w[0], w[1], g) && clip(w[0], w[1], g).is_some())
+                {
+                    s.ink += 1;
+                }
             }
         }
         // Other edges' labels the path runs under.
@@ -3584,7 +3642,8 @@ fn single_stays(f: &Fences, routes: &[Option<Vec<Pt>>], segs: &[Seg], s: usize) 
             return false;
         }
     }
-    for &r in &w.chips {
+    let inks = (0..w.inks.len()).filter_map(|k| w.ink_of(k, own(EndRef::Frame(k))));
+    for r in w.chips.iter().copied().chain(inks) {
         let (a, b, l0, l1) = rect(grow(r, clear.2));
         if reaches(a, b, l0, l1) {
             return false;
@@ -3640,17 +3699,28 @@ fn place_group(f: &Fences, routes: &mut [Option<Vec<Pt>>], segs: &[Seg], grp: &[
     // The ends a member's port leg leaves from: their own box is no
     // fence to it.
     let mut own: Vec<EndRef> = Vec::new();
+    // A frame every member of the group ends on (its own pins'): the
+    // ink past its title chip is no fence to them ([`World::ink_of`]).
+    let mut pinned: Option<Vec<EndRef>> = None;
     for &s in grp {
         let sg = segs[s];
         let pts = routes[sg.edge].as_ref().expect("routed");
         let info = f.infos[sg.edge].as_ref().expect("routed");
+        let mut mine = Vec::new();
         if sg.k == 0 {
             own.push(info.ends.0);
+            mine.push(info.ends.0);
         }
         if sg.k + 2 == pts.len() {
             own.push(info.ends.1);
+            mine.push(info.ends.1);
         }
+        pinned = Some(match pinned {
+            None => mine,
+            Some(p) => p.into_iter().filter(|e| mine.contains(e)).collect(),
+        });
     }
+    let pinned = pinned.unwrap_or_default();
     // The free slab across the channel over [lo, hi]: `hard` from the
     // scene (nodes, frames, chips), `soft` from the other legs and
     // curves. Slab bounds as (low, high).
@@ -3705,7 +3775,9 @@ fn place_group(f: &Fences, routes: &mut [Option<Vec<Pt>>], segs: &[Seg], grp: &[
                 fence_at(&mut slab, at, a - c.1, b + c.1, s_lo - c.1, s_hi + c.1);
             }
         }
-        for &r in &w.chips {
+        let inks =
+            (0..w.inks.len()).filter_map(|k| w.ink_of(k, pinned.contains(&EndRef::Frame(k))));
+        for r in w.chips.iter().copied().chain(inks) {
             let (a, b, s_lo, s_hi) = rect(grow(r, c.2));
             fence_at(&mut slab, at, a, b, s_lo, s_hi);
         }
@@ -4170,7 +4242,7 @@ pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut
     if ne == 0 || ne > ROUTE_MAX_EDGES {
         return;
     }
-    let mut w = World::new(g, sc);
+    let mut w = World::new(g, sc, cx.blocks);
     if !w.sane() {
         return;
     }
@@ -4422,7 +4494,7 @@ pub(crate) fn spread_close(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, move
     {
         return;
     }
-    let w = World::new(g, sc);
+    let w = World::new(g, sc, cx.blocks);
     if !w.sane() {
         return;
     }
@@ -4932,6 +5004,7 @@ fn reorder(
                     node: t.node + s.node,
                     frame: t.frame + s.frame,
                     chip: t.chip + s.chip,
+                    ink: t.ink + s.ink,
                     wiggle: t.wiggle + s.wiggle,
                     head: t.head + s.head,
                     overlap: t.overlap + s.overlap,
@@ -4963,6 +5036,7 @@ fn reorder(
                 new.node <= old.node
                     && new.frame <= old.frame
                     && new.chip <= old.chip
+                    && new.ink <= old.ink
                     && new.wiggle <= old.wiggle
                     && new.label <= old.label
             };
@@ -5181,7 +5255,16 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
     if ne == 0 || ne > ROUTE_MAX_EDGES {
         return;
     }
-    let mut w = World::new(g, sc);
+    // The search goes round the title chips at the regular width, even
+    // in a block layout: the channel nudge after it keeps the legs it
+    // draws off the titles' bold ink ([`World::inks`]; a displaced
+    // entry's column the search set 0.4 px from `Mammoth Wombat Pipeline
+    // Overview`'s ink moves 6 px clear). Rerouting for the ink as well
+    // (a graze counted as a hit, [`Score::hard`]) took blocks/lr drawn
+    // TD's `shopper --> cdn` in through its frame's lateral wall, and
+    // drawn BT `cart --> pager` round into pager's side across `ship -->
+    // pager`; quality/dense-td drawn TD gained a side end.
+    let mut w = World::new(g, sc, false);
     if !w.sane() {
         return;
     }
@@ -5944,7 +6027,7 @@ mod tests {
     fn hits(g: &Graph, sc: &Scene, from: &str, to: &str) -> Score {
         let cx = crate::edgepass::ctx(g, sc);
         // A chip counts when touched, as in `route()`.
-        let mut w = World::new(g, sc);
+        let mut w = World::new(g, sc, cx.blocks);
         w.chip_reach = NODE_CLEARANCE;
         let i = sc
             .edges
@@ -6556,6 +6639,7 @@ mod tests {
             owner: (0..nodes.len()).collect(),
             frames: frames.to_vec(),
             chips: Vec::new(),
+            inks: Vec::new(),
             labels: Vec::new(),
             outer,
             looks: std::cell::Cell::new(0),
@@ -7026,6 +7110,51 @@ mod tests {
         assert!(s.hug >= 80, "{s:?}");
     }
 
+    /// In a block layout the bold ink a title runs past its chip
+    /// ([`World::inks`]) scores a graze below a chip hit and no reason to
+    /// reroute; a path through the chip still scores the chip hit, so
+    /// the nudge never trades the graze for it; and a frame's own pin,
+    /// ending on its border above the text, does not reach the ink.
+    #[test]
+    fn a_titles_ink_past_its_chip_scores_a_graze_below_a_chip_hit() {
+        let frame = (100.0, 100.0, 300.0, 300.0);
+        let mut w = bare(
+            &[(0.0, 0.0, 10.0, 10.0)],
+            &[frame],
+            (0.0, 0.0, 400.0, 400.0),
+        );
+        w.chips = vec![(106.0, 100.0, 160.0, 121.0)];
+        w.inks = vec![Some((160.0, 100.0, 169.0, 121.0))];
+        let info = |ends| Info {
+            ends,
+            allowed: vec![0],
+            blocked_frames: Vec::new(),
+            back: false,
+            sideways: true,
+            home: None,
+        };
+        let pin = info((EndRef::Node(0), EndRef::Frame(0)));
+        let info = info((EndRef::Node(0), EndRef::Node(0)));
+        // Down past the chip, 1 px off the ink: a graze, not a hit.
+        let graze = w.score(&info, 0, &[(170.0, 50.0), (170.0, 200.0)], None);
+        assert_eq!((graze.chip, graze.ink), (0, 1), "{graze:?}");
+        assert_eq!(graze.hard(), 0);
+        // Clear of the ink by more than `chip_reach`: nothing.
+        let clear = w.score(&info, 0, &[(176.0, 50.0), (176.0, 200.0)], None);
+        assert_eq!((clear.chip, clear.ink), (0, 0), "{clear:?}");
+        // Straight through the chip scores worse than the graze.
+        let through = w.score(&info, 0, &[(130.0, 50.0), (130.0, 200.0)], None);
+        assert_eq!(through.chip, 1);
+        assert!(graze < through, "{graze:?} {through:?}");
+        // The frame's own pin beside the ink, ending on its border.
+        let s = w.score(&pin, 0, &[(165.0, 50.0), (165.0, 100.0)], None);
+        assert_eq!(s.ink, 0, "{s:?}");
+        // Outside a block layout there is no ink to graze.
+        w.inks.clear();
+        let s = w.score(&info, 0, &[(170.0, 50.0), (170.0, 200.0)], None);
+        assert_eq!((s.chip, s.ink), (0, 0), "{s:?}");
+    }
+
     /// The runs [`convex_min`] and [`below`] find are exactly the
     /// samples a scan finds, and [`covered`] counts their union outside
     /// the skipped runs.
@@ -7206,9 +7335,9 @@ mod tests {
         assert!(wide, "no relation rounded wider than CORNER_R");
         let g = crate::parser::parse("flowchart TD\nA --> B").unwrap();
         let sc = crate::scene::scene(&g);
-        assert!(World::new(&g, &sc).flow);
+        assert!(World::new(&g, &sc, false).flow);
         let mut g = g;
         g.edge_paint_width = Some(1.5);
-        assert!(!World::new(&g, &sc).flow);
+        assert!(!World::new(&g, &sc, false).flow);
     }
 }

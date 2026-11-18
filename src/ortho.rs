@@ -548,7 +548,13 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
             for l in [r.2, r.3] {
                 walls.push(((r.0, r.1), (l - clear, l + clear)));
             }
-            let h = flow_rect(dir, crate::scene::title_head(&sc.clusters, ci, right));
+            // A block layout's chip reaches its title's ink, as every
+            // stage of its static scene measures it
+            // ([`crate::scene::title_head_measured`]).
+            let h = flow_rect(
+                dir,
+                crate::scene::title_head_measured(&sc.clusters, ci, right, cx.blocks),
+            );
             walls.push(((h.0, h.1), (h.2 - CHIP_CLEAR, h.3 + CHIP_CLEAR)));
         }
     }
@@ -1331,9 +1337,10 @@ fn breadth_stubs(sc: &Scene, cx: &Ctx, dir: Direction, boxes: &[Rect]) -> Vec<Op
 
 /// A frame's title side as [`TitleSides`] reads it (flow coordinates):
 /// the frame's breadth span, the flow coordinate of its title side,
-/// which way along the flow the frame lies from it, and the chip's
-/// breadth span widened by [`CHIP_CLEAR`].
-type TitleSide = (f64, f64, f64, f64, (f64, f64));
+/// which way along the flow the frame lies from it, the chip's breadth
+/// span widened by [`CHIP_CLEAR`], and the breadth its first displaced
+/// column may take ([`TitleSides::sides`]).
+type TitleSide = (f64, f64, f64, f64, (f64, f64), f64);
 
 /// The title sides of a block layout's frames (TD / BT; B12 2.8,
 /// "Title-clear entries", rule 2 in its smallest form): an edge end on a
@@ -1353,9 +1360,17 @@ type TitleSide = (f64, f64, f64, f64, (f64, f64));
 /// would leave the frame is not taken: the edge is drawn as before.
 struct TitleSides {
     /// Per frame: its breadth span, the flow coordinate of its title
-    /// side, which way along the flow the frame lies from it, and the
+    /// side, which way along the flow the frame lies from it, the
     /// chip's breadth span widened by [`CHIP_CLEAR`] (flow coordinates),
-    /// when it has a title on a flow side.
+    /// when it has a title on a flow side, and where its displaced
+    /// columns start: a corner's rounding past that, and at least
+    /// [`CHIP_CLEAR`] past the title's bold ink
+    /// ([`crate::scene::title_head_measured`]), as every other stage of
+    /// a block layout measures the chip. (Which ends are displaced is
+    /// judged at the chip: judged at the ink as well, the ends of a fan
+    /// into a block whose side reaches past the chip but not past the
+    /// ink were displaced, and quality/dense-td drawn TD took a crossing
+    /// and a line through a node.)
     sides: Vec<Option<TitleSide>>,
     /// The displaced crossings: (edge, frame) -> the column it takes.
     cols: std::collections::BTreeMap<(usize, usize), f64>,
@@ -1377,7 +1392,13 @@ impl TitleSides {
                     return None;
                 }
                 let r = frames[ci];
-                let h = flow_rect(dir, crate::scene::title_head(&sc.clusters, ci, right));
+                let head = |inked| {
+                    flow_rect(
+                        dir,
+                        crate::scene::title_head_measured(&sc.clusters, ci, right, inked),
+                    )
+                };
+                let (h, ink) = (head(false), head(true));
                 // The side the chip sits on, and which way along the flow
                 // the frame lies from it.
                 let (t, inward) = if (h.2 - r.2).abs() <= (r.3 - h.3).abs() {
@@ -1385,7 +1406,19 @@ impl TitleSides {
                 } else {
                     (r.3, -1.0)
                 };
-                Some((r.0, r.1, t, inward, (h.0 - CHIP_CLEAR, h.1 + CHIP_CLEAR)))
+                // The first column: a corner's rounding past the chip's
+                // clearance, so the turn onto the track under the chip
+                // stays out of the chip's ring, and never nearer the
+                // title's ink than its clearance.
+                let start = (h.1 + CHIP_CLEAR + crate::router::CORNER_R).max(ink.1 + CHIP_CLEAR);
+                Some((
+                    r.0,
+                    r.1,
+                    t,
+                    inward,
+                    (h.0 - CHIP_CLEAR, h.1 + CHIP_CLEAR),
+                    start,
+                ))
             })
             .collect();
         // Every displaced crossing, by frame: (breadth it replaces, edge);
@@ -1411,7 +1444,7 @@ impl TitleSides {
             // entries of a fan into a narrow block's partly shaded
             // member crossed each other above it (dense-td's `n43`).
             let shaded = |end: Option<EndRef>, k: usize| {
-                let (Some(EndRef::Node(v)), Some((_, _, _, _, (c0, c1)))) = (end, out.sides[k])
+                let (Some(EndRef::Node(v)), Some((_, _, _, _, (c0, c1), _))) = (end, out.sides[k])
                 else {
                     return false;
                 };
@@ -1436,7 +1469,7 @@ impl TitleSides {
             }
         }
         for (k, mut v) in by {
-            let Some((_, f1, _, _, (_, c1))) = out.sides[k] else {
+            let Some((_, f1, _, _, _, start)) = out.sides[k] else {
                 continue;
             };
             let mut taken = taken.remove(&k).unwrap_or_default();
@@ -1444,10 +1477,8 @@ impl TitleSides {
             v.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
             // The nearest free columns past the chip, in the order of
             // the breadths they replace, a track apart and a track off
-            // the side's other crossings; the first a corner's rounding
-            // past the chip's clearance, so the turn onto the track under
-            // the chip stays out of the chip's ring.
-            let mut next = c1 + crate::router::CORNER_R;
+            // the side's other crossings, from the side's `start`.
+            let mut next = start;
             for &(b, i) in &v {
                 let col = column_clear_of(next, &taken);
                 if col > f1 - crate::scene::LANE_PAD {
@@ -1485,7 +1516,7 @@ impl TitleSides {
     fn all_crossings(&self, pts: &[Pt]) -> Vec<(usize, f64, bool)> {
         let mut out = Vec::new();
         for (k, side) in self.sides.iter().enumerate() {
-            let Some((f0, f1, t, inward, (c0, c1))) = *side else {
+            let Some((f0, f1, t, inward, (c0, c1), _)) = *side else {
                 continue;
             };
             let last = pts.len().saturating_sub(1);
@@ -1532,7 +1563,7 @@ impl TitleSides {
             }
             let (a, b) = (w[0], w[1]);
             for (k, side) in self.sides.iter().enumerate() {
-                let (Some((_, _, t, _, _)), Some(&col)) = (side, self.cols.get(&(i, k))) else {
+                let (Some((_, _, t, _, _, _)), Some(&col)) = (side, self.cols.get(&(i, k))) else {
                     continue;
                 };
                 if (a.1 - t) * (b.1 - t) < 0.0 && self.crossings(&[a, b]).iter().any(|c| c.0 == k) {

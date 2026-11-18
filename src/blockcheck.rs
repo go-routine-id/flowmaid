@@ -2640,6 +2640,22 @@ fn a_frames_pins_and_its_title_rows_entries_take_columns_apart() {
             "{name}: pin {pin:?}, entry {entry:?}"
         );
     }
+    // On a fixture as it is: blocks/nested-cases (TD), where `o1 --> I`'s
+    // pin and `hub --> i1`'s entry into `I`'s title-row member stand past
+    // `Inner`'s chip 13 px apart, the entry 1 px inside the clearance of
+    // the title's ink. Dealt as one set, the entry starts at that
+    // clearance, a track past the pin.
+    let g = fixture("blocks/nested-cases");
+    let sc = block_scene(&g);
+    let ci = sc.clusters.iter().position(|c| c.id == "I").unwrap();
+    let ink = crate::scene::title_head_inked(&sc.clusters, ci, f64::INFINITY);
+    let pin = *path_of(edge(&sc, "o1", "I")).last().unwrap();
+    let entry = *path_of(edge(&sc, "hub", "i1")).last().unwrap();
+    assert!(
+        entry.0 - pin.0 >= crate::ortho::TRACK_PITCH - 0.01
+            && entry.0 >= ink.2 + crate::ortho::CHIP_CLEAR - 0.01,
+        "nested-cases: pin {pin:?}, entry {entry:?}, ink {ink:?}"
+    );
 }
 
 #[test]
@@ -2654,12 +2670,14 @@ fn a_title_rows_ports_clear_the_titles_ink() {
     // permutations drawn TD (`CART --> QUEUE` beside `Order
     // processing`), quality/dense-lr drawn BT and TD, and a hub's entry
     // into a long-titled block's title row (straight through the title).
-    // Measured to the title's ink, no line comes within `CHIP_SEP` of a
-    // title's ink in these drawings; where the stretch past the ink
-    // cannot hold a side's ends, the cut at the chip alone stays and the
-    // entry takes the way it took before the cut moved (`CART --> QUEUE`
-    // into `QUEUE`'s left side; the hub's entry into `metrics` through
-    // the block's left wall, under the title).
+    // Measured to the title's ink in every stage that sets a line beside
+    // a chip (`scene::title_head_measured`), no line comes within
+    // `CHIP_SEP` of a title's ink in these drawings; where the stretch
+    // past the ink cannot hold a side's ends, the cut moves back to
+    // `CHIP_SEP` past the ink, then past the chip alone, and the entry
+    // takes the way it took before the cut moved (`CART --> QUEUE` into
+    // `QUEUE`'s left side; the hub's entry into `metrics` through the
+    // block's left wall, under the title).
     let clear = |what: &str, sc: &Scene, only: Option<&str>| {
         for c in sc
             .clusters
@@ -2742,12 +2760,47 @@ fn a_title_rows_ports_clear_the_titles_ink() {
     ext2 --> OBS
     q3 --> m2
 ";
-    // (`ORD`'s title: `hub --> q1` is displaced past the chip by
-    // `ortho`'s title sides, measured at the chip alone, and passes 3 px
-    // from the title's end, as it did before the ports moved; measured to
-    // the ink there the displaced columns of quality/dense-td drawn TD
-    // fan out across each other.)
-    clear("hub", &block_scene(&graph(hub)), Some("OBS"));
+    clear("hub", &block_scene(&graph(hub)), None);
+    // A fan of four into a title-row member whose top reaches just past
+    // the chip, and a pin of the frame's own beside them, under titles
+    // whose bold text outruns the chip by 6 to 9 px. The later stages
+    // measured the chip at the regular width: the channel nudge slid the
+    // first entry the ports stage had cut past `Shipping and returns
+    // desk`'s ink back to its own clearance past the chip, onto the
+    // title's `k`, and the router's way round `Mammoth Wombat Pipeline
+    // Overview` for `s4 --> x` stood 0.4 px from its `w`, where the
+    // nudge left it. Drawn TD and BT. (Not `Data ingestion workers`
+    // drawn BT: there `y`'s exit up through the title side stands under
+    // the ink's clearance, as before these rules moved, because its side
+    // reaches past the chip but has no room past the ink, and only a
+    // side wholly under the chip is displaced past it (`ortho`'s title
+    // sides). Drawn TD it is checked below.)
+    for (title, dirs) in [
+        ("Shipping and returns desk", &["TD", "BT"][..]),
+        ("Mammoth Wombat Pipeline Overview", &["TD", "BT"]),
+        ("Data ingestion workers", &["TD"]),
+        ("Order processing", &["TD", "BT"]),
+    ] {
+        let fan = format!(
+            "flowchart TD
+    s1[s1] --> x
+    s2[s2] --> x
+    s3[s3] --> x
+    s4[s4] --> x
+    s5[s5] --> G
+    subgraph G[{title}]
+        x[wide member node that is long]
+        y[y]
+        x --> y
+    end
+    y --> z[end]
+"
+        );
+        for dir in dirs {
+            let sc = block_scene(&graph(&in_direction(&fan, dir)));
+            clear(&format!("{title} {dir}"), &sc, None);
+        }
+    }
 }
 
 #[test]
