@@ -3210,3 +3210,35 @@ fn a_label_keeps_off_the_blocks_that_hold_one_end_of_its_edge() {
         }
     }
 }
+
+#[test]
+fn a_waypoint_runs_last_leg_meets_its_head_square() {
+    // dense-lr as blocks: `n22 -.-> n44`'s last column stood 0.5 px off
+    // its port (the ports stage spread the end; the run kept the
+    // column), and `n26 --> n47`'s end went to the drum's shoulder 0.49
+    // px across its run. Each painted its head at a slant: the static
+    // `DEFECT_BASELINE` read one spline (`idiom_spline` 1) and
+    // `end_tilt_max` 0.80 deg. Now every run into a glyph end lies on
+    // its axis, in both directions along the flow.
+    let src = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/quality/dense-lr.mmd"
+    ))
+    .unwrap();
+    for dir in ["LR", "RL"] {
+        let src = src.replacen("flowchart LR", &format!("flowchart {dir}"), 1);
+        let rep = crate::levels::with_blocks(true, || crate::quality::measure_source(&src, false))
+            .expect("a flowchart");
+        assert!(rep.block_mode, "{dir}");
+        assert_eq!(
+            rep.statik.idiom_spline, 0,
+            "{dir}: {:?}",
+            rep.statik.details
+        );
+        assert!(
+            rep.statik.end_tilt_max <= 0.3,
+            "{dir}: end_tilt_max {}",
+            rep.statik.end_tilt_max
+        );
+    }
+}

@@ -1845,6 +1845,29 @@ fn flow_path(
             jogs.push(plan_jog(cx, edge, cur, (q, port, gq), h, lab));
             out.push(Corner::Jog(k, cur.0 .0));
             out.push(Corner::Jog(k, q.0));
+        } else if cx.blocks && port && (q.0 - cur.0 .0).abs() > EPS {
+            // In a block layout a run that reaches its port within
+            // `ALIGNED` of its line is laid on the port's line from its
+            // last turn on: the ports stage spread the end a fraction of
+            // a px off the chain's last column, and a run left on the
+            // column met its head at a slant, the painted spline kinked
+            // under it (dense-lr `n22 -.-> n44`, 0.5 px over 316 px,
+            // `idiom_spline` and `end_tilt_max` 0.8 deg in the static
+            // `DEFECT_BASELINE`). Its own source port stays where it is.
+            let first = out.len() == 1;
+            match out.last_mut() {
+                Some(Corner::Jog(k, b)) => {
+                    *b = q.0;
+                    let j = &mut jogs[*k];
+                    if h > 0.0 {
+                        j.hi_at = q.0;
+                    } else {
+                        j.lo_at = q.0;
+                    }
+                }
+                Some(Corner::At(c)) if !first => c.0 = q.0,
+                _ => {}
+            }
         }
         cur = (q, port, gq);
     }
