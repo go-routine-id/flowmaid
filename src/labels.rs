@@ -30,9 +30,7 @@
 //! first, and a few rounds let a label take a spot another one left.
 
 use crate::edgepass::Ctx;
-use crate::layout::{
-    is_branch_point, text_width, title_extra, LABEL_BOX_H, LABEL_CLEAR, LINE_H, TITLE_SCALE,
-};
+use crate::layout::{is_branch_point, title_extra, LABEL_BOX_H, LABEL_CLEAR, LINE_H};
 use crate::model::{EdgeKind, Graph};
 use crate::scene::{
     basis_sample, edge_drawn, edge_polyline, fit_cluster_title, label_stub, shift_scene, Bbox,
@@ -1063,7 +1061,7 @@ pub(crate) fn chip_rect(clusters: &[SceneCluster], ci: usize, canvas_right: f64)
     (
         x,
         y,
-        x + text_width(&title) * TITLE_SCALE + CHIP_PAD_W,
+        x + crate::scene::title_text_width(c, &title) + CHIP_PAD_W,
         y + CHIP_H + title_extra(&title),
     )
 }
@@ -1698,6 +1696,7 @@ pub(crate) fn relabel(_g: &Graph, sc: &mut Scene, cx: &Ctx, moved: &[bool], budg
         Pass::Changed(moved),
         budget,
         &cx.chain,
+        cx.blocks,
     );
 }
 
@@ -1708,7 +1707,7 @@ fn place(
     pass: Pass,
     budget: usize,
 ) -> Vec<usize> {
-    place_long(nodes, frames, edges, pass, budget, &[])
+    place_long(nodes, frames, edges, pass, budget, &[], false)
 }
 
 /// How far (px) a row of nodes keeps clear of both ends of an edge
@@ -1721,7 +1720,10 @@ const ROW_APART: f64 = 12.0;
 /// entries are `false`): one whose columns lined up runs straight, but
 /// its label keeps the slot its dummy reserved, as on a long edge's
 /// polyline. A labelled edge whose ends lie a whole row of nodes apart
-/// along its run counts as long too, whoever flagged it.
+/// along its run counts as long too, whoever flagged it. In a block
+/// layout (`blocks`) a label re-placed at its line's preferred spot keeps
+/// off the frames that hold only one end of its edge (B12 G3,
+/// [`crate::scene::label_off_frames`]).
 fn place_long(
     nodes: &[SceneNode],
     frames: &[SceneCluster],
@@ -1729,6 +1731,7 @@ fn place_long(
     pass: Pass,
     budget: usize,
     long: &[bool],
+    blocks: bool,
 ) -> Vec<usize> {
     let spans_row = |e: &SceneEdge| {
         let (a, b) = match (e.waypoints.first(), e.waypoints.last()) {
@@ -2241,6 +2244,12 @@ fn place_long(
                 .sum();
             let mid = line_at(pts, len * LABEL_PREFER);
             let to = head_clear_spot(e, pts, mid).unwrap_or(mid);
+            let to = if blocks {
+                crate::scene::label_off_frames(pts, to, w, &end_blocks(e, nodes, frames))
+                    .unwrap_or(to)
+            } else {
+                to
+            };
             if (to.0 - at.0).hypot(to.1 - at.1) <= TOUCH_EPS {
                 continue;
             }
@@ -2428,6 +2437,28 @@ fn head_clear_spot(e: &SceneEdge, pts: &[(f64, f64)], at: (f64, f64)) -> Option<
         (s, s - s_at)
     };
     (toward > TOUCH_EPS && toward <= ARROW_MARKER_PX / 2.0 + FAN_ON_LINE).then(|| line_at(pts, s))
+}
+
+/// The frames (x0, y0, x1, y1) that hold one end of edge `e` and not
+/// the other (B12 G3's end blocks), by the ends' node centres; none for
+/// an edge with an end on a frame.
+fn end_blocks(
+    e: &SceneEdge,
+    nodes: &[SceneNode],
+    frames: &[SceneCluster],
+) -> Vec<(f64, f64, f64, f64)> {
+    let at = |id: &str| nodes.iter().find(|n| n.id == id).map(|n| (n.x, n.y));
+    let (Some(a), Some(b)) = (at(&e.from), at(&e.to)) else {
+        return Vec::new();
+    };
+    let holds = |c: &SceneCluster, p: (f64, f64)| {
+        p.0 > c.x && p.0 < c.x + c.w && p.1 > c.y && p.1 < c.y + c.h
+    };
+    frames
+        .iter()
+        .filter(|c| holds(c, a) != holds(c, b))
+        .map(|c| (c.x, c.y, c.x + c.w, c.y + c.h))
+        .collect()
 }
 
 /// Whether edge `e`, drawn as one free curve down (or up) the page,

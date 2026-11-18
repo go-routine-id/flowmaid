@@ -2119,3 +2119,1170 @@ fn a_generated_sweep_keeps_the_block_invariants() {
         assert!(!crate::scene::block_mode(&g), "isolated {seed}");
     }
 }
+
+// --- Frames: their box (F1) and their jog room (F2), static scene.
+
+/// The members' boxes of frame `id` as (x0, y0, x1, y1).
+fn members_box(g: &Graph, sc: &Scene, id: &str) -> (f64, f64, f64, f64) {
+    let paths = crate::scene::node_cluster_paths(g);
+    let si = g
+        .subgraphs
+        .iter()
+        .position(|s| s.id == id)
+        .unwrap_or_else(|| panic!("no subgraph {id}"));
+    let mut b = (
+        f64::INFINITY,
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+        f64::NEG_INFINITY,
+    );
+    for (v, n) in sc.nodes.iter().enumerate() {
+        if paths[v].contains(&si) {
+            b.0 = b.0.min(n.x - n.w / 2.0);
+            b.1 = b.1.min(n.y - n.h / 2.0);
+            b.2 = b.2.max(n.x + n.w / 2.0);
+            b.3 = b.3.max(n.y + n.h / 2.0);
+        }
+    }
+    b
+}
+
+/// `src` with its first line's direction replaced by `dir`.
+fn in_direction(src: &str, dir: &str) -> String {
+    let (head, rest) = src.split_once('\n').expect("more than one line");
+    let kind = head.split_whitespace().next().expect("a header");
+    format!("{kind} {dir}\n{rest}")
+}
+
+/// No two frames of `sc` that do not nest overlap, and every title is
+/// drawn whole.
+fn assert_frames_clear(name: &str, sc: &Scene) {
+    let within = |a: &crate::scene::SceneCluster, b: &crate::scene::SceneCluster| {
+        a.x >= b.x - 0.01
+            && a.y >= b.y - 0.01
+            && a.x + a.w <= b.x + b.w + 0.01
+            && a.y + a.h <= b.y + b.h + 0.01
+    };
+    for (i, a) in sc.clusters.iter().enumerate() {
+        assert_eq!(
+            crate::scene::fit_cluster_title(&sc.clusters, i, sc.width),
+            a.title,
+            "{name}: {} cut",
+            a.id
+        );
+        for b in &sc.clusters[i + 1..] {
+            let meet = a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+            assert!(
+                !meet || within(a, b) || within(b, a),
+                "{name}: {} meets {}",
+                a.id,
+                b.id
+            );
+        }
+    }
+}
+
+#[test]
+fn a_frame_is_as_broad_as_its_title() {
+    // title-hidden: the title is broader than the block's two rows.
+    // Before, the frame was as broad as its members and the title was
+    // cut with an ellipsis where the canvas ended. In a block layout the
+    // frame grows equally on both sides to its title (F1), and the
+    // layout keeps that room beside the block.
+    let src = std::fs::read_to_string(format!(
+        "{}/tests/fixtures/blocks/title-hidden.mmd",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    for dir in ["TD", "BT"] {
+        let g = graph(&in_direction(&src, dir));
+        let sc = block_scene(&g);
+        let f = frame_box(&sc, "S");
+        let least = crate::scene::title_fit_width(&g.subgraphs[0].title);
+        assert!(f.2 - f.0 >= least - 0.01, "{dir}: {f:?} < {least}");
+        // Grown equally on both sides of its members.
+        let m = members_box(&g, &sc, "S");
+        assert!(
+            ((f.0 + f.2) / 2.0 - (m.0 + m.2) / 2.0).abs() < 0.01,
+            "{dir}: {f:?} {m:?}"
+        );
+        assert_frames_clear(dir, &sc);
+        let q = crate::quality::measure(&g, &sc);
+        assert_eq!(
+            (q.title_cut, q.frame_overlap, q.node_frame),
+            (0, 0, 0),
+            "{dir}"
+        );
+        // Outside a block layout the frame is its members' box.
+        let off = crate::levels::with_blocks(false, || crate::scene::scene(&g));
+        let f = frame_box(&off, "S");
+        let m = members_box(&g, &off, "S");
+        assert!(f.2 - f.0 < least, "{dir}: {f:?} {m:?}");
+    }
+}
+
+#[test]
+fn an_lr_frame_is_as_long_as_its_title() {
+    // blocks/lr: `Edge and shared services with a long title` holds one
+    // column of two nodes. Before, the frame was one column long and
+    // the title ran out over the next frame. In LR / RL the title runs
+    // along the flow: the frame is as long as its title (F2), grown
+    // equally upstream and downstream, and the layer lines keep the
+    // frames next to it a frame gap away.
+    let src = std::fs::read_to_string(format!(
+        "{}/tests/fixtures/blocks/lr.mmd",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    for dir in ["LR", "RL"] {
+        let g = graph(&in_direction(&src, dir));
+        let sc = block_scene(&g);
+        let edge_block = g.subgraphs.iter().find(|s| s.id == "EDGE").unwrap();
+        let f = frame_box(&sc, "EDGE");
+        let least = crate::scene::title_fit_width(&edge_block.title);
+        assert!(f.2 - f.0 >= least - 0.01, "{dir}: {f:?} < {least}");
+        let m = members_box(&g, &sc, "EDGE");
+        assert!(
+            ((f.0 + f.2) / 2.0 - (m.0 + m.2) / 2.0).abs() < 0.01,
+            "{dir}: {f:?} {m:?}"
+        );
+        assert_frames_clear(dir, &sc);
+        // Nothing outside the block stands on its grown frame.
+        for n in &sc.nodes {
+            if ["CDN", "PAGER"].contains(&n.id.as_str()) {
+                continue;
+            }
+            let b = node_box(&sc, &n.id);
+            assert!(
+                b.2 <= f.0 || b.0 >= f.2 || b.3 <= f.1 || b.1 >= f.3,
+                "{dir}: {} on {f:?}",
+                n.id
+            );
+        }
+        let q = crate::quality::measure(&g, &sc);
+        assert_eq!(
+            (q.title_cut, q.frame_overlap, q.node_frame),
+            (0, 0, 0),
+            "{dir}"
+        );
+    }
+}
+
+#[test]
+fn titles_are_drawn_whole_in_every_direction() {
+    // F1 and F2 together: on the three title fixtures no frame title is
+    // cut and no two frames meet, in all four directions.
+    for name in ["title-entry", "title-hidden", "lr"] {
+        let src = std::fs::read_to_string(format!(
+            "{}/tests/fixtures/blocks/{name}.mmd",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        for dir in ["TD", "BT", "LR", "RL"] {
+            let g = graph(&in_direction(&src, dir));
+            let sc = block_scene(&g);
+            let what = format!("{name} {dir}");
+            assert_frames_clear(&what, &sc);
+            let q = crate::quality::measure(&g, &sc);
+            assert_eq!((q.title_cut, q.frame_overlap), (0, 0), "{what}");
+        }
+    }
+}
+
+#[test]
+fn a_frame_holds_its_bold_title_as_a_browser_draws_it() {
+    // A frame's title is drawn bold. Grown to the regular estimate, a
+    // long title ran 6-15 px past its frame's right border in a browser
+    // (title-hidden 12 px, title-entry 8, lr 6, a nested block's 14),
+    // and an edge kept off the estimated chip ran through its last
+    // word (nested-wide-title: `src -> a1`). The widths below are what
+    // Chromium draws these titles at (12 px bold, Liberation Sans,
+    // Helvetica's metrics; the widest line), measured once, so the test
+    // does not grade the estimate with itself.
+    let ink_of = |title: &str| -> Option<f64> {
+        [
+            ("A long block title that covers the whole first row", 273.59),
+            (
+                "A long block title that covers the first member and more",
+                318.61,
+            ),
+            (
+                "A nested block whose title runs far past its one member",
+                318.63,
+            ),
+            ("Edge and shared services with a long title", 239.06),
+        ]
+        .iter()
+        .find(|(t, _)| title.split('\n').next() == Some(*t))
+        .map(|&(_, w)| w)
+    };
+    let mut seen_bold = 0;
+    for name in ["title-hidden", "title-entry", "lr", "nested-wide-title"] {
+        let src = std::fs::read_to_string(format!(
+            "{}/tests/fixtures/blocks/{name}.mmd",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        for dir in ["TD", "BT", "LR", "RL"] {
+            let g = graph(&in_direction(&src, dir));
+            let sc = block_scene(&g);
+            let what = format!("{name} {dir}");
+            let mut seen = 0;
+            for c in &sc.clusters {
+                let Some(ink) = ink_of(&c.title) else {
+                    continue;
+                };
+                seen += 1;
+                // The text starts 10 px in (`to_svg`: the chip's inset
+                // and pad); its ink ends a chip pad and a title inset
+                // short of the right border, as F1 sizes the frame.
+                let room = c.x + c.w - (c.x + 10.0 + ink);
+                assert!(
+                    room >= 4.0 + 6.0 - 1.0,
+                    "{what}: {}'s title ends {room:.1} px from its border",
+                    c.id
+                );
+                // Drawn whole, not cut to fit.
+                let i = sc.clusters.iter().position(|o| o.id == c.id).unwrap();
+                assert_eq!(
+                    crate::scene::fit_cluster_title(&sc.clusters, i, sc.width),
+                    c.title,
+                    "{what}"
+                );
+                // Grown to its title (a frame its members leave broader
+                // keeps the estimate every frame has), the frame measures
+                // it bold: the chip edges keep clear of holds the ink, and
+                // so does the chip `to_svg` paints under it.
+                let least = crate::scene::title_fit_width(&c.title);
+                assert!(!c.bold_title || c.w <= least + 0.5, "{what}: {}", c.id);
+                assert!(c.bold_title || c.w >= least - 0.01, "{what}: {}", c.id);
+                let ink_right = c.x + 10.0 + ink;
+                if c.bold_title {
+                    seen_bold += 1;
+                    let head = crate::scene::title_head(&sc.clusters, i, f64::INFINITY);
+                    assert!(head.2 >= ink_right, "{what}: chip {head:?} < {ink_right}");
+                    let painted = crate::scene::title_text_width(c, &c.title) + 8.0;
+                    assert!(c.x + 6.0 + painted >= ink_right, "{what}: painted chip");
+                    // No drawn line comes within CHIP_SEP of the ink.
+                    let ink_box = (c.x + 10.0, c.y + 5.0, ink_right, c.y + 21.0);
+                    for e in &sc.edges {
+                        for w in path_of(e).windows(2) {
+                            let d = seg_box_dist(w[0], w[1], ink_box);
+                            assert!(
+                                d >= crate::clearance::CHIP_SEP - 0.5,
+                                "{what}: {} -> {} {d:.1} px from {}'s title",
+                                e.from,
+                                e.to,
+                                c.id
+                            );
+                        }
+                    }
+                }
+            }
+            assert_eq!(seen, 1, "{what}");
+            assert_frames_clear(&what, &sc);
+        }
+    }
+    // Every one of them is grown to its title somewhere.
+    assert!(seen_bold >= 8, "{seen_bold}");
+}
+
+/// Distance from segment `a`-`b` to the box `r` (x0, y0, x1, y1), 0
+/// where they meet: the least over points 0.25 px apart along it.
+fn seg_box_dist(a: (f64, f64), b: (f64, f64), r: (f64, f64, f64, f64)) -> f64 {
+    let n = ((b.0 - a.0).hypot(b.1 - a.1) / 0.25).ceil().max(1.0) as usize;
+    (0..=n)
+        .map(|k| {
+            let t = k as f64 / n as f64;
+            let (x, y) = (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t);
+            let dx = (r.0 - x).max(0.0).max(x - r.2);
+            let dy = (r.1 - y).max(0.0).max(y - r.3);
+            dx.hypot(dy)
+        })
+        .fold(f64::INFINITY, f64::min)
+}
+
+/// The jog room of frame `id` in `sc`: how far its top border lies
+/// above its first row past its pad and title strip (TD).
+fn jog_room(g: &Graph, sc: &Scene, id: &str) -> f64 {
+    let s = g.subgraphs.iter().find(|s| s.id == id).unwrap();
+    let f = frame_box(sc, id);
+    let m = members_box(g, sc, id);
+    m.1 - f.1 - crate::scene::frame_head_room(&s.title)
+}
+
+#[test]
+fn jog_room_counts_only_what_crosses_the_title_side() {
+    // title-entry: the two-line title covers both members of the title
+    // row, each fed from above, so both entries are displaced and jog
+    // in beside the chip: ROW_CLEAR and one TRACK_PITCH more (F2).
+    let g = fixture("blocks/title-entry");
+    let sc = block_scene(&g);
+    let want = crate::ortho::ROW_CLEAR + crate::ortho::TRACK_PITCH;
+    let got = jog_room(&g, &sc, "S");
+    assert!((got - want).abs() < 0.01, "title-entry: {got} != {want}");
+    // A title-row hub whose exits all leave downstream crosses nothing
+    // on the title side: no jog room.
+    let g = graph(
+        "flowchart TD\n    subgraph S[\"A long block title over its hub member\"]\n        H[hub]\n    end\n    H --> a\n    H --> b\n    H --> c\n",
+    );
+    let sc = block_scene(&g);
+    let got = jog_room(&g, &sc, "S");
+    assert!(got.abs() < 0.01, "hub: {got}");
+    // Three entries that fit beside a short title on a broad member: no
+    // jog room either.
+    let g = graph(
+        "flowchart TD\n    a --> M\n    b --> M\n    c --> M\n    subgraph S[T]\n        M[a broad member with a label far longer than its block's title]\n    end\n",
+    );
+    let sc = block_scene(&g);
+    let got = jog_room(&g, &sc, "S");
+    assert!(got.abs() < 0.01, "broad member: {got}");
+}
+
+#[test]
+fn linked_frames_stand_further_apart_than_route_reads_as_stacked() {
+    // G1's floor: two frames a link joins, one closing on a layer and
+    // the other opening on the next, stand more than
+    // `scene::FLOW_MIN_GAP` apart along the flow, so `route()` at the
+    // scene's centres reads the two blocks as one after the other (with
+    // the bare `FRAME_GAP` of 8 px it read them as neighbours). The
+    // nested frames on both facing rows, the LR copy and the two-way
+    // variant, in all four directions.
+    for name in [
+        "t9-frames-8px",
+        "t9b-frames-8px-lr",
+        "t9c-frames-8px-two-way",
+    ] {
+        let src = std::fs::read_to_string(format!(
+            "{}/tests/fixtures/blocks/{name}.mmd",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        for dir in ["TD", "BT", "LR", "RL"] {
+            let g = graph(&in_direction(&src, dir));
+            let sc = block_scene(&g);
+            let (a, b) = (frame_box(&sc, "A"), frame_box(&sc, "B"));
+            let gap = if matches!(dir, "TD" | "BT") {
+                (b.1 - a.3).max(a.1 - b.3)
+            } else {
+                (b.0 - a.2).max(a.0 - b.2)
+            };
+            assert!(
+                gap > crate::scene::FLOW_MIN_GAP,
+                "{name} {dir}: frames {gap} px apart"
+            );
+        }
+    }
+}
+
+#[test]
+fn an_edge_between_stacked_blocks_crosses_their_title_sides_past_the_chips() {
+    // Two stacked blocks, each with a nested frame whose title chip
+    // covers its one member's flow side: the link leaves the lower
+    // block's title side (BT) or enters the upper one's (TD) at a
+    // column past the chip (2.8 rule 2) and steps back to its port in
+    // the gap between the two frames, where the layout keeps a track's
+    // room for that step (G1, G2). Before, the frame was too narrow for
+    // a column past the chip, the gap kept its bare floor, and drawn
+    // BT the link left `Alpha one` and `Alpha` through their right
+    // lateral walls and came into `Beta` and `Beta one` through theirs
+    // (4 lateral crossings; the package's start drew it up between the
+    // frames). No lateral crossing, and no line within `CHIP_SEP` of a
+    // title's ink (measured bold, as it is drawn), in any direction. The
+    // two-way variant too: drawn TD or BT its turned edge went round the
+    // right of both blocks (2 lateral crossings), the steps of the pair
+    // in the jog room and between the frames placed as one stack of
+    // tracks, its two jog-room steps 5 px apart; each room's steps are a
+    // channel of their own now (`ortho::place_tracks`).
+    for name in [
+        "t9-frames-8px",
+        "t9b-frames-8px-lr",
+        "t9c-frames-8px-two-way",
+    ] {
+        let src = std::fs::read_to_string(format!(
+            "{}/tests/fixtures/blocks/{name}.mmd",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        for dir in ["TD", "BT", "LR", "RL"] {
+            let g = graph(&in_direction(&src, dir));
+            let sc = block_scene(&g);
+            let q = crate::quality::measure(&g, &sc);
+            assert_eq!(q.lateral_x, 0, "{name} {dir}: lateral_x");
+            assert_eq!((q.edge_chip, q.frame_side), (0, 0), "{name} {dir}");
+            for c in &sc.clusters {
+                let ink = crate::layout::bold_text_width(&c.title) * crate::layout::TITLE_SCALE;
+                let ink_box = (c.x + 10.0, c.y + 5.0, c.x + 10.0 + ink, c.y + 21.0);
+                for e in &sc.edges {
+                    for w in path_of(e).windows(2) {
+                        let d = seg_box_dist(w[0], w[1], ink_box);
+                        assert!(
+                            d >= crate::clearance::CHIP_SEP - 0.5,
+                            "{name} {dir}: {} -> {} {d:.1} px from {}'s title",
+                            e.from,
+                            e.to,
+                            c.id
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn a_two_way_pair_between_blocks_keeps_its_steps_in_one_channel() {
+    // blocks/twoway-noted drawn LR or RL: the pair's two steps share the
+    // gap between the blocks, the labelled return's room above its label
+    // apart from the forward step's room but both plain rooms meeting.
+    // Split into two channels by the rooms above their labels, the
+    // return kept that room beside an unlabelled step and the two were
+    // stacked in the order of their rooms, not of their turns: they
+    // crossed, `uncross` swapped their ends, and the return ran up
+    // `K1`'s wall (a border run of 62 px) to a stepped end in `K0`.
+    // Split by their plain rooms they are one channel again, and the
+    // pair is drawn as two straight runs.
+    let src = std::fs::read_to_string(format!(
+        "{}/tests/fixtures/blocks/twoway-noted.mmd",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    for dir in ["LR", "RL"] {
+        let g = graph(&src.replace("direction LR", &format!("direction {dir}")));
+        let sc = block_scene(&g);
+        let q = crate::quality::measure(&g, &sc);
+        assert_eq!((q.border_runs, q.x_drawn), (0, 0), "{dir}");
+        for e in sc.edges.iter().filter(|e| {
+            (e.from.as_str(), e.to.as_str()) == ("K0", "K1")
+                || (e.from.as_str(), e.to.as_str()) == ("K1", "K0")
+        }) {
+            let p = path_of(e);
+            assert!(
+                p.windows(2).all(|w| (w[0].1 - w[1].1).abs() < 0.5),
+                "{dir}: {} -> {} is not one straight run: {p:?}",
+                e.from,
+                e.to
+            );
+        }
+    }
+}
+
+#[test]
+fn a_title_rows_first_free_entry_clears_the_chip_ring() {
+    // blocks/hub5: the hub's entries into `b1`, `d1` and `e1` stood on
+    // the first free port past each block's title chip, exactly on the
+    // router's limit round the chip; the stroke touched the chip's ring
+    // and the router took all three round into their members' left
+    // sides through the frames' left walls. Cut at the clearance the
+    // layout and `ortho` measure the chip with, they come in from above.
+    let g = fixture("blocks/hub5");
+    let sc = block_scene(&g);
+    let q = crate::quality::measure(&g, &sc);
+    assert_eq!((q.lateral_x, q.side_ends), (0, 0), "{:?}", q.details);
+    for to in ["b1", "d1", "e1"] {
+        let p = path_of(edge(&sc, "HUB", to));
+        let end = *p.last().unwrap();
+        assert_eq!(
+            side_of("TD", node_box(&sc, to), end),
+            'u',
+            "HUB -> {to}: {p:?}"
+        );
+    }
+}
+
+#[test]
+fn a_frames_pins_and_its_title_rows_entries_take_columns_apart() {
+    // The public fixture and its permutations drawn TD, `ORD` titled
+    // short enough (`Orders`) that `QUEUE`'s top past the title holds
+    // its two entries and `ORD`'s free pin: `REG ==> ORD`'s pin and
+    // `CART --> QUEUE`'s entry into the title-row member `QUEUE` both
+    // took the first free column past `ORD`'s chip, the two strokes on
+    // top of each other, and the router took the entry round into
+    // `QUEUE`'s left side. Dealt the columns past the chip as one set,
+    // in the order their channels come in, the entry comes in from
+    // above beside the pin, and the steps into them nest. (Under the
+    // fixture's own title that stretch, measured to the title's bold
+    // ink, holds two columns, not three, and the entry keeps its way
+    // into `QUEUE`'s left side: `a_title_rows_ports_clear_the_titles_ink`.)
+    for name in [
+        "blocks-overview",
+        "blocks-overview-actors-reversed",
+        "blocks-overview-edges-reversed",
+        "blocks-overview-edges-rotated",
+        "blocks-overview-subgraphs-reversed",
+    ] {
+        let path = format!(
+            "{}/tests/fixtures/blocks/{name}.mmd",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let src = std::fs::read_to_string(&path).unwrap();
+        let short = src.replace("subgraph ORD[Order processing]", "subgraph ORD[Orders]");
+        assert_ne!(short, src, "{name}");
+        let g = graph(&short);
+        let sc = block_scene(&g);
+        let q = crate::quality::measure(&g, &sc);
+        assert_eq!(q.overlap_pairs, 0, "{name}: {:?}", q.details);
+        assert!(
+            q.min_edge_gap >= 12.0,
+            "{name}: min_edge_gap {}",
+            q.min_edge_gap
+        );
+        assert!(q.x_drawn <= 6, "{name}: x_drawn {}", q.x_drawn);
+        let entry = *path_of(edge(&sc, "CART", "QUEUE")).last().unwrap();
+        assert_eq!(
+            side_of("TD", node_box(&sc, "QUEUE"), entry),
+            'u',
+            "{name}: {entry:?}"
+        );
+        let pin = *path_of(edge(&sc, "REG", "ORD")).last().unwrap();
+        assert!(
+            (pin.0 - entry.0).abs() >= crate::ortho::TRACK_PITCH - 0.01,
+            "{name}: pin {pin:?}, entry {entry:?}"
+        );
+    }
+    // On a fixture as it is: blocks/nested-cases (TD), where `o1 --> I`'s
+    // pin and `hub --> i1`'s entry into `I`'s title-row member stand past
+    // `Inner`'s chip 13 px apart, the entry 1 px inside the clearance of
+    // the title's ink. Dealt as one set, the entry starts at that
+    // clearance, a track past the pin.
+    let g = fixture("blocks/nested-cases");
+    let sc = block_scene(&g);
+    let ci = sc.clusters.iter().position(|c| c.id == "I").unwrap();
+    let ink = crate::scene::title_head_inked(&sc.clusters, ci, f64::INFINITY);
+    let pin = *path_of(edge(&sc, "o1", "I")).last().unwrap();
+    let entry = *path_of(edge(&sc, "hub", "i1")).last().unwrap();
+    assert!(
+        entry.0 - pin.0 >= crate::ortho::TRACK_PITCH - 0.01
+            && entry.0 >= ink.2 + crate::ortho::CHIP_CLEAR - 0.01,
+        "nested-cases: pin {pin:?}, entry {entry:?}, ink {ink:?}"
+    );
+}
+
+#[test]
+fn a_title_rows_ports_clear_the_titles_ink() {
+    // `to_svg` paints every frame title bold, while a frame not grown to
+    // its title measures its chip at the regular width, which the bold
+    // text outruns by about a tenth of its width. A block layout's
+    // title-row member's ports, cut a clearance past the chip measured
+    // that way, and the columns the frame's pins and those entries are
+    // dealt from, put the first entry past the chip a px or two from the
+    // title's last letter, or through it: the public fixture and its
+    // permutations drawn TD (`CART --> QUEUE` beside `Order
+    // processing`), quality/dense-lr drawn BT and TD, and a hub's entry
+    // into a long-titled block's title row (straight through the title).
+    // Measured to the title's ink in every stage that sets a line beside
+    // a chip (`scene::title_head_measured`), no line comes within
+    // `CHIP_SEP` of a title's ink in these drawings; where the stretch
+    // past the ink cannot hold a side's ends, the cut moves back to
+    // `CHIP_SEP` past the ink, then past the chip alone, and the entry
+    // takes the way it took before the cut moved (`CART --> QUEUE` into
+    // `QUEUE`'s left side; the hub's entry into `metrics` through the
+    // block's left wall, under the title).
+    let clear = titles_clear_their_ink;
+    for name in [
+        "blocks-overview",
+        "blocks-overview-actors-reversed",
+        "blocks-overview-edges-reversed",
+        "blocks-overview-edges-rotated",
+        "blocks-overview-subgraphs-reversed",
+    ] {
+        let g = fixture(&format!("blocks/{name}"));
+        let sc = block_scene(&g);
+        clear(name, &sc, None);
+        let q = crate::quality::measure(&g, &sc);
+        assert_eq!(q.overlap_pairs, 0, "{name}: {:?}", q.details);
+        assert!(q.x_drawn <= 6, "{name}: x_drawn {}", q.x_drawn);
+    }
+    let src = std::fs::read_to_string(format!(
+        "{}/tests/fixtures/quality/dense-lr.mmd",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    for dir in ["TD", "BT"] {
+        let sc = block_scene(&graph(&in_direction(&src, dir)));
+        clear(&format!("dense-lr {dir}"), &sc, None);
+    }
+    let hub = "flowchart TD
+    ext1[External caller one] --> ORD
+    ext2[External caller two] --> ORD
+    hub[Hub service] --> q1
+    hub --> q2
+    hub --> ORD
+    subgraph ORD[Order processing and fulfilment pipeline]
+        q1[queue]
+        q2[charge]
+        q3[ship]
+        q1 --> q3
+        q2 --> q3
+    end
+    subgraph OBS[Observability stack with a long title]
+        m1[metrics]
+        m2[logs]
+    end
+    hub --> m1
+    ext1 --> m1
+    ext2 --> OBS
+    q3 --> m2
+";
+    clear("hub", &block_scene(&graph(hub)), None);
+    // A fan of four into a title-row member whose top reaches just past
+    // the chip, and a pin of the frame's own beside them, under titles
+    // whose bold text outruns the chip by 6 to 9 px. The later stages
+    // measured the chip at the regular width: the channel nudge slid the
+    // first entry the ports stage had cut past `Shipping and returns
+    // desk`'s ink back to its own clearance past the chip, onto the
+    // title's `k`, and the router's way round `Mammoth Wombat Pipeline
+    // Overview` for `s4 --> x` stood 0.4 px from its `w`, where the
+    // nudge left it. Drawn TD and BT. (Not `Data ingestion workers`
+    // drawn BT: there `y`'s exit up through the title side stands under
+    // the ink's clearance, as before these rules moved, because its side
+    // reaches past the chip but has no room past the ink, and only a
+    // side wholly under the chip is displaced past it (`ortho`'s title
+    // sides). Drawn TD it is checked below.)
+    for (title, dirs) in [
+        ("Shipping and returns desk", &["TD", "BT"][..]),
+        ("Mammoth Wombat Pipeline Overview", &["TD", "BT"]),
+        ("Data ingestion workers", &["TD"]),
+        ("Order processing", &["TD", "BT"]),
+    ] {
+        let fan = format!(
+            "flowchart TD
+    s1[s1] --> x
+    s2[s2] --> x
+    s3[s3] --> x
+    s4[s4] --> x
+    s5[s5] --> G
+    subgraph G[{title}]
+        x[wide member node that is long]
+        y[y]
+        x --> y
+    end
+    y --> z[end]
+"
+        );
+        for dir in dirs {
+            let sc = block_scene(&graph(&in_direction(&fan, dir)));
+            clear(&format!("{title} {dir}"), &sc, None);
+        }
+    }
+}
+
+/// No drawn line of `sc` comes within [`crate::clearance::CHIP_SEP`] (less
+/// half a px) of a frame title's bold ink, as `to_svg` paints it, but a
+/// link to that frame itself, which ends on its border above the text;
+/// every frame's title, or only `only`'s. `what` names the drawing.
+fn titles_clear_their_ink(what: &str, sc: &Scene, only: Option<&str>) {
+    for c in sc
+        .clusters
+        .iter()
+        .filter(|c| only.map_or(true, |o| c.id == o))
+    {
+        // The text as `to_svg` paints it: from half the chip's padding
+        // in, bold, the chip's height down.
+        use crate::clearance::{CHIP_H, CHIP_INSET_X, CHIP_INSET_Y, CHIP_PAD_W};
+        let ink = crate::layout::bold_text_width(&c.title) * crate::layout::TITLE_SCALE;
+        let x0 = c.x + CHIP_INSET_X + CHIP_PAD_W / 2.0;
+        let ink_box = (
+            x0,
+            c.y + CHIP_INSET_Y,
+            x0 + ink,
+            c.y + CHIP_INSET_Y + CHIP_H,
+        );
+        for e in sc
+            .edges
+            .iter()
+            .filter(|e| crate::scene::edge_drawn(e) && e.from != c.id && e.to != c.id)
+        {
+            for w in path_of(e).windows(2) {
+                let d = seg_box_dist(w[0], w[1], ink_box);
+                assert!(
+                    d >= crate::clearance::CHIP_SEP - 0.5,
+                    "{what}: {} -> {} {d:.1} px from {}'s title",
+                    e.from,
+                    e.to,
+                    c.id
+                );
+            }
+        }
+    }
+}
+#[test]
+fn a_frames_pin_keeps_off_the_columns_of_the_entries_beside_it() {
+    // Two stacked blocks, the lower one's left member wholly under its
+    // title and entered from the upper block, and a pin into the lower
+    // frame from the left (the verifier's twin blocks, fix round 4 of
+    // b12a2b-base). The repair took `a1 --> b1` round the lower title's
+    // chip at the regular width, into its bold ink, between the chip and
+    // the frame's pin `q --> B`, which the ports stage stood a chip's
+    // clearance past the ink; the nudge's spread laid the pin right of
+    // `a1 --> b1`'s column (its order key sums both ends' turns), across
+    // that column, so its scoring took both moves back: `a1 --> b1` 0.04
+    // px from `Shipping and returns desk two`'s last letter, and under
+    // shorter titles a 58 px run beside the pin. The pin now comes in
+    // left of the column it would cross: no line within `CHIP_SEP` of a
+    // title's ink, no two lines on top of each other, no crossing.
+    for title in [
+        "Shipping and returns desk",
+        "Order processing",
+        "Identity provider",
+        "Monitoring stack",
+    ] {
+        let twins = format!(
+            "flowchart TD
+    subgraph A[{title}]
+        a1[a1 wide node]
+        a2[a2]
+    end
+    subgraph B[{title} two]
+        b1[b1]
+        b2[b2 wide node]
+    end
+    a1 --> b1
+    a2 --> b2
+    a1 --> b2
+    p[p] --> A
+    p --> a2
+    q[q] --> B
+    q --> b1
+"
+        );
+        let g = graph(&twins);
+        let sc = block_scene(&g);
+        titles_clear_their_ink(title, &sc, None);
+        let q = crate::quality::measure(&g, &sc);
+        assert_eq!(q.overlap_pairs, 0, "{title}: {:?}", q.details);
+        assert_eq!(q.defects(), 0, "{title}: {:?}", q.details);
+        assert_eq!(q.x_drawn, 0, "{title}: {:?}", q.details);
+    }
+    // A pin into a frame beside an entry `ortho`'s title sides displaced
+    // past the frame's title (a member wholly under it, entered from the
+    // left): the spread laid the entry at the ink's clearance and the pin
+    // past it, the scoring refused the entry's move (its turn under the
+    // title row came within the chip's reach at its corner) and kept the
+    // pin's, which took away a crossing: the pin's head came 5 px from
+    // the entry's line (the verifier's random inputs r250 and r042). A
+    // pin is not moved nearer another line than a stroke's spacing.
+    let pinned = [
+        "flowchart TD
+    subgraph G[WWW Mammoth Wombat Overview]
+        m0[ledger]
+        m1[ledger]
+        m2[db]
+    end
+    s0[src0] --> m0
+    s1[src1] --> G
+    s1 --> m2
+    m2 --> z[end]
+    G --> z2[after]
+",
+        "flowchart TD
+    subgraph O[Shipping and returns desk]
+        subgraph G[WWW Mammoth Wombat Overview]
+            m0[db]
+            m1[auth service]
+            m2[ledger]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    s0[src0] -- \"lbl2\" --> m2
+    s0 --> m2
+    s1[src1] --> G
+    s1 --> G
+    s2[src2] --> m1
+    m2 --> z[end]
+",
+    ];
+    for (k, src) in pinned.iter().enumerate() {
+        let g = graph(src);
+        let sc = block_scene(&g);
+        let q = crate::quality::measure(&g, &sc);
+        assert_eq!(q.overlap_pairs, 0, "pinned {k}: {:?}", q.details);
+        assert_eq!(q.defects(), 0, "pinned {k}: {:?}", q.details);
+    }
+}
+
+#[test]
+fn a_displaced_end_never_steps_back_over_another_edges_crossing_of_its_title_side() {
+    // blocks/lr drawn BT: `pager`'s top lies partly under the chip of a
+    // frame grown for the columns past it (X2.2), `ship -> pager` takes
+    // the free stretch past the chip, and `cdn`'s exits lie wholly under
+    // the chip at the frame's other end. Displaced to the first free
+    // column past the chip, `cdn -> gateway` went out past `ship ->
+    // pager`'s crossing and back over it inside the frame, and `cart ->
+    // pager`, left no column, was rerouted round into pager's right
+    // side through a path that ran on past its stub and doubled back
+    // (3 crossings; the package's start and the head before X2.2's room
+    // had 1). A displaced column never lies past another edge's crossing
+    // of the side between the end's port and the column, and no drawn
+    // path runs back over itself, in any block fixture's direction.
+    let src = std::fs::read_to_string(format!(
+        "{}/tests/fixtures/blocks/lr.mmd",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    let g = graph(&in_direction(&src, "BT"));
+    let sc = block_scene(&g);
+    let q = crate::quality::measure(&g, &sc);
+    assert!(q.x_drawn <= 1, "lr BT: x_drawn {}", q.x_drawn);
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/blocks");
+    let mut names: Vec<_> = std::fs::read_dir(&dir)
+        .unwrap()
+        .filter_map(|d| d.ok()?.file_name().into_string().ok())
+        .filter(|n| n.ends_with(".mmd"))
+        .collect();
+    names.sort();
+    for name in names {
+        let src = std::fs::read_to_string(dir.join(&name)).unwrap();
+        if !src.trim_start().starts_with("flowchart") {
+            continue;
+        }
+        for d in ["TD", "BT", "LR", "RL"] {
+            let sc = block_scene(&graph(&in_direction(&src, d)));
+            for e in &sc.edges {
+                let p = path_of(e);
+                for w in p.windows(3) {
+                    let (a, b) = (
+                        (w[1].0 - w[0].0, w[1].1 - w[0].1),
+                        (w[2].0 - w[1].0, w[2].1 - w[1].1),
+                    );
+                    let (la, lb) = (a.0.hypot(a.1), b.0.hypot(b.1));
+                    if la < 0.5 || lb < 0.5 {
+                        continue;
+                    }
+                    let cos = (a.0 * b.0 + a.1 * b.1) / (la * lb);
+                    assert!(
+                        cos > -0.95,
+                        "{name} {d}: {} -> {} doubles back at ({:.1}, {:.1})",
+                        e.from,
+                        e.to,
+                        w[1].0,
+                        w[1].1
+                    );
+                }
+            }
+        }
+    }
+}
+
+// --- One frame function in three entry points (B12.10, F1 and F2).
+
+/// `src` with the direction of its `flowchart` header (the first line
+/// that is not a comment) replaced by `dir`.
+fn header_direction(src: &str, dir: &str) -> String {
+    let mut done = false;
+    src.lines()
+        .map(|l| {
+            let t = l.trim_start();
+            if done || t.starts_with("%%") || t.is_empty() {
+                return l.to_string();
+            }
+            done = true;
+            let kind = t.split_whitespace().next().unwrap_or("flowchart");
+            format!("{kind} {dir}")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// The frames of `scene()` and of `route()` at the scene's own centres,
+/// matched by id: (id, scene box, route box) as (x0, y0, x1, y1).
+type FramePair = (String, (f64, f64, f64, f64), (f64, f64, f64, f64));
+
+fn scene_and_route_frames(g: &Graph) -> (Scene, Scene, Vec<FramePair>) {
+    let sc = block_scene(g);
+    let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+    let rt = crate::levels::with_blocks(true, || crate::scene::route(g, &at));
+    let pairs = sc
+        .clusters
+        .iter()
+        .map(|c| (c.id.clone(), frame_box(&sc, &c.id), frame_box(&rt, &c.id)))
+        .collect();
+    (sc, rt, pairs)
+}
+
+#[test]
+fn frames_agree_between_scene_and_route_along_the_flow_on_every_fixture() {
+    // B12.10's check on every block fixture in all four directions:
+    // along the flow `route()`'s frames at the scene's centres are
+    // `scene()`'s to 0.5 px. Both count a frame's displaced entries (F2)
+    // from its F1 box, entries into its title row only. Before, the
+    // layout read the chip at the frame the channels inside it widen
+    // and counted the runs of its own under that chip, which `route()`
+    // cannot see, and 20 of the 258 block-mode copies drew a track or
+    // more of jog room `route()` did not (the public fixture drawn BT,
+    // dense-td 37.5 px, bench-75 BT 75 px).
+    for dir_name in ["blocks", "quality", "notes"] {
+        let dir = format!("{}/tests/fixtures/{dir_name}", env!("CARGO_MANIFEST_DIR"));
+        let mut files: Vec<_> = std::fs::read_dir(&dir)
+            .unwrap()
+            .map(|e| e.unwrap().path())
+            .filter(|p| p.extension().is_some_and(|x| x == "mmd"))
+            .collect();
+        files.sort();
+        for path in files {
+            let src = std::fs::read_to_string(&path).unwrap();
+            let name = path.file_stem().unwrap().to_string_lossy().to_string();
+            for dir in ["TD", "BT", "LR", "RL"] {
+                let g = match crate::parser::parse_document(&header_direction(&src, dir)) {
+                    Ok(Document::Flowchart(g)) | Ok(Document::State(g)) => g,
+                    _ => continue,
+                };
+                if g.subgraphs.is_empty() || !crate::levels::Augmented::of(&g).block_mode(&g) {
+                    continue;
+                }
+                let vertical = matches!(
+                    g.direction,
+                    crate::model::Direction::TD | crate::model::Direction::BT
+                );
+                let (_, _, pairs) = scene_and_route_frames(&g);
+                for (id, s, r) in pairs {
+                    let along = if vertical {
+                        (s.1 - r.1).abs().max((s.3 - r.3).abs())
+                    } else {
+                        (s.0 - r.0).abs().max((s.2 - r.2).abs())
+                    };
+                    assert!(
+                        along <= 0.5,
+                        "{dir_name}/{name} {dir} {id}: scene {s:?} route {r:?}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn frames_agree_between_scene_and_route_along_the_flow() {
+    // `route()` at the scene's own centres draws a block layout's frames
+    // by the function `scene()` draws them with: as broad (TD / BT) or
+    // as long (LR / RL) as the title (F1), and grown on the title side by
+    // the jog room of the displaced entries (F2), counted from the boxes
+    // where the layout counts it from its layers. Before, `route()`
+    // wrapped the members only: a frame grown to a long title lost
+    // 80-260 px and its title was cut again. Along the flow the two are
+    // equal to 0.5 px, and across it `route()`'s frame is at least the
+    // F1 box (what `scene()` grows it by besides, over the channels the
+    // layout laid inside it, `route()` does not draw yet: F3). The title
+    // fixtures by name, the nested one and the public fixture.
+    for name in [
+        "lr",
+        "title-hidden",
+        "title-entry",
+        "nested-wide-title",
+        "blocks-overview",
+    ] {
+        let src = std::fs::read_to_string(format!(
+            "{}/tests/fixtures/blocks/{name}.mmd",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        for dir in ["TD", "BT", "LR", "RL"] {
+            let g = graph(&header_direction(&src, dir));
+            let (_, rt, pairs) = scene_and_route_frames(&g);
+            let vertical = matches!(dir, "TD" | "BT");
+            for (id, s, r) in pairs {
+                let what = format!("{name} {dir} {id}: scene {s:?} route {r:?}");
+                let (along, across) = if vertical {
+                    ((s.1 - r.1, s.3 - r.3), (r.0, r.2))
+                } else {
+                    ((s.0 - r.0, s.2 - r.2), (r.1, r.3))
+                };
+                assert!(along.0.abs() <= 0.5 && along.1.abs() <= 0.5, "{what}");
+                let sub = g.subgraphs.iter().find(|x| x.id == id).unwrap();
+                if vertical {
+                    let least = crate::scene::title_fit_width(&sub.title);
+                    assert!(across.1 - across.0 >= least - 0.01, "{what}");
+                }
+            }
+            let q = crate::quality::measure(&g, &rt);
+            assert_eq!(q.title_cut, 0, "{name} {dir}: route() cuts a title");
+        }
+    }
+}
+
+#[test]
+fn a_one_px_drag_keeps_a_frame_grown_to_its_title() {
+    // `route_partial()` redraws a frame that holds a moved node by the
+    // same frame function (F1, F2) and grows it back over the room its
+    // kept edges take inside it (F3 of the paths it keeps), so a 1 px
+    // drag of any node moves no frame by more than 1.5 px (dfr_own's
+    // bound). Before, a frame grown to its title dropped to its members
+    // on the first pixel: nested-wide-title 258 px, title-hidden 75,
+    // title-entry LR 61.
+    for (name, dirs) in [
+        ("nested-wide-title", &["TD", "LR"][..]),
+        ("title-hidden", &["TD", "BT", "LR"][..]),
+        ("title-entry", &["TD", "LR"][..]),
+    ] {
+        let src = std::fs::read_to_string(format!(
+            "{}/tests/fixtures/blocks/{name}.mmd",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        for dir in dirs {
+            let g = graph(&in_direction(&src, dir));
+            let sc = block_scene(&g);
+            let base: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+            for v in 0..base.len() {
+                let mut at = base.clone();
+                at[v].0 += 1.0;
+                let p = crate::levels::with_blocks(true, || {
+                    crate::scene::route_partial(&g, &at, &sc, &base)
+                });
+                for c in &sc.clusters {
+                    let (a, b) = (frame_box(&sc, &c.id), frame_box(&p, &c.id));
+                    let moved = [a.0 - b.0, a.1 - b.1, a.2 - b.2, a.3 - b.3]
+                        .iter()
+                        .fold(0.0f64, |m, d| m.max(d.abs()));
+                    assert!(
+                        moved <= 1.5,
+                        "{name} {dir}: dragging {} moves {} by {moved}: {a:?} -> {b:?}",
+                        sc.nodes[v].id,
+                        c.id
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn a_label_keeps_off_the_blocks_that_hold_one_end_of_its_edge() {
+    // B12 G3: a label sits on the part of its edge outside its end
+    // blocks (the frames holding one end and not the other). blocks/lr
+    // drawn LR grows `Edge and shared services with a long title` along
+    // the flow to its title (F2), over the middle of `SHOP -> CDN` and
+    // `CDN -> gate`, whose labels sat inside it; `cart -> PAGER`'s sat
+    // inside Storefront. Each now sits in the gap between the frames,
+    // in `scene()` and in `route()` at the scene's own centres (which
+    // put `browse` inside the grown frame until it kept the rule too).
+    let src = std::fs::read_to_string(format!(
+        "{}/tests/fixtures/blocks/lr.mmd",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    for (dir, routed) in [("LR", false), ("RL", false), ("LR", true), ("RL", true)] {
+        let g = graph(&in_direction(&src, dir));
+        let sc = block_scene(&g);
+        let sc = if routed {
+            let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+            crate::levels::with_blocks(true, || crate::scene::route(&g, &at))
+        } else {
+            sc
+        };
+        let dir = if routed {
+            format!("{dir} routed")
+        } else {
+            dir.to_string()
+        };
+        let paths = crate::scene::node_cluster_paths(&g);
+        for (from, to) in [("SHOP", "CDN"), ("CDN", "gate"), ("cart", "PAGER")] {
+            let e = sc
+                .edges
+                .iter()
+                .find(|e| e.from == from && e.to == to)
+                .unwrap();
+            let (_, (x, y), w) = e.label.clone().unwrap();
+            let chip = (
+                x - w / 2.0,
+                y - crate::layout::LABEL_BOX_H / 2.0,
+                x + w / 2.0,
+                y + crate::layout::LABEL_BOX_H / 2.0,
+            );
+            let (a, b) = (
+                &paths[g.node_index(from).unwrap()],
+                &paths[g.node_index(to).unwrap()],
+            );
+            for s in a
+                .iter()
+                .filter(|s| !b.contains(s))
+                .chain(b.iter().filter(|s| !a.contains(s)))
+            {
+                let f = frame_box(&sc, &g.subgraphs[*s].id);
+                assert!(
+                    chip.2 <= f.0 || chip.0 >= f.2 || chip.3 <= f.1 || chip.1 >= f.3,
+                    "{dir}: {from} -> {to}'s label {chip:?} meets {}'s frame {f:?}",
+                    g.subgraphs[*s].id
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn a_waypoint_runs_last_leg_meets_its_head_square() {
+    // dense-lr as blocks: `n22 -.-> n44`'s last column stood 0.5 px off
+    // its port (the ports stage spread the end; the run kept the
+    // column), and `n26 --> n47`'s end went to the drum's shoulder 0.49
+    // px across its run. Each painted its head at a slant: the static
+    // `DEFECT_BASELINE` read one spline (`idiom_spline` 1) and
+    // `end_tilt_max` 0.80 deg. Now every run into a glyph end lies on
+    // its axis, in both directions along the flow.
+    let src = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/quality/dense-lr.mmd"
+    ))
+    .unwrap();
+    for dir in ["LR", "RL"] {
+        let src = src.replacen("flowchart LR", &format!("flowchart {dir}"), 1);
+        let rep = crate::levels::with_blocks(true, || crate::quality::measure_source(&src, false))
+            .expect("a flowchart");
+        assert!(rep.block_mode, "{dir}");
+        assert_eq!(
+            rep.statik.idiom_spline, 0,
+            "{dir}: {:?}",
+            rep.statik.details
+        );
+        assert!(
+            rep.statik.end_tilt_max <= 0.3,
+            "{dir}: end_tilt_max {}",
+            rep.statik.end_tilt_max
+        );
+    }
+}
+
+#[test]
+fn route_lays_a_run_on_its_ports_line_as_the_scene_does() {
+    // The public fixture drawn LR / RL as blocks: `route()` at the
+    // scene's own centres left the first run of `REG ==> ORD` 0.56 px
+    // off its port's line (146.69 -> 147.25 over 50 px), which the
+    // static scene lays on it (the rule of a waypoint run into its port
+    // held in the block layout's static scene only): once a node was
+    // dragged the run sloped. In a block layout `route()` keeps every end
+    // run of a waypoint path on its axis, as `scene()` does.
+    for name in [
+        "blocks-overview-lr",
+        "blocks-overview-rl",
+        "blocks-overview",
+    ] {
+        let src = std::fs::read_to_string(format!(
+            "{}/tests/fixtures/blocks/{name}.mmd",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        let g = crate::parser::parse(&src).unwrap();
+        crate::levels::with_blocks(true, || {
+            let sc = crate::scene::scene(&g);
+            assert!(sc.block_layout, "{name}");
+            let centres: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let rs = crate::scene::route(&g, &centres);
+            for (mode, s) in [("scene", &sc), ("route", &rs)] {
+                for e in s.edges.iter().filter(|e| e.waypoints.len() >= 3) {
+                    let w = &e.waypoints;
+                    for (a, b) in [(w[0], w[1]), (w[w.len() - 1], w[w.len() - 2])] {
+                        let (dx, dy) = ((b.0 - a.0).abs(), (b.1 - a.1).abs());
+                        let slope = dx.min(dy);
+                        assert!(
+                            !(1e-6..1.0).contains(&slope),
+                            "{name} {mode}: {} -> {} ends on a run {slope} px off its axis: {a:?} {b:?}",
+                            e.from,
+                            e.to
+                        );
+                    }
+                }
+            }
+        });
+    }
+}

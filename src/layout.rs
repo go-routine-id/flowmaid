@@ -98,6 +98,17 @@ pub(crate) const FRAME_PAD: f64 = 14.0;
 /// Least room between two frames stacked along the layer axis (and
 /// between a lane-widened frame and its sibling, see `scene_clustered`).
 pub(crate) const FRAME_GAP: f64 = 8.0;
+
+/// Least gap (px) along the flow between two frames of a block layout
+/// that a link joins, the one closing on a layer and the other opening
+/// on the next (B12 G1): one pixel more than the gap from which
+/// `route()` reads two boxes as ranked one after the other
+/// ([`crate::scene::FLOW_MIN_GAP`]). With the bare [`FRAME_GAP`] two
+/// linked blocks with nested frames on their facing rows stood 8 px
+/// apart, and `route()` at the scene's own centres took them for
+/// neighbours side by side and drew the link out of a lateral wall; the
+/// extra pixel keeps that comparison off an equality.
+const LINKED_FRAME_GAP: f64 = crate::scene::FLOW_MIN_GAP + 1.0;
 /// Breadth-to-depth ratio a narrowed drawing aims for: narrowing rounds
 /// stop once it is reached (G12).
 const ASPECT_TARGET: f64 = 2.5;
@@ -963,6 +974,29 @@ pub fn text_width(s: &str) -> f64 {
         .fold(0.0, f64::max)
 }
 
+/// [`text_width`] for text drawn bold throughout, as a subgraph title is
+/// (`font-weight="bold"`): the widest line's advances from
+/// [`bold_line_width`]'s Helvetica-Bold table, in px at
+/// [`TEXT_CALIBRATION`]. Style tags are interpreted (every run is bold
+/// already), their characters count zero.
+///
+/// [`text_width`]'s ~6% for a `<b>` run is too little for a whole bold
+/// line: Helvetica-Bold advances run about 10% past the regular ones on
+/// lowercase text (`n`, `o`, `u` 611 against 556 per 1000 em, `r` 389
+/// against 333), so a frame sized by the regular estimate let a long
+/// bold title run past its border (blocks/title-hidden: 12 px at the
+/// title font).
+pub(crate) fn bold_text_width(s: &str) -> f64 {
+    s.split('\n')
+        .map(|l| {
+            if !l.contains(['<', '$']) {
+                return bold_line_width(l);
+            }
+            spans(l).iter().map(|(t, _, _)| bold_line_width(t)).sum()
+        })
+        .fold(0.0, f64::max)
+}
+
 /// Split one label line into styled runs `(text, bold, italic)`,
 /// interpreting `<b>`/`<strong>` and `<i>`/`<em>` tags the way
 /// mermaid does. Unknown tags stay literal text; unclosed tags just
@@ -1260,6 +1294,93 @@ fn line_width(s: &str) -> f64 {
         })
         .sum()
 }
+
+/// [`line_width`] for a bold line ([`bold_text_width`]): Helvetica-Bold
+/// advance widths (its AFM, per 1000 em) at [`TEXT_CALIBRATION`] px,
+/// rounded up to 0.1 px, so the estimate never falls short of a browser
+/// drawing the line in Helvetica or a metric-compatible face (Arial,
+/// Liberation Sans) by more than a glyph's ink past its advance. ASCII
+/// is read exactly; the accented Latin letters, basic Greek and
+/// Cyrillic and the common punctuation from [`BOLD_WIDTHS`]; any other
+/// character as wide as the widest of its kind: a lowercase letter an
+/// `m`, anything else (a capital, a letter of a script without case, a
+/// symbol) an em.
+fn bold_line_width(s: &str) -> f64 {
+    const EM: f64 = TEXT_CALIBRATION;
+    s.chars()
+        .map(|c| match c {
+            // 278
+            'i' | 'j' | 'l' | ' ' | '.' | ',' | '/' | '\\' | 'I' | '\'' | '|' => 3.9,
+            // 333
+            '!' | ':' | ';' | 'f' | 't' | '(' | ')' | '[' | ']' | '-' | '`' => 4.7,
+            // 389
+            'r' | '*' | '{' | '}' => 5.5,
+            '"' => 6.7,
+            'z' => 7.0,
+            // 556
+            'a' | 'c' | 'e' | 'k' | 's' | 'v' | 'x' | 'y' | 'J' | '0'..='9' | '#' | '$' | '_' => {
+                7.8
+            }
+            // 584
+            '+' | '<' | '=' | '>' | '~' | '^' => 8.2,
+            // 611
+            'b' | 'd' | 'g' | 'h' | 'n' | 'o' | 'p' | 'q' | 'u' | '?' | 'F' | 'L' | 'T' | 'Z' => {
+                8.6
+            }
+            // 667
+            'E' | 'P' | 'S' | 'V' | 'X' | 'Y' => 9.4,
+            // 722
+            'A' | 'B' | 'C' | 'D' | 'H' | 'K' | 'N' | 'R' | 'U' | '&' => 10.2,
+            // 778
+            'w' | 'G' | 'O' | 'Q' => 10.9,
+            'M' => 11.7,
+            'm' | '%' => 12.5,
+            'W' => 13.3,
+            '@' => 13.7,
+            // As [`line_width`]: joiners draw nothing, symbols and wide
+            // scripts take about an em.
+            '\u{200D}' | '\u{FE0F}' => 0.0,
+            '—' => EM,
+            '\u{2190}'..='\u{21FF}' | '\u{2600}'..='\u{27BF}' => EM,
+            c if (c as u32) >= 0x2E80 => 14.0,
+            c if c.is_ascii() => 8.6,
+            // Combining marks ride on the letter before them.
+            '\u{0300}'..='\u{036F}' => 0.0,
+            c => BOLD_WIDTHS
+                .iter()
+                .find(|(_, cs)| cs.contains(c))
+                .map_or(if c.is_lowercase() { 12.5 } else { EM }, |&(w, _)| w),
+        })
+        .sum()
+}
+
+/// Bold advances (px at [`TEXT_CALIBRATION`]) of the characters past
+/// ASCII a title is most often written in, for [`bold_line_width`]: the
+/// Latin-1 and Latin Extended-A letters (and the Latin Extended
+/// Additional ones Vietnamese uses), basic Greek and Cyrillic, and the
+/// common punctuation, as Chromium draws them in Liberation Sans Bold
+/// (metric-compatible with Helvetica Bold, whose AFM gives the same
+/// advances where it has the glyph), each rounded up to the next of a
+/// few steps. (Counted as a lowercase letter, `Ш`, `Щ`, `Ж` fell 5 px
+/// and more short each, and a title of capitals like them ran 40 px
+/// past its frame.)
+const BOLD_WIDTHS: &[(f64, &str)] = &[
+    (3.9, "ÌÍÎÏìíîïĨĩĪīĬĭĮįİıĵĺļłſΐΙΪίιϊІЇіјḬḭḮḯḷḹḻḽẛỈỉỊị‘’‚‛′‵"),
+    (4.7, "¡¦¨²³´·¸¹ţŧ·їḟṫṭṯṱẗ‐‑․‧‹›"),
+    (5.5, "ªºľŕŗřṙṛṝṟẜẝ•"),
+    (7.0, "°ŀťźżžΊέεζξτгзктѓќẑẓẕ‖“”„‟″‴‶‸"),
+    (7.8, "¢£¤¥§«¯±¶»àáâãäåçèéêë÷ýÿāăąćĉċčēĕėęěĳĴķĸśŝşšŷγθλνςЈаесухэѐёєѕўḁḉḕḗḙḛḝḱḳḵṡṣṥṧṩṽṿẋẍẏẙẚẟạảấầẩẫậắằẳẵặẹẻẽếềểễệỳỵỷỹỻỼỽ‒–‗†‡€"),
+    (8.6, "¬µ¿×ßðñòóôõöøùúûüþđĝğġģĥħĹĻĽĿŁńņňŋōŏőŢŤŦũūŭůűųŹŻŽΓΖΣΤήΰβδηκμουχϋόύЃЌГКТнопрчяђћџḃḅḇḋḍḏḑḓḞḡḣḥḧḩḫḶḸḺḼṅṇṉṋṍṏṑṓṕṗṪṬṮṰṳṵṷṹṻẐẒẔẖọỏốồổỗộụủ‣‥"),
+    (9.4, "ÈÉÊËÝÞĒĔĖĘĚŚŜŞŠŶŸΕΛΞΡΥΧΫάαρЀЁЅЎЕЗРУХбвдийлцьѝḔḖḘḚḜṔṖṠṢṤṦṨṼṾẊẌẎẸẺẼẾỀỂỄỆỲỴỶỸỿ‷"),
+    (10.2, "ÀÁÂÃÄÅÇÐÑÙÚÛÜĀĂĄĆĈĊČĎďĐĤĦĶŃŅŇŉŊŔŖŘŨŪŬŮŰŲΆΑΒΔΗΚΝΠσφЄЍЏАБВДИЙЛНПСЧЬЭЯжḀḂḄḆḈḊḌḎḐḒḢḤḦḨḪḰḲḴṄṆṈṊṘṚṜṞṲṴṶṸṺẞẠẢẤẦẨẪẬẮẰẲẴẶớờởỡợỤỦứừửữựỾ"),
+    (10.9, "©®ÒÓÔÕÖØĜĞĠĢŌŎŐŵΘΟπψОЦмъḠṌṎṐṒẁẃẅẇẉẘỌỎỐỒỔỖỘỺ"),
+    (11.7, "¼½¾ĲΌΜΦΨΩМшḾṀṂỨỪỬỮỰ"),
+    (12.5, "æΈΏωώЂЋФЪфщыюḿṁṃỚỜỞỠỢ"),
+    (13.3, "œŴΉΎЖњẀẂẄẆẈ"),
+    (14.0, "ÆŒЫљ—―…‰™"),
+    (14.6, "ШЩЮ"),
+    (15.4, "ЉЊ"),
+];
 
 /// Intrinsic node size (width, height) in pixels, based on shape,
 /// the estimated widest-line width, and the number of label lines.
@@ -4787,6 +4908,7 @@ fn place(
                 border: &border_side,
                 preds: &preds,
                 succs: &succs,
+                edge_chain: &edge_chain,
                 cluster_span: &cluster_span,
                 n,
             },
@@ -4809,6 +4931,7 @@ fn place(
                 border: &border_side,
                 preds: &preds,
                 succs: &succs,
+                edge_chain: &edge_chain,
                 cluster_span: &cluster_span,
                 n,
             },
@@ -4816,6 +4939,107 @@ fn place(
         );
         if !widen.is_empty() {
             bpos = breadth(&layers, &widen);
+        }
+        // B12 F1: a block's frame is at least as broad as its title
+        // ([`crate::scene::title_fit_width`]), grown equally on both sides
+        // of its members. A wall of a block holds its frame's side
+        // `FRAME_PAD - BORDER_GAP` past itself (the frame's pad round the
+        // members against the wall's gap to them); where the grown frame
+        // reaches past that, the wall takes the excess (half of it on
+        // each side: the members and what stands outside the wall each
+        // move half of it away), so the frame clears whatever stands
+        // beside the block, and the breadths are placed again. A frame
+        // whose walls already hold it (its channels inside keep them
+        // apart, as the scene's frame then covers them too) changes
+        // nothing. Once more if that placement left an excess still.
+        let ns = g.subgraphs.len();
+        let mut room_l = vec![0.0f64; ns];
+        let mut room_r = vec![0.0f64; ns];
+        for _ in 0..TITLE_FIT_PASSES {
+            let (mut wall_l, mut wall_r) = (vec![f64::INFINITY; ns], vec![f64::NEG_INFINITY; ns]);
+            for (d, side, path) in &border_meta {
+                if let Some(&c) = path.last() {
+                    if *side == 1 {
+                        wall_l[c] = wall_l[c].min(bpos[*d]);
+                    } else {
+                        wall_r[c] = wall_r[c].max(bpos[*d]);
+                    }
+                }
+            }
+            let held = FRAME_PAD - BORDER_GAP;
+            let mut grew = false;
+            // The displaced entries of each block at these breadths: a
+            // frame its members make broader than its title holds their
+            // columns too (X2.2; `f1_breadths`).
+            let cols: Vec<usize> = title_counts(
+                g,
+                &TitleRows {
+                    nc,
+                    apath: &apath,
+                    alayer: &alayer,
+                    absize: &absize,
+                    bpos: &bpos,
+                    border: &border_side,
+                    preds: &preds,
+                    succs: &succs,
+                    edge_chain: &edge_chain,
+                    cluster_span: &cluster_span,
+                    n,
+                },
+            );
+            for (c, f) in f1_breadths(g, n, &bpos, &absize, &cols).iter().enumerate() {
+                let &Some((lo, hi, short)) = f else {
+                    continue;
+                };
+                if short <= 0.0 || !wall_l[c].is_finite() || !wall_r[c].is_finite() {
+                    continue;
+                }
+                let over_l = (wall_l[c] - held) - lo;
+                let over_r = hi - (wall_r[c] + held);
+                if over_l > TITLE_FIT_EPS {
+                    room_l[c] += over_l;
+                    grew = true;
+                }
+                if over_r > TITLE_FIT_EPS {
+                    room_r[c] += over_r;
+                    grew = true;
+                }
+            }
+            if !grew {
+                break;
+            }
+            let mut room = widen.clone();
+            for (d, side, path) in &border_meta {
+                if let Some(&c) = path.last() {
+                    let r = if *side == 1 { room_l[c] } else { room_r[c] };
+                    if r > 0.0 {
+                        room.push((*d, r));
+                    }
+                }
+            }
+            bpos = breadth(&layers, &room);
+        }
+    }
+    // The same in LR / RL, where the title runs along the flow: a frame
+    // is at least as long as its title, grown equally upstream and
+    // downstream, so the frames opening and closing next to it along
+    // the flow keep their gap ([`f1_flow_short`]; the layer lines read
+    // the frames' reach).
+    if let (Some(_), Some(nc), true) = (block_paths, node_cluster, horizontal) {
+        let gap_l = g.rank_gap.unwrap_or(GAP_L);
+        let short = f1_flow_short(g, nc, n, &layers, &alayer, &alsize, &cluster_span, gap_l);
+        for v in 0..n {
+            for &c in &nc[v] {
+                let (Some(&s), Some(&(lo, hi))) = (short.get(c), cluster_span.get(&c)) else {
+                    continue;
+                };
+                if s > 0.0 && alayer[v] == lo {
+                    reach[v].0 += s / 2.0;
+                }
+                if s > 0.0 && alayer[v] == hi {
+                    reach[v].1 += s / 2.0;
+                }
+            }
         }
     }
 
@@ -4835,6 +5059,7 @@ fn place(
                     border: &border_side,
                     preds: &preds,
                     succs: &succs,
+                    edge_chain: &edge_chain,
                     cluster_span: &cluster_span,
                     n,
                 },
@@ -5264,6 +5489,39 @@ fn place(
     let track_need: Vec<f64> = {
         let mut need = vec![0.0f64; nlayers];
         if g.edge_paint_width.is_none() && g.drawn_edge_count() <= crate::router::ROUTE_MAX_EDGES {
+            // A block layout's displaced title-side entries (B12 2.8 rule
+            // 2): each crosses its block's title side at a column past
+            // the chip, so its step across the gap before that side runs
+            // from the breadth it comes from to that column, not to its
+            // member's own. Counted from the member, an entry straight
+            // above (below, BT) its port stepped nowhere, the gap between
+            // the two frames kept its bare floor, and the step back from
+            // the column had no room between their borders: the edge ran
+            // along the next block's title strip instead
+            // (blocks/t9-frames-8px drawn BT).
+            let displaced: BTreeMap<(usize, usize), f64> = match (block_paths, node_cluster) {
+                (Some(_), Some(nc)) if !horizontal => title_entries(
+                    g,
+                    &TitleRows {
+                        nc,
+                        apath: &apath,
+                        alayer: &alayer,
+                        absize: &absize,
+                        bpos: &bpos,
+                        border: &border_side,
+                        preds: &preds,
+                        succs: &succs,
+                        edge_chain: &edge_chain,
+                        cluster_span: &cluster_span,
+                        n,
+                    },
+                )
+                .1
+                .into_iter()
+                .map(|(ei, end, col)| ((ei, end), col))
+                .collect(),
+                _ => BTreeMap::new(),
+            };
             let mut spans: Vec<Vec<(f64, f64)>> = vec![Vec::new(); nlayers];
             // A block's members across the flow: the stretch of its frame
             // side a pin may stand on (see below).
@@ -5333,18 +5591,32 @@ fn place(
                 } else {
                     [None, None]
                 };
-                for w in path.windows(2) {
+                // The path's first and last element as displaced ends
+                // (in path order: the upper end first).
+                let (first_end, last_end) = if up { (1, 0) } else { (0, 1) };
+                let last = path.len() - 1;
+                for (j, w) in path.windows(2).enumerate() {
                     let (a, b) = (w[0], w[1]);
                     if alayer[b] != alayer[a] + 1 {
                         continue;
                     }
                     // (The pair across a cut block's border: its step runs
                     // from the pin, not from the undrawn run inside.)
-                    let (pa, pb) = match cut_gap {
+                    let (mut pa, mut pb) = match cut_gap {
                         [Some((c, gap)), _] if gap == alayer[b] => (pin_at(c, bpos[b]), bpos[b]),
                         [_, Some((c, gap))] if gap == alayer[b] => (bpos[a], pin_at(c, bpos[a])),
                         _ => (bpos[a], bpos[b]),
                     };
+                    if j == 0 {
+                        if let Some(&col) = displaced.get(&(ei, first_end)) {
+                            pa = col;
+                        }
+                    }
+                    if j + 1 == last {
+                        if let Some(&col) = displaced.get(&(ei, last_end)) {
+                            pb = col;
+                        }
+                    }
                     if (pa - pb).abs() <= 1.0 {
                         continue;
                     }
@@ -5406,6 +5678,37 @@ fn place(
     // dense-td — a 4.06 : 1 ribbon — went 3.9 : 1 with the head room and
     // stayed 6 768 px broad, and with the strips' dead room gone its
     // stacked candidates' skeletons, a row nearer, cut 8 more boxes.)
+    // A block layout's gaps between two linked frames (B12 G1): per
+    // layer, whether a link joins a frame that closes on the layer
+    // before to one that opens on this one (either way along the flow:
+    // a turned link counts too).
+    let linked_frames: Vec<bool> = match (block_paths, node_cluster) {
+        (Some(_), Some(nc)) => {
+            let mut out = vec![false; nlayers];
+            for e in &g.edges {
+                let (a, b) = (e.from, e.to);
+                if a >= n || b >= n || alayer[a].abs_diff(alayer[b]) != 1 {
+                    continue;
+                }
+                let (u, v) = if alayer[a] < alayer[b] {
+                    (a, b)
+                } else {
+                    (b, a)
+                };
+                let closes = nc[u].iter().any(|c| {
+                    !nc[v].contains(c) && cluster_span.get(c).is_some_and(|s| s.1 == alayer[u])
+                });
+                let opens = nc[v].iter().any(|c| {
+                    !nc[u].contains(c) && cluster_span.get(c).is_some_and(|s| s.0 == alayer[v])
+                });
+                if closes && opens {
+                    out[alayer[v]] = true;
+                }
+            }
+            out
+        }
+        _ => Vec::new(),
+    };
     let layer_lines = |judged: bool| -> (Vec<f64>, f64) {
         let mut lcoord = vec![0.0f64; nlayers];
         let mut cursor = MARGIN;
@@ -5428,7 +5731,12 @@ fn place(
                 })
                 .fold((0.0f64, 0.0f64), |a, b| (a.0.max(b.0), a.1.max(b.1)));
             if clustered && li > 0 {
-                let at = lcoord[li - 1] + reach_of(li - 1, 1) + reach_of(li, 0) + FRAME_GAP;
+                let gap = if linked_frames.get(li).copied().unwrap_or(false) {
+                    LINKED_FRAME_GAP
+                } else {
+                    FRAME_GAP
+                };
+                let at = lcoord[li - 1] + reach_of(li - 1, 1) + reach_of(li, 0) + gap;
                 if at > cursor + before {
                     cursor = at - before;
                 }
@@ -5643,6 +5951,129 @@ fn place(
     }
 }
 
+/// Placements a block layout makes for its frames' title breadth (B12
+/// F1, TD / BT; see `place`): the first widens the walls a grown frame
+/// reaches past, the second only where that placement left an excess.
+const TITLE_FIT_PASSES: usize = 2;
+/// Excess (px) under which a grown frame counts as held by its walls
+/// already: float noise of the breadth placement.
+const TITLE_FIT_EPS: f64 = 0.5;
+
+/// Each block's F1 frame across the flow at these breadths (TD / BT;
+/// `scene::frame_boxes` in layout coordinates, without the jog room,
+/// which grows the frame along the flow): its direct members' boxes
+/// and its nested frames with [`FRAME_PAD`] round them, deepest first,
+/// grown equally on both sides to [`crate::scene::title_fit_width`],
+/// and, for a frame so grown whose title row takes `cols` displaced
+/// entries (by subgraph; missing 0), to the columns past its chip
+/// ([`crate::scene::title_column_width`]).
+/// Per subgraph `(lo, hi, shortfall)`: the grown box and what it grew
+/// by. `None` for a block without members.
+fn f1_breadths(
+    g: &Graph,
+    n: usize,
+    bpos: &[f64],
+    absize: &[f64],
+    cols: &[usize],
+) -> Vec<Option<(f64, f64, f64)>> {
+    let ns = g.subgraphs.len();
+    let mut depth = vec![0usize; ns];
+    for (i, d) in depth.iter_mut().enumerate() {
+        let mut p = g.subgraphs[i].parent;
+        while let Some(pi) = p {
+            *d += 1;
+            p = g.subgraphs[pi].parent;
+        }
+    }
+    let mut order: Vec<usize> = (0..ns).collect();
+    order.sort_by_key(|&i| std::cmp::Reverse(depth[i]));
+    let mut boxes: Vec<Option<(f64, f64, f64)>> = vec![None; ns];
+    for &i in &order {
+        let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
+        for &v in g.subgraphs[i].nodes.iter().filter(|&&v| v < n) {
+            lo = lo.min(bpos[v] - absize[v] / 2.0);
+            hi = hi.max(bpos[v] + absize[v] / 2.0);
+        }
+        for (j, s) in g.subgraphs.iter().enumerate() {
+            if let (Some(i2), Some((a, b, _))) = (s.parent, boxes[j]) {
+                if i2 == i {
+                    lo = lo.min(a);
+                    hi = hi.max(b);
+                }
+            }
+        }
+        if lo > hi {
+            continue;
+        }
+        let (mut lo, mut hi) = (lo - FRAME_PAD, hi + FRAME_PAD);
+        let title = &g.subgraphs[i].title;
+        let least = crate::scene::title_fit_width(title);
+        let short = (least - (hi - lo)).max(0.0);
+        lo -= short / 2.0;
+        hi += short / 2.0;
+        // A frame its members make broader than its title, with
+        // displaced entries: as broad as their columns past the chip,
+        // grown on the chip's far side (`scene::frame_boxes`).
+        let k = cols.get(i).copied().unwrap_or(0);
+        let more = if short > 0.0 {
+            0.0
+        } else {
+            (crate::scene::title_column_width(title, k) - (hi - lo)).max(0.0)
+        };
+        hi += more;
+        let short = short + more;
+        boxes[i] = Some((lo, hi, short));
+    }
+    boxes
+}
+
+/// Per block of an LR / RL block layout: how much shorter along the flow
+/// its frame could be than its title ([`crate::scene::title_fit_width`];
+/// B12 F2's title length), read before the layer lines from a lower
+/// bound of the frame's length: the halves of its members on its first
+/// and last layer, and between them every layer's slot and a
+/// [`GAP_L`]-sized gap (`gap_l`), as the layer lines space them at the
+/// least, with [`FRAME_PAD`] at both ends. The frame grows equally
+/// upstream and downstream by what the drawing actually lacks, which is
+/// never more than this. 0 for a block without a title.
+#[allow(clippy::too_many_arguments)] // internal: one bundle of layered-graph state
+fn f1_flow_short(
+    g: &Graph,
+    nc: &[Vec<usize>],
+    n: usize,
+    layers: &[Vec<usize>],
+    alayer: &[usize],
+    alsize: &[f64],
+    cluster_span: &BTreeMap<usize, (usize, usize)>,
+    gap_l: f64,
+) -> Vec<f64> {
+    let mut short = vec![0.0f64; g.subgraphs.len()];
+    let slot = |li: usize| -> f64 {
+        layers[li]
+            .iter()
+            .map(|&v| alsize[v] / 2.0)
+            .fold(0.0f64, f64::max)
+    };
+    for (&c, &(lo, hi)) in cluster_span {
+        let least = crate::scene::title_fit_width(&g.subgraphs[c].title);
+        if least <= 0.0 {
+            continue;
+        }
+        let half = |li: usize| -> f64 {
+            (0..n)
+                .filter(|&v| alayer[v] == li && nc[v].contains(&c))
+                .map(|v| alsize[v] / 2.0)
+                .fold(0.0f64, f64::max)
+        };
+        let mut length = half(lo) + half(hi);
+        for li in lo..hi {
+            length += slot(li) + gap_l + slot(li + 1);
+        }
+        short[c] = (least - (length + 2.0 * FRAME_PAD)).max(0.0);
+    }
+    short
+}
+
 /// A block's title chip as a block layout's placement sees it (TD /
 /// BT; [`title_chip`]).
 struct TitleChip {
@@ -5658,10 +6089,17 @@ struct TitleChip {
 }
 
 /// Block `c`'s title chip ([`TitleChip`]): it spans the frame's left
-/// inset and the title's width (the frame's left: its members' boxes,
-/// and the channel points inside it, as the scene wraps them). None for
-/// a block without a title or without members.
-fn title_chip(g: &Graph, t: &TitleRows, c: usize) -> Option<TitleChip> {
+/// inset and the title's width, measured bold for a frame F1 grows to
+/// its title. `drawn`: the chip as the scene draws it, at the left of
+/// the frame that wraps the channel points inside it too, and measured
+/// bold only while those leave the frame as broad as its title (what a
+/// run's column must clear, X2.5). Else the chip of the F1 box, which
+/// F2 counts the displaced entries by (B12 2.7: never from the grown
+/// frame, so `route()`, which has no channel points, counts the same
+/// from the boxes; a channel that widens the frame moves its chip left,
+/// which only frees entries the count displaced). None for a block
+/// without a title or without members.
+fn title_chip(g: &Graph, t: &TitleRows, c: usize, drawn: bool) -> Option<TitleChip> {
     use crate::clearance::{CHIP_INSET_X, CHIP_PAD_W};
     let title = &g.subgraphs[c].title;
     if title.trim().is_empty() {
@@ -5673,17 +6111,32 @@ fn title_chip(g: &Graph, t: &TitleRows, c: usize) -> Option<TitleChip> {
     } else {
         lo
     };
-    let mut left = f64::INFINITY;
-    for v in 0..t.n {
-        if t.nc[v].contains(&c) {
-            left = left.min(t.bpos[v] - t.absize[v] / 2.0 - FRAME_PAD);
+    // The F1 frame's left (its members, its nested frames, grown to its
+    // title's breadth: [`f1_breadths`]), then the channels inside it.
+    // A frame grown to its title measures the title as it is drawn,
+    // bold, as the scene does (`scene::title_text_width`).
+    let f1 = f1_breadths(g, t.n, t.bpos, t.absize, &[])
+        .get(c)
+        .copied()
+        .flatten();
+    let (mut left, mut right) = f1.map_or((f64::INFINITY, f64::NEG_INFINITY), |f| (f.0, f.1));
+    if drawn {
+        for d in t.n..t.bpos.len() {
+            if t.border[d] == 0 && t.apath[d].contains(&c) {
+                left = left.min(t.bpos[d] - crate::scene::LANE_PAD);
+                right = right.max(t.bpos[d] + crate::scene::LANE_PAD);
+            }
         }
     }
-    for d in t.n..t.bpos.len() {
-        if t.border[d] == 0 && t.apath[d].contains(&c) {
-            left = left.min(t.bpos[d] - crate::scene::LANE_PAD);
-        }
-    }
+    // Title-bound: F1 grew the frame to its title and (drawn) the
+    // channels in it leave it no broader (`scene::title_text_width`).
+    let bound = f1.is_some_and(|f| f.2 > 0.0)
+        && (!drawn || right - left <= crate::scene::title_fit_width(title) + TITLE_FIT_EPS);
+    let width = if bound {
+        bold_text_width(title)
+    } else {
+        text_width(title)
+    } * TITLE_SCALE;
     if !left.is_finite() {
         return None;
     }
@@ -5694,11 +6147,7 @@ fn title_chip(g: &Graph, t: &TitleRows, c: usize) -> Option<TitleChip> {
         row,
         depth,
         lo: left + CHIP_INSET_X - crate::ortho::CHIP_CLEAR,
-        hi: left
-            + CHIP_INSET_X
-            + text_width(title) * TITLE_SCALE
-            + CHIP_PAD_W
-            + crate::ortho::CHIP_CLEAR,
+        hi: left + CHIP_INSET_X + width + CHIP_PAD_W + crate::ortho::CHIP_CLEAR,
     })
 }
 
@@ -5710,7 +6159,7 @@ fn title_chip(g: &Graph, t: &TitleRows, c: usize) -> Option<TitleChip> {
 fn runs_under_titles(g: &Graph, t: &TitleRows) -> Vec<(usize, f64)> {
     let mut out = Vec::new();
     for &c in t.cluster_span.keys() {
-        let Some(chip) = title_chip(g, t, c) else {
+        let Some(chip) = title_chip(g, t, c, true) else {
             continue;
         };
         for d in t.n..t.bpos.len() {
@@ -5751,10 +6200,10 @@ fn title_room(g: &Graph, t: &TitleRows, layers: &[Vec<usize>]) -> Vec<(usize, f6
     let counts = title_counts(g, t);
     let mut out = Vec::new();
     for &c in t.cluster_span.keys() {
-        let Some(chip) = title_chip(g, t, c) else {
+        let Some(chip) = title_chip(g, t, c, true) else {
             continue;
         };
-        let k = counts[c].0;
+        let k = counts[c];
         let need = if k == 0 {
             chip.hi
         } else {
@@ -5792,6 +6241,22 @@ fn title_room(g: &Graph, t: &TitleRows, layers: &[Vec<usize>]) -> Vec<(usize, f6
     out
 }
 
+/// `cap(m)` of B12 F2: how many entries a title-row member's side
+/// `(m0, m1)` (its breadth range) takes beside its block's title chip
+/// `(lo, hi)` (the chip's breadth interval, widened by
+/// [`crate::ortho::CHIP_CLEAR`]): one per [`crate::ports::PORT_SPACING`]
+/// along the longer free stretch, and one more for its first; 0 when
+/// the chip covers the whole side. The entries past it are displaced
+/// ([`title_jogs`]).
+pub(crate) fn title_cap((m0, m1): (f64, f64), (lo, hi): (f64, f64)) -> usize {
+    let free = (m1 - hi).max(lo - m0);
+    if free < 0.0 {
+        0
+    } else {
+        (free / crate::ports::PORT_SPACING).floor() as usize + 1
+    }
+}
+
 /// What [`title_jogs`] reads of a placement.
 struct TitleRows<'a> {
     nc: &'a [Vec<usize>],
@@ -5802,6 +6267,8 @@ struct TitleRows<'a> {
     border: &'a [u8],
     preds: &'a [Vec<usize>],
     succs: &'a [Vec<usize>],
+    /// Per edge, its dummy chain in its from-to order.
+    edge_chain: &'a [Vec<usize>],
     cluster_span: &'a std::collections::BTreeMap<usize, (usize, usize)>,
     n: usize,
 }
@@ -5812,17 +6279,17 @@ struct TitleRows<'a> {
 /// chip jog clear of it ([`crate::ortho`]'s displaced crossings).
 ///
 /// Its chip spans the frame's left inset and the title's width (the
-/// frame's left: its members' boxes, and the channel points inside it,
-/// as the scene wraps them), widened by [`crate::ortho::CHIP_CLEAR`].
+/// frame's left: its F1 box, [`title_chip`]), widened by
+/// [`crate::ortho::CHIP_CLEAR`].
 /// A member of the title row takes the entries that cross the title
 /// side into it (in TD the links from the layer before, from outside
 /// the block; in BT from the layer after) on the free stretch of its
 /// side beside the chip, as many as [`crate::ports::PORT_SPACING`]
-/// holds there (`cap`); the rest are displaced. So is each run of the
-/// block's own on its title row whose column lies under the chip (to a
-/// member behind the title row: it crosses the title side at its column
-/// past the chip and jogs over to its run). With `k` displaced, the
-/// frame grows by [`crate::ortho::ROW_CLEAR`] and a
+/// holds there (`cap`); the rest are displaced. (A run of the block's
+/// own to a member behind the title row crosses the title side at the
+/// column X2.5 gives it past the chip and needs no jog room, B12 2.5: it
+/// is not counted, and `route()`, which has no runs, counts the same.)
+/// With `k` displaced, the frame grows by [`crate::ortho::ROW_CLEAR`] and a
 /// [`crate::ortho::TRACK_PITCH`] for each one past the first: the
 /// strip leaves 19 px between the chip and the row, and a displaced
 /// entry takes the chip's clearance, its track and a head's straight
@@ -5831,7 +6298,7 @@ struct TitleRows<'a> {
 fn title_jogs(g: &Graph, t: &TitleRows) -> Vec<f64> {
     title_counts(g, t)
         .into_iter()
-        .map(|(entries, runs)| match entries + runs {
+        .map(|k| match k {
             0 => 0.0,
             k => crate::ortho::ROW_CLEAR + (k - 1) as f64 * crate::ortho::TRACK_PITCH,
         })
@@ -5839,25 +6306,81 @@ fn title_jogs(g: &Graph, t: &TitleRows) -> Vec<f64> {
 }
 
 /// Per block (TD / BT): the entries its title row takes that the free
-/// stretch beside the title chip cannot hold — displaced, each crosses
-/// the title side at a column of its own past the chip — and its runs
-/// under the chip ([`title_jogs`]).
-fn title_counts(g: &Graph, t: &TitleRows) -> Vec<(usize, usize)> {
+/// stretch beside the title chip of its F1 box cannot hold — displaced,
+/// each crosses the title side at a column of its own past the chip
+/// ([`title_jogs`]).
+///
+/// An entry is a drawn edge's end on a member of the title row whose
+/// layered neighbour (the first or last dummy of its chain, or its other
+/// end) lies outside the block on the title side's layer before (TD) or
+/// after (BT): B12 F2 counts the drawn real edges that cross the title
+/// side, and nothing else. An invisible link draws nothing; a stand-in
+/// of an edge to a whole subgraph ends on that subgraph's frame (its
+/// cut end, `Graph::frame_cut`), not on its proxy member; a rank-only
+/// pair is no edge. Counted as entries, those three reserved jog room
+/// no entry takes (a block a hub feeds as a whole grew a track per
+/// proxy pair), and `route()`, which reads its classes from the boxes,
+/// could not count them.
+fn title_counts(g: &Graph, t: &TitleRows) -> Vec<usize> {
+    title_entries(g, t).0
+}
+
+/// A displaced title-side entry ([`title_entries`]): its edge, which end
+/// of it lies on the title row, the column it crosses the title side at.
+type Displaced = (usize, usize, f64);
+
+/// [`title_counts`], and the displaced entries themselves: per entry its
+/// edge, which end of it lies on the title row (0 its source, 1 its
+/// target) and the column past the chip it crosses the title side at,
+/// as `ortho`'s title sides take them — the first a corner's rounding
+/// ([`crate::router::CORNER_R`]) past the chip's clearance, each next a
+/// [`crate::ortho::TRACK_PITCH`] further, in the order of the members
+/// and then of the breadths they come from. Of a member's entries the
+/// free stretch beside the chip holds the ones nearest it (the ports
+/// stage puts them there); the rest, on the chip's side, are displaced.
+fn title_entries(g: &Graph, t: &TitleRows) -> (Vec<usize>, Vec<Displaced>) {
     let ns = g.subgraphs.len();
-    let mut counts = vec![(0usize, 0usize); ns];
+    let mut counts = vec![0usize; ns];
+    let mut displaced: Vec<Displaced> = Vec::new();
     let bt = matches!(g.direction, Direction::BT);
+    // Per real node, the layered neighbour of each edge drawn to it, with
+    // the edge and which of its ends the node is.
+    let mut ends: Vec<Vec<(usize, usize, usize)>> = vec![Vec::new(); t.n];
+    for (ei, e) in g.edges.iter().enumerate() {
+        if e.from == e.to || matches!(e.kind, EdgeKind::Invisible) {
+            continue;
+        }
+        let cut = g.frame_cut.get(ei).copied().unwrap_or([None, None]);
+        let chain = t.edge_chain.get(ei).map_or(&[][..], |c| c.as_slice());
+        for (end, v, other) in [(0, e.from, e.to), (1, e.to, e.from)] {
+            if cut[end].is_some() || v >= t.n {
+                continue;
+            }
+            let u = match (end, chain.first(), chain.last()) {
+                (0, Some(&d), _) | (1, _, Some(&d)) => d,
+                // Adjacent layers: the other end, when the layered graph
+                // links the two (not a lane, not a flagged stand-in).
+                _ if t.preds[v].contains(&other) || t.succs[v].contains(&other) => other,
+                _ => continue,
+            };
+            ends[v].push((u, ei, end));
+        }
+    }
     for &c in t.cluster_span.keys() {
         let Some(TitleChip {
             row,
             depth,
             lo: chip_lo,
             hi: chip_hi,
-        }) = title_chip(g, t, c)
+        }) = title_chip(g, t, c, false)
         else {
             continue;
         };
-        let (mut k, mut runs) = (0usize, 0usize);
-        for v in 0..t.bpos.len() {
+        let mut k = 0usize;
+        // This block's displaced entries: (member breadth, breadth the
+        // entry comes from, edge, end).
+        let mut out: Vec<(f64, f64, usize, usize)> = Vec::new();
+        for v in 0..t.n {
             if t.alayer[v] != row || t.border[v] != 0 || t.apath[v].len() != depth {
                 continue;
             }
@@ -5865,35 +6388,57 @@ fn title_counts(g: &Graph, t: &TitleRows) -> Vec<(usize, usize)> {
                 continue;
             }
             let (m0, m1) = (t.bpos[v] - t.absize[v] / 2.0, t.bpos[v] + t.absize[v] / 2.0);
-            if v >= t.n {
-                // A run of the block's own under the chip.
-                runs += usize::from(t.bpos[v] > chip_lo && t.bpos[v] < chip_hi);
-                continue;
-            }
-            let from = if bt { &t.succs[v] } else { &t.preds[v] };
-            let border = from
+            let mut border: Vec<(usize, usize, usize)> = ends[v]
                 .iter()
-                .filter(|&&u| {
-                    t.border[u] == 0
-                        && t.alayer[u] != row
+                .copied()
+                .filter(|&(u, _, _)| {
+                    let title_side = if bt {
+                        t.alayer[u] > row
+                    } else {
+                        t.alayer[u] < row
+                    };
+                    title_side
+                        && t.border[u] == 0
                         && !t.apath[u].contains(&c)
                         && !(u < t.n && t.nc[u].contains(&c))
                 })
-                .count();
-            if border == 0 || m1 <= chip_lo || m0 >= chip_hi {
+                .collect();
+            if border.is_empty() || m1 <= chip_lo || m0 >= chip_hi {
                 continue;
             }
-            let free = (m1 - chip_hi).max(chip_lo - m0);
-            let cap = if free < 0.0 {
-                0
-            } else {
-                (free / crate::ports::PORT_SPACING).floor() as usize + 1
-            };
-            k += border.saturating_sub(cap);
+            let over = border
+                .len()
+                .saturating_sub(title_cap((m0, m1), (chip_lo, chip_hi)));
+            k += over;
+            // The free stretch holds the entries nearest it: those on the
+            // chip's side of the member are displaced.
+            let free_right = m1 - chip_hi >= chip_lo - m0;
+            border.sort_by(|a, b| {
+                let key = |x: &(usize, usize, usize)| {
+                    if free_right {
+                        t.bpos[x.0]
+                    } else {
+                        -t.bpos[x.0]
+                    }
+                };
+                key(a).total_cmp(&key(b)).then(a.1.cmp(&b.1))
+            });
+            for &(u, ei, end) in border.iter().take(over) {
+                out.push((t.bpos[v], t.bpos[u], ei, end));
+            }
         }
-        counts[c] = (k, runs);
+        out.sort_by(|a, b| {
+            a.0.total_cmp(&b.0)
+                .then(a.1.total_cmp(&b.1))
+                .then(a.2.cmp(&b.2))
+        });
+        for (j, &(_, _, ei, end)) in out.iter().enumerate() {
+            let col = chip_hi + crate::router::CORNER_R + j as f64 * crate::ortho::TRACK_PITCH;
+            displaced.push((ei, end, col));
+        }
+        counts[c] = k;
     }
-    counts
+    (counts, displaced)
 }
 
 /// The largest node outside every subgraph, when there clearly is one:
@@ -10210,6 +10755,59 @@ mod tests {
         assert!(
             tagged < plain * 1.1,
             "tags themselves must not count: {tagged} vs {plain}"
+        );
+    }
+
+    #[test]
+    fn a_bold_title_is_measured_as_a_browser_draws_it() {
+        // Widths (px at the 12 px title font, bold) that Chromium draws
+        // these repository fixtures' subgraph titles at in the face
+        // `Helvetica` resolves to on a Linux box (Liberation Sans Bold,
+        // metric-compatible with Helvetica Bold): measured once with
+        // `getBBox`, so this test does not grade the estimate by itself.
+        let measured = [
+            ("A long block title that covers the whole first row", 273.59),
+            (
+                "A long block title that covers the first member and more",
+                318.61,
+            ),
+            (
+                "A nested block whose title runs far past its one member",
+                318.63,
+            ),
+            ("Edge and shared services with a long title", 239.06),
+            ("second line of the title", 127.01),
+            ("Outer", 32.33),
+            // Past ASCII ([`BOLD_WIDTHS`]): wide Cyrillic capitals and
+            // accented ones, which a lowercase letter's width left 40 px
+            // and 3 px short, and the scripts and marks around them.
+            ("ШИРОКАЯ ЩЕДРАЯ ЖИЗНЬ ШУМНОГО МОСКВЫ", 292.36),
+            ("ÖSTERREICH ÜBERSICHT ÄMTER ÖFFNUNG ÆØÅ", 294.33),
+            ("широкая щедрая жизнь", 140.30),
+            ("ΑΘΗΝΑ ΚΑΙ ΘΕΣΣΑΛΟΝΙΚΗ", 157.77),
+            ("Dịch vụ thanh toán", 108.00),
+            ("Œuvres complètes — été", 143.05),
+        ];
+        for (title, ink) in measured {
+            let bold = bold_text_width(title) * TITLE_SCALE;
+            // Never short by more than a glyph's ink past its advance
+            // (`getBBox` holds the ink), never more than 2 % over (the
+            // table past ASCII rounds each advance up to a step: 4 %).
+            let over = if title.is_ascii() { 1.02 } else { 1.04 };
+            assert!(bold >= ink - 1.0, "{title}: {bold} < {ink}");
+            assert!(bold <= ink * over, "{title}: {bold} > {ink}");
+        }
+        // The regular estimate falls short of a long bold title by more
+        // than a chip's pad and a frame's inset together: why a block's
+        // frame is sized by the bold one.
+        let (title, ink) = measured[0];
+        assert!(text_width(title) * TITLE_SCALE + 10.0 < ink);
+        // Tags are read, not measured; a multi-line title takes its
+        // widest line.
+        assert_eq!(bold_text_width("<b>Outer</b>"), bold_text_width("Outer"));
+        assert_eq!(
+            bold_text_width("Outer\nsecond line of the title"),
+            bold_text_width("second line of the title")
         );
     }
 

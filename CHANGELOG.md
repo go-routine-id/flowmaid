@@ -7,6 +7,35 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Internal
+
+- **Subgraphs as blocks, step 2 of 4, first part** (frames sized to their
+  titles, room for labels in the gaps between blocks), behind an internal
+  switch that is off: no drawing changes.
+
+## [0.40.1] - 2026-11-17
+
+### Highlights
+
+A patch release. Static drawings are byte for byte those of 0.40.0 (only a
+class name with a stray dot now fails to parse), and so is every routed
+drawing that stays inside the top-left margin. No public API is removed or
+changed.
+
+- **`try_route`** for flowchart and state, class, ER and mindmap scenes:
+  `route` that returns `None` for positions it cannot route (a count that
+  does not match the diagram, or a coordinate that is not finite or lies
+  more than a million px from zero), so a host whose position list is out
+  of date for a moment needs no counting rule of its own.
+- **A drag past the top-left keeps every position** (flowchart, state,
+  class and ER). A routed drawing that
+  reaches past the top-left margin is no longer moved onto a `0 0` canvas:
+  its `viewBox` starts before zero on the axis that overflows instead, so a
+  dragged node stays under the pointer. The new `Scene::origin` is the
+  canvas's top-left corner.
+- **A declared class name with a stray dot is a parse error** naming the
+  line, as in mermaid 12.2; 0.40.0 took it as a class of that name.
+
 ### Added
 
 - **`try_route`: `route` for positions that may not fit the diagram**

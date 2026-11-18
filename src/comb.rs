@@ -1282,8 +1282,11 @@ impl World {
         let drawn = (0..sc.edges.len())
             .map(|i| cx.drawn.get(i).copied().unwrap_or(false))
             .collect();
+        // A block layout's chips reach their titles' ink, as every
+        // stage of its static scene measures them
+        // ([`crate::scene::title_head_measured`]).
         let heads = (0..sc.clusters.len())
-            .map(|ci| crate::scene::title_head(&sc.clusters, ci, f64::INFINITY))
+            .map(|ci| crate::scene::title_head_measured(&sc.clusters, ci, f64::INFINITY, cx.blocks))
             .collect();
         let ends = (0..sc.edges.len())
             .map(|i| cx.ends.get(i).copied().flatten())

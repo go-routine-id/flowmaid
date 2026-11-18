@@ -665,6 +665,7 @@ fn join(g: &Graph, split: &Split, blocks: &[Scene], rest: &Scene) -> Option<Scen
         origin,
         routed: false,
         plain_crossings: false,
+        block_layout: false,
     })
 }
 
@@ -960,6 +961,7 @@ fn part_base(
         origin: base.origin,
         routed: false,
         plain_crossings: false,
+        block_layout: false,
     })
 }
 

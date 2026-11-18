@@ -80,7 +80,8 @@ use crate::clearance::{
     PORT_ZONE, SAMPLE_STEP, TIGHT_RUN_MIN, WIGGLE_TOL,
 };
 use crate::scene::{
-    edge_drawn, edge_polyline, grow_scene, title_head, Bbox, Scene, ARROW_MARKER_PX, MARGIN,
+    edge_drawn, edge_polyline, grow_scene, title_head, title_head_measured, Bbox, Scene,
+    ARROW_MARKER_PX, MARGIN,
 };
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
@@ -301,6 +302,11 @@ const NUDGE_SCORES: usize = 5;
 /// better than a line squeezed along a border (G4 over G6, which asks
 /// for a clear channel).
 const HUG_TRADE: f64 = 120.0;
+
+/// What a TD or BT block layout takes off [`CLEAR_GAP`] before a run
+/// beside a frame's border counts as riding it ([`World::hug_gap`]): the
+/// half pixel of air `ortho::TRACK_PITCH` adds to a stroke's clearance.
+const HUG_AIR: f64 = 0.5;
 /// The clearance multiplier of the retry when the first route's
 /// smoothed curve still touches something.
 const RETRY_CLEAR_SCALE: f64 = 1.5;
@@ -496,6 +502,14 @@ struct Score {
     frame: usize,
     /// Frame title chips the path touches (G6).
     chip: usize,
+    /// In a block layout's static scene, the titles' bold ink past their
+    /// chips the path comes within `chip_reach` of ([`World::inks`]):
+    /// below a chip hit, so the nudge never trades the graze for a run
+    /// through the chip (counted as a hit, an entry's step round the
+    /// chip was merged away and the entry ran straight through `Mammoth
+    /// Wombat Pipeline Overview`), and no reason to reroute
+    /// ([`Score::hard`]).
+    ink: usize,
     /// px of path outside the innermost frame holding both its ends
     /// (report §2.2): an edge between two members of a box belongs
     /// inside it, as much as an edge keeps out of a box it has no end
@@ -567,6 +581,19 @@ struct World {
     /// ([`NODE_CLEARANCE`]), as the wider rule costs a drag frame
     /// reroutes that lie on other edges instead (G1, G13).
     chip_reach: f64,
+    /// How near (px) a run beside a frame's border must come to it to
+    /// count as riding it ([`side_run`]; a node's side: [`CLEAR_GAP`]):
+    /// [`CLEAR_GAP`], and in a TD or BT block layout half a pixel less
+    /// ([`HUG_AIR`]). There a frame grown over an inner leg (B12 2.7 F3)
+    /// stands exactly [`crate::scene::LANE_PAD`] (= [`CLEAR_GAP`]) off the
+    /// leg's column, and the simplified path's rounded corner put the
+    /// leg's middle a fraction of a pixel inside that: a long chain
+    /// column beside a frame's wall read as riding it, the labelled edge
+    /// was searched for room and left the frame through that wall. "A
+    /// block layout" is `Ctx::blocks`, which only the static scene sets:
+    /// `route()` and `route_partial()` keep [`CLEAR_GAP`] (the routed
+    /// half is B12.13's).
+    hug_gap: f64,
     /// Every node's box, index-parallel with `sc.nodes`, then the box of
     /// every self-loop (report P0 #13): a loop is drawn beside its node,
     /// and a path through it reads as running through the node.
@@ -576,6 +603,15 @@ struct World {
     owner: Vec<usize>,
     frames: Vec<R>,
     chips: Vec<R>,
+    /// In a block layout's static scene ([`World::new`]'s `inked`), per
+    /// frame (index-parallel with `frames`): the stretch of its title's
+    /// bold ink past the chip `chips` measures at the regular width,
+    /// where the ink outruns it ([`crate::scene::title_head_measured`]).
+    /// The channel nudge keeps every leg off it as off the chip
+    /// ([`spread`]), and the scoring counts a path that comes within
+    /// `chip_reach` of it ([`Score::ink`]); a path that ends on the frame
+    /// itself never reaches it (see [`World::ink_of`]). Empty elsewhere.
+    inks: Vec<Option<R>>,
     /// (edge, label box) of every labelled edge, as placed so far.
     labels: Vec<(usize, R)>,
     /// The drawing's bounds plus [`ROUTE_OUTER`]: the lattice never
@@ -732,7 +768,11 @@ fn end_node(e: EndRef) -> Option<usize> {
 }
 
 impl World {
-    fn new(g: &Graph, sc: &Scene) -> World {
+    /// The world of `sc`; with `inked` (a block layout's static scene,
+    /// [`Ctx::blocks`]) it also holds the stretch of each title's bold
+    /// ink past its chip ([`World::inks`]), which the ports stage cut a
+    /// title-row member's side past.
+    fn new(g: &Graph, sc: &Scene, inked: bool) -> World {
         let mut nodes: Vec<(R, Shape)> = sc
             .nodes
             .iter()
@@ -775,9 +815,21 @@ impl World {
         let (minx, maxx, miny, maxy) = bb.finish();
         // Title chips with the header corner they sit in, as `to_svg`
         // draws them (same math as the harness).
-        let chips = (0..sc.clusters.len())
+        let chips: Vec<R> = (0..sc.clusters.len())
             .map(|ci| title_head(&sc.clusters, ci, maxx + MARGIN))
             .collect();
+        let inks = if inked {
+            chips
+                .iter()
+                .enumerate()
+                .map(|(ci, c)| {
+                    let h = title_head_measured(&sc.clusters, ci, maxx + MARGIN, true);
+                    (h.2 > c.2).then_some((c.2, h.1, h.2, h.3))
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
         let labels = sc
             .edges
             .iter()
@@ -792,10 +844,12 @@ impl World {
             dir: g.direction,
             flow: g.edge_paint_width.is_none(),
             chip_reach: CHIP_SEP,
+            hug_gap: CLEAR_GAP,
             nodes,
             owner,
             frames,
             chips,
+            inks,
             labels,
             outer: grow((minx, miny, maxx, maxy), ROUTE_OUTER),
             looks: std::cell::Cell::new(0),
@@ -831,6 +885,20 @@ impl World {
             .map(|&(r, _)| (r, clear))
             .chain(self.chips.iter().map(|&r| (r, chip)))
             .collect()
+    }
+
+    /// The ink past frame `k`'s chip ([`World::inks`]) as a path that
+    /// ends on frame `k` itself (`own`) or not sees it: none for the
+    /// frame's own pin. A pin on the frame's title side ends on its
+    /// border, above the title's text, which stands
+    /// [`crate::clearance::CHIP_INSET_Y`] and more under it, out of the
+    /// pin's reach; the pin keeps clear of the chip as before. (Fenced at
+    /// the ink, blocks/blocks-overview drawn TD's `REG --> ORD` pin, a
+    /// px past `Order processing`'s ink and a port's spacing from `LB -->
+    /// QUEUE`'s crossing, was pushed past both, and that entry took a new
+    /// step.)
+    fn ink_of(&self, k: usize, own: bool) -> Option<R> {
+        self.inks.get(k).copied().flatten().filter(|_| !own)
     }
 
     /// Whether a stub at `p` of an edge `info` stands in the open: off
@@ -971,6 +1039,16 @@ impl World {
             {
                 s.chip += 1;
             }
+            // And the title's ink past it, in a block layout.
+            if let Some(g) = self.ink_of(f, own).map(|r| grow(r, self.chip_reach)) {
+                if overlaps(grow(bb, EPS), g)
+                    && pts
+                        .windows(2)
+                        .any(|w| !off_box(w[0], w[1], g) && clip(w[0], w[1], g).is_some())
+                {
+                    s.ink += 1;
+                }
+            }
         }
         // Other edges' labels the path runs under.
         for &(j, r) in &self.labels {
@@ -1001,18 +1079,18 @@ impl World {
             .iter()
             .enumerate()
             .filter(|(f, _)| !end_frames.contains(&Some(*f)))
-            .map(|(_, &r)| r)
+            .map(|(_, &r)| (r, self.hug_gap))
             .chain(
                 self.nodes
                     .iter()
                     .enumerate()
                     .filter(|(v, _)| !ends.contains(&Some(self.owner[*v])))
-                    .map(|(_, n)| n.0),
+                    .map(|(_, n)| (n.0, CLEAR_GAP)),
             );
-        for r in sides.filter(|_| s.node == 0) {
+        for (r, gap) in sides.filter(|_| s.node == 0) {
             if overlaps(probe, grow(r, EPS)) {
                 self.look(simple.len());
-                s.hug += side_run(r, simple, &own).round() as usize;
+                s.hug += side_run(r, simple, &own, gap).round() as usize;
             }
         }
         // Backtracking along the flow, both ways, as the harness counts.
@@ -1657,11 +1735,12 @@ fn detour(
 }
 
 /// How long (px) the polyline `pts` runs along the sides of `r`,
-/// nearly parallel to one and within [`CLEAR_GAP`] of it (inside or
-/// out), not counting what lies within [`PORT_ZONE`] of a rect in `own`
-/// (the edge's own ends): summed over the sides ridden for more than
-/// [`TIGHT_RUN_MIN`], as the harness counts a hug.
-fn side_run(r: R, pts: &[Pt], own: &[R]) -> f64 {
+/// nearly parallel to one and within `gap` of it (inside or out;
+/// [`CLEAR_GAP`], see [`World::hug_gap`]), not counting what lies within
+/// [`PORT_ZONE`] of a rect in `own` (the edge's own ends): summed over
+/// the sides ridden for more than [`TIGHT_RUN_MIN`], as the harness
+/// counts a hug.
+fn side_run(r: R, pts: &[Pt], own: &[R], gap: f64) -> f64 {
     // Per side (top, bottom, left, right): px along it.
     let mut run = [0.0f64; 4];
     for w in pts.windows(2) {
@@ -1704,7 +1783,7 @@ fn side_run(r: R, pts: &[Pt], own: &[R]) -> f64 {
         }
         let len = (b - a - cut).max(0.0);
         for (k, line) in lines.into_iter().enumerate() {
-            if (c - line).abs() < CLEAR_GAP {
+            if (c - line).abs() < gap {
                 run[k0 + k] += len;
             }
         }
@@ -2675,6 +2754,36 @@ fn search(
     Some((pts, sk, gk))
 }
 
+/// `pts` without the spikes of a search's path: the middle of three
+/// points on one axis-aligned line that lies beyond both others, where
+/// the path runs on and turns straight back. A goal stub is reached only
+/// from outside its node, so where a lattice line ran between a side
+/// and its stub the search went past the stub and came back onto it at
+/// no bend's cost, and the drawn path doubled back over itself into
+/// the side (blocks/lr drawn BT, `cart -> pager` 4 px past its stub and
+/// back). Without the spike the leg runs straight into the port, the
+/// stub as long as the room before the corner. A block layout's static
+/// scene ([`Env::blocks`]).
+fn despike(pts: Vec<Pt>) -> Vec<Pt> {
+    let beyond = |a: f64, b: f64, c: f64| (b - a) * (b - c) > EPS;
+    let spike = |a: Pt, b: Pt, p: Pt| {
+        (a.0 - b.0).abs() < EPS && (b.0 - p.0).abs() < EPS && beyond(a.1, b.1, p.1)
+            || (a.1 - b.1).abs() < EPS && (b.1 - p.1).abs() < EPS && beyond(a.0, b.0, p.0)
+    };
+    let mut out: Vec<Pt> = Vec::with_capacity(pts.len());
+    for p in pts {
+        // (Popped until none is left: the stub a spike ran past is the
+        // next one's tip.)
+        while out.len() >= 2 && spike(out[out.len() - 2], out[out.len() - 1], p) {
+            out.pop();
+        }
+        if out.last().map_or(true, |&q| dist(p, q) >= EPS) {
+            out.push(p);
+        }
+    }
+    out
+}
+
 /// Drop the middle of three points on one axis-aligned line when it lies
 /// between the other two, and repeated points.
 fn collapse(pts: Vec<Pt>) -> Vec<Pt> {
@@ -2986,6 +3095,9 @@ struct Env<'a> {
     built: &'a mut Built,
     work: &'a mut Work,
     sc: &'a mut Scratch,
+    /// The scene is a block layout's static one ([`Ctx::blocks`]): a
+    /// found path loses its spikes ([`despike`]).
+    blocks: bool,
 }
 
 /// Route edge `me` (drawn as `e`) under try `t`, returning its corner
@@ -3097,6 +3209,7 @@ fn route_edge(
     let mut pts = vec![starts[sk].port];
     pts.extend(path);
     pts.push(goals[gk].port);
+    let pts = if env.blocks { despike(pts) } else { pts };
     let pts = straighten(w, info.ends.0, env.taken, me, collapse(pts));
     let mut back: Vec<Pt> = pts.into_iter().rev().collect();
     back = straighten(w, info.ends.1, env.taken, me, back);
@@ -3274,6 +3387,10 @@ struct Fences<'a> {
     /// split at the cramped ones (its detours leave more legs in one
     /// channel than the static search does).
     routed: bool,
+    /// A block layout's static scene ([`Ctx::blocks`]): a frame's pin
+    /// the spread's order lays across another edge's turn is swapped
+    /// with it ([`pins_past_turns`]).
+    blocks: bool,
 }
 
 /// Indices of spans bucketed by where they lie along an axis, so a
@@ -3530,7 +3647,8 @@ fn single_stays(f: &Fences, routes: &[Option<Vec<Pt>>], segs: &[Seg], s: usize) 
             return false;
         }
     }
-    for &r in &w.chips {
+    let inks = (0..w.inks.len()).filter_map(|k| w.ink_of(k, own(EndRef::Frame(k))));
+    for r in w.chips.iter().copied().chain(inks) {
         let (a, b, l0, l1) = rect(grow(r, clear.2));
         if reaches(a, b, l0, l1) {
             return false;
@@ -3586,17 +3704,28 @@ fn place_group(f: &Fences, routes: &mut [Option<Vec<Pt>>], segs: &[Seg], grp: &[
     // The ends a member's port leg leaves from: their own box is no
     // fence to it.
     let mut own: Vec<EndRef> = Vec::new();
+    // A frame every member of the group ends on (its own pins'): the
+    // ink past its title chip is no fence to them ([`World::ink_of`]).
+    let mut pinned: Option<Vec<EndRef>> = None;
     for &s in grp {
         let sg = segs[s];
         let pts = routes[sg.edge].as_ref().expect("routed");
         let info = f.infos[sg.edge].as_ref().expect("routed");
+        let mut mine = Vec::new();
         if sg.k == 0 {
             own.push(info.ends.0);
+            mine.push(info.ends.0);
         }
         if sg.k + 2 == pts.len() {
             own.push(info.ends.1);
+            mine.push(info.ends.1);
         }
+        pinned = Some(match pinned {
+            None => mine,
+            Some(p) => p.into_iter().filter(|e| mine.contains(e)).collect(),
+        });
     }
+    let pinned = pinned.unwrap_or_default();
     // The free slab across the channel over [lo, hi]: `hard` from the
     // scene (nodes, frames, chips), `soft` from the other legs and
     // curves. Slab bounds as (low, high).
@@ -3651,7 +3780,9 @@ fn place_group(f: &Fences, routes: &mut [Option<Vec<Pt>>], segs: &[Seg], grp: &[
                 fence_at(&mut slab, at, a - c.1, b + c.1, s_lo - c.1, s_hi + c.1);
             }
         }
-        for &r in &w.chips {
+        let inks =
+            (0..w.inks.len()).filter_map(|k| w.ink_of(k, pinned.contains(&EndRef::Frame(k))));
+        for r in w.chips.iter().copied().chain(inks) {
             let (a, b, s_lo, s_hi) = rect(grow(r, c.2));
             fence_at(&mut slab, at, a, b, s_lo, s_hi);
         }
@@ -3737,6 +3868,9 @@ fn place_group(f: &Fences, routes: &mut [Option<Vec<Pt>>], segs: &[Seg], grp: &[
             .then(segs[x].edge.cmp(&segs[y].edge))
             .then(segs[x].k.cmp(&segs[y].k))
     });
+    if f.blocks {
+        pins_past_turns(f, routes, segs, &mut order);
+    }
     let m = order.len();
     // The first slab the members fit in, with the least spacing it may
     // squeeze them to: the channel at [`EDGE_SEP_MIN`], then the scene
@@ -3812,6 +3946,148 @@ fn place_group(f: &Fences, routes: &mut [Option<Vec<Pt>>], segs: &[Seg], grp: &[
             }
         }
     }
+}
+
+/// In a block layout's static scene, the order [`place_group`] lays a
+/// group's legs in (`order`, low to high across the channel) with each
+/// frame's pin swapped past a neighbour whose turn it would cross.
+///
+/// The order's key sums both ends' turns, so a leg turning the same
+/// way at both ends outweighs a pin, which turns once and ends on its
+/// frame's border inside the other leg's span: a pin dropping from the
+/// left onto a title side was laid right of an entry passing it on
+/// both sides, across that entry's column (the verifier's twin blocks
+/// drawn TD: `q --> B` and `a1 --> b1`; the nudge's scoring then undid
+/// both moves for the crossing, and `a1 --> b1` stayed where the
+/// repair had put it, round `Shipping and returns desk two`'s chip at
+/// the regular width and on its bold ink). A pin's last leg and an
+/// inner leg of another edge (no port leg: those keep the order of
+/// their ports) that passes the pin on both sides along the channel
+/// are swapped when the pin's turn crosses the other leg in this order
+/// and not in the other, and the two whole paths, each
+/// leg moved to the lower or upper of two lines a spacing apart, cross
+/// each other and every other edge less often swapped. (Swapped on the
+/// turns alone, a frame's exit and a fan's legs out of one node took
+/// new crossings and a 2 px gap on random inputs; swapped with a leg
+/// that passes the pin on one side only, quality/dense-td drawn TD took
+/// a 264 px run beside another line.)
+fn pins_past_turns(f: &Fences, routes: &[Option<Vec<Pt>>], segs: &[Seg], order: &mut [usize]) {
+    let n = order.len();
+    if n < 2 {
+        return;
+    }
+    let axis = segs[order[0]].axis;
+    // (along, way it turns across: -1, +1, or 0 at a port) of a leg's ends.
+    let ends_of = |sg: Seg| {
+        let pts = routes[sg.edge].as_ref().expect("routed");
+        let m = pts.len();
+        let turn = |p: Pt, q: Option<Pt>| {
+            let (c, l) = cross_along(axis, p);
+            let s = q.map_or(0.0, |q| {
+                let d = cross_along(axis, q).0 - c;
+                if d.abs() < EPS {
+                    0.0
+                } else {
+                    d.signum()
+                }
+            });
+            (l, s)
+        };
+        [
+            turn(pts[sg.k], (sg.k > 0).then(|| pts[sg.k - 1])),
+            turn(pts[sg.k + 1], (sg.k + 2 < m).then(|| pts[sg.k + 2])),
+        ]
+    };
+    // A frame's pin: the leg into the frame its edge ends on.
+    let pin = |sg: Seg| {
+        let m = routes[sg.edge].as_ref().map_or(0, Vec::len);
+        sg.k + 2 == m
+            && f.infos[sg.edge]
+                .as_ref()
+                .is_some_and(|i| matches!(i.ends.1, EndRef::Frame(_)))
+    };
+    let inner = |sg: Seg| sg.k > 0 && sg.k + 2 < routes[sg.edge].as_ref().map_or(0, Vec::len);
+    // Crossings of path `p` (edge `me`) and `q` (edge `other`) with each
+    // other and with every other edge.
+    let crossings = |p: &[Pt], me: usize, q: &[Pt], other: usize| {
+        let with = |a: &[Pt], b: &[Pt]| {
+            a.windows(2)
+                .map(|u| {
+                    b.windows(2)
+                        .filter(|v| seg_cross(u[0], u[1], v[0], v[1]).is_some())
+                        .count()
+                })
+                .sum::<usize>()
+        };
+        let rest: usize = routes
+            .iter()
+            .enumerate()
+            .filter(|&(j, _)| j != me && j != other)
+            .filter_map(|(_, r)| r.as_ref())
+            .map(|r| with(p, r) + with(q, r))
+            .sum();
+        with(p, q) + rest
+    };
+    let swaps = |x: Seg, y: Seg| {
+        let (pinned, other) = match (pin(x), pin(y)) {
+            (true, false) => (x, y),
+            (false, true) => (y, x),
+            _ => return false,
+        };
+        // (The other leg passes the pin on both sides along the channel.)
+        if x.edge == y.edge
+            || !inner(other)
+            || other.lo > pinned.lo - EPS
+            || other.hi < pinned.hi + EPS
+        {
+            return false;
+        }
+        let ex = ends_of(x);
+        let ey = ends_of(y);
+        if turns_crossed(ey, (y.lo, y.hi), ex, (x.lo, x.hi))
+            >= turns_crossed(ex, (x.lo, x.hi), ey, (y.lo, y.hi))
+        {
+            return false;
+        }
+        // (A leg already on the line keeps its path.)
+        let on = |sg: Seg, to: f64| {
+            if (to - sg.at).abs() < EPS {
+                routes[sg.edge].clone()
+            } else {
+                shifted(f, routes, sg, to, None)
+            }
+        };
+        let gap = EDGE_SEP + SEP_AIR;
+        let (lo, hi) = (x.at.min(y.at), x.at.max(y.at));
+        [lo, hi, lo - gap].into_iter().find_map(|p| {
+            let q = p + gap;
+            let keep = crossings(&on(x, p)?, x.edge, &on(y, q)?, y.edge);
+            let swap = crossings(&on(y, p)?, y.edge, &on(x, q)?, x.edge);
+            Some(swap < keep)
+        }) == Some(true)
+    };
+    for _ in 0..n {
+        let mut swapped = false;
+        for k in 0..n - 1 {
+            if swaps(segs[order[k]], segs[order[k + 1]]) {
+                order.swap(k, k + 1);
+                swapped = true;
+            }
+        }
+        if !swapped {
+            break;
+        }
+    }
+}
+
+/// How many times two parallel legs' turns cross when the one with
+/// ends `a` (each (along, the way it turns across: -1, +1, or 0 at a
+/// port)) over span `sa` lies below the one with ends `b` over `sb`: a
+/// turn towards the other leg strictly inside its span crosses it.
+fn turns_crossed(a: [(f64, f64); 2], sa: (f64, f64), b: [(f64, f64); 2], sb: (f64, f64)) -> usize {
+    let inside = |l: f64, s: (f64, f64)| l > s.0 + EPS && l < s.1 - EPS;
+    a.iter().filter(|e| e.1 > 0.0 && inside(e.0, sb)).count()
+        + b.iter().filter(|e| e.1 < 0.0 && inside(e.0, sa)).count()
 }
 
 /// Some members of a group of legs (indices into the stage's legs, low
@@ -4116,7 +4392,7 @@ pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut
     if ne == 0 || ne > ROUTE_MAX_EDGES {
         return;
     }
-    let mut w = World::new(g, sc);
+    let mut w = World::new(g, sc, cx.blocks);
     if !w.sane() {
         return;
     }
@@ -4173,6 +4449,7 @@ pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut
         par_at,
         singles: mode == Mode::Static,
         routed: mode == Mode::Routed,
+        blocks: cx.blocks,
     };
     let before = routes.clone();
     // In `route()` the spread is charged to [`SPREAD_ROUTE_WORK`] and
@@ -4221,6 +4498,12 @@ pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut
     // the wider rounding, each kept only if no worse (charged to the
     // same work).
     let mut kept = before.clone();
+    // In a block layout's static scene, every edge as drawn so far (the
+    // judged ones as kept, the others as nudged) and a grid over them,
+    // built on first use (`judged` holds the kept paths until then): see
+    // `cramps` below.
+    let mut drawn_now: Option<(Vec<Vec<Pt>>, SegGrid)> = None;
+    let mut judged: Vec<Option<Vec<Pt>>> = vec![None; if cx.blocks { ne } else { 0 }];
     for i in 0..ne {
         let (Some(info), Some(old)) = (infos[i].as_ref(), before[i].as_ref()) else {
             continue;
@@ -4256,7 +4539,70 @@ pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut
             };
             if let Some((new, p)) = nudged_i {
                 let s = w.score(info, i, &p, Some(&mut *acc));
-                if s <= s_cur {
+                // In a block layout drawn TD or BT, a frame's pin is not
+                // moved where it comes within [`EDGE_SEP_MIN`] of another
+                // edge, nearer than it was (or where it crossed it): the
+                // spread places a group's legs together, and when the
+                // judging keeps the pin's move and not its neighbour's,
+                // the pin may land a stroke's width from the other. (The
+                // spread laid an entry `ortho`'s title sides displaced
+                // past a title's chip at the ink's clearance and the pin
+                // past it; the scoring refused the entry's move, whose
+                // turn under the title row came within the chip's reach
+                // at its corner, and kept the pin's, which took away the
+                // crossing of the entry's step: the pin's head came 5 px
+                // from the entry's line on the verifier's random inputs.)
+                let cramps = cx.blocks
+                    && mode == Mode::Static
+                    && s <= s_cur
+                    && matches!(info.ends.1, EndRef::Frame(_))
+                    && matches!(
+                        g.direction,
+                        crate::model::Direction::TD | crate::model::Direction::BT
+                    )
+                    && {
+                        let (now, grid) = drawn_now.get_or_insert_with(|| {
+                            let now: Vec<Vec<Pt>> = (0..ne)
+                                .map(|k| {
+                                    judged[k]
+                                        .clone()
+                                        .or_else(|| nudged[k].clone())
+                                        .unwrap_or_else(|| polys[k].clone())
+                                })
+                                .collect();
+                            let grid = SegGrid::new(&now, |k| infos[k].is_some());
+                            (now, grid)
+                        });
+                        let shared = |k: usize| -> Vec<Pt> {
+                            let (Some(a), Some(b)) = (&infos[i], &infos[k]) else {
+                                return Vec::new();
+                            };
+                            let ends = |m: usize| {
+                                let p = &now[m];
+                                (p[0], p[p.len() - 1])
+                            };
+                            let ((ai, bi), (ak, bk)) = ((pts[0], pts[pts.len() - 1]), ends(k));
+                            let mut out = Vec::new();
+                            for (end, q) in [(a.ends.0, ai), (a.ends.1, bi)] {
+                                if end == b.ends.0 {
+                                    out.extend([q, ak]);
+                                }
+                                if end == b.ends.1 {
+                                    out.extend([q, bk]);
+                                }
+                            }
+                            out
+                        };
+                        let was = grid.near(now, &pts, i, shared);
+                        grid.near(now, &p, i, shared).into_iter().any(|(k, d)| {
+                            let Some(d) = d.filter(|&d| d < EDGE_SEP_MIN) else {
+                                return false;
+                            };
+                            !was.iter()
+                                .any(|&(j, o)| j == k && o.is_some_and(|o| o <= d + EPS))
+                        })
+                    };
+                if s <= s_cur && !cramps {
                     (cur, pts, s_cur, redraw) = (new.clone(), p, s, true);
                 }
             }
@@ -4308,6 +4654,14 @@ pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut
         } else {
             CORNER_R
         };
+        if let Some((now, grid)) = drawn_now.as_mut() {
+            if now[i] != pts {
+                grid.replace(i, &now[i], &pts);
+                now[i] = pts.clone();
+            }
+        } else if let Some(j) = judged.get_mut(i) {
+            *j = Some(pts.clone());
+        }
         match acc.as_mut() {
             Some(a) if !redraw => a.put(i, info.ends, simple_of(i)),
             Some(a) => accept(a, i, info.ends, &pts),
@@ -4368,7 +4722,7 @@ pub(crate) fn spread_close(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, move
     {
         return;
     }
-    let w = World::new(g, sc);
+    let w = World::new(g, sc, cx.blocks);
     if !w.sane() {
         return;
     }
@@ -4878,6 +5232,7 @@ fn reorder(
                     node: t.node + s.node,
                     frame: t.frame + s.frame,
                     chip: t.chip + s.chip,
+                    ink: t.ink + s.ink,
                     wiggle: t.wiggle + s.wiggle,
                     head: t.head + s.head,
                     overlap: t.overlap + s.overlap,
@@ -4909,6 +5264,7 @@ fn reorder(
                 new.node <= old.node
                     && new.frame <= old.frame
                     && new.chip <= old.chip
+                    && new.ink <= old.ink
                     && new.wiggle <= old.wiggle
                     && new.label <= old.label
             };
@@ -5127,12 +5483,29 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
     if ne == 0 || ne > ROUTE_MAX_EDGES {
         return;
     }
-    let mut w = World::new(g, sc);
+    // The search goes round the title chips at the regular width, even
+    // in a block layout: the channel nudge after it keeps the legs it
+    // draws off the titles' bold ink ([`World::inks`]; an entry's column
+    // the search set round `Mammoth Wombat Pipeline Overview`'s chip,
+    // 0.4 px from its ink, moves 6 px clear). Rerouting for the ink as well
+    // (a graze counted as a hit, [`Score::hard`]) took blocks/lr drawn
+    // TD's `shopper --> cdn` in through its frame's lateral wall, and
+    // drawn BT `cart --> pager` round into pager's side across `ship -->
+    // pager`; quality/dense-td drawn TD gained a side end.
+    let mut w = World::new(g, sc, false);
     if !w.sane() {
         return;
     }
     if mode == Mode::Routed {
         w.chip_reach = NODE_CLEARANCE;
+    }
+    if cx.blocks
+        && matches!(
+            g.direction,
+            crate::model::Direction::TD | crate::model::Direction::BT
+        )
+    {
+        w.hug_gap = CLEAR_GAP - HUG_AIR;
     }
     let infos: Vec<Option<Info>> = (0..ne).map(|i| info_of(g, &w, cx, i)).collect();
     let polys: Vec<Vec<Pt>> = sc.edges.iter().map(edge_polyline).collect();
@@ -5523,6 +5896,7 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
                 built: &mut built,
                 work: &mut work,
                 sc: &mut scratch,
+                blocks: cx.blocks,
             };
             let Some(corners) = route_edge(&mut env, info, i, e, t) else {
                 continue;
@@ -5742,6 +6116,7 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
                         built: &mut built,
                         work: &mut work,
                         sc: &mut scratch,
+                        blocks: cx.blocks,
                     };
                     let Some(corners) = route_edge(&mut env, jinfo, j, &sc.edges[j], t) else {
                         continue;
@@ -5880,7 +6255,7 @@ mod tests {
     fn hits(g: &Graph, sc: &Scene, from: &str, to: &str) -> Score {
         let cx = crate::edgepass::ctx(g, sc);
         // A chip counts when touched, as in `route()`.
-        let mut w = World::new(g, sc);
+        let mut w = World::new(g, sc, cx.blocks);
         w.chip_reach = NODE_CLEARANCE;
         let i = sc
             .edges
@@ -6487,10 +6862,12 @@ mod tests {
             dir: crate::model::Direction::LR,
             flow: true,
             chip_reach: CHIP_SEP,
+            hug_gap: CLEAR_GAP,
             nodes: nodes.iter().map(|&r| (r, Shape::Rect)).collect(),
             owner: (0..nodes.len()).collect(),
             frames: frames.to_vec(),
             chips: Vec::new(),
+            inks: Vec::new(),
             labels: Vec::new(),
             outer,
             looks: std::cell::Cell::new(0),
@@ -6590,6 +6967,7 @@ mod tests {
             par_at: [0, 1].map(|_| Buckets::new(std::iter::empty())),
             singles: true,
             routed: false,
+            blocks: false,
         };
         for _ in 0..NUDGE_ROUNDS {
             let mut unlimited = usize::MAX;
@@ -6643,6 +7021,23 @@ mod tests {
     }
 
     #[test]
+    fn a_leg_a_clearance_inside_a_frame_wall_rides_it_only_outside_a_block_layout() {
+        // A frame grown over an inner leg stands `LANE_PAD` off the leg's
+        // column; the simplified path's rounded corner leaves the middle
+        // of a long leg a fraction of a pixel nearer (here 11.9 px). At
+        // `CLEAR_GAP` that reads as riding the wall; in a TD or BT block
+        // layout ([`World::hug_gap`]) it does not, and a run that really
+        // comes nearer than half a pixel inside the clearance still does.
+        let frame = (100.0, 100.0, 300.0, 400.0);
+        let leg = |x: f64| vec![(x, 120.0), (x + 0.2, 266.0)];
+        let at = 300.0 - crate::scene::LANE_PAD;
+        assert!(side_run(frame, &leg(at), &[], CLEAR_GAP) > TIGHT_RUN_MIN);
+        assert_eq!(side_run(frame, &leg(at), &[], CLEAR_GAP - HUG_AIR), 0.0);
+        let near = 300.0 - 11.0;
+        assert!(side_run(frame, &leg(near), &[], CLEAR_GAP - HUG_AIR) > TIGHT_RUN_MIN);
+    }
+
+    #[test]
     fn spread_moves_a_leg_off_a_frame_border() {
         let frame = (100.0, 100.0, 300.0, 300.0);
         let (a, b) = ((0.0, 30.0, 20.0, 70.0), (420.0, 330.0, 440.0, 370.0));
@@ -6656,14 +7051,14 @@ mod tests {
             (400.0, 350.0),
             (420.0, 350.0),
         ];
-        assert!(side_run(frame, &path, &[]) > TIGHT_RUN_MIN);
+        assert!(side_run(frame, &path, &[], CLEAR_GAP) > TIGHT_RUN_MIN);
         let infos = vec![info(EndRef::Node(0), EndRef::Node(1))];
         let mut routes = vec![Some(path)];
         spread_all(&w, &infos, &mut routes);
         let moved = routes[0].as_ref().unwrap();
         assert!(moved[2].1 <= 100.0 - FRAME_SEP, "{moved:?}");
         assert_eq!(moved[2].1, moved[3].1, "the leg stays straight");
-        assert_eq!(side_run(frame, moved, &[]), 0.0);
+        assert_eq!(side_run(frame, moved, &[], CLEAR_GAP), 0.0);
         // The ports stay where they are.
         assert_eq!((moved[0], moved[5]), ((20.0, 50.0), (420.0, 350.0)));
     }
@@ -6752,6 +7147,7 @@ mod tests {
             par_at: [0, 1].map(|_| Buckets::new(std::iter::empty())),
             singles: true,
             routed: false,
+            blocks: false,
         };
         let merged = merge_jog(&f, &routes, 0, 0).expect("a step to merge");
         assert_eq!(merged.len(), 2, "{merged:?}");
@@ -6944,6 +7340,70 @@ mod tests {
         assert!(s.hug >= 80, "{s:?}");
     }
 
+    /// [`turns_crossed`]: a pin dropping from the left onto its frame
+    /// inside an entry's span crosses the entry when it lies past it, and
+    /// not when it lies on the side it comes from; turns outside the
+    /// other leg's span cross nothing (the verifier's twin blocks drawn
+    /// TD, `q --> B` and `a1 --> b1`, see [`pins_past_turns`]).
+    #[test]
+    fn a_pins_turn_inside_another_legs_span_crosses_it_on_one_side_only() {
+        // The entry turns left at both ends; the pin turns left once and
+        // ends on its port.
+        let entry = [(261.0, -1.0), (331.0, -1.0)];
+        let pin = [(274.0, -1.0), (301.0, 0.0)];
+        let (se, sp) = ((261.0, 331.0), (274.0, 301.0));
+        assert_eq!(turns_crossed(entry, se, pin, sp), 1);
+        assert_eq!(turns_crossed(pin, sp, entry, se), 0);
+        let short = [(100.0, 1.0), (120.0, -1.0)];
+        assert_eq!(turns_crossed(short, (100.0, 120.0), pin, sp), 0);
+        assert_eq!(turns_crossed(pin, sp, short, (100.0, 120.0)), 0);
+    }
+
+    /// In a block layout the bold ink a title runs past its chip
+    /// ([`World::inks`]) scores a graze below a chip hit and no reason to
+    /// reroute; a path through the chip still scores the chip hit, so
+    /// the nudge never trades the graze for it; and a frame's own pin,
+    /// ending on its border above the text, does not reach the ink.
+    #[test]
+    fn a_titles_ink_past_its_chip_scores_a_graze_below_a_chip_hit() {
+        let frame = (100.0, 100.0, 300.0, 300.0);
+        let mut w = bare(
+            &[(0.0, 0.0, 10.0, 10.0)],
+            &[frame],
+            (0.0, 0.0, 400.0, 400.0),
+        );
+        w.chips = vec![(106.0, 100.0, 160.0, 121.0)];
+        w.inks = vec![Some((160.0, 100.0, 169.0, 121.0))];
+        let info = |ends| Info {
+            ends,
+            allowed: vec![0],
+            blocked_frames: Vec::new(),
+            back: false,
+            sideways: true,
+            home: None,
+        };
+        let pin = info((EndRef::Node(0), EndRef::Frame(0)));
+        let info = info((EndRef::Node(0), EndRef::Node(0)));
+        // Down past the chip, 1 px off the ink: a graze, not a hit.
+        let graze = w.score(&info, 0, &[(170.0, 50.0), (170.0, 200.0)], None);
+        assert_eq!((graze.chip, graze.ink), (0, 1), "{graze:?}");
+        assert_eq!(graze.hard(), 0);
+        // Clear of the ink by more than `chip_reach`: nothing.
+        let clear = w.score(&info, 0, &[(176.0, 50.0), (176.0, 200.0)], None);
+        assert_eq!((clear.chip, clear.ink), (0, 0), "{clear:?}");
+        // Straight through the chip scores worse than the graze.
+        let through = w.score(&info, 0, &[(130.0, 50.0), (130.0, 200.0)], None);
+        assert_eq!(through.chip, 1);
+        assert!(graze < through, "{graze:?} {through:?}");
+        // The frame's own pin beside the ink, ending on its border.
+        let s = w.score(&pin, 0, &[(165.0, 50.0), (165.0, 100.0)], None);
+        assert_eq!(s.ink, 0, "{s:?}");
+        // Outside a block layout there is no ink to graze.
+        w.inks.clear();
+        let s = w.score(&info, 0, &[(170.0, 50.0), (170.0, 200.0)], None);
+        assert_eq!((s.chip, s.ink), (0, 0), "{s:?}");
+    }
+
     /// The runs [`convex_min`] and [`below`] find are exactly the
     /// samples a scan finds, and [`covered`] counts their union outside
     /// the skipped runs.
@@ -7039,6 +7499,37 @@ mod tests {
     }
 
     #[test]
+    fn a_found_path_loses_the_spike_past_its_stub() {
+        // The search reached `cart -> pager`'s goal stub (364.75, 715.5)
+        // on pager's right side from a lattice line between the side and
+        // the stub, past the stub and back (blocks/lr drawn BT before
+        // X2.2's columns were kept off other crossings).
+        let pts = vec![
+            (229.9, 465.25),
+            (229.9, 485.75),
+            (362.75, 485.75),
+            (362.75, 715.5),
+            (364.75, 715.5),
+            (368.3, 715.5),
+            (364.75, 715.5),
+            (344.0, 715.5),
+        ];
+        assert_eq!(
+            despike(pts),
+            vec![
+                (229.9, 465.25),
+                (229.9, 485.75),
+                (362.75, 485.75),
+                (362.75, 715.5),
+                (344.0, 715.5)
+            ]
+        );
+        // A path without a spike is kept as it is.
+        let plain = vec![(0.0, 0.0), (0.0, 10.0), (5.0, 10.0), (5.0, 20.0)];
+        assert_eq!(despike(plain.clone()), plain);
+    }
+
+    #[test]
     fn repair_never_adds_node_crossings_on_the_fixtures() {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/quality");
         for name in ["back-edge", "fanout-frames", "wide-labels"] {
@@ -7093,9 +7584,9 @@ mod tests {
         assert!(wide, "no relation rounded wider than CORNER_R");
         let g = crate::parser::parse("flowchart TD\nA --> B").unwrap();
         let sc = crate::scene::scene(&g);
-        assert!(World::new(&g, &sc).flow);
+        assert!(World::new(&g, &sc, false).flow);
         let mut g = g;
         g.edge_paint_width = Some(1.5);
-        assert!(!World::new(&g, &sc).flow);
+        assert!(!World::new(&g, &sc, false).flow);
     }
 }

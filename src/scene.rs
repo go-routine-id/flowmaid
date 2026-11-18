@@ -202,6 +202,14 @@ pub struct SceneCluster {
     pub title: String,
     /// Nesting depth, 0 = outermost.
     pub depth: usize,
+    /// Whether the frame is as broad (TD / BT) or as long (LR / RL) as
+    /// its title and no more: a block layout grew it to the title
+    /// (B12 F1) and nothing else made it broader. Its title is then
+    /// measured as it is drawn, bold ([`title_text_width`]), so the
+    /// frame, the chip edges keep clear of and the chip the painter draws
+    /// all hold the title's ink. Every other frame keeps the estimate it
+    /// always had.
+    pub(crate) bold_title: bool,
 }
 
 /// Positioned geometry for one diagram, ready to paint or serialise.
@@ -229,7 +237,7 @@ pub struct Scene {
     /// grows that way instead and `origin` goes negative on that axis, to
     /// the margin before the drawing. Like `width` and `height` it only
     /// grows: a [`route_partial`] keeps its base's canvas. An overflow
-    /// under the 0.1 px the SVG is written to is none.
+    /// that rounds to 0 at the 0.1 px the SVG is written to is none.
     ///
     /// A class or ER SVG is drawn on this canvas (its `viewBox`), a
     /// routed scene at its coordinates (a laid-out one that reaches into
@@ -265,6 +273,13 @@ pub struct Scene {
     /// crossings without hops too. A class or ER scene is kept plain by
     /// its edges' `paint_width` instead.
     pub(crate) plain_crossings: bool,
+    /// The scene is a block layout's (B12: `scene()` laid the graph out
+    /// as blocks, or `route()` drew it with the block layout's frames),
+    /// for what its painter alone treats otherwise: crossing gaps closer
+    /// than a cluster along one under-line are cut as one
+    /// ([`crate::casing`]). `false` for every other scene, so they paint
+    /// as they always did.
+    pub(crate) block_layout: bool,
 }
 
 /// An element picked out of a [`Scene`] by [`Scene::hit_test`] and
@@ -295,6 +310,7 @@ impl Scene {
             origin: (0.0, 0.0),
             routed: false,
             plain_crossings: false,
+            block_layout: false,
         }
     }
 
@@ -3325,16 +3341,74 @@ pub(crate) fn title_head(
     ci: usize,
     canvas_right: f64,
 ) -> (f64, f64, f64, f64) {
+    title_head_measured(clusters, ci, canvas_right, false)
+}
+
+/// [`title_head`] reaching as far as the title's ink: `to_svg` paints
+/// every frame title `font-weight="bold"` from half the chip's padding
+/// in, while a frame not grown to its title
+/// ([`SceneCluster::bold_title`]) sizes its chip at the regular width
+/// ([`title_text_width`]), which the bold text outruns by about a tenth
+/// of its width (blocks/blocks-overview's `Order processing`: its ink
+/// ends 5 px past the chip). Here the chip ends where the drawn chip or
+/// the drawn text ends, whichever is farther
+/// ([`crate::layout::bold_text_width`]). For a rule that sets a line a
+/// clearance past the chip: measured at the chip alone, a block
+/// layout's port there stood a px or two from the title's last letter
+/// (`ports`).
+pub(crate) fn title_head_inked(
+    clusters: &[SceneCluster],
+    ci: usize,
+    canvas_right: f64,
+) -> (f64, f64, f64, f64) {
+    title_head_measured(clusters, ci, canvas_right, true)
+}
+
+/// [`title_head`]; with `inked`, [`title_head_inked`]. The measure of a
+/// chip the edge stages of a block layout's static scene keep their
+/// lines clear of, with `inked` = [`crate::edgepass::Ctx::blocks`]: the
+/// ports stage (the cut of a title-row member's side, the frame's free
+/// pins and the columns it deals), `ortho`'s jog walls and the columns
+/// of its displaced entries, the router's channel nudge (which spaces
+/// and re-deals a side's ends) and close-pair spread, and the comb.
+/// Measured at the chip in one stage and at the ink in the next, a
+/// later stage moved a line the earlier one had set clear of the ink
+/// back under it: the nudge slid a title-row member's entry from the
+/// ports stage's cut past `Shipping and returns desk`'s ink back to its
+/// own clearance past the chip at the regular width, onto the title's
+/// last letter. (The router's repair searches round the chip at the
+/// regular width; the nudge after it keeps its legs off the ink, see
+/// `router::repair`.)
+pub(crate) fn title_head_measured(
+    clusters: &[SceneCluster],
+    ci: usize,
+    canvas_right: f64,
+    inked: bool,
+) -> (f64, f64, f64, f64) {
     use crate::clearance::{CHIP_H, CHIP_INSET_X, CHIP_INSET_Y, CHIP_PAD_W};
     let c = &clusters[ci];
     let title = fit_cluster_title(clusters, ci, canvas_right);
     let (x, y) = (c.x + CHIP_INSET_X, c.y + CHIP_INSET_Y);
-    (
-        x,
-        c.y,
-        x + text_width(&title) * TITLE_SCALE + CHIP_PAD_W,
-        y + CHIP_H + title_extra(&title),
-    )
+    let mut x1 = x + title_text_width(c, &title) + CHIP_PAD_W;
+    if inked {
+        let ink = crate::layout::bold_text_width(&title) * TITLE_SCALE;
+        x1 = x1.max(x + CHIP_PAD_W / 2.0 + ink);
+    }
+    (x, c.y, x1, y + CHIP_H + title_extra(&title))
+}
+
+/// The width (px) frame `c` measures `title` (its title, or a cut of it,
+/// as drawn) at, in title-font px: [`crate::layout::bold_text_width`]
+/// for a frame grown to its title ([`SceneCluster::bold_title`]), else
+/// [`text_width`]. The one measure of a title's chip, so the frame
+/// (B12 F1), the chip edges keep clear of and the chip `to_svg` paints
+/// agree.
+pub(crate) fn title_text_width(c: &SceneCluster, title: &str) -> f64 {
+    if c.bold_title {
+        crate::layout::bold_text_width(title) * TITLE_SCALE
+    } else {
+        text_width(title) * TITLE_SCALE
+    }
 }
 
 pub(crate) fn fit_cluster_title(clusters: &[SceneCluster], ci: usize, canvas_right: f64) -> String {
@@ -3342,7 +3416,7 @@ pub(crate) fn fit_cluster_title(clusters: &[SceneCluster], ci: usize, canvas_rig
     let (x, y, w, h) = (
         c.x + TITLE_INSET,
         c.y,
-        text_width(&c.title) * TITLE_SCALE + 8.0,
+        title_text_width(c, &c.title) + 8.0,
         TITLE_STRIP + title_extra(&c.title),
     );
     if x + w <= c.x + c.w - TITLE_INSET {
@@ -3366,11 +3440,11 @@ pub(crate) fn fit_cluster_title(clusters: &[SceneCluster], ci: usize, canvas_rig
     }
     let room = c.w - 2.0 * TITLE_INSET - 8.0;
     let fit_line = |line: &str| -> String {
-        if text_width(line) * TITLE_SCALE <= room {
+        if title_text_width(c, line) <= room {
             return line.to_string();
         }
         let mut cut = line.to_string();
-        while !cut.is_empty() && text_width(&format!("{cut}…")) * TITLE_SCALE > room {
+        while !cut.is_empty() && title_text_width(c, &format!("{cut}…")) > room {
             cut.pop();
         }
         // A cut that ends on a separator reads as a dangling "· …".
@@ -3508,6 +3582,7 @@ pub(crate) fn scene_labelled(g: &Graph, sizes: &[(f64, f64)], labels: &[String])
         scene_clustered(g, sizes, labels, crate::levels::blocks_on())
     };
     // (A block layout's edge stages know which upstream edges are lanes.)
+    sc.block_layout = blocks.is_some();
     crate::edgepass::finish_blocks(g, &mut sc, blocks.as_deref());
     if blocks.is_some() && embrace_own_edges(g, &mut sc) {
         crate::edgepass::refit(
@@ -3555,6 +3630,12 @@ fn embrace_own_edges(g: &Graph, sc: &mut Scene) -> bool {
         .subgraphs
         .iter()
         .map(|s| sc.clusters.iter().position(|c| c.id == s.id))
+        .collect();
+    // (A frame grown to its title stays measured as one: growing across
+    // the flow over its own edges makes it broader than the title.)
+    let bound: Vec<bool> = cluster_of
+        .iter()
+        .map(|k| k.is_some_and(|k| sc.clusters[k].bold_title))
         .collect();
     // Per subgraph: the breadth its own edges' drawn paths reach.
     let mut want: Vec<Option<(f64, f64)>> = vec![None; g.subgraphs.len()];
@@ -3658,7 +3739,7 @@ fn embrace_own_edges(g: &Graph, sc: &mut Scene) -> bool {
         }
         // The title chips of the frames that moved keep clear of every
         // line, as the router kept them.
-        let moved_clusters = clusters_of(g, &trial, &depth);
+        let moved_clusters = clusters_of(g, &trial, &depth, &bound);
         let chips_clear = (0..g.subgraphs.len()).all(|t| {
             if boxes[t] == trial[t] {
                 return true;
@@ -3687,7 +3768,7 @@ fn embrace_own_edges(g: &Graph, sc: &mut Scene) -> bool {
         }
     }
     if changed {
-        sc.clusters = clusters_of(g, &boxes, &depth);
+        sc.clusters = clusters_of(g, &boxes, &depth, &bound);
     }
     changed
 }
@@ -4191,6 +4272,7 @@ fn scene_from_layout(
         origin: (0.0, 0.0),
         routed: false,
         plain_crossings: false,
+        block_layout: false,
     }
 }
 
@@ -4210,6 +4292,123 @@ const GRID_MIN_MEMBERS: usize = 3;
 /// The same for edge-less members: three notes side by side still read
 /// as one row, and packing them only trades breadth for depth.
 const GRID_MIN_EDGELESS: usize = 4;
+
+/// B12 G3 for the static scene: the label of an edge between two units
+/// of a block layout sits on the part of the edge outside its *end
+/// blocks* (the frames that hold one of its ends and not the other), not
+/// inside one or on its border ([`label_off_frames`]). A chain's slot
+/// already lies there ([`crate::layout::label_slot`]); a short edge's lay
+/// in its middle, which an end block grown to its title (B12 F1, F2) can
+/// hold: blocks/lr drawn LR put two labels inside `Edge and shared
+/// services`. The layout keeps that run as long as the label needs: its
+/// labelled gaps are measured from the frames (`layout::place`'s layer
+/// lines). The label stage keeps to the same rule when it re-places a
+/// label (`labels::place_long`).
+fn labels_off_end_blocks(
+    node_cluster: &[Vec<usize>],
+    g: &Graph,
+    edges: &mut [SceneEdge],
+    clusters: &[SceneCluster],
+) {
+    let frame = |s: usize| clusters.iter().find(|c| c.id == g.subgraphs[s].id);
+    for (e, se) in g.edges.iter().zip(edges.iter_mut()) {
+        if e.from == e.to || e.from >= node_cluster.len() || e.to >= node_cluster.len() {
+            continue;
+        }
+        let Some((_, at, w)) = se.label.clone() else {
+            continue;
+        };
+        let (a, b) = (&node_cluster[e.from], &node_cluster[e.to]);
+        let ends: Vec<(f64, f64, f64, f64)> = a
+            .iter()
+            .filter(|s| !b.contains(s))
+            .chain(b.iter().filter(|s| !a.contains(s)))
+            .filter_map(|&s| frame(s))
+            .map(|c| (c.x, c.y, c.x + c.w, c.y + c.h))
+            .collect();
+        let path = if se.waypoints.len() >= 2 {
+            se.waypoints.clone()
+        } else {
+            sample_cubic(&se.bezier, 24)
+        };
+        if let (Some(to), Some(l)) = (label_off_frames(&path, at, w, &ends), se.label.as_mut()) {
+            l.1 = to;
+        }
+    }
+}
+
+/// Where a label of width `w` at `at` on the path `path` moves to keep
+/// off the frames `rects` (x0, y0, x1, y1): `None` when its chip meets
+/// none of them, or when no stretch of the path lies outside them all;
+/// else the middle, by length, of the longest such stretch (B12 G3).
+pub(crate) fn label_off_frames(
+    path: &[(f64, f64)],
+    at: (f64, f64),
+    w: f64,
+    rects: &[(f64, f64, f64, f64)],
+) -> Option<(f64, f64)> {
+    let half = (w / 2.0, LABEL_BOX_H / 2.0);
+    let meets = |r: &(f64, f64, f64, f64)| {
+        at.0 + half.0 > r.0 && at.0 - half.0 < r.2 && at.1 + half.1 > r.1 && at.1 - half.1 < r.3
+    };
+    if !rects.iter().any(meets) {
+        return None;
+    }
+    // The path, 2 px a step, and the longest stretch of it whose points
+    // lie outside every frame.
+    let mut pts: Vec<(f64, f64)> = Vec::new();
+    for s in path.windows(2) {
+        let len = (s[1].0 - s[0].0).hypot(s[1].1 - s[0].1);
+        let n = (len / 2.0).ceil().max(1.0) as usize;
+        for k in 0..n {
+            let t = k as f64 / n as f64;
+            pts.push((
+                s[0].0 + (s[1].0 - s[0].0) * t,
+                s[0].1 + (s[1].1 - s[0].1) * t,
+            ));
+        }
+    }
+    pts.extend(path.last().copied());
+    let inside = |p: (f64, f64)| {
+        rects
+            .iter()
+            .any(|r| p.0 > r.0 && p.0 < r.2 && p.1 > r.1 && p.1 < r.3)
+    };
+    let step = |k: usize| (pts[k].0 - pts[k - 1].0).hypot(pts[k].1 - pts[k - 1].1);
+    // The longest stretch so far (first point, last point, length) and
+    // the one the walk is on (first point, length).
+    let mut best: Option<(usize, usize, f64)> = None;
+    let mut run: Option<(usize, f64)> = None;
+    for i in 0..pts.len() {
+        if inside(pts[i]) {
+            run = None;
+            continue;
+        }
+        let (start, len) = match run {
+            Some((s, l)) => (s, l + step(i)),
+            None => (i, 0.0),
+        };
+        run = Some((start, len));
+        if best.map_or(true, |b| len > b.2) {
+            best = Some((start, i, len));
+        }
+    }
+    let (s, t, len) = best.filter(|b| b.2 > 0.0)?;
+    // Its middle by length.
+    let mut acc = 0.0;
+    for k in s + 1..=t {
+        let d = step(k);
+        if acc + d >= len / 2.0 {
+            let f = if d > 0.0 { (len / 2.0 - acc) / d } else { 0.0 };
+            return Some((
+                pts[k - 1].0 + (pts[k].0 - pts[k - 1].0) * f,
+                pts[k - 1].1 + (pts[k].1 - pts[k - 1].1) * f,
+            ));
+        }
+        acc += d;
+    }
+    Some(pts[t])
+}
 
 /// Global cluster-aware pipeline: lay every real node out in ONE
 /// Sugiyama pass (no supernode collapse) with subgraph members kept
@@ -4332,7 +4531,8 @@ fn scene_clustered(
     // y in LR/RL).
     let frames: Vec<RawBox>;
     sc.clusters = {
-        let (mut boxes, depth) = cluster_boxes_with_jogs(g, &sc.nodes, &title_jog);
+        let (mut boxes, depth, bound) =
+            frame_boxes(g, &sc.nodes, &title_jog, block_paths.is_some());
         // Member-only boxes: what a widened frame must stay clear of.
         let raw = boxes.clone();
         for si in 0..g.subgraphs.len() {
@@ -4391,7 +4591,18 @@ fn scene_clustered(
             });
         }
         renest_boxes(g, &depth, &mut boxes);
-        let out = clusters_of(g, &boxes, &depth);
+        // A frame F1 grew to its title stays title-bound only while what
+        // it covers besides (the channels inside it) leaves it no broader
+        // than the frame function made it (its title, and the columns of
+        // its displaced entries past the chip): a broader one keeps the
+        // estimate every frame has.
+        let mut bound = bound;
+        for (si, b) in bound.iter_mut().enumerate() {
+            if let (Some((_, _, w, _)), Some((_, _, w0, _))) = (boxes[si], raw[si]) {
+                *b = *b && w <= w0 + TITLE_BOUND_EPS;
+            }
+        }
+        let out = clusters_of(g, &boxes, &depth, &bound);
         frames = boxes;
         out
     };
@@ -4403,9 +4614,14 @@ fn scene_clustered(
     // flow, the edge is drawn like mermaid's: towards the member the
     // layout ranked it onto, cut at the frame — so it runs through the
     // rank gap the layout left, not diagonally across other nodes.
+    // B12 G3: a label stays off the blocks that hold only one end of
+    // its edge.
+    if block_paths.is_some() {
+        labels_off_end_blocks(&node_cluster, g, &mut sc.edges[..ne], &sc.clusters);
+    }
     let stand_edges = sc.edges.split_off(ne);
     if !g.sub_edges.is_empty() {
-        let (raw, _) = cluster_boxes_with_jogs(g, &sc.nodes, &title_jog);
+        let (raw, _, _) = frame_boxes(g, &sc.nodes, &title_jog, block_paths.is_some());
         let end_placed = |end: End| -> Option<(Placed, Shape)> {
             match end {
                 End::Node(v) => Some((
@@ -5376,9 +5592,19 @@ pub(crate) fn route_fitted(
 ) -> Scene {
     #[cfg(test)]
     crate::levels::note_used(crate::levels::Entry::Route, g, || block_mode_decided(g));
-    let mut sc = route_built(g, centers, sizes, labels, true);
+    // The switch of the block layout, read once for this call.
+    let blocks = route_blocks(g, crate::levels::blocks_on());
+    let mut sc = route_built(g, centers, sizes, labels, true, blocks);
     crate::edgepass::finish(g, &mut sc, crate::edgepass::Mode::Routed);
     sc
+}
+
+/// Whether [`route`] and [`route_partial`] draw the one part `g` (never
+/// split further) with a block layout's frames (B12 R1): the switch
+/// (`on`, read once by the entry point) and the predicate `scene()` asks
+/// the layout with, from the same constructor.
+fn route_blocks(g: &Graph, on: bool) -> bool {
+    on && !g.subgraphs.is_empty() && crate::levels::Augmented::of(g).block_mode(g)
 }
 
 /// The block mode `route()` and `route_partial()` decide for the one
@@ -5397,13 +5623,17 @@ fn block_mode_decided(g: &Graph) -> bool {
 /// and cross-cluster channels for the current boxes, frames wrapped
 /// round the current nodes, and (when `place_labels`) labels slid off
 /// what they cover. `centers` and `sizes` are index-parallel with
-/// `g.nodes`.
+/// `g.nodes`. `blocks`: the part is drawn in block mode
+/// ([`route_blocks`]); its frames are then the block layout's
+/// ([`route_frame_base`]), as `scene()` draws them, and every builder
+/// routes against them.
 fn route_built(
     g: &Graph,
     centers: &[(f64, f64)],
     sizes: &[(f64, f64)],
     labels: &[String],
     place_labels: bool,
+    blocks: bool,
 ) -> Scene {
     let placed: Vec<Placed> = (0..g.nodes.len())
         .map(|i| Placed {
@@ -5449,7 +5679,11 @@ fn route_built(
         }
         Some(s)
     };
-    let (raw_boxes, _) = cluster_raw_boxes(g, &nodes);
+    // The frames of this drawing before any edge: the members' boxes,
+    // and in block mode the block layout's F1 and F2 (title fit, jog
+    // room), which every builder below routes against (B12 R1).
+    let base = route_frame_base(g, &nodes, blocks);
+    let raw_boxes = &base.0;
     let box_of = |v: usize| -> (f64, f64, f64, f64) {
         top_of(v)
             .and_then(|s| raw_boxes.get(s).copied().flatten())
@@ -5646,18 +5880,14 @@ fn route_built(
         .iter()
         .map(|b| matches!(b, Back::Lane(l) if l.local))
         .collect();
-    let clusters = if home.iter().any(|&h| h) {
-        route_lane_clusters(g, &nodes, &edges, &home)
-    } else {
-        route_clusters(g, &nodes)
-    };
+    let clusters = route_lane_clusters(g, &edges, &home, &base);
 
     // Subgraph-touching edges: route against the current cluster
     // boxes so they follow drags too. `route_clusters` returns
     // boxes in subgraph order among the non-empty ones — match by
     // title-free lookup via the subgraph index.
     if !g.sub_edges.is_empty() {
-        let (raw, _) = cluster_raw_boxes(g, &nodes);
+        let raw = &base.0;
         let mut boxes: HashMap<usize, BoxCS> = HashMap::new();
         for (si, b) in raw.iter().enumerate() {
             if let Some((x, y, w, h)) = *b {
@@ -5766,6 +5996,15 @@ fn route_built(
     if place_labels {
         avoid_label_overlaps(&nodes, &clusters, &mut edges, LABEL_ROUTE_WORK);
     }
+    // B12 G3, as the static scene keeps it: in a block layout a label
+    // stays off the frames that hold only one end of its edge (blocks/lr
+    // drawn LR: `route()` at the scene's own centres put `browse` inside
+    // `Edge and shared services with a long title`, which `scene()`
+    // keeps it out of).
+    if blocks && place_labels {
+        let ne = g.edges.len().min(edges.len());
+        labels_off_end_blocks(&node_cluster_paths(g), g, &mut edges[..ne], &clusters);
+    }
     // The boxes and labels only: the edge stages' refit grows the canvas
     // over every edge as painted (`edgepass::refit`), never over a
     // curve's control points (report Q2), as in the static scene.
@@ -5784,6 +6023,7 @@ fn route_built(
         origin: (0.0, 0.0),
         routed: false,
         plain_crossings: false,
+        block_layout: blocks,
     }
 }
 
@@ -5913,7 +6153,9 @@ pub(crate) fn route_partial_with(
     // something. route() slides every label first so the router can
     // price paths round them; that second pass costs 3-4 ms of a dense
     // drag frame and is left out here (G13).
-    let mut sc = route_built(g, centers, &sizes, &labels, false);
+    // The switch of the block layout, read once for this call.
+    let on = crate::levels::blocks_on();
+    let mut sc = route_built(g, centers, &sizes, &labels, false, route_blocks(g, on));
     // A kept edge is copied from `base` whole (style, end glyphs,
     // label text), and a node's box follows its text: an edit to any of
     // them must not keep stale geometry.
@@ -6049,16 +6291,19 @@ pub(crate) fn route_partial_with(
     // hits something or runs on top of another edge, its ends left
     // where the base put them.
     let mut held = vec![true; base.edges.len()];
+    // The edges drawn as `base` (or a note link's follow of it) has them.
+    let mut kept = vec![false; base.edges.len()];
     let mut redrawn = 0;
     for (i, e) in sc.edges.iter_mut().enumerate() {
         let b = &base.edges[i];
         let own = own_moved.contains(&(b.from.as_str(), b.to.as_str()));
-        if let Some(kept) = (!own && !clash[i])
+        if let Some(kept_link) = (!own && !clash[i])
             .then(|| note_link_kept(g, base, centers, base_centers, &moved, i))
             .flatten()
         {
             // A state note card's link drawn as the drag leaves it.
-            *e = kept;
+            *e = kept_link;
+            kept[i] = true;
         } else if moved_end(&b.from) || moved_end(&b.to) || own || clash[i] {
             fixed[i] = false;
             held[i] = false;
@@ -6127,12 +6372,18 @@ pub(crate) fn route_partial_with(
         } else {
             fixed[i] = !near(b);
             *e = b.clone();
+            kept[i] = true;
         }
     }
     // Most of the drawing redrawn afresh (not merely near the drag): a
     // full route() costs about the same and draws it better.
     if redrawn as f64 > PARTIAL_ROUTE_SHARE * fixed.len() as f64 {
         return full(route_fitted(g, centers, &sizes, &labels));
+    }
+    // B12 F3 on a drag (with the switch on): a redrawn frame keeps the
+    // room the kept edges take inside it, as the static scene grew it.
+    if on && !grew.is_empty() {
+        keep_inner_room(g, &mut clusters, base, &sc.edges, &kept, &grew);
     }
     sc.clusters = clusters;
     // The base canvas already covers the kept geometry; the pipeline's
@@ -6142,6 +6393,117 @@ pub(crate) fn route_partial_with(
     sc.origin = base.origin;
     crate::edgepass::finish_held(g, &mut sc, crate::edgepass::Mode::Routed, &fixed, &held);
     sc
+}
+
+/// B12 F3 for [`route_partial`]: each frame it redrew round a moved
+/// member (`grew`, by id; `clusters` as redrawn, `route()`'s frame
+/// function of its members) grown back across the flow over the room the
+/// edges it keeps (`kept`, index-parallel with `edges`) take inside it:
+/// the waypoints, within the frame's `base` box, of each kept edge with
+/// an end inside it (a member, or a nested frame), with [`LANE_PAD`]
+/// round them, and the label of a kept edge between two of its members.
+/// That is what the static scene widened the frame over (the channels
+/// the layout laid inside it beside its outermost member, a lane kept
+/// beside its members), so a 1 px drag of a member no longer drops it:
+/// the frame keeps its base breadth where its kept edges still need it,
+/// and never grows past the union of its base box and its redrawn one
+/// (both cleared their siblings). Deepest first, so a parent wraps a
+/// grown child ([`SUB_PAD`], as [`renest_boxes`] does). The redrawn
+/// edges' builder paths are not covered: `route()` draws them against
+/// the members' frames already (R3's inner legs are B12.13's).
+fn keep_inner_room(
+    g: &Graph,
+    clusters: &mut [SceneCluster],
+    base: &Scene,
+    edges: &[SceneEdge],
+    kept: &[bool],
+    grew: &[String],
+) {
+    let horizontal = matches!(g.direction, Direction::LR | Direction::RL);
+    let paths = node_cluster_paths(g);
+    let sub_of = |id: &str| g.subgraphs.iter().position(|s| s.id == id);
+    // Whether an edge end (a node or a frame, by id) lies inside `si`.
+    let inside = |id: &str, si: usize| -> bool {
+        if let Some(v) = g.node_index(id) {
+            return paths[v].contains(&si);
+        }
+        let mut cur = sub_of(id).and_then(|s| g.subgraphs[s].parent);
+        while let Some(s) = cur {
+            if s == si {
+                return true;
+            }
+            cur = g.subgraphs[s].parent;
+        }
+        false
+    };
+    // (breadth lo, breadth hi, layer lo, layer hi) of a box.
+    let span = |c: &SceneCluster| {
+        if horizontal {
+            (c.y, c.y + c.h, c.x, c.x + c.w)
+        } else {
+            (c.x, c.x + c.w, c.y, c.y + c.h)
+        }
+    };
+    let mut order: Vec<usize> = (0..clusters.len()).collect();
+    order.sort_by_key(|&k| std::cmp::Reverse(clusters[k].depth));
+    for k in order {
+        if !grew.contains(&clusters[k].id) {
+            continue;
+        }
+        let Some(si) = sub_of(&clusters[k].id) else {
+            continue;
+        };
+        let Some(o) = base.clusters.iter().find(|c| c.id == clusters[k].id) else {
+            continue;
+        };
+        let (ob0, ob1, ol0, ol1) = span(o);
+        let (fb0, fb1, fl0, fl1) = span(&clusters[k]);
+        // (The frame function's width: a title-bound frame stays so while
+        // the room kept below leaves it no broader.)
+        let w0 = clusters[k].w;
+        let (mut b0, mut b1) = (fb0, fb1);
+        for (i, e) in edges.iter().enumerate() {
+            if !kept.get(i).copied().unwrap_or(false) {
+                continue;
+            }
+            let (a, z) = (inside(&e.from, si), inside(&e.to, si));
+            if !a && !z {
+                continue;
+            }
+            if a && z && e.from != e.to {
+                if let Some((mb, half)) = lane_label_reach(e, horizontal) {
+                    b0 = b0.min(mb - half - LANE_PAD);
+                    b1 = b1.max(mb + half + LANE_PAD);
+                }
+            }
+            for &(wx, wy) in &e.waypoints {
+                let (wb, wl) = if horizontal { (wy, wx) } else { (wx, wy) };
+                if wb >= ob0 && wb <= ob1 && wl >= ol0.max(fl0) && wl <= ol1.min(fl1) {
+                    b0 = b0.min(wb - LANE_PAD);
+                    b1 = b1.max(wb + LANE_PAD);
+                }
+            }
+        }
+        // A nested frame grown here first is wrapped.
+        for c in clusters.iter() {
+            let parent = sub_of(&c.id).and_then(|s| g.subgraphs[s].parent);
+            if parent == Some(si) {
+                let (cb0, cb1, _, _) = span(c);
+                b0 = b0.min(cb0 - SUB_PAD);
+                b1 = b1.max(cb1 + SUB_PAD);
+            }
+        }
+        let (b0, b1) = (b0.max(fb0.min(ob0)), b1.min(fb1.max(ob1)));
+        let c = &mut clusters[k];
+        if horizontal {
+            (c.y, c.h) = (b0, b1 - b0);
+        } else {
+            (c.x, c.w) = (b0, b1 - b0);
+        }
+        if c.bold_title {
+            c.bold_title = c.w <= w0 + TITLE_BOUND_EPS;
+        }
+    }
 }
 
 /// How far (px) a drag may move a state note card or the node it notes
@@ -6340,17 +6702,119 @@ fn seg_meets_rect(a: (f64, f64), b: (f64, f64), r: (f64, f64, f64, f64)) -> bool
 /// parent encloses its children's boxes. `None` = empty subgraph.
 /// Also returns each subgraph's nesting depth.
 fn cluster_raw_boxes(g: &Graph, nodes: &[SceneNode]) -> (Vec<RawBox>, Vec<usize>) {
-    cluster_boxes_with_jogs(g, nodes, &[])
+    let (boxes, depth, _) = frame_boxes(g, nodes, &[], false);
+    (boxes, depth)
 }
 
-/// [`cluster_raw_boxes`] with each frame grown on its title side by its
-/// block layout's jog room (`jog`, by subgraph; missing entries 0: see
-/// `layout::title_jogs`), its ancestors wrapping the grown box.
-fn cluster_boxes_with_jogs(
+/// How much broader (px) than its title a frame F1 grew to it may end
+/// up and still count as title-bound ([`SceneCluster::bold_title`]):
+/// float noise of the wrap, far below any channel's [`LANE_PAD`].
+const TITLE_BOUND_EPS: f64 = 0.5;
+
+/// The least width (px, on screen) of a block's frame in a block
+/// layout (B12 F1, F2): its title as it is drawn, bold
+/// ([`crate::layout::bold_text_width`]), with the chip's pad and a
+/// [`TITLE_INSET`] on both sides, so the title's ink lies whole inside
+/// its own frame. In TD / BT that is the frame's breadth, in LR / RL its
+/// length along the flow: the title runs along the screen's x axis in
+/// every direction. 0 for a block without a title. The layout reserves
+/// it (`layout::f1_breadths`, `layout::f1_flow_short`).
+///
+/// (Measured with [`text_width`], as the title's chip still is, a long
+/// title ran 6-15 px past its frame's right border in a browser.)
+pub(crate) fn title_fit_width(title: &str) -> f64 {
+    if title.trim().is_empty() {
+        return 0.0;
+    }
+    crate::layout::bold_text_width(title) * TITLE_SCALE + 8.0 + 2.0 * TITLE_INSET
+}
+
+/// How many displaced title-side entries a frame's jog room `jog` holds
+/// (B12 F2: [`crate::ortho::ROW_CLEAR`] for the first, a
+/// [`crate::ortho::TRACK_PITCH`] for each past it; 0 without jog room).
+pub(crate) fn jog_entries(jog: f64) -> usize {
+    if jog <= 0.0 {
+        return 0;
+    }
+    ((jog - crate::ortho::ROW_CLEAR) / crate::ortho::TRACK_PITCH).round() as usize + 1
+}
+
+/// The least breadth (px) of a block's frame whose title row takes `k`
+/// displaced entries (B12 F2, X2.2's breadth): its chip
+/// ([`crate::clearance::CHIP_INSET_X`], the title as it is drawn, bold,
+/// [`crate::clearance::CHIP_PAD_W`]) and, past the chip's clearance
+/// [`crate::ortho::CHIP_CLEAR`], a corner's rounding
+/// ([`crate::router::CORNER_R`]) to the first displaced column, a
+/// [`crate::ortho::TRACK_PITCH`] to each next one and [`LANE_PAD`] to
+/// the frame's side: where `ortho` crosses such an entry over the title
+/// side (its title sides take no column that would leave the frame). A
+/// frame its members make broader than its title but not that broad
+/// grows to it on the chip's far side ([`frame_boxes`]), and the layout
+/// reserves it (`layout::f1_breadths`): without the column the router
+/// took the entry round the chip and through the frame's lateral wall
+/// (blocks/t9-frames-8px drawn BT). A frame F1 grew to its title is not
+/// grown for them (not built: the 26.5 px it adds to a title-bound
+/// frame put the hub-fed row of `layout`'s narrowing test past its
+/// bound), and its entries still go round. 0 without displaced entries.
+pub(crate) fn title_column_width(title: &str, k: usize) -> f64 {
+    use crate::clearance::{CHIP_INSET_X, CHIP_PAD_W};
+    if k == 0 || title.trim().is_empty() {
+        return 0.0;
+    }
+    CHIP_INSET_X
+        + crate::layout::bold_text_width(title) * TITLE_SCALE
+        + CHIP_PAD_W
+        + crate::ortho::CHIP_CLEAR
+        + crate::router::CORNER_R
+        + (k - 1) as f64 * crate::ortho::TRACK_PITCH
+        + LANE_PAD
+}
+
+/// How far a frame's top border lies above its first row's box without
+/// jog room: its pad and its title strip (`frame_boxes`). Test-only.
+#[cfg(test)]
+pub(crate) fn frame_head_room(title: &str) -> f64 {
+    SUB_PAD + SUB_HEADER + title_extra(title)
+}
+
+/// The frame function of a block layout's first two steps (B12 F1,
+/// F2): per subgraph its box `(x, y, w, h)` from its own members'
+/// boxes (`nodes`, the scene's current positions), its title and the
+/// growth `jog` (by subgraph; missing entries 0) its block's displaced
+/// title-side entries take; deepest first, so an ancestor wraps the
+/// grown box. Also each subgraph's nesting depth.
+///
+/// - *F1*: the members' boxes (nested frames included) with
+///   [`SUB_PAD`] round them and the title strip ([`SUB_HEADER`], plus
+///   a line per `<br/>`) on the screen top. With `title_fit` (a block
+///   layout) a frame narrower than [`title_fit_width`] grows equally on
+///   both sides to it: a block's title is never cut while its frame can
+///   grow (0.38 cut a title wider than its block where the canvas
+///   ended, and a one-column LR block's title ran over its neighbour).
+///   A frame its members make broader than its title but too narrow
+///   for the columns its displaced entries cross the title side at is
+///   grown on the chip's far side to them ([`title_column_width`]).
+///   Not yet built with it: the layout keeps the gap beside a grown
+///   frame clear of the frame, not of the edge labels it places there
+///   (an LR frame grown along the flow can take a label in: B12 G3), and
+///   a frame grown to its title leaves no column past the chip for an
+///   entry the chip covers (the router takes it in through a lateral
+///   wall: X2.2's breadth for such a frame).
+/// - *F2*: the jog room, on the title side (`layout::title_jogs`): the
+///   track room in which the entries that cannot cross the title side
+///   beside the chip jog to their ports.
+///
+/// Nothing else is read: no edge path, no neighbouring frame (the
+/// growth over inner legs and the stop at siblings come after, in the
+/// caller). Without `title_fit` and without jog room it is
+/// [`cluster_raw_boxes`] to the last bit. Also, by subgraph, whether F1
+/// grew the frame to its title ([`SceneCluster::bold_title`]).
+fn frame_boxes(
     g: &Graph,
     nodes: &[SceneNode],
     jog: &[f64],
-) -> (Vec<RawBox>, Vec<usize>) {
+    title_fit: bool,
+) -> (Vec<RawBox>, Vec<usize>, Vec<bool>) {
     let nsub = g.subgraphs.len();
     let mut depth = vec![0usize; nsub];
     for i in 0..nsub {
@@ -6363,6 +6827,7 @@ fn cluster_boxes_with_jogs(
     let mut order: Vec<usize> = (0..nsub).collect();
     order.sort_by_key(|&i| std::cmp::Reverse(depth[i]));
     let mut boxes: Vec<RawBox> = vec![None; nsub];
+    let mut bound = vec![false; nsub];
     for &i in &order {
         let mut bb = Bbox::new();
         for &v in &g.subgraphs[i].nodes {
@@ -6385,14 +6850,39 @@ fn cluster_boxes_with_jogs(
         // (Summed in this order, as before the jog room: without one the
         // box is the same to the last bit.)
         let jog = jog.get(i).copied().unwrap_or(0.0);
+        let (mut x, mut w) = (minx - SUB_PAD, (maxx - minx) + 2.0 * SUB_PAD);
+        let least = if title_fit {
+            title_fit_width(&g.subgraphs[i].title)
+        } else {
+            0.0
+        };
+        if w < least {
+            x -= (least - w) / 2.0;
+            w = least;
+            bound[i] = true;
+        }
+        // A frame its members make broader than its title, with
+        // displaced entries: as broad as their columns past the chip
+        // (X2.2's breadth), grown on the chip's far side, so the chip and
+        // the members under it keep the places F2 counted them at. (A
+        // frame grown to its title is not grown for them: its title
+        // row's entries still go round, see `title_column_width`.)
+        let cols = if title_fit && !bound[i] {
+            title_column_width(&g.subgraphs[i].title, jog_entries(jog))
+        } else {
+            0.0
+        };
+        if cols > w {
+            w = cols;
+        }
         boxes[i] = Some((
-            minx - SUB_PAD,
+            x,
             miny - SUB_PAD - SUB_HEADER - title_extra(&g.subgraphs[i].title) - jog,
-            (maxx - minx) + 2.0 * SUB_PAD,
+            w,
             (maxy - miny) + 2.0 * SUB_PAD + SUB_HEADER + title_extra(&g.subgraphs[i].title) + jog,
         ));
     }
-    (boxes, depth)
+    (boxes, depth, bound)
 }
 
 /// Cluster boxes as paintable [`SceneCluster`]s, outermost-first.
@@ -6401,27 +6891,31 @@ fn route_clusters(g: &Graph, nodes: &[SceneNode]) -> Vec<SceneCluster> {
         return Vec::new();
     }
     let (boxes, depth) = cluster_raw_boxes(g, nodes);
-    clusters_of(g, &boxes, &depth)
+    clusters_of(g, &boxes, &depth, &[])
 }
 
-/// [`route_clusters`] with each frame grown over the back-edge lanes kept
-/// beside the members of the innermost box holding both their ends
-/// (`home`, index-parallel with `g.edges`; `edges` the scene's edges
-/// with those lanes drawn) and their labels, as `scene_clustered` grows
-/// its frames: [`route`] draws such a lane inside its own frame too,
-/// so it never leaves the box its two ends sit in (report §2.2), and a
-/// drag does not move the frame off it.
+/// [`route`]'s frames: the boxes of `base` ([`route_frame_base`]) with
+/// each frame grown over the back-edge lanes kept beside the members of
+/// the innermost box holding both their ends (`home`, index-parallel
+/// with `g.edges`; `edges` the scene's edges with those lanes drawn) and
+/// their labels, as `scene_clustered` grows its frames: [`route`] draws
+/// such a lane inside its own frame too, so it never leaves the box its
+/// two ends sit in (report §2.2), and a drag does not move the frame off
+/// it. Without such a lane, `base` as it stands.
 fn route_lane_clusters(
     g: &Graph,
-    nodes: &[SceneNode],
     edges: &[SceneEdge],
     home: &[bool],
+    (base, depth, bound): &FrameBase,
 ) -> Vec<SceneCluster> {
     if g.subgraphs.is_empty() {
         return Vec::new();
     }
-    let (mut boxes, depth) = cluster_raw_boxes(g, nodes);
-    let raw = boxes.clone();
+    if !home.iter().any(|&h| h) {
+        return clusters_of(g, base, depth, bound);
+    }
+    let mut boxes = base.clone();
+    let raw = base;
     let paths = node_cluster_paths(g);
     let horizontal = matches!(g.direction, Direction::LR | Direction::RL);
     for si in 0..g.subgraphs.len() {
@@ -6457,15 +6951,171 @@ fn route_lane_clusters(
         if !grew {
             continue;
         }
-        let (b0, b1) = stop_at_siblings(g, si, &raw, &boxes, horizontal, (b0, b1, l0, l1));
+        let (b0, b1) = stop_at_siblings(g, si, raw, &boxes, horizontal, (b0, b1, l0, l1));
         boxes[si] = Some(if horizontal {
             (x, b0, w, b1 - b0)
         } else {
             (b0, y, b1 - b0, h)
         });
     }
-    renest_boxes(g, &depth, &mut boxes);
-    clusters_of(g, &boxes, &depth)
+    renest_boxes(g, depth, &mut boxes);
+    // A frame F1 grew to its title stays title-bound only while what it
+    // covers besides leaves it no broader than the frame function made
+    // it, as in `scene_clustered`.
+    let bound: Vec<bool> = bound
+        .iter()
+        .zip(&boxes)
+        .zip(raw)
+        .map(|((&b, f), f0)| {
+            b && matches!((f, f0), (Some((_, _, w, _)), Some((_, _, w0, _))) if *w <= *w0 + TITLE_BOUND_EPS)
+        })
+        .collect();
+    clusters_of(g, &boxes, depth, &bound)
+}
+
+/// The frames [`route_built`] starts from, per subgraph: its box, its
+/// nesting depth and whether a block layout's F1 grew it to its title
+/// ([`SceneCluster::bold_title`]).
+type FrameBase = (Vec<RawBox>, Vec<usize>, Vec<bool>);
+
+/// [`route`]'s frames before any edge (B12 R1, steps (i) and (ii)):
+/// outside block mode the members' boxes ([`cluster_raw_boxes`]); in
+/// block mode (`blocks`: [`route_blocks`]) the frame function `scene()`
+/// draws with ([`frame_boxes`]): each frame as broad (TD / BT) or as
+/// long (LR / RL) as its title (F1), and grown on its title side by the
+/// jog room its displaced title-side entries take (F2), counted from the
+/// current boxes ([`route_title_jogs`]) where the layout counts it from
+/// its layers. A frame is then the same function of its own members,
+/// its title and the classes of its border links in all three entry
+/// points: at the scene's centres `route()` draws `scene()`'s frames
+/// along the flow and in their F1 breadth, and a drag that redraws a
+/// frame ([`route_partial`]) no longer drops it to its members' boxes
+/// (a frame grown to a long title lost up to 260 px on a 1 px drag).
+/// What `scene()` grows a frame by across the flow besides (the
+/// channels the layout laid inside it) `route()` does not draw yet: its
+/// frames can be narrower there (B12 F3, R3's inner legs).
+fn route_frame_base(g: &Graph, nodes: &[SceneNode], blocks: bool) -> FrameBase {
+    if !blocks {
+        let (boxes, depth) = cluster_raw_boxes(g, nodes);
+        let bound = vec![false; boxes.len()];
+        return (boxes, depth, bound);
+    }
+    let (f1, _, bound) = frame_boxes(g, nodes, &[], true);
+    let jog = route_title_jogs(g, nodes, &f1, &bound);
+    frame_boxes(g, nodes, &jog, true)
+}
+
+/// The jog room of each block's frame in [`route`] and [`route_partial`]
+/// (B12 F2, TD / BT; by subgraph, 0 for none, empty in LR / RL): what
+/// the static layout reserves for it (`layout::title_jogs`), counted
+/// from the current boxes instead of the layers. The block's *title row*
+/// is its direct members whose boxes meet, along the flow, the box of
+/// its member (at any depth) nearest the screen top: at the scene's
+/// centres the members of its title layer, and a 1 px drag changes it
+/// no more than it changes the layers. An entry is a drawn edge (not
+/// invisible) with one end on a member and the other outside the block,
+/// in a unit, at the two ends' common level, that lies wholly above the
+/// member's unit by [`FLOW_MIN_GAP`] (R2's test, on the F1 boxes `f1`):
+/// it crosses the title side. A member of the title row whose side the
+/// chip covers takes as many as the free stretch beside the chip holds
+/// ([`crate::layout::title_cap`]); the rest are displaced. With `k`
+/// displaced the frame grows by [`crate::ortho::ROW_CLEAR`] and a
+/// [`crate::ortho::TRACK_PITCH`] for each past the first. The chip is
+/// measured bold for a frame F1 grew to its title (`bound`), at the F1
+/// box's left: the layout counts from the same chip and the same entries
+/// (`layout::title_entries`), so at the scene's centres the two frames
+/// agree along the flow. (A run to a member behind the title row needs
+/// no jog room, B12 2.5 X2.5: neither counts it.)
+fn route_title_jogs(g: &Graph, nodes: &[SceneNode], f1: &[RawBox], bound: &[bool]) -> Vec<f64> {
+    use crate::clearance::{CHIP_INSET_X, CHIP_PAD_W};
+    if matches!(g.direction, Direction::LR | Direction::RL) {
+        return Vec::new();
+    }
+    let paths = node_cluster_paths(g);
+    let drawn: Vec<(usize, usize)> = g
+        .edges
+        .iter()
+        .filter(|e| e.from != e.to && !matches!(e.kind, EdgeKind::Invisible))
+        .map(|e| (e.from, e.to))
+        .collect();
+    let node_box = |v: usize| -> (f64, f64, f64, f64) {
+        let n = &nodes[v];
+        (n.x - n.w / 2.0, n.y - n.h / 2.0, n.w, n.h)
+    };
+    // The box of `v`'s unit at the level of the first `p` subgraphs of
+    // its path: the F1 box of the next one, or its own box.
+    let unit_box = |v: usize, p: usize| -> Option<(f64, f64, f64, f64)> {
+        match paths[v].get(p) {
+            Some(&s) => f1.get(s).copied().flatten(),
+            None => Some(node_box(v)),
+        }
+    };
+    // Whether `x`'s unit lies wholly above `m`'s at their common level.
+    let above = |x: usize, m: usize| -> bool {
+        let p = paths[x]
+            .iter()
+            .zip(&paths[m])
+            .take_while(|(a, b)| a == b)
+            .count();
+        match (unit_box(x, p), unit_box(m, p)) {
+            (Some(t), Some(s)) => t.1 + t.3 + FLOW_MIN_GAP <= s.1,
+            _ => false,
+        }
+    };
+    let mut jog = vec![0.0f64; g.subgraphs.len()];
+    for (c, sub) in g.subgraphs.iter().enumerate() {
+        let Some((fx, _, _, _)) = f1.get(c).copied().flatten() else {
+            continue;
+        };
+        if sub.title.trim().is_empty() {
+            continue;
+        }
+        let width = if bound.get(c).copied().unwrap_or(false) {
+            crate::layout::bold_text_width(&sub.title)
+        } else {
+            text_width(&sub.title)
+        } * TITLE_SCALE;
+        let chip = (
+            fx + CHIP_INSET_X - crate::ortho::CHIP_CLEAR,
+            fx + CHIP_INSET_X + width + CHIP_PAD_W + crate::ortho::CHIP_CLEAR,
+        );
+        let Some((t0, t1)) = (0..nodes.len())
+            .filter(|&v| paths[v].contains(&c))
+            .map(node_box)
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+            .map(|b| (b.1, b.1 + b.3))
+        else {
+            continue;
+        };
+        let on_row = |v: usize| {
+            let (_, y, _, h) = node_box(v);
+            y < t1 && y + h > t0
+        };
+        let mut k = 0usize;
+        for m in (0..nodes.len()).filter(|&v| paths[v].contains(&c)) {
+            let (mx, _, mw, _) = node_box(m);
+            // The drawn edges from above the block into `m`.
+            let border = drawn
+                .iter()
+                .filter_map(|&(a, b)| match (a == m, b == m) {
+                    (true, false) => Some(b),
+                    (false, true) => Some(a),
+                    _ => None,
+                })
+                .filter(|&x| !paths[x].contains(&c) && above(x, m))
+                .count();
+            if border == 0 {
+                continue;
+            }
+            if paths[m].last() == Some(&c) && on_row(m) && mx + mw > chip.0 && mx < chip.1 {
+                k += border.saturating_sub(crate::layout::title_cap((mx, mx + mw), chip));
+            }
+        }
+        if k > 0 {
+            jog[c] = crate::ortho::ROW_CLEAR + (k - 1) as f64 * crate::ortho::TRACK_PITCH;
+        }
+    }
+    jog
 }
 
 /// Where a back-edge lane's label lies across the flow, `(centre, half
@@ -6548,8 +7198,10 @@ fn renest_boxes(g: &Graph, depth: &[usize], boxes: &mut [RawBox]) {
     }
 }
 
-/// Per-subgraph boxes as paintable [`SceneCluster`]s, outermost-first.
-fn clusters_of(g: &Graph, boxes: &[RawBox], depth: &[usize]) -> Vec<SceneCluster> {
+/// Per-subgraph boxes as paintable [`SceneCluster`]s, outermost-first;
+/// those flagged in `bound` (by subgraph; missing = no) are grown to
+/// their titles ([`SceneCluster::bold_title`]).
+fn clusters_of(g: &Graph, boxes: &[RawBox], depth: &[usize], bound: &[bool]) -> Vec<SceneCluster> {
     let mut out: Vec<SceneCluster> = (0..g.subgraphs.len())
         .filter_map(|i| {
             boxes[i].map(|(x, y, w, h)| SceneCluster {
@@ -6560,6 +7212,7 @@ fn clusters_of(g: &Graph, boxes: &[RawBox], depth: &[usize]) -> Vec<SceneCluster
                 h,
                 title: g.subgraphs[i].title.clone(),
                 depth: depth[i],
+                bold_title: bound.get(i).copied().unwrap_or(false),
             })
         })
         .collect();
@@ -7420,7 +8073,8 @@ fn view_shift(routed: bool, fit: (f64, f64)) -> ((f64, f64), (f64, f64)) {
 /// on an axis that does not overflow, possibly after zero. So a dragged
 /// node stays where the host put it, nothing else moves, and a host maps
 /// pointer coordinates through the `viewBox` into scene coordinates for
-/// picking. An overflow under the 0.1 px the SVG is written to is none.
+/// picking. An overflow that rounds to 0 at the 0.1 px the SVG is written
+/// to is none.
 /// The accessible name is `"Flowchart diagram"`; use [`to_svg_titled`]
 /// for another diagram class (e.g. state machines).
 pub fn to_svg(sc: &Scene) -> String {
@@ -7554,7 +8208,7 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
             x, y, c.w, c.h, cs_fill, cs_stroke
         ));
         let title = fit_cluster_title(&sc.clusters, ci, maxx + MARGIN);
-        let tw = text_width(&title) * TITLE_SCALE;
+        let tw = title_text_width(c, &title);
         cluster_titles.push_str(&format!(
             "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{}\" rx=\"4\" \
              fill=\"{}\" fill-opacity=\"0.9\"/>\n",
@@ -9612,7 +10266,7 @@ fn cross_cluster_route(
 
 /// Smallest border gap along the flow (px) for which two boxes count as
 /// ranked one after the other; closer than that they sit side by side.
-const FLOW_MIN_GAP: f64 = 12.0;
+pub(crate) const FLOW_MIN_GAP: f64 = 12.0;
 /// Preferred tangent length of a free curve (px), capped at half the
 /// border gap so the curve never doubles back (G8).
 const TANGENT_MIN: f64 = 24.0;
@@ -14225,6 +14879,43 @@ mod tests {
     }
 
     #[test]
+    fn an_inked_title_head_reaches_the_bold_text_of_a_frame_not_grown_to_it() {
+        use crate::clearance::{CHIP_INSET_X, CHIP_PAD_W};
+        let mk = |bold_title: bool| SceneCluster {
+            id: "K".into(),
+            x: 0.0,
+            y: 0.0,
+            w: 400.0,
+            h: 80.0,
+            title: "Order processing".into(),
+            depth: 0,
+            bold_title,
+        };
+        // `to_svg` paints the title bold from half the chip's padding in.
+        let ink_end = |c: &SceneCluster| {
+            c.x + CHIP_INSET_X
+                + CHIP_PAD_W / 2.0
+                + crate::layout::bold_text_width(&c.title) * TITLE_SCALE
+        };
+        // Not grown to its title: the chip is measured at the regular
+        // width and ends short of the bold text; the inked head reaches it.
+        let plain = [mk(false)];
+        let chip = title_head(&plain, 0, f64::INFINITY);
+        let inked = title_head_inked(&plain, 0, f64::INFINITY);
+        assert!(chip.2 < ink_end(&plain[0]), "{chip:?}");
+        assert!((inked.2 - ink_end(&plain[0])).abs() < 1e-9, "{inked:?}");
+        assert_eq!((inked.0, inked.1, inked.3), (chip.0, chip.1, chip.3));
+        // Grown to its title: the chip is measured bold and already holds
+        // the text and its padding; the inked head is the chip.
+        let grown = [mk(true)];
+        assert_eq!(
+            title_head_inked(&grown, 0, f64::INFINITY),
+            title_head(&grown, 0, f64::INFINITY)
+        );
+        assert!(title_head(&grown, 0, f64::INFINITY).2 > ink_end(&grown[0]));
+    }
+
+    #[test]
     fn cut_title_lines_drop_a_dangling_separator() {
         let mk = |id: &str, x: f64, title: &str| SceneCluster {
             id: id.into(),
@@ -14234,6 +14925,7 @@ mod tests {
             h: 80.0,
             title: title.into(),
             depth: 0,
+            bold_title: false,
         };
         // The cut falls right after " · ": without the trim the line
         // would read "ALPHA BRAV ·…".
@@ -14254,20 +14946,29 @@ mod tests {
     #[test]
     fn a_title_overflowing_its_frame_onto_the_canvas_stays_whole() {
         let long = "a long subgraph title, wider than its box";
-        let s = scene(
+        let g = parse(&format!(
             // The node label kept on one line (it would wrap at the
             // default width), so it reaches past the title.
-            &parse(&format!(
-                "%%{{init: {{\"flowchart\": {{\"wrappingWidth\": 2000}}}}}}%%\n\
-                 flowchart TB\nsubgraph R [\"{long}\"]\n  r\nend\n\
-                 r --> w[\"a node label that is far wider than the subgraph title above it, so \
-                 the canvas reaches well past the title\"]"
-            ))
-            .unwrap(),
-        );
+            "%%{{init: {{\"flowchart\": {{\"wrappingWidth\": 2000}}}}}}%%\n\
+             flowchart TB\nsubgraph R [\"{long}\"]\n  r\nend\n\
+             r --> w[\"a node label that is far wider than the subgraph title above it, so \
+             the canvas reaches well past the title\"]"
+        ))
+        .unwrap();
+        // Outside a block layout the frame keeps its members' breadth and
+        // the title runs past it onto the canvas, whole.
+        let s = crate::levels::with_blocks(false, || scene(&g));
         let ri = s.clusters.iter().position(|c| c.id == "R").unwrap();
         let c = &s.clusters[ri];
         assert!(text_width(long) * TITLE_SCALE + 8.0 > c.w - 2.0 * TITLE_INSET);
+        assert_eq!(fit_cluster_title(&s.clusters, ri, canvas_right(&s)), long);
+        assert!(to_svg(&s).contains(&format!("{long}</text>")));
+        // Laid out as blocks (`r --> w` crosses the frame) the frame
+        // grows to its title instead (B12 F1): whole, inside its frame.
+        let s = crate::levels::with_blocks(true, || scene(&g));
+        let ri = s.clusters.iter().position(|c| c.id == "R").unwrap();
+        let c = &s.clusters[ri];
+        assert!(text_width(long) * TITLE_SCALE + 8.0 <= c.w - 2.0 * TITLE_INSET + 0.01);
         assert_eq!(fit_cluster_title(&s.clusters, ri, canvas_right(&s)), long);
         assert!(to_svg(&s).contains(&format!("{long}</text>")));
     }

@@ -1356,8 +1356,19 @@ pub(crate) fn masks(
             CASING_GAP_STROKES * stroke_width(&sc.edges[u])
         };
         let r = stroke_width(&sc.edges[o]) / 2.0 + air + CASING_HALO;
-        per.entry(u).or_default().push((t(p), r));
+        per.entry(u).or_default().push((p, r));
     }
+    if sc.block_layout {
+        for (&u, holes) in per.iter_mut() {
+            if let Some(line) = lines[u].as_deref() {
+                join_cluster_gaps(line, holes, JOIN_END_HEADS * edge_head_len(&sc.edges[u]));
+            }
+        }
+    }
+    let per: BTreeMap<usize, Vec<(Pt, f64)>> = per
+        .into_iter()
+        .map(|(u, h)| (u, h.into_iter().map(|(p, r)| (t(p), r)).collect()))
+        .collect();
     let mut defs = String::new();
     for (u, holes) in per {
         let pts = lines[u].as_deref().unwrap_or_default();
@@ -1392,6 +1403,111 @@ pub(crate) fn masks(
     Masks { defs, attr }
 }
 
+/// Head lengths ([`edge_head_len`]) of stroke at each end of an
+/// under-line that [`join_cluster_gaps`] never cuts into: two gaps near
+/// an end keep the piece between them, so the end glyph still hangs on
+/// a visible run of its own line. Joined that close, the head was left
+/// alone beside other lines' strokes and read as theirs (a diagonal into
+/// a member drawn TD as blocks, its last 30 px cut away).
+const JOIN_END_HEADS: f64 = 2.0;
+
+/// In a block layout's scene, the gaps one under-line takes at crossings
+/// closer than [`CROSS_CLUSTER`] along it (one cluster, where it has one
+/// role) are cut as one: the stroke between them is cut too, with holes
+/// along the line no further apart than half a hole's radius. Two gaps
+/// round a corner left the corner's stroke a few px long between them,
+/// a fragment detached from either leg (a frame's pin under an entry
+/// that crosses it twice round its corner, the pin of a member's block
+/// drawn BT). `holes` are (crossing, radius) in scene coordinates, on
+/// `line` (the under-line as painted); new holes are added after them.
+///
+/// Two bounds keep a joined gap a crossing's gap and not a missing
+/// stretch of line: one joined run spans at most [`CROSS_CLUSTER`] from
+/// its first crossing to its last (a run of crossings each a little
+/// closer than that is cut in pieces of one cluster, not as one gap of
+/// any length), and no join reaches within `keep` px of either end of
+/// the line ([`JOIN_END_HEADS`]).
+///
+/// Only a block layout's scene joins: a flat graph's and a compound
+/// (subgraph `direction`) scene keep one hole per crossing, as they
+/// always did, so the default build paints byte for byte as before while
+/// block layouts sit behind their switch. When block layouts become the
+/// default (B12.16) this is to be one rule for every flowchart scene, or
+/// the split kept and said so where the switch is flipped.
+fn join_cluster_gaps(line: &[Pt], holes: &mut Vec<(Pt, f64)>, keep: f64) {
+    if holes.len() < 2 || line.len() < 2 {
+        return;
+    }
+    // Where along the line (px) each hole's crossing lies.
+    let starts: Vec<f64> = std::iter::once(0.0)
+        .chain(line.windows(2).scan(0.0, |acc, w| {
+            *acc += dist(w[0], w[1]);
+            Some(*acc)
+        }))
+        .collect();
+    let len = starts[starts.len() - 1];
+    let along = |p: Pt| -> f64 {
+        let mut best = (f64::INFINITY, 0.0);
+        for (k, w) in line.windows(2).enumerate() {
+            let (a, b) = (w[0], w[1]);
+            let l2 = (b.0 - a.0).powi(2) + (b.1 - a.1).powi(2);
+            let f = if l2 > 0.0 {
+                (((p.0 - a.0) * (b.0 - a.0) + (p.1 - a.1) * (b.1 - a.1)) / l2).clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
+            let q = (a.0 + f * (b.0 - a.0), a.1 + f * (b.1 - a.1));
+            let d = dist(p, q);
+            if d < best.0 {
+                best = (d, starts[k] + f * l2.sqrt());
+            }
+        }
+        best.1
+    };
+    let at = |s: f64| -> Pt {
+        let k = starts.partition_point(|&x| x <= s).clamp(1, line.len() - 1) - 1;
+        let len = starts[k + 1] - starts[k];
+        let f = if len > 0.0 {
+            ((s - starts[k]) / len).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        let (a, b) = (line[k], line[k + 1]);
+        (a.0 + f * (b.0 - a.0), a.1 + f * (b.1 - a.1))
+    };
+    let mut on: Vec<(f64, f64)> = holes.iter().map(|&(p, r)| (along(p), r)).collect();
+    on.sort_by(|a, b| a.0.total_cmp(&b.0));
+    // Where along the line the joined run the next pair would extend
+    // began (its first crossing).
+    let mut run = on[0].0;
+    for w in on.windows(2) {
+        let ((s0, r0), (s1, r1)) = (w[0], w[1]);
+        let join = s1 - s0 < CROSS_CLUSTER
+            && s1 - run < CROSS_CLUSTER
+            && s0 - r0 >= keep
+            && s1 + r1 <= len - keep;
+        if s1 - s0 <= r0 + r1 {
+            // The two holes meet: already one gap, which the run goes on
+            // through while it stays within a cluster.
+            if s1 - run >= CROSS_CLUSTER {
+                run = s1;
+            }
+            continue;
+        }
+        if !join {
+            run = s1;
+            continue;
+        }
+        let r = r0.min(r1);
+        let step = r / 2.0;
+        let mut s = s0 + step;
+        while s < s1 - step / 2.0 {
+            holes.push((at(s), r));
+            s += step;
+        }
+    }
+}
+
 /// Stable hash of what the scene draws (ids and edge geometry).
 fn scene_hash(sc: &Scene) -> String {
     let mut key = DefsKey::new();
@@ -1421,6 +1537,113 @@ mod tests {
     use crate::scene::{route, scene, to_svg};
 
     const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/quality");
+
+    #[test]
+    fn gaps_of_one_cluster_on_a_line_are_cut_as_one() {
+        // An L: right along y = 50 to its corner at (40, 50), then up.
+        // Two crossings 20 px apart along it, round the corner: the
+        // stretch between them is cut with them (holes no further apart
+        // than half a radius), so no piece of the corner is left alone.
+        let line = [(0.0, 50.0), (40.0, 50.0), (40.0, 0.0)];
+        let mut holes = vec![(30.0, 50.0, 5.0), (40.0, 40.0, 5.0)]
+            .into_iter()
+            .map(|(x, y, r)| ((x, y), r))
+            .collect::<Vec<_>>();
+        join_cluster_gaps(&line, &mut holes, 0.0);
+        assert!(holes.len() > 2, "{holes:?}");
+        for k in 0..=40 {
+            let s = 30.0 + k as f64 * 0.5;
+            let p = if s <= 40.0 {
+                (s, 50.0)
+            } else {
+                (40.0, 90.0 - s)
+            };
+            assert!(
+                holes.iter().any(|&(q, r)| dist(p, q) <= r),
+                "{p:?} left uncut: {holes:?}"
+            );
+        }
+        // Crossings a cluster or more apart keep their own gaps.
+        let mut apart = vec![((10.0, 50.0), 5.0), ((40.0, 35.0), 5.0)];
+        join_cluster_gaps(&line, &mut apart, 0.0);
+        assert_eq!(apart.len(), 2);
+    }
+
+    #[test]
+    fn a_joined_gap_spans_one_cluster_at_most() {
+        // Six crossings 12 px apart down one straight line, each pair
+        // closer than a cluster: chained pair by pair they were cut as
+        // one gap 60 px long and more. A joined run spans one cluster
+        // at most, so the line keeps visible pieces along the run.
+        let line = [(0.0, 0.0), (0.0, 200.0)];
+        let mut holes: Vec<(Pt, f64)> = (0..6)
+            .map(|k| ((0.0, 50.0 + 12.0 * k as f64), 5.0))
+            .collect();
+        join_cluster_gaps(&line, &mut holes, 0.0);
+        let cut = |y: f64| holes.iter().any(|&(q, r)| dist((0.0, y), q) <= r);
+        // The longest stretch cut without a break, sampled every 0.5 px.
+        let (mut longest, mut from) = (0.0_f64, None::<f64>);
+        for k in 0..=400 {
+            let y = k as f64 * 0.5;
+            match (cut(y), from) {
+                (true, None) => from = Some(y),
+                (false, Some(f)) => {
+                    longest = longest.max(y - f);
+                    from = None;
+                }
+                _ => {}
+            }
+        }
+        assert!(longest > 2.0 * 12.0, "the first pair is joined: {longest}");
+        assert!(
+            longest <= CROSS_CLUSTER + 2.0 * 5.0 + 0.5,
+            "one gap {longest} px long: {holes:?}"
+        );
+    }
+
+    #[test]
+    fn a_joined_gap_keeps_off_the_ends_of_its_line() {
+        // Two crossings 15 px apart, the later 14 px before the line's
+        // end (its head): joining them would leave the head alone past
+        // a 25 px cut. Within `keep` of an end nothing is joined; the
+        // same pair further up the line is.
+        let line = [(0.0, 0.0), (0.0, 100.0)];
+        let mut near = vec![((0.0, 71.0), 5.0), ((0.0, 86.0), 5.0)];
+        join_cluster_gaps(&line, &mut near, 2.0 * 11.0);
+        assert_eq!(near.len(), 2, "{near:?}");
+        let mut far = vec![((0.0, 41.0), 5.0), ((0.0, 56.0), 5.0)];
+        join_cluster_gaps(&line, &mut far, 2.0 * 11.0);
+        assert!(far.len() > 2, "{far:?}");
+    }
+
+    #[test]
+    fn a_block_layouts_under_line_keeps_no_fragment_between_two_gaps() {
+        // A frame's pin crossed twice round its corner by an entry that
+        // goes round the lower frame's title (drawn BT as blocks): its
+        // two gaps used to leave the corner's stroke a few px long
+        // between them, detached from either leg. In a block layout the
+        // cluster is cut as one gap; the default layout paints as it
+        // always did.
+        let src = "flowchart BT\n    subgraph A[Order processing]\n        a0[a0]\n        a1[a1]\n    end\n    subgraph B[Order processing two]\n        b0[b0]\n        b1[b1]\n    end\n    a0 --> b0\n    a0 --> b1\n    a1 --> b0\n    p[p] --> B\n    q[q] --> A\n    q --> a1\n";
+        let g = parse(src).expect("parses");
+        let sc = crate::levels::with_blocks(true, || scene(&g));
+        assert!(sc.block_layout);
+        let svg = to_svg(&sc);
+        let pin = sc
+            .edges
+            .iter()
+            .position(|e| e.from == "p" && e.to == "B")
+            .expect("the pin");
+        let mask = svg
+            .split("<mask ")
+            .find(|m| m.contains(&format!("-x{pin}\"")))
+            .expect("the pin is cut");
+        let mask = &mask[..mask.find("</mask>").expect("closed")];
+        assert!(mask.matches("<circle").count() > 2, "{mask}");
+        let off = crate::levels::with_blocks(false, || scene(&g));
+        assert!(!off.block_layout);
+    }
+
     /// Least share (numerator, denominator) of the fixtures' crossings
     /// of a back-edge with a forward edge that put the back-edge under.
     /// Measured: 142 of 248 (57%). A layout change that moves crossings

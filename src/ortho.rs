@@ -548,7 +548,13 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
             for l in [r.2, r.3] {
                 walls.push(((r.0, r.1), (l - clear, l + clear)));
             }
-            let h = flow_rect(dir, crate::scene::title_head(&sc.clusters, ci, right));
+            // A block layout's chip reaches its title's ink, as every
+            // stage of its static scene measures it
+            // ([`crate::scene::title_head_measured`]).
+            let h = flow_rect(
+                dir,
+                crate::scene::title_head_measured(&sc.clusters, ci, right, cx.blocks),
+            );
             walls.push(((h.0, h.1), (h.2 - CHIP_CLEAR, h.3 + CHIP_CLEAR)));
         }
     }
@@ -857,6 +863,7 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
             frames: &frames,
             home: &home,
             blocks: cx.blocks,
+            axis_ends: cx.axis_ends,
             load: &load,
             own,
             head_leg,
@@ -1185,6 +1192,9 @@ struct Along<'a> {
     /// A block layout ([`Ctx::blocks`]): a step keeps out of the frames
     /// that hold neither of its ends ([`plan_jog`]).
     blocks: bool,
+    /// A block layout's scene, static or routed ([`Ctx::axis_ends`]): a
+    /// run reaching its port within `ALIGNED` of its line is laid on it.
+    axis_ends: bool,
     /// The spans of the jogs each gap holds so far.
     load: &'a std::cell::RefCell<Vec<Vec<(f64, f64)>>>,
     /// The edge's own end nodes (never in its way).
@@ -1331,9 +1341,10 @@ fn breadth_stubs(sc: &Scene, cx: &Ctx, dir: Direction, boxes: &[Rect]) -> Vec<Op
 
 /// A frame's title side as [`TitleSides`] reads it (flow coordinates):
 /// the frame's breadth span, the flow coordinate of its title side,
-/// which way along the flow the frame lies from it, and the chip's
-/// breadth span widened by [`CHIP_CLEAR`].
-type TitleSide = (f64, f64, f64, f64, (f64, f64));
+/// which way along the flow the frame lies from it, the chip's breadth
+/// span widened by [`CHIP_CLEAR`], and the breadth its first displaced
+/// column may take ([`TitleSides::sides`]).
+type TitleSide = (f64, f64, f64, f64, (f64, f64), f64);
 
 /// The title sides of a block layout's frames (TD / BT; B12 2.8,
 /// "Title-clear entries", rule 2 in its smallest form): an edge end on a
@@ -1353,9 +1364,17 @@ type TitleSide = (f64, f64, f64, f64, (f64, f64));
 /// would leave the frame is not taken: the edge is drawn as before.
 struct TitleSides {
     /// Per frame: its breadth span, the flow coordinate of its title
-    /// side, which way along the flow the frame lies from it, and the
+    /// side, which way along the flow the frame lies from it, the
     /// chip's breadth span widened by [`CHIP_CLEAR`] (flow coordinates),
-    /// when it has a title on a flow side.
+    /// when it has a title on a flow side, and where its displaced
+    /// columns start: a corner's rounding past that, and at least
+    /// [`CHIP_CLEAR`] past the title's bold ink
+    /// ([`crate::scene::title_head_measured`]), as every other stage of
+    /// a block layout measures the chip. (Which ends are displaced is
+    /// judged at the chip: judged at the ink as well, the ends of a fan
+    /// into a block whose side reaches past the chip but not past the
+    /// ink were displaced, and quality/dense-td drawn TD took a crossing
+    /// and a line through a node.)
     sides: Vec<Option<TitleSide>>,
     /// The displaced crossings: (edge, frame) -> the column it takes.
     cols: std::collections::BTreeMap<(usize, usize), f64>,
@@ -1377,7 +1396,13 @@ impl TitleSides {
                     return None;
                 }
                 let r = frames[ci];
-                let h = flow_rect(dir, crate::scene::title_head(&sc.clusters, ci, right));
+                let head = |inked| {
+                    flow_rect(
+                        dir,
+                        crate::scene::title_head_measured(&sc.clusters, ci, right, inked),
+                    )
+                };
+                let (h, ink) = (head(false), head(true));
                 // The side the chip sits on, and which way along the flow
                 // the frame lies from it.
                 let (t, inward) = if (h.2 - r.2).abs() <= (r.3 - h.3).abs() {
@@ -1385,7 +1410,19 @@ impl TitleSides {
                 } else {
                     (r.3, -1.0)
                 };
-                Some((r.0, r.1, t, inward, (h.0 - CHIP_CLEAR, h.1 + CHIP_CLEAR)))
+                // The first column: a corner's rounding past the chip's
+                // clearance, so the turn onto the track under the chip
+                // stays out of the chip's ring, and never nearer the
+                // title's ink than its clearance.
+                let start = (h.1 + CHIP_CLEAR + crate::router::CORNER_R).max(ink.1 + CHIP_CLEAR);
+                Some((
+                    r.0,
+                    r.1,
+                    t,
+                    inward,
+                    (h.0 - CHIP_CLEAR, h.1 + CHIP_CLEAR),
+                    start,
+                ))
             })
             .collect();
         // Every displaced crossing, by frame: (breadth it replaces, edge);
@@ -1411,7 +1448,7 @@ impl TitleSides {
             // entries of a fan into a narrow block's partly shaded
             // member crossed each other above it (dense-td's `n43`).
             let shaded = |end: Option<EndRef>, k: usize| {
-                let (Some(EndRef::Node(v)), Some((_, _, _, _, (c0, c1)))) = (end, out.sides[k])
+                let (Some(EndRef::Node(v)), Some((_, _, _, _, (c0, c1), _))) = (end, out.sides[k])
                 else {
                     return false;
                 };
@@ -1436,23 +1473,28 @@ impl TitleSides {
             }
         }
         for (k, mut v) in by {
-            let Some((_, f1, _, _, (_, c1))) = out.sides[k] else {
+            let Some((_, f1, _, _, _, start)) = out.sides[k] else {
                 continue;
             };
-            let taken = taken.remove(&k).unwrap_or_default();
+            let mut taken = taken.remove(&k).unwrap_or_default();
+            taken.sort_by(f64::total_cmp);
             v.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
             // The nearest free columns past the chip, in the order of
             // the breadths they replace, a track apart and a track off
-            // the side's other crossings; the first a corner's rounding
-            // past the chip's clearance, so the turn onto the track under
-            // the chip stays out of the chip's ring.
-            let mut next = c1 + crate::router::CORNER_R;
-            for &(_, i) in &v {
-                let mut col = next;
-                while let Some(&o) = taken.iter().find(|&&o| (o - col).abs() < TRACK_PITCH) {
-                    col = o + TRACK_PITCH;
-                }
+            // the side's other crossings, from the side's `start`.
+            let mut next = start;
+            for &(b, i) in &v {
+                let col = column_clear_of(next, &taken);
                 if col > f1 - crate::scene::LANE_PAD {
+                    break;
+                }
+                // Nor past another edge's crossing of the side between
+                // its port and the column: its step back to the port
+                // would cross that edge's run inside the frame
+                // (blocks/lr drawn BT, `cdn -> gateway` out past
+                // `ship -> pager` and back over it and `cart -> pager`).
+                // Drawn as before; so is every entry after it.
+                if taken.iter().any(|&o| (o - b) * (o - col) < 0.0) {
                     break;
                 }
                 out.cols.entry((i, k)).or_insert(col);
@@ -1478,7 +1520,7 @@ impl TitleSides {
     fn all_crossings(&self, pts: &[Pt]) -> Vec<(usize, f64, bool)> {
         let mut out = Vec::new();
         for (k, side) in self.sides.iter().enumerate() {
-            let Some((f0, f1, t, inward, (c0, c1))) = *side else {
+            let Some((f0, f1, t, inward, (c0, c1), _)) = *side else {
                 continue;
             };
             let last = pts.len().saturating_sub(1);
@@ -1525,7 +1567,7 @@ impl TitleSides {
             }
             let (a, b) = (w[0], w[1]);
             for (k, side) in self.sides.iter().enumerate() {
-                let (Some((_, _, t, _, _)), Some(&col)) = (side, self.cols.get(&(i, k))) else {
+                let (Some((_, _, t, _, _, _)), Some(&col)) = (side, self.cols.get(&(i, k))) else {
                     continue;
                 };
                 if (a.1 - t) * (b.1 - t) < 0.0 && self.crossings(&[a, b]).iter().any(|c| c.0 == k) {
@@ -1807,6 +1849,33 @@ fn flow_path(
             jogs.push(plan_jog(cx, edge, cur, (q, port, gq), h, lab));
             out.push(Corner::Jog(k, cur.0 .0));
             out.push(Corner::Jog(k, q.0));
+        } else if cx.axis_ends && port && (q.0 - cur.0 .0).abs() > EPS {
+            // In a block layout (its static scene, and `route()` with its
+            // frames, so a drag draws it as the scene does) a run that
+            // reaches its port within `ALIGNED` of its line is laid on
+            // the port's line from its last turn on: the ports stage
+            // spread the end a fraction of a px off the chain's last
+            // column, and a run left on the column met its head at a
+            // slant, the painted spline kinked under it (dense-lr
+            // `n22 -.-> n44`, 0.5 px over 316 px, `idiom_spline` and
+            // `end_tilt_max` 0.8 deg in the static `DEFECT_BASELINE`;
+            // `route()` of the public fixture drawn LR left `REG ==> ORD`
+            // 0.56 px off its port). Its own source port stays where it
+            // is.
+            let first = out.len() == 1;
+            match out.last_mut() {
+                Some(Corner::Jog(k, b)) => {
+                    *b = q.0;
+                    let j = &mut jogs[*k];
+                    if h > 0.0 {
+                        j.hi_at = q.0;
+                    } else {
+                        j.lo_at = q.0;
+                    }
+                }
+                Some(Corner::At(c)) if !first => c.0 = q.0,
+                _ => {}
+            }
         }
         cur = (q, port, gq);
     }
@@ -2349,6 +2418,253 @@ pub(crate) fn channel_sizes(steps: &[(f64, f64)]) -> Vec<usize> {
     sizes
 }
 
+/// The first column at or past `from` that lies a [`TRACK_PITCH`] or
+/// more from every one of `taken` (ascending): a column within a pitch
+/// of one moves on to a pitch past it, which can bring it within a
+/// pitch of the next. One pass over `taken` in order finds it: the
+/// column only moves forward, so a crossing it has passed stays behind
+/// it, and once it stands a pitch short of the next crossing it stands
+/// clear of every later one. (Searched again from the start after each
+/// move until nothing was near, as `TitleSides::of` did, the loop
+/// never ended once `o + TRACK_PITCH` rounded back within a pitch of
+/// `o`: at a breadth of 1e16 the sum loses the half pixel. The result
+/// is the same column wherever that search ended.)
+fn column_clear_of(from: f64, taken: &[f64]) -> f64 {
+    debug_assert!(taken.windows(2).all(|w| w[0].total_cmp(&w[1]).is_le()));
+    let mut col = from;
+    for &o in taken {
+        if (o - col).abs() < TRACK_PITCH {
+            col = o + TRACK_PITCH;
+        }
+    }
+    col
+}
+
+/// `group` (a channel's jogs, [`place_tracks`]) split into the sets
+/// whose rooms chain, in a block layout (`blocks`, [`Ctx::blocks`]: the
+/// static scene's; `route()` and `route_partial()` stack a channel as
+/// one set until they carry the block paths, B12.13); else as it is.
+///
+/// A jog's room here is its plain room ([`Jog::plain`]), the widest
+/// [`place_channel`] may give it, not the room above its label it has
+/// now: a channel drops its steps back to their plain rooms when one of
+/// them is not drawn above its label or their order does not hold, and
+/// orders them by where they turn so their legs do not cross. Split by
+/// the rooms above their labels, a labelled step left alone in its set
+/// kept that room beside an unlabelled one, and two sets were stacked
+/// in the order of their rooms instead of their turns: a two-way pair
+/// between two blocks crossed, `uncross` swapped its ends and it was
+/// drawn as two stepped Zs, one up the target block's wall
+/// (blocks/twoway-noted drawn LR; a labelled return between a hub's
+/// labelled fan's steps went under the fan's last one, across its
+/// leg). Sets whose plain rooms do not chain lie apart whatever their
+/// channels do (a frame's border or title strip between them: the jog
+/// room's steps and the steps between two stacked frames).
+///
+/// Two steps chain only where they would stack: their spans meet (within
+/// a track's pitch, as a channel's do) and so do their rooms (within the
+/// least pitch). A step whose room reaches past a frame's wall, beside
+/// the frame, chained the frame's jog room to the gap above it through
+/// rooms alone, though it met neither of the steps it chained across:
+/// stacked as one set, a displaced entry's step in the jog room ordered
+/// among the gap's steps clamped the gap's steps on its far side onto
+/// one track at their rooms' end, two long runs on top of each other
+/// that the router took round the frame's lateral wall (drawn BT: the
+/// exit of a title-row member wholly under its frame's chip, displaced
+/// past the chip, then along the gap above the frame on the run of
+/// another block's link to a frame further up; see
+/// `tests::a_jog_room_step_does_not_chain_a_gaps_steps_onto_one_track`).
+fn split_by_room(jogs: &[Jog], group: Vec<usize>, blocks: bool) -> Vec<Vec<usize>> {
+    if !blocks || group.len() < 2 {
+        return vec![group];
+    }
+    let room = |k: usize| jogs[k].plain.0;
+    let n = group.len();
+    let mut root: Vec<usize> = (0..n).collect();
+    fn find(root: &mut [usize], mut a: usize) -> usize {
+        while root[a] != a {
+            root[a] = root[root[a]];
+            a = root[a];
+        }
+        a
+    }
+    for a in 0..n {
+        for b in a + 1..n {
+            let (sa, sb) = (jogs[group[a]].span(), jogs[group[b]].span());
+            let (ra, rb) = (room(group[a]), room(group[b]));
+            let spans = sa.0 < sb.1 + TRACK_PITCH && sb.0 < sa.1 + TRACK_PITCH;
+            let rooms = ra.0 < rb.1 + TRACK_PITCH_MIN && rb.0 < ra.1 + TRACK_PITCH_MIN;
+            if spans && rooms {
+                let (x, y) = (find(&mut root, a), find(&mut root, b));
+                root[x.max(y)] = x.min(y);
+            }
+        }
+    }
+    let mut out: Vec<Vec<usize>> = Vec::new();
+    let mut at: Vec<Option<usize>> = vec![None; n];
+    for a in 0..n {
+        let r = find(&mut root, a);
+        match at[r] {
+            Some(s) => out[s].push(group[a]),
+            None => {
+                at[r] = Some(out.len());
+                out.push(vec![group[a]]);
+            }
+        }
+    }
+    // Each set in the order the jogs had (their gap's, then span's).
+    for set in &mut out {
+        set.sort_by(|&a, &b| {
+            jogs[a]
+                .span()
+                .0
+                .total_cmp(&jogs[b].span().0)
+                .then(a.cmp(&b))
+        });
+    }
+    out
+}
+
+/// Put one channel's jogs (`group`, two or more) on their tracks
+/// ([`place_tracks`]).
+fn place_channel(jogs: &mut [Jog], group: Vec<usize>, blocks: bool) {
+    let lo = group
+        .iter()
+        .map(|&k| jogs[k].span().0)
+        .fold(f64::INFINITY, f64::min);
+    let hi = group
+        .iter()
+        .map(|&k| jogs[k].span().1)
+        .fold(f64::NEG_INFINITY, f64::max);
+    // libavoid's key: a jog turns towards the low flow side at the end
+    // it meets the run from there, towards the high side at the other.
+    let key = |j: &Jog| -> f64 {
+        let (a, b) = (j.lo_at, j.hi_at);
+        if (a - b).abs() < EPS {
+            0.0
+        } else if a < b {
+            (lo + hi) - (a + b)
+        } else {
+            (a + b) - (lo + hi)
+        }
+    };
+    let ordered = |jogs: &[Jog]| {
+        let mut order = group.clone();
+        order.sort_by(|&x, &y| {
+            key(&jogs[x])
+                .total_cmp(&key(&jogs[y]))
+                .then(jogs[x].want.total_cmp(&jogs[y].want))
+                .then(jogs[x].edge.cmp(&jogs[y].edge))
+                .then(x.cmp(&y))
+        });
+        order
+    };
+    // A step drawn above its label nests with the others only when
+    // every step of its channel does, and when their rooms hold the
+    // channel's order at the least pitch: one under its label among
+    // steps in the middle of the gap would leave the order that keeps
+    // their turns from crossing, and a room that ends above the
+    // place its order asks for clamped two steps onto one track, which
+    // the router then rerouted one by one, across each other
+    // (x1_hub_td: `H -->|beta| B` and `H -->|gamma long label here| C`
+    // crossed twice, the labelled fan's longest label ending its
+    // step's room a track above the two before it).
+    let mut order = ordered(jogs);
+    if blocks {
+        part_runs(&mut order, jogs);
+    }
+    let holds = |order: &[usize], jogs: &[Jog]| {
+        let mut last = f64::NEG_INFINITY;
+        order.iter().all(|&k| {
+            let (lo, hi) = jogs[k].room;
+            last = lo.max(last + TRACK_PITCH_MIN);
+            last <= hi + EPS
+        })
+    };
+    if group.iter().any(|&k| !jogs[k].above_label) || !holds(&order, jogs) {
+        for &k in &group {
+            let j = &mut jogs[k];
+            (j.room, j.want, j.above_label) = (j.plain.0, j.plain.1, false);
+            j.at = j.want;
+        }
+        order = ordered(jogs);
+        if blocks {
+            part_runs(&mut order, jogs);
+        }
+    }
+    // The span the channel's tracks share: from the lowest room's
+    // start to the highest room's end, each track then kept in its
+    // own jog's room.
+    let r_lo = order
+        .iter()
+        .map(|&k| jogs[k].room.0)
+        .fold(f64::INFINITY, f64::min);
+    let r_hi = order
+        .iter()
+        .map(|&k| jogs[k].room.1)
+        .fold(f64::NEG_INFINITY, f64::max);
+    let m = order.len();
+    // A step whose run carries its label keeps the label's half and
+    // its gap off the tracks beside it, where the channel has room
+    // for that (a hub's labelled branch stepped a pitch from its
+    // neighbour's run, and the label stage moved the label off its
+    // run onto the corner).
+    let half = |k: usize| {
+        let j = &jogs[k];
+        if j.label_half > 0.0 && !j.above_label {
+            (j.label_half + LABEL_SEP).max(TRACK_PITCH / 2.0)
+        } else {
+            TRACK_PITCH / 2.0
+        }
+    };
+    let mut extra: Vec<f64> = vec![0.0; m];
+    for r in 1..m {
+        extra[r] = extra[r - 1] + half(order[r - 1]) + half(order[r]) - TRACK_PITCH;
+    }
+    if extra[m - 1] > 0.0 && (r_hi - r_lo) < TRACK_PITCH * (m - 1) as f64 + extra[m - 1] {
+        extra.iter_mut().for_each(|x| *x = 0.0);
+    }
+    let mut step = TRACK_PITCH;
+    if (r_hi - r_lo) < step * (m - 1) as f64 {
+        step = ((r_hi - r_lo) / (m - 1) as f64).max(TRACK_PITCH_MIN);
+    }
+    // Too shallow even at the least pitch: the tracks spread evenly
+    // about its middle.
+    let (r_lo, r_hi) = if (r_hi - r_lo) < step * (m - 1) as f64 {
+        let c = (r_lo + r_hi) / 2.0;
+        let half = step * (m - 1) as f64 / 2.0;
+        (c - half, c + half)
+    } else {
+        (r_lo, r_hi)
+    };
+    let want: Vec<f64> = order
+        .iter()
+        .zip(&extra)
+        .map(|(&k, x)| jogs[k].want - x)
+        .collect();
+    let mut at = crate::ports::place(&want, step, r_lo, r_hi - extra[m - 1]);
+    for (a, x) in at.iter_mut().zip(&extra) {
+        *a += x;
+    }
+    // Each in its own room, the order kept where the rooms allow.
+    let gap_to = |r: usize| step + extra[r] - extra[r - 1];
+    for (r, &k) in order.iter().enumerate() {
+        let (lo, hi) = jogs[k].room;
+        let floor = if r > 0 { at[r - 1] + gap_to(r) } else { lo };
+        at[r] = at[r].max(floor.min(hi)).max(lo).min(hi);
+    }
+    for r in (0..m.saturating_sub(1)).rev() {
+        let (lo, hi) = jogs[order[r]].room;
+        at[r] = at[r]
+            .min((at[r + 1] - gap_to(r + 1)).max(lo))
+            .max(lo)
+            .min(hi);
+    }
+    for (&k, &a) in order.iter().zip(&at) {
+        jogs[k].at = a;
+    }
+}
+
 /// Put each gap's jogs on their tracks: the jogs whose spans overlap
 /// (within a track's pitch) form a channel, ordered so their turns do
 /// not cross — of two jogs turning the same way, the one turning
@@ -2391,143 +2707,20 @@ fn place_tracks(jogs: &mut [Jog], kept: &[(f64, (f64, f64))], blocks: bool) {
         }
         let group: Vec<usize> = idx[s..t].to_vec();
         s = t;
-        if group.len() == 1 {
-            continue;
-        }
-        let lo = group
-            .iter()
-            .map(|&k| jogs[k].span().0)
-            .fold(f64::INFINITY, f64::min);
-        let hi = group
-            .iter()
-            .map(|&k| jogs[k].span().1)
-            .fold(f64::NEG_INFINITY, f64::max);
-        // libavoid's key: a jog turns towards the low flow side at the end
-        // it meets the run from there, towards the high side at the other.
-        let key = |j: &Jog| -> f64 {
-            let (a, b) = (j.lo_at, j.hi_at);
-            if (a - b).abs() < EPS {
-                0.0
-            } else if a < b {
-                (lo + hi) - (a + b)
-            } else {
-                (a + b) - (lo + hi)
+        // In a block layout one gap holds a frame's title strip and jog
+        // room as well as the space between the frames: a channel's
+        // steps whose plain rooms do not meet (a two-way pair's steps
+        // between two stacked frames and its displaced steps in the
+        // lower frame's jog room) never share a track, and ordered as
+        // one stack they interleaved, the jog room's two steps 5 px
+        // apart (blocks/t9c-frames-8px-two-way drawn TD), which the
+        // router then took round the frames' lateral walls. Each set of
+        // steps whose plain rooms chain is a channel of its own there
+        // ([`split_by_room`]).
+        for group in split_by_room(jogs, group, blocks) {
+            if group.len() > 1 {
+                place_channel(jogs, group, blocks);
             }
-        };
-        let ordered = |jogs: &[Jog]| {
-            let mut order = group.clone();
-            order.sort_by(|&x, &y| {
-                key(&jogs[x])
-                    .total_cmp(&key(&jogs[y]))
-                    .then(jogs[x].want.total_cmp(&jogs[y].want))
-                    .then(jogs[x].edge.cmp(&jogs[y].edge))
-                    .then(x.cmp(&y))
-            });
-            order
-        };
-        // A step drawn above its label nests with the others only when
-        // every step of its channel does, and when their rooms hold the
-        // channel's order at the least pitch: one under its label among
-        // steps in the middle of the gap would leave the order that keeps
-        // their turns from crossing, and a room that ends above the
-        // place its order asks for clamped two steps onto one track, which
-        // the router then rerouted one by one, across each other
-        // (x1_hub_td: `H -->|beta| B` and `H -->|gamma long label here| C`
-        // crossed twice, the labelled fan's longest label ending its
-        // step's room a track above the two before it).
-        let mut order = ordered(jogs);
-        if blocks {
-            part_runs(&mut order, jogs);
-        }
-        let holds = |order: &[usize], jogs: &[Jog]| {
-            let mut last = f64::NEG_INFINITY;
-            order.iter().all(|&k| {
-                let (lo, hi) = jogs[k].room;
-                last = lo.max(last + TRACK_PITCH_MIN);
-                last <= hi + EPS
-            })
-        };
-        if group.iter().any(|&k| !jogs[k].above_label) || !holds(&order, jogs) {
-            for &k in &group {
-                let j = &mut jogs[k];
-                (j.room, j.want, j.above_label) = (j.plain.0, j.plain.1, false);
-                j.at = j.want;
-            }
-            order = ordered(jogs);
-            if blocks {
-                part_runs(&mut order, jogs);
-            }
-        }
-        // The span the channel's tracks share: from the lowest room's
-        // start to the highest room's end, each track then kept in its
-        // own jog's room.
-        let r_lo = order
-            .iter()
-            .map(|&k| jogs[k].room.0)
-            .fold(f64::INFINITY, f64::min);
-        let r_hi = order
-            .iter()
-            .map(|&k| jogs[k].room.1)
-            .fold(f64::NEG_INFINITY, f64::max);
-        let m = order.len();
-        // A step whose run carries its label keeps the label's half and
-        // its gap off the tracks beside it, where the channel has room
-        // for that (a hub's labelled branch stepped a pitch from its
-        // neighbour's run, and the label stage moved the label off its
-        // run onto the corner).
-        let half = |k: usize| {
-            let j = &jogs[k];
-            if j.label_half > 0.0 && !j.above_label {
-                (j.label_half + LABEL_SEP).max(TRACK_PITCH / 2.0)
-            } else {
-                TRACK_PITCH / 2.0
-            }
-        };
-        let mut extra: Vec<f64> = vec![0.0; m];
-        for r in 1..m {
-            extra[r] = extra[r - 1] + half(order[r - 1]) + half(order[r]) - TRACK_PITCH;
-        }
-        if extra[m - 1] > 0.0 && (r_hi - r_lo) < TRACK_PITCH * (m - 1) as f64 + extra[m - 1] {
-            extra.iter_mut().for_each(|x| *x = 0.0);
-        }
-        let mut step = TRACK_PITCH;
-        if (r_hi - r_lo) < step * (m - 1) as f64 {
-            step = ((r_hi - r_lo) / (m - 1) as f64).max(TRACK_PITCH_MIN);
-        }
-        // Too shallow even at the least pitch: the tracks spread evenly
-        // about its middle.
-        let (r_lo, r_hi) = if (r_hi - r_lo) < step * (m - 1) as f64 {
-            let c = (r_lo + r_hi) / 2.0;
-            let half = step * (m - 1) as f64 / 2.0;
-            (c - half, c + half)
-        } else {
-            (r_lo, r_hi)
-        };
-        let want: Vec<f64> = order
-            .iter()
-            .zip(&extra)
-            .map(|(&k, x)| jogs[k].want - x)
-            .collect();
-        let mut at = crate::ports::place(&want, step, r_lo, r_hi - extra[m - 1]);
-        for (a, x) in at.iter_mut().zip(&extra) {
-            *a += x;
-        }
-        // Each in its own room, the order kept where the rooms allow.
-        let gap_to = |r: usize| step + extra[r] - extra[r - 1];
-        for (r, &k) in order.iter().enumerate() {
-            let (lo, hi) = jogs[k].room;
-            let floor = if r > 0 { at[r - 1] + gap_to(r) } else { lo };
-            at[r] = at[r].max(floor.min(hi)).max(lo).min(hi);
-        }
-        for r in (0..m.saturating_sub(1)).rev() {
-            let (lo, hi) = jogs[order[r]].room;
-            at[r] = at[r]
-                .min((at[r + 1] - gap_to(r + 1)).max(lo))
-                .max(lo)
-                .min(hi);
-        }
-        for (&k, &a) in order.iter().zip(&at) {
-            jogs[k].at = a;
         }
     }
     // Last, off the steps already drawn: a step within a pitch of one
@@ -2887,6 +3080,49 @@ mod tests {
     use crate::parser::parse;
     use crate::scene::scene;
 
+    #[test]
+    fn a_displaced_column_is_found_in_one_pass_and_always_ends() {
+        // The search it replaces: from the start again after every move,
+        // until no crossing is within a pitch (bounded here; unbounded it
+        // never ended once `o + TRACK_PITCH` rounded back within a pitch
+        // of `o`).
+        let search = |from: f64, taken: &[f64]| {
+            let mut col = from;
+            for _ in 0..10_000 {
+                match taken.iter().find(|&&o| (o - col).abs() < TRACK_PITCH) {
+                    Some(&o) => col = o + TRACK_PITCH,
+                    None => return Some(col),
+                }
+            }
+            None
+        };
+        // Deterministic draws of up to eight crossings near the start.
+        let mut x: u64 = 0x9e37_79b9_7f4a_7c15;
+        let mut draw = || {
+            x = x
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            (x >> 33) as f64 / (1u64 << 31) as f64
+        };
+        for _ in 0..2000 {
+            let from = 100.0 + 50.0 * draw();
+            let n = (draw() * 9.0) as usize;
+            let mut taken: Vec<f64> = (0..n).map(|_| 80.0 + 120.0 * draw()).collect();
+            let want = search(from, &taken).expect("the old search ends here");
+            taken.sort_by(f64::total_cmp);
+            let got = column_clear_of(from, &taken);
+            assert_eq!(got.to_bits(), want.to_bits(), "{from} {taken:?}");
+            assert!(got >= from && taken.iter().all(|&o| (o - got).abs() >= TRACK_PITCH));
+        }
+        // Where a pitch is lost to rounding the old search went round
+        // for ever; one pass ends past the crossing.
+        let o = 1e16;
+        assert!((o + TRACK_PITCH) - o < TRACK_PITCH);
+        assert_eq!(search(o, &[o]), None);
+        let col = column_clear_of(o, &[o - 4.0, o]);
+        assert!(col > o);
+    }
+
     const DIRS: [Direction; 4] = [Direction::TD, Direction::BT, Direction::LR, Direction::RL];
 
     /// A jog of `edge` in gap `gap` from breadth `lo_at` (where the run
@@ -3132,6 +3368,78 @@ mod tests {
         );
         assert_eq!(channel_sizes(&[(100.0, 0.0), (101.0, 200.0)]), vec![1, 1]);
         assert_eq!(channel_sizes(&[]), Vec::<usize>::new());
+    }
+
+    #[test]
+    fn a_jog_room_step_does_not_chain_a_gaps_steps_onto_one_track() {
+        // One gap's channel (flow coordinates, synthetic): steps 2 to 5
+        // run along the space between two stacked frames, their rooms
+        // from 100; step 1 is a displaced exit's step in the lower
+        // frame's jog room under its title strip (room 10 .. 28), and
+        // step 2 the same edge's run on along the space between the
+        // frames; step 0 runs beside the lower frame, its room reaching
+        // from that space down past the frame's wall to the jog room's
+        // breadths, its span apart from step 1's. Step 0 meets the jog
+        // room's step only through its room. Chained through it into one
+        // set, step 1 sat among the other steps in their order and
+        // clamped two of them onto one track at their rooms' end.
+        let fresh = || {
+            vec![
+                jog(0, 0, 600.0, 200.0, (15.0, 160.0), 95.0),
+                jog(1, 0, 900.0, 1100.0, (10.0, 28.0), 28.0),
+                jog(1, 0, 1100.0, 220.0, (100.0, 160.0), 130.0),
+                jog(2, 0, 2000.0, 240.0, (100.0, 150.0), 100.0),
+                jog(3, 0, 500.0, 1110.0, (100.0, 175.0), 104.0),
+                jog(4, 0, 2300.0, 1500.0, (100.0, 165.0), 100.0),
+            ]
+        };
+        // The jog room's step is a set of its own; the others are one.
+        let mut sets = split_by_room(&fresh(), (0..6).collect(), true);
+        sets.iter_mut().for_each(|s| s.sort_unstable());
+        sets.sort();
+        assert_eq!(sets, vec![vec![0, 2, 3, 4, 5], vec![1]]);
+        let mut jogs = fresh();
+        place_tracks(&mut jogs, &[], true);
+        for (a, x) in jogs.iter().enumerate() {
+            for (b, y) in jogs.iter().enumerate().skip(a + 1) {
+                let (sx, sy) = (x.span(), y.span());
+                if x.edge != y.edge && sx.0 < sy.1 && sy.0 < sx.1 && x.room.1 > y.room.0 {
+                    assert!(
+                        (x.at - y.at).abs() >= TRACK_PITCH_MIN - EPS,
+                        "steps {a} and {b} on one track: {} / {}",
+                        x.at,
+                        y.at
+                    );
+                }
+            }
+        }
+        // The jog room's step keeps its place; every step its room.
+        assert_eq!(jogs[1].at, 28.0);
+        for j in &jogs {
+            assert!(j.at >= j.room.0 - EPS && j.at <= j.room.1 + EPS);
+        }
+        // Outside a block layout the six are one channel stacked as one
+        // set, as before: what `place_channel` gives the whole group.
+        assert_eq!(
+            split_by_room(&fresh(), (0..6).collect(), false),
+            vec![(0..6).collect::<Vec<usize>>()]
+        );
+        let mut flat = fresh();
+        place_tracks(&mut flat, &[], false);
+        let mut one = fresh();
+        let mut group: Vec<usize> = (0..6).collect();
+        group.sort_by(|&a, &b| one[a].span().0.total_cmp(&one[b].span().0));
+        place_channel(&mut one, group, false);
+        for (k, (f, o)) in flat.iter().zip(&one).enumerate() {
+            assert_eq!(
+                f.at.to_bits(),
+                o.at.to_bits(),
+                "step {k}: {} / {}",
+                f.at,
+                o.at
+            );
+        }
+        assert!(flat.iter().zip(&jogs).any(|(f, j)| f.at != j.at));
     }
 
     #[test]

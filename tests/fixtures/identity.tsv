@@ -47,6 +47,7 @@ tests/fixtures/blocks/lr.mmd	d76293accf5bff18	e2a17c9c518dd2a9	86d102fc23100e68	
 tests/fixtures/blocks/nested-cases.mmd	a0fecca25bd4cf75	9e41ffb0b8205b22	72127ceb0209376f	blocks
 tests/fixtures/blocks/nested-chain.mmd	4463e2779f33e35a	558282ca0330f8e0	8fb0d6931d597e47	blocks
 tests/fixtures/blocks/nested-self-only.mmd	f9f8c8468c40b74a	dd67b1118c65e901	c048311f110133ce	unlinked
+tests/fixtures/blocks/nested-wide-title.mmd	39d3b6e6b55ad1af	d7b5bb4c0df9b037	ed90591a3a6239e9	blocks
 tests/fixtures/blocks/nested.mmd	3907355fa3a45e4	486ae2e984b233f9	8db9ddeea14d74e	blocks
 tests/fixtures/blocks/note-edge-row.mmd	2edaf98c19348993	a49c71dddce12bdd	789d5e89b3caba8	blocks
 tests/fixtures/blocks/own-centre.mmd	5fe31e0c175e6d1c	ee2059716a3fda1d	1b022b7c95f9674	unlinked
@@ -88,6 +89,7 @@ tests/fixtures/blocks/t9c-frames-8px-two-way.mmd	a1e15d267510e536	12c91ee9c9d103
 tests/fixtures/blocks/title-entry.mmd	4874310285f9504b	c58b81fd8b78739c	a16ed42d710fc0a9	blocks
 tests/fixtures/blocks/title-hidden.mmd	20aefe8c0bde2ce4	9ea4bf5676932ea5	f3eec23a1ce597ec	blocks
 tests/fixtures/blocks/turned-blocks.mmd	d77f14477ba8afc7	72633b6838ba71ae	ebd69b9ef12c17ca	blocks
+tests/fixtures/blocks/twoway-noted.mmd	97f3b3acf179bb13	2ebf8a501a52edbd	9af2a3a1de5c6a97	blocks
 tests/fixtures/blocks/wide-stroke.mmd	a8d6f148856157f2	79f6ebc7540e57b6	b9e1b7ce9facc3e5	blocks
 tests/fixtures/fans/fan011.mmd	5ae7819cbc5bcc15	bd7a95193261abbf	6a5b6b0462bd1379	flat
 tests/fixtures/fans/fan020.mmd	cce47bc38add99be	aa621f510c5db469	18a6460ac1d22373	flat

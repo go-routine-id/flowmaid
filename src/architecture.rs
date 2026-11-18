@@ -334,6 +334,7 @@ fn build(d: &Architecture) -> (ArchScene, Vec<Vec<Pt>>) {
                 h: f.y1 - f.y0,
                 title: titles[g].clone(),
                 depth: t.depth[g],
+                bold_title: false,
             }
         })
         .collect();
@@ -556,6 +557,7 @@ fn build(d: &Architecture) -> (ArchScene, Vec<Vec<Pt>>) {
             routed: false,
             // `to_svg` here strokes each edge as a plain polyline.
             plain_crossings: true,
+            block_layout: false,
         },
         icons,
         arrow_starts,

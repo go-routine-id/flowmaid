@@ -830,6 +830,7 @@ pub fn scene(d: &GitGraph) -> GitScene {
             routed: false,
             // `to_svg` here strokes each link plain.
             plain_crossings: true,
+            block_layout: false,
         },
         branch_labels: pl.names,
         commit_ids: pl.ids,
