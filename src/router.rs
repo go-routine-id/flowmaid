@@ -505,9 +505,10 @@ struct Score {
     /// In a block layout's static scene, the titles' bold ink past their
     /// chips the path comes within `chip_reach` of ([`World::inks`]):
     /// below a chip hit, so the nudge never trades the graze for a run
-    /// through the chip (a displaced entry's step merged away, straight
-    /// through `Mammoth Wombat Pipeline Overview`), and no reason to
-    /// reroute ([`Score::hard`]).
+    /// through the chip (counted as a hit, an entry's step round the
+    /// chip was merged away and the entry ran straight through `Mammoth
+    /// Wombat Pipeline Overview`), and no reason to reroute
+    /// ([`Score::hard`]).
     ink: usize,
     /// px of path outside the innermost frame holding both its ends
     /// (report §2.2): an edge between two members of a box belongs
@@ -5257,9 +5258,9 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
     }
     // The search goes round the title chips at the regular width, even
     // in a block layout: the channel nudge after it keeps the legs it
-    // draws off the titles' bold ink ([`World::inks`]; a displaced
-    // entry's column the search set 0.4 px from `Mammoth Wombat Pipeline
-    // Overview`'s ink moves 6 px clear). Rerouting for the ink as well
+    // draws off the titles' bold ink ([`World::inks`]; an entry's column
+    // the search set round `Mammoth Wombat Pipeline Overview`'s chip,
+    // 0.4 px from its ink, moves 6 px clear). Rerouting for the ink as well
     // (a graze counted as a hit, [`Score::hard`]) took blocks/lr drawn
     // TD's `shopper --> cdn` in through its frame's lateral wall, and
     // drawn BT `cart --> pager` round into pager's side across `ship -->
