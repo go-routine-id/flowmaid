@@ -16487,13 +16487,22 @@ mod tests {
         // routing, port and label stages spaced, beyond two heads of the
         // tip — and within half a head nearer, where a curve swinging in
         // from the side enters the head.
+        // (The block fixtures too: where `route()` draws a block layout's
+        // own static drawing at its centres, as the block layout's switch
+        // and `flowmaid_route_layout` have it, the quality fixtures and the
+        // examples alone leave fewer ends to square than the floor below
+        // asks for.)
         let root = env!("CARGO_MANIFEST_DIR");
-        let mut files: Vec<std::path::PathBuf> = ["tests/fixtures/quality", "examples"]
-            .iter()
-            .flat_map(|d| std::fs::read_dir(format!("{root}/{d}")).unwrap())
-            .map(|f| f.unwrap().path())
-            .filter(|p| p.extension().is_some_and(|x| x == "mmd"))
-            .collect();
+        let mut files: Vec<std::path::PathBuf> = [
+            "tests/fixtures/quality",
+            "examples",
+            "tests/fixtures/blocks",
+        ]
+        .iter()
+        .flat_map(|d| std::fs::read_dir(format!("{root}/{d}")).unwrap())
+        .map(|f| f.unwrap().path())
+        .filter(|p| p.extension().is_some_and(|x| x == "mmd"))
+        .collect();
         files.sort();
         let near = |a: (f64, f64), b: (f64, f64)| (a.0 - b.0).hypot(a.1 - b.1) < 1e-6;
         // A curve straight to within SQUARE_END_FLAT over a head is drawn

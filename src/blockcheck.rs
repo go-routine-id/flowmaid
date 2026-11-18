@@ -3500,3 +3500,110 @@ fn route_follows_a_drag_as_route_partial_does_from_the_scene() {
         })
     });
 }
+
+#[test]
+fn dragging_every_node_of_a_block_diagram_keeps_the_contract() {
+    // B12.13: every node of the public fixture dragged across the drawing
+    // (three points on its diagonal) and nudged, from the static scene:
+    // no panic, every coordinate finite, every frame still holds its
+    // members and its nested frames, and every edge the drag keeps whose
+    // two ends lie in one block stays inside that block's frame.
+    let g = overview_in("TD");
+    crate::levels::with_blocks(true, || {
+        let base = crate::scene::scene(&g);
+        let at: Vec<(f64, f64)> = base.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let paths = crate::scene::node_cluster_paths(&g);
+        let (x0, y0, x1, y1) = at.iter().fold(
+            (
+                f64::INFINITY,
+                f64::INFINITY,
+                f64::NEG_INFINITY,
+                f64::NEG_INFINITY,
+            ),
+            |b, p| (b.0.min(p.0), b.1.min(p.1), b.2.max(p.0), b.3.max(p.1)),
+        );
+        let frame = |sc: &crate::scene::Scene, si: usize| {
+            sc.clusters
+                .iter()
+                .find(|c| c.id == g.subgraphs[si].id)
+                .map(|c| (c.x, c.y, c.x + c.w, c.y + c.h))
+        };
+        let inside = |p: (f64, f64), r: (f64, f64, f64, f64)| {
+            p.0 >= r.0 - 1.0 && p.0 <= r.2 + 1.0 && p.1 >= r.1 - 1.0 && p.1 <= r.3 + 1.0
+        };
+        for v in 0..g.nodes.len() {
+            let mut to: Vec<(f64, f64)> = (0..3)
+                .map(|k| {
+                    let t = k as f64 / 2.0;
+                    (x0 + (x1 - x0) * t, y0 + (y1 - y0) * (1.0 - t))
+                })
+                .collect();
+            to.extend([(at[v].0 + 1.0, at[v].1), (at[v].0, at[v].1 - 1.0)]);
+            for p in to {
+                let mut c = at.clone();
+                c[v] = p;
+                let sc = crate::scene::route_partial(&g, &c, &base, &at);
+                let what = format!("drag {} to {p:?}", g.nodes[v].id);
+                for e in &sc.edges {
+                    assert!(
+                        e.bezier
+                            .iter()
+                            .chain(&e.waypoints)
+                            .all(|q| q.0.is_finite() && q.1.is_finite()),
+                        "{what}: {} -> {} not finite",
+                        e.from,
+                        e.to
+                    );
+                }
+                for (u, nd) in sc.nodes.iter().enumerate() {
+                    for &si in &paths[u] {
+                        let r = frame(&sc, si).expect("a frame per subgraph");
+                        for q in [
+                            (nd.x - nd.w / 2.0, nd.y - nd.h / 2.0),
+                            (nd.x + nd.w / 2.0, nd.y + nd.h / 2.0),
+                        ] {
+                            assert!(
+                                inside(q, r),
+                                "{what}: {} outside {}",
+                                nd.id,
+                                g.subgraphs[si].id
+                            );
+                        }
+                    }
+                }
+                for (si, s) in g.subgraphs.iter().enumerate() {
+                    if let (Some(p), Some(r)) = (s.parent, frame(&sc, si)) {
+                        let o = frame(&sc, p).expect("a frame per subgraph");
+                        assert!(
+                            inside((r.0, r.1), o) && inside((r.2, r.3), o),
+                            "{what}: {} out of its parent",
+                            s.id
+                        );
+                    }
+                }
+                let id = &g.nodes[v].id;
+                for (i, e) in g.edges.iter().enumerate() {
+                    if e.from == v || e.to == v || e.from == e.to {
+                        continue;
+                    }
+                    let shared: Vec<usize> = paths[e.from]
+                        .iter()
+                        .copied()
+                        .filter(|s| paths[e.to].contains(s))
+                        .collect();
+                    let Some(&si) = shared.last() else { continue };
+                    let r = frame(&sc, si).expect("a frame per subgraph");
+                    for q in &sc.edges[i].waypoints {
+                        assert!(
+                            inside(*q, r),
+                            "{what}: kept {} -> {} leaves {} (dragged {id})",
+                            g.nodes[e.from].id,
+                            g.nodes[e.to].id,
+                            g.subgraphs[si].id
+                        );
+                    }
+                }
+            }
+        }
+    });
+}
