@@ -1295,6 +1295,8 @@ const FIT_EPS: f64 = 1e-6;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::parser::parse;
+    use crate::scene::{route, scene};
 
     #[test]
     fn a_snapped_end_carries_its_runs_line_back_to_the_corner() {
@@ -1329,8 +1331,6 @@ mod tests {
         level_end_run(&mut w, true, (0.4, 0.0));
         assert_eq!(w, slant);
     }
-    use crate::parser::parse;
-    use crate::scene::{route, scene};
 
     /// `finish` again on a finished scene changes nothing.
     fn assert_idempotent(src: &str) {

@@ -1361,7 +1361,7 @@ pub(crate) fn masks(
     if sc.block_layout {
         for (&u, holes) in per.iter_mut() {
             if let Some(line) = lines[u].as_deref() {
-                join_cluster_gaps(line, holes);
+                join_cluster_gaps(line, holes, JOIN_END_HEADS * edge_head_len(&sc.edges[u]));
             }
         }
     }
@@ -1403,6 +1403,14 @@ pub(crate) fn masks(
     Masks { defs, attr }
 }
 
+/// Head lengths ([`edge_head_len`]) of stroke at each end of an
+/// under-line that [`join_cluster_gaps`] never cuts into: two gaps near
+/// an end keep the piece between them, so the end glyph still hangs on
+/// a visible run of its own line. Joined that close, the head was left
+/// alone beside other lines' strokes and read as theirs (a diagonal into
+/// a member drawn TD as blocks, its last 30 px cut away).
+const JOIN_END_HEADS: f64 = 2.0;
+
 /// In a block layout's scene, the gaps one under-line takes at crossings
 /// closer than [`CROSS_CLUSTER`] along it (one cluster, where it has one
 /// role) are cut as one: the stroke between them is cut too, with holes
@@ -1412,7 +1420,14 @@ pub(crate) fn masks(
 /// that crosses it twice round its corner, the pin of a member's block
 /// drawn BT). `holes` are (crossing, radius) in scene coordinates, on
 /// `line` (the under-line as painted); new holes are added after them.
-fn join_cluster_gaps(line: &[Pt], holes: &mut Vec<(Pt, f64)>) {
+///
+/// Two bounds keep a joined gap a crossing's gap and not a missing
+/// stretch of line: one joined run spans at most [`CROSS_CLUSTER`] from
+/// its first crossing to its last (a run of crossings each a little
+/// closer than that is cut in pieces of one cluster, not as one gap of
+/// any length), and no join reaches within `keep` px of either end of
+/// the line ([`JOIN_END_HEADS`]).
+fn join_cluster_gaps(line: &[Pt], holes: &mut Vec<(Pt, f64)>, keep: f64) {
     if holes.len() < 2 || line.len() < 2 {
         return;
     }
@@ -1423,6 +1438,7 @@ fn join_cluster_gaps(line: &[Pt], holes: &mut Vec<(Pt, f64)>) {
             Some(*acc)
         }))
         .collect();
+    let len = starts[starts.len() - 1];
     let along = |p: Pt| -> f64 {
         let mut best = (f64::INFINITY, 0.0);
         for (k, w) in line.windows(2).enumerate() {
@@ -1454,9 +1470,25 @@ fn join_cluster_gaps(line: &[Pt], holes: &mut Vec<(Pt, f64)>) {
     };
     let mut on: Vec<(f64, f64)> = holes.iter().map(|&(p, r)| (along(p), r)).collect();
     on.sort_by(|a, b| a.0.total_cmp(&b.0));
+    // Where along the line the joined run the next pair would extend
+    // began (its first crossing).
+    let mut run = on[0].0;
     for w in on.windows(2) {
         let ((s0, r0), (s1, r1)) = (w[0], w[1]);
-        if s1 - s0 >= CROSS_CLUSTER || s1 - s0 <= r0 + r1 {
+        let join = s1 - s0 < CROSS_CLUSTER
+            && s1 - run < CROSS_CLUSTER
+            && s0 - r0 >= keep
+            && s1 + r1 <= len - keep;
+        if s1 - s0 <= r0 + r1 {
+            // The two holes meet: already one gap, which the run goes on
+            // through while it stays within a cluster.
+            if s1 - run >= CROSS_CLUSTER {
+                run = s1;
+            }
+            continue;
+        }
+        if !join {
+            run = s1;
             continue;
         }
         let r = r0.min(r1);
@@ -1498,6 +1530,7 @@ mod tests {
     use crate::scene::{route, scene, to_svg};
 
     const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/quality");
+
     #[test]
     fn gaps_of_one_cluster_on_a_line_are_cut_as_one() {
         // An L: right along y = 50 to its corner at (40, 50), then up.
@@ -1509,7 +1542,7 @@ mod tests {
             .into_iter()
             .map(|(x, y, r)| ((x, y), r))
             .collect::<Vec<_>>();
-        join_cluster_gaps(&line, &mut holes);
+        join_cluster_gaps(&line, &mut holes, 0.0);
         assert!(holes.len() > 2, "{holes:?}");
         for k in 0..=40 {
             let s = 30.0 + k as f64 * 0.5;
@@ -1525,8 +1558,55 @@ mod tests {
         }
         // Crossings a cluster or more apart keep their own gaps.
         let mut apart = vec![((10.0, 50.0), 5.0), ((40.0, 35.0), 5.0)];
-        join_cluster_gaps(&line, &mut apart);
+        join_cluster_gaps(&line, &mut apart, 0.0);
         assert_eq!(apart.len(), 2);
+    }
+
+    #[test]
+    fn a_joined_gap_spans_one_cluster_at_most() {
+        // Six crossings 12 px apart down one straight line, each pair
+        // closer than a cluster: chained pair by pair they were cut as
+        // one gap 60 px long and more. A joined run spans one cluster
+        // at most, so the line keeps visible pieces along the run.
+        let line = [(0.0, 0.0), (0.0, 200.0)];
+        let mut holes: Vec<(Pt, f64)> = (0..6)
+            .map(|k| ((0.0, 50.0 + 12.0 * k as f64), 5.0))
+            .collect();
+        join_cluster_gaps(&line, &mut holes, 0.0);
+        let cut = |y: f64| holes.iter().any(|&(q, r)| dist((0.0, y), q) <= r);
+        // The longest stretch cut without a break, sampled every 0.5 px.
+        let (mut longest, mut from) = (0.0_f64, None::<f64>);
+        for k in 0..=400 {
+            let y = k as f64 * 0.5;
+            match (cut(y), from) {
+                (true, None) => from = Some(y),
+                (false, Some(f)) => {
+                    longest = longest.max(y - f);
+                    from = None;
+                }
+                _ => {}
+            }
+        }
+        assert!(longest > 2.0 * 12.0, "the first pair is joined: {longest}");
+        assert!(
+            longest <= CROSS_CLUSTER + 2.0 * 5.0 + 0.5,
+            "one gap {longest} px long: {holes:?}"
+        );
+    }
+
+    #[test]
+    fn a_joined_gap_keeps_off_the_ends_of_its_line() {
+        // Two crossings 15 px apart, the later 14 px before the line's
+        // end (its head): joining them would leave the head alone past
+        // a 25 px cut. Within `keep` of an end nothing is joined; the
+        // same pair further up the line is.
+        let line = [(0.0, 0.0), (0.0, 100.0)];
+        let mut near = vec![((0.0, 71.0), 5.0), ((0.0, 86.0), 5.0)];
+        join_cluster_gaps(&line, &mut near, 2.0 * 11.0);
+        assert_eq!(near.len(), 2, "{near:?}");
+        let mut far = vec![((0.0, 41.0), 5.0), ((0.0, 56.0), 5.0)];
+        join_cluster_gaps(&line, &mut far, 2.0 * 11.0);
+        assert!(far.len() > 2, "{far:?}");
     }
 
     #[test]
