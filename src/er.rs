@@ -1165,10 +1165,14 @@ fn labels_off_glyphs_of(sc: &mut Scene, cards: &[(Card, Card)], only: Option<&[b
             });
         }
     }
-    // A label moved beside a line near the canvas edge still fits.
+    // A label moved beside a line near the canvas edge still fits. The
+    // far sides run from the origin: negative in a `route_partial` frame
+    // on a canvas a drag grew up or left (at (0, 0) this is the plain
+    // `max`, bit for bit).
     if let Some(r) = grow {
-        sc.width = sc.width.max(r.2 + crate::scene::MARGIN);
-        sc.height = sc.height.max(r.3 + crate::scene::MARGIN);
+        let far = (sc.origin.0 + sc.width, sc.origin.1 + sc.height);
+        sc.width = far.0.max(r.2 + crate::scene::MARGIN) - sc.origin.0;
+        sc.height = far.1.max(r.3 + crate::scene::MARGIN) - sc.origin.1;
     }
 }
 

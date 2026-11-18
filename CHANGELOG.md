@@ -20,9 +20,10 @@ project adheres to [Semantic Versioning](https://semver.org/).
   cardinalities, which `class::card_spots` and `class::to_svg` keep
   where `base` has them), also where a moved box now covers it (route
   the drop with `route` to clear it). Positions are kept as given, and
-  a drawing dragged past the top-left margin grows its canvas up or
-  left as `route` does (#76). When `base` no longer lines up with the
-  diagram (other counts, or an entity, class, member, note, node,
+  the canvas (`base`'s) grows over whatever a drag pushes past any of
+  its sides, up or left too, as `route`'s does (#76). When `base` no
+  longer lines up with the diagram (other counts, or an entity, class,
+  member, note, node,
   relationship, cardinality or label edited since) the result is
   `route`'s. A scene records no `direction`, so a change of it alone
   is not seen, as with the flowchart `route_partial`: route the first

@@ -1319,8 +1319,14 @@ pub(crate) fn refit(sc: &mut Scene, mode: Mode, static_fit: bool) {
         maxx += dx;
         maxy += dy;
     }
-    sc.width = sc.width.max(maxx + MARGIN);
-    sc.height = sc.height.max(maxy + MARGIN);
+    // The far sides grow from where they are: `width` and `height` run
+    // from the origin, which is (0, 0) here except in an ER or class drag
+    // frame (`route_partial`), drawn on its base's canvas, where it is
+    // negative once a drag has grown that canvas up or left (#76). (At
+    // (0, 0) this is the plain `max` it always was, bit for bit.)
+    let far = (sc.origin.0 + sc.width, sc.origin.1 + sc.height);
+    sc.width = far.0.max(maxx + MARGIN) - sc.origin.0;
+    sc.height = far.1.max(maxy + MARGIN) - sc.origin.1;
 }
 
 /// How far (px) [`refit`] lets a static flowchart's drawing sit off its
@@ -1557,6 +1563,38 @@ mod tests {
             }
             assert!(sc.width >= base.width - 500.0);
         }
+    }
+
+    /// An ER or class canvas (`static_fit` false) whose origin a drag
+    /// moved up and left grows its far sides over a drawing past them,
+    /// measured from that origin: the far corner, not `width` itself,
+    /// reaches the drawing's far side plus the margin.
+    #[test]
+    fn refit_grows_the_far_sides_of_a_canvas_off_zero() {
+        let g = parse("flowchart TD\nA-->B").unwrap();
+        let mut sc = scene(&g);
+        let (w, h) = (sc.width, sc.height);
+        sc.origin = (-300.0, -200.0);
+        sc.width = w + 300.0;
+        sc.height = h + 200.0;
+        // B dragged 400 px right and down, past the far corner.
+        let b = sc.nodes.len() - 1;
+        sc.nodes[b].x += 400.0;
+        sc.nodes[b].y += 400.0;
+        let n = sc.nodes[b].clone();
+        refit(&mut sc, Mode::Routed, false);
+        assert_eq!(sc.origin, (-300.0, -200.0));
+        let far = (sc.origin.0 + sc.width, sc.origin.1 + sc.height);
+        assert!(far.0 >= n.x + n.w / 2.0 + MARGIN - 1e-9, "{far:?}");
+        assert!(far.1 >= n.y + n.h / 2.0 + MARGIN - 1e-9, "{far:?}");
+        // At (0, 0) the canvas is what it always was: the plain `max`.
+        let mut at0 = scene(&g);
+        at0.nodes[b].x += 400.0;
+        let want = at0
+            .width
+            .max(at0.nodes[b].x + at0.nodes[b].w / 2.0 + MARGIN);
+        refit(&mut at0, Mode::Routed, false);
+        assert!(at0.width >= want - 1e-9);
     }
 
     /// The vertical scene edge `A --> B` (TD) and its context.

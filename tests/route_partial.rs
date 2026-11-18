@@ -5,7 +5,7 @@
 
 use flowmaid::model::{ClassDiagram, Document, ErDiagram, Mindmap};
 use flowmaid::parser::parse_document;
-use flowmaid::scene::SceneEdge;
+use flowmaid::scene::{Scene, SceneEdge};
 use flowmaid::{class, er, mindmap};
 use std::path::{Path, PathBuf};
 
@@ -52,6 +52,47 @@ fn repo_documents() -> Vec<(String, Document)> {
             parse_document(&src).ok().map(|d| (name, d))
         })
         .collect()
+}
+
+/// The `viewBox` (x, y, width, height) `svg` is drawn on.
+fn view_box(svg: &str) -> (f64, f64, f64, f64) {
+    let at = svg.find("viewBox=\"").expect("no viewBox") + 9;
+    let v: Vec<f64> = svg[at..]
+        .split('"')
+        .next()
+        .unwrap()
+        .split(' ')
+        .map(|t| t.parse().unwrap())
+        .collect();
+    (v[0], v[1], v[2], v[3])
+}
+
+/// Every box of `sc` lies on its canvas (`origin`, `width` x `height`)
+/// and inside the `viewBox` of `svg`, its SVG (to the 0.5 px that is
+/// written to): nothing the frame draws is cut off.
+fn assert_holds_every_box(name: &str, sc: &Scene, svg: &str) {
+    let (ox, oy) = sc.origin;
+    let (fx, fy) = (ox + sc.width, oy + sc.height);
+    let (vx, vy, vw, vh) = view_box(svg);
+    for n in &sc.nodes {
+        let (x0, y0) = (n.x - n.w / 2.0, n.y - n.h / 2.0);
+        let (x1, y1) = (n.x + n.w / 2.0, n.y + n.h / 2.0);
+        assert!(
+            x0 >= ox - 1e-6 && y0 >= oy - 1e-6 && x1 <= fx + 1e-6 && y1 <= fy + 1e-6,
+            "{name}: box {} at ({x0}, {y0})-({x1}, {y1}) is off the canvas ({ox}, {oy})-({fx}, {fy})",
+            n.id
+        );
+        assert!(
+            x0 >= vx - 0.5 && y0 >= vy - 0.5 && x1 <= vx + vw + 0.5 && y1 <= vy + vh + 0.5,
+            "{name}: box {} at ({x0}, {y0})-({x1}, {y1}) is cut off by the viewBox {vx} {vy} {vw} {vh}",
+            n.id
+        );
+    }
+}
+
+/// The far corner of `sc`'s canvas.
+fn far(sc: &Scene) -> (f64, f64) {
+    (sc.origin.0 + sc.width, sc.origin.1 + sc.height)
 }
 
 fn parse(src: &str) -> Document {
@@ -272,6 +313,46 @@ fn er_drag_past_the_top_left_keeps_positions() {
     let vb = &svg[svg.find("viewBox=\"").unwrap() + 9..];
     let y: f64 = vb.split(' ').nth(1).unwrap().parse().unwrap();
     assert!(y < 0.0);
+}
+
+/// A drag that grows the canvas up and left (its origin negative), then
+/// one that pushes another table past its right or bottom side: the
+/// second frame's canvas, and its SVG's `viewBox`, still hold every
+/// table, chained on the first frame or on a full `route` there, and
+/// it never shrinks from its base's.
+#[test]
+fn er_drag_right_and_down_from_a_canvas_grown_up_and_left() {
+    for (name, d) in er_docs() {
+        let n = d.entities.len();
+        if n < 2 {
+            continue;
+        }
+        let laid = er::scene(&d);
+        let at = er_centres(&laid);
+        let mut to1 = at.clone();
+        to1[0] = (-150.0, -90.0);
+        let f1 = er::route_partial(&d, &to1, &laid, &at);
+        assert!(f1.scene.origin.0 < 0.0 && f1.scene.origin.1 < 0.0, "{name}");
+        assert_holds_every_box(&format!("{name} up-left"), &f1.scene, &er::to_svg(&f1));
+        let routed = er::route(&d, &to1);
+        for (dx, dy) in [(600.0, 400.0), (300.0, 200.0), (-3.0, 260.0), (260.0, -3.0)] {
+            let mut to2 = to1.clone();
+            to2[n - 1].0 += dx;
+            to2[n - 1].1 += dy;
+            for (how, base) in [("chained", &f1), ("on route", &routed)] {
+                let f2 = er::route_partial(&d, &to2, base, &to1);
+                let what = format!("{name} {how}, then +({dx}, {dy})");
+                assert_holds_every_box(&what, &f2.scene, &er::to_svg(&f2));
+                let (b, f) = (far(&base.scene), far(&f2.scene));
+                assert!(f.0 >= b.0 && f.1 >= b.1, "{what}: canvas shrank");
+                assert!(
+                    f2.scene.origin.0 <= base.scene.origin.0
+                        && f2.scene.origin.1 <= base.scene.origin.1,
+                    "{what}: canvas shrank"
+                );
+            }
+        }
+    }
 }
 
 #[test]
@@ -532,6 +613,17 @@ fn check_class_frame(
     assert!(
         frame.scene.origin.0 <= base.scene.origin.0 && frame.scene.origin.1 <= base.scene.origin.1
     );
+    // The canvas only grows, and still holds every box.
+    let (bf, ff) = (far(&base.scene), far(&frame.scene));
+    assert!(
+        ff.0 >= bf.0 && ff.1 >= bf.1,
+        "{name}: canvas shrank (box {i})"
+    );
+    assert_holds_every_box(
+        &format!("{name} (box {i})"),
+        &frame.scene,
+        &class::to_svg(&frame),
+    );
     // The redrawn edges are drawn: an end on each of their boxes' borders.
     for (j, e) in frame.scene.edges.iter().enumerate() {
         let (a, b) = (index(&e.from), index(&e.to));
@@ -716,6 +808,56 @@ fn class_drag_past_the_top_left_keeps_positions() {
     assert_eq!((frame.scene.nodes[0].x, frame.scene.nodes[0].y), to[0]);
     assert!(frame.scene.origin.0 < 0.0 && frame.scene.origin.1 < 0.0);
     assert!(class::to_svg(&frame).contains("viewBox=\"-"));
+}
+
+/// [`er_drag_right_and_down_from_a_canvas_grown_up_and_left`] for class
+/// diagrams, and boxes dragged right or down from a `route` whose canvas
+/// already starts above or left of zero without a drag (a free note
+/// above the first class, as `examples/class.mmd` routes at the class
+/// centres): every frame's canvas and `viewBox` hold every box.
+#[test]
+fn class_drag_right_and_down_from_a_canvas_grown_up_and_left() {
+    let moves = [(600.0, 400.0), (300.0, 200.0), (-3.0, 260.0), (260.0, -3.0)];
+    for (name, d) in class_docs() {
+        let classes = d.classes.len();
+        if classes < 2 {
+            continue;
+        }
+        let laid = class::scene(&d);
+        let at = class_centres(&laid);
+        let mut to1 = at.clone();
+        to1[0] = (-150.0, -90.0);
+        let f1 = class::route_partial(&d, &to1, &laid, &at);
+        assert!(f1.scene.origin.0 < 0.0 && f1.scene.origin.1 < 0.0, "{name}");
+        assert_holds_every_box(&format!("{name} up-left"), &f1.scene, &class::to_svg(&f1));
+        let routed = class::route(&d, &to1);
+        for (dx, dy) in moves {
+            let mut to2 = to1.clone();
+            to2[classes - 1].0 += dx;
+            to2[classes - 1].1 += dy;
+            for (how, base) in [("chained", &f1), ("on route", &routed)] {
+                let f2 = class::route_partial(&d, &to2, base, &to1);
+                let what = format!("{name} {how}, then +({dx}, {dy})");
+                assert_holds_every_box(&what, &f2.scene, &class::to_svg(&f2));
+                let (b, f) = (far(&base.scene), far(&f2.scene));
+                assert!(f.0 >= b.0 && f.1 >= b.1, "{what}: canvas shrank");
+            }
+        }
+        // On a route at the class centres only (notes placed beside their
+        // classes, a free one above the first): no drag past the top-left.
+        let cc = &at[..classes];
+        let base = class::route(&d, cc);
+        for i in 0..classes {
+            for (dx, dy) in [(900.0, 500.0), (-3.0, 260.0), (37.0, 0.0)] {
+                let mut to = cc.to_vec();
+                to[i].0 += dx;
+                to[i].1 += dy;
+                let f = class::route_partial(&d, &to, &base, cc);
+                let what = format!("{name} on route(classes), box {i} +({dx}, {dy})");
+                assert_holds_every_box(&what, &f.scene, &class::to_svg(&f));
+            }
+        }
+    }
 }
 
 #[test]
