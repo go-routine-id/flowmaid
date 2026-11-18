@@ -3497,6 +3497,26 @@ fn route_follows_a_drag_as_route_partial_does_from_the_scene() {
                     "drag {who}"
                 );
             }
+            // A hub whose drag redraws most of the drawing: both fall back
+            // to drawing it afresh (`route_partial` without drawing the
+            // drag twice), and still agree.
+            let g = graph(
+                "flowchart TD\nH[hub]\nsubgraph A\na1 --> a2\nend\nsubgraph B\nb1 --> b2\nend\n\
+                 H --> a1\nH --> b1\nH --> a2\nH --> b2\n",
+            );
+            let sc = crate::scene::scene(&g);
+            assert!(sc.block_layout);
+            let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let mut c = at.clone();
+            let h = g.node_index("H").unwrap();
+            c[h] = (c[h].0 + 120.0, c[h].1 + 30.0);
+            let r = crate::scene::route(&g, &c);
+            let p = crate::scene::route_partial(&g, &c, &sc, &at);
+            assert_eq!(
+                crate::scene::to_svg(&r),
+                crate::scene::to_svg(&p),
+                "drag the hub"
+            );
         })
     });
 }

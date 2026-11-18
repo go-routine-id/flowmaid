@@ -5752,6 +5752,53 @@ thread_local! {
         const { std::cell::RefCell::new(Vec::new()) };
 }
 
+/// Whether [`route`] of `g` (for these fitted `sizes` and `labels`)
+/// starts from a static drawing that draws as `base` does
+/// ([`route_from_layout`]): the block layout, `route()` from the layout
+/// and block mode all on, a part the compound layout does not split, and
+/// [`LAID_SCENES`] holding that drawing already (nothing is laid out to
+/// find out). Then a drag `route_partial` draws from `base` and the one
+/// `route()` draws are the same frame.
+fn laid_is(g: &Graph, sizes: &[(f64, f64)], labels: &[String], base: &Scene) -> bool {
+    if !(crate::levels::route_from_layout_on()
+        && route_blocks(g, crate::levels::blocks_on())
+        && crate::compound::split(g).is_none())
+    {
+        return false;
+    }
+    let starts = crate::levels::order_starts();
+    LAID_SCENES.with(|m| {
+        m.borrow().iter().any(|l| {
+            l.starts == starts
+                && l.sizes == sizes
+                && l.labels == labels
+                && l.g == *g
+                && same_drawing(&l.scene, base)
+        })
+    })
+}
+
+/// Whether `a` and `b` draw the same geometry: node boxes, edge paths
+/// and label spots, frames.
+fn same_drawing(a: &Scene, b: &Scene) -> bool {
+    a.nodes.len() == b.nodes.len()
+        && a.edges.len() == b.edges.len()
+        && a.clusters.len() == b.clusters.len()
+        && a.nodes
+            .iter()
+            .zip(&b.nodes)
+            .all(|(p, q)| (p.x, p.y, p.w, p.h) == (q.x, q.y, q.w, q.h))
+        && a.edges.iter().zip(&b.edges).all(|(p, q)| {
+            p.bezier == q.bezier
+                && p.waypoints == q.waypoints
+                && p.label.as_ref().map(|l| l.1) == q.label.as_ref().map(|l| l.1)
+        })
+        && a.clusters
+            .iter()
+            .zip(&b.clusters)
+            .all(|(p, q)| p.id == q.id && (p.x, p.y, p.w, p.h) == (q.x, q.y, q.w, q.h))
+}
+
 /// Forget every drawing [`LAID_SCENES`] keeps on this thread.
 pub(crate) fn forget_laid_scenes() {
     LAID_SCENES.with(|m| m.borrow_mut().clear());
@@ -6379,6 +6426,11 @@ fn partial_core(
                 labels,
                 route_blocks(g, crate::levels::blocks_on()),
             )
+        } else if laid_is(g, sizes, labels, base) {
+            // `route()` of these centres is this drag drawn from the same
+            // drawing ([`route_from_layout`]), which falls back here too:
+            // the builders, without drawing the drag a second time.
+            route_fresh(g, centers, sizes, labels, true)
         } else {
             route_fitted(g, centers, sizes, labels)
         }
