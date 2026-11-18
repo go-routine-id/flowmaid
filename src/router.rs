@@ -3387,6 +3387,10 @@ struct Fences<'a> {
     /// split at the cramped ones (its detours leave more legs in one
     /// channel than the static search does).
     routed: bool,
+    /// A block layout's static scene ([`Ctx::blocks`]): a frame's pin
+    /// the spread's order lays across another edge's turn is swapped
+    /// with it ([`pins_past_turns`]).
+    blocks: bool,
 }
 
 /// Indices of spans bucketed by where they lie along an axis, so a
@@ -3864,6 +3868,9 @@ fn place_group(f: &Fences, routes: &mut [Option<Vec<Pt>>], segs: &[Seg], grp: &[
             .then(segs[x].edge.cmp(&segs[y].edge))
             .then(segs[x].k.cmp(&segs[y].k))
     });
+    if f.blocks {
+        pins_past_turns(f, routes, segs, &mut order);
+    }
     let m = order.len();
     // The first slab the members fit in, with the least spacing it may
     // squeeze them to: the channel at [`EDGE_SEP_MIN`], then the scene
@@ -3939,6 +3946,148 @@ fn place_group(f: &Fences, routes: &mut [Option<Vec<Pt>>], segs: &[Seg], grp: &[
             }
         }
     }
+}
+
+/// In a block layout's static scene, the order [`place_group`] lays a
+/// group's legs in (`order`, low to high across the channel) with each
+/// frame's pin swapped past a neighbour whose turn it would cross.
+///
+/// The order's key sums both ends' turns, so a leg turning the same
+/// way at both ends outweighs a pin, which turns once and ends on its
+/// frame's border inside the other leg's span: a pin dropping from the
+/// left onto a title side was laid right of an entry passing it on
+/// both sides, across that entry's column (the verifier's twin blocks
+/// drawn TD: `q --> B` and `a1 --> b1`; the nudge's scoring then undid
+/// both moves for the crossing, and `a1 --> b1` stayed where the
+/// repair had put it, round `Shipping and returns desk two`'s chip at
+/// the regular width and on its bold ink). A pin's last leg and an
+/// inner leg of another edge (no port leg: those keep the order of
+/// their ports) that passes the pin on both sides along the channel
+/// are swapped when the pin's turn crosses the other leg in this order
+/// and not in the other, and the two whole paths, each
+/// leg moved to the lower or upper of two lines a spacing apart, cross
+/// each other and every other edge less often swapped. (Swapped on the
+/// turns alone, a frame's exit and a fan's legs out of one node took
+/// new crossings and a 2 px gap on random inputs; swapped with a leg
+/// that passes the pin on one side only, quality/dense-td drawn TD took
+/// a 264 px run beside another line.)
+fn pins_past_turns(f: &Fences, routes: &[Option<Vec<Pt>>], segs: &[Seg], order: &mut [usize]) {
+    let n = order.len();
+    if n < 2 {
+        return;
+    }
+    let axis = segs[order[0]].axis;
+    // (along, way it turns across: -1, +1, or 0 at a port) of a leg's ends.
+    let ends_of = |sg: Seg| {
+        let pts = routes[sg.edge].as_ref().expect("routed");
+        let m = pts.len();
+        let turn = |p: Pt, q: Option<Pt>| {
+            let (c, l) = cross_along(axis, p);
+            let s = q.map_or(0.0, |q| {
+                let d = cross_along(axis, q).0 - c;
+                if d.abs() < EPS {
+                    0.0
+                } else {
+                    d.signum()
+                }
+            });
+            (l, s)
+        };
+        [
+            turn(pts[sg.k], (sg.k > 0).then(|| pts[sg.k - 1])),
+            turn(pts[sg.k + 1], (sg.k + 2 < m).then(|| pts[sg.k + 2])),
+        ]
+    };
+    // A frame's pin: the leg into the frame its edge ends on.
+    let pin = |sg: Seg| {
+        let m = routes[sg.edge].as_ref().map_or(0, Vec::len);
+        sg.k + 2 == m
+            && f.infos[sg.edge]
+                .as_ref()
+                .is_some_and(|i| matches!(i.ends.1, EndRef::Frame(_)))
+    };
+    let inner = |sg: Seg| sg.k > 0 && sg.k + 2 < routes[sg.edge].as_ref().map_or(0, Vec::len);
+    // Crossings of path `p` (edge `me`) and `q` (edge `other`) with each
+    // other and with every other edge.
+    let crossings = |p: &[Pt], me: usize, q: &[Pt], other: usize| {
+        let with = |a: &[Pt], b: &[Pt]| {
+            a.windows(2)
+                .map(|u| {
+                    b.windows(2)
+                        .filter(|v| seg_cross(u[0], u[1], v[0], v[1]).is_some())
+                        .count()
+                })
+                .sum::<usize>()
+        };
+        let rest: usize = routes
+            .iter()
+            .enumerate()
+            .filter(|&(j, _)| j != me && j != other)
+            .filter_map(|(_, r)| r.as_ref())
+            .map(|r| with(p, r) + with(q, r))
+            .sum();
+        with(p, q) + rest
+    };
+    let swaps = |x: Seg, y: Seg| {
+        let (pinned, other) = match (pin(x), pin(y)) {
+            (true, false) => (x, y),
+            (false, true) => (y, x),
+            _ => return false,
+        };
+        // (The other leg passes the pin on both sides along the channel.)
+        if x.edge == y.edge
+            || !inner(other)
+            || other.lo > pinned.lo - EPS
+            || other.hi < pinned.hi + EPS
+        {
+            return false;
+        }
+        let ex = ends_of(x);
+        let ey = ends_of(y);
+        if turns_crossed(ey, (y.lo, y.hi), ex, (x.lo, x.hi))
+            >= turns_crossed(ex, (x.lo, x.hi), ey, (y.lo, y.hi))
+        {
+            return false;
+        }
+        // (A leg already on the line keeps its path.)
+        let on = |sg: Seg, to: f64| {
+            if (to - sg.at).abs() < EPS {
+                routes[sg.edge].clone()
+            } else {
+                shifted(f, routes, sg, to, None)
+            }
+        };
+        let gap = EDGE_SEP + SEP_AIR;
+        let (lo, hi) = (x.at.min(y.at), x.at.max(y.at));
+        [lo, hi, lo - gap].into_iter().find_map(|p| {
+            let q = p + gap;
+            let keep = crossings(&on(x, p)?, x.edge, &on(y, q)?, y.edge);
+            let swap = crossings(&on(y, p)?, y.edge, &on(x, q)?, x.edge);
+            Some(swap < keep)
+        }) == Some(true)
+    };
+    for _ in 0..n {
+        let mut swapped = false;
+        for k in 0..n - 1 {
+            if swaps(segs[order[k]], segs[order[k + 1]]) {
+                order.swap(k, k + 1);
+                swapped = true;
+            }
+        }
+        if !swapped {
+            break;
+        }
+    }
+}
+
+/// How many times two parallel legs' turns cross when the one with
+/// ends `a` (each (along, the way it turns across: -1, +1, or 0 at a
+/// port)) over span `sa` lies below the one with ends `b` over `sb`: a
+/// turn towards the other leg strictly inside its span crosses it.
+fn turns_crossed(a: [(f64, f64); 2], sa: (f64, f64), b: [(f64, f64); 2], sb: (f64, f64)) -> usize {
+    let inside = |l: f64, s: (f64, f64)| l > s.0 + EPS && l < s.1 - EPS;
+    a.iter().filter(|e| e.1 > 0.0 && inside(e.0, sb)).count()
+        + b.iter().filter(|e| e.1 < 0.0 && inside(e.0, sa)).count()
 }
 
 /// Some members of a group of legs (indices into the stage's legs, low
@@ -4300,6 +4449,7 @@ pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut
         par_at,
         singles: mode == Mode::Static,
         routed: mode == Mode::Routed,
+        blocks: cx.blocks,
     };
     let before = routes.clone();
     // In `route()` the spread is charged to [`SPREAD_ROUTE_WORK`] and
@@ -4348,6 +4498,12 @@ pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut
     // the wider rounding, each kept only if no worse (charged to the
     // same work).
     let mut kept = before.clone();
+    // In a block layout's static scene, every edge as drawn so far (the
+    // judged ones as kept, the others as nudged) and a grid over them,
+    // built on first use (`judged` holds the kept paths until then): see
+    // `cramps` below.
+    let mut drawn_now: Option<(Vec<Vec<Pt>>, SegGrid)> = None;
+    let mut judged: Vec<Option<Vec<Pt>>> = vec![None; if cx.blocks { ne } else { 0 }];
     for i in 0..ne {
         let (Some(info), Some(old)) = (infos[i].as_ref(), before[i].as_ref()) else {
             continue;
@@ -4383,7 +4539,70 @@ pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut
             };
             if let Some((new, p)) = nudged_i {
                 let s = w.score(info, i, &p, Some(&mut *acc));
-                if s <= s_cur {
+                // In a block layout drawn TD or BT, a frame's pin is not
+                // moved where it comes within [`EDGE_SEP_MIN`] of another
+                // edge, nearer than it was (or where it crossed it): the
+                // spread places a group's legs together, and when the
+                // judging keeps the pin's move and not its neighbour's,
+                // the pin may land a stroke's width from the other. (The
+                // spread laid an entry `ortho`'s title sides displaced
+                // past a title's chip at the ink's clearance and the pin
+                // past it; the scoring refused the entry's move, whose
+                // turn under the title row came within the chip's reach
+                // at its corner, and kept the pin's, which took away the
+                // crossing of the entry's step: the pin's head came 5 px
+                // from the entry's line on the verifier's random inputs.)
+                let cramps = cx.blocks
+                    && mode == Mode::Static
+                    && s <= s_cur
+                    && matches!(info.ends.1, EndRef::Frame(_))
+                    && matches!(
+                        g.direction,
+                        crate::model::Direction::TD | crate::model::Direction::BT
+                    )
+                    && {
+                        let (now, grid) = drawn_now.get_or_insert_with(|| {
+                            let now: Vec<Vec<Pt>> = (0..ne)
+                                .map(|k| {
+                                    judged[k]
+                                        .clone()
+                                        .or_else(|| nudged[k].clone())
+                                        .unwrap_or_else(|| polys[k].clone())
+                                })
+                                .collect();
+                            let grid = SegGrid::new(&now, |k| infos[k].is_some());
+                            (now, grid)
+                        });
+                        let shared = |k: usize| -> Vec<Pt> {
+                            let (Some(a), Some(b)) = (&infos[i], &infos[k]) else {
+                                return Vec::new();
+                            };
+                            let ends = |m: usize| {
+                                let p = &now[m];
+                                (p[0], p[p.len() - 1])
+                            };
+                            let ((ai, bi), (ak, bk)) = ((pts[0], pts[pts.len() - 1]), ends(k));
+                            let mut out = Vec::new();
+                            for (end, q) in [(a.ends.0, ai), (a.ends.1, bi)] {
+                                if end == b.ends.0 {
+                                    out.extend([q, ak]);
+                                }
+                                if end == b.ends.1 {
+                                    out.extend([q, bk]);
+                                }
+                            }
+                            out
+                        };
+                        let was = grid.near(now, &pts, i, shared);
+                        grid.near(now, &p, i, shared).into_iter().any(|(k, d)| {
+                            let Some(d) = d.filter(|&d| d < EDGE_SEP_MIN) else {
+                                return false;
+                            };
+                            !was.iter()
+                                .any(|&(j, o)| j == k && o.is_some_and(|o| o <= d + EPS))
+                        })
+                    };
+                if s <= s_cur && !cramps {
                     (cur, pts, s_cur, redraw) = (new.clone(), p, s, true);
                 }
             }
@@ -4435,6 +4654,14 @@ pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut
         } else {
             CORNER_R
         };
+        if let Some((now, grid)) = drawn_now.as_mut() {
+            if now[i] != pts {
+                grid.replace(i, &now[i], &pts);
+                now[i] = pts.clone();
+            }
+        } else if let Some(j) = judged.get_mut(i) {
+            *j = Some(pts.clone());
+        }
         match acc.as_mut() {
             Some(a) if !redraw => a.put(i, info.ends, simple_of(i)),
             Some(a) => accept(a, i, info.ends, &pts),
@@ -6740,6 +6967,7 @@ mod tests {
             par_at: [0, 1].map(|_| Buckets::new(std::iter::empty())),
             singles: true,
             routed: false,
+            blocks: false,
         };
         for _ in 0..NUDGE_ROUNDS {
             let mut unlimited = usize::MAX;
@@ -6919,6 +7147,7 @@ mod tests {
             par_at: [0, 1].map(|_| Buckets::new(std::iter::empty())),
             singles: true,
             routed: false,
+            blocks: false,
         };
         let merged = merge_jog(&f, &routes, 0, 0).expect("a step to merge");
         assert_eq!(merged.len(), 2, "{merged:?}");
@@ -7109,6 +7338,25 @@ mod tests {
         );
         assert_eq!(s.chip, 0);
         assert!(s.hug >= 80, "{s:?}");
+    }
+
+    /// [`turns_crossed`]: a pin dropping from the left onto its frame
+    /// inside an entry's span crosses the entry when it lies past it, and
+    /// not when it lies on the side it comes from; turns outside the
+    /// other leg's span cross nothing (the verifier's twin blocks drawn
+    /// TD, `q --> B` and `a1 --> b1`, see [`pins_past_turns`]).
+    #[test]
+    fn a_pins_turn_inside_another_legs_span_crosses_it_on_one_side_only() {
+        // The entry turns left at both ends; the pin turns left once and
+        // ends on its port.
+        let entry = [(261.0, -1.0), (331.0, -1.0)];
+        let pin = [(274.0, -1.0), (301.0, 0.0)];
+        let (se, sp) = ((261.0, 331.0), (274.0, 301.0));
+        assert_eq!(turns_crossed(entry, se, pin, sp), 1);
+        assert_eq!(turns_crossed(pin, sp, entry, se), 0);
+        let short = [(100.0, 1.0), (120.0, -1.0)];
+        assert_eq!(turns_crossed(short, (100.0, 120.0), pin, sp), 0);
+        assert_eq!(turns_crossed(pin, sp, short, (100.0, 120.0)), 0);
     }
 
     /// In a block layout the bold ink a title runs past its chip
