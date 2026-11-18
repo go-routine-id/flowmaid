@@ -555,6 +555,7 @@ fn build(d: &Architecture) -> (ArchScene, Vec<Vec<Pt>>) {
             height,
             // `to_svg` here strokes each edge as a plain polyline.
             plain_crossings: true,
+            block_layout: false,
         },
         icons,
         arrow_starts,

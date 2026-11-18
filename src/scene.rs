@@ -237,6 +237,13 @@ pub struct Scene {
     /// crossings without hops too. A class or ER scene is kept plain by
     /// its edges' `paint_width` instead.
     pub(crate) plain_crossings: bool,
+    /// The scene is a block layout's (B12: `scene()` laid the graph out
+    /// as blocks, or `route()` drew it with the block layout's frames),
+    /// for what its painter alone treats otherwise: crossing gaps closer
+    /// than a cluster along one under-line are cut as one
+    /// ([`crate::casing`]). `false` for every other scene, so they paint
+    /// as they always did.
+    pub(crate) block_layout: bool,
 }
 
 /// An element picked out of a [`Scene`] by [`Scene::hit_test`] and
@@ -265,6 +272,7 @@ impl Scene {
             width,
             height,
             plain_crossings: false,
+            block_layout: false,
         }
     }
 
@@ -3536,6 +3544,7 @@ pub(crate) fn scene_labelled(g: &Graph, sizes: &[(f64, f64)], labels: &[String])
         scene_clustered(g, sizes, labels, crate::levels::blocks_on())
     };
     // (A block layout's edge stages know which upstream edges are lanes.)
+    sc.block_layout = blocks.is_some();
     crate::edgepass::finish_blocks(g, &mut sc, blocks.as_deref());
     if blocks.is_some() && embrace_own_edges(g, &mut sc) {
         crate::edgepass::refit(
@@ -4223,6 +4232,7 @@ fn scene_from_layout(
         width,
         height,
         plain_crossings: false,
+        block_layout: false,
     }
 }
 
@@ -5855,6 +5865,7 @@ fn route_built(
         width: maxx + MARGIN,
         height: maxy + MARGIN,
         plain_crossings: false,
+        block_layout: blocks,
     }
 }
 

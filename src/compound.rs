@@ -657,6 +657,7 @@ fn join(g: &Graph, split: &Split, blocks: &[Scene], rest: &Scene) -> Option<Scen
         width,
         height,
         plain_crossings: false,
+        block_layout: false,
     })
 }
 
@@ -950,6 +951,7 @@ fn part_base(
         width: base.width,
         height: base.height,
         plain_crossings: false,
+        block_layout: false,
     })
 }
 
