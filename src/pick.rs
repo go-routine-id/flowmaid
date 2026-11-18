@@ -74,6 +74,22 @@ pub(crate) fn cubic_dist(p: Pt, b: &[Pt; 4]) -> f64 {
     best
 }
 
+/// Distance from `p` to the bounding box of `pts` (0 inside it).
+pub(crate) fn box_gap(p: Pt, pts: &[Pt]) -> f64 {
+    let (mut x0, mut y0, mut x1, mut y1) = (
+        f64::INFINITY,
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+        f64::NEG_INFINITY,
+    );
+    for q in pts {
+        (x0, y0, x1, y1) = (x0.min(q.0), y0.min(q.1), x1.max(q.0), y1.max(q.1));
+    }
+    let dx = (x0 - p.0).max(p.0 - x1).max(0.0);
+    let dy = (y0 - p.1).max(p.1 - y1).max(0.0);
+    dx.hypot(dy)
+}
+
 /// Whether `p` lies in the rectangle at `(x, y)` (top-left), `w` x `h`.
 pub(crate) fn in_rect(p: Pt, x: f64, y: f64, w: f64, h: f64) -> bool {
     p.0 >= x && p.0 <= x + w && p.1 >= y && p.1 <= y + h
@@ -244,6 +260,8 @@ mod tests {
         let arc = [(0.0, 0.0), (0.0, -10.0), (30.0, -10.0), (30.0, 0.0)];
         assert!(cubic_dist((15.0, -7.5), &arc) < 1e-6);
         assert!((cubic_dist((15.0, 0.0), &arc) - 7.5).abs() < 0.01);
+        assert_eq!(box_gap((15.0, -5.0), &arc), 0.0);
+        assert_eq!(box_gap((33.0, 4.0), &arc), 5.0);
     }
 
     #[test]

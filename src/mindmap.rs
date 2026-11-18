@@ -2596,6 +2596,12 @@ impl MindScene {
         }
         let mut near = crate::pick::Nearest::new(tol);
         for (j, e) in self.edges.iter().enumerate() {
+            // A curve lies inside its control points' box: one farther
+            // from it than the stroke reaches is not measured.
+            let reach = e.width / 2.0 + tol.max(0.0);
+            if crate::pick::box_gap(p, &e.bezier) > reach {
+                continue;
+            }
             near.offer_stroke(j, crate::pick::cubic_dist(p, &e.bezier), e.width);
         }
         near.get().map(MindHit::Link)
@@ -2605,6 +2611,20 @@ impl MindScene {
 /// Whether `p` lies in node `n`'s shape as [`shape_svg`] paints it.
 fn node_contains(n: &MindNodeBox, p: (f64, f64)) -> bool {
     use crate::pick::{in_disc, in_polygon, in_rect, in_round_rect};
+    // Every shape lies within its box but for a bang's spikes or a
+    // cloud's lobes on a box too small for them, which reach past it by
+    // at most a spike or a lobe (and the 1 px their radii are held to):
+    // farther out, no outline is built.
+    let room = BANG_SPIKE.max(CLOUD_LOBE) + 1.0;
+    if !in_rect(
+        p,
+        n.x - room,
+        n.y - room,
+        n.w + 2.0 * room,
+        n.h + 2.0 * room,
+    ) {
+        return false;
+    }
     if let Some(pts) = perimeter(n) {
         return in_polygon(p, &pts);
     }
