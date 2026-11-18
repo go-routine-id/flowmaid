@@ -542,7 +542,7 @@ See `examples/drag_sim.rs`.
 
 `Scene::{hit_test, node_at, edge_at, cluster_at, hits_in_rect, nearest_node}` are shape-precise and match what is painted, so pick → drag → route works without the host doing its own geometry. `edge_at` follows the painted stroke, a crossing hop's arc included. Picking costs microseconds.
 
-`MindScene`, `PieScene` and `SankeyScene` have a `hit_test` of their own, with the same conventions: the topmost element under a scene point, by its index into the scene's lists.
+Mindmap, sequence, pie, journey, timeline and sankey scenes have a `hit_test` of their own (`MindScene::hit_test` and so on), with the same conventions: the topmost element under a scene point, by its index into the scene's lists.
 
 ### Saving back to mermaid
 

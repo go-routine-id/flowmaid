@@ -1,11 +1,12 @@
-//! Picking on the mindmap, pie and sankey scenes (issue #112), through the public API, on every repository
+//! Picking on the mindmap, sequence, pie, journey, timeline and sankey
+//! scenes (issue #112), through the public API, on every repository
 //! fixture of each type: a point on an element picks it, a point just
 //! off a filled shape does not, `tol` widens strokes only, overlapping
 //! elements resolve by paint order, and nothing is picked off the canvas.
 
 use flowmaid::model::Document;
 use flowmaid::parser::parse_document;
-use flowmaid::{mindmap, pie, sankey};
+use flowmaid::{journey, mindmap, pie, sankey, seq, timeline};
 use std::path::{Path, PathBuf};
 
 /// Every `.mmd` file under `dir`, recursively, in name order.
@@ -199,6 +200,186 @@ fn mindmap_later_node_wins_and_shapes_are_exact() {
 }
 
 // ------------------------------------------------------------------
+// Sequence
+// ------------------------------------------------------------------
+
+const SEQ_MIX: &str = "sequenceDiagram
+  actor U as User
+  participant A as App
+  participant D as DB
+  U->>A: open
+  activate A
+  loop every row
+    A->>D: query
+    D-->>A: rows
+  end
+  alt ok
+    A->>U: show
+  else failed
+    A-xU: error
+  end
+  Note right of D: indexed
+  deactivate A
+";
+
+fn seq_docs() -> Vec<(String, flowmaid::model::SequenceDiagram)> {
+    let mut out = docs_of!(Sequence);
+    if let Document::Sequence(d) = parse(SEQ_MIX) {
+        out.push(("SEQ_MIX".into(), d));
+    }
+    out
+}
+
+#[test]
+fn sequence_picks_every_element() {
+    use seq::SeqHit;
+    for (name, d) in seq_docs() {
+        let sc = seq::scene(&d);
+        for (k, b) in sc.boxes.iter().enumerate() {
+            let c = if b.actor {
+                seq::actor_figure(b).head
+            } else {
+                (b.x + b.w / 2.0, b.y + b.h / 2.0)
+            };
+            assert_eq!(
+                sc.hit_test(c.0, c.1, 0.0),
+                Some(SeqHit::Participant(k)),
+                "{name}"
+            );
+        }
+        for (k, b) in sc.footer.iter().enumerate() {
+            let c = if b.actor {
+                seq::actor_figure(b).head
+            } else {
+                (b.x + b.w / 2.0, b.y + b.h / 2.0)
+            };
+            assert_eq!(
+                sc.hit_test(c.0, c.1, 0.0),
+                Some(SeqHit::Footer(k)),
+                "{name}"
+            );
+        }
+        for (i, nb) in sc.notes.iter().enumerate() {
+            let c = (nb.x + nb.w / 2.0, nb.y + nb.h / 2.0);
+            assert_eq!(sc.hit_test(c.0, c.1, 0.0), Some(SeqHit::Note(i)), "{name}");
+        }
+        for (i, m) in sc.messages.iter().enumerate() {
+            if !m.text.is_empty() && m.label_centered {
+                let at = m.label_pos;
+                assert_eq!(
+                    sc.hit_test(at.0, at.1, 0.0),
+                    Some(SeqHit::Message(i)),
+                    "{name}"
+                );
+            }
+            if m.points.len() == 2 {
+                let (a, b) = (m.points[0], m.points[1]);
+                let mid = ((a.0 + b.0) / 2.0, a.1);
+                // On the line (a lifeline may cross it there: the
+                // message is drawn over it).
+                assert_eq!(
+                    sc.hit_test(mid.0, mid.1, 0.0),
+                    Some(SeqHit::Message(i)),
+                    "{name}"
+                );
+                // 3 px below the line: within tol 3 of its stroke, not
+                // within tol 1.
+                let below = (mid.0, mid.1 + 3.0);
+                assert_eq!(
+                    sc.hit_test(below.0, below.1, 3.0),
+                    Some(SeqHit::Message(i)),
+                    "{name}"
+                );
+                assert_ne!(
+                    sc.hit_test(below.0, below.1, 1.0),
+                    Some(SeqHit::Message(i)),
+                    "{name}"
+                );
+            }
+        }
+        for (i, a) in sc.activations.iter().enumerate() {
+            // A spot on the bar no message runs across.
+            let clear = |y: f64| {
+                sc.messages
+                    .iter()
+                    .all(|m| m.points.iter().all(|p| (p.1 - y).abs() > 3.0))
+            };
+            let Some(y) = (1..20)
+                .map(|k| a.y0 + (a.y1 - a.y0) * k as f64 / 20.0)
+                .find(|&y| clear(y))
+            else {
+                continue;
+            };
+            assert_eq!(
+                sc.hit_test(a.x, y, 0.0),
+                Some(SeqHit::Activation(i)),
+                "{name}"
+            );
+        }
+        for (k, l) in sc.lifelines.iter().enumerate() {
+            // Just under the header box, on the line and 2 px beside it.
+            let y = sc.boxes[k].y + sc.boxes[k].h + 4.0;
+            if y >= l.y1 {
+                continue;
+            }
+            assert_eq!(
+                sc.hit_test(l.x, y, 0.0),
+                Some(SeqHit::Lifeline(k)),
+                "{name}"
+            );
+            assert_eq!(
+                sc.hit_test(l.x + 2.0, y, 2.0),
+                Some(SeqHit::Lifeline(k)),
+                "{name}"
+            );
+            assert_ne!(
+                sc.hit_test(l.x + 2.0, y, 1.0),
+                Some(SeqHit::Lifeline(k)),
+                "{name}"
+            );
+        }
+        assert_eq!(sc.hit_test(-1.0, 5.0, 3.0), None);
+        assert_eq!(sc.hit_test(5.0, sc.height + 1.0, 3.0), None);
+    }
+}
+
+#[test]
+fn sequence_frames_tell_label_and_border_from_inside() {
+    use seq::SeqHit;
+    let Document::Sequence(d) = parse(SEQ_MIX) else {
+        unreachable!()
+    };
+    let sc = seq::scene(&d);
+    assert_eq!(sc.frames.len(), 2);
+    for (i, f) in sc.frames.iter().enumerate() {
+        // The keyword chip, and the left border.
+        assert_eq!(
+            sc.hit_test(f.x + 4.0, f.y + 4.0, 0.0),
+            Some(SeqHit::Frame(i))
+        );
+        let mid = f.y + f.h * 0.4;
+        assert_eq!(sc.hit_test(f.x, mid, 0.0), Some(SeqHit::Frame(i)));
+        // Inside, on nothing drawn: 4 px in from the border (picked
+        // only with a tol reaching the border).
+        assert_eq!(
+            sc.hit_test(f.x + 4.0, mid, 0.0),
+            Some(SeqHit::FrameInside(i))
+        );
+        assert_eq!(sc.hit_test(f.x + 4.0, mid, 4.0), Some(SeqHit::Frame(i)));
+        // A lifeline through the frame (DB's: never activated) is
+        // picked over the frame.
+        let l = &sc.lifelines[2];
+        let on = (l.x, f.y + f.h - 3.0);
+        assert_eq!(sc.hit_test(on.0, on.1, 0.0), Some(SeqHit::Lifeline(2)));
+    }
+    // The `else` divider belongs to the `alt` frame.
+    let alt = &sc.frames[1];
+    let (dy, _) = alt.dividers[0];
+    let x = alt.x + alt.w - 6.0;
+    assert_eq!(sc.hit_test(x, dy, 0.0), Some(SeqHit::Frame(1)));
+}
+
+// ------------------------------------------------------------------
 // Pie
 // ------------------------------------------------------------------
 
@@ -269,6 +450,138 @@ fn pie_picks_slices_labels_and_legend() {
             );
         }
         assert_eq!(ps.hit_test(-1.0, ps.cy, 5.0), None);
+    }
+}
+
+// ------------------------------------------------------------------
+// Journey
+// ------------------------------------------------------------------
+
+#[test]
+fn journey_picks_tasks_legend_and_sections() {
+    use journey::JourneyHit;
+    for (name, d) in docs_of!(Journey) {
+        let js = journey::scene(&d);
+        for (i, t) in js.tasks.iter().enumerate() {
+            assert_eq!(
+                js.hit_test(t.cx, t.cy, 0.0),
+                Some(JourneyHit::Task(i)),
+                "{name}"
+            );
+            assert_eq!(
+                js.hit_test(t.label_pos.0, t.label_pos.1, 0.0),
+                Some(JourneyHit::Task(i)),
+                "{name}: label"
+            );
+            for &(x, y, _) in &t.actor_dots {
+                assert_eq!(
+                    js.hit_test(x, y, 0.0),
+                    Some(JourneyHit::Task(i)),
+                    "{name}: dot"
+                );
+            }
+            // Just off the face, beside it: not the task.
+            let off = (t.cx + t.r + 0.5, t.cy);
+            assert_ne!(
+                js.hit_test(off.0, off.1, 5.0),
+                Some(JourneyHit::Task(i)),
+                "{name}"
+            );
+        }
+        for (a, it) in js.legend.iter().enumerate() {
+            let mark = (it.x + journey::DOT_R, it.y);
+            assert_eq!(
+                js.hit_test(mark.0, mark.1, 0.0),
+                Some(JourneyHit::Legend(a)),
+                "{name}"
+            );
+            let text = (it.x + 2.0 * journey::DOT_R + 8.0, it.y);
+            assert_eq!(
+                js.hit_test(text.0, text.1, 0.0),
+                Some(JourneyHit::Legend(a)),
+                "{name}"
+            );
+        }
+        for (i, b) in js.sections.iter().enumerate() {
+            let c = (b.x + b.w / 2.0, b.y + b.h / 2.0);
+            assert_eq!(
+                js.hit_test(c.0, c.1, 0.0),
+                Some(JourneyHit::Section(i)),
+                "{name}"
+            );
+            // The band's rounded corner leaves its box's corner empty.
+            assert_ne!(
+                js.hit_test(b.x + 0.5, b.y + 0.5, 0.0),
+                Some(JourneyHit::Section(i))
+            );
+        }
+        assert_eq!(js.hit_test(js.width + 1.0, 5.0, 5.0), None);
+    }
+}
+
+// ------------------------------------------------------------------
+// Timeline
+// ------------------------------------------------------------------
+
+#[test]
+fn timeline_picks_events_periods_and_sections() {
+    use timeline::TimelineHit;
+    let mut docs = docs_of!(Timeline);
+    if let Document::Timeline(d) = parse("timeline TD\n  2002 : A\n  section S\n    2004 : B : C\n")
+    {
+        docs.push(("td".into(), d));
+    }
+    for (name, d) in docs {
+        let ts = timeline::scene(&d);
+        for (s, sec) in ts.sections.iter().enumerate() {
+            for (k, p) in sec.periods.iter().enumerate() {
+                let period = Some(TimelineHit::Period {
+                    section: s,
+                    period: k,
+                });
+                for (e, &(_, y)) in p.events.iter().enumerate() {
+                    let want = Some(TimelineHit::Event {
+                        section: s,
+                        period: k,
+                        event: e,
+                    });
+                    assert_eq!(ts.hit_test(p.cx, y, 0.0), want, "{name}");
+                }
+                assert_eq!(ts.hit_test(p.cx, p.label_y, 0.0), period, "{name}: label");
+                assert_eq!(ts.hit_test(p.cx, sec.axis_y, 0.0), period, "{name}: tick");
+                for &(y0, y1) in &p.line_segments {
+                    let y = (y0 + y1) / 2.0;
+                    assert_eq!(ts.hit_test(p.cx, y, 0.0), period, "{name}: task line");
+                    assert_eq!(
+                        ts.hit_test(p.cx + 2.5, y, 2.0),
+                        period,
+                        "{name}: within tol"
+                    );
+                    assert_ne!(
+                        ts.hit_test(p.cx + 2.5, y, 1.0),
+                        period,
+                        "{name}: beyond tol"
+                    );
+                }
+            }
+            // The axis between two ticks, and the named band.
+            if let [a, b, ..] = sec.periods.as_slice() {
+                let x = (a.cx + b.cx) / 2.0;
+                assert_eq!(
+                    ts.hit_test(x, sec.axis_y, 0.0),
+                    Some(TimelineHit::Section(s))
+                );
+            }
+            if !sec.name.is_empty() {
+                let c = (sec.x + sec.w / 2.0, sec.y + timeline::SECTION_H / 2.0);
+                assert_eq!(
+                    ts.hit_test(c.0, c.1, 0.0),
+                    Some(TimelineHit::Section(s)),
+                    "{name}"
+                );
+            }
+        }
+        assert_eq!(ts.hit_test(5.0, -1.0, 5.0), None);
     }
 }
 

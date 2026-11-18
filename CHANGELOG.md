@@ -29,17 +29,27 @@ project adheres to [Semantic Versioning](https://semver.org/).
   one node in a 240-entity ER diagram (about 7 times cheaper a frame
   than `route`), a 240-class diagram (about 11 times) and a
   1041-node mindmap (about 3 times).
-- **Picking on mindmap, pie and sankey scenes** (#112).
-  `MindScene::hit_test`, `PieScene::hit_test` and
-  `SankeyScene::hit_test` return the topmost element under a scene
-  point, as `Scene::hit_test` does: `MindHit::Node` / `Link`,
-  `PieHit::Slice` / `Label` / `Legend` (a label or legend row names the
-  slice it describes) and `SankeyHit::Node` / `Link`, each by its index
-  into the scene's own list. They test the shapes the painters draw (a
-  mindmap node's own outline, a pie slice's sector, a sankey ribbon's
-  curved band at its real thickness, text boxes as the layout measures
-  them), in paint order; `tol` widens strokes only (connectors,
-  leaders), and a point off the canvas picks nothing.
+- **Picking on mindmap, sequence, pie, journey, timeline and sankey
+  scenes** (#112). `MindScene`, `SeqScene`, `PieScene`, `JourneyScene`,
+  `TimelineScene` and `SankeyScene` each have a `hit_test(x, y, tol)`
+  that returns the topmost element under a scene point, as
+  `Scene::hit_test` does, by its index into the scene's own lists:
+  `MindHit` (node, connector; `mindmap::link_ends` names a connector's
+  two nodes), `SeqHit` (participant box, footer box or lifeline, all by
+  the participant's index; message, note, activation bar; a frame's
+  border, chip, labels or dividers, told apart from a click inside the
+  frame on nothing drawn, so a `loop` does not swallow what lies in
+  it), `PieHit` (slice; percentage label or legend row, each naming its
+  slice), `JourneyHit` (task, legend item, section), `TimelineHit`
+  (section; period as section and period; event as section, period and
+  event) and `SankeyHit` (node or its label, link). They test the
+  shapes the painters draw, in paint order: a mindmap node's own
+  outline, a pie slice's sector inside the radius, a sankey ribbon's
+  curved band at its real thickness, text boxes as the layouts measure
+  them. `tol` widens strokes only (connectors, message lines,
+  lifelines, dividers, frame borders, timeline axes and task lines, pie
+  leaders), `tol <= 0` is exact, and a point off the canvas picks
+  nothing.
 
 ### Internal
 
