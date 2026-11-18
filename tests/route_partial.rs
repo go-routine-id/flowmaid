@@ -240,6 +240,15 @@ fn er_drag_after_an_edit_is_a_full_route() {
         &er::route_partial(&d, &to, &base, &off),
         &er::route(&d, &to)
     ));
+    // Nor at a centre off the numbers.
+    for bad in [f64::INFINITY, f64::NEG_INFINITY, f64::NAN] {
+        let mut off = at.clone();
+        off[4].0 = bad;
+        assert!(same(
+            &er::route_partial(&d, &to, &base, &off),
+            &er::route(&d, &to)
+        ));
+    }
     // Base counts that do not fit.
     assert!(same(
         &er::route_partial(&d, &to, &base, &at[..3]),
@@ -401,6 +410,15 @@ fn mindmap_drag_after_an_edit_is_a_full_route() {
         &mindmap::route_partial(&d5, &to, &base, &at),
         &mindmap::route(&d5, &to)
     ));
+    // `base` not drawn at `base_pos`, or at a centre off the numbers.
+    for bad in [7.0, f64::INFINITY, f64::NEG_INFINITY, f64::NAN] {
+        let mut off = at.clone();
+        off[2].0 = if bad == 7.0 { off[2].0 + bad } else { bad };
+        assert!(same(
+            &mindmap::route_partial(&d, &to, &base, &off),
+            &mindmap::route(&d, &to)
+        ));
+    }
     // No move: the base.
     assert!(same(&mindmap::route_partial(&d, &at, &base, &at), &base));
 }
@@ -488,6 +506,7 @@ fn check_class_frame(
         moved.push((n.x, n.y) != (base.scene.nodes[k].x, base.scene.nodes[k].y));
     }
     let index = |id: &str| frame.scene.nodes.iter().position(|n| n.id == id).unwrap();
+    let (cards, base_cards) = (class::card_spots(&frame), class::card_spots(base));
     for (j, e) in base.scene.edges.iter().enumerate() {
         if moved[index(&e.from)] || moved[index(&e.to)] {
             continue;
@@ -497,6 +516,18 @@ fn check_class_frame(
             drawn(e),
             "{name}: edge {j} is not attached to a moved box but changed (box {i})"
         );
+        // Its cardinalities stay where they were, and its glyphs.
+        if j < base.rels.len() {
+            assert_eq!(
+                cards[j], base_cards[j],
+                "{name}: the cardinalities of relation {j} moved (box {i})"
+            );
+            assert_eq!(
+                format!("{:?}", class::rel_head(&frame, j)),
+                format!("{:?}", class::rel_head(base, j)),
+                "{name}: the glyph of relation {j} moved (box {i})"
+            );
+        }
     }
     assert!(
         frame.scene.origin.0 <= base.scene.origin.0 && frame.scene.origin.1 <= base.scene.origin.1
@@ -608,11 +639,70 @@ fn class_drag_after_an_edit_is_a_full_route() {
         &class::route_partial(&d, &to, &base, &off),
         &class::route(&d, &to)
     ));
+    // Nor at a centre off the numbers.
+    for bad in [f64::INFINITY, f64::NEG_INFINITY, f64::NAN] {
+        let mut off = at.clone();
+        off[3].1 = bad;
+        assert!(same(
+            &class::route_partial(&d, &to, &base, &off),
+            &class::route(&d, &to)
+        ));
+    }
     // Base counts that do not fit.
     assert!(same(
         &class::route_partial(&d, &to, &base, &at[..2]),
         &class::route(&d, &to)
     ));
+}
+
+/// Nine relations into one hub, each with cardinalities at both ends:
+/// a redrawn relation passes near the kept ones' cardinalities.
+fn hub_src() -> String {
+    let mut s = String::from("classDiagram\n");
+    for k in 0..9 {
+        s.push_str(&format!("  Svc{k} \"1\" ..|> \"*\" Hub\n"));
+    }
+    s
+}
+
+#[test]
+fn class_drag_keeps_the_cardinalities_of_the_kept_relations() {
+    let d = class_of(&hub_src());
+    let laid = class::scene(&d);
+    let at = class_centres(&laid);
+    for base in [laid.clone(), class::route(&d, &at)] {
+        let base_cards = class::card_spots(&base);
+        for i in 0..at.len() {
+            for (dx, dy) in [(40.0, 25.0), (-35.0, 60.0), (120.0, -15.0)] {
+                let mut to = at.clone();
+                to[i] = (at[i].0 + dx, at[i].1 + dy);
+                let frame = class::route_partial(&d, &to, &base, &at);
+                let cards = class::card_spots(&frame);
+                let svg = class::to_svg(&frame);
+                for (j, r) in d.relations.iter().enumerate() {
+                    if r.from == i || r.to == i {
+                        continue;
+                    }
+                    assert_eq!(cards[j], base_cards[j], "relation {j}, box {i} moved");
+                    // ... and the SVG writes them there.
+                    for c in cards[j].iter().flatten() {
+                        let at = format!("<text x=\"{:.1}\" y=\"{:.1}\"", c.0, c.1);
+                        assert!(svg.contains(&at), "relation {j}, box {i}: no card {at}");
+                    }
+                }
+                // Frames chain: a frame's kept cards stay on the next.
+                let mut next = to.clone();
+                next[i].1 += 11.0;
+                let again = class::route_partial(&d, &next, &frame, &to);
+                let cards2 = class::card_spots(&again);
+                for (j, r) in d.relations.iter().enumerate() {
+                    if r.from != i && r.to != i {
+                        assert_eq!(cards2[j], base_cards[j], "chained: relation {j}");
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[test]

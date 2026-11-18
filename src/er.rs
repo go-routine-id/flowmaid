@@ -221,7 +221,9 @@ pub fn try_route(d: &ErDiagram, centers: &[(f64, f64)]) -> Option<ErScene> {
 /// an entity, attribute, relationship, cardinality or label added,
 /// removed or changed, or `base` was not drawn at `base_centers`) the
 /// result is [`route`]`(d, centers)`. With no entity moved it is
-/// `base`.
+/// `base`. A scene records no `direction`, so a change of it alone is
+/// not seen, as with the flowchart `route_partial`: route the first
+/// frame after one with [`route`].
 ///
 /// # Panics
 ///
@@ -351,7 +353,9 @@ fn lines_up(d: &ErDiagram, base: &ErScene, base_centers: &[(f64, f64)]) -> bool 
     {
         return false;
     }
-    let near = |a: f64, b: f64| (a - b).abs() <= 1e-6 * a.abs().max(b.abs()).max(1.0);
+    let near = |a: f64, b: f64| {
+        a.is_finite() && b.is_finite() && (a - b).abs() <= 1e-6 * a.abs().max(b.abs()).max(1.0)
+    };
     let rows_eq = |a: &[ErRow], b: &[ErRow]| {
         a.len() == b.len()
             && a.iter().zip(b).all(|(p, q)| {

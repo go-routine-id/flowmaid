@@ -5,9 +5,12 @@
 //! `route_partial` (issue #111). Each diagram is laid out once
 //! (`scene`); then one node in its middle is dragged `frames` steps
 //! (default 40) of 6 px right and 3 px down, and every step is routed
-//! both ways from that laid-out base. It prints one row per diagram:
-//! `diagram  nodes  edges  route_ms  partial_ms  speedup`, the times
-//! the median over the frames.
+//! both ways from that laid-out base, then once more incrementally
+//! from the frame before it, as a host following a drag does. It
+//! prints one row per diagram:
+//! `diagram  nodes  edges  route_ms  partial_ms  chained_ms  speedup`,
+//! the times the median over the frames, the speedup `route_ms` over
+//! `partial_ms`. The times depend on the machine; compare within a run.
 
 use flowmaid::model::Document;
 use flowmaid::{class, er, mindmap, parser};
@@ -103,9 +106,9 @@ fn drag(at: &[(f64, f64)], i: usize, n: usize) -> Vec<Vec<(f64, f64)>> {
         .collect()
 }
 
-fn row(name: &str, nodes: usize, edges: usize, full: f64, part: f64) {
+fn row(name: &str, nodes: usize, edges: usize, full: f64, part: f64, chained: f64) {
     println!(
-        "{name:<8} {nodes:>6} {edges:>6} {full:>9.3} {part:>11.3} {:>8.1}x",
+        "{name:<8} {nodes:>6} {edges:>6} {full:>9.3} {part:>11.3} {chained:>11.3} {:>8.1}x",
         full / part
     );
 }
@@ -117,8 +120,8 @@ fn main() {
         .filter(|&n| n > 0)
         .unwrap_or(40);
     println!(
-        "{:<8} {:>6} {:>6} {:>9} {:>11} {:>9}",
-        "diagram", "nodes", "edges", "route_ms", "partial_ms", "speedup"
+        "{:<8} {:>6} {:>6} {:>9} {:>11} {:>11} {:>9}",
+        "diagram", "nodes", "edges", "route_ms", "partial_ms", "chained_ms", "speedup"
     );
     if let Ok(Document::Er(d)) = parser::parse_document(&er_src(12, 20)) {
         let base = er::scene(&d);
@@ -126,7 +129,11 @@ fn main() {
         let f = drag(&at, at.len() / 2, frames);
         let full = per_frame(&f, |p| er::route(&d, p));
         let part = per_frame(&f, |p| er::route_partial(&d, p, &base, &at));
-        row("er", at.len(), base.scene.edges.len(), full, part);
+        let mut prev = (base.clone(), at.clone());
+        let chained = per_frame(&f, |p| {
+            prev = (er::route_partial(&d, p, &prev.0, &prev.1), p.to_vec());
+        });
+        row("er", at.len(), base.scene.edges.len(), full, part, chained);
     }
     if let Ok(Document::Class(d)) = parser::parse_document(&class_src(12, 20)) {
         let base = class::scene(&d);
@@ -134,7 +141,18 @@ fn main() {
         let f = drag(&at, at.len() / 2, frames);
         let full = per_frame(&f, |p| class::route(&d, p));
         let part = per_frame(&f, |p| class::route_partial(&d, p, &base, &at));
-        row("class", at.len(), base.scene.edges.len(), full, part);
+        let mut prev = (base.clone(), at.clone());
+        let chained = per_frame(&f, |p| {
+            prev = (class::route_partial(&d, p, &prev.0, &prev.1), p.to_vec());
+        });
+        row(
+            "class",
+            at.len(),
+            base.scene.edges.len(),
+            full,
+            part,
+            chained,
+        );
     }
     if let Ok(Document::Mindmap(d)) = parser::parse_document(&mind_src(40, 25)) {
         let base = mindmap::scene(&d);
@@ -142,6 +160,10 @@ fn main() {
         let f = drag(&at, at.len() / 2, frames);
         let full = per_frame(&f, |p| mindmap::route(&d, p));
         let part = per_frame(&f, |p| mindmap::route_partial(&d, p, &base, &at));
-        row("mindmap", at.len(), base.edges.len(), full, part);
+        let mut prev = (base.clone(), at.clone());
+        let chained = per_frame(&f, |p| {
+            prev = (mindmap::route_partial(&d, p, &prev.0, &prev.1), p.to_vec());
+        });
+        row("mindmap", at.len(), base.edges.len(), full, part, chained);
     }
 }

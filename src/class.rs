@@ -146,13 +146,39 @@ pub struct NoteBox {
 /// with the scene's lists). A host that paints no notes can clear
 /// [`ClassDiagram::notes`] before [`scene`] / [`route`] to get one box
 /// per node and one style per edge, as before notes were drawn.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 #[non_exhaustive]
 pub struct ClassScene {
     pub scene: Scene,
     pub boxes: Vec<ClassBox>,
     pub rels: Vec<RelStyle>,
     pub notes: Vec<NoteBox>,
+    /// The cardinality spots a [`route_partial`] frame keeps from its
+    /// base, one entry per relationship (`None`: placed afresh); empty
+    /// for every other scene, whose cardinalities [`card_spots`] places
+    /// against the whole drawing.
+    kept_cards: Vec<Option<CardSpots>>,
+}
+
+/// One relationship's cardinality centres, `[from_card, to_card]`, as
+/// [`card_spots`] lists them.
+type CardSpots = [Option<(f64, f64)>; 2];
+
+/// As `#[derive(Debug)]` writes the public fields, so a scene that keeps
+/// no cardinalities prints as it always did; a [`route_partial`] frame
+/// that keeps some prints them last.
+impl std::fmt::Debug for ClassScene {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut s = f.debug_struct("ClassScene");
+        s.field("scene", &self.scene)
+            .field("boxes", &self.boxes)
+            .field("rels", &self.rels)
+            .field("notes", &self.notes);
+        if !self.kept_cards.is_empty() {
+            s.field("kept_cards", &self.kept_cards);
+        }
+        s.finish()
+    }
 }
 
 /// End style + cardinalities for one relationship, aligned with a
@@ -265,16 +291,17 @@ pub fn try_route(d: &ClassDiagram, centers: &[(f64, f64)]) -> Option<ClassScene>
 /// centres, or a [`route`] (or `route_partial`) output.
 ///
 /// Every box sits at its centre, taken as given, and every relationship
-/// or note link without an end on a moved box keeps its `base` route
-/// and label exactly, also where a moved box now covers it (route the
-/// drop with [`route`] for a drawing that clears it); the cardinalities
-/// are placed against the whole drawing as the painter places them
-/// ([`card_spots`]), so one may step aside for a redrawn line. The
-/// redrawn ones are drawn as [`route`] draws them (orthogonal, their
-/// ends spread on their faces round the kept ones, their labels off
-/// what they would cover), routed round the boxes and fenced by the kept
-/// routes; a gap's jogs are restacked in nesting order only among the
-/// redrawn routes, as a kept route is never moved. The canvas is
+/// or note link without an end on a moved box keeps its `base` route,
+/// label and cardinalities exactly ([`card_spots`] and [`to_svg`] put
+/// them where they are in `base`; the frame remembers them), also where
+/// a moved box now covers it (route the drop with [`route`] for a
+/// drawing that clears it). The redrawn ones are drawn as [`route`]
+/// draws them (orthogonal, their ends spread on their faces round the
+/// kept ones, their labels off what they would cover, their
+/// cardinalities clear of the kept ones), routed round the boxes and
+/// fenced by the kept routes; a gap's jogs are restacked in nesting
+/// order only among the redrawn routes, as a kept route is never moved.
+/// The canvas is
 /// `base`'s, grown over what the drag pushed past it, up or left too
 /// ([`Scene::origin`], as [`route`] grows it): it never shrinks during a
 /// drag. A drag frame so costs what lies at the moved boxes, not the
@@ -285,6 +312,9 @@ pub fn try_route(d: &ClassDiagram, centers: &[(f64, f64)]) -> Option<ClassScene>
 /// class, member, note, relationship, cardinality or label added,
 /// removed or changed, or `base` was not drawn at `base_centers`) the
 /// result is [`route`]`(d, centers)`. With no box moved it is `base`.
+/// A scene records no `direction`, so a change of it alone is not seen,
+/// as with the flowchart `route_partial`: route the first frame after
+/// one with [`route`].
 ///
 /// # Panics
 ///
@@ -361,6 +391,31 @@ pub fn route_partial(
     let mut cs = assemble_keeping(d, b, sc, Mode::Routed, Some((&base.scene, &kept)));
     let (origin, width, height) = top_left_canvas(&cs.scene);
     (cs.scene.origin, cs.scene.width, cs.scene.height) = (origin, width, height);
+    // A kept relationship's cardinalities stay where `base` has them
+    // (also a kept one of `base`'s own base, so frames chain); the
+    // redrawn ones are placed round them.
+    let rels = d.relations.len();
+    let carded = |r: &crate::model::ClassRel| r.from_card.is_some() || r.to_card.is_some();
+    let needed = |j: usize| kept[j] && carded(&d.relations[j]);
+    if (0..rels).any(needed) {
+        // A frame of the same drag as `base` keeps what `base` kept:
+        // those spots are at hand, and [`card_spots`] would give them.
+        let at_hand = base.kept_cards.len() == rels
+            && (0..rels).all(|j| !needed(j) || base.kept_cards[j].is_some());
+        let spots = if at_hand {
+            base.kept_cards
+                .iter()
+                .map(|k| k.unwrap_or([None, None]))
+                .collect()
+        } else {
+            card_spots(base)
+        };
+        cs.kept_cards = kept[..rels]
+            .iter()
+            .zip(spots)
+            .map(|(&k, s)| k.then_some(s))
+            .collect();
+    }
     cs
 }
 
@@ -398,7 +453,9 @@ fn lines_up(d: &ClassDiagram, b: &Built, base: &ClassScene, base_all: &[(f64, f6
     {
         return false;
     }
-    let near = |a: f64, b: f64| (a - b).abs() <= 1e-6 * a.abs().max(b.abs()).max(1.0);
+    let near = |a: f64, b: f64| {
+        a.is_finite() && b.is_finite() && (a - b).abs() <= 1e-6 * a.abs().max(b.abs()).max(1.0)
+    };
     let rows_eq = |p: &[ClassRow], q: &[ClassRow]| {
         p.len() == q.len()
             && p.iter().zip(q).all(|(x, y)| {
@@ -622,6 +679,7 @@ fn assemble_keeping(
         boxes: b.boxes,
         rels,
         notes: b.notes,
+        kept_cards: Vec::new(),
     }
 }
 
@@ -4167,7 +4225,23 @@ pub(crate) fn to_svg_a11y_with(cs: &ClassScene, a11y: &A11y, opts: &SvgOptions) 
     for h in &heads {
         write_head(&mut s, h, &pal);
     }
-    for (rel, spots) in cs.rels.iter().zip(place_cards(sc, &cs.rels, &heads)) {
+    // The cardinalities a drag frame keeps, moved with the drawing.
+    let kept_cards: Vec<Option<CardSpots>> = match (sc.nodes.first(), cs.scene.nodes.first()) {
+        (Some(a), Some(b)) if !cs.kept_cards.is_empty() => {
+            let (dx, dy) = (a.x - b.x, a.y - b.y);
+            let shift = |c: Option<(f64, f64)>| c.map(|c| (c.0 + dx, c.1 + dy));
+            cs.kept_cards
+                .iter()
+                .map(|k| k.map(|[f, t]| [shift(f), shift(t)]))
+                .collect()
+        }
+        _ => Vec::new(),
+    };
+    for (rel, spots) in cs
+        .rels
+        .iter()
+        .zip(place_cards(sc, &cs.rels, &heads, &kept_cards))
+    {
         for (text, at) in [(&rel.from_card, spots[0]), (&rel.to_card, spots[1])] {
             if let (Some(text), Some(at)) = (text, at) {
                 card_text(&mut s, at, text, &canvas, &pal.text);
@@ -4503,7 +4577,7 @@ fn heads_of(sc: &Scene, rels: &[RelStyle]) -> Vec<Head> {
 /// text.
 pub fn card_spots(cs: &ClassScene) -> Vec<[Option<(f64, f64)>; 2]> {
     let heads = heads_of(&cs.scene, &cs.rels);
-    place_cards(&cs.scene, &cs.rels, &heads)
+    place_cards(&cs.scene, &cs.rels, &heads, &cs.kept_cards)
 }
 
 /// Axis-aligned box `(x0, y0, x1, y1)`.
@@ -4550,8 +4624,15 @@ fn rects_meet(a: Rect, b: Rect) -> bool {
 /// nearest the end: the other side, farther along the line, farther out
 /// across it; failing all, the spot with the fewest collisions stands —
 /// covering a box, label or card counts [`CARD_HIDDEN`] times a stroke,
-/// a glyph twice.
-fn place_cards(sc: &Scene, rels: &[RelStyle], heads: &[Head]) -> Vec<[Option<(f64, f64)>; 2]> {
+/// a glyph twice. `kept` (a [`route_partial`] frame's, one entry per
+/// relationship, or empty) names the spots that stand as they are: the
+/// others keep off them too.
+fn place_cards(
+    sc: &Scene,
+    rels: &[RelStyle],
+    heads: &[Head],
+    kept: &[Option<CardSpots>],
+) -> Vec<[Option<(f64, f64)>; 2]> {
     let idx = node_index(sc);
     // Every drawn line with its bounding box, so a spot far from a
     // line skips its segments.
@@ -4612,7 +4693,21 @@ fn place_cards(sc: &Scene, rels: &[RelStyle], heads: &[Head]) -> Vec<[Option<(f6
     }
     let mut placed: Vec<Rect> = Vec::new();
     let mut out = vec![[None, None]; rels.len()];
+    let kept = if kept.len() == rels.len() { kept } else { &[] };
+    for (j, (rel, spots)) in rels.iter().zip(kept).enumerate() {
+        let Some(spots) = spots else { continue };
+        for (slot, text) in [(0, &rel.from_card), (1, &rel.to_card)] {
+            if let (Some(text), Some(c)) = (text, spots[slot]) {
+                let (w, h) = (card_w(text), CARD_H);
+                placed.push((c.0 - w / 2.0, c.1 - h / 2.0, c.0 + w / 2.0, c.1 + h / 2.0));
+                out[j][slot] = Some(c);
+            }
+        }
+    }
     for (j, (e, rel)) in sc.edges.iter().zip(rels).enumerate() {
+        if kept.get(j).is_some_and(Option::is_some) {
+            continue;
+        }
         for (slot, text, at_start) in [(0, &rel.from_card, true), (1, &rel.to_card, false)] {
             let Some(text) = text else { continue };
             let id = if at_start { &e.from } else { &e.to };

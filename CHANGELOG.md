@@ -16,19 +16,25 @@ project adheres to [Semantic Versioning](https://semver.org/).
   flowchart `scene::route_partial` does, and return the scene `route`
   returns. Only what is attached to a moved box is drawn afresh: every
   other relationship, note link or connector keeps its `base` drawing
-  exactly, also where a moved box now covers it (route the drop with
-  `route` to clear it). Positions are kept as given, and a drawing
-  dragged past the top-left margin grows its canvas up or left as
-  `route` does (#76). When `base` no longer lines up with the diagram
-  (an edit since, or other counts) the result is `route`'s. A class
-  diagram takes class centres, or class and note centres, as
-  `class::route` does. `try_route_partial` for each returns `None`
-  where `route_partial` would panic or `try_route` refuses the
-  positions. `mindmap::link_ends` names the two nodes of each
-  connector. `cargo run --release --example drag_bench` times a drag of
-  one node in a 240-entity ER diagram (about 7 times cheaper a frame
-  than `route`), a 240-class diagram (about 11 times) and a
-  1041-node mindmap (about 3 times).
+  exactly (its line, label and end glyphs, and a class relationship's
+  cardinalities, which `class::card_spots` and `class::to_svg` keep
+  where `base` has them), also where a moved box now covers it (route
+  the drop with `route` to clear it). Positions are kept as given, and
+  a drawing dragged past the top-left margin grows its canvas up or
+  left as `route` does (#76). When `base` no longer lines up with the
+  diagram (other counts, or an entity, class, member, note, node,
+  relationship, cardinality or label edited since) the result is
+  `route`'s. A scene records no `direction`, so a change of it alone
+  is not seen, as with the flowchart `route_partial`: route the first
+  frame after one with `route`. A class diagram takes class centres, or
+  class and note centres, as `class::route` does. `try_route_partial`
+  for each returns `None` where `route_partial` would panic or
+  `try_route` refuses the positions. `mindmap::link_ends` names the two
+  nodes of each connector. `cargo run --release --example drag_bench`
+  times a drag of one node in a 240-entity ER diagram, a 240-class
+  diagram and a 1041-node mindmap, each frame routed with `route` and
+  with `route_partial` (from the laid-out drawing, and from the frame
+  before): the partial frame costs a fraction of the full one.
 - **Picking on mindmap, sequence, pie, journey, timeline and sankey
   scenes** (#112). `MindScene`, `SeqScene`, `PieScene`, `JourneyScene`,
   `TimelineScene` and `SankeyScene` each have a `hit_test(x, y, tol)`
