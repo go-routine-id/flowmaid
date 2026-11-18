@@ -2573,8 +2573,9 @@ impl MindScene {
     /// conventions of [`crate::scene::Scene::hit_test`]. Z-order is
     /// [`to_svg`]'s: nodes over connectors, a later node over an earlier
     /// one. A node is its painted shape (its [`perimeter`] polygon, its
-    /// circle, its box, pill, or default box with rounded top corners),
-    /// never widened; a connector is its stroke ([`MindLink::width`]
+    /// circle, its box, pill, or default box with rounded top corners;
+    /// a `classDef` stroke round it is not counted, at most half that
+    /// stroke's width past it), never widened; a connector is its stroke ([`MindLink::width`]
     /// wide, round ends) widened by `tol` scene units (`<= 0`: exact),
     /// the nearest connector winning. `None` off the canvas (`0..=width`
     /// x `0..=height`).

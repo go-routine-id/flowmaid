@@ -654,6 +654,9 @@ pub enum JourneyHit {
     Section(usize),
 }
 
+/// The stroke width [`face_svg`] outlines a face with.
+const FACE_STROKE_W: f64 = 1.4;
+
 /// Whether `p` lies in the actor mark `mark` centred on `c`, as
 /// [`dot_svg`] draws it.
 fn mark_contains(mark: ActorMark, c: (f64, f64), p: (f64, f64)) -> bool {
@@ -692,7 +695,7 @@ impl JourneyScene {
     /// The topmost element at scene point `(x, y)`, or `None`, with the
     /// conventions of [`crate::scene::Scene::hit_test`]. Z-order is
     /// [`to_svg`]'s: the legend over the tasks over the section bands. A
-    /// task is its face, its actor marks and its label's text box (each
+    /// task is its face (with its outline's stroke), its actor marks and its label's text box (each
     /// line as wide as it measures, [`LINE_H`] tall); a legend item its
     /// mark and its name's box; a section its rounded band. The journey
     /// path is not an element (it joins the faces), and the title is
@@ -735,7 +738,7 @@ impl JourneyScene {
             let n = lines.len() as f64;
             // Centred where `to_svg` centres the block.
             let cy = t.label_pos.1 + (n - 1.0) * LINE_H / 2.0;
-            in_disc(p, (t.cx, t.cy), t.r)
+            in_disc(p, (t.cx, t.cy), t.r + FACE_STROKE_W / 2.0)
                 || t.actor_dots.iter().enumerate().any(|(k, &(dx, dy, _))| {
                     let mark = t
                         .actor_ids

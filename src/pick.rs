@@ -3,7 +3,9 @@
 //! sankey): each tests a scene point against the shapes its painter
 //! draws, in the painter's own terms (its rectangles, rounded corners,
 //! polygons, strokes and text boxes), so a pick lands where the SVG
-//! shows the element.
+//! shows the element: a filled shape the painter outlines takes in its
+//! outline's stroke, and a line ends as the painter ends it (square,
+//! the SVG default, unless it draws round caps).
 //!
 //! The conventions are [`crate::scene::Scene::hit_test`]'s: a point in
 //! scene space, a tolerance in scene units that widens only strokes
@@ -30,6 +32,61 @@ pub(crate) fn seg_dist(p: Pt, a: Pt, b: Pt) -> f64 {
         0.0
     };
     (p.0 - a.0 - t * dx).hypot(p.1 - a.1 - t * dy)
+}
+
+/// How far `p` lies off the stroke `width` wide that SVG paints along
+/// the segment `a`-`b` with butt ends (the default `stroke-linecap`):
+/// 0 on that rectangle, else the distance to it. `ext` (at `a`, at `b`)
+/// first pushes the ends out along the segment: half the width at a
+/// polyline's inner corner, where a right-angle miter join fills the
+/// square two butt ends leave open. A segment of no length paints
+/// nothing: infinity.
+pub(crate) fn butt_dist(p: Pt, a: Pt, b: Pt, width: f64, ext: (f64, f64)) -> f64 {
+    let (dx, dy) = (b.0 - a.0, b.1 - a.1);
+    let len = dx.hypot(dy);
+    if !(len > 0.0 && len.is_finite()) {
+        return f64::INFINITY;
+    }
+    let (ux, uy) = (dx / len, dy / len);
+    let (qx, qy) = (p.0 - a.0, p.1 - a.1);
+    let along = qx * ux + qy * uy;
+    let across = (qx * uy - qy * ux).abs();
+    let off_along = (-ext.0 - along).max(along - len - ext.1).max(0.0);
+    let off_across = (across - width / 2.0).max(0.0);
+    off_along.hypot(off_across)
+}
+
+/// [`butt_dist`] to the polyline through `pts` stroked `width` wide,
+/// butt ends and miter joins, as a `<path>` of `L` steps paints it:
+/// exact along straight runs and at right-angle corners (a sequence
+/// message's self-loop). Fewer than two points: infinity.
+pub(crate) fn butt_polyline_dist(p: Pt, pts: &[Pt], width: f64) -> f64 {
+    let n = pts.len();
+    let h = width / 2.0;
+    (1..n)
+        .map(|k| {
+            let ext = (if k > 1 { h } else { 0.0 }, if k + 1 < n { h } else { 0.0 });
+            butt_dist(p, pts[k - 1], pts[k], width, ext)
+        })
+        .fold(f64::INFINITY, f64::min)
+}
+
+/// Whether `p` lies on the SVG `<rect x y width height rx>` filled and
+/// stroked `sw` wide: [`in_round_rect`] grown by half the stroke on each
+/// side, its round corners `rx + sw / 2` round (square ones stay square,
+/// as a miter join paints them).
+pub(crate) fn in_stroked_round_rect(
+    p: Pt,
+    x: f64,
+    y: f64,
+    w: f64,
+    h: f64,
+    rx: f64,
+    sw: f64,
+) -> bool {
+    let d = (sw / 2.0).max(0.0);
+    let r = if rx > 0.0 { rx + d } else { 0.0 };
+    in_round_rect(p, x - d, y - d, w + 2.0 * d, h + 2.0 * d, r)
 }
 
 /// Distance from `p` to the polyline through `pts` (a lone point: the
@@ -290,6 +347,63 @@ mod tests {
         assert_eq!(cubic_dist((15.0, 40.0), &arc, 3.0), f64::INFINITY);
         assert_eq!(box_gap((15.0, -5.0), &arc), 0.0);
         assert_eq!(box_gap((33.0, 4.0), &arc), 5.0);
+    }
+
+    #[test]
+    fn butt_ends_stop_at_the_segment_ends() {
+        let (a, b) = ((0.0, 0.0), (10.0, 0.0));
+        // On the stroke, 2 wide: across it and up to each end.
+        assert_eq!(butt_dist((5.0, 1.0), a, b, 2.0, (0.0, 0.0)), 0.0);
+        assert_eq!(butt_dist((10.0, -1.0), a, b, 2.0, (0.0, 0.0)), 0.0);
+        // Past an end by 0.5 on the axis: off it (a round cap would
+        // cover it), and 0.5 away.
+        assert!((butt_dist((10.5, 0.0), a, b, 2.0, (0.0, 0.0)) - 0.5).abs() < 1e-12);
+        assert!((butt_dist((-0.5, 0.0), a, b, 2.0, (0.0, 0.0)) - 0.5).abs() < 1e-12);
+        // Off a corner of the painted rectangle: the distance to it.
+        assert!((butt_dist((13.0, 5.0), a, b, 2.0, (0.0, 0.0)) - 5.0).abs() < 1e-12);
+        // An end pushed out covers what lies before it.
+        assert_eq!(butt_dist((10.5, 0.0), a, b, 2.0, (0.0, 1.0)), 0.0);
+        assert_eq!(butt_dist((1.0, 0.0), a, a, 2.0, (0.0, 0.0)), f64::INFINITY);
+        // A right-angle polyline: the outer square of its corner is
+        // painted (miter), its two free ends are butt.
+        let pts = [(0.0, 0.0), (10.0, 0.0), (10.0, 10.0)];
+        assert_eq!(butt_polyline_dist((10.9, -0.9), &pts, 2.0), 0.0);
+        assert!(butt_polyline_dist((-0.5, 0.0), &pts, 2.0) > 0.0);
+        assert!(butt_polyline_dist((10.0, 10.5), &pts, 2.0) > 0.0);
+        assert_eq!(
+            butt_polyline_dist((1.0, 0.0), &pts[..1], 2.0),
+            f64::INFINITY
+        );
+    }
+
+    #[test]
+    fn a_stroked_shape_covers_its_outline_stroke() {
+        // 40 x 20, corners 4 round, stroked 1.6: 0.8 more on each side.
+        let r = |p| in_stroked_round_rect(p, 0.0, 0.0, 40.0, 20.0, 4.0, 1.6);
+        assert!(r((-0.7, 10.0)) && r((20.0, 20.7)));
+        assert!(!r((-0.9, 10.0)) && !r((20.0, 20.9)));
+        // The corner arc grows by the same 0.8: radius 4.8 round (4, 4).
+        let k = 4.0 - 4.8 / 2f64.sqrt();
+        assert!(r((k + 0.01, k + 0.01)) && !r((k - 0.05, k - 0.05)));
+        // Square corners stay square.
+        assert!(in_stroked_round_rect(
+            (-0.5, -0.5),
+            0.0,
+            0.0,
+            4.0,
+            4.0,
+            0.0,
+            1.4
+        ));
+        assert!(!in_stroked_round_rect(
+            (-0.8, 0.0),
+            0.0,
+            0.0,
+            4.0,
+            4.0,
+            0.0,
+            1.4
+        ));
     }
 
     #[test]

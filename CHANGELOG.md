@@ -23,11 +23,10 @@ project adheres to [Semantic Versioning](https://semver.org/).
   the canvas (`base`'s) grows over whatever a drag pushes past any of
   its sides, up or left too, as `route`'s does (#76). When `base` no
   longer lines up with the diagram (other counts, or an entity, class,
-  member, note, node,
-  relationship, cardinality or label edited since) the result is
-  `route`'s. A scene records no `direction`, so a change of it alone
-  is not seen, as with the flowchart `route_partial`: route the first
-  frame after one with `route`. A class diagram takes class centres, or
+  member, note, node, relationship, cardinality or label edited since)
+  the result is `route`'s. A scene records no `direction`, so a change
+  of it alone is not seen, as with the flowchart `route_partial`: route
+  the first frame after one with `route`. A class diagram takes class centres, or
   class and note centres, as `class::route` does. `try_route_partial`
   for each returns `None` where `route_partial` would panic or
   `try_route` refuses the positions. `mindmap::link_ends` names the two
@@ -53,10 +52,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
   shapes the painters draw, in paint order: a mindmap node's own
   outline, a pie slice's sector inside the radius, a sankey ribbon's
   curved band at its real thickness, text boxes as the layouts measure
-  them. `tol` widens strokes only (connectors, message lines,
-  lifelines, dividers, frame borders, timeline axes and task lines, pie
-  leaders), `tol <= 0` is exact, and a point off the canvas picks
-  nothing.
+  them, the outline stroke of a sequence, journey or timeline shape,
+  and a line ending square where the painter ends it (butt caps).
+  `tol` widens strokes only (connectors, message lines, lifelines,
+  dividers, frame borders, timeline axes and task lines, pie leaders),
+  `tol <= 0` is exact, and a point off the canvas picks nothing.
 
 ### Internal
 

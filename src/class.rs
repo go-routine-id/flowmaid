@@ -293,9 +293,10 @@ pub fn try_route(d: &ClassDiagram, centers: &[(f64, f64)]) -> Option<ClassScene>
 /// Every box sits at its centre, taken as given, and every relationship
 /// or note link without an end on a moved box keeps its `base` route,
 /// label and cardinalities exactly ([`card_spots`] and [`to_svg`] put
-/// them where they are in `base`; the frame remembers them), also where
-/// a moved box now covers it (route the drop with [`route`] for a
-/// drawing that clears it). The redrawn ones are drawn as [`route`]
+/// them where they are in `base`; the frame remembers them, so they stay
+/// there also if a host edits the frame's `scene` or `rels` itself:
+/// [`route`] places them afresh), also where a moved box now covers it
+/// (route the drop with [`route`] for a drawing that clears it). The redrawn ones are drawn as [`route`]
 /// draws them (orthogonal, their ends spread on their faces round the
 /// kept ones, their labels off what they would cover, their
 /// cardinalities clear of the kept ones), routed round the boxes and

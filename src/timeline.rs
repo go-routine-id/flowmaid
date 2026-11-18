@@ -560,9 +560,10 @@ impl TimelineScene {
     /// later section draws over an earlier one. Texts are their boxes (as
     /// wide as their widest line measures, from the cap top of the first
     /// line to the descender of the last, centred as drawn), a tick its
-    /// disc, a band its rounded rectangle (named sections only); the axis
-    /// and the task lines are strokes `tol` widens (`<= 0`: exact). The
-    /// title is not an element. `None` off the canvas (`0..=width` x `0..=height`).
+    /// disc with its ring's stroke, a band its rounded rectangle (named
+    /// sections only); the axis and the task lines are strokes, ending
+    /// square where drawn (butt caps), that `tol` widens (`<= 0`: exact).
+    /// The title is not an element. `None` off the canvas (`0..=width` x `0..=height`).
     ///
     /// ```
     /// use flowmaid::{model::Document, parser::parse_document, timeline};
@@ -577,7 +578,12 @@ impl TimelineScene {
     /// assert_eq!(hit, Some(timeline::TimelineHit::Event { section: 0, period: 0, event: 0 }));
     /// ```
     pub fn hit_test(&self, x: f64, y: f64, tol: f64) -> Option<TimelineHit> {
-        use crate::pick::{in_box, in_disc, in_round_rect, seg_dist, Nearest};
+        use crate::pick::{butt_dist, in_box, in_disc, in_round_rect, Nearest};
+        // The stroke widths `to_svg` draws the axis, a task line and a
+        // tick's ring with.
+        const AXIS_W: f64 = 2.0;
+        const TASK_LINE_W: f64 = 1.2;
+        const TICK_RING_W: f64 = 1.5;
         if !crate::pick::on_canvas(x, y, self.width, self.height) {
             return None;
         }
@@ -610,10 +616,11 @@ impl TimelineScene {
                 }
                 let mut line = Nearest::new(tol);
                 for &(y0, y1) in &per.line_segments {
-                    line.offer_stroke(k, seg_dist(p, (per.cx, y0), (per.cx, y1)), 1.2);
+                    let (a, b) = ((per.cx, y0), (per.cx, y1));
+                    line.offer(k, butt_dist(p, a, b, TASK_LINE_W, (0.0, 0.0)));
                 }
                 if block(per.cx, per.label_y, &per.label, true)
-                    || in_disc(p, (per.cx, sec.axis_y), TICK_R)
+                    || in_disc(p, (per.cx, sec.axis_y), TICK_R + TICK_RING_W / 2.0)
                     || line.get().is_some()
                 {
                     return Some(TimelineHit::Period {
@@ -623,8 +630,8 @@ impl TimelineScene {
                 }
             }
             let mut axis = Nearest::new(tol);
-            let d = seg_dist(p, (sec.x, sec.axis_y), (sec.x + sec.w, sec.axis_y));
-            axis.offer_stroke(0, d, 2.0);
+            let (a, b) = ((sec.x, sec.axis_y), (sec.x + sec.w, sec.axis_y));
+            axis.offer(0, butt_dist(p, a, b, AXIS_W, (0.0, 0.0)));
             if axis.get().is_some()
                 || (!sec.name.is_empty() && in_round_rect(p, sec.x, sec.y, sec.w, SECTION_H, 4.0))
             {

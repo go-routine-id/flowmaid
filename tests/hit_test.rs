@@ -343,6 +343,94 @@ fn sequence_picks_every_element() {
     }
 }
 
+/// The painter's geometry at the rims: a filled shape takes in its
+/// outline's stroke (a participant box 1.6 wide, an actor's head 1.6, a
+/// note 1.2, an activation bar 1.4), and a message line ends square at
+/// its ends (butt caps), so `tol` reaches past an end but `tol = 0`
+/// does not.
+#[test]
+fn sequence_picks_outline_strokes_and_square_line_ends() {
+    use seq::SeqHit;
+    let mut ends = 0;
+    for (name, d) in seq_docs() {
+        let sc = seq::scene(&d);
+        for (k, b) in sc.boxes.iter().enumerate() {
+            let (at, past) = if b.actor {
+                let f = seq::actor_figure(b);
+                let x = f.head.0 + f.head_r;
+                ((x + 0.7, f.head.1), (x + 1.0, f.head.1))
+            } else {
+                let y = b.y + b.h / 2.0;
+                ((b.x - 0.7, y), (b.x - 1.0, y))
+            };
+            assert_eq!(
+                sc.hit_test(at.0, at.1, 0.0),
+                Some(SeqHit::Participant(k)),
+                "{name}: box {k}'s outline"
+            );
+            assert_ne!(
+                sc.hit_test(past.0, past.1, 5.0),
+                Some(SeqHit::Participant(k)),
+                "{name}: past box {k}'s outline"
+            );
+        }
+        for (i, nb) in sc.notes.iter().enumerate() {
+            let y = nb.y + nb.h / 2.0;
+            assert_eq!(
+                sc.hit_test(nb.x + nb.w + 0.5, y, 0.0),
+                Some(SeqHit::Note(i)),
+                "{name}: note {i}'s outline"
+            );
+        }
+        for (i, a) in sc.activations.iter().enumerate() {
+            let clear = |y: f64| {
+                sc.messages
+                    .iter()
+                    .all(|m| m.points.iter().all(|p| (p.1 - y).abs() > 3.0))
+            };
+            let Some(y) = (1..20)
+                .map(|k| a.y0 + (a.y1 - a.y0) * k as f64 / 20.0)
+                .find(|&y| clear(y))
+            else {
+                continue;
+            };
+            let x = a.x + seq::ACT_W / 2.0 + 0.6;
+            if sc
+                .activations
+                .iter()
+                .any(|o| (o.x - a.x).abs() > 0.1 && (o.x - x).abs() < 6.0)
+            {
+                continue; // a nested bar beside it
+            }
+            assert_eq!(
+                sc.hit_test(x, y, 0.0),
+                Some(SeqHit::Activation(i)),
+                "{name}: bar {i}'s outline"
+            );
+        }
+        // A straight message's tail end, 0.5 px back along the line from
+        // where it starts: off its square end at `tol = 0` (a round cap
+        // would cover it), on it at 1.
+        for (i, m) in sc.messages.iter().enumerate() {
+            let [a, b] = m.points[..] else { continue };
+            let back = if b.0 > a.0 { -0.5 } else { 0.5 };
+            let p = (a.0 + back, a.1);
+            let lit = |tol: f64| sc.hit_test(p.0, p.1, tol) == Some(SeqHit::Message(i));
+            if sc
+                .hit_test(p.0, p.1, 0.0)
+                .is_some_and(|h| h != SeqHit::Message(i))
+                && !lit(1.0)
+            {
+                continue; // something else drawn over it there
+            }
+            assert!(!lit(0.0), "{name}: message {i} past its tail end");
+            assert!(lit(1.0), "{name}: message {i} within tol of its tail");
+            ends += 1;
+        }
+    }
+    assert!(ends > 0);
+}
+
 #[test]
 fn sequence_frames_tell_label_and_border_from_inside() {
     use seq::SeqHit;
@@ -490,8 +578,16 @@ fn journey_picks_tasks_legend_and_sections() {
                     "{name}: dot"
                 );
             }
-            // Just off the face, beside it: not the task.
-            let off = (t.cx + t.r + 0.5, t.cy);
+            // On the face's outline, whose stroke (1.4 wide) reaches 0.7
+            // past its radius: the task. Just past that stroke: not the
+            // task, whatever the tolerance (it widens no filled shape).
+            let rim = (t.cx + t.r + 0.5, t.cy);
+            assert_eq!(
+                js.hit_test(rim.0, rim.1, 0.0),
+                Some(JourneyHit::Task(i)),
+                "{name}: outline"
+            );
+            let off = (t.cx + t.r + 1.0, t.cy);
             assert_ne!(
                 js.hit_test(off.0, off.1, 5.0),
                 Some(JourneyHit::Task(i)),
@@ -593,6 +689,44 @@ fn timeline_picks_events_periods_and_sections() {
         }
         assert_eq!(ts.hit_test(5.0, -1.0, 5.0), None);
     }
+}
+
+/// A tick takes in its ring's stroke (1.5 wide), and the axis (2 wide)
+/// ends square where it is drawn (butt caps): `tol` reaches past its
+/// end, `tol = 0` does not.
+#[test]
+fn timeline_picks_tick_rings_and_square_axis_ends() {
+    use timeline::TimelineHit;
+    let mut ends = 0;
+    for (name, d) in docs_of!(Timeline) {
+        let ts = timeline::scene(&d);
+        for (s, sec) in ts.sections.iter().enumerate() {
+            for (k, p) in sec.periods.iter().enumerate() {
+                let y = sec.axis_y - timeline::TICK_R - 0.6;
+                assert_eq!(
+                    ts.hit_test(p.cx, y, 0.0),
+                    Some(TimelineHit::Period {
+                        section: s,
+                        period: k
+                    }),
+                    "{name}: tick ring"
+                );
+            }
+            let x = sec.x + sec.w + 0.6;
+            // Nothing else drawn there (a section beside it).
+            if ts.hit_test(x, sec.axis_y, 5.0) != Some(TimelineHit::Section(s)) {
+                continue;
+            }
+            assert_eq!(ts.hit_test(x, sec.axis_y, 0.0), None, "{name}: axis end");
+            assert_eq!(
+                ts.hit_test(x, sec.axis_y, 1.0),
+                Some(TimelineHit::Section(s)),
+                "{name}: axis end within tol"
+            );
+            ends += 1;
+        }
+    }
+    assert!(ends > 0);
 }
 
 // ------------------------------------------------------------------

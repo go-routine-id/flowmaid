@@ -1128,10 +1128,15 @@ pub enum SeqHit {
 /// frame's condition label.
 const TEXT_BOX_H: f64 = 16.0;
 
-/// Stroke widths [`to_svg`] draws with.
+/// Stroke widths [`to_svg`] draws with: message lines and heads,
+/// participant boxes, an actor's head and limbs ([`MSG_STROKE`]); frame
+/// borders, dividers and notes ([`FRAME_STROKE`]); lifelines (the SVG
+/// default); activation bars; a frame's keyword chip (the default).
 const MSG_STROKE: f64 = 1.6;
 const FRAME_STROKE: f64 = 1.2;
 const LIFELINE_STROKE: f64 = 1.0;
+const ACT_STROKE: f64 = 1.4;
+const CHIP_STROKE: f64 = 1.0;
 
 /// Distance from `p` to the outline of the rounded rectangle at `(x, y)`,
 /// `w` x `h`, corners `r` round (clamped to half each side).
@@ -1146,14 +1151,15 @@ fn round_rect_outline_dist(p: (f64, f64), x: f64, y: f64, w: f64, h: f64, r: f64
     (outside + qx.max(qy).min(0.0) - r).abs()
 }
 
-/// How far `p` lies from participant box `b`'s drawing: 0 inside its
-/// filled box (corners 4 round), or for an actor inside its head or
-/// name's box, else the distance to the figure's strokes beyond their
-/// half width (infinity for a plain box).
+/// How far `p` lies from participant box `b`'s drawing: 0 on its
+/// filled box (corners 4 round) with its outline's stroke, or for an
+/// actor on its stroked head or its (bold) name's box, else the distance
+/// to the figure's round-capped limbs beyond their half width (infinity
+/// for a plain box).
 fn part_dist(b: &PartBox, p: (f64, f64)) -> f64 {
-    use crate::pick::{in_box, in_disc, in_round_rect, seg_dist, text_box};
+    use crate::pick::{in_box, in_disc, in_stroked_round_rect, seg_dist, text_box};
     if !b.actor {
-        return if in_round_rect(p, b.x, b.y, b.w, b.h, 4.0) {
+        return if in_stroked_round_rect(p, b.x, b.y, b.w, b.h, 4.0, MSG_STROKE) {
             0.0
         } else {
             f64::INFINITY
@@ -1163,11 +1169,11 @@ fn part_dist(b: &PartBox, p: (f64, f64)) -> f64 {
     let name = text_box(
         fig.label_pos.0,
         fig.label_pos.1,
-        text_width(&b.label),
+        crate::layout::bold_text_width(&b.label),
         TEXT_BOX_H,
         "middle",
     );
-    if in_disc(p, fig.head, fig.head_r) || in_box(p, name) {
+    if in_disc(p, fig.head, fig.head_r + MSG_STROKE / 2.0) || in_box(p, name) {
         return 0.0;
     }
     fig.segments
@@ -1187,12 +1193,14 @@ impl SeqScene {
     /// nothing is drawn ([`SeqHit::FrameInside`]): a click inside a
     /// `loop` picks a lifeline, message or note there, not the frame.
     ///
-    /// Filled shapes (boxes, bars, notes, chips, an actor's head) and
-    /// texts (their boxes, as wide as the layout measures them and 16 px
-    /// tall) are exact; strokes (message lines and heads, lifelines,
+    /// Filled shapes (boxes, bars, notes, chips, an actor's head, each
+    /// with its outline's stroke as drawn) and texts (their boxes, as wide
+    /// as the layout measures them, bold where they are drawn bold, and
+    /// 16 px tall) are exact; strokes (message lines and heads, lifelines,
     /// dividers, frame borders, an actor's limbs) are widened by `tol`
-    /// scene units (`<= 0`: exact), the nearest of a kind winning. `None`
-    /// off the canvas (`0..=width` x `0..=height`).
+    /// scene units (`<= 0`: exact), the nearest of a kind winning. A line
+    /// ends square where the painter ends it (butt caps; an actor's limbs
+    /// are round). `None` off the canvas (`0..=width` x `0..=height`).
     ///
     /// ```
     /// use flowmaid::{model::Document, parser::parse_document, seq};
@@ -1209,8 +1217,10 @@ impl SeqScene {
     /// assert_eq!(hit, Some(seq::SeqHit::Participant(1)));
     /// ```
     pub fn hit_test(&self, x: f64, y: f64, tol: f64) -> Option<SeqHit> {
+        use crate::layout::bold_text_width;
         use crate::pick::{
-            in_box, in_polygon, in_rect, in_round_rect, polyline_dist, seg_dist, text_box, Nearest,
+            butt_dist, butt_polyline_dist, in_box, in_polygon, in_rect, in_round_rect,
+            in_stroked_round_rect, text_box, Nearest,
         };
         if !crate::pick::on_canvas(x, y, self.width, self.height) {
             return None;
@@ -1233,13 +1243,13 @@ impl SeqScene {
         // Messages: line, head and label.
         let mut near = Nearest::new(tol);
         for (i, m) in self.messages.iter().enumerate() {
-            near.offer_stroke(i, polyline_dist(p, &m.points), MSG_STROKE);
+            near.offer(i, butt_polyline_dist(p, &m.points, MSG_STROKE));
             let n = m.points.len();
             if n >= 2 {
                 let h = head(m.points[n - 1], m.points[n - 2], m.head);
                 near.offer_area(i, in_polygon(p, &h.polygon));
                 for s in &h.segments {
-                    near.offer_stroke(i, seg_dist(p, s[0], s[1]), MSG_STROKE);
+                    near.offer(i, butt_dist(p, s[0], s[1], MSG_STROKE, (0.0, 0.0)));
                 }
             }
             if !m.text.is_empty() || m.number.is_some() {
@@ -1255,7 +1265,7 @@ impl SeqScene {
         if let Some(i) = self
             .notes
             .iter()
-            .rposition(|nb| in_round_rect(p, nb.x, nb.y, nb.w, nb.h, 3.0))
+            .rposition(|nb| in_stroked_round_rect(p, nb.x, nb.y, nb.w, nb.h, 3.0, FRAME_STROKE))
         {
             return Some(SeqHit::Note(i));
         }
@@ -1265,7 +1275,7 @@ impl SeqScene {
             let chip = (f.x + chip_w(f.kind) / 2.0, f.y + 9.0);
             in_box(
                 p,
-                text_box(chip.0, chip.1, text_width(kw), TEXT_BOX_H, "middle"),
+                text_box(chip.0, chip.1, bold_text_width(kw), TEXT_BOX_H, "middle"),
             ) || frame_label_rows(f).any(|(cy, text)| {
                 let w = text_width(&text);
                 in_box(p, text_box(frame_label_x(f), cy, w, TEXT_BOX_H, "start"))
@@ -1274,16 +1284,15 @@ impl SeqScene {
         if let Some(i) = self.frames.iter().rposition(texts) {
             return Some(SeqHit::Frame(i));
         }
-        if let Some(i) = self
-            .activations
-            .iter()
-            .rposition(|a| in_rect(p, a.x - ACT_W / 2.0, a.y0, ACT_W, a.y1 - a.y0))
-        {
+        if let Some(i) = self.activations.iter().rposition(|a| {
+            let (x, h) = (a.x - ACT_W / 2.0, a.y1 - a.y0);
+            in_stroked_round_rect(p, x, a.y0, ACT_W, h, 0.0, ACT_STROKE)
+        }) {
             return Some(SeqHit::Activation(i));
         }
         // The keyword chips and the cards under the conditions.
         let cards = |f: &FrameBox| {
-            in_rect(p, f.x, f.y, chip_w(f.kind), 18.0)
+            in_stroked_round_rect(p, f.x, f.y, chip_w(f.kind), 18.0, 0.0, CHIP_STROKE)
                 || frame_label_rows(f).any(|(cy, text)| {
                     let w = text_width(&text) + 4.0;
                     in_rect(p, frame_label_x(f) - 2.0, cy - 8.0, w, 16.0)
@@ -1295,8 +1304,8 @@ impl SeqScene {
         let mut dividers = Nearest::new(tol);
         for (i, f) in self.frames.iter().enumerate() {
             for (dy, _) in &f.dividers {
-                let d = seg_dist(p, (f.x, *dy), (f.x + f.w, *dy));
-                dividers.offer_stroke(i, d, FRAME_STROKE);
+                let (a, b) = ((f.x, *dy), (f.x + f.w, *dy));
+                dividers.offer(i, butt_dist(p, a, b, FRAME_STROKE, (0.0, 0.0)));
             }
         }
         if let Some(i) = dividers.get() {
@@ -1304,7 +1313,8 @@ impl SeqScene {
         }
         let mut lifelines = Nearest::new(tol);
         for (k, l) in self.lifelines.iter().enumerate() {
-            lifelines.offer_stroke(k, seg_dist(p, (l.x, l.y0), (l.x, l.y1)), LIFELINE_STROKE);
+            let (a, b) = ((l.x, l.y0), (l.x, l.y1));
+            lifelines.offer(k, butt_dist(p, a, b, LIFELINE_STROKE, (0.0, 0.0)));
         }
         if let Some(k) = lifelines.get() {
             return Some(SeqHit::Lifeline(k));
