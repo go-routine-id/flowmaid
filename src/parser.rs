@@ -3482,6 +3482,7 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
             let rest = rest.trim();
             // `class Name {` opens a block; `class Name` just declares.
             if let Some(name) = rest.strip_suffix('{') {
+                check_declared_name(name, lineno)?;
                 let ci = declare_class(&mut d, name.trim());
                 open = Some((ci, lineno));
             } else {
@@ -3498,6 +3499,7 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
                     c == ',' && !depth_odd && !in_tick
                 });
                 for name in names.map(str::trim).filter(|n| !n.is_empty()) {
+                    check_declared_name(name, lineno)?;
                     declare_class(&mut d, name);
                 }
             }
@@ -3507,6 +3509,7 @@ fn parse_class(source: &str, header_line: usize) -> Result<ClassDiagram, ParseEr
         if let Some(a) = line.strip_prefix("<<").and_then(|r| r.split_once(">>")) {
             let (a, name) = (a.0.trim(), a.1.trim());
             if !a.is_empty() && !name.is_empty() {
+                check_declared_name(name, lineno)?;
                 let ci = declare_class(&mut d, name);
                 d.classes[ci].annotations.push(a.to_string());
                 continue;
@@ -3637,11 +3640,147 @@ fn ensure_generic_class(d: &mut ClassDiagram, id: &str, generic: Option<&str>) -
 }
 
 /// The class a `class …` / `<<stereotype>> …` statement declares. Any
-/// text is taken as a name there, as it always was; a [`class_name`]
-/// spelling is read as one (backticks stripped, generic split off).
+/// text is taken as a name there, as it always was, but for a stray dot
+/// ([`check_declared_name`]); a [`class_name`] spelling is read as one
+/// (backticks stripped, generic split off).
 fn declare_class(d: &mut ClassDiagram, name: &str) -> usize {
     let (id, generic) = class_name(name).unwrap_or_else(|| split_generic(name));
     ensure_generic_class(d, id, generic)
+}
+
+/// Mermaid's parse error for a `class …` / `<<stereotype>> …` statement
+/// with a stray dot ([`stray_dot`]): its name starts or ends with a dot or
+/// has two in a row (`A.`, `.A`, `A..B`, `A...B`, `A.B.`), or a dot
+/// follows its generic, label, `:::` style or backtick name (`A~T~.`,
+/// `A["x"].`, `A:::foo.`, `` `A`.B ``). A dot only joins two parts of a
+/// dotted name ([`is_bare_class_name`], `a.b.C`) and `..` is the dotted
+/// line, so mermaid rejects such a declaration where flowmaid used to
+/// take the name as written. Dots inside a backtick name (`` `A.` ``), a
+/// generic (`Map~a.b~`) or a quoted label stay text, as in mermaid.
+fn check_declared_name(name: &str, lineno: usize) -> Result<(), ParseError> {
+    let name = name.trim();
+    let message = match stray_dot(name) {
+        None => return Ok(()),
+        Some(StrayDot::InName) => {
+            // The name as far as its generic, label, style or one-line
+            // body (`class A. {}`), where the stray dot lies before it.
+            let end = ["~", "[", ":::", "{"]
+                .iter()
+                .filter_map(|m| name.find(m))
+                .filter(|&j| name[..j].contains('.'))
+                .min()
+                .unwrap_or(name.len());
+            format!(
+                "'{}' is no class name: a dot joins two parts of a name, \
+                 as in 'com.example.Order', and '..' is the dotted line",
+                name[..end].trim_end()
+            )
+        }
+        Some(StrayDot::AfterName) => format!(
+            "'{name}' is no class name: a dot joins two parts of a name, \
+             as in 'com.example.Order', and none follows its generic, \
+             label, ':::' style or backtick name"
+        ),
+    };
+    Err(err(lineno, message))
+}
+
+/// Where a declared class name holds a dot that joins no two parts of it
+/// (see [`stray_dot`]).
+#[derive(Debug, PartialEq)]
+enum StrayDot {
+    /// In the name itself: first or last, after another dot or before
+    /// anything but a name part (`.A`, `A.`, `A..B`, `A.~T~`, `A.$`).
+    InName,
+    /// After the name's generic (`~T~`), label (`[…]`), `:::` style or
+    /// backtick part, which end it in mermaid's grammar (`A~T~.`,
+    /// `A["x"] .`, `A:::foo.bar`, `` `A`.B ``).
+    AfterName,
+}
+
+/// The stray dot of a `class …` / `<<stereotype>> …` name as written,
+/// read as mermaid's class grammar reads it: a dot may only stand between
+/// a run of name characters ([`is_class_name_char`]) and a name part or
+/// backtick name, spaces allowed round it (`A . B` is `A.B`). Text in
+/// backticks (to the end of the text when no backtick closes them), a
+/// closed generic `~…~` and a closed `[…]` label (quotes kept whole) is
+/// skipped, but ends the name: no dot may follow it, nor stand in a
+/// `:::` style. Only dots are judged: text without a stray dot is taken
+/// as before.
+fn stray_dot(name: &str) -> Option<StrayDot> {
+    #[derive(PartialEq, Clone, Copy)]
+    enum Last {
+        Start,
+        Part,
+        Dot,
+        Closed,
+        Other,
+    }
+    let mut last = Last::Start;
+    let mut i = 0;
+    while let Some(c) = name[i..].chars().next() {
+        let rest = &name[i..];
+        // How far the generic, backtick name or label at `rest` reaches
+        // (past its closing mark), if it is closed.
+        let closed = match c {
+            // An open backtick name runs to the end of the text, as in
+            // mermaid (`` class `A. ``): no dot after it is stray.
+            '`' => Some(rest[1..].find('`').map_or(rest.len(), |j| j + 2)),
+            '~' => rest[1..].find('~').map(|j| j + 2),
+            '[' => {
+                let mut quoted = false;
+                rest.char_indices().skip(1).find_map(|(j, ch)| match ch {
+                    '"' => {
+                        quoted = !quoted;
+                        None
+                    }
+                    ']' if !quoted => Some(j + 1),
+                    _ => None,
+                })
+            }
+            _ => None,
+        };
+        if let Some(len) = closed {
+            // A dot may lead into a backtick name (`A.`B``), into nothing
+            // else of these.
+            if last == Last::Dot && c != '`' {
+                return Some(StrayDot::InName);
+            }
+            last = Last::Closed;
+            i += len;
+            continue;
+        }
+        if rest.starts_with(":::") {
+            if last == Last::Dot {
+                return Some(StrayDot::InName);
+            }
+            // A style is one name, never dotted.
+            return rest.contains('.').then_some(StrayDot::AfterName);
+        }
+        match c {
+            c if c.is_whitespace() => {}
+            '.' => match last {
+                Last::Part => last = Last::Dot,
+                Last::Closed => return Some(StrayDot::AfterName),
+                Last::Start | Last::Dot | Last::Other => return Some(StrayDot::InName),
+            },
+            c if is_class_name_char(c) => {
+                if last != Last::Closed {
+                    last = Last::Part;
+                }
+            }
+            _ => {
+                if last == Last::Dot {
+                    return Some(StrayDot::InName);
+                }
+                if last != Last::Closed {
+                    last = Last::Other;
+                }
+            }
+        }
+        i += c.len_utf8();
+    }
+    (last == Last::Dot).then_some(StrayDot::InName)
 }
 
 /// The stereotype of a `<<interface>>` member line, without guillemets.

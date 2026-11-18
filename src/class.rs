@@ -32,9 +32,9 @@ use crate::model::{
     RelKind, Shape,
 };
 use crate::scene::{
-    edge_end_chord, edge_path_d, edge_polyline, edge_stroke_width, escape, fit_top_left,
-    route_sized, sample_cubic, scene_sized, svg_label_box, svg_open_a11y, svg_text_multiline, A11y,
-    Scene, SceneEdge, SceneNode, SvgOptions,
+    edge_end_chord, edge_path_d, edge_polyline, edge_stroke_width, escape, fit_top_left, routable,
+    route_sized, sample_cubic, scene_sized, svg_label_box, svg_open_canvas, svg_text_multiline,
+    top_left_canvas, A11y, Fitted, Scene, SceneEdge, SceneNode, SvgOptions,
 };
 use crate::style::{ItemPaint, Palette};
 
@@ -205,7 +205,7 @@ pub fn scene(d: &ClassDiagram) -> ClassScene {
 /// # Panics
 ///
 /// When `centers` holds neither one centre per class nor one per
-/// class and note.
+/// class and note; [`try_route`] returns `None` instead.
 pub fn route(d: &ClassDiagram, centers: &[(f64, f64)]) -> ClassScene {
     let b = build(d);
     let n = d.classes.len();
@@ -218,7 +218,40 @@ pub fn route(d: &ClassDiagram, centers: &[(f64, f64)]) -> ClassScene {
         all.extend(note_fallback(d, centers, &b.sizes));
     }
     let sc = route_sized(&b.g, &all, &b.sizes);
-    assemble(d, b, sc, Mode::Routed)
+    let mut cs = assemble(d, b, sc, Mode::Routed);
+    // Positions stay as given (#76): the canvas grows up or left over
+    // whatever reaches past its top-left margin.
+    let (origin, width, height) = top_left_canvas(&cs.scene);
+    (cs.scene.origin, cs.scene.width, cs.scene.height) = (origin, width, height);
+    cs
+}
+
+/// [`route`] for positions that may not fit `d`: `None`, where [`route`]
+/// would panic, when `centers` holds neither one centre per class nor one
+/// per class and note. Also `None` when a coordinate is not finite (NaN,
+/// infinite) or lies more than a million px (`1e6`) from zero, as
+/// [`crate::scene::try_route`] has it. Otherwise exactly what [`route`]
+/// returns. For a host whose positions can be out of date for a moment,
+/// such as after an edit that added a class since the last drag.
+///
+/// ```
+/// use flowmaid::{class, model::Document, parser::parse_document};
+///
+/// let Ok(Document::Class(d)) = parse_document("classDiagram\nA <|-- B\nnote for A \"n\"") else {
+///     unreachable!()
+/// };
+/// let laid = class::scene(&d);
+/// let all: Vec<(f64, f64)> = laid.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
+/// // Classes and notes, or the classes only (notes placed beside them).
+/// assert!(class::try_route(&d, &all).is_some());
+/// assert!(class::try_route(&d, &all[..2]).is_some());
+/// // One position short of the classes: no scene, and no panic.
+/// assert!(class::try_route(&d, &all[..1]).is_none());
+/// ```
+pub fn try_route(d: &ClassDiagram, centers: &[(f64, f64)]) -> Option<ClassScene> {
+    let n = d.classes.len();
+    let counted = centers.len() == n || centers.len() == n + d.notes.len();
+    (counted && routable(centers)).then(|| route(d, centers))
 }
 
 /// Note centres for a [`route`] call that passed class centres only:
@@ -3787,10 +3820,12 @@ fn note_size(text: &str) -> (f64, f64) {
 
 /// Serialise any class arrangement (automatic or dragged) to SVG.
 ///
-/// A node dragged left of or above the origin shifts the whole drawing
-/// right/down onto the canvas, so SVG coordinates can then differ from
-/// scene coordinates by that offset: map pointer events through the
-/// rendered SVG, as with [`crate::scene::to_svg`].
+/// A [`route`] scene keeps its coordinates: a box dragged past the
+/// top-left margin grows the canvas up or left instead of moving the
+/// drawing, and the `viewBox` starts at [`Scene::origin`], so SVG user
+/// space is scene space and a pointer maps through the `viewBox` straight
+/// into scene coordinates for picking (as with [`crate::scene::to_svg`]
+/// past the top-left margin).
 pub fn to_svg(cs: &ClassScene) -> String {
     to_svg_with(cs, &SvgOptions::default())
 }
@@ -3803,11 +3838,20 @@ pub fn to_svg_with(cs: &ClassScene, opts: &SvgOptions) -> String {
 /// [`to_svg_with`] plus mermaid's `accTitle` / `accDescr` (see [`A11y`]).
 pub(crate) fn to_svg_a11y_with(cs: &ClassScene, a11y: &A11y, opts: &SvgOptions) -> String {
     let (title, desc) = a11y.resolve("Class diagram");
-    let fitted = fit_top_left(&cs.scene);
-    let sc = &*fitted;
+    let canvas = fit_top_left(&cs.scene);
+    let sc = &*canvas.scene;
     let pal = opts.palette();
     let mut s = String::new();
-    svg_open_a11y(&mut s, sc.width, sc.height, 13, &title, desc, opts);
+    svg_open_canvas(
+        &mut s,
+        canvas.origin,
+        canvas.width,
+        canvas.height,
+        13,
+        &title,
+        desc,
+        opts,
+    );
 
     // Relationship lines and note connectors first, under the boxes —
     // drawn as routed (a rerouted edge follows its waypoints around
@@ -3875,7 +3919,7 @@ pub(crate) fn to_svg_a11y_with(cs: &ClassScene, a11y: &A11y, opts: &SvgOptions) 
     for (rel, spots) in cs.rels.iter().zip(place_cards(sc, &cs.rels, &heads)) {
         for (text, at) in [(&rel.from_card, spots[0]), (&rel.to_card, spots[1])] {
             if let (Some(text), Some(at)) = (text, at) {
-                card_text(&mut s, at, text, sc.width, sc.height, &pal.text);
+                card_text(&mut s, at, text, &canvas, &pal.text);
             }
         }
     }
@@ -4037,12 +4081,13 @@ fn write_head(s: &mut String, h: &Head, pal: &Palette) {
     }
 }
 
-fn card_text(s: &mut String, at: (f64, f64), text: &str, cw: f64, ch: f64, ink: &str) {
+fn card_text(s: &mut String, at: (f64, f64), text: &str, canvas: &Fitted, ink: &str) {
     // Clamp to the canvas so a long cardinality can't spill off-edge
     // (the scene bbox is sized for boxes/edges, not these labels).
     let hw = card_w(text) / 2.0;
-    let px = at.0.clamp(hw, (cw - hw).max(hw));
-    let py = at.1.clamp(7.0, (ch - 7.0).max(7.0));
+    let ((x0, y0), cw, ch) = (canvas.origin, canvas.width, canvas.height);
+    let px = at.0.clamp(x0 + hw, x0 + (cw - hw).max(hw));
+    let py = at.1.clamp(y0 + 7.0, y0 + (ch - 7.0).max(7.0));
     s.push_str(&format!(
         "<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\" text-anchor=\"middle\" \
          fill=\"{}\" font-size=\"{}\">{}</text>\n",
@@ -4203,8 +4248,8 @@ fn heads_of(sc: &Scene, rels: &[RelStyle]) -> Vec<Head> {
 
 /// Centres of the cardinalities of every relationship of `cs` as
 /// `[from_card, to_card]` (`None` where there is none), exactly where
-/// [`to_svg`] draws them (before its canvas clamp and any shift for
-/// nodes dragged past the origin), for 11 px text.
+/// [`to_svg`] draws them (before its clamp to the canvas), for 11 px
+/// text.
 pub fn card_spots(cs: &ClassScene) -> Vec<[Option<(f64, f64)>; 2]> {
     let heads = heads_of(&cs.scene, &cs.rels);
     place_cards(&cs.scene, &cs.rels, &heads)
@@ -4862,6 +4907,219 @@ mod tests {
             assert!(
                 parse_document(&format!("classDiagram\n{bad}")).is_err(),
                 "{bad}"
+            );
+        }
+    }
+
+    /// A `class` (or `<<stereotype>>`) statement whose name starts or ends
+    /// with a dot or has two in a row is a parse error, as in mermaid 12.2
+    /// (each form below checked against it); the dotted names mermaid
+    /// takes, and backtick names, still parse.
+    #[test]
+    fn declared_names_with_a_stray_dot_are_errors() {
+        for (bad, line) in [
+            ("class A.", 2),
+            ("class .A", 2),
+            ("class A..B", 2),
+            ("class A...B", 2),
+            ("class A....B", 2),
+            ("class A..", 2),
+            ("class ..A", 2),
+            ("class A.B.", 2),
+            ("class .A.B", 2),
+            ("class A..B.C", 2),
+            ("class .", 2),
+            ("class A .", 2),
+            ("class  .A", 2),
+            ("class A . . B", 2),
+            ("class A-.", 2),
+            ("class A.~T~", 2),
+            ("class A.B.~T~", 2),
+            ("class A..B~T~", 2),
+            ("class A.:::foo", 2),
+            ("class A.B.:::foo", 2),
+            ("class A..B:::foo", 2),
+            ("class A.[\"lbl\"]", 2),
+            ("class A., B", 2),
+            ("class A, B.", 2),
+            ("class A, .B", 2),
+            ("class A. {\n}", 2),
+            ("class .A {\n}", 2),
+            ("class A...B {\n}", 2),
+            ("<<interface>> A.", 2),
+            ("<<interface>> .A", 2),
+            ("class A\nclass B.", 3),
+            ("class A.\nA --> B", 2),
+        ] {
+            let e = parse_document(&format!("classDiagram\n{bad}"))
+                .err()
+                .unwrap_or_else(|| panic!("{bad:?} parsed"));
+            assert_eq!(e.line, line, "{bad:?}: {e}");
+            assert!(e.message.contains("is no class name"), "{bad:?}: {e}");
+        }
+        // A dot after the name's generic, label, `:::` style or backtick
+        // part, which end it in mermaid's grammar (each form checked
+        // against mermaid 12.2 too), or before anything but a name part.
+        for (bad, line) in [
+            ("class A~T~.", 2),
+            ("class A~T~. {\n}", 2),
+            ("class A~T~.{\n}", 2),
+            ("class A~T~. {\n+x int\n}", 2),
+            ("class A~T~..B", 2),
+            ("class A~T~..", 2),
+            ("class A~T~.B", 2),
+            ("class A~T~ .", 2),
+            ("class A~T~\t.", 2),
+            ("class A~T~ . B", 2),
+            ("class A ~T~.", 2),
+            ("class A~T~.~U~", 2),
+            ("class A~T~B.C", 2),
+            ("class A.B~T~.", 2),
+            ("class A.B~T~.C", 2),
+            ("class A.B~T~..C", 2),
+            ("class A.B~T~.D~U~", 2),
+            ("class List~List~a.b~~", 2),
+            ("<<interface>> A~T~.", 2),
+            ("class A[\"lbl\"].", 2),
+            ("class A.B[\"lbl\"].", 2),
+            ("class A[\"x\"] .", 2),
+            ("class A[\"x\"]\t.", 2),
+            ("class A [\"x\"].", 2),
+            ("class A[\"x\"].B", 2),
+            ("class A[\"lbl\"] . B", 2),
+            ("class A[\"x]y\"].", 2),
+            ("class A[x].", 2),
+            ("class A[\"x\"]. {\n}", 2),
+            ("class A~T~[\"x\"].", 2),
+            ("class A:::foo.", 2),
+            ("class A.B:::foo.", 2),
+            ("class A:::foo .", 2),
+            ("class A:::foo.bar", 2),
+            ("class A:::a.b", 2),
+            ("class A:::foo.B", 2),
+            ("class A:::foo. {\n}", 2),
+            ("class A~T~.:::foo", 2),
+            ("class A~T~:::foo.", 2),
+            ("class A[\"x\"]:::foo.", 2),
+            ("class `A`.", 2),
+            ("class `A` .", 2),
+            ("class `A`.B", 2),
+            ("class `A` . B", 2),
+            ("class `A`.B {\n}", 2),
+            ("class `A`.`B`", 2),
+            ("class `A`B.C", 2),
+            ("class A.`B`.C", 2),
+            ("class `A`~T~.", 2),
+            ("class `A`[\"x\"].", 2),
+            ("class `A`:::foo.", 2),
+            ("class .`A`", 2),
+            ("<<interface>> `A`.", 2),
+            ("class A.;", 2),
+            ("class A.B.;", 2),
+            ("class A.$", 2),
+            ("class A~T.", 2),
+            ("class A[x.", 2),
+            ("class A, B~T~.", 2),
+            ("class A\nclass B~T~.", 3),
+        ] {
+            let e = parse_document(&format!("classDiagram\n{bad}"))
+                .err()
+                .unwrap_or_else(|| panic!("{bad:?} parsed"));
+            assert_eq!(e.line, line, "{bad:?}: {e}");
+            assert!(e.message.contains("is no class name"), "{bad:?}: {e}");
+        }
+        // The error names what it read as the name.
+        let e = parse_document("classDiagram\nclass A..B~T~").unwrap_err();
+        assert!(e.message.starts_with("'A..B' is no class name"), "{e}");
+        let e = parse_document("classDiagram\nclass A~T~.B").unwrap_err();
+        assert!(e.message.starts_with("'A~T~.B' is no class name"), "{e}");
+        // Without a one-line body, and whole where the dot follows an
+        // unclosed generic or label.
+        for (bad, named) in [
+            ("class A. {}", "'A.'"),
+            ("class A.. {}", "'A..'"),
+            ("class A.B. {}", "'A.B.'"),
+            ("class A~T.", "'A~T.'"),
+            ("class A[x.", "'A[x.'"),
+        ] {
+            let e = parse_document(&format!("classDiagram\n{bad}")).unwrap_err();
+            assert!(
+                e.message.starts_with(&format!("{named} is no class name")),
+                "{bad:?}: {e}"
+            );
+        }
+        assert!(e
+            .message
+            .contains("generic, label, ':::' style or backtick"));
+        for (good, names) in [
+            ("class A.B", vec!["A.B"]),
+            ("class a.b.C", vec!["a.b.C"]),
+            ("class A.-B", vec!["A.-B"]),
+            ("class A-.B", vec!["A-.B"]),
+            ("class A._B", vec!["A._B"]),
+            ("class A.1", vec!["A.1"]),
+            ("class 1.A", vec!["1.A"]),
+            ("class A.-", vec!["A.-"]),
+            ("class A.B-", vec!["A.B-"]),
+            ("class A.B~T~", vec!["A.B"]),
+            ("class Map~a.b~", vec!["Map"]),
+            ("class A.B {\n+x int\n}", vec!["A.B"]),
+            ("class A.B.C {\n}", vec!["A.B.C"]),
+            ("class `A.`", vec!["A."]),
+            ("class `.A`", vec![".A"]),
+            ("class `A..B`", vec!["A..B"]),
+            ("class A.B {\n}\n<<interface>> A.B", vec!["A.B"]),
+            ("A.B --> C", vec!["A.B", "C"]),
+            ("A..B", vec!["A", "B"]),
+        ] {
+            let d = cd(&format!("classDiagram\n{good}"));
+            let got: Vec<&str> = d.classes.iter().map(|c| c.name.as_str()).collect();
+            assert_eq!(got, names, "{good:?}");
+        }
+        // Mermaid takes these too (spaces round a dot, a dot before a
+        // backtick name, a label, a style, dots inside a generic, label
+        // or backtick name, an open backtick name); flowmaid keeps parsing
+        // them as it did.
+        for good in [
+            "class A. B",
+            "class A .B",
+            "class A . B",
+            "class A.\tB",
+            "class A.\u{a0}B",
+            "class A.B[\"lbl\"]",
+            "class A.B [\"lbl\"]",
+            "class A.B[\"x.y\"]",
+            "class A[\"x.\"]",
+            "class A.B:::foo",
+            "class A.B~T~:::foo",
+            "class A.B~T~[\"x\"]",
+            "class A.B~T~ {\n}",
+            "class A.B.C~T~",
+            "class A.B ~T~",
+            "class A . B ~T~ [\"x\"] :::foo",
+            "class A.`B`",
+            "class A . `B`",
+            "class A.`B`~T~",
+            "class A.B`C`",
+            "class A`.B`",
+            "class `A.B`",
+            "class `A`~T~",
+            "class `A` ~T~",
+            "class `A`[\"x\"]",
+            "class `A`:::foo",
+            "class `A.",
+            "class A.`B",
+            "class A.日本",
+            "class A.µ",
+            "class A.1.2",
+            "class A1.2B",
+            "class -.A",
+            "class A.-.B",
+            "class A.B-.C",
+        ] {
+            assert!(
+                parse_document(&format!("classDiagram\n{good}")).is_ok(),
+                "{good:?}"
             );
         }
     }
@@ -7184,8 +7442,8 @@ mod tests {
     #[test]
     fn drag_past_origin_stays_inside_viewbox() {
         // A class dragged left of and/or above the canvas origin (the
-        // playground's drag path) must not be clipped by the `0 0 W H`
-        // viewBox — nor may any text, edge or marker it pulls along.
+        // playground's drag path) must not be clipped by the viewBox — nor
+        // may any text, edge or marker it pulls along.
         // The last case keeps the centre in bounds but the box past it.
         let d = cd(include_str!("../examples/class.mmd"));
         let sc = scene(&d);
@@ -7200,15 +7458,80 @@ mod tests {
         crate::scene::assert_drawn_inside_canvas(&to_svg(&sc));
     }
 
+    /// A class dragged past the top-left margin stays exactly where the
+    /// host put it (#76): no other box moves, the canvas grows up and left
+    /// by what reaches past the margin (`Scene::origin`, the `viewBox`
+    /// origin), and a pick at its drawn box's centre picks it.
+    #[test]
+    fn drag_past_top_left_keeps_every_position() {
+        let d = cd(include_str!("../examples/class.mmd"));
+        let laid = scene(&d);
+        let c: Vec<(f64, f64)> = laid.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
+        for to in [(-120.0, -80.0), (-120.0, c[0].1), (c[0].0, -80.0)] {
+            let mut moved = c.clone();
+            moved[0] = to;
+            let cs = route(&d, &moved);
+            for (i, n) in cs.scene.nodes.iter().enumerate() {
+                assert_eq!((n.x, n.y), moved[i], "{to:?}: node {i} moved");
+            }
+            let mut bb = crate::scene::Bbox::new();
+            crate::scene::grow_scene(
+                &mut bb,
+                &cs.scene.nodes,
+                &cs.scene.edges,
+                &cs.scene.clusters,
+            );
+            let m = crate::scene::MARGIN;
+            let over = ((bb.0 - m).min(0.0), (bb.2 - m).min(0.0));
+            assert_eq!(cs.scene.origin, over, "{to:?}");
+            let n0 = &cs.scene.nodes[0];
+            assert!(cs.scene.origin.0 <= to.0 - n0.w / 2.0 - m + 1e-9 || to.0 > 0.0);
+            assert!(cs.scene.origin.1 <= to.1 - n0.h / 2.0 - m + 1e-9 || to.1 > 0.0);
+            let svg = to_svg(&cs);
+            let (vx, vy, vw, vh) = crate::scene::view_box(&svg);
+            assert!(
+                (vx - over.0).abs() <= 0.05 && (vy - over.1).abs() <= 0.05,
+                "{to:?}"
+            );
+            assert!((vw - cs.scene.width).abs() <= 0.5 && (vh - cs.scene.height).abs() <= 0.5);
+            crate::scene::assert_drawn_inside_canvas(&svg);
+            // Boxes are drawn in node order: the first box is class 0's.
+            let rect = svg
+                .lines()
+                .find(|l| l.starts_with("<rect x=") && l.contains("rx=\"4\" fill=\"#ffffff\""))
+                .unwrap();
+            let (x, y) = crate::scene::rect_centre(rect);
+            assert!((x - to.0).abs() <= 0.1 && (y - to.1).abs() <= 0.1, "{rect}");
+            assert_eq!(cs.scene.node_at(x, y), Some(0), "{to:?}");
+            // The cardinalities sit where `card_spots` puts them.
+            let mut cards = 0;
+            for (rel, spots) in cs.rels.iter().zip(card_spots(&cs)) {
+                for (text, at) in [(&rel.from_card, spots[0]), (&rel.to_card, spots[1])] {
+                    if let (Some(_), Some(at)) = (text, at) {
+                        let drawn =
+                            format!("<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\"", at.0, at.1);
+                        assert!(svg.contains(&drawn), "{to:?}: {drawn}");
+                        cards += 1;
+                    }
+                }
+            }
+            assert!(cards > 0);
+        }
+        // In bounds, the canvas stays at the origin.
+        assert_eq!(route(&d, &c).scene.origin, (0.0, 0.0));
+    }
+
     #[test]
     fn laid_out_scene_is_not_shifted() {
         // The shift only kicks in past the origin: a laid-out scene
         // renders byte-for-byte as before.
         let sc = scene(&cd(include_str!("../examples/class.mmd")));
-        assert!(matches!(
-            fit_top_left(&sc.scene),
-            std::borrow::Cow::Borrowed(_)
-        ));
+        let fitted = fit_top_left(&sc.scene);
+        assert!(matches!(fitted.scene, std::borrow::Cow::Borrowed(_)));
+        assert_eq!(
+            (fitted.origin, fitted.width, fitted.height),
+            ((0.0, 0.0), sc.scene.width, sc.scene.height)
+        );
     }
 
     /// The verifier's inheritance fan of eight subclasses with a note on

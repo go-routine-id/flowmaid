@@ -7,6 +7,87 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Internal
+
+- **Subgraphs as blocks, step 2 of 4, first part** (frames sized to their
+  titles, room for labels in the gaps between blocks), behind an internal
+  switch that is off: no drawing changes.
+
+## [0.40.1] - 2026-11-17
+
+### Highlights
+
+A patch release. Static drawings are byte for byte those of 0.40.0 (only a
+class name with a stray dot now fails to parse), and so is every routed
+drawing that stays inside the top-left margin. No public API is removed or
+changed.
+
+- **`try_route`** for flowchart and state, class, ER and mindmap scenes:
+  `route` that returns `None` for positions it cannot route (a count that
+  does not match the diagram, or a coordinate that is not finite or lies
+  more than a million px from zero), so a host whose position list is out
+  of date for a moment needs no counting rule of its own.
+- **A drag past the top-left keeps every position** (flowchart, state,
+  class and ER). A routed drawing that
+  reaches past the top-left margin is no longer moved onto a `0 0` canvas:
+  its `viewBox` starts before zero on the axis that overflows instead, so a
+  dragged node stays under the pointer. The new `Scene::origin` is the
+  canvas's top-left corner.
+- **A declared class name with a stray dot is a parse error** naming the
+  line, as in mermaid 12.2; 0.40.0 took it as a class of that name.
+
+### Added
+
+- **`try_route`: `route` for positions that may not fit the diagram**
+  (#110). `scene::try_route`, `class::try_route`, `er::try_route` and
+  `mindmap::try_route` return `None` where `route` would panic on the
+  position count (one per node; for a class diagram one per class, or
+  per class and note), and for a coordinate that is not finite or lies
+  more than a million px from zero (routing such a position can panic or
+  exhaust memory); otherwise exactly what `route` returns. A host whose
+  position list is out of date for a moment (an edit added a node since
+  the last drag) no longer has to copy each diagram's counting rule, and
+  a mindmap's mismatch, where `mindmap::route` draws an empty scene, is
+  now told apart from an empty mindmap. The `route` functions are
+  unchanged.
+- **`Scene::origin`**: the top-left corner of a scene's canvas, `(0, 0)`
+  for every laid-out scene and negative on an axis where a routed
+  drawing reaches past the top-left margin (see Fixed). Like `width` and
+  `height` it only grows, so a `route_partial` frame keeps its base's.
+
+### Fixed
+
+- **A drag past the top-left margin no longer moves the rest of the
+  drawing** (#76). `route()`, `route_partial()`, `route_sized()` and the
+  class and ER `route` keep their positions, but where the routed drawing
+  reached past the top-left margin the SVG moved all of it right or down
+  onto a `0 0` canvas, by an amount it did not expose, so a dragged node
+  lagged the pointer. Now a routed drawing that reaches past the margin,
+  on either axis, keeps its coordinates on both, and the `viewBox` starts
+  the margin before the drawing: before zero by the overflow, and on a
+  flowchart's other axis after zero where the drawing starts further in.
+  SVG user space is then scene space, so a pointer mapped through the
+  `viewBox` lands on scene coordinates and a pick at a node's drawn centre
+  picks it. Map through the `viewBox`, not `Scene::origin`: the origin
+  keeps the furthest overflow of a chain of `route_partial` frames, so it
+  can lie before the `viewBox` of a later frame. Static output is unchanged, and
+  so is every routed SVG that does not reach past the top-left margin. A
+  routed class diagram that reaches past it can draw a cardinality
+  elsewhere, at the spot `class::card_spots` reports, and the glyph of a
+  relation squeezed between two overlapping boxes can point the other
+  way.
+- **Class diagrams: a declared name with a stray dot is an error, as in
+  mermaid.** `class A.`, `class .A`, `class A..B`, `class A...B`, `class
+  A.B.`, and a dot after a name's generic, label, `:::` style or
+  backtick part (`class A~T~.`, `class A["x"].`, `class A:::foo.`,
+  `` class `A`.B ``), also in a `class … {` block, a `class A, B.` list
+  or `<<interface>> A~T~.`, now give a parse error naming the line, as
+  mermaid 12.2 does; they were taken as a class of that name. Dotted
+  names mermaid takes still work (`class a.b.C`, `class A.B~T~`,
+  `` class A.`B` ``, `class A.-B`), and so do dots inside a backtick
+  name, generic or label (`` class `A.` ``, `class Map~a.b~`,
+  `class A["x.y"]`).
+
 ### Documentation
 
 - **Roadmap page** (`docs/ROADMAP.md`, linked from the README): what the
