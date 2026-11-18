@@ -542,6 +542,8 @@ See `examples/drag_sim.rs`.
 
 `Scene::{hit_test, node_at, edge_at, cluster_at, hits_in_rect, nearest_node}` are shape-precise and match what is painted, so pick → drag → route works without the host doing its own geometry. `edge_at` follows the painted stroke, a crossing hop's arc included. Picking costs microseconds.
 
+`MindScene`, `PieScene` and `SankeyScene` have a `hit_test` of their own, with the same conventions: the topmost element under a scene point, by its index into the scene's lists.
+
 ### Saving back to mermaid
 
 `emit::to_mermaid(&graph)` is the inverse of `parse`: a lossless editor round-trip via mermaid entity codes (`#quot;`, `#124;`), writing valid standard mermaid. It completes pick → drag → route → **persist**. Wrapping never changes what is saved: `to_mermaid` writes a label, markdown included, as it was written. A plain label also stays as written in the model, while the scene's node label carries the drawn lines. A markdown label's `Node::label` holds its wrapped lines, and `Graph::set_wrapping_width` wraps them again at the new width.

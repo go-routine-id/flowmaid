@@ -61,6 +61,7 @@ pub mod mindmap;
 pub mod model;
 mod ortho;
 pub mod parser;
+mod pick;
 pub mod pie;
 mod ports;
 // Layout-quality yardstick for tests and `examples/quality.rs`; not a

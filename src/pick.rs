@@ -1,0 +1,268 @@
+//! Shared geometry of the pick methods of the scenes without a generic
+//! [`crate::scene::Scene`] (mindmap, sequence, pie, journey, timeline,
+//! sankey): each tests a scene point against the shapes its painter
+//! draws, in the painter's own terms (its rectangles, rounded corners,
+//! polygons, strokes and text boxes), so a pick lands where the SVG
+//! shows the element.
+//!
+//! The conventions are [`crate::scene::Scene::hit_test`]'s: a point in
+//! scene space, a tolerance in scene units that widens only strokes
+//! (lines, connectors), never a filled shape, and `tol <= 0` for exact
+//! geometry. Elements are offered in layers, topmost first; within a
+//! layer the nearest wins and, at equal distance (on the ink, distance
+//! 0), the one painted later.
+
+type Pt = (f64, f64);
+
+/// Whether `(x, y)` lies on the canvas `[0, w] x [0, h]` (and is a
+/// number): off it, nothing is picked.
+pub(crate) fn on_canvas(x: f64, y: f64, w: f64, h: f64) -> bool {
+    (0.0..=w).contains(&x) && (0.0..=h).contains(&y)
+}
+
+/// Distance from `p` to the segment `a`-`b`.
+pub(crate) fn seg_dist(p: Pt, a: Pt, b: Pt) -> f64 {
+    let (dx, dy) = (b.0 - a.0, b.1 - a.1);
+    let len2 = dx * dx + dy * dy;
+    let t = if len2 > 0.0 {
+        (((p.0 - a.0) * dx + (p.1 - a.1) * dy) / len2).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    (p.0 - a.0 - t * dx).hypot(p.1 - a.1 - t * dy)
+}
+
+/// Distance from `p` to the polyline through `pts` (a lone point: the
+/// distance to it; none: infinity).
+pub(crate) fn polyline_dist(p: Pt, pts: &[Pt]) -> f64 {
+    match pts {
+        [] => f64::INFINITY,
+        [a] => (p.0 - a.0).hypot(p.1 - a.1),
+        _ => pts
+            .windows(2)
+            .map(|w| seg_dist(p, w[0], w[1]))
+            .fold(f64::INFINITY, f64::min),
+    }
+}
+
+/// The point at `t` on the cubic `b`.
+fn cubic_at(b: &[Pt; 4], t: f64) -> Pt {
+    let u = 1.0 - t;
+    let (k0, k1, k2, k3) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
+    (
+        k0 * b[0].0 + k1 * b[1].0 + k2 * b[2].0 + k3 * b[3].0,
+        k0 * b[0].1 + k1 * b[1].1 + k2 * b[2].1 + k3 * b[3].1,
+    )
+}
+
+/// Distance from `p` to the cubic Bézier `b`, measured on a flattening
+/// fine enough (a chord every px or so of its control polygon, at least
+/// 16) that the error stays far below any stroke width.
+pub(crate) fn cubic_dist(p: Pt, b: &[Pt; 4]) -> f64 {
+    let poly: f64 = b
+        .windows(2)
+        .map(|w| (w[1].0 - w[0].0).hypot(w[1].1 - w[0].1))
+        .sum();
+    let n = (poly.ceil() as usize).clamp(16, 4096);
+    let mut best = f64::INFINITY;
+    let mut prev = b[0];
+    for k in 1..=n {
+        let q = cubic_at(b, k as f64 / n as f64);
+        best = best.min(seg_dist(p, prev, q));
+        prev = q;
+    }
+    best
+}
+
+/// Whether `p` lies in the rectangle at `(x, y)` (top-left), `w` x `h`.
+pub(crate) fn in_rect(p: Pt, x: f64, y: f64, w: f64, h: f64) -> bool {
+    p.0 >= x && p.0 <= x + w && p.1 >= y && p.1 <= y + h
+}
+
+/// Whether `p` lies in the SVG `<rect x y width height rx>` (`ry` =
+/// `rx`): each radius clamped to half its side, as SVG draws it.
+pub(crate) fn in_round_rect(p: Pt, x: f64, y: f64, w: f64, h: f64, rx: f64) -> bool {
+    if !in_rect(p, x, y, w, h) {
+        return false;
+    }
+    let (rx, ry) = (rx.min(w / 2.0).max(0.0), rx.min(h / 2.0).max(0.0));
+    if rx <= 0.0 || ry <= 0.0 {
+        return true;
+    }
+    // Distance into the corner zone on each axis (<= 0: not in it).
+    let ox = (x + rx - p.0).max(p.0 - (x + w - rx));
+    let oy = (y + ry - p.1).max(p.1 - (y + h - ry));
+    ox <= 0.0 || oy <= 0.0 || (ox / rx).powi(2) + (oy / ry).powi(2) <= 1.0
+}
+
+/// Whether `p` lies in the disc of radius `r` round `c`.
+pub(crate) fn in_disc(p: Pt, c: Pt, r: f64) -> bool {
+    (p.0 - c.0).hypot(p.1 - c.1) <= r
+}
+
+/// Whether `p` lies in the polygon `pts` (closed; nonzero winding, the
+/// SVG default fill rule).
+pub(crate) fn in_polygon(p: Pt, pts: &[Pt]) -> bool {
+    let n = pts.len();
+    if n < 3 {
+        return false;
+    }
+    let mut wind = 0i32;
+    for k in 0..n {
+        let (a, b) = (pts[k], pts[(k + 1) % n]);
+        // A point on the outline is inside.
+        if seg_dist(p, a, b) <= 1e-9 {
+            return true;
+        }
+        let cross = (b.0 - a.0) * (p.1 - a.1) - (p.0 - a.0) * (b.1 - a.1);
+        if a.1 <= p.1 {
+            if b.1 > p.1 && cross > 0.0 {
+                wind += 1;
+            }
+        } else if b.1 <= p.1 && cross < 0.0 {
+            wind -= 1;
+        }
+    }
+    wind != 0
+}
+
+/// The box `(x, y, w, h)` of one text line `w` wide whose anchor point
+/// is `(ax, cy)` (`cy` its vertical middle, as `dy="0.33em"` draws it)
+/// and which is `h` tall, for the SVG `text-anchor` `anchor`.
+pub(crate) fn text_box(ax: f64, cy: f64, w: f64, h: f64, anchor: &str) -> (f64, f64, f64, f64) {
+    let x = match anchor {
+        "middle" => ax - w / 2.0,
+        "end" => ax - w,
+        _ => ax,
+    };
+    (x, cy - h / 2.0, w, h)
+}
+
+/// Whether `p` lies in the box `b` (`(x, y, w, h)`).
+pub(crate) fn in_box(p: Pt, b: (f64, f64, f64, f64)) -> bool {
+    in_rect(p, b.0, b.1, b.2, b.3)
+}
+
+/// The pick of one layer: the element nearest the point within the
+/// tolerance (0 on its ink), the later one at equal distance.
+pub(crate) struct Nearest {
+    tol: f64,
+    best: Option<(usize, f64)>,
+}
+
+impl Nearest {
+    /// A layer picked with tolerance `tol` (`<= 0`: exact).
+    pub(crate) fn new(tol: f64) -> Nearest {
+        Nearest {
+            tol: if tol > 0.0 { tol } else { 0.0 },
+            best: None,
+        }
+    }
+
+    /// Element `i` lies `d` from the point (0 on its ink; infinity off
+    /// a filled shape). Offer elements in paint order.
+    pub(crate) fn offer(&mut self, i: usize, d: f64) {
+        if d <= self.tol && self.best.map_or(true, |(_, b)| d <= b) {
+            self.best = Some((i, d));
+        }
+    }
+
+    /// Offer element `i` as a filled shape: on it or not.
+    pub(crate) fn offer_area(&mut self, i: usize, inside: bool) {
+        if inside {
+            self.offer(i, 0.0);
+        }
+    }
+
+    /// Offer element `i` as a stroke `width` wide, `d` from its centre
+    /// line.
+    pub(crate) fn offer_stroke(&mut self, i: usize, d: f64, width: f64) {
+        self.offer(i, (d - width / 2.0).max(0.0));
+    }
+
+    /// The element picked, if any.
+    pub(crate) fn get(&self) -> Option<usize> {
+        self.best.map(|(i, _)| i)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rounded_rect_leaves_its_corners_empty() {
+        // 40 x 20 at the origin, corners 6 round.
+        assert!(in_round_rect((20.0, 10.0), 0.0, 0.0, 40.0, 20.0, 6.0));
+        assert!(in_round_rect((6.0, 0.0), 0.0, 0.0, 40.0, 20.0, 6.0));
+        assert!(!in_round_rect((0.5, 0.5), 0.0, 0.0, 40.0, 20.0, 6.0));
+        assert!(!in_round_rect((39.5, 19.5), 0.0, 0.0, 40.0, 20.0, 6.0));
+        // On the corner arc's 45-degree point, and just past it.
+        let k = 6.0 - 6.0 / 2f64.sqrt();
+        assert!(in_round_rect(
+            (k + 0.01, k + 0.01),
+            0.0,
+            0.0,
+            40.0,
+            20.0,
+            6.0
+        ));
+        assert!(!in_round_rect(
+            (k - 0.05, k - 0.05),
+            0.0,
+            0.0,
+            40.0,
+            20.0,
+            6.0
+        ));
+        // A radius past half a side is clamped, as SVG clamps it: a pill.
+        assert!(!in_round_rect((1.0, 1.0), 0.0, 0.0, 40.0, 20.0, 30.0));
+        assert!(in_round_rect((20.0, 0.5), 0.0, 0.0, 40.0, 20.0, 30.0));
+        assert!(!in_round_rect((40.5, 10.0), 0.0, 0.0, 40.0, 20.0, 0.0));
+    }
+
+    #[test]
+    fn polygon_and_disc() {
+        let diamond = [(0.0, -5.0), (5.0, 0.0), (0.0, 5.0), (-5.0, 0.0)];
+        assert!(in_polygon((0.0, 0.0), &diamond));
+        assert!(in_polygon((2.5, 2.5), &diamond), "on the outline");
+        assert!(!in_polygon((3.0, 3.0), &diamond));
+        assert!(!in_polygon((0.0, 0.0), &diamond[..2]));
+        assert!(in_disc((3.0, 4.0), (0.0, 0.0), 5.0));
+        assert!(!in_disc((3.0, 4.1), (0.0, 0.0), 5.0));
+    }
+
+    #[test]
+    fn distances_to_lines_and_curves() {
+        assert_eq!(seg_dist((5.0, 3.0), (0.0, 0.0), (10.0, 0.0)), 3.0);
+        assert_eq!(seg_dist((13.0, 4.0), (0.0, 0.0), (10.0, 0.0)), 5.0);
+        assert_eq!(polyline_dist((5.0, 3.0), &[]), f64::INFINITY);
+        // A straight cubic is its chord.
+        let b = [(0.0, 0.0), (10.0, 0.0), (20.0, 0.0), (30.0, 0.0)];
+        assert!((cubic_dist((15.0, 2.0), &b) - 2.0).abs() < 1e-9);
+        // A bent one: its apex at t = 0.5 is 7.5 above the chord.
+        let arc = [(0.0, 0.0), (0.0, -10.0), (30.0, -10.0), (30.0, 0.0)];
+        assert!(cubic_dist((15.0, -7.5), &arc) < 1e-6);
+        assert!((cubic_dist((15.0, 0.0), &arc) - 7.5).abs() < 0.01);
+    }
+
+    #[test]
+    fn nearest_prefers_the_closer_then_the_later() {
+        let mut n = Nearest::new(3.0);
+        n.offer(0, 2.0);
+        n.offer(1, 1.0);
+        n.offer(2, 1.0);
+        n.offer(3, 3.5);
+        assert_eq!(n.get(), Some(2));
+        // tol <= 0: only what lies on the ink.
+        let mut exact = Nearest::new(-1.0);
+        exact.offer_stroke(0, 1.0, 1.6);
+        assert_eq!(exact.get(), None);
+        exact.offer_stroke(1, 0.7, 1.6);
+        assert_eq!(exact.get(), Some(1));
+        assert!(!on_canvas(f64::NAN, 1.0, 10.0, 10.0));
+        assert!(on_canvas(10.0, 0.0, 10.0, 10.0));
+        let b = text_box(10.0, 5.0, 8.0, 4.0, "end");
+        assert_eq!(b, (2.0, 3.0, 8.0, 4.0));
+    }
+}

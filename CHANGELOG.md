@@ -29,6 +29,17 @@ project adheres to [Semantic Versioning](https://semver.org/).
   one node in a 240-entity ER diagram (about 7 times cheaper a frame
   than `route`), a 240-class diagram (about 11 times) and a
   1041-node mindmap (about 3 times).
+- **Picking on mindmap, pie and sankey scenes** (#112).
+  `MindScene::hit_test`, `PieScene::hit_test` and
+  `SankeyScene::hit_test` return the topmost element under a scene
+  point, as `Scene::hit_test` does: `MindHit::Node` / `Link`,
+  `PieHit::Slice` / `Label` / `Legend` (a label or legend row names the
+  slice it describes) and `SankeyHit::Node` / `Link`, each by its index
+  into the scene's own list. They test the shapes the painters draw (a
+  mindmap node's own outline, a pie slice's sector, a sankey ribbon's
+  curved band at its real thickness, text boxes as the layout measures
+  them), in paint order; `tol` widens strokes only (connectors,
+  leaders), and a point off the canvas picks nothing.
 
 ### Internal
 
