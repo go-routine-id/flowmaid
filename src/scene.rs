@@ -6095,6 +6095,52 @@ pub fn route_partial(
     route_partial_with(g, centers, base, base_centers, &[])
 }
 
+/// The edge stages of [`route_sized`] for a drag frame that keeps some
+/// edges exactly as a previous drawing has them (the ER and class
+/// `route_partial`): `kept[i]` is edge `i`'s drawing to keep (its
+/// `bezier`, `waypoints` and label spot, in `g`'s edge direction), or
+/// `None` for an edge to draw afresh at `centers`. A kept edge is an
+/// obstacle the others are routed round, and its ends hold their places
+/// (`Ctx::fixed`, `Ctx::held`); where a stage still respaces one of its
+/// ends or moves its label for an edge drawn afresh beside it, it is put
+/// back, so every kept edge comes back as given. Unlike
+/// [`route_partial`] no kept edge is ever redrawn: not for a moved node's
+/// box now over it, nor when most edges are drawn afresh. The canvas
+/// starts as `canvas` (origin, width, height) and only grows. For a graph
+/// without subgraphs (`g`'s ER and class graphs have none).
+pub(crate) fn route_kept(
+    g: &Graph,
+    centers: &[(f64, f64)],
+    sizes: &[(f64, f64)],
+    kept: &[Option<&SceneEdge>],
+    canvas: ((f64, f64), f64, f64),
+) -> Scene {
+    let labels = crate::layout::node_texts(g).0;
+    let sizes = sane_sizes(sizes);
+    let sizes = fit_bars(g, &sizes);
+    let mut sc = route_built(g, centers, &sizes, &labels, false, false);
+    let keep = |e: &mut SceneEdge, k: &SceneEdge| {
+        e.bezier = k.bezier;
+        e.waypoints.clone_from(&k.waypoints);
+        e.label.clone_from(&k.label);
+    };
+    let mut fixed = vec![false; sc.edges.len()];
+    for (i, e) in sc.edges.iter_mut().enumerate() {
+        if let Some(Some(k)) = kept.get(i) {
+            keep(e, k);
+            fixed[i] = true;
+        }
+    }
+    (sc.origin, sc.width, sc.height) = canvas;
+    crate::edgepass::finish_held(g, &mut sc, crate::edgepass::Mode::Routed, &fixed, &fixed);
+    for (i, e) in sc.edges.iter_mut().enumerate() {
+        if let Some(Some(k)) = kept.get(i) {
+            keep(e, k);
+        }
+    }
+    sc
+}
+
 /// A node's box given to [`route_partial_with`]: (node, size, whether
 /// it differs from its `base` box).
 pub(crate) type GivenBox = (usize, (f64, f64), bool);

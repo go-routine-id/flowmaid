@@ -7,6 +7,29 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **`route_partial` for ER, class and mindmap diagrams** (#111).
+  `er::route_partial`, `class::route_partial` and
+  `mindmap::route_partial` take the diagram, the new positions, a
+  previous drawing (`base`) and the positions it was drawn at, as the
+  flowchart `scene::route_partial` does, and return the scene `route`
+  returns. Only what is attached to a moved box is drawn afresh: every
+  other relationship, note link or connector keeps its `base` drawing
+  exactly, also where a moved box now covers it (route the drop with
+  `route` to clear it). Positions are kept as given, and a drawing
+  dragged past the top-left margin grows its canvas up or left as
+  `route` does (#76). When `base` no longer lines up with the diagram
+  (an edit since, or other counts) the result is `route`'s. A class
+  diagram takes class centres, or class and note centres, as
+  `class::route` does. `try_route_partial` for each returns `None`
+  where `route_partial` would panic or `try_route` refuses the
+  positions. `mindmap::link_ends` names the two nodes of each
+  connector. `cargo run --release --example drag_bench` times a drag of
+  one node in a 240-entity ER diagram (about 7 times cheaper a frame
+  than `route`), a 240-class diagram (about 11 times) and a
+  1041-node mindmap (about 3 times).
+
 ### Internal
 
 - **Subgraphs as blocks, step 2 of 4, first part** (frames sized to their

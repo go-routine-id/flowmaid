@@ -526,7 +526,7 @@ Beyond static SVG, the engine exposes the geometry it draws, so GUI apps can pai
 - **`scene::scene(&graph)`** returns a `Scene`: the position, size and shape of every node plus the path of every edge, in final coordinates, ready to draw with any painter. A static `Scene`'s `width` × `height` and node centres are exactly the SVG's canvas and coordinates. Nodes and edges keep a stable identity (`SceneNode.id`, `SceneEdge.from` / `to`).
 - **`scene::route(&graph, &positions)`** re-routes every edge for custom node positions (a user's drag) *without* re-running layout, so nodes never jump back.
 - **`scene::route_partial`** re-routes only the edges a move can affect, keeping the rest of a base drawing, so a drag frame costs what lies near the drag (see [Interactive editing](#interactive-editing)). It combs its small fans only; the larger ones are combed when the drag ends and `route()` runs.
-- **`scene::try_route`** (and `class::`, `er::`, `mindmap::try_route`) is `route` returning `None` for positions it cannot route: a count that does not match the diagram, or a coordinate that is not finite or lies more than a million px from zero. For a host whose position list may be out of date.
+- **`scene::try_route`** (and `class::`, `er::`, `mindmap::try_route`, and their `try_route_partial`) is `route` returning `None` for positions it cannot route: a count that does not match the diagram, or a coordinate that is not finite or lies more than a million px from zero. For a host whose position list may be out of date.
 - **`scene::box_edge_bezier`** gives flowmaid's curve for one edge between two freely placed boxes, for hosts that own their node model.
 - **`scene::to_svg(&scene)`** exports any state, including after drags. A routed drawing that reaches past the top-left margin keeps its coordinates on both axes: the `viewBox` starts before zero by the overflow, so a pointer maps through the `viewBox` straight to scene coordinates. `render()` is just a wrapper over the same pipeline, so the SVG and the interactive flow always agree.
 - **Compact layout.** `fold::scene_compact` folds a long linear chain into balanced rows that fit a viewport (CLI `--compact <px>`).
@@ -548,10 +548,10 @@ See `examples/drag_sim.rs`.
 
 ### Other diagram types
 
-- **ER and class** diagrams have the same `scene` / `route` / `to_svg` triple (`er::`, `class::`). Each entity or class is one node, and each relationship one edge.
+- **ER and class** diagrams have the same `scene` / `route` / `route_partial` / `to_svg` set (`er::`, `class::`). Each entity or class is one node, and each relationship one edge. Their `route_partial` redraws only the lines on a moved box and keeps every other line as its base draws it.
 - **Glyph helpers.** `er::glyph` and `er::end_glyphs` return the crow's feet the SVG draws. `class::rel_head`, `class::rel_tail` and `class::card_spots` give the UML end glyphs and cardinality positions. `seq::head` and `seq::actor_figure` give sequence arrowheads and stick figures.
 - **State** diagrams use the flowchart API directly: the parser maps them straight onto `Graph`.
-- **Mindmaps** have `mindmap::scene` / `mindmap::route`.
+- **Mindmaps** have `mindmap::scene` / `mindmap::route` / `mindmap::route_partial`.
 - **Static diagrams** (sequence, pie, journey, timeline, sankey, git graph, architecture) have a `scene()` and a `to_svg()` but no `route()`.
 - **Git graphs and architecture** diagrams also expose a generic `Scene`, so terminal and GUI hosts can draw (and pick on) them without knowing the source syntax.
 

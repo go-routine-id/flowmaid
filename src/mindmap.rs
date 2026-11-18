@@ -1819,6 +1819,176 @@ pub fn try_route(d: &Mindmap, pos: &[(f64, f64)]) -> Option<MindScene> {
     (pos.len() == d.nodes.len() && crate::scene::routable(pos)).then(|| route(d, pos))
 }
 
+/// Re-route after a drag LOCALLY: [`route`] for `pos`, redrawing only
+/// what a moved node (one whose centre differs from `base_pos`) touches,
+/// the flowchart [`crate::scene::route_partial`]'s contract. `base` is
+/// a drawing of `d` with its nodes at `base_pos`: the [`scene`] output
+/// with its own centres, or a [`route`] (or `route_partial`) output.
+///
+/// A mindmap's connectors run centre to centre, so a moved node takes
+/// along only its own box and the connectors to its parent and its
+/// children; every other node and connector is taken from `base` as it
+/// is. Positions are taken as given, as [`route`] takes them, and the
+/// canvas is the one [`route`] gives (a mindmap's canvas follows its
+/// nodes): the result is the drawing [`route`]`(d, pos)` makes (to float
+/// rounding, where `base_pos` was read back from `base`), without
+/// measuring a single label.
+///
+/// When `base` / `base_pos` no longer line up with `d` (their counts
+/// differ from the map's, the map was edited since: a node added,
+/// removed, moved under another parent or restyled, or `base` was not
+/// drawn at `base_pos`) the result is [`route`]`(d, pos)` too, at its
+/// cost; so is any `pos` that does not hold one centre per node (an
+/// empty scene, as [`route`] draws it; [`try_route_partial`] returns
+/// `None` instead).
+///
+/// ```
+/// use flowmaid::{mindmap, model::Document, parser::parse_document};
+///
+/// let Ok(Document::Mindmap(d)) = parse_document("mindmap\n  root\n    a\n    b") else {
+///     unreachable!()
+/// };
+/// let base = mindmap::scene(&d);
+/// let at: Vec<(f64, f64)> = base.nodes.iter().map(|n| (n.cx(), n.cy())).collect();
+/// let mut moved = at.clone();
+/// moved[1].0 += 30.0; // drag `a`
+/// let frame = mindmap::route_partial(&d, &moved, &base, &at);
+/// assert_eq!(frame.edges[1].bezier, base.edges[1].bezier); // root — b
+/// assert_eq!(frame.nodes[1].cx(), moved[1].0);
+/// ```
+pub fn route_partial(
+    d: &Mindmap,
+    pos: &[(f64, f64)],
+    base: &MindScene,
+    base_pos: &[(f64, f64)],
+) -> MindScene {
+    let n = d.nodes.len();
+    if n == 0 || pos.len() != n || !lines_up(d, base, base_pos) {
+        return route(d, pos);
+    }
+    let mut ms = base.clone();
+    let mut any = false;
+    for i in 0..n {
+        if pos[i] != base_pos[i] {
+            any = true;
+            let b = &mut ms.nodes[i];
+            (b.x, b.y) = (pos[i].0 - b.w / 2.0, pos[i].1 - b.h / 2.0);
+        }
+    }
+    if !any {
+        return ms;
+    }
+    // Connector `j` joins the `j`-th node with a parent to that parent
+    // (route's order); redraw those with a moved end.
+    for (j, (p, c)) in link_ends(d).into_iter().enumerate() {
+        if pos[p] != base_pos[p] || pos[c] != base_pos[c] {
+            let (a, b) = (
+                (ms.nodes[p].cx(), ms.nodes[p].cy()),
+                (ms.nodes[c].cx(), ms.nodes[c].cy()),
+            );
+            let c1 = (a.0 + (b.0 - a.0) / 3.0, a.1 + (b.1 - a.1) / 3.0);
+            let c2 = (a.0 + 2.0 * (b.0 - a.0) / 3.0, a.1 + 2.0 * (b.1 - a.1) / 3.0);
+            ms.edges[j].bezier = [a, c1, c2, b];
+        }
+    }
+    ms.width = ms.nodes.iter().map(|n| n.x + n.w).fold(0.0, f64::max) + MARGIN;
+    ms.height = ms.nodes.iter().map(|n| n.y + n.h).fold(0.0, f64::max) + MARGIN;
+    ms
+}
+
+/// [`route_partial`] that tells a wrong position count from an empty
+/// mindmap, as [`try_route`] does: `None` when `pos` does not hold
+/// exactly one centre per node, or holds a coordinate that is not finite
+/// or lies more than a million px from zero. Otherwise exactly what
+/// [`route_partial`] returns.
+pub fn try_route_partial(
+    d: &Mindmap,
+    pos: &[(f64, f64)],
+    base: &MindScene,
+    base_pos: &[(f64, f64)],
+) -> Option<MindScene> {
+    (pos.len() == d.nodes.len() && crate::scene::routable(pos))
+        .then(|| route_partial(d, pos, base, base_pos))
+}
+
+/// The two nodes each connector joins, as `(parent, child)` indexes into
+/// [`MindScene::nodes`], index-parallel with [`MindScene::edges`] of a
+/// scene [`scene`] or [`route`] draws for `d` (one connector per node
+/// with a parent, in node order): what a host looks up for a picked
+/// connector.
+///
+/// ```
+/// use flowmaid::{mindmap, model::Document, parser::parse_document};
+///
+/// let Ok(Document::Mindmap(d)) = parse_document("mindmap\n  root\n    a\n      b") else {
+///     unreachable!()
+/// };
+/// assert_eq!(mindmap::link_ends(&d), vec![(0, 1), (1, 2)]);
+/// assert_eq!(mindmap::scene(&d).edges.len(), 2);
+/// ```
+pub fn link_ends(d: &Mindmap) -> Vec<(usize, usize)> {
+    d.nodes
+        .iter()
+        .enumerate()
+        .filter_map(|(i, n)| n.parent.map(|p| (p, i)))
+        .collect()
+}
+
+/// Whether `base` is a drawing of `d` with its nodes at `base_pos` that
+/// [`route_partial`] may keep parts of: one box per node, drawn as
+/// [`route`] draws that node (text, shape, depth, colours, icon, classes,
+/// style and size) centred on its `base_pos`, and one connector per node
+/// with a parent, drawn between the two.
+fn lines_up(d: &Mindmap, base: &MindScene, base_pos: &[(f64, f64)]) -> bool {
+    let n = d.nodes.len();
+    if base.nodes.len() != n || base_pos.len() != n {
+        return false;
+    }
+    let ends = link_ends(d);
+    if base.edges.len() != ends.len() {
+        return false;
+    }
+    let mut branch_order = vec![0usize; n];
+    for (order, &ch) in d.nodes[0].children.iter().enumerate() {
+        branch_order[ch] = order;
+    }
+    let near = |a: f64, b: f64| (a - b).abs() <= 1e-6 * a.abs().max(b.abs()).max(1.0);
+    let nodes_eq = d
+        .nodes
+        .iter()
+        .zip(&base.nodes)
+        .enumerate()
+        .all(|(i, (m, b))| {
+            let fill = if m.depth == 0 {
+                ROOT_FILL
+            } else {
+                branch_color(branch_order[m.branch.unwrap_or(i)])
+            };
+            let (w, h) = mind_node_size(m);
+            b.text == m.text
+                && b.shape == m.shape
+                && b.depth == m.depth
+                && b.fill == fill
+                && b.icon == m.icon
+                && b.classes == m.classes
+                && b.style == m.style
+                && b.w == w
+                && b.h == h
+                && near(b.cx(), base_pos[i].0)
+                && near(b.cy(), base_pos[i].1)
+        });
+    nodes_eq
+        && ends.iter().zip(&base.edges).all(|(&(p, c), e)| {
+            let (a, z) = (&base.nodes[p], &base.nodes[c]);
+            e.color == z.fill
+                && e.width == link_width(d.nodes[c].depth)
+                && near(e.bezier[0].0, a.cx())
+                && near(e.bezier[0].1, a.cy())
+                && near(e.bezier[3].0, z.cx())
+                && near(e.bezier[3].1, z.cy())
+        })
+}
+
 // ------------------------------------------------------------------
 // Shapes
 // ------------------------------------------------------------------

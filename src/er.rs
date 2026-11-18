@@ -198,6 +198,206 @@ pub fn try_route(d: &ErDiagram, centers: &[(f64, f64)]) -> Option<ErScene> {
     (centers.len() == d.entities.len() && routable(centers)).then(|| route(d, centers))
 }
 
+/// Re-route after a drag LOCALLY: [`route`] for `centers`, drawing
+/// afresh only the relationships with an end on a moved entity (one
+/// whose centre differs from `base_centers`), the flowchart
+/// [`crate::scene::route_partial`]'s contract. `base` is a drawing of
+/// `d` with its entities at `base_centers`: the [`scene`] output with
+/// its own centres, or a [`route`] (or `route_partial`) output.
+///
+/// Every entity sits at its centre in `centers`, taken as given, and
+/// every relationship without an end on a moved entity keeps its `base`
+/// line, crow's feet and label spot exactly, also where a moved table
+/// now covers it (route the drop with [`route`] for a drawing that
+/// clears it). The redrawn ones are routed round the tables and the kept
+/// lines, their labels kept off the crow's feet as [`route`] keeps them.
+/// The canvas is `base`'s, grown over what the drag pushed past it,
+/// up or left too ([`Scene::origin`], as [`route`] grows it): it never
+/// shrinks during a drag. A drag frame so costs what lies at the moved
+/// entities, not the whole diagram.
+///
+/// When `base` / `base_centers` no longer line up with `d` (their
+/// counts differ from the diagram's, the diagram was edited since:
+/// an entity, attribute, relationship, cardinality or label added,
+/// removed or changed, or `base` was not drawn at `base_centers`) the
+/// result is [`route`]`(d, centers)`. With no entity moved it is
+/// `base`.
+///
+/// # Panics
+///
+/// Like [`route`], when `centers` does not hold one centre per entity;
+/// [`try_route_partial`] returns `None` instead.
+///
+/// ```
+/// use flowmaid::{er, model::Document, parser::parse_document};
+///
+/// let src = "erDiagram\nA ||--o{ B : has\nB ||--|{ C : holds\nC }o--|| D : in";
+/// let Ok(Document::Er(d)) = parse_document(src) else { unreachable!() };
+/// let base = er::scene(&d);
+/// let at: Vec<(f64, f64)> = base.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
+/// let mut moved = at.clone();
+/// moved[0].0 += 40.0; // drag A
+/// let frame = er::route_partial(&d, &moved, &base, &at);
+/// // B — C — D is not attached to A: drawn as in `base`.
+/// assert_eq!(frame.scene.edges[1].bezier, base.scene.edges[1].bezier);
+/// assert_eq!(frame.scene.nodes[0].x, moved[0].0);
+/// ```
+pub fn route_partial(
+    d: &ErDiagram,
+    centers: &[(f64, f64)],
+    base: &ErScene,
+    base_centers: &[(f64, f64)],
+) -> ErScene {
+    let n = d.entities.len();
+    if centers.len() != n || !lines_up(d, base, base_centers) {
+        return route(d, centers);
+    }
+    let moved: Vec<bool> = centers
+        .iter()
+        .zip(base_centers)
+        .map(|(c, b)| c != b)
+        .collect();
+    if !moved.iter().any(|&m| m) {
+        return base.clone();
+    }
+    let (g, tables, sizes) = build(d);
+    // A relationship laid out reversed (`layout_flips`) is kept in the
+    // synthetic graph's direction while the stages run.
+    let flipped: Vec<bool> = g
+        .edges
+        .iter()
+        .zip(&d.relations)
+        .map(|(e, r)| e.from != r.from)
+        .collect();
+    let layout_form: Vec<Option<SceneEdge>> = d
+        .relations
+        .iter()
+        .zip(&base.scene.edges)
+        .zip(&flipped)
+        .map(|((r, b), &flip)| {
+            (!moved[r.from] && !moved[r.to]).then(|| {
+                let mut e = b.clone();
+                if flip {
+                    e.bezier.reverse();
+                    e.waypoints.reverse();
+                }
+                e
+            })
+        })
+        .collect();
+    let kept: Vec<Option<&SceneEdge>> = layout_form.iter().map(Option::as_ref).collect();
+    let canvas = (base.scene.origin, base.scene.width, base.scene.height);
+    let mut scene = crate::scene::route_kept(&g, centers, &sizes, &kept, canvas);
+    for ((se, &flip), b) in scene.edges.iter_mut().zip(&flipped).zip(&kept) {
+        if b.is_none() && flip {
+            std::mem::swap(&mut se.from, &mut se.to);
+            se.bezier.reverse();
+            se.waypoints.reverse();
+        }
+    }
+    for (j, b) in kept.iter().enumerate() {
+        if b.is_some() {
+            scene.edges[j] = base.scene.edges[j].clone();
+        }
+    }
+    let cards: Vec<(Card, Card)> = d
+        .relations
+        .iter()
+        .map(|r| (r.card_from, r.card_to))
+        .collect();
+    let redrawn: Vec<bool> = kept.iter().map(Option::is_none).collect();
+    labels_off_glyphs_of(&mut scene, &cards, Some(&redrawn));
+    for e in &mut scene.edges {
+        e.paint_width = Some(LINE_W);
+    }
+    let (origin, width, height) = top_left_canvas(&scene);
+    (scene.origin, scene.width, scene.height) = (origin, width, height);
+    ErScene {
+        scene,
+        tables,
+        cards,
+    }
+}
+
+/// [`route_partial`] for positions that may not fit `d`: `None`, where
+/// [`route_partial`] would panic, when `centers` does not hold exactly
+/// one centre per entity, and for a coordinate that is not finite or lies
+/// more than a million px from zero, as [`try_route`] has it. Otherwise
+/// exactly what [`route_partial`] returns.
+pub fn try_route_partial(
+    d: &ErDiagram,
+    centers: &[(f64, f64)],
+    base: &ErScene,
+    base_centers: &[(f64, f64)],
+) -> Option<ErScene> {
+    (centers.len() == d.entities.len() && routable(centers))
+        .then(|| route_partial(d, centers, base, base_centers))
+}
+
+/// Whether `base` is a drawing of `d` with its entities at
+/// `base_centers` that [`route_partial`] may keep relationships of: one
+/// table per entity and one line per relationship, each table as `d`
+/// draws it (name, title, rows, columns and size) at its centre in
+/// `base_centers`, each line between the same entities with the same
+/// cardinalities, dash and label.
+fn lines_up(d: &ErDiagram, base: &ErScene, base_centers: &[(f64, f64)]) -> bool {
+    let (n, m) = (d.entities.len(), d.relations.len());
+    let sc = &base.scene;
+    if base_centers.len() != n
+        || sc.nodes.len() != n
+        || base.tables.len() != n
+        || sc.edges.len() != m
+        || base.cards.len() != m
+    {
+        return false;
+    }
+    let near = |a: f64, b: f64| (a - b).abs() <= 1e-6 * a.abs().max(b.abs()).max(1.0);
+    let rows_eq = |a: &[ErRow], b: &[ErRow]| {
+        a.len() == b.len()
+            && a.iter().zip(b).all(|(p, q)| {
+                p.ty == q.ty
+                    && p.name == q.name
+                    && p.keys == q.keys
+                    && p.comment == q.comment
+                    && p.comment_full == q.comment_full
+            })
+    };
+    let entities_eq = d.entities.iter().enumerate().all(|(i, e)| {
+        let (t, (w, h)) = table_of(e);
+        let (nd, bt) = (&sc.nodes[i], &base.tables[i]);
+        nd.id == e.name
+            && nd.w == w
+            && nd.h == h
+            && near(nd.x, base_centers[i].0)
+            && near(nd.y, base_centers[i].1)
+            && bt.name == t.name
+            && bt.title == t.title
+            && bt.ty_col_w == t.ty_col_w
+            && bt.name_col_w == t.name_col_w
+            && bt.keys_col_w == t.keys_col_w
+            && bt.comment_col_w == t.comment_col_w
+            && rows_eq(&bt.rows, &t.rows)
+    });
+    entities_eq
+        && d.relations
+            .iter()
+            .zip(&sc.edges)
+            .zip(&base.cards)
+            .all(|((r, e), c)| {
+                let kind = if r.identifying {
+                    EdgeKind::Open
+                } else {
+                    EdgeKind::Dotted
+                };
+                e.from == d.entities[r.from].name
+                    && e.to == d.entities[r.to].name
+                    && e.kind == kind
+                    && e.label.as_ref().map(|l| &l.0) == r.label.as_ref()
+                    && c.0 == r.card_from
+                    && c.1 == r.card_to
+            })
+}
+
 fn assemble(d: &ErDiagram, tables: Vec<ErTable>, mut scene: Scene, g: &Graph) -> ErScene {
     // The synthetic graph is built strictly in entity/relation
     // order, so indexes align 1:1. This is load-bearing for every
@@ -835,6 +1035,13 @@ const LINE_AIR: f64 = 1.0;
 /// ties), one only over a line to a spot off every line covering no
 /// more of them than it did, else it stays. A clear label stays put.
 fn labels_off_glyphs(sc: &mut Scene, cards: &[(Card, Card)]) {
+    labels_off_glyphs_of(sc, cards, None);
+}
+
+/// [`labels_off_glyphs`] for the labels of the edges `only` flags
+/// (index-parallel with `sc.edges`; `None` = every label): the others
+/// stay where they are, as obstacles like every glyph and line.
+fn labels_off_glyphs_of(sc: &mut Scene, cards: &[(Card, Card)], only: Option<&[bool]>) {
     // Each glyph with its bounding box (strokes and air included): a
     // label is tested stroke by stroke only against glyphs near it.
     let glyphs: Vec<(Glyph, Rect)> = sc
@@ -881,6 +1088,9 @@ fn labels_off_glyphs(sc: &mut Scene, cards: &[(Card, Card)]) {
         .collect();
     let mut grow: Option<Rect> = None;
     for j in 0..sc.edges.len() {
+        if only.is_some_and(|o| !o.get(j).copied().unwrap_or(false)) {
+            continue;
+        }
         let Some((_, at, w)) = sc.edges[j].label.clone() else {
             continue;
         };
