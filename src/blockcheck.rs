@@ -3286,3 +3286,217 @@ fn route_lays_a_run_on_its_ports_line_as_the_scene_does() {
         });
     }
 }
+
+/// The public fixture (`blocks/blocks-overview`) drawn `dir`.
+fn overview_in(dir: &str) -> Graph {
+    let src = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/blocks/blocks-overview.mmd"
+    ))
+    .unwrap();
+    graph(&src.replacen("flowchart TD", &format!("flowchart {dir}"), 1))
+}
+
+/// Largest distance (px) from a point of `a`'s drawn path to `b`'s.
+fn path_off(a: &crate::scene::SceneEdge, b: &crate::scene::SceneEdge) -> f64 {
+    let pb = crate::scene::edge_polyline(b);
+    crate::scene::edge_polyline(a)
+        .into_iter()
+        .map(|p| {
+            pb.windows(2)
+                .map(|w| {
+                    let (abx, aby) = (w[1].0 - w[0].0, w[1].1 - w[0].1);
+                    let len2 = abx * abx + aby * aby;
+                    let t = if len2 <= f64::EPSILON {
+                        0.0
+                    } else {
+                        (((p.0 - w[0].0) * abx + (p.1 - w[0].1) * aby) / len2).clamp(0.0, 1.0)
+                    };
+                    (w[0].0 + t * abx - p.0).hypot(w[0].1 + t * aby - p.1)
+                })
+                .fold(f64::INFINITY, f64::min)
+        })
+        .fold(0.0, f64::max)
+}
+
+#[test]
+fn a_one_px_drag_moves_a_block_layouts_frames_by_a_px_at_most() {
+    // B12.13 R6 (`dfr_own`, `dfr_far`): a 1 px drag of any node from the
+    // static scene redraws the frames that hold it, and only those, and
+    // moves them by the px the members moved. Before: the public
+    // fixture's Observability came back 41.3 px narrower on the first px
+    // (the room of its `scrape` and `dashboards` channels the layout laid
+    // inside it went with the redrawn edges), cycle2's Front 45 px (an
+    // upstream edge's column the layout laid inside it, its drawn path
+    // beside it), hub5's Email 121 px.
+    let mut cases: Vec<(String, Graph)> = ["TD", "BT", "LR", "RL"]
+        .iter()
+        .map(|d| (format!("blocks-overview {d}"), overview_in(d)))
+        .collect();
+    for name in ["blocks/hub5", "blocks/cycle2", "blocks/nested-cases"] {
+        cases.push((name.to_string(), fixture(name)));
+    }
+    crate::levels::with_blocks(true, || {
+        for (name, g) in &cases {
+            let base = crate::scene::scene(g);
+            assert!(base.block_layout, "{name}");
+            let (own, far) = crate::quality::frame_drags(g, &base);
+            assert!(
+                own <= 1.5,
+                "{name}: a frame the drag redraws moved {own} px"
+            );
+            // (Float noise of a frame drawn afresh where the drag falls
+            // back to a whole `route()` is no move.)
+            assert!(
+                far < 1e-9,
+                "{name}: a frame the drag does not redraw moved {far} px"
+            );
+        }
+    });
+}
+
+#[test]
+fn a_drag_keeps_the_layouts_columns_of_the_edges_it_redraws() {
+    // B12.13 R6 under the lead's ruling 1: an edge a drag redraws because
+    // its end moved keeps the layout's columns (its channels between the
+    // blocks, its inner legs) and only its end legs follow the moved end.
+    // Drawn afresh by the builders, a 1 px drag threw the dragged node's
+    // edges onto other columns: `CART -> QUEUE` by 120 px, through
+    // frames the layout kept it out of.
+    crate::levels::with_blocks(true, || {
+        for dir in ["TD", "BT", "LR", "RL"] {
+            let g = overview_in(dir);
+            let base = crate::scene::scene(&g);
+            let at: Vec<(f64, f64)> = base.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let (mut checked, mut worst) = (0, (0.0f64, String::new()));
+            for v in 0..g.nodes.len() {
+                let mut c = at.clone();
+                c[v].0 += 1.0;
+                let p = crate::scene::route_partial(&g, &c, &base, &at);
+                let id = &g.nodes[v].id;
+                for (a, b) in base.edges.iter().zip(&p.edges) {
+                    if (&a.from != id && &a.to != id) || a.waypoints.len() < 3 {
+                        continue;
+                    }
+                    checked += 1;
+                    let off = path_off(b, a).max(path_off(a, b));
+                    if off > worst.0 {
+                        worst = (off, format!("drag {id}: {} -> {}", a.from, a.to));
+                    }
+                }
+            }
+            assert!(checked > 20, "{dir}: {checked} redrawn edges");
+            assert!(worst.0 <= 2.0, "{dir}: {} moved {} px", worst.1, worst.0);
+        }
+    });
+}
+
+#[test]
+fn a_drag_leaves_a_hubs_spilled_ends_where_the_scene_put_them() {
+    // bench-75 as blocks: `logs` takes more ends on its side than fit,
+    // and the static scene spilled some round the corner. A 1 px drag of
+    // any other node re-placed that side (the pass spilled an end onto it
+    // again, so the side no longer counted as held) and threw
+    // `svc5 -> logs` 24.2 px onto the next side, on every drag: 24 drag
+    // jumps against the 13 of the release before. A side whose every end
+    // the drag holds is left as the scene drew it.
+    let g = fixture("quality/bench-75");
+    crate::levels::with_blocks(true, || {
+        let base = crate::scene::scene(&g);
+        let at: Vec<(f64, f64)> = base.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let k = g
+            .edges
+            .iter()
+            .position(|e| g.nodes[e.from].id == "svc5" && g.nodes[e.to].id == "logs")
+            .unwrap();
+        for who in ["user", "db", "metrics", "job3"] {
+            let v = g.node_index(who).unwrap();
+            let mut c = at.clone();
+            c[v].0 += 1.0;
+            let p = crate::scene::route_partial(&g, &c, &base, &at);
+            let (a, b) = (&base.edges[k], &p.edges[k]);
+            let end = |e: &crate::scene::SceneEdge| *e.waypoints.last().unwrap();
+            let (x, y) = (end(a), end(b));
+            assert!(
+                (x.0 - y.0).hypot(x.1 - y.1) < 0.5,
+                "drag {who}: svc5 -> logs ends at {y:?}, was {x:?}"
+            );
+        }
+    });
+}
+
+#[test]
+fn route_at_the_scenes_centres_draws_the_scene() {
+    // B12.13 under the lead's ruling 1 (with `route()` starting from the
+    // layout): at the scene's own centres `route()` draws what `scene()`
+    // drew, frames and every edge, so the playground's first paint is the
+    // static drawing (`fr_max` 0, `ends_apart` 0); a host that moved the
+    // whole drawing gets it moved; and the drawing is the same whether
+    // or not the layout was kept from an earlier call on this thread.
+    crate::levels::with_blocks(true, || {
+        crate::levels::with_route_from_layout(true, || {
+            for dir in ["TD", "BT", "LR", "RL"] {
+                let g = overview_in(dir);
+                let sc = crate::scene::scene(&g);
+                let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+                let r = crate::scene::route(&g, &at);
+                assert!(r.block_layout, "{dir}");
+                assert_eq!(crate::scene::to_svg(&r), crate::scene::to_svg(&sc), "{dir}");
+                crate::scene::forget_laid_scenes();
+                let again = crate::scene::route(&g, &at);
+                assert_eq!(
+                    crate::scene::to_svg(&again),
+                    crate::scene::to_svg(&r),
+                    "{dir}"
+                );
+                // The whole drawing moved: the same drawing, moved.
+                let (dx, dy) = (40.0, 25.0);
+                let moved: Vec<(f64, f64)> = at.iter().map(|p| (p.0 + dx, p.1 + dy)).collect();
+                let m = crate::scene::route(&g, &moved);
+                for (a, b) in sc.clusters.iter().zip(&m.clusters) {
+                    assert!(
+                        (a.x + dx - b.x).abs() < 1e-9 && (a.y + dy - b.y).abs() < 1e-9,
+                        "{dir}: frame {}",
+                        a.id
+                    );
+                }
+                for (a, b) in sc.edges.iter().zip(&m.edges) {
+                    for (p, q) in a.waypoints.iter().zip(&b.waypoints) {
+                        assert!((p.0 + dx - q.0).abs() < 1e-9 && (p.1 + dy - q.1).abs() < 1e-9);
+                    }
+                }
+            }
+        })
+    });
+}
+
+#[test]
+fn route_follows_a_drag_as_route_partial_does_from_the_scene() {
+    // B12.13 R6 under the lead's ruling 1: `route()` of the scene's
+    // centres with one node moved is the drag `route_partial()` draws
+    // from the scene, so a host that calls either during a drag sees the
+    // same frame.
+    crate::levels::with_blocks(true, || {
+        crate::levels::with_route_from_layout(true, || {
+            let g = overview_in("TD");
+            let sc = crate::scene::scene(&g);
+            let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+            for (who, by) in [
+                ("CART", (1.0, 0.0)),
+                ("METRICS", (-37.0, 12.0)),
+                ("SHOP", (90.0, 0.0)),
+            ] {
+                let v = g.node_index(who).unwrap();
+                let mut c = at.clone();
+                c[v] = (c[v].0 + by.0, c[v].1 + by.1);
+                let r = crate::scene::route(&g, &c);
+                let p = crate::scene::route_partial(&g, &c, &sc, &at);
+                assert_eq!(
+                    crate::scene::to_svg(&r),
+                    crate::scene::to_svg(&p),
+                    "drag {who}"
+                );
+            }
+        })
+    });
+}

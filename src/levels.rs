@@ -53,8 +53,9 @@ pub(crate) fn blocks_on() -> bool {
 /// Run `f` with the switch set to `on` on this thread, and put the
 /// former value back afterwards, also when `f` unwinds. A change of the
 /// switch either way forgets the block frames the compound layout keeps
-/// on this thread ([`crate::compound::forget_laid`]): they were laid out
-/// under the former value.
+/// on this thread ([`crate::compound::forget_laid`]) and the drawings
+/// `route()` starts from ([`crate::scene::forget_laid_scenes`]): they
+/// were laid out under the former value.
 pub(crate) fn with_blocks<T>(on: bool, f: impl FnOnce() -> T) -> T {
     struct Reset(Option<bool>);
     impl Drop for Reset {
@@ -62,15 +63,60 @@ pub(crate) fn with_blocks<T>(on: bool, f: impl FnOnce() -> T) -> T {
             let was = blocks_on();
             OVERRIDE.with(|c| c.set(self.0));
             if blocks_on() != was {
-                crate::compound::forget_laid();
+                forget_layouts();
             }
         }
     }
     let was = blocks_on();
     let _reset = Reset(OVERRIDE.with(|c| c.replace(Some(on))));
     if on != was {
-        crate::compound::forget_laid();
+        forget_layouts();
     }
+    f()
+}
+
+/// Forget what this thread keeps of earlier layouts (the compound
+/// layout's block frames, `route()`'s static drawings): the switch or
+/// the ordering's start count they were laid out under changed.
+fn forget_layouts() {
+    crate::compound::forget_laid();
+    crate::scene::forget_laid_scenes();
+}
+
+/// Whether [`crate::scene::route`] of a part drawn in block mode starts
+/// from the static layout's drawing of it (B12.13, the lead's ruling of
+/// 2026-11-18: at the scene's own centres `route()` is `scene()`, and a
+/// drag re-plans only what the moved nodes touch). On only with `--cfg
+/// flowmaid_route_layout` besides the block layout's switch: at its own
+/// centres the routed drawing then carries the static drawing's numbers,
+/// defects included, which the routed rows judge against the routed
+/// drawing of the release before, so the lead decides when it is on.
+pub(crate) const ROUTE_FROM_LAYOUT_DEFAULT: bool = cfg!(flowmaid_route_layout);
+
+thread_local! {
+    /// A scoped override of [`ROUTE_FROM_LAYOUT_DEFAULT`]
+    /// ([`with_route_from_layout`]), per thread like the block switch.
+    static ROUTE_OVERRIDE: Cell<Option<bool>> = const { Cell::new(None) };
+}
+
+/// Whether `route()` of a block layout starts from the static layout's
+/// drawing on this thread ([`ROUTE_FROM_LAYOUT_DEFAULT`]).
+pub(crate) fn route_from_layout_on() -> bool {
+    ROUTE_OVERRIDE
+        .with(|c| c.get())
+        .unwrap_or(ROUTE_FROM_LAYOUT_DEFAULT)
+}
+
+/// Run `f` with [`route_from_layout_on`] set to `on` on this thread,
+/// and put the former value back afterwards, also when `f` unwinds.
+pub(crate) fn with_route_from_layout<T>(on: bool, f: impl FnOnce() -> T) -> T {
+    struct Reset(Option<bool>);
+    impl Drop for Reset {
+        fn drop(&mut self) {
+            ROUTE_OVERRIDE.with(|c| c.set(self.0));
+        }
+    }
+    let _reset = Reset(ROUTE_OVERRIDE.with(|c| c.replace(Some(on))));
     f()
 }
 
@@ -88,15 +134,24 @@ pub(crate) fn order_starts() -> Option<usize> {
 
 /// Run `f` with the ordering of a block layout taking `starts` starts
 /// on this thread (the table of crossings by starts), and put the
-/// former setting back afterwards, also when `f` unwinds.
+/// former setting back afterwards, also when `f` unwinds. A change of
+/// the count either way forgets the block frames the compound layout
+/// keeps on this thread, laid out under the former count (`route()`'s
+/// static drawings hold the count in their key).
 pub(crate) fn with_order_starts<T>(starts: usize, f: impl FnOnce() -> T) -> T {
     struct Reset(Option<usize>);
     impl Drop for Reset {
         fn drop(&mut self) {
-            STARTS.with(|c| c.set(self.0));
+            if STARTS.with(|c| c.replace(self.0)) != self.0 {
+                crate::compound::forget_laid();
+            }
         }
     }
-    let _reset = Reset(STARTS.with(|c| c.replace(Some(starts))));
+    let was = STARTS.with(|c| c.replace(Some(starts)));
+    let _reset = Reset(was);
+    if was != Some(starts) {
+        crate::compound::forget_laid();
+    }
     f()
 }
 

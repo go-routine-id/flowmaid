@@ -1565,11 +1565,15 @@ fn place_ports(
         // than the port spacing) and re-place them in heading order. A
         // 1 px drag of any node threw a choice's twins on such a side
         // 15-35 px across each other (verify spread-face, g1, g92: 68-75
-        // unrelated ends over 20 px per diagram).
-        if ports
-            .iter()
-            .all(|p| p.spilled.is_none() && cx.held.get(p.edge).copied().unwrap_or(false))
-        {
+        // unrelated ends over 20 px per diagram). In a block layout's
+        // scene ([`Ctx::axis_ends`]) also when this pass spilled one of
+        // them onto it: the base scene's ends there came out of the same
+        // spill, so the side holds what the base drew, and re-placing it
+        // moved a hub's ends onto the next side under a 1 px drag of any
+        // node (quality/bench-75: `svc5 -> logs` 24 px on every drag).
+        if ports.iter().all(|p| {
+            (p.spilled.is_none() || cx.axis_ends) && cx.held.get(p.edge).copied().unwrap_or(false)
+        }) {
             continue;
         }
         // Weighed on the ends as they are now: a lone end placed above

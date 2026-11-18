@@ -652,6 +652,15 @@ pub fn with_blocks<T>(on: bool, f: impl FnOnce() -> T) -> T {
     crate::levels::with_blocks(on, f)
 }
 
+/// Run `f` with `route()` of a block layout starting from the static
+/// layout's drawing (on) or drawing afresh (off) on this thread,
+/// restoring the former setting afterwards, also when `f` unwinds (the
+/// internal setting of `crate::levels` that `--cfg flowmaid_route_layout`
+/// turns on).
+pub fn with_route_from_layout<T>(on: bool, f: impl FnOnce() -> T) -> T {
+    crate::levels::with_route_from_layout(on, f)
+}
+
 /// Run `f` with the ordering of a block layout taking `starts` starts
 /// instead of what its work budget grants (for the table of crossings
 /// by starts).

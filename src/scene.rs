@@ -5594,8 +5594,198 @@ pub(crate) fn route_fitted(
     crate::levels::note_used(crate::levels::Entry::Route, g, || block_mode_decided(g));
     // The switch of the block layout, read once for this call.
     let blocks = route_blocks(g, crate::levels::blocks_on());
+    if blocks && crate::levels::route_from_layout_on() {
+        if let Some(sc) = route_from_layout(g, centers, sizes, labels) {
+            return sc;
+        }
+    }
+    route_fresh(g, centers, sizes, labels, blocks)
+}
+
+/// [`route_fitted`] drawn afresh: every edge built for the current
+/// boxes and taken through the edge stages, with a block layout's
+/// frames when `blocks` ([`route_blocks`]).
+fn route_fresh(
+    g: &Graph,
+    centers: &[(f64, f64)],
+    sizes: &[(f64, f64)],
+    labels: &[String],
+    blocks: bool,
+) -> Scene {
     let mut sc = route_built(g, centers, sizes, labels, true, blocks);
     crate::edgepass::finish(g, &mut sc, crate::edgepass::Mode::Routed);
+    sc
+}
+
+/// [`route`] of a part drawn in block mode (B12 2.9, the lead's ruling
+/// of 2026-11-18): the drawing the static layout makes of the same
+/// graph, node sizes and labels ([`laid_scene`]) is the base, and only
+/// what the host moved away from the layout's centres is drawn again,
+/// as [`route_partial`] draws a drag from that base. So at the scene's
+/// own centres `route()` is `scene()`: the same frames (F1-F3, the
+/// layout's channels inside them included), the same corridors and
+/// ends, the same labels — what the playground paints before the first
+/// drag is what the static SVG shows, and the first drag moves only the
+/// dragged node's edges and frames (R6's kept edges keep the layout's
+/// columns). A host that moved the whole drawing by one offset gets the
+/// layout's drawing moved with it ([`common_offset`]). `None` (the
+/// caller draws afresh) for a graph the compound layout splits, or when
+/// the layout draws another set of nodes.
+fn route_from_layout(
+    g: &Graph,
+    centers: &[(f64, f64)],
+    sizes: &[(f64, f64)],
+    labels: &[String],
+) -> Option<Scene> {
+    if crate::compound::split(g).is_some() {
+        return None;
+    }
+    let laid = laid_scene(g, sizes, labels);
+    if laid.nodes.len() != centers.len() {
+        return None;
+    }
+    let at: Vec<(f64, f64)> = laid.nodes.iter().map(|n| (n.x, n.y)).collect();
+    let d = common_offset(centers, &at);
+    let shifted;
+    let (base, base_at): (&Scene, Vec<(f64, f64)>) = if d == (0.0, 0.0) {
+        (&laid, at)
+    } else {
+        let mut s = (*laid).clone();
+        shift_scene(&mut s, d.0, d.1);
+        // The canvas of a routed drawing: from (0, 0) to the margin past
+        // the drawing, reaching up or left only where the drawing does
+        // (as `route_built` starts it and the routed refit grows it).
+        s.origin = (0.0, 0.0);
+        s.width = laid.width + d.0;
+        s.height = laid.height + d.1;
+        crate::edgepass::refit(
+            &mut s,
+            crate::edgepass::Mode::Routed,
+            g.edge_paint_width.is_none(),
+        );
+        shifted = s;
+        (
+            &shifted,
+            at.iter().map(|p| (p.0 + d.0, p.1 + d.1)).collect(),
+        )
+    };
+    let moved: Vec<bool> = centers
+        .iter()
+        .zip(&base_at)
+        .map(|(c, b)| (c.0 - b.0).abs() > 0.01 || (c.1 - b.1).abs() > 0.01)
+        .collect();
+    let mut sc = if moved.contains(&true) {
+        partial_core(g, centers, base, &base_at, &moved, sizes, labels, true)
+    } else {
+        base.clone()
+    };
+    sc.routed = true;
+    Some(sc)
+}
+
+/// The offset by which the host moved the whole drawing against the
+/// layout's centres `at` (a pan of the whole diagram, or a block of the
+/// compound layout placed in its proxy's box): among the offsets of the
+/// first [`OFFSET_PROBES`] nodes, the one the most nodes share to within
+/// the drag test's 0.01 px, the earlier on a tie; `(0, 0)` when no
+/// offset is shared by more than half the nodes. A drag moves a few
+/// nodes, so at least one of the probes holds still and its offset is
+/// the drawing's.
+fn common_offset(centers: &[(f64, f64)], at: &[(f64, f64)]) -> (f64, f64) {
+    let n = centers.len().min(at.len());
+    let off = |v: usize| (centers[v].0 - at[v].0, centers[v].1 - at[v].1);
+    let mut best = ((0.0, 0.0), 0usize);
+    for p in 0..n.min(OFFSET_PROBES) {
+        let d = off(p);
+        let shared = (0..n)
+            .filter(|&v| {
+                let e = off(v);
+                (e.0 - d.0).abs() <= 0.01 && (e.1 - d.1).abs() <= 0.01
+            })
+            .count();
+        if shared > best.1 {
+            best = (d, shared);
+        }
+    }
+    if 2 * best.1 <= n || (best.0 .0.abs() <= 0.01 && best.0 .1.abs() <= 0.01) {
+        (0.0, 0.0)
+    } else {
+        best.0
+    }
+}
+
+/// Nodes [`common_offset`] tries the offset of: more than a drag moves
+/// at once (one node, or a node and its note card).
+const OFFSET_PROBES: usize = 3;
+
+/// A part's static drawing as [`scene`] makes it, by everything that
+/// layout reads: the graph, the node sizes (fitted bars included) and
+/// labels, and the ordering's start count a report may set.
+struct LaidScene {
+    g: Graph,
+    sizes: Vec<(f64, f64)>,
+    labels: Vec<String>,
+    starts: Option<usize>,
+    scene: std::rc::Rc<Scene>,
+}
+
+/// Most drawings [`LAID_SCENES`] holds before it drops the one kept
+/// longest: a host's few open diagrams, few enough to compare against on
+/// each [`route`]. Past it a drawing is laid out again the next time it
+/// is routed; the result is the same.
+const LAID_SCENES_MAX: usize = 8;
+
+thread_local! {
+    /// The static drawing of each part [`route`] drew in block mode
+    /// ([`route_from_layout`]), kept by [`laid_scene`]. A memo of a pure
+    /// function (the layout of the graph for these sizes and labels): a
+    /// drawing found here and one laid out again are the same, so the
+    /// output stays deterministic whether or not `scene()` ran on this
+    /// thread before; only the first `route()` of a graph pays for its
+    /// layout. This is the one piece of the layout `route()` reads (the
+    /// layout's chain columns and the frames they widened, which
+    /// `route()` has no layout to place); it is crate-private and never
+    /// part of a [`Scene`] a host sees. Forgotten when the block
+    /// layout's switch or the ordering's start count changes
+    /// ([`forget_laid_scenes`]), which the key does not hold.
+    static LAID_SCENES: std::cell::RefCell<Vec<LaidScene>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// Forget every drawing [`LAID_SCENES`] keeps on this thread.
+pub(crate) fn forget_laid_scenes() {
+    LAID_SCENES.with(|m| m.borrow_mut().clear());
+}
+
+/// The static drawing of `g` for these (fitted) `sizes` and `labels`:
+/// kept from the last time it was laid out on this thread
+/// ([`LAID_SCENES`]), else laid out now and kept.
+fn laid_scene(g: &Graph, sizes: &[(f64, f64)], labels: &[String]) -> std::rc::Rc<Scene> {
+    let starts = crate::levels::order_starts();
+    let kept = LAID_SCENES.with(|m| {
+        m.borrow()
+            .iter()
+            .find(|l| l.starts == starts && l.sizes == sizes && l.labels == labels && l.g == *g)
+            .map(|l| std::rc::Rc::clone(&l.scene))
+    });
+    if let Some(sc) = kept {
+        return sc;
+    }
+    // Not under the borrow: the layout may route a part through here.
+    let sc = std::rc::Rc::new(scene_labelled(g, sizes, labels));
+    LAID_SCENES.with(|m| {
+        let mut m = m.borrow_mut();
+        if m.len() >= LAID_SCENES_MAX {
+            m.remove(0);
+        }
+        m.push(LaidScene {
+            g: g.clone(),
+            sizes: sizes.to_vec(),
+            labels: labels.to_vec(),
+            starts,
+            scene: std::rc::Rc::clone(&sc),
+        });
+    });
     sc
 }
 
@@ -6148,6 +6338,72 @@ pub(crate) fn route_partial_with(
             sizes.to_mut()[v] = size;
         }
     }
+    partial_core(
+        g,
+        centers,
+        base,
+        base_centers,
+        &moved,
+        &sizes,
+        &labels,
+        false,
+    )
+}
+
+/// The drawing of [`route_partial_with`] once the moved nodes are known
+/// (`moved`, index-parallel with `g.nodes`, at least one set), for these
+/// fitted `sizes` and drawn `labels`. `fresh`: the frame is
+/// [`route`]'s own drag from the static layout ([`route_from_layout`]),
+/// whose fallbacks draw the graph afresh ([`route_fresh`]) rather than
+/// going back through `route()`.
+#[allow(clippy::too_many_arguments)]
+fn partial_core(
+    g: &Graph,
+    centers: &[(f64, f64)],
+    base: &Scene,
+    base_centers: &[(f64, f64)],
+    moved: &[bool],
+    sizes: &[(f64, f64)],
+    labels: &[String],
+    fresh: bool,
+) -> Scene {
+    let n = g.nodes.len();
+    // The fallbacks below draw the whole frame afresh: `route()` (or,
+    // for `route()`'s own drag, the builders).
+    let afresh = || {
+        if fresh {
+            route_fresh(
+                g,
+                centers,
+                sizes,
+                labels,
+                route_blocks(g, crate::levels::blocks_on()),
+            )
+        } else {
+            route_fitted(g, centers, sizes, labels)
+        }
+    };
+    // More than `PARTIAL_ROUTE_SHARE` of the edges on the moved nodes
+    // alone: the frame falls back below whatever else is redrawn, so it
+    // does now, before the builders draw every edge for nothing (a
+    // hub's drag paid for both). Not where a note card's link may be
+    // kept through the fallback ([`note_link_kept`]).
+    let on_moved = base
+        .edges
+        .iter()
+        .filter(|e| {
+            [&e.from, &e.to]
+                .into_iter()
+                .any(|id| g.node_index(id).is_some_and(|v| moved[v]))
+        })
+        .count();
+    let cards = base
+        .nodes
+        .iter()
+        .any(|nd| crate::style::is_note_card(&nd.id, nd.shape, &nd.style));
+    if !cards && on_moved as f64 > PARTIAL_ROUTE_SHARE * base.edges.len() as f64 {
+        return afresh();
+    }
     // No builder label pass: a redrawn edge's label starts at its spot
     // on the new line and the label stage moves it only if it covers
     // something. route() slides every label first so the router can
@@ -6155,7 +6411,8 @@ pub(crate) fn route_partial_with(
     // drag frame and is left out here (G13).
     // The switch of the block layout, read once for this call.
     let on = crate::levels::blocks_on();
-    let mut sc = route_built(g, centers, &sizes, &labels, false, route_blocks(g, on));
+    let blocks = route_blocks(g, on);
+    let mut sc = route_built(g, centers, sizes, labels, false, blocks);
     // A kept edge is copied from `base` whole (style, end glyphs,
     // label text), and a node's box follows its text: an edit to any of
     // them must not keep stale geometry.
@@ -6182,7 +6439,7 @@ pub(crate) fn route_partial_with(
     let full = |mut sc: Scene| {
         if same_graph {
             for i in 0..g.edges.len().min(sc.edges.len()) {
-                if let Some(kept) = note_link_kept(g, base, centers, base_centers, &moved, i) {
+                if let Some(kept) = note_link_kept(g, base, centers, base_centers, moved, i) {
                     sc.edges[i] = kept;
                 }
             }
@@ -6193,7 +6450,7 @@ pub(crate) fn route_partial_with(
     // `route_labelled` fits for a graph without blocks; a given bar is
     // not fitted again).
     if !same_graph || !clusters_line_up(g, base) {
-        return full(route_fitted(g, centers, &sizes, &labels));
+        return full(afresh());
     }
     type R = (f64, f64, f64, f64);
     let node_rect = |nd: &SceneNode| -> R {
@@ -6293,12 +6550,15 @@ pub(crate) fn route_partial_with(
     let mut held = vec![true; base.edges.len()];
     // The edges drawn as `base` (or a note link's follow of it) has them.
     let mut kept = vec![false; base.edges.len()];
+    // The edges redrawn only because an end moved (a moved node, a frame
+    // redrawn round one): what a block layout's drag follows.
+    let mut by_move = vec![false; base.edges.len()];
     let mut redrawn = 0;
     for (i, e) in sc.edges.iter_mut().enumerate() {
         let b = &base.edges[i];
         let own = own_moved.contains(&(b.from.as_str(), b.to.as_str()));
         if let Some(kept_link) = (!own && !clash[i])
-            .then(|| note_link_kept(g, base, centers, base_centers, &moved, i))
+            .then(|| note_link_kept(g, base, centers, base_centers, moved, i))
             .flatten()
         {
             // A state note card's link drawn as the drag leaves it.
@@ -6308,6 +6568,7 @@ pub(crate) fn route_partial_with(
             fixed[i] = false;
             held[i] = false;
             redrawn += 1;
+            by_move[i] = !own && !clash[i];
             // Its end on a node the drag left starts where the base had
             // it (on the same side): the ports stage then spaces that
             // side round it as it was, where an end aimed afresh at the
@@ -6378,12 +6639,134 @@ pub(crate) fn route_partial_with(
     // Most of the drawing redrawn afresh (not merely near the drag): a
     // full route() costs about the same and draws it better.
     if redrawn as f64 > PARTIAL_ROUTE_SHARE * fixed.len() as f64 {
-        return full(route_fitted(g, centers, &sizes, &labels));
+        return full(afresh());
     }
+    // B12 2.9 R6 in block mode: an edge a drag redraws because an end
+    // moved keeps the layout's columns ([`follow_drag`]); only its end
+    // legs follow the moved end. First with the moved nodes alone, so the
+    // frames below keep the room these paths take inside them.
+    let mut followed = vec![false; sc.edges.len()];
+    let built: Vec<Option<SceneEdge>> = if blocks {
+        let node_shift = |id: &str| {
+            g.node_index(id)
+                .filter(|&v| moved[v])
+                .map(|v| {
+                    (
+                        centers[v].0 - base_centers[v].0,
+                        centers[v].1 - base_centers[v].1,
+                    )
+                })
+                .unwrap_or((0.0, 0.0))
+        };
+        (0..sc.edges.len())
+            .map(|i| {
+                let b = &base.edges[i];
+                let path = by_move[i]
+                    .then(|| follow_drag(b, node_shift(&b.from), node_shift(&b.to)))
+                    .flatten()?;
+                followed[i] = true;
+                Some(std::mem::replace(&mut sc.edges[i], followed_edge(b, &path)))
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
     // B12 F3 on a drag (with the switch on): a redrawn frame keeps the
-    // room the kept edges take inside it, as the static scene grew it.
+    // room the kept edges (and the followed ones) take inside it, as the
+    // static scene grew it.
     if on && !grew.is_empty() {
-        keep_inner_room(g, &mut clusters, base, &sc.edges, &kept, &grew);
+        let room: Vec<bool> = kept
+            .iter()
+            .zip(followed.iter().chain(std::iter::repeat(&false)))
+            .map(|(&k, &f)| k || f)
+            .collect();
+        keep_inner_room(g, &mut clusters, base, &sc.edges, &room, &grew);
+    }
+    // In block mode a redrawn frame keeps at least the box the layout
+    // drew (B12 2.9 R6 under ruling 1): the static frame was grown over
+    // the chain columns the layout laid inside it, which the edge stages
+    // may have moved off again (blocks/cycle2: an upstream edge's column
+    // inside Front, its drawn path beside it), and no path this call
+    // draws stands for that room. So a drag grows a frame where its
+    // members now reach past it and never draws it narrower: a 1 px drag
+    // moves a frame by 1 px at most (`dfr_own`), as the static frame is
+    // the layout's and the redrawn one covers it.
+    if blocks {
+        for c in clusters.iter_mut().filter(|c| grew.contains(&c.id)) {
+            let Some(o) = base.clusters.iter().find(|o| o.id == c.id) else {
+                continue;
+            };
+            let (x0, y0) = (c.x.min(o.x), c.y.min(o.y));
+            let (x1, y1) = ((c.x + c.w).max(o.x + o.w), (c.y + c.h).max(o.y + o.h));
+            let w0 = c.w;
+            // (A side the members do not pass keeps the base's number,
+            // with no float noise from re-adding a width.)
+            let w = if x0 == o.x && x1 == o.x + o.w {
+                o.w
+            } else {
+                x1 - x0
+            };
+            let h = if y0 == o.y && y1 == o.y + o.h {
+                o.h
+            } else {
+                y1 - y0
+            };
+            (c.x, c.y, c.w, c.h) = (x0, y0, w, h);
+            if (c.w - o.w).abs() <= TITLE_BOUND_EPS && (c.x - o.x).abs() <= TITLE_BOUND_EPS {
+                c.bold_title = o.bold_title;
+            } else if c.bold_title {
+                c.bold_title = c.w <= w0 + TITLE_BOUND_EPS;
+            }
+        }
+    }
+    // Then the ends on a redrawn frame follow it, as the frames are now.
+    if blocks {
+        let frame_end = |id: &str, p: (f64, f64)| -> Option<(f64, f64)> {
+            if !grew.iter().any(|f| f == id) {
+                return None;
+            }
+            let o = base.clusters.iter().find(|c| c.id == id)?;
+            let f = clusters.iter().find(|c| c.id == id)?;
+            Some(frame_follow(o, f, p))
+        };
+        for i in 0..sc.edges.len() {
+            if !followed[i] {
+                continue;
+            }
+            let b = &base.edges[i];
+            let (p0, p1) = edge_ends(b);
+            let (s0, s1) = (frame_end(&b.from, p0), frame_end(&b.to, p1));
+            if s0.is_none() && s1.is_none() {
+                continue;
+            }
+            let shift = |id: &str, at: Option<(f64, f64)>, p: (f64, f64)| match at {
+                Some(q) => (q.0 - p.0, q.1 - p.1),
+                None => g
+                    .node_index(id)
+                    .filter(|&v| moved[v])
+                    .map_or((0.0, 0.0), |v| {
+                        (
+                            centers[v].0 - base_centers[v].0,
+                            centers[v].1 - base_centers[v].1,
+                        )
+                    }),
+            };
+            match follow_drag(b, shift(&b.from, s0, p0), shift(&b.to, s1, p1)) {
+                Some(path) => sc.edges[i] = followed_edge(b, &path),
+                None => {
+                    followed[i] = false;
+                    if let Some(Some(e)) = built.get(i) {
+                        sc.edges[i] = e.clone();
+                    }
+                }
+            }
+        }
+        // A followed edge holds its ends where the drag carried them: the
+        // ports stage leaves them, the router reroutes it only where it
+        // now hits something.
+        for (h, &f) in held.iter_mut().zip(&followed) {
+            *h |= f;
+        }
     }
     sc.clusters = clusters;
     // The base canvas already covers the kept geometry; the pipeline's
@@ -6393,6 +6776,158 @@ pub(crate) fn route_partial_with(
     sc.origin = base.origin;
     crate::edgepass::finish_held(g, &mut sc, crate::edgepass::Mode::Routed, &fixed, &held);
     sc
+}
+
+/// The two drawn ends of a scene edge: its first and last waypoint, or
+/// its curve's ends.
+fn edge_ends(e: &SceneEdge) -> ((f64, f64), (f64, f64)) {
+    match (e.waypoints.first(), e.waypoints.last()) {
+        (Some(&a), Some(&b)) if e.waypoints.len() >= 2 => (a, b),
+        _ => (e.bezier[0], e.bezier[3]),
+    }
+}
+
+/// Shortest end leg (px) a followed path keeps ([`follow_drag`]): half a
+/// corner's rounding, so the leg into a head still runs straight past
+/// the corner's rounded part; a drag that would shorten an end leg below
+/// it (and below what the base drew) re-plans the edge instead.
+const FOLLOW_END_MIN: f64 = crate::router::CORNER_R / 2.0;
+
+/// B12 2.9 R6 in block mode: a drag's redrawn edge keeps the columns the
+/// layout gave it (its legs across the bands, its corridors, its inner
+/// legs) and only its end legs follow the moved ends. `b` is the base
+/// edge, `d0` / `d1` how far its start / end moved (`(0, 0)`: held).
+/// Its corner list ([`crate::router::ortho_corners`]) with each moved
+/// end carried by its shift and the corner next to it moved on the
+/// end leg's axis, so every leg stays on its axis: corner-rounded and
+/// densely sampled ([`crate::router::smooth`]), as the router delivers a
+/// path. `None` (the edge is drawn afresh by the builders) for a path
+/// that is not orthogonal, a straight one whose ends moved apart across
+/// it, or one the shift would bend back on itself: a leg whose direction
+/// turns, or an end leg shorter than [`FOLLOW_END_MIN`] where the base's
+/// was longer. Within those limits every corner is a continuous function
+/// of the moved ends, so a 1 px drag moves the edge by 1 px (R5) and the
+/// frames round it keep the room it took (F3).
+fn follow_drag(b: &SceneEdge, d0: (f64, f64), d1: (f64, f64)) -> Option<Vec<(f64, f64)>> {
+    const EPS: f64 = 1e-6;
+    let was = crate::router::ortho_corners(b)?;
+    let n = was.len();
+    if n < 2 {
+        return None;
+    }
+    let vertical = |a: (f64, f64), b: (f64, f64)| (a.0 - b.0).abs() < EPS;
+    let mut c = was.clone();
+    if n == 2 {
+        let along = if vertical(was[0], was[1]) {
+            (d0.0 - d1.0).abs()
+        } else {
+            (d0.1 - d1.1).abs()
+        };
+        if along > EPS {
+            return None;
+        }
+        c[0] = (c[0].0 + d0.0, c[0].1 + d0.1);
+        c[1] = (c[1].0 + d1.0, c[1].1 + d1.1);
+    } else {
+        c[0] = (c[0].0 + d0.0, c[0].1 + d0.1);
+        if vertical(was[0], was[1]) {
+            c[1].0 = c[0].0;
+        } else {
+            c[1].1 = c[0].1;
+        }
+        c[n - 1] = (c[n - 1].0 + d1.0, c[n - 1].1 + d1.1);
+        if vertical(was[n - 2], was[n - 1]) {
+            c[n - 2].0 = c[n - 1].0;
+        } else {
+            c[n - 2].1 = c[n - 1].1;
+        }
+    }
+    // Signed length of each leg along its own axis, before and after.
+    let len = |p: &[(f64, f64)], k: usize| {
+        if vertical(was[k], was[k + 1]) {
+            p[k + 1].1 - p[k].1
+        } else {
+            p[k + 1].0 - p[k].0
+        }
+    };
+    for k in 0..n - 1 {
+        let (a, z) = (len(&was, k), len(&c, k));
+        if a.abs() > EPS && a * z < 0.0 {
+            return None;
+        }
+        let end_leg = k == 0 || k == n - 2;
+        if end_leg && z.abs() < FOLLOW_END_MIN && z.abs() < a.abs() - EPS {
+            return None;
+        }
+    }
+    Some(crate::router::smooth(&c, crate::router::CORNER_R))
+}
+
+/// `b` drawn along the followed path `path` ([`follow_drag`]): its
+/// curve's ends on the path's ends (the controls moved with them, so
+/// the cubic stays the chord it was), its label kept where it lies on
+/// the path, else moved onto the path's nearest point.
+fn followed_edge(b: &SceneEdge, path: &[(f64, f64)]) -> SceneEdge {
+    let mut e = b.clone();
+    let (a0, a1) = edge_ends(b);
+    let (z0, z1) = (path[0], path[path.len() - 1]);
+    let (d0, d1) = ((z0.0 - a0.0, z0.1 - a0.1), (z1.0 - a1.0, z1.1 - a1.1));
+    e.bezier = [
+        z0,
+        (b.bezier[1].0 + d0.0, b.bezier[1].1 + d0.1),
+        (b.bezier[2].0 + d1.0, b.bezier[2].1 + d1.1),
+        z1,
+    ];
+    e.waypoints = path.to_vec();
+    if let Some((_, at, _)) = &mut e.label {
+        let near = path
+            .windows(2)
+            .map(|w| nearest_on_seg(*at, w[0], w[1]))
+            .min_by(|p, q| {
+                let dp = (p.0 - at.0).hypot(p.1 - at.1);
+                let dq = (q.0 - at.0).hypot(q.1 - at.1);
+                dp.total_cmp(&dq)
+            });
+        if let Some(q) = near {
+            if (q.0 - at.0).hypot(q.1 - at.1) > 0.5 {
+                *at = q;
+            }
+        }
+    }
+    e
+}
+
+/// The point of segment `a`-`b` nearest `p`.
+fn nearest_on_seg(p: (f64, f64), a: (f64, f64), b: (f64, f64)) -> (f64, f64) {
+    let (abx, aby) = (b.0 - a.0, b.1 - a.1);
+    let len2 = abx * abx + aby * aby;
+    if len2 <= f64::EPSILON {
+        return a;
+    }
+    let t = (((p.0 - a.0) * abx + (p.1 - a.1) * aby) / len2).clamp(0.0, 1.0);
+    (a.0 + t * abx, a.1 + t * aby)
+}
+
+/// Where an edge's end `p` on frame `o` lies once a drag redrew the
+/// frame as `f`: on the same side, at the same place along it as far as
+/// the side's straight run (clear of the corners by
+/// [`crate::ports::PORT_INSET`]) still reaches.
+fn frame_follow(o: &SceneCluster, f: &SceneCluster, p: (f64, f64)) -> (f64, f64) {
+    use crate::edgepass::Side;
+    let inset = crate::ports::PORT_INSET;
+    let clamp = |t: f64, lo: f64, hi: f64| {
+        if lo + inset <= hi - inset {
+            t.clamp(lo + inset, hi - inset)
+        } else {
+            (lo + hi) / 2.0
+        }
+    };
+    match crate::edgepass::side_of((o.x, o.y, o.x + o.w, o.y + o.h), p) {
+        Side::Top => (clamp(p.0, f.x, f.x + f.w), f.y),
+        Side::Bottom => (clamp(p.0, f.x, f.x + f.w), f.y + f.h),
+        Side::Left => (f.x, clamp(p.1, f.y, f.y + f.h)),
+        Side::Right => (f.x + f.w, clamp(p.1, f.y, f.y + f.h)),
+    }
 }
 
 /// B12 F3 for [`route_partial`]: each frame it redrew round a moved
