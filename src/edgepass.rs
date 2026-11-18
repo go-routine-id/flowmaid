@@ -122,6 +122,15 @@ pub(crate) struct Ctx {
     /// blocks, and in `route()` and `route_partial()` until they lay
     /// blocks out themselves.
     pub blocks: bool,
+    /// The scene is a block layout's, static or routed (`Scene`'s
+    /// `block_layout`: [`Ctx::blocks`] in the static scene, and
+    /// `route()` / `route_partial()` drawing with the block layout's
+    /// frames): a run into a port within a fraction of a px of its line
+    /// is laid on the port's line ([`crate::ortho`]'s `flow_path`), and
+    /// a final run follows an end [`snap_ends`] moves across it
+    /// ([`level_end_run`]), so the run meets its head square in the
+    /// scene and once a node is dragged alike.
+    pub axis_ends: bool,
     /// Index-parallel with `sc.edges`: the edge is a back-edge in its
     /// lane. Every [`Ctx::back`] edge before blocks; in a block layout
     /// ([`Ctx::blocks`]) only one between two plain nodes of one level
@@ -271,6 +280,7 @@ pub(crate) fn ctx(g: &Graph, sc: &Scene) -> Ctx {
         chain,
         shaped,
         blocks: false,
+        axis_ends: sc.block_layout,
         lane,
     }
 }
@@ -759,7 +769,7 @@ fn snap_ends(sc: &mut Scene, cx: &Ctx) {
                 e.bezier[a] = q;
             } else {
                 let k = if at_start { 0 } else { e.waypoints.len() - 1 };
-                if cx.blocks {
+                if cx.axis_ends {
                     level_end_run(&mut e.waypoints, at_start, q);
                 }
                 e.waypoints[k] = q;
@@ -778,9 +788,9 @@ fn snap_ends(sc: &mut Scene, cx: &Ctx) {
 /// of a px off a run that meets the flank just below the lid.
 const LEVEL_RUN_REACH: f64 = 1.0;
 
-/// In a block layout's scene, the final run of a waypoint path on an
-/// axis follows its end when [`snap_ends`] moves that end across it
-/// (a drum's shoulder takes the nearest point, not the point along the
+/// In a block layout's scene ([`Ctx::axis_ends`]), the final run of a
+/// waypoint path on an axis follows its end when [`snap_ends`] moves that
+/// end across it (a drum's shoulder takes the nearest point, not the point along the
 /// run): the points on the run's line before the end, back to its
 /// corner, move with it by as much, so the run stays on its axis and the
 /// head square to the side. Left as it was, the run met the head at a

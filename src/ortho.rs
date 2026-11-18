@@ -863,6 +863,7 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
             frames: &frames,
             home: &home,
             blocks: cx.blocks,
+            axis_ends: cx.axis_ends,
             load: &load,
             own,
             head_leg,
@@ -1191,6 +1192,9 @@ struct Along<'a> {
     /// A block layout ([`Ctx::blocks`]): a step keeps out of the frames
     /// that hold neither of its ends ([`plan_jog`]).
     blocks: bool,
+    /// A block layout's scene, static or routed ([`Ctx::axis_ends`]): a
+    /// run reaching its port within `ALIGNED` of its line is laid on it.
+    axis_ends: bool,
     /// The spans of the jogs each gap holds so far.
     load: &'a std::cell::RefCell<Vec<Vec<(f64, f64)>>>,
     /// The edge's own end nodes (never in its way).
@@ -1845,15 +1849,19 @@ fn flow_path(
             jogs.push(plan_jog(cx, edge, cur, (q, port, gq), h, lab));
             out.push(Corner::Jog(k, cur.0 .0));
             out.push(Corner::Jog(k, q.0));
-        } else if cx.blocks && port && (q.0 - cur.0 .0).abs() > EPS {
-            // In a block layout a run that reaches its port within
-            // `ALIGNED` of its line is laid on the port's line from its
-            // last turn on: the ports stage spread the end a fraction of
-            // a px off the chain's last column, and a run left on the
-            // column met its head at a slant, the painted spline kinked
-            // under it (dense-lr `n22 -.-> n44`, 0.5 px over 316 px,
-            // `idiom_spline` and `end_tilt_max` 0.8 deg in the static
-            // `DEFECT_BASELINE`). Its own source port stays where it is.
+        } else if cx.axis_ends && port && (q.0 - cur.0 .0).abs() > EPS {
+            // In a block layout (its static scene, and `route()` with its
+            // frames, so a drag draws it as the scene does) a run that
+            // reaches its port within `ALIGNED` of its line is laid on
+            // the port's line from its last turn on: the ports stage
+            // spread the end a fraction of a px off the chain's last
+            // column, and a run left on the column met its head at a
+            // slant, the painted spline kinked under it (dense-lr
+            // `n22 -.-> n44`, 0.5 px over 316 px, `idiom_spline` and
+            // `end_tilt_max` 0.8 deg in the static `DEFECT_BASELINE`;
+            // `route()` of the public fixture drawn LR left `REG ==> ORD`
+            // 0.56 px off its port). Its own source port stays where it
+            // is.
             let first = out.len() == 1;
             match out.last_mut() {
                 Some(Corner::Jog(k, b)) => {

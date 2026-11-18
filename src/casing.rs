@@ -1427,6 +1427,13 @@ const JOIN_END_HEADS: f64 = 2.0;
 /// closer than that is cut in pieces of one cluster, not as one gap of
 /// any length), and no join reaches within `keep` px of either end of
 /// the line ([`JOIN_END_HEADS`]).
+///
+/// Only a block layout's scene joins: a flat graph's and a compound
+/// (subgraph `direction`) scene keep one hole per crossing, as they
+/// always did, so the default build paints byte for byte as before while
+/// block layouts sit behind their switch. When block layouts become the
+/// default (B12.16) this is to be one rule for every flowchart scene, or
+/// the split kept and said so where the switch is flipped.
 fn join_cluster_gaps(line: &[Pt], holes: &mut Vec<(Pt, f64)>, keep: f64) {
     if holes.len() < 2 || line.len() < 2 {
         return;

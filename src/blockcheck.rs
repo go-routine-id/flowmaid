@@ -3242,3 +3242,47 @@ fn a_waypoint_runs_last_leg_meets_its_head_square() {
         );
     }
 }
+
+#[test]
+fn route_lays_a_run_on_its_ports_line_as_the_scene_does() {
+    // The public fixture drawn LR / RL as blocks: `route()` at the
+    // scene's own centres left the first run of `REG ==> ORD` 0.56 px
+    // off its port's line (146.69 -> 147.25 over 50 px), which the
+    // static scene lays on it (the rule of a waypoint run into its port
+    // held in the block layout's static scene only): once a node was
+    // dragged the run sloped. In a block layout `route()` keeps every end
+    // run of a waypoint path on its axis, as `scene()` does.
+    for name in [
+        "blocks-overview-lr",
+        "blocks-overview-rl",
+        "blocks-overview",
+    ] {
+        let src = std::fs::read_to_string(format!(
+            "{}/tests/fixtures/blocks/{name}.mmd",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        let g = crate::parser::parse(&src).unwrap();
+        crate::levels::with_blocks(true, || {
+            let sc = crate::scene::scene(&g);
+            assert!(sc.block_layout, "{name}");
+            let centres: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let rs = crate::scene::route(&g, &centres);
+            for (mode, s) in [("scene", &sc), ("route", &rs)] {
+                for e in s.edges.iter().filter(|e| e.waypoints.len() >= 3) {
+                    let w = &e.waypoints;
+                    for (a, b) in [(w[0], w[1]), (w[w.len() - 1], w[w.len() - 2])] {
+                        let (dx, dy) = ((b.0 - a.0).abs(), (b.1 - a.1).abs());
+                        let slope = dx.min(dy);
+                        assert!(
+                            !(1e-6..1.0).contains(&slope),
+                            "{name} {mode}: {} -> {} ends on a run {slope} px off its axis: {a:?} {b:?}",
+                            e.from,
+                            e.to
+                        );
+                    }
+                }
+            }
+        });
+    }
+}
