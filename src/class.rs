@@ -304,9 +304,11 @@ pub fn try_route(d: &ClassDiagram, centers: &[(f64, f64)]) -> Option<ClassScene>
 /// order only among the redrawn routes, as a kept route is never moved.
 /// The canvas is
 /// `base`'s, grown over what the drag pushed past it, up or left too
-/// ([`Scene::origin`], as [`route`] grows it): it never shrinks during a
-/// drag. A drag frame so costs what lies at the moved boxes, not the
-/// whole diagram.
+/// ([`Scene::origin`], as [`route`] grows it), so every box, line and
+/// label of the frame is on it, also a line the router runs round the
+/// top or left of the boxes (which [`route`]'s canvas can leave out, as
+/// in 0.40.1): it never shrinks during a drag. A drag
+/// frame so costs what lies at the moved boxes, not the whole diagram.
 ///
 /// When `base` / `base_centers` no longer line up with `d` (their
 /// counts differ from the diagram's, the diagram was edited since: a
@@ -390,7 +392,7 @@ pub fn route_partial(
     let canvas = (base.scene.origin, base.scene.width, base.scene.height);
     let sc = crate::scene::route_kept(&b.g, &all, &b.sizes, &refs, canvas);
     let mut cs = assemble_keeping(d, b, sc, Mode::Routed, Some((&base.scene, &kept)));
-    let (origin, width, height) = top_left_canvas(&cs.scene);
+    let (origin, width, height) = crate::scene::frame_canvas(&cs.scene);
     (cs.scene.origin, cs.scene.width, cs.scene.height) = (origin, width, height);
     // A kept relationship's cardinalities stay where `base` has them
     // (also a kept one of `base`'s own base, so frames chain); the

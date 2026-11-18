@@ -21,7 +21,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
   where `base` has them), also where a moved box now covers it (route
   the drop with `route` to clear it). Positions are kept as given, and
   the canvas (`base`'s) grows over whatever a drag pushes past any of
-  its sides, up or left too, as `route`'s does (#76). When `base` no
+  its sides, up or left too, as `route`'s does (#76), so the frame's
+  boxes, lines and labels are all on it. When `base` no
   longer lines up with the diagram (other counts, or an entity, class,
   member, note, node, relationship, cardinality or label edited since)
   the result is `route`'s. A scene records no `direction`, so a change

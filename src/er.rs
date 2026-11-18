@@ -212,9 +212,10 @@ pub fn try_route(d: &ErDiagram, centers: &[(f64, f64)]) -> Option<ErScene> {
 /// clears it). The redrawn ones are routed round the tables and the kept
 /// lines, their labels kept off the crow's feet as [`route`] keeps them.
 /// The canvas is `base`'s, grown over what the drag pushed past it,
-/// up or left too ([`Scene::origin`], as [`route`] grows it): it never
-/// shrinks during a drag. A drag frame so costs what lies at the moved
-/// entities, not the whole diagram.
+/// up or left too ([`Scene::origin`], as [`route`] grows it), so every
+/// table, line and label of the frame is on it: it never shrinks during
+/// a drag. A drag frame so costs what lies at the moved entities, not
+/// the whole diagram.
 ///
 /// When `base` / `base_centers` no longer line up with `d` (their
 /// counts differ from the diagram's, the diagram was edited since:
@@ -312,7 +313,7 @@ pub fn route_partial(
     for e in &mut scene.edges {
         e.paint_width = Some(LINE_W);
     }
-    let (origin, width, height) = top_left_canvas(&scene);
+    let (origin, width, height) = crate::scene::frame_canvas(&scene);
     (scene.origin, scene.width, scene.height) = (origin, width, height);
     ErScene {
         scene,

@@ -5439,6 +5439,34 @@ pub(crate) fn top_left_canvas(sc: &Scene) -> ((f64, f64), f64, f64) {
     )
 }
 
+/// [`top_left_canvas`] for a class or ER drag frame (`route_partial`),
+/// grown up and left over a routed line too: [`grow_scene`] bounds a
+/// line by its curve's control points, not by the waypoints it is drawn
+/// through, so a line the router runs round the top or left of the
+/// boxes can pass the canvas corner [`top_left_canvas`] gives (`route`
+/// draws it so, cut off at the `viewBox`, as in 0.40.1). Where the ink
+/// of a drawn line ([`grow_canvas`], which the far sides are grown by
+/// in `edgepass::refit`) passes that corner by as much as shows
+/// ([`offset_shows`]), the corner goes to [`MARGIN`] before it; ink on
+/// the canvas leaves it as [`top_left_canvas`] has it.
+pub(crate) fn frame_canvas(sc: &Scene) -> ((f64, f64), f64, f64) {
+    let ((ox, oy), w, h) = top_left_canvas(sc);
+    let mut bb = Bbox::new();
+    grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
+    if !bb.0.is_finite() {
+        return ((ox, oy), w, h);
+    }
+    let past = |o: f64, min: f64| {
+        if min < o && offset_shows(o - min) {
+            min - MARGIN
+        } else {
+            o
+        }
+    };
+    let (nx, ny) = (past(ox, bb.0), past(oy, bb.2));
+    ((nx, ny), w + (ox - nx), h + (oy - ny))
+}
+
 pub(crate) fn shift_scene(sc: &mut Scene, dx: f64, dy: f64) {
     for n in &mut sc.nodes {
         n.x += dx;

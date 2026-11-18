@@ -67,25 +67,44 @@ fn view_box(svg: &str) -> (f64, f64, f64, f64) {
     (v[0], v[1], v[2], v[3])
 }
 
-/// Every box of `sc` lies on its canvas (`origin`, `width` x `height`)
-/// and inside the `viewBox` of `svg`, its SVG (to the 0.5 px that is
-/// written to): nothing the frame draws is cut off.
-fn assert_holds_every_box(name: &str, sc: &Scene, svg: &str) {
+/// Every box of `sc`, every point its lines are drawn through and every
+/// label chip lie on its canvas (`origin`, `width` x `height`) and inside
+/// the `viewBox` of `svg`, its SVG (to the 0.5 px that is written to):
+/// nothing the frame draws is cut off.
+fn assert_holds_the_drawing(name: &str, sc: &Scene, svg: &str) {
     let (ox, oy) = sc.origin;
     let (fx, fy) = (ox + sc.width, oy + sc.height);
     let (vx, vy, vw, vh) = view_box(svg);
+    let mut parts: Vec<(String, (f64, f64, f64, f64))> = Vec::new();
     for n in &sc.nodes {
-        let (x0, y0) = (n.x - n.w / 2.0, n.y - n.h / 2.0);
-        let (x1, y1) = (n.x + n.w / 2.0, n.y + n.h / 2.0);
+        let r = (
+            n.x - n.w / 2.0,
+            n.y - n.h / 2.0,
+            n.x + n.w / 2.0,
+            n.y + n.h / 2.0,
+        );
+        parts.push((format!("box {}", n.id), r));
+    }
+    for (j, e) in sc.edges.iter().enumerate() {
+        for p in &e.waypoints {
+            parts.push((
+                format!("line {j} ({} -> {})", e.from, e.to),
+                (p.0, p.1, p.0, p.1),
+            ));
+        }
+        if let Some((_, m, w)) = &e.label {
+            let r = (m.0 - w / 2.0, m.1 - 10.0, m.0 + w / 2.0, m.1 + 10.0);
+            parts.push((format!("label of line {j}"), r));
+        }
+    }
+    for (what, (x0, y0, x1, y1)) in parts {
         assert!(
             x0 >= ox - 1e-6 && y0 >= oy - 1e-6 && x1 <= fx + 1e-6 && y1 <= fy + 1e-6,
-            "{name}: box {} at ({x0}, {y0})-({x1}, {y1}) is off the canvas ({ox}, {oy})-({fx}, {fy})",
-            n.id
+            "{name}: {what} at ({x0}, {y0})-({x1}, {y1}) is off the canvas ({ox}, {oy})-({fx}, {fy})"
         );
         assert!(
             x0 >= vx - 0.5 && y0 >= vy - 0.5 && x1 <= vx + vw + 0.5 && y1 <= vy + vh + 0.5,
-            "{name}: box {} at ({x0}, {y0})-({x1}, {y1}) is cut off by the viewBox {vx} {vy} {vw} {vh}",
-            n.id
+            "{name}: {what} at ({x0}, {y0})-({x1}, {y1}) is cut off by the viewBox {vx} {vy} {vw} {vh}"
         );
     }
 }
@@ -333,7 +352,7 @@ fn er_drag_right_and_down_from_a_canvas_grown_up_and_left() {
         to1[0] = (-150.0, -90.0);
         let f1 = er::route_partial(&d, &to1, &laid, &at);
         assert!(f1.scene.origin.0 < 0.0 && f1.scene.origin.1 < 0.0, "{name}");
-        assert_holds_every_box(&format!("{name} up-left"), &f1.scene, &er::to_svg(&f1));
+        assert_holds_the_drawing(&format!("{name} up-left"), &f1.scene, &er::to_svg(&f1));
         let routed = er::route(&d, &to1);
         for (dx, dy) in [(600.0, 400.0), (300.0, 200.0), (-3.0, 260.0), (260.0, -3.0)] {
             let mut to2 = to1.clone();
@@ -342,7 +361,7 @@ fn er_drag_right_and_down_from_a_canvas_grown_up_and_left() {
             for (how, base) in [("chained", &f1), ("on route", &routed)] {
                 let f2 = er::route_partial(&d, &to2, base, &to1);
                 let what = format!("{name} {how}, then +({dx}, {dy})");
-                assert_holds_every_box(&what, &f2.scene, &er::to_svg(&f2));
+                assert_holds_the_drawing(&what, &f2.scene, &er::to_svg(&f2));
                 let (b, f) = (far(&base.scene), far(&f2.scene));
                 assert!(f.0 >= b.0 && f.1 >= b.1, "{what}: canvas shrank");
                 assert!(
@@ -619,7 +638,7 @@ fn check_class_frame(
         ff.0 >= bf.0 && ff.1 >= bf.1,
         "{name}: canvas shrank (box {i})"
     );
-    assert_holds_every_box(
+    assert_holds_the_drawing(
         &format!("{name} (box {i})"),
         &frame.scene,
         &class::to_svg(&frame),
@@ -829,7 +848,7 @@ fn class_drag_right_and_down_from_a_canvas_grown_up_and_left() {
         to1[0] = (-150.0, -90.0);
         let f1 = class::route_partial(&d, &to1, &laid, &at);
         assert!(f1.scene.origin.0 < 0.0 && f1.scene.origin.1 < 0.0, "{name}");
-        assert_holds_every_box(&format!("{name} up-left"), &f1.scene, &class::to_svg(&f1));
+        assert_holds_the_drawing(&format!("{name} up-left"), &f1.scene, &class::to_svg(&f1));
         let routed = class::route(&d, &to1);
         for (dx, dy) in moves {
             let mut to2 = to1.clone();
@@ -838,7 +857,7 @@ fn class_drag_right_and_down_from_a_canvas_grown_up_and_left() {
             for (how, base) in [("chained", &f1), ("on route", &routed)] {
                 let f2 = class::route_partial(&d, &to2, base, &to1);
                 let what = format!("{name} {how}, then +({dx}, {dy})");
-                assert_holds_every_box(&what, &f2.scene, &class::to_svg(&f2));
+                assert_holds_the_drawing(&what, &f2.scene, &class::to_svg(&f2));
                 let (b, f) = (far(&base.scene), far(&f2.scene));
                 assert!(f.0 >= b.0 && f.1 >= b.1, "{what}: canvas shrank");
             }
@@ -854,10 +873,68 @@ fn class_drag_right_and_down_from_a_canvas_grown_up_and_left() {
                 to[i].1 += dy;
                 let f = class::route_partial(&d, &to, &base, cc);
                 let what = format!("{name} on route(classes), box {i} +({dx}, {dy})");
-                assert_holds_every_box(&what, &f.scene, &class::to_svg(&f));
+                assert_holds_the_drawing(&what, &f.scene, &class::to_svg(&f));
             }
         }
     }
+}
+
+/// Twelve labelled relations into a hub, some classes with members.
+fn hub_fan_src() -> String {
+    let mut s = String::from(
+        "classDiagram\n  direction TB\n  class Hub {\n    +id int\n    +name String\n    +save() bool\n  }\n",
+    );
+    for i in (0..11).filter(|i| i % 3 != 2) {
+        if i % 3 == 0 {
+            s.push_str(&format!(
+                "  class Svc{i} {{\n    +run()\n    -state int\n  }}\n"
+            ));
+        } else {
+            s.push_str(&format!("  class Svc{i}\n"));
+        }
+    }
+    for i in 0..12 {
+        s.push_str(&format!("  Svc{i} ..> Hub : uses{i}\n"));
+    }
+    s
+}
+
+/// The hub of [`hub_fan_src`] dragged past the top-left: the router runs
+/// a relation round the hub's left side, farther left than the boxes and
+/// labels reach. The frame's canvas, and its SVG's `viewBox`, hold that
+/// line too, also in the next frame of the drag.
+#[test]
+fn class_drag_frame_holds_a_line_routed_past_the_top_left() {
+    let d = class_of(&hub_fan_src());
+    let laid = class::scene(&d);
+    let at = class_centres(&laid);
+    let mut to = at.clone();
+    to[0] = (-150.0, -90.0);
+    let f = class::route_partial(&d, &to, &laid, &at);
+    let left = |sc: &Scene| {
+        let boxes = sc.nodes.iter().map(|n| n.x - n.w / 2.0);
+        let labels = sc
+            .edges
+            .iter()
+            .filter_map(|e| e.label.as_ref().map(|(_, m, w)| m.0 - w / 2.0));
+        let lines = sc
+            .edges
+            .iter()
+            .flat_map(|e| e.waypoints.iter().map(|p| p.0));
+        (
+            boxes.chain(labels).fold(f64::INFINITY, f64::min),
+            lines.fold(f64::INFINITY, f64::min),
+        )
+    };
+    let (drawn, line) = left(&f.scene);
+    // Not vacuous: a line runs past the margin the boxes and labels take.
+    assert!(line < drawn - 16.0, "{line} {drawn}");
+    assert_holds_the_drawing("hub dragged up-left", &f.scene, &class::to_svg(&f));
+    let mut next = to.clone();
+    next[3].1 += 40.0;
+    let f2 = class::route_partial(&d, &next, &f, &to);
+    assert_holds_the_drawing("then a box below", &f2.scene, &class::to_svg(&f2));
+    assert!(f2.scene.origin.0 <= f.scene.origin.0 && far(&f2.scene).0 >= far(&f.scene).0);
 }
 
 #[test]
