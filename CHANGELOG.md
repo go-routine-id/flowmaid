@@ -51,7 +51,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
   (section; period as section and period; event as section, period and
   event) and `SankeyHit` (node or its label, link). They test the
   shapes the painters draw, in paint order: a mindmap node's own
-  outline, a pie slice's sector inside the radius, a sankey ribbon's
+  outline, a pie slice's wedge as its path is written (to 0.1 px, its
+  arc where a renderer centres it), a sankey ribbon's
   curved band at its real thickness, text boxes as the layouts measure
   them, the outline stroke of a sequence, journey or timeline shape,
   and a line ending square where the painter ends it (butt caps).
