@@ -371,6 +371,16 @@ fn sequence_frames_tell_label_and_border_from_inside() {
         let l = &sc.lifelines[2];
         let on = (l.x, f.y + f.h - 3.0);
         assert_eq!(sc.hit_test(on.0, on.1, 0.0), Some(SeqHit::Lifeline(2)));
+        // The border's corners are 4 round: a point in the bounding
+        // box's corner, past the stroke, is neither on the frame nor in
+        // it, until `tol` reaches the stroke.
+        let corner = (f.x + 0.5, f.y + f.h - 0.5);
+        let hit = sc.hit_test(corner.0, corner.1, 0.0);
+        assert!(
+            !matches!(hit, Some(SeqHit::Frame(_) | SeqHit::FrameInside(_))),
+            "{hit:?}"
+        );
+        assert_eq!(sc.hit_test(corner.0, corner.1, 1.0), Some(SeqHit::Frame(i)));
     }
     // The `else` divider belongs to the `alt` frame.
     let alt = &sc.frames[1];

@@ -45,33 +45,42 @@ pub(crate) fn polyline_dist(p: Pt, pts: &[Pt]) -> f64 {
     }
 }
 
-/// The point at `t` on the cubic `b`.
-fn cubic_at(b: &[Pt; 4], t: f64) -> Pt {
-    let u = 1.0 - t;
-    let (k0, k1, k2, k3) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
-    (
-        k0 * b[0].0 + k1 * b[1].0 + k2 * b[2].0 + k3 * b[3].0,
-        k0 * b[0].1 + k1 * b[1].1 + k2 * b[2].1 + k3 * b[3].1,
-    )
-}
+/// How far a flattened piece of a cubic may bow off the chord it is
+/// measured by: far below any stroke width or the 0.1 px the painters
+/// round to.
+const FLATNESS: f64 = 0.01;
 
-/// Distance from `p` to the cubic Bézier `b`, measured on a flattening
-/// fine enough (a chord every px or so of its control polygon, at least
-/// 16) that the error stays far below any stroke width.
-pub(crate) fn cubic_dist(p: Pt, b: &[Pt; 4]) -> f64 {
-    let poly: f64 = b
-        .windows(2)
-        .map(|w| (w[1].0 - w[0].0).hypot(w[1].1 - w[0].1))
-        .sum();
-    let n = (poly.ceil() as usize).clamp(16, 4096);
-    let mut best = f64::INFINITY;
-    let mut prev = b[0];
-    for k in 1..=n {
-        let q = cubic_at(b, k as f64 / n as f64);
-        best = best.min(seg_dist(p, prev, q));
-        prev = q;
+/// Distance from `p` to the cubic Bézier `b`, or infinity when the curve
+/// lies farther than `lim`: halved until each piece is flat to within
+/// [`FLATNESS`] of its chord, then measured to the chord, pieces whose
+/// control box lies farther than the nearest so far left unmeasured. A
+/// straight cubic (its controls on its chord, as a mindmap connector's)
+/// is its chord at once.
+pub(crate) fn cubic_dist(p: Pt, b: &[Pt; 4], lim: f64) -> f64 {
+    fn mid(a: Pt, b: Pt) -> Pt {
+        ((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0)
     }
-    best
+    fn go(p: Pt, b: &[Pt; 4], lim: f64, depth: u32) -> f64 {
+        if box_gap(p, b) > lim {
+            return f64::INFINITY;
+        }
+        // The curve lies in its control points' hull, so within `bow`
+        // of its chord (a curve off the numbers is not split).
+        let bow = seg_dist(b[1], b[0], b[3]).max(seg_dist(b[2], b[0], b[3]));
+        if !bow.is_finite() || bow <= FLATNESS || depth >= 24 {
+            return seg_dist(p, b[0], b[3]);
+        }
+        // de Casteljau split at t = 1/2.
+        let (ab, bc, cd) = (mid(b[0], b[1]), mid(b[1], b[2]), mid(b[2], b[3]));
+        let (abc, bcd) = (mid(ab, bc), mid(bc, cd));
+        let m = mid(abc, bcd);
+        let left = go(p, &[b[0], ab, abc, m], lim, depth + 1);
+        if left <= 0.0 {
+            return left;
+        }
+        left.min(go(p, &[m, bcd, cd, b[3]], lim.min(left), depth + 1))
+    }
+    go(p, b, lim, 0)
 }
 
 /// Distance from `p` to the bounding box of `pts` (0 inside it).
@@ -254,12 +263,31 @@ mod tests {
         assert_eq!(seg_dist((13.0, 4.0), (0.0, 0.0), (10.0, 0.0)), 5.0);
         assert_eq!(polyline_dist((5.0, 3.0), &[]), f64::INFINITY);
         // A straight cubic is its chord.
+        let inf = f64::INFINITY;
         let b = [(0.0, 0.0), (10.0, 0.0), (20.0, 0.0), (30.0, 0.0)];
-        assert!((cubic_dist((15.0, 2.0), &b) - 2.0).abs() < 1e-9);
+        assert!((cubic_dist((15.0, 2.0), &b, inf) - 2.0).abs() < 1e-9);
+        assert!((cubic_dist((33.0, 4.0), &b, inf) - 5.0).abs() < 1e-9);
         // A bent one: its apex at t = 0.5 is 7.5 above the chord.
         let arc = [(0.0, 0.0), (0.0, -10.0), (30.0, -10.0), (30.0, 0.0)];
-        assert!(cubic_dist((15.0, -7.5), &arc) < 1e-6);
-        assert!((cubic_dist((15.0, 0.0), &arc) - 7.5).abs() < 0.01);
+        assert!(cubic_dist((15.0, -7.5), &arc, inf) < 1e-6);
+        assert!((cubic_dist((15.0, 0.0), &arc, inf) - 7.5).abs() < 0.01);
+        // Against a dense sampling of the curve, at points round it.
+        for k in 0..200 {
+            let q = (-5.0 + 0.2 * k as f64, -12.0 + 0.09 * k as f64);
+            let dense = (0..=20_000)
+                .map(|i| {
+                    let t = i as f64 / 20_000.0;
+                    let u = 1.0 - t;
+                    let (k0, k1, k2, k3) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
+                    let x = k0 * arc[0].0 + k1 * arc[1].0 + k2 * arc[2].0 + k3 * arc[3].0;
+                    let y = k0 * arc[0].1 + k1 * arc[1].1 + k2 * arc[2].1 + k3 * arc[3].1;
+                    (q.0 - x).hypot(q.1 - y)
+                })
+                .fold(f64::INFINITY, f64::min);
+            assert!((cubic_dist(q, &arc, inf) - dense).abs() < 0.011, "{q:?}");
+        }
+        // Farther than `lim`: not measured.
+        assert_eq!(cubic_dist((15.0, 40.0), &arc, 3.0), f64::INFINITY);
         assert_eq!(box_gap((15.0, -5.0), &arc), 0.0);
         assert_eq!(box_gap((33.0, 4.0), &arc), 5.0);
     }

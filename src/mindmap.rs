@@ -2599,13 +2599,9 @@ impl MindScene {
         }
         let mut near = crate::pick::Nearest::new(tol);
         for (j, e) in self.edges.iter().enumerate() {
-            // A curve lies inside its control points' box: one farther
-            // from it than the stroke reaches is not measured.
+            // A curve farther than its stroke reaches is not measured.
             let reach = e.width / 2.0 + tol.max(0.0);
-            if crate::pick::box_gap(p, &e.bezier) > reach {
-                continue;
-            }
-            near.offer_stroke(j, crate::pick::cubic_dist(p, &e.bezier), e.width);
+            near.offer_stroke(j, crate::pick::cubic_dist(p, &e.bezier, reach), e.width);
         }
         near.get().map(MindHit::Link)
     }

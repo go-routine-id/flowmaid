@@ -555,14 +555,14 @@ impl TimelineScene {
     /// The topmost element at scene point `(x, y)`, or `None`, with the
     /// conventions of [`crate::scene::Scene::hit_test`]. Z-order is
     /// [`to_svg`]'s: a section draws its band, then its axis, then each
-    /// period's task line, tick, label and events, and a later section
-    /// draws over an earlier one. Texts are their boxes (as wide as their
-    /// widest line measures, from the cap top of the first line to the
-    /// descender of the last, centred as drawn), a tick
-    /// its disc, a band its rounded rectangle (named sections only);
-    /// the axis and the task lines are strokes `tol` widens (`<= 0`:
-    /// exact; the nearest wins among the task lines). The title is not an
-    /// element. `None` off the canvas (`0..=width` x `0..=height`).
+    /// period's task line, tick, label and events in turn (so a period's
+    /// texts lie over the task lines of the periods before it), and a
+    /// later section draws over an earlier one. Texts are their boxes (as
+    /// wide as their widest line measures, from the cap top of the first
+    /// line to the descender of the last, centred as drawn), a tick its
+    /// disc, a band its rounded rectangle (named sections only); the axis
+    /// and the task lines are strokes `tol` widens (`<= 0`: exact). The
+    /// title is not an element. `None` off the canvas (`0..=width` x `0..=height`).
     ///
     /// ```
     /// use flowmaid::{model::Document, parser::parse_document, timeline};
@@ -596,7 +596,8 @@ impl TimelineScene {
             w > 0.0 && in_box(p, (cx - w / 2.0, top, w, bottom - top))
         };
         for (s, sec) in self.sections.iter().enumerate().rev() {
-            // Texts and ticks, the last period's first.
+            // The last period first: its events, its label and tick,
+            // then its task line, all over the periods before it.
             for (k, per) in sec.periods.iter().enumerate().rev() {
                 for (e, (text, ey)) in per.events.iter().enumerate().rev() {
                     if block(per.cx, *ey, text, false) {
@@ -607,26 +608,19 @@ impl TimelineScene {
                         });
                     }
                 }
+                let mut line = Nearest::new(tol);
+                for &(y0, y1) in &per.line_segments {
+                    line.offer_stroke(k, seg_dist(p, (per.cx, y0), (per.cx, y1)), 1.2);
+                }
                 if block(per.cx, per.label_y, &per.label, true)
                     || in_disc(p, (per.cx, sec.axis_y), TICK_R)
+                    || line.get().is_some()
                 {
                     return Some(TimelineHit::Period {
                         section: s,
                         period: k,
                     });
                 }
-            }
-            let mut near = Nearest::new(tol);
-            for (k, per) in sec.periods.iter().enumerate() {
-                for &(y0, y1) in &per.line_segments {
-                    near.offer_stroke(k, seg_dist(p, (per.cx, y0), (per.cx, y1)), 1.2);
-                }
-            }
-            if let Some(k) = near.get() {
-                return Some(TimelineHit::Period {
-                    section: s,
-                    period: k,
-                });
             }
             let mut axis = Nearest::new(tol);
             let d = seg_dist(p, (sec.x, sec.axis_y), (sec.x + sec.w, sec.axis_y));
@@ -652,6 +646,51 @@ mod tests {
             Document::Timeline(t) => t,
             _ => panic!("expected a timeline"),
         }
+    }
+
+    /// A period's task line is drawn over the texts of the periods
+    /// before it, and under those of the periods after it: picking
+    /// follows.
+    #[test]
+    fn picks_follow_the_painter_across_periods() {
+        let t = timeline("timeline\n  2002 : a : b\n  2004 : c : d\n");
+        let mut ts = scene(&t);
+        let wide = "W".repeat(120);
+        let (p0, p1) = (&ts.sections[0].periods[0], &ts.sections[0].periods[1]);
+        let (x0, x1) = (p0.cx, p1.cx);
+        let (y0, y1) = (p0.line_segments[1], p1.line_segments[1]);
+        let (y0, y1) = ((y0.0 + y0.1) / 2.0, (y1.0 + y1.1) / 2.0);
+        // Period 0's first event, widened over period 1's task line.
+        ts.sections[0].periods[0].events[0] = (wide.clone(), y1);
+        assert_eq!(
+            ts.hit_test(x1, y1, 0.0),
+            Some(TimelineHit::Period {
+                section: 0,
+                period: 1
+            })
+        );
+        // The event is under it there.
+        let mut bare = ts.clone();
+        bare.sections[0].periods[1].line_segments.clear();
+        assert_eq!(
+            bare.hit_test(x1, y1, 0.0),
+            Some(TimelineHit::Event {
+                section: 0,
+                period: 0,
+                event: 0
+            })
+        );
+        // Period 1's first event, widened over period 0's task line.
+        ts.sections[0].periods[0].events[0] = ("a".into(), y0 - 1000.0);
+        ts.sections[0].periods[1].events[0] = (wide, y0);
+        assert_eq!(
+            ts.hit_test(x0, y0, 0.0),
+            Some(TimelineHit::Event {
+                section: 0,
+                period: 1,
+                event: 0
+            })
+        );
     }
 
     #[test]

@@ -1317,9 +1317,10 @@ impl SeqScene {
         if let Some(i) = borders.get() {
             return Some(SeqHit::Frame(i));
         }
+        // Inside the border as drawn, its corners 4 round.
         self.frames
             .iter()
-            .rposition(|f| in_rect(p, f.x, f.y, f.w, f.h))
+            .rposition(|f| in_round_rect(p, f.x, f.y, f.w, f.h, 4.0))
             .map(SeqHit::FrameInside)
     }
 }
