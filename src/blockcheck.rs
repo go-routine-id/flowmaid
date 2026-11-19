@@ -3913,6 +3913,50 @@ fn nested_sibling_frames_start_level_too() {
 }
 
 #[test]
+fn sibling_frames_that_share_their_last_row_end_level() {
+    // B12 X4 downstream: two sibling blocks that share their last row but
+    // not their first end level, the one that ended earlier moved
+    // downstream as a whole. A short last member ended its frame 25 px
+    // before its sibling's, whose last member is tall, while its earlier
+    // first row took it past the sibling's start (`sib_stagger`).
+    let src = r#"flowchart TD
+  s[Start] --> a1
+  t[Other start] --> u[Step] --> b2
+  subgraph A[First block]
+    a1[a one] --> a2[a two] --> a3[a three]
+  end
+  subgraph B[Second block]
+    b2[b two] --> b3["b tall<br/>last<br/>member"]
+  end"#;
+    for dir in ["TD", "BT", "LR", "RL"] {
+        let g = graph(&in_direction(src, dir));
+        let sc = block_scene(&g);
+        let q = crate::quality::measure(&g, &sc);
+        assert_eq!(q.sib_stagger, 0, "{dir}");
+        let (a, b) = (frame_box(&sc, "A"), frame_box(&sc, "B"));
+        let trail = |r: (f64, f64, f64, f64)| match dir {
+            "TD" => r.3,
+            "BT" => r.1,
+            "LR" => r.2,
+            _ => r.0,
+        };
+        assert!((trail(a) - trail(b)).abs() < 0.5, "{dir}: {a:?} {b:?}");
+        let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let routed = crate::levels::with_blocks(true, || crate::scene::route(&g, &at));
+        for id in ["A", "B"] {
+            let (p, r) = (frame_box(&sc, id), frame_box(&routed, id));
+            assert!(
+                (p.0 - r.0).abs() < 0.5
+                    && (p.1 - r.1).abs() < 0.5
+                    && (p.2 - r.2).abs() < 0.5
+                    && (p.3 - r.3).abs() < 0.5,
+                "{dir} {id}: {p:?} routed {r:?}"
+            );
+        }
+    }
+}
+
+#[test]
 fn a_chip_kept_off_its_end_blocks_stays_on_its_line() {
     // B12 G3 keeps a label off the frames that hold one end of its edge
     // only while that leaves it a clean spot ON its line: where the best

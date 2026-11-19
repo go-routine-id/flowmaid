@@ -6010,6 +6010,14 @@ const STAGGER_SLACK: f64 = 2.0;
 /// band with it and stays too: moving it only lengthened the links
 /// leaving its last row.
 ///
+/// Then the same downstream, on a layer that is the last row of sibling
+/// blocks which do not share their first row (a source block ends on
+/// its band's last layer, B12 L5): a block whose frame ends earlier than
+/// the latest moves downstream, whole, until they end level, held by
+/// the mirror rules (a link out of it leaves before its last row
+/// downstream; one outside node is fed by the last rows of two or more
+/// of them; its frame starts within the latest's span).
+///
 /// The block moves whole, so its frame keeps its size: moving only its
 /// first-row members (the spec's first wording) stretched the frame by
 /// the shift, which cost frame compactness, and left the dummies of its
@@ -6179,6 +6187,118 @@ fn level_sibling_frames(
             if d.abs() < ALIGN_EPS {
                 continue;
             }
+            for v in (0..na).filter(|&v| inside(v, c)) {
+                lpos[v] += d;
+            }
+        }
+    }
+    // Downstream the same, on a layer that is the last row of sibling
+    // blocks which do not share their first row: a block whose frame
+    // ends earlier than the latest moves downstream, whole, until they
+    // end level (B12 X4). The mirror rules hold a block: a link out of
+    // it leaves before its last row downstream, one node outside is fed
+    // by the last rows of two or more of them, or its frame starts
+    // within the latest's span. Measured at the positions the first
+    // rows left (a block levelled above moved).
+    let held_out = |c: usize, hi: usize| {
+        (0..na).any(|v| {
+            inside(v, c)
+                && (alayer[v] < hi || v >= n)
+                && preds[v]
+                    .iter()
+                    .chain(&succs[v])
+                    .any(|&u| alayer[u] > alayer[v] && !inside(u, c))
+        })
+    };
+    let fan_out = |blocks: &[usize], hi: usize| -> Vec<usize> {
+        let mut out = Vec::new();
+        for u in 0..na {
+            if blocks.iter().any(|&c| inside(u, c)) {
+                continue;
+            }
+            let fed: std::collections::BTreeSet<usize> = preds[u]
+                .iter()
+                .filter(|&&v| alayer[v] == hi && alayer[u] > hi)
+                .flat_map(|&v| blocks.iter().copied().filter(move |&c| inside(v, c)))
+                .collect();
+            if fed.len() >= 2 {
+                out.extend(fed);
+            }
+        }
+        out
+    };
+    // Block `c`'s trailing (`last`) or leading edge along the flow at the
+    // positions dealt so far.
+    let bound = |lpos: &[f64], c: usize, last: bool| -> Option<f64> {
+        let &(lo, hi) = cluster_span.get(&c)?;
+        let row = if last { hi } else { lo };
+        let mut out: Option<f64> = None;
+        for v in (0..n).filter(|&v| alayer[v] == row && nc[v].contains(&c)) {
+            let at = nc[v].iter().position(|&x| x == c).unwrap_or(0);
+            let shift = lpos[v] - lcoord[row];
+            let e = if last {
+                let reach: f64 = nc[v][at..]
+                    .iter()
+                    .filter(|c2| cluster_span.get(c2).is_some_and(|&(_, h)| h == row))
+                    .map(|&c2| {
+                        FRAME_PAD
+                            + lengthen(c2)
+                            + if bt {
+                                header.get(c2).copied().unwrap_or(0.0)
+                                    + title_jog.get(c2).copied().unwrap_or(0.0)
+                            } else {
+                                0.0
+                            }
+                    })
+                    .sum();
+                lcoord[row] + shift + alsize[v] / 2.0 + reach
+            } else {
+                edge(c, row)? + shift
+            };
+            out = Some(out.map_or(e, |o: f64| if last { o.max(e) } else { o.min(e) }));
+        }
+        out
+    };
+    let mut lasts: BTreeMap<(usize, Option<usize>, usize), Vec<usize>> = BTreeMap::new();
+    for (&c, &(_, hi)) in cluster_span {
+        lasts
+            .entry((depth(c), g.subgraphs[c].parent, hi))
+            .or_default()
+            .push(c);
+    }
+    for ((_, _, hi), blocks) in lasts {
+        let firsts: std::collections::BTreeSet<usize> = blocks
+            .iter()
+            .filter_map(|c| cluster_span.get(c))
+            .map(|s| s.0)
+            .collect();
+        if blocks.len() < 2 || firsts.len() < 2 {
+            continue;
+        }
+        let tails: Vec<(usize, f64)> = blocks
+            .iter()
+            .filter_map(|&c| bound(&lpos, c, true).map(|t| (c, t)))
+            .collect();
+        let target = tails.iter().map(|t| t.1).fold(f64::NEG_INFINITY, f64::max);
+        // Where the frames that end latest start.
+        let start = tails
+            .iter()
+            .filter(|t| target - t.1 < ALIGN_EPS)
+            .filter_map(|t| bound(&lpos, t.0, false))
+            .fold(f64::INFINITY, f64::min);
+        let fanned = fan_out(&blocks, hi);
+        let mut moves = Vec::new();
+        for &(c, t) in &tails {
+            let within = bound(&lpos, c, false).is_some_and(|s| s >= start - STAGGER_SLACK);
+            if within || held_out(c, hi) || fanned.contains(&c) {
+                continue;
+            }
+            let d = target - t;
+            if d.abs() >= ALIGN_EPS {
+                moves.push((c, d));
+            }
+        }
+        for (c, d) in moves {
             for v in (0..na).filter(|&v| inside(v, c)) {
                 lpos[v] += d;
             }
