@@ -29,6 +29,7 @@
 //! label), then anywhere on its curve. The most constrained labels go
 //! first, and a few rounds let a label take a spot another one left.
 
+use crate::clearance::CLEAR_GAP;
 use crate::edgepass::Ctx;
 use crate::layout::{is_branch_point, title_extra, LABEL_BOX_H, LABEL_CLEAR, LINE_H};
 use crate::model::{EdgeKind, Graph};
@@ -841,12 +842,12 @@ impl StrokeGrid {
     /// `a` grown by [`STROKE_PAD`] — counting stops past `cap` (the
     /// caller only needs to know a spot is no better than its best).
     fn count(&self, a: Rect, own: usize, cap: usize) -> usize {
-        let q = (
-            a.0 - STROKE_PAD,
-            a.1 - STROKE_PAD,
-            a.2 + STROKE_PAD,
-            a.3 + STROKE_PAD,
-        );
+        self.count_within(a, own, STROKE_PAD, cap)
+    }
+
+    /// [`StrokeGrid::count`] with `a` grown by `pad` instead.
+    fn count_within(&self, a: Rect, own: usize, pad: f64, cap: usize) -> usize {
+        let q = (a.0 - pad, a.1 - pad, a.2 + pad, a.3 + pad);
         let stamp = self.stamp.get().wrapping_add(1);
         self.stamp.set(stamp);
         let mut seen = self.seen.borrow_mut();
@@ -1225,14 +1226,16 @@ enum Tier {
 /// Ranking of one label spot, compared field by field: its [`Hits`],
 /// then the fewest foreign strokes counting a lack of room
 /// ([`LABEL_GAP`], [`LABEL_KEEP`]) as one more, then having room, then
-/// its [`Tier`], then the closest to the preferred spot (arc-length
-/// px), then curve order.
+/// its [`Tier`], then (a block layout only, [`Field::crowd`]) the fewest
+/// foreign strokes within [`CLEAR_GAP`], then the closest to the
+/// preferred spot (arc-length px), then curve order.
 #[derive(Clone, Copy)]
 struct SpotKey {
     hits: Hits,
     blocked: bool,
     strokes: usize,
     tier: Tier,
+    near: usize,
     dev: f64,
     order: usize,
 }
@@ -1249,6 +1252,7 @@ impl SpotKey {
         blocked: true,
         strokes: usize::MAX,
         tier: Tier::Ends,
+        near: usize::MAX,
         dev: f64::INFINITY,
         order: usize::MAX,
     };
@@ -1268,6 +1272,7 @@ impl SpotKey {
                 k.blocked,
                 k.strokes,
                 k.tier,
+                k.near,
                 k.dev,
                 k.order,
             )
@@ -1275,10 +1280,17 @@ impl SpotKey {
         key(self).partial_cmp(&key(o)) == Some(std::cmp::Ordering::Less)
     }
 
-    /// Clear with room and crossed by no other edge: nothing can beat
-    /// it but a spot nearer the preferred one.
-    fn perfect(&self) -> bool {
+    /// Clear with room and crossed by no other edge: nothing beside its
+    /// line can beat it (in a block layout a spot on the line farther
+    /// from other strokes still can, [`SpotKey::perfect`]).
+    fn clean(&self) -> bool {
         !self.blocked && self.strokes == 0
+    }
+
+    /// Clean, and (a block layout) no other stroke within [`CLEAR_GAP`]:
+    /// nothing can beat it but a spot nearer the preferred one.
+    fn perfect(&self) -> bool {
+        self.clean() && self.near == 0
     }
 
     /// The most strokes a rival spot is worth counting: past this it
@@ -1380,6 +1392,15 @@ struct Field<'a> {
     /// for one crossed by fewer: not yet in the builders' pass (see
     /// [`Pass::All`]), which only frees labels from what they cover.
     strokes_matter: bool,
+    /// Per edge: whether a clean spot of its label with another edge's
+    /// stroke within [`CLEAR_GAP`] of the chip is worth searching on for
+    /// one without (B12 G3: a block layout's chip reads as its own
+    /// line's only with that air, the yardstick's `lbl_crowd`); only
+    /// with `strokes_matter`, and not for a compact branch point's fan
+    /// (its labels sit among their siblings' strokes by design,
+    /// [`stack_fans`]). Empty outside block layouts: every spot's `near`
+    /// is 0.
+    crowd: Vec<bool>,
     /// Per edge: whether it carries a label (see [`Field::reads_own`]).
     labelled: Vec<bool>,
 }
@@ -1387,6 +1408,17 @@ struct Field<'a> {
 impl Field<'_> {
     fn strokes(&self) -> &StrokeGrid {
         self.stroke_grid.get_or_init(|| StrokeGrid::new(self.lines))
+    }
+
+    /// How many other edges' strokes come within [`CLEAR_GAP`] of box
+    /// `r` of label `ei` (counting stops past `cap`), or 0 where the
+    /// pass does not weigh it ([`Field::crowd`]).
+    fn near(&self, r: Rect, ei: usize, cap: usize) -> usize {
+        if self.crowd.get(ei).copied().unwrap_or(false) {
+            self.strokes().count_within(r, ei, CLEAR_GAP, cap)
+        } else {
+            0
+        }
     }
 
     /// Has the pass spent its work budget? Counted as the items the
@@ -1429,6 +1461,18 @@ impl Field<'_> {
         } else {
             !k.blocked
         }
+    }
+
+    /// Settled but for strokes near it ([`SpotKey::near`]): on its line
+    /// and as clean as the pass asks, so no spot beside the line can
+    /// beat it.
+    fn clean_on_line(&self, k: &SpotKey) -> bool {
+        k.tier == Tier::Line
+            && if self.strokes_matter {
+                k.clean()
+            } else {
+                !k.blocked
+            }
     }
 
     /// Clear of nodes, borders, chips (with [`LABEL_GAP`]) and
@@ -1775,7 +1819,11 @@ const ROW_APART: f64 = 12.0;
 /// [`crate::scene::label_off_frames`]), and so does every spot the
 /// search tries ([`Track::new`]): a label that a crossing track pushed
 /// off its slot slid along its line into the block its edge started in
-/// (the chip's own spot was clean only inside that frame).
+/// (the chip's own spot was clean only inside that frame). There, too, a
+/// clean chip with another edge's line within [`CLEAR_GAP`] is searched
+/// on for a spot on its line with that air ([`Field::crowd`]): the
+/// nearest clean spot to a crossing track, or a chip pushed aside by
+/// another, sat 1 to 4 px off the other line.
 fn place_long(
     nodes: &[SceneNode],
     frames: &[SceneCluster],
@@ -1895,12 +1943,13 @@ fn place_long(
             fixed.push(r, Kind::Arrow);
         }
     }
-    let field = Field {
+    let mut field = Field {
         fixed,
         lines: &lines,
         stroke_grid: OnceCell::new(),
         budget,
         strokes_matter: !matches!(pass, Pass::All),
+        crowd: Vec::new(),
         labelled: edges.iter().map(|e| e.label.is_some()).collect(),
     };
 
@@ -1944,6 +1993,9 @@ fn place_long(
             }
         })
         .collect();
+    if blocks && field.strokes_matter {
+        field.crowd = fan.iter().map(Option::is_none).collect();
+    }
     // Sibling labels (see `label_siblings`), and the keep-out each
     // label's box is checked with: wider for one with siblings. A
     // compact branch point's fan keeps its own rows (`stack_fans`).
@@ -2149,6 +2201,7 @@ fn place_long(
             if field.hits(&placed, ei, r).none()
                 && placed.clear(ei, r, keep[ei])
                 && field.strokes().count(r, ei, 0) == 0
+                && field.near(r, ei, 0) == 0
             {
                 if let Some((_, m, _)) = &mut edges[ei].label {
                     *m = to;
@@ -2219,6 +2272,7 @@ fn place_long(
                 Pass::All => field.hits(&placed, ei, r).none(),
                 Pass::Changed(_) => {
                     field.strokes().count(r, ei, 0) == 0
+                        && field.near(r, ei, 0) == 0
                         && field.untouched(r)
                         && placed.clear(ei, r, LABEL_KEEP)
                 }
@@ -2278,7 +2332,7 @@ fn place_long(
                 // drawn BT set `place order` 41 px beside its line by the
                 // Storefront title once the frame's stretch of the line
                 // was barred.
-                let on_line = key.tier == Tier::Line && field.settled(&key);
+                let on_line = field.clean_on_line(&key);
                 match (&lines[ei], off_ends[ei].0.is_empty() || on_line) {
                     (Some(pts), false) => {
                         let whole = whole_tracks[ei].get_or_insert_with(|| {
@@ -2365,6 +2419,7 @@ fn place_long(
                 && field.untouched(r)
                 && placed.clear(ei, r, keep[ei])
                 && field.strokes().count(r, ei, 0) == 0
+                && field.near(r, ei, 0) == 0
             {
                 if let Some((_, m, _)) = &mut edges[ei].label {
                     *m = to;
@@ -3020,6 +3075,7 @@ fn best_spot(
             blocked: !hits.none(),
             strokes: field.strokes().count(r, ei, usize::MAX),
             tier: Tier::Line,
+            near: field.near(r, ei, usize::MAX),
             dev: 0.0,
             order: 0,
         };
@@ -3042,11 +3098,19 @@ fn best_spot(
         let Some((hits, blocked)) = field.rank(placed, ei, r, open, &best.1) else {
             continue;
         };
+        let strokes = field.strokes().count(r, ei, best.1.stroke_cap());
+        // The near strokes only rank spots as clean as the best.
+        let near = if strokes == 0 && !blocked && best.1.clean() {
+            field.near(r, ei, best.1.near)
+        } else {
+            field.near(r, ei, usize::MAX)
+        };
         let key = SpotKey {
             hits,
             blocked,
-            strokes: field.strokes().count(r, ei, best.1.stroke_cap()),
+            strokes,
             tier: Tier::Line,
+            near,
             dev,
             order: k + 1,
         };
@@ -3055,8 +3119,8 @@ fn best_spot(
         }
     }
     // 2. Just beside the line, where it is clear and crossed by fewer
-    // strokes.
-    if !field.settled(&best.1) {
+    // strokes (a clean spot on it, near strokes or not, beats any).
+    if !field.clean_on_line(&best.1) {
         if let Some((q, key)) = beside_line(field, placed, track, w, ei, &best.1, false) {
             best = (q, key);
         }
@@ -3098,6 +3162,7 @@ fn best_spot(
         blocked,
         strokes: field.strokes().count(label_rect(p, w), ei, usize::MAX),
         tier: Tier::Ends,
+        near: field.near(label_rect(p, w), ei, usize::MAX),
         dev: (p.0 - at.0).hypot(p.1 - at.1),
         order,
     };
@@ -3276,6 +3341,10 @@ fn beside_line(
                 blocked,
                 strokes: crossed,
                 tier: Tier::Beside,
+                // Beside its line a chip is not moved farther out for
+                // air (lead ruling on G3: a chip stays on its line);
+                // only a spot on the line weighs the strokes near it.
+                near: 0,
                 dev: dev + off,
                 order: width * k + side,
             };
@@ -3413,6 +3482,7 @@ mod tests {
             stroke_grid: OnceCell::new(),
             budget: usize::MAX,
             strokes_matter: true,
+            crowd: Vec::new(),
             labelled: Vec::new(),
         };
         let w = 60.0;
@@ -3479,6 +3549,7 @@ mod tests {
             stroke_grid: OnceCell::new(),
             budget: usize::MAX,
             strokes_matter: true,
+            crowd: Vec::new(),
             labelled: Vec::new(),
         };
         let w = 60.0;
@@ -4643,6 +4714,28 @@ note for Map~K,V~ \"generic\"
     }
 
     #[test]
+    fn a_spot_on_its_line_beats_one_beside_it_however_near_the_strokes() {
+        // B12 G3's air (`near`) ranks spots on the line only: a clean
+        // spot on the line with a stroke near it still beats a spot
+        // beside the line with none (lead ruling: a chip stays on its
+        // line), and among spots on the line the one with no stroke near
+        // wins over a nearer one with a stroke near.
+        let key = |tier, near, dev| SpotKey {
+            hits: Hits::default(),
+            blocked: false,
+            strokes: 0,
+            tier,
+            near,
+            dev,
+            order: 0,
+        };
+        assert!(key(Tier::Line, 1, 0.0).better(&key(Tier::Beside, 0, 0.0)));
+        assert!(key(Tier::Line, 0, 30.0).better(&key(Tier::Line, 1, 0.0)));
+        assert!(key(Tier::Line, 1, 0.0).clean() && !key(Tier::Line, 1, 0.0).perfect());
+        assert!(key(Tier::Line, 0, 0.0).perfect());
+    }
+
+    #[test]
     fn relabel_without_changes_is_a_no_op() {
         let g = crate::parser::parse("flowchart TD\nA -->|x| B\nA -->|y| C\nB --> C").unwrap();
         let mut sc = crate::scene::scene(&g);
@@ -4667,6 +4760,7 @@ note for Map~K,V~ \"generic\"
             blocked: blocked || text + arrow + minor > 0,
             strokes,
             tier: Tier::Line,
+            near: 0,
             dev: 0.0,
             order: 0,
         };

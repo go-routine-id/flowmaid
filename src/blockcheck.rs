@@ -3871,6 +3871,61 @@ fn a_chip_kept_off_its_end_blocks_stays_on_its_line() {
 }
 
 #[test]
+fn a_block_layouts_chips_keep_clear_of_other_lines() {
+    // B12 G3: a block layout's chip keeps `CLEAR_GAP` from every other
+    // edge's line where its own line leaves it such a spot. The public
+    // fixture drawn BT had `deploy` (image registry into the storefront)
+    // 3 px off the thick `deploy` run under it once X4 levelled the build
+    // pipeline, and the shipping worker's `write` chip, out of its end
+    // block, pushed the ledger's `write` to 4 px from a `scrape` line.
+    let gap = |r: (f64, f64, f64, f64), a: (f64, f64), b: (f64, f64)| {
+        // Rect to segment, sampled finely enough for a 0.5 px answer.
+        let n = ((b.0 - a.0).hypot(b.1 - a.1) / 0.5).ceil().max(1.0) as usize;
+        (0..=n)
+            .map(|k| {
+                let t = k as f64 / n as f64;
+                let p = (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t);
+                let dx = (r.0 - p.0).max(p.0 - r.2).max(0.0);
+                let dy = (r.1 - p.1).max(p.1 - r.3).max(0.0);
+                dx.hypot(dy)
+            })
+            .fold(f64::INFINITY, f64::min)
+    };
+    for name in ["blocks-overview-bt", "blocks-overview"] {
+        let g = fixture(&format!("blocks/{name}"));
+        let sc = block_scene(&g);
+        let lines: Vec<Vec<(f64, f64)>> =
+            sc.edges.iter().map(crate::scene::edge_polyline).collect();
+        for (i, e) in sc.edges.iter().enumerate() {
+            let Some((text, at, w)) = &e.label else {
+                continue;
+            };
+            let watched = matches!(
+                (e.from.as_str(), e.to.as_str()),
+                ("REG", "WEB") | ("SHIP", "DB") | ("LEDGER", "DB")
+            );
+            if !watched {
+                continue;
+            }
+            let h = crate::layout::LABEL_BOX_H / 2.0;
+            let r = (at.0 - w / 2.0, at.1 - h, at.0 + w / 2.0, at.1 + h);
+            let near = lines
+                .iter()
+                .enumerate()
+                .filter(|&(j, _)| j != i)
+                .flat_map(|(_, l)| l.windows(2).map(|s| gap(r, s[0], s[1])))
+                .fold(f64::INFINITY, f64::min);
+            assert!(
+                near >= crate::clearance::CLEAR_GAP - 0.5,
+                "{name} {}->{} `{text}`: another line {near:.1} px from its chip",
+                e.from,
+                e.to
+            );
+        }
+    }
+}
+
+#[test]
 fn a_block_its_links_take_room_from_stays_on_its_layer_lines() {
     // B12 X4 levels a staggered sibling frame by moving its block
     // upstream; the shift comes out of the gaps its own links cross. A
