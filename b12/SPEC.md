@@ -219,6 +219,191 @@ Date 2026-11-10. Written for an implementer who has seen none of the design work
      repository fixtures. The two older messages that broke it (f1879b1, 32a3ebf) are handled at the merge: the
      package goes to `dev` as one squashed commit with a clean message, so no history is rewritten.
 
+- **Lead note before `b12a2-geometry` (2026-11-16, ~21:00 UTC).** Step 1 passed (last verify on `10e336d`) and goes to
+  `dev` as one squashed commit. Before step 2 the work branch took `origin/dev` in (merge `b5557e0`: B11's hops and
+  comb, 0.40.0's class and state changes, docs), then one fix found by the merge's review: the compound layout's
+  thread-local memo of block frames (`compound::LAID`) is now forgotten whenever the block switch changes
+  (`levels::with_blocks` calls `compound::forget_laid`), so a thread that draws in one mode and routes in the other
+  gets each mode's own frames. After the squash, `dev` is merged into the work branch again (no history rewrite), and
+  `b12a2-geometry` starts from that head (`pre` = that head). For it:
+  1. **Read `checkpoint-A1.md` sections 1, 3-5 and 7** and `checkpoint-A1.round5.md` section 7: what step 1 already
+     built of 2.6/2.8 (track packing, spill order and corner legs, title-clear entries rule 2, the X2.5 column, the
+     free-pin rule "a pin on top of a member's exit takes the gap past it") is not built again; what is still to
+     build there: the even band of free pins and node-side end order (dense-td's shuffles s2 `fan_x` 10, s6 3), X2.2's
+     frame breadth (title-entry, title-hidden, the x1 title-row input), F2 in LR/RL, F3, the choice corner
+     (`cdf50a24…`), X3 straight spines across borders (`a_nearly_straight_pair_is_drawn_straight`,
+     `advanced_showcase_parses_and_renders`), DEFECT_BASELINE and `edge_chip` on dense-td (static).
+  2. **flow 23 RL (the sweep's one `frame_side` blocks add):** the user has been asked (options a/b/c of
+     `checkpoint-A1.md` section 1, lead recommends a). Until the user answers: do not change the judge or the sweep's
+     ratchet for it; keep it reported with its cause; if B12.8/B12.11's geometry clears it on the way, say so.
+  3. **Everything of A1 stays held** in every commit of step 2 (crossing musts, `fan_x`, `xframe_runs` 0,
+     nested-chain `lateral_x` 0, dense-td GAP_FLOORS, the sweep's 8 added diagrams at most, the six shuffles inside
+     their must), and the default build stays byte-identical to `dev` (the off-identity test and its hashes, recorded
+     from `dev`'s own build).
+  4. **Commit messages and repository files:** D5 as before; no internal codes in user-facing docs. Commit identity and
+     trailer as the standing rules say; no history rewrite of the work branch.
+
+- **Lead decision after step 2's first stop (2026-11-16, ~23:55 UTC), answering "are the routed hub-fan rows judged at
+  R?": no.** Every test that passes at A1 keeps passing as written in every commit, in the default guard and in the
+  suite-on run's A1 list; a block-mode routed row that a test pins is held now, not at R. Deferring it would leave a
+  red test in the default guard (never allowed) or need the test changed (loosening; only the user can decide that).
+  So, for the fix rounds of `b12a2-geometry`:
+  1. **Build B12.10's one frame function (F3) before or together with B12.8's squeeze**, so `route()` and
+     `route_partial()` take the same squeezed coordinates and frames as `scene()`. The squeeze must then keep
+     `a_hub_fan_leaves_in_target_order` and dense-td's hub-fan tests passing as written. If the squeeze cannot hold
+     them even with F3, keep the squeeze in the directions where it holds (each direction its own commit with its
+     numbers) and report the rest under D6 with numbers and pictures; the lead takes that to the user.
+  2. **bench-75's LR/RL fan crossings and GAP_FLOORS stay at A1's values** (fan_x <= 4, gap floor 14.7): a squeeze
+     that costs them is not committed.
+  3. **Fix the verifier's B12.7 findings in this package:** the title width must measure bold text as painted (a title
+     never runs past its frame's border; add a test on the painted width), and grown frames must not take an edge
+     label inside (G3's label slot, or keep the frame off the label; lr fixture lbl_in_end back to 2).
+     Commit messages must state exactly which fixtures change.
+  4. Commit each item as soon as it is green (the machine restarted twice today); CARGO_BUILD_JOBS=2.
+
+- **Lead note after step 2's verify#2 (2026-11-17, ~06:00 UTC).** The verifier reproduced the D6 stops for the squeeze,
+  #3 and #6, but showed that B12.11 (node-side end order, the even band of free pins, the choice corner) was never
+  tried, and the report itself names it as what would steady dense-td's hub fans that block all three. So the fix
+  rounds left do this, in this order:
+  1. **Build B12.11 first** (static, both cfgs, tests on the drawn edges), then retry the squeeze per direction on
+     top of it, each direction its own commit with numbers; still stop under D6 per direction if an A1-held test
+     breaks.
+  2. **Remove the skip** in `frames_agree_between_scene_and_route_along_the_flow` (the `blocks-overview` BT branch):
+     a test must not encode a known gap. Make scene() and route() frames agree within 0.5 px on every block fixture
+     in all four directions, or report each remaining case with its cause.
+  3. **Fix the unreported regressions** against the package start: t9-frames-8px and t9b-frames-8px-lr drawn BT
+     (static lateral_x 0 -> 4), and the title strikes on frames grown to about their title width (the chip must be
+     measured as drawn whenever a line can pass under the title, not only when the frame is title-bound). Add the BT
+     copies of t9 to the local judge's inputs so it can see them.
+  4. G3 in route() stays due at R; say so in the report and in the commit that touched G3 (not "routed drawings
+     unchanged" if they are not).
+  5. If after round 4 A2 still fails only on rows whose cause is shown per fixture, the package stops as the protocol
+     says and the lead takes it to the user with numbers and pictures.
+
+- **Lead note for the follow-up of step 2 (2026-11-17, ~16:00 UTC): packages `b12a2b-base` and `b12a2b-squeeze`.**
+  Step 2 (`b12a2-geometry`) stopped after 4 fix rounds (A2 91 must-fail lines on 444 checks, 98 at `9c142b3`). The
+  user chose a focused follow-up ("Paket lanjutan fokus"). Five read-only studies and a skeptic preceded it; read
+  them FIRST: `b12/design-a2b/{regress,squeeze,labels,lateral,bends}.md` and `b12/design-a2b/critique.md` (the
+  skeptic's verdicts override the studies where they disagree). Their prototype diffs are in
+  `b12/design-a2b/<study>/` (`regress/proto.diff`, `squeeze/proto.diff`, `labels/proto.diff`, the lateral switches);
+  use them as evidence and starting points, not as finished code.
+  Decisions:
+  1. **The judge was fixed first, by the lead** (the user approved it "with picture evidence"): the bend counter no
+     longer splits a straight stretch at a rounded corner's tail; the references were re-measured and the thresholds
+     re-derived with unchanged rules (only tightenings: `bends_max` 8 -> 4 on the analog family and the public
+     family, public `bends` 110 -> 108). A2 at `7122a53` is 89 lines with the corrected judge. The derived bound 4
+     sits below mermaid's own worst edge; it applies as derived until the user decides otherwise. Never edit the
+     judge, its references or thresholds in these packages.
+  2. **Three checks are mandatory for every commit of these packages, besides the guard and the suite-on list:** the
+     per-cell no-worse check, the gate-message diff (`quality_gate`, `defect_baseline_gate`,
+     `block_fixtures_are_not_drawn_worse` and the other suite-on gates: their messages, not only failing test names)
+     and the 332 + 32 direction copies static and routed; tools and baseline in `b12/tools-a2b/` (README there).
+     Three of the five studies hid regressions that only these checks show. A commit that makes a cell, a gate
+     message or a direction copy worse is not made, unless the cell is the item's declared, recorded trade (below).
+  3. **X1 of 2.5 is dropped** (lead design decision, evidence `squeeze.md` section 1.1: X1 alone takes A2 91 -> 99
+     and breaks bench-75's gap floor and fan, the public routed fan, casing and lr BT). Its intent is kept by
+     `block_compact`'s spine classes; a cross-border chain segment pulls a block with the border-link weight.
+  4. **R3's corridors and slot order in `route()` (part of B12.13) are pulled forward into `b12a2b-squeeze`**: the
+     squeeze's routed fan appears on every public-fixture copy, TD and BT, and the A1-held
+     `a_hub_fan_leaves_in_target_order` must stay green in every commit (decision of 2026-11-16, 23:55).
+  5. **Intermediate worsening**: a row that ALREADY fails its must (area, compact) may get worse in one commit only
+     when the commit message names the row, the numbers and the later item that pays it back, and the package's last
+     commit meets or betters it. A row that passes, an A1-held test and a gate message never get worse in any commit.
+  6. **Lateral (c)** (column room for title-bound frames, which would change `jog_room_counts_only_what_crosses_the_title_side`
+     and the bold-title assertion) is not in these packages.
+  7. **`b12a2b-base`** (no squeeze yet), in this order, one commit each, each green with the checks of decision 2:
+     (1) regress: `split_by_room` groups by the plain room (`regress/proto.diff`), its fixture `twoway-noted` with
+     identity and ceiling rows measured blocks-off from dev's build, and its test; (2) `ortho::TitleSides::of`
+     terminates by construction (one pass over the sorted taken columns, or a bound), with a unit test; (3) lateral
+     X1 (ports cut the chip at `CHIP_CLEAR`) TOGETHER with e2 (a frame title side's free pins and its members' entries
+     spaced as one column set; pins counted in F2) in one commit; lr BT's 2.2 px S-jog goes with it; (4) lateral X2,
+     then X3 with its `route_title_jogs` half, each only once its own `block_fixtures` rows and bench-75 TD/BT copy
+     changes are gone; (5) G3 static (the labels study's p5 rules) WITHOUT the dummy-row track exclusion, in TD/BT
+     first, then LR/RL; the router, nudge, comb and the label stage keep the reserved slot; (6) X2.5 as a breadth
+     bound before `TITLE_FIT_PASSES`, measured with G3 present, then the gap step merged into the displaced column
+     (a displaced title-side entry drawn with 4 turns, not 6); (7) e3 (the displaced gap step joins `place_tracks`)
+     and e4/e5 (dense-lr). Write the section "b12a2b-base" at the top of `checkpoint-A2.md`.
+     Acceptance of `b12a2b-base`: every item done or skipped with numbers; per-cell, gate-message and copies no
+     worse than `7122a53` except declared trades (decision 5); A1 judge 0; suite-on list no longer than at `7122a53`;
+     default build byte-identical; the A2 count reported (it need not be 0 yet).
+  8. **`b12a2b-squeeze`**, after base: (1) R3 corridors and slot order in `route()` for E1/E3 edges (squeeze study
+     proposal 3), TD/BT, with tests, routed rows no worse; (2) the squeeze redesigned: no X1, border-link weight for
+     cross-border chain segments, the X2.2 keep rule, and G3's chip rooms and X2.5's column held as CONSTRAINTS inside
+     `block_compact` (the prototype as is undoes G3 and X2.5); TD/BT first, then LR/RL (bench-75 LR/RL fan_x <= 4,
+     gap floor 14.7, as decided on 2026-11-16); (3) chains kept straight across levels where the squeeze makes them
+     step (DEFECT_BASELINE static `lat_wiggles`, `lat_backtrack`, `band_len` back to their ceilings); (4) the rest of
+     A2 with causes per fixture. Acceptance: the A2 gate of 4.1 / the static rows of 4.3 with the corrected judge,
+     DEFECT_BASELINE's static column, every A1-held test, decision 2's checks against `7122a53`, default
+     byte-identical. Rows still open after round 4 go to the lead with numbers and pictures (D6), as before.
+  9. Commit each item as soon as it is green; CARGO_BUILD_JOBS=2; no name or number of the local acceptance family in
+     commit messages (D5); commit identity and trailer as the standing rules say; no history rewrite.
+
+- **Lead note after the container restart (2026-11-17, ~22:20 UTC), for every agent of `b12a2b-*`.** (1) **Never
+  amend, rebase or reset a commit**, not even your own from a minute ago: the lead's push loop pushes the branch every
+  10 minutes, so a commit may already be on the remote (an amend of the pushed `ff1d41a` had to be joined back with
+  the merge `1d8599e`). Correct a commit with a new commit. (2) The branch has `58d64c2`, a wip commit of fix round 2
+  of `b12a2b-base` that the restart interrupted ("block-mode port cut, e2 dealing, title chip"; INCOMPLETE,
+  unverified; it may not build). Read it first, then finish it or replace it in new commits; do not leave it as is.
+
+- **Lead ruling during `b12a2b-base` (2026-11-18, ~00:20 UTC), asked by verify#2.** `blocks.swimlane-nested-TD`
+  static `min_edge_gap` 40 -> 25 is ACCEPTED as item 3's declared trade under decision 2: the picture
+  (`verify/b12a2b-base/fr3/pic/swimlane-nested-TD.png`) shows `place order -> confirm order` entering from above
+  instead of through Shop's lateral wall, and 25 px stays above every gap floor. Record it in the report as a
+  declared trade; `compare.sh` may print WORSE for this one cell only. Nothing else is covered by this ruling: any
+  other worse cell, gate message or copy still blocks. The title strikes the verifier found (a9-TD, a1-TD, the
+  72-input sweep) are NOT covered and must be fixed.
+
+- **Lead note at the start of `b12a2b-squeeze` (2026-11-18, ~05:10 UTC).** `b12a2b-base` PASSED (verify#4 on
+  `8876984`, pushed). Its verifier left non-blocking regressions against `7122a53` that this package also takes up,
+  each as its own commit with numbers, AFTER item 8(1)-(2) or wherever they fit best: the pin-arrowhead-on-entry
+  overlap class (a frame pin sharing a column with a member entry of the same source: `verify/b12a2b-base/fr5/nt/in/n070-TD.mmd`,
+  rnd r170-TD; it already exists at `7122a53` in r134 / r191 / r183): respace a frame's pins against its members'
+  entries as one set; `nested-n-TD` (two pins 5.91 px apart), `twin-n-TD` (lateral_x 2 -> 3), `b9-TD` / `b11-TD`
+  (defects 0 -> 1 since `3e38be3`), and the detached crossing-gap fragment at a rounded corner (n109-BT). The
+  verifier's inputs are under `verify/b12a2b-base/fr*/`. A container restart interrupted this package's first
+  implementation agent before it committed anything; the branch head is `8876984`.
+
+- **Lead decision after `b12a2b-squeeze`'s implementation (2026-11-18, ~10:00 UTC), with the user's consent ("Ubah
+  urutan").** The squeeze implementation stopped under D6 on every item with evidence (`b12/sq/`, section
+  "b12a2b-squeeze" of `checkpoint-A2.md`): a committable squeeze needs the FULL B12.13 corridor builder in
+  `route()` (first legs planned for the real port spread, one slot order across every edge in a gap, nesting where a
+  fan converges on one target); a partial R3 made dense fans worse on 18-84 copies. Its fix rounds landed four
+  block-mode fixes (`d6853bc`, `c9eb06b`, `5ebc7d4`, `15b5383`). So the ORDER CHANGES:
+  1. `b12a2b-base` (passed) and those four fixes go to dev now, behind the switch (default byte-identical), after an
+     independent check of the four fixes. Checkpoint A2 is NOT declared met: its rows are re-checked after the squeeze.
+  2. Next: step 3, `b12a3-route` (B12.13 in full, checkpoint R), built on the layout as it is now (unsqueezed). Its
+     corridor builder must be the full one described above, because the squeeze will rely on it.
+  3. Then `b12a2c-squeeze`: the squeeze redesigned (no X1, border-link weight, X2.2 keep rule, G3 chip rooms and X2.5's
+     column as constraints inside `block_compact`; TD/BT then LR/RL; bench-75 LR/RL fan_x <= 4, gap floor 14.7),
+     chains straight across levels (DEFECT_BASELINE static), then the A2 gate of 4.1 / static rows of 4.3 with the
+     corrected judge, AND checkpoint R's rows held (the squeeze must not undo step 3). The leftovers of
+     `b12a2b-base` (pin-on-entry overlaps, nested-n, twin-n, b9/b11, n109) go there too. Rulings asked by the
+     implementer: X4 lands only inside the full squeeze, where its compact rows are paid back in the same package; a
+     pin rule that trades crossings for overlaps (rnd x_drawn 251 -> 270) is not accepted as is.
+  4. Then step 4, `b12b-default`, unchanged (it needs A1, A2, R and C all met).
+  Decision 2 of the follow-up note (the three mandatory checks in `b12/tools-a2b`) holds for every package from here
+  on; their baseline is the package's own start commit.
+
+- **Lead rulings after `b12a3-route`'s first implementation (2026-11-18, ~15:30 UTC), answering checkpoint-R.md
+  section 7.** The first implementation stopped under D6 with no commit (report `b12/reports/checkpoint-R.md`; the
+  builder experiment `b12/r3/corridor-builder-experiment.diff`, `b12/r3/corridor.rs.v9`). Rulings:
+  1. **`route()` may read the static layout's chain columns.** Keep them as crate-private state of the scene (or a
+     side table the scene owns), not public API, deterministic, documented in a code comment. At the scene's own
+     centres `route()` must reproduce `scene()`'s corridors and frames (this is flowmaid's "route = scene at the first
+     paint" contract and the way to `fr_max` <= 0.5 and `dfr_own` <= 1.5). Under a drag, only what the moved nodes
+     touch is re-planned by the corridor builder; the rest keeps the layout's columns (R6's kept edges). R6's "no new
+     state in the base scene" is lifted for exactly this table.
+  2. **Build the corridor builder ON TOP of ruling 1**, starting from the v8/v9 experiment. It lands only when no
+     A1-held test fails and the three checks of `b12/tools-a2b` show nothing worse against this package's start,
+     except declared trades of the kind already accepted: a `min_edge_gap` drop that stays above every floor, listed
+     per copy in the report with pictures of the five largest. Crossings, defects, lateral_x, fan_x, side_ends and
+     edge_chip may not get worse on any copy.
+  3. **Drag budgets are not loosened.** Reusing the layout's columns should pay most of dense-td's block-mode
+     `route()` cost (no re-placement at unchanged centres); measure on a quiet box (`pgrep -c rustc`, loadavg),
+     three runs, and use the median. Where the default build itself exceeds an absolute limit on the same runs (as
+     `route_partial` did today), judge block mode against the default build on those runs with PLAN invariant 1's
+     rule (<= max(1.25 x, + 1 ms)) and report both. A budget still missed at the end goes to the lead with numbers.
+
 ## 1. Goal, the user's words, before and after, what must not change
 
 ### 1.1 Goal
@@ -2196,3 +2381,33 @@ B12.4 -> B12.5 (with the fan test of the old B12.10); B12.5 -> B12.8; B12.6 -> B
 B12.10 (F3, the three entry points); B12.8 -> B12.13 (with the routed half of the old B12.9); B12.9 -> B12.11
 (static) and B12.13 (routed); B12.10 -> dissolved (3.3); B12.11 -> B12.14; B12.12 -> B12.3 and B12.12; B12.13 ->
 B12.6 (invariants, constants) and B12.15 (comparison); B12.14 -> B12.16. Checkpoint A became A1 and A2.
+
+### Lead decision after b12a3-route's second implementation (2026-11-19, ~02:45 UTC) — OVERRIDES earlier notes where they differ
+
+The user's direction (2026-11-19): focus on the original goal, drawing quality as good as mermaid 12.2 or better. Mermaid has no drag, so what is compared with it is the STATIC drawing. Step 3 is therefore narrowed to what keeps the interactive drawing consistent and cheap; the effort goes to the static drawing (b12a2c-squeeze, then step 4).
+
+1. **Option A is chosen: route-from-layout is ON in block mode.** Remove the second switch `flowmaid_route_layout` (or make it on wherever `flowmaid_blocks` is on); route() of a block-mode part starts from the static layout's drawing (ruling 1). The routed rows then equal the static rows by construction.
+2. **Declared trade of ruling 1** (not a loosened gate): a routed copy or cell that is worse than the start's routed drawing ONLY because it now equals its own static row (the 30 direction copies, perm-b `lbl_crowd`, DEFECT_BASELINE's routed fields lat_wiggles/lat_backtrack/band_pairs/band_len/end_kink, and the five `min_edge_gap` copies below the floors — each listed in checkpoint-R.md section 3) is recorded in checkpoint-R.md as this trade, with its static twin named. Those static rows stay owned by b12a2c-squeeze (A2) and step 4 (C), whose gates must fix them; routed follows automatically. Ruling 2 still holds for every routed value that is NOT equal to its static twin, and for every drag frame.
+3. **Drags must never be worse than at the start** (verifier findings 4 and 5 of verify:b12a3-route#0, both must be fixed in this package):
+   - follow_drag: when following the layout's columns would add a crossing, an edge-node hit or a fan crossing that the start's re-plan of that edge did not have, re-plan that edge as the start did (keep follow where it is no worse). Check on the verifier's repros (hub5 b1 (60,25); advanced.mmd far drags) and on the 18-input drag sums at (60,25) and (-150,80): defects, fan_x, x_drawn, edge_node_x no worse than 157117e.
+   - frame union: a redrawn frame may keep the layout's room for its own members and kept edges, but it never grows over a node that is not its member; where it would, take F1/F2 from the members (R6). Repro: advanced.mmd block mode, Q dragged (-150,80): 0 crossings / 0 edge_node_x as at 157117e.
+   - the cosmetic corner-rounding asymmetry and the followed label on a bend (finding 6): fix if cheap, else note.
+4. **Cold route() cost** (finding 7): scene() hands its drawing to the memo when block mode is on (follow-up 5 of checkpoint-R.md), so the first route() after scene() does not lay the graph out again. Report cold and warm route() times (dense-td, the public fixture) in checkpoint-R.md.
+5. **The full corridor builder (R2/R3/R4/R8 and the 4.4 corridor tests) moves to step 4 (b12b-default / checkpoint C).** With route-from-layout on, it is needed only for drags whose follow is refused and for host-given positions; it is NOT dropped: it must exist and pass its tests before the default is flipped. Not building it in this package is not a blocking item.
+6. **route_partial < 6 ms on dense-td in block mode** is judged at checkpoint C, after the squeeze changes dense-td's layout; it must hold before the default is flipped (not dropped). Every other 4.6 budget must hold on two runs in this package, with the setting on.
+7. D5: a4fb996's message carries a measured local number; it is dropped at the squash. New commits: no name or number of the local family.
+8. After this package passes, the run goes on to b12a2c-squeeze (static quality against mermaid's own drawings: the A2 gate). Keep the comparison with mermaid's picture (render.sh three-panel) as the yardstick for every static change.
+
+### Lead note after b12a3-route passed (2026-11-19, ~06:20 UTC): carried to step 4 (b12b-default / checkpoint C)
+b12a3-route passed on d99c073 (verify:b12a3-route#1). Besides items 5 and 6 of the previous note (full corridor builder + its 4.4 tests; dense-td route_partial < 6 ms), step 4 must also close, before the default flips:
+- the frame ratchet: with a route() output as base (the documented editor flow), a redrawn frame never gives room back (R6 union keeps the BASE frame's box); keep only the LAYOUT's room, never the base's growth. Same mechanism gives 3 frames with a kept edge under a dropped node on chained bases (cycle2-tie, cycle2-tie-swapped, p06-block-cycle, drags (-150,80) then (0,220)).
+- the R6 tests named in 4.4: a_far_end_drag_never_changes_a_frame_it_does_not_enter, a_redrawn_frame_covers_the_edges_that_did_not_move.
+- route()'s doc states the cold cost in block mode (one static layout, ~33 ms dense-td) once the default flips.
+- the declared drag lines of checkpoint-R.md 4.1 (blocks-overview far fan_x 60->61, v1-hubblocks 1 px x_drawn 7->10, b9-inside/b9-inside2/lane-beside need R4).
+- checkpoint-R.md section 5 wording: bench-75 block mode is over 6 ms on all four runs (as is the default build).
+
+### Lead note during b12a2c-squeeze (2026-11-19, ~08:30 UTC) — for its fix rounds and verifiers
+The yardstick is mermaid 12.2's picture (user's direction). Two rulings:
+1. **A label chip stays ON its line, as mermaid draws it.** A chip whose centre lies more than 3 px from its own edge's drawn path is a defect that outranks `lbl_in_end`: 7208f50 moved chips off their lines to leave end blocks (public BT 'place order' 41 px off, reqresp 'response' 35 px off; 'pull image' 38 px off on the local family after 22dac44) — pictures b12/a2c/crowd/pic. Change Track::new (or the spot search) so that when the best spot outside the end block needs a side shift off the line, the chip keeps the on-line spot (inside is acceptable; detached is not). Measure lbl_detach (chip centre to own path, px) on every local input and every block-mode copy, before (cand-d99c073) and after: no chip newly detached, none farther than at the start. The verifier checks this like a gate row. lbl_in_end cells that come back because of this ruling are recorded as this ruling's trade, not as regressions.
+2. **D5:** 7208f50's message names the local family and quotes its numbers; it is dropped at the squash. New commit messages: no name or number of the local family.
+The squeeze redesign's D6 stop stands as reported (prototype 86 -> 69 must-fail but 35 worse cells and 6 newly failing A1/R tests): fix rounds may retry it only in a form that is no worse on every cell and test; otherwise spend the rounds on the remaining must-fail lines that are visible in the mermaid | before | after pictures, worst first, and report each with its cause.

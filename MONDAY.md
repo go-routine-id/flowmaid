@@ -1,5 +1,19 @@
 # flowmaid: resuming on Monday (START HERE)
 
+**PAUSED (2026-11-19 ~17:00 UTC, user: "rehat dulu").** 0.40.2 released (tag + crates.io). Step 3 passed; b12a2c-squeeze STOPPED after 4 fix rounds (A2 static must-fail 86 -> 65, not met), branch = origin = b82d584, NOT merged to dev. Push loop and hourly task are off. On return read HANDOFF.md last entry: first a D5 cleanup commit in b82d584's test/comments, then ask the user (opt-in 0.41.0 with block mode, and/or a compaction design study).
+>
+> **2026-11-17 ~16:55 UTC: STEP 2 FOLLOW-UP RUNS** (user chose "Paket lanjutan fokus"): run `wf_89aae2e9-344` (packages b12a2b-base then b12a2b-squeeze; args `b12/run-b12a2b-args.json`), push loop `backup/b12a2b-finish-wip`. Judge's bend counter fixed first (A2 at 7122a53 = 89). See HANDOFF last entries and SPEC §0's last lead note.
+>
+> **2026-11-17 ~11:35 UTC: B12 STEP 2 STOPPED after 4 fix rounds** (A2 judge 91 must-fail of 444, 98 at start; branch = origin = `7122a53`, NOT merged to dev; push loop stopped). Numbers and pictures (`b12/pics-a2/`) brought to the user; WAITING for the user's decision on how to go on. See HANDOFF last entry.
+>
+> **2026-11-17 09:15 UTC: 0.40.1 ON MAIN** (PR #135, `e9dc009`; user tags + publishes). Sync PR #136 main -> dev. B12 step 2 still in its fix rounds.
+>
+> **2026-11-17 08:20 UTC: 0.40.1 patch in dev (PR #134, 8da7ace); release prep runs (wf_e21570ca-c8e, branch release/0.40.1).** Earlier: **PATCH 0.40.1 RAN IN PARALLEL** (user asked; wf_4a925090-e18, worktree `rel0401/wt`, branch `ccr-ccc6d89a-5cxd7e-par`). See HANDOFF.
+>
+> **2026-11-16 ~20:55 UTC: STEP 1 IS IN DEV** (PR #133 squashed, `7b0f29d`; work branch merged back `9c142b3`). **STEP 2 (b12a2-geometry) RUNS:** `wf_1a04ca89-dd4` (task `wex1xjjua` after restarts at 21:26 and 22:19; args `b12/run-b12a2-args.json`); push loop with `AUTOPUSH_BACKUP=backup/b12a2-geometry-wip2`. Still open for the user: flow 23 RL (options a/b/c). See HANDOFF.md last entries.
+>
+> **2026-11-16 ~18:55 UTC: B12 STEP 1 (b12a1-structure) PASSED** (run `wf_af567a1c-07e`, last verify pass on `10e336d`; report `b12/reports/checkpoint-A1.md`; pictures `b12/pics-a1r2/`). dense-td in block mode is now better than today, not worse. Merge workflow `wf_9d7b42a9-a26` merges origin/dev (f9aa9c0; owner's docs-only PRs #122-#132 landed) into the work branch, verifies, then: PR -> dev as ONE squashed commit, then b12a2-geometry. Open for the user: flow 23 RL added frame_side (options a/b/c, recommended a). See HANDOFF.md last entries.
+>
 > **RESUMED 2026-11-16 02:31 UTC — the user: "sudah hari senin nih, bisa lanjutkan?"** The machine had rebooted; the scratchpad, the repository, the run journals and the commit identity were all intact. B12 runs again: `Workflow({scriptPath: "<S>/phaseB-b12.js", resumeFromRunId: "wf_859febcd-3a8", args: {from: "b12a1-structure", until: "b12a1-structure", noWrap: true}})` (task `wnc6e5lth`; pre, impl and verify#0 replayed from the cache, fix round 1 runs live on top of `fd8c7ba`). The lead's "Resume note" is at the end of section 0 of `b12/SPEC.md`. Default taken for dense-td, told to the user: first try to fix it inside the design; if the stop rule fires again, bring numbers and pictures and let the user decide on the fallback. The hourly task is enabled again with a B12 prompt (backups, restart and limit recovery, what to do when a package passes or stops). **The pause below is over; its facts about releases and follow-ups still hold.**
 >
 > **STATE FOR NEXT WEEK — written 2026-11-11 ~13:15 UTC. This banner wins over everything below it.**

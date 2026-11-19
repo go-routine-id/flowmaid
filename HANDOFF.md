@@ -165,3 +165,205 @@ C. Re-arm the hourly merge task (opens/merges PR ccr→dev when the work branch 
 - 2026-11-16 11:34 UTC: **b12a1-structure STOPPED for real after 4 fix rounds** (verify#4 fail only because the A1 gate is not met; no regressions; judge 0 must-fail; xframe_runs 0 everywhere; default build byte-identical on 985 inputs). Open, each with its cause per fixture in reports/checkpoint-A1.md §6: fan_x dense-td 18 / bench-75 18 / v2 1 / fork-twins 2 (G2 track packing, spill order, title-clear entries = b12a2; fork-twins note links = B12.14); hard zeros on note/own-box fixtures (B12.14, judged at C per lead note 6) and nested-composite (spill order, B12.11); nested-chain lateral_x 2 (X2.5, B12.8); sweep: 21 frame_side diagrams (20 already in the start's layout; B12.11), 8 note links. Verifier's honesty notes: dense-td's fan_x cause only partly shown (7 after ortho; 9-21 under the six shuffles). Cleanups done: examples/zz_dump.rs (agent's stray debug file) and its .git/info/exclude line removed. Before any merge: reword f1879b1 and 32a3ebf (D5) using b12/reports/reword-before-merge.md. Pictures for the user: b12/pics-a1/a1-fixture-analog.png, a1-dense-td.png (0.40.0 | blocks now | mermaid). DECISION ASKED of the user: option 1 (lead's recommendation) go on with b12a2 and judge the open rows at A2 (geometry) and C (note links, own-box); option 2 hold step 1 for extra rounds.
 - 2026-11-16 ~12:05 UTC: USER DECISION (AskUserQuestion): **"Tahan di langkah 1"** — hold step 1 until the fan crossings are fixed (not the lead's recommended option). Lead note "User decision after the stop of 2026-11-16" added to SPEC §0: pull forward G2 track packing, spill order/corner legs, title-clear entries with jog room, X2.5 column; targets fan_x 0 on the analog family/public fixture and not above the start on repo fixtures (dense-td <= 1, bench-75 <= 6), nested-chain lateral_x 0, nested-composite choice corner; crossing musts and xframe_runs 0 kept; note-link/own-box still judged at C (note 6); sweep frame_side pre-existing cases → report, lead asks the user. NEW RUN wf_af567a1c-07e (task wgmsuip8r): phaseB-b12.js {from/until b12a1-structure, noWrap, pre 3abbfeb, note: "not a fresh implementation …"} → impl round with the note, then verify, up to 4 fix rounds. Resume it with resumeFromRunId wf_af567a1c-07e and the SAME args (the note text is in the run's args; read it from <workflows>/wf_af567a1c-07e.json if needed).
 - History rewrite to reword f1879b1/32a3ebf (D5) was DENIED by the permission classifier (git filter-branch) — not retried. Plan instead: merge the package into dev as ONE SQUASHED commit with a clean message (no history rewrite); the old messages stay only on the work branch. If the user wants the work branch's messages fixed too, that needs their explicit permission for a history rewrite + force push.
+
+## 2026-11-16 ~15:20 UTC — run wf_af567a1c-07e verify#0 = fail (fix#1 running, agent a2bb63946a3e25a89)
+Guard green, default build byte-identical (1,564 inputs), perf ok. Open: bench-75 fan_x 8 (must <= 6);
+nested-chain lateral_x 2 (must 0; X2.5 column not built); fan order not robust on a new stress input
+(x4-fan-levels 0->2) and dense-td shuffles s4/s5/s6 (4/1/4 vs start 0/0/1); title-row stress input x1 goes
+round the frame wall. Non-blocking: TitleSides doc misplaced (ortho.rs ~1311), quality::Report 4 new pub
+fields not #[non_exhaustive], pinned marquee test edited. Push loop re-armed (Monitor bv960ly2c).
+
+## 2026-11-16 17:15 UTC — fix#1 done (commits 60fc56e, 2e8b2e0, 7d21d12, ec5dca4 pushed); verify#1 running (agent a003104a9b8d18f46)
+Fix agent's own numbers at 16:05: bench-75 fan_x 8->4, nested-chain lateral_x 2->0, x4-fan-levels fan_x 2->0,
+dense-td 1->0; open: dense-td shuffle s2 fan_x 1->10, s6 3 (start 1), x4-fan-levels lateral_x 3.
+
+## 2026-11-16 17:48 UTC — verify#1 = fail; fix#2 running (agent acc3aa9a66e5214c9)
+Really fixed: bench-75 fan_x (<=6), nested-chain lateral_x 0. Open: lead target 3 (sweep frame_side added by
+blocks on flow 23 RL, B5->b7n0 through foreign Block 3) not fixed nor reported; dense-td static min_edge_gap 4.99
+< GAP_FLOOR 12.1 (new this round, ports::title_row_side n36->n16 beside n45->g8); package test
+a_hubs_fan_keeps_its_order_through_the_bands relaxed overlap_pairs 0 -> <=1 (must be restored); dense-td shuffle s2
+fan_x 10; 7d21d12 message misreports s2 shuffle number. Results: b12/reports/b12a1-run2-results.json.
+
+## 2026-11-16 ~18:55 UTC — b12a1-structure PASSED (run wf_af567a1c-07e, verify#2 pass on 10e336d)
+Pictures sent (b12/pics-a1r2/). Open lead decision for the user: flow 23 RL added frame_side (options a/b/c in
+checkpoint-A1.md section 1; recommended (a)). dev moved to f9aa9c0 (docs-only PRs #122-#132 by the owner: README
+benchmark top, docs site restyle + roadmap page). MERGE WORKFLOW wf_9d7b42a9-a26 (task wryi3hnh8): merge origin/dev into
+the work branch, re-record identity hashes from origin/dev's build, re-measure block mode, ROADMAP step 1 row +
+CHANGELOG [Unreleased] line, guard, push; adversarial verify, up to 2 fix rounds. Report: b12/reports/merge-a1.md.
+After it passes: PR work branch -> dev, SQUASH merge with a clean message (no D5 names/numbers), when CI green.
+Then new run for b12a2-geometry with AUTOPUSH_BACKUP=backup/b12a2-geometry-wip2.
+
+## 2026-11-16 ~20:50 UTC — merge passed (wf_9d7b42a9-a26); memo fix da2d420; PR #133 work branch -> dev opened
+Merge b5557e0 (verify pass; 25,368 inputs default-identical to dev). Non-blocking fixed by lead: compound::LAID memo
+forgotten on block-switch change (levels::with_blocks -> compound::forget_laid), test
+the_kept_block_frames_follow_the_block_switch (failed before fix), guard green. PR #133 (subscribed): SQUASH merge when
+CI green, title "Subgraphs as blocks, step 1 of 4: structure, behind an internal switch", clean message (no D5).
+After squash: merge origin/dev into the work branch (no force push; user rule), then b12a2 run with pre = that head and
+the SPEC lead note "Lead note before b12a2-geometry".
+
+## 2026-11-16 ~20:55 UTC — PR #133 squash-merged into dev (7b0f29d); dev merged back into work branch (9c142b3, tree-equal)
+STEP 2 RUN: wf_1a04ca89-dd4 (task wnmj1q6q3), Workflow({scriptPath: "<S>/phaseB-b12.js", args: {from: "b12a2-geometry",
+until: "b12a2-geometry", noWrap: true, note: <see run json>}}). Resume with resumeFromRunId and the SAME args (stored in
+/root/.claude/projects/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/workflows/wf_1a04ca89-dd4.json).
+Push loop now: AUTOPUSH_BACKUP=backup/b12a2-geometry-wip2 (Monitor).
+Run args for resume of wf_1a04ca89-dd4: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/run-b12a2-args.json (use exactly)
+
+## 2026-11-16 21:28 UTC — container restart stopped step 2's impl agent; resumed
+bb48c30 (B12.7) was committed but unpushed: pushed. Tree was clean. Resumed wf_1a04ca89-dd4 (new task wkx2ou510) with
+args in b12/run-b12a2-args.json (now has pre = 9c142b38256c… and a RESUMED note; copy in run-b12a2-args.resume1.json).
+Push loop restarted (Monitor, AUTOPUSH_BACKUP=backup/b12a2-geometry-wip2).
+
+## 2026-11-16 22:22 UTC — second container restart (22:19); step 2 resumed again
+Uncommitted B12.8 work committed as wip 395147c and pushed (CI runs only on main pushes and PRs, so a wip on the work
+branch is harmless). Freed disk (memo-fix, b12/target-ont): 8.8G free. Resumed wf_1a04ca89-dd4 (task wex1xjjua) with
+b12/run-b12a2-args.json (copy .resume2.json): note tells the agent to commit each item as soon as green, CARGO_BUILD_JOBS=2.
+Push loop restarted (Monitor b4a8zb3bm).
+
+## 2026-11-16 23:55 UTC — step 2 impl stopped under D6 at B12.8; verify#0 = fail; fix#1 running (a069921005d15b682)
+Branch: bb48c30 (B12.7), 395147c wip, b3b2f17 revert, acacab7 (B12.9 G1 second floor). A2 judge 98 must-fails (same
+as start). Blocking: B12.8 squeeze breaks A1-held routed hub-fan test (TD) and bench-75 fan_x/GAP_FLOORS (LR/RL);
+B12.7 bold title width ~10% short (titles past frame border); grown frames take edge labels (lr lbl_in_end 2->4).
+LEAD DECISION written in SPEC section 0: routed rows pinned by tests are held now (not deferred to R); build F3
+(B12.10) with the squeeze; bench-75 at A1 values; fix B12.7 findings; stop with numbers if impossible.
+
+## 2026-11-17 ~01:35 UTC — USER: "nga ada yg bisa di rilis dulu ini?" -> chose "Rilis kecil 0.40.1 paralel"
+dev vs main had nothing user-visible (step 1 dormant). PATCH 0.40.1 runs in parallel: workflow wf_4a925090-e18
+(task wjhda2z5c), worktree <S>/rel0401/wt, branch ccr-ccc6d89a-5cxd7e-par (fast-forward from origin/dev; old e0d07ab is
+an ancestor). Items: #110 fallible route for class/ER/flowchart/mindmap; #76 route() top-left overflow keeps caller
+positions + exposes origin (Scene is #[non_exhaustive]); class `A.`/`.A`/`A...B` parse errors as mermaid. Semver-patch
+only. After pass: PR par -> dev (merge commit fine or squash), release/0.40.1 from dev per MONDAY §7 + claim review, PR
+-> main, user tags/publishes, PR main -> dev, then merge dev into the B12 work branch at step 2's merge.
+B12 step 2: fix round 1 done (64da873 bold title width); verify#1 running at ~01:20.
+
+## 2026-11-17 04:55 UTC — THIRD container restart; both runs resumed
+B12: fix#2 had finished (1c6cb2f, c8249f4, 9f51f77; F3 one frame function done; A2 must-fails 98->91; B12.8 squeeze
+still blocked in all four directions under D6 = breaks A1 tests); verify#2 re-runs (task wxh399hda, same args file).
+PATCH: fix#1 was mid-way: its src/compound.rs work committed as wip bfdc118 and pushed; script fixPrompt told about
+it; resumed (task wrewk9h16). Disk freed (verify/b10-orthogonal, rel0401/fix1, verifier worktrees): 7.2G free.
+PLAN: when B12 verify#2 lands, if the only blocking items are the D6 ones (squeeze breaks A1-held tests), stop the run
+and take the question to the user with numbers + pictures instead of burning fix rounds 3-4.
+
+## 2026-11-17 06:00 UTC — B12 verify#2 = fail (A2 91 must-fails; B12.11 never tried; t9 BT regression; skip in a
+test; title strikes); fix#3 running (a56d79414ccf26c3c). Lead note written in SPEC (build B12.11 first, remove the
+test skip, fix regressions, G3 routed due at R). Not stopping yet: the verifier showed the stop is not proven.
+PATCH 0.40.1 verify#2: api lens pass, output lens fail (#76 single-axis overflow shifts the other axis); fix#2 (last)
+running (abb5e6833cef37753).
+
+## 2026-11-17 ~08:05 UTC — PATCH 0.40.1 run ended "STOPPED" after 2 fix rounds, but only on a DOC claim
+api#3 pass; output#3 fail on one doc claim (Scene::origin vs viewBox for chained route_partial frames; behaviour
+correct). Lead fixed the wording in CHANGELOG/README/src/scene.rs doc in <S>/rel0401/wt (uncommitted at 08:05),
+guard running (<S>/rel0401/guard-docfix.txt). Next: commit + push par, PR par -> dev (squash), CI, merge; then
+release/0.40.1 from dev (version, CHANGELOG [0.40.1] + Highlights, README versions) + claim review, PR -> main, user
+tags/publishes, PR main -> dev, merge dev into the B12 work branch at step 2's merge. Full run result:
+<S>/../tasks/wrewk9h16.output (report text in its notes; report.md was refused to the subagent).
+
+## 08:12 UTC — PR #134 (par -> dev, 0.40.1 patch) opened; doc fix b721888 pushed (guard green). Subscribed. Squash on CI green.
+
+## 2026-11-17 08:20 UTC — PR #134 squash-merged into dev (8da7ace). RELEASE 0.40.1 workflow wf_e21570ca-c8e (task wgh0d1lbu):
+worktree <S>/rel0401/release, branch release/0.40.1 from dev; prepare + claim review (+2 fix rounds). After pass: PR
+release/0.40.1 -> main, CI, merge, give user the tag/publish command, PR main -> dev. Later: merge dev into the B12
+work branch when step 2 is merged (dev now has the patch too).
+
+## 09:08 UTC — release 0.40.1: claim review PASS; 2 wording notes fixed (22c8174); PR #135 release/0.40.1 -> main opened, subscribed. After CI: merge (merge commit, as earlier releases), give user tag+publish command, PR main -> dev.
+
+## 2026-11-17 09:15 UTC — RELEASE 0.40.1 MERGED to main (PR #135, merge commit e9dc009). Tag command given to user.
+Sync PR #136 main -> dev opened (merge commit when CI green). Then: B12 work branch merges dev at step 2's merge.
+User to run: git fetch origin && git tag -a v0.40.1 e9dc009ed9a33160d81fc7ecc7ab3afb973dd414 -m "flowmaid 0.40.1" && git push origin v0.40.1 && git checkout v0.40.1 && cargo publish
+
+## 09:20 UTC — PR #136 (main -> dev) merged: dev = dbe37ec (has 0.40.1). Patch worktrees can be removed: rel0401/wt, rel0401/release.
+
+## 2026-11-17 ~11:35 UTC: B12 step 2 (b12a2-geometry) STOPPED after 4 fix rounds
+- Run wf_1a04ca89-dd4 ended "STOPPED: not passing after 4 fix rounds". Branch ccr-ccc6d89a-5cxd7e = origin = 7122a53 (all pushed, tree clean). NOT merged to dev.
+- A2 judge: 91 must-fail of 444 (98 at package start). With the squeeze re-applied: 72, but it breaks 4 tests (hub fan order public routed fan_x 1; dense-td n16 twins/fan x2; casing routed 34). Rest: G3 label slots + CLEAR_GAP not built (~28 label lines), lateral_x 18, bends_max 7 (judge counts rounded-corner tails as runs: 13 vs 6 real turns).
+- Verifier#4 extra: 7122a53 (split_by_room) regresses bulk state inputs 9a94998d (two-way pair hugs K1's wall) and 8ab502b3 (new crossing); fb56b2f mixed on x2-title-side; bulk chip_crowd grew over the package (bulkfc 610->657).
+- Pictures: b12/pics-a2/a2-fixture-analog.png, a2-dense-td.png (0.40.1 | step 1 | step 2 | mermaid). Verifier pairs: verify/b12a2-geometry/r6/pic/.
+- Push loop stopped. Waiting for the user's decision on how to go on.
+
+## 2026-11-17 ~12:25 UTC: user chose "Paket lanjutan fokus" for step 2
+- Plan: (1) design studies (workflow wf_b5e7afb8-a6c, task wp2bc92tf, read-only; outputs in b12/design-a2b/: squeeze, labels, bends, lateral, regress + critique.md); (2) lead note in SPEC.md §0 + new package entry `b12a2b-finish` in phaseB-b12.js after b12a2-geometry; run with from/until b12a2b-finish, pre 9c142b3 (verifier compares the whole of step 2 against step 1), args saved to b12/run-b12a2b-args.json; push loop AUTOPUSH_BACKUP=backup/b12a2b-finish-wip.
+- Promised to the user: fix the 7122a53 regression first, then label slots (G3 + CLEAR_GAP), then the squeeze with the 4 conflicting tests KEPT (not loosened), and fix the judge's bend counting only with picture evidence (re-measure all references, report every threshold change). Estimate given: 6-10 hours.
+- If the design studies show the judge fix: apply it to the live judge myself (lead), not by the implementer, with before/after numbers recorded in checkpoint-A2.md.
+
+## 2026-11-17 ~16:30 UTC: follow-up prepared; judge install running
+- Design studies done (wf_b5e7afb8-a6c): b12/design-a2b/{regress,squeeze,labels,lateral,bends}.md + critique.md.
+- SPEC §0 got "Lead note for the follow-up of step 2 (2026-11-17, ~16:00 UTC)" (decisions 1-9: judge fixed by the lead; 3 mandatory checks in b12/tools-a2b; X1 dropped; R3 corridors pulled forward; intermediate worsening rule; packages b12a2b-base then b12a2b-squeeze).
+- phaseB-b12.js gained packages b12a2b-base and b12a2b-squeeze (backup phaseB-b12.js.before-a2b). Args: b12/run-b12a2b-args.json (from b12a2b-base until b12a2b-squeeze, pre 7122a53, noWrap).
+- Judge install #1 (wf_2d97a07c-6f8) stopped on my too-strict condition (routed tables change in straight-run columns no routed rule reads); live judge left untouched; staged copy b12/bendsfix-work/staged. Decision (a): routed tables re-measured too. Install #2 running: wf_1858a82d-620 (task w825gylvw). Expected: A2 at 7122a53 = 89, A1 0; tools-a2b + base-7122a53.
+- NEXT when install #2 is ok: Workflow({scriptPath: "<S>/phaseB-b12.js", args: <b12/run-b12a2b-args.json>}); push loop AUTOPUSH_BACKUP=backup/b12a2b-finish-wip under Monitor.
+
+## 2026-11-17 ~16:55 UTC: judge fixed; follow-up run started
+- Judge install #2 (wf_1858a82d-620) ok, independent check ok: corrected bend counter live; 5 thresholds tighter (bends_max 8->4 analog family + public family; public bends 110->108), 0 looser, routed thresholds byte-equal; A2 at 7122a53 = 89, A1 0; backup b12/metrics-backup-before-bends-fix. tools-a2b (run-checks.sh / compare.sh; base-7122a53) ready. Open rule question for the user (not blocking): the derived bound 4 sits below mermaid's own worst edge (mermaid's own rows 16 -> 28 must-fail under the new judge).
+- Package run started: wf_89aae2e9-344 (task wjgpqz4dt), args b12/run-b12a2b-args.json, packages b12a2b-base then b12a2b-squeeze. Push loop: AUTOPUSH_BACKUP=backup/b12a2b-finish-wip (Monitor task bobst10rg).
+- Resume after restart: Workflow({scriptPath: "<S>/phaseB-b12.js", resumeFromRunId: "wf_89aae2e9-344", args: <b12/run-b12a2b-args.json>}).
+
+## 2026-11-17 ~22:25 UTC: container restart recovered
+- Restart at ~18:10-22:15 UTC killed run wf_89aae2e9-344 during fix#2 of b12a2b-base (impl, verify#0 fail, fix#1, verify#1 fail done). Push loop had also lapsed after 18:01.
+- The implementer had AMENDED the already-pushed ff1d41a into 4d374f8. Fixed without force push: wip commit 58d64c2 (fix#2's uncommitted work) + `merge -s ours ff1d41a` = 1d8599e, pushed (fast-forward). SPEC §0 got "Lead note after the container restart": never amend; finish the wip commit.
+- Resumed: same args, resumeFromRunId wf_89aae2e9-344 (task wvf7pgz7u). Push loop re-armed (Monitor bnxhw451m).
+- v0.40.1: tag push from this session is refused (HTTP 403 on refs/tags); no crates.io token here. The credential request was interrupted by the restart; re-asked.
+
+## 2026-11-18 ~05:10 UTC: b12a2b-base PASSED; restart during b12a2b-squeeze impl
+- b12a2b-base passed verify#4 on 8876984 (pushed). Non-blocking leftovers listed in SPEC §0 "Lead note at the start of b12a2b-squeeze".
+- Container restart (~04:50-05:05) killed the run right after impl:b12a2b-squeeze started (no commits lost; tree clean). Resumed wf_89aae2e9-344 with the same args (task wvswudcov); push loop re-armed (bz3ugh7yj).
+- Lead ruling earlier: swimlane-nested-TD min_edge_gap 40 -> 25 accepted as item 3's declared trade.
+
+## 2026-11-18 ~10:10 UTC: user chose "Ubah urutan" (reorder)
+- b12a2b-squeeze impl stopped under D6 on all items (no commits); its fix#1/#2 then landed 4 block-mode fixes (d6853bc, c9eb06b, 5ebc7d4, 15b5383; pushed). I asked the user (question waited ~3.5 h); answer: reorder. Run wf_89aae2e9-344 stopped during verify#2 of b12a2b-squeeze.
+- SPEC §0 "Lead decision after b12a2b-squeeze's implementation": step 2 part 1 (+4 fixes after an independent check) -> dev now behind the switch, A2 NOT declared met; next step 3 b12a3-route (full corridor builder, on the unsqueezed layout); then new package b12a2c-squeeze (added to phaseB-b12.js after b12a3-route; backup phaseB-b12.js.before-reorder); then b12b-default.
+- Merge workflow running: wf_123b2083-8cf (task wu09ijf8b): check 4 fixes, merge origin/dev (dbe37ec), ROADMAP/CHANGELOG, verify, fix<=2. Push loop backup branch: backup/b12a2-merge-wip.
+- NEXT after merge passes: PR ccr -> dev (squash, clean message, no D5), wait CI, merge, merge dev back; then Workflow({scriptPath: phaseB-b12.js, args: {from: "b12a3-route", until: "b12a2c-squeeze", noWrap: true, note: ...}}) saved to b12/run-b12a3-args.json; push loop backup/b12a3-route-wip.
+
+## 2026-11-18 ~13:40 UTC: step 2 part 1 in dev; step 3 run started
+- Merge workflow wf_123b2083-8cf passed (4 fixes ok; merge 0f31509 verified). PR #137 -> dev, CI green, squash-merged: f412e17. Work branch merged dev back: 157117e (pushed).
+- Freed disk: /home/user/flowmaid/target debug incremental + flowmaid artifacts (13G -> 1.6G); 14G free.
+- Step 3 run started: wf_145c4f85-96f (task w305813mv), args b12/run-b12a3-args.json (from b12a3-route until b12a2c-squeeze). Push loop backup/b12a3-route-wip (Monitor b63nnovfk).
+- Resume after restart: Workflow({scriptPath: "<S>/phaseB-b12.js", resumeFromRunId: "wf_145c4f85-96f", args: <b12/run-b12a3-args.json>}).
+
+## 2026-11-18 ~15:40 UTC: step 3 first attempt stopped (D6, no commit); second attempt started
+- wf_145c4f85-96f impl stopped under D6 (checkpoint-R.md; experiment b12/r3/). Stopped the run during verify#0.
+- SPEC §0 "Lead rulings after b12a3-route's first implementation": route() may read the layout's chain columns (crate-private); builder on top of that; min_edge_gap drops above floors may be declared trades; budgets measured on a quiet box, median of 3, relative to default build where the default itself exceeds.
+- Second attempt: wf_2c8836fb-285 (task wts6hytgg), args b12/run-b12a3-args.json (pre 157117e). Resume: Workflow({scriptPath: phaseB-b12.js, resumeFromRunId: "wf_2c8836fb-285", args: <same JSON>}).
+
+## 2026-11-18 ~19:40 UTC — step 3 second attempt stopped (D6), user asked A/B
+- impl:b12a3-route returned: checkpoint R NOT met, D6 on ruling 1 vs ruling 2 conflict. Commits a4fb996, 67b99fc, 0a3fd4d (pushed). Route-from-layout behind `--cfg flowmaid_route_layout` (off even suite-on). Report: b12/reports/checkpoint-R.md (sections 3, 7), pictures b12/r3b/pic/.
+- Asked the user (text, not AskUserQuestion): A = turn route-from-layout on, the 30 copies + DEFECT_BASELINE routed fields + perm-b lbl_crowd as declared trade of ruling 1 (owned by squeeze/C), dense-td route_partial budget judged after squeeze; B = keep off until squeeze fixes the static rows.
+- The run wf_2c8836fb-285 is in verify:b12a3-route#0. Monitor btxho226l watches its journal: when fix:b12a3-route#1 starts and the user has not answered, TaskStop the run (task wts6hytgg) so fix rounds do not thrash on the conflict; on the answer, write a SPEC §0 lead note and resume (resumeFromRunId wf_2c8836fb-285, same args) so fix#1 builds the decision.
+- D5: a4fb996's message has a measured local number; drop it at the squash.
+- 0.40.2 run wf_17157207-a89: verify#1 failed (class card_spots move on kept relations; mindmap doc false claim "without measuring a single label"); fix#1 running.
+
+## 2026-11-18 ~20:50 UTC — step 3 run HELD
+- verify:b12a3-route#0 = fail (numbers match checkpoint-R.md; guard green; default byte-identical). Extra findings: corridor builder (R2/R3/R4/R8 + 4.4 corridor tests) not built — scope call for the lead; follow_drag adds crossings on larger drags (hub5 b1 (60,25)); frame union never shrinks and can cover foreign nodes on far drags (advanced Q (-150,80): 4 crossings, 1 edge_node_x vs 0); cold route() with the setting on = full static layout (~30 ms dense-td), budgets hold only on memo hits.
+- fix:b12a3-route#1 had just started; I stopped the run (TaskStop wts6hytgg). Tree clean at 0a3fd4d.
+- To resume after the user's A/B: SPEC §0 lead note (decision + which verifier findings the fix round must cover), then Workflow({scriptPath: S/phaseB-b12.js, resumeFromRunId: "wf_2c8836fb-285", args: same JSON}) — impl and verify#0 replay from cache, fix#1 runs live and reads SPEC.
+
+## 2026-11-19 ~00:10 UTC — 0.40.2 patch done, PR #138 (par -> dev)
+- Patch run wf_17157207-a89 ended "STOPPED after 2 fix rounds" but round 3: output lens PASS, api lens 1 blocking = CHANGELOG over-generalised mindmap canvas. Fixed by me in 6d05572 (CHANGELOG entries rewritten shorter; mindmap frame canvas = route's). Pushed par.
+- PR #138 par -> dev opened, subscribed. On CI green: squash-merge (title "route_partial for ER, class and mindmap; picking on six more scene types (#111, #112)"), then release workflow (adapt release-0401 script: branch release/0.40.2 from dev, version 0.40.2, Highlights, README/ROADMAP, guard, package list, claim review), PR -> main (merge commit), PR main -> dev, give tag+publish command.
+- Known limits (to note to the user / follow-up issue): mindmap drag past top-left off canvas (needs MindScene origin = breaking); mindmap pick omits outer half of classDef stroke; sankey 0.1px rounding band.
+
+## 2026-11-19 ~02:50 UTC — release 0.40.2: PR #139 release/0.40.2 -> main
+- Release workflow wf_b07ce260-920 PASSED (claim review round 3). Head 1099a08.
+- CORRECTION: 0.40.1 IS published. origin has tag v0.40.1 (5407ffe -> e9dc009, tagged by the user 2026-11-18 16:23 UTC) and crates.io lists 0.40.1. The "untagged/unpublished" notes in MONDAY.md/HANDOFF were stale. The release text no longer claims otherwise.
+- PR #139 opened, subscribed. On green: merge commit; then PR main -> dev; then give the user the tag + publish command for v0.40.2.
+- 02:25 UTC: PR #139 merged into main with a merge commit: c202cfcc197fc7b0de07340d3c02381988d6f0ad. Tag/publish command given to the user. Sync PR #140 main -> dev opened (subscribed); merge on green.
+- 02:35 UTC: sync PR #140 merged (dev 432b603 = main c202cfc + merge). 0.40.2 done on main; tag/publish command given to the user. rel0402 worktrees removed. Next: only step 3, held for the user's A/B.
+
+## 2026-11-19 ~02:50 UTC — user: "focus on the original goal: match or beat mermaid 12 quality" -> lead chose A
+- SPEC §0 note "Lead decision after b12a3-route's second implementation": route-from-layout ON in block mode; routed=static rows are the declared trade of ruling 1 (static rows owned by squeeze/C); drags never worse than start (fix follow_drag + frame union far-drag regressions); scene() feeds the memo (cold route cost); corridor builder and dense-td route_partial<6ms moved to checkpoint C (still required before the default flips).
+- Resumed wf_2c8836fb-285 (same args) -> task wxbqit91y: impl + verify#0 from cache, fix#1 live. Autopush re-armed (backup/b12a3-route-wip).
+- ~06:20 UTC: b12a3-route PASSED (verify#1 on d99c073). Run went on to impl:b12a2c-squeeze. Step-4 carry-overs written to SPEC §0 ("Lead note after b12a3-route passed").
+- ~08:30 UTC: b12a2c-squeeze impl done: 2 commits (7208f50 G3, 22dac44 X4 sibling level), A2 must-fail 86 -> 68 (not met; squeeze redesign D6 again). verify:b12a2c-squeeze#0 running. Lead note added to SPEC §0: label chips stay on their line (mermaid), lbl_detach measured like a gate row; D5 slip in 7208f50 dropped at squash.
+
+## 2026-11-19 ~16:50 UTC — user: release 0.40.2, then push and rest after this run
+- 0.40.2 was already fully released: origin tag v0.40.2 -> c202cfc (Release 0.40.2 #139), crates.io lists 0.40.2, dev 432b603 contains main. No GitHub Release pages exist for v0.40.x (none for v0.40.1 either); tag + crates.io is the practice.
+- User asked "nga ada subgraph yg bisa di pakai dulu?": sent b12/now-compare/{blocks-overview,infra-overview}.three.png (mermaid | 0.40.2 | block mode cand-1ae4222). Offered 0.41.0 with block mode as an opt-in (default unchanged, ~1 day, parallel). No answer yet — the user then asked to rest.
+- Instruction: when wf_2c8836fb-285 ends (fix#4 + verify#4 of b12a2c-squeeze), push the work branch, snapshot uncommitted work to backup/b12a3-route-wip, do NOT merge to dev, do NOT start step 4, stop the push loop, MONDAY banner, wsbackup, disable the hourly task. Hourly task prompt updated with exactly this.
+
+## 2026-11-19 ~17:00 UTC — run ended; PAUSED at the user's request
+- wf_2c8836fb-285 ended: b12a2c-squeeze STOPPED after 4 fix rounds. Work branch = origin = b82d584 (pushed, tree clean). NOT merged to dev. Verifier evidence: verify/b12a2c-squeeze/fr4/ (journal: ~/.claude/projects/.../subagents/workflows/wf_2c8836fb-285/journal.jsonl, last result).
+- Numbers (independent build of b82d584): A2 static must-fail 86 (start d99c073) -> 65 (70 at 1ae4222); routed 19 -> 18; suite-on failing tests 8 -> 8 (same names); compare.sh "no worse" vs start and vs 1ae4222; guard ALL GREEN; default build byte-identical; block-mode perf cliff fixed (bench-75 50-64 ms vs 31-33 at start; dense-td 86-89 vs 82).
+- Still failing, by metric: lateral_x 15, compact_max 14, compact_mean 7, lbl_crowd 7, bends_max 7, lbl_struck 5, sib_stagger 2, area 2, singles (straight_max, detour_max, lbl_in_end, lbl_gap_min, lbl_own_gap_max, lbl_endpx_mean). DEFECT_BASELINE static over ceilings: lat_wiggles 33>15, lat_backtrack 10599.64>1870, band_pairs 204>132, band_len 91602>74730, end_kink 1>0. Spec items 1 (squeeze redesign) and 2 (chains straight) NOT built in any round.
+- D5 BREACH in b82d584 (fix before any merge, as a follow-up commit, no rewrite): src/blockcheck.rs test a_block_beside_a_held_sibling_levels_down_to_it (~line 3960) uses the analog's labels/frame titles and a local '30 px'; src/layout.rs LEVEL_DOWN_CORRIDOR doc quotes perm-b numbers (83/41/211 px); level_sibling_frames doc (~6040) describes the analog; the commit message too (dropped at squash). Checked: no real host name/IP from b12/private/ is in the diff (private/ holds screenshots only).
+- b82d584 side effects on the analog's LR/RL copies (local only): infra-rl end_kink 0->1 (DNS->PSPROD head on a corner), lane_gap_min 12.5->7.9 (< EDGE_SEP_MIN 8), band_pairs 20->23, band_len +14%; infra-lr a line ~7 px under the DEV/STAGING third title line. Report inaccuracies: nt/n113-TD tight_len 0->96 not listed; timing numbers differ between f9bb447's message and the report.
+- PAUSE: push loop stopped (bd3do1mat), hourly task trig_019VQH3TYG4ijXR8niHxK13z disabled, nothing running. 0.40.2 fully released earlier (tag + crates.io).
+- ON RETURN: (1) D5 cleanup commit (neutral labels, no local numbers; run the test with the blocks cfg + guard). (2) Ask the user: (a) 0.41.0 with block mode as an opt-in (default unchanged) — pictures b12/now-compare/*.three.png were sent; (b) a dedicated compaction design study (several approaches prototyped, judged against mermaid pictures) before more fix rounds, since squeeze/straight chains failed in b12a2b-squeeze and b12a2c-squeeze. (3) Then step 4 (b12b-default) with SPEC §0 carry-overs; squash merges drop the D5 slips (7208f50, 630096c, 5e30a15, a4fb996, b82d584).
