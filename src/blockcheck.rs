@@ -3913,6 +3913,50 @@ fn nested_sibling_frames_start_level_too() {
 }
 
 #[test]
+fn sibling_frames_whose_last_rows_fan_into_one_node_stay_on_their_layer_lines() {
+    // B12 X4 holds a sibling block whose last row feeds one node outside
+    // with another's: the fan's legs, chips and turns were laid out for
+    // the blocks where they stand. Three nested blocks into one end below
+    // their parent, the first with a short first and a tall last member:
+    // levelled, its leg ran across the room the next block's `done` chip
+    // had on its own leg (drawn TD: the chip 21 px beside its line), and
+    // drawn BT it left its node sideways through two frame walls.
+    let src = r#"flowchart TD
+  s[Start] -->|go| a1
+  t[Other start] -->|kick off| b1
+  u[Third] --> c1
+  subgraph P[Parent block]
+    subgraph A[Short first row]
+      a1[a] -->|next| a2["a tall<br/>last<br/>member<br/>node"]
+    end
+    subgraph B[Tall first row]
+      b1["b tall<br/>first<br/>member<br/>node"] -->|then| b2[b]
+    end
+    subgraph C[Another one]
+      c1["c mid<br/>member"] --> c2[c]
+    end
+  end
+  a2 --> z[End]
+  b2 -->|done| z
+  c2 --> z"#;
+    for dir in ["TD", "BT", "LR", "RL"] {
+        let g = graph(&in_direction(src, dir));
+        let sc = block_scene(&g);
+        let q = crate::quality::measure(&g, &sc);
+        assert_eq!((q.lateral_x, q.side_ends), (0, 0), "{dir}: {:?}", q.details);
+        for e in sc.edges.iter().filter(|e| e.label.is_some()) {
+            let off = chip_off_its_line(e);
+            assert!(
+                off <= 3.0,
+                "{dir} {}->{}: chip {off:.1} px off its line",
+                e.from,
+                e.to
+            );
+        }
+    }
+}
+
+#[test]
 fn sibling_frames_that_share_their_last_row_end_level() {
     // B12 X4 downstream: two sibling blocks that share their last row but
     // not their first end level, the one that ended earlier moved

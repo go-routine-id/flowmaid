@@ -6004,7 +6004,13 @@ const STAGGER_SLACK: f64 = 2.0;
 ///   them: the turns of its fan share the band above those frames, which
 ///   the layer lines sized for the frames as they stand. A fan into
 ///   three staggered blocks took a crossing and a 60 px tight pair, one
-///   into nested titles a detour round the outer frame.
+///   into nested titles a detour round the outer frame;
+/// - one node outside the blocks is fed by the last rows of two or more
+///   of them: its fan's legs, chips and turns were laid out for the
+///   blocks where they stand. Moved, one block's leg ran across the room
+///   a sibling's chip had on its own leg (three nested blocks drawn TD
+///   into one end below their parent: the chip 21 px beside its line),
+///   or left its node sideways through two frame walls (drawn BT).
 ///
 /// A frame that ends within the earliest's span already reads as one
 /// band with it and stays too: moving it only lengthened the links
@@ -6077,6 +6083,31 @@ fn level_sibling_frames(
                 .iter()
                 .filter(|&&v| alayer[v] == li && alayer[u] < li)
                 .flat_map(|&v| blocks.iter().copied().filter(move |&c| inside(v, c)))
+                .collect();
+            if fed.len() >= 2 {
+                out.extend(fed);
+            }
+        }
+        out
+    };
+    // The blocks of `blocks` whose last rows feed one node outside them
+    // together with another of them (their legs of a fan into it).
+    let fan_from_lasts = |blocks: &[usize]| -> Vec<usize> {
+        let last = |c: usize| cluster_span.get(&c).map(|s| s.1);
+        let mut out = Vec::new();
+        for u in 0..na {
+            if blocks.iter().any(|&c| inside(u, c)) {
+                continue;
+            }
+            let fed: std::collections::BTreeSet<usize> = preds[u]
+                .iter()
+                .filter(|&&v| alayer[u] > alayer[v])
+                .flat_map(|&v| {
+                    blocks
+                        .iter()
+                        .copied()
+                        .filter(move |&c| inside(v, c) && last(c) == Some(alayer[v]))
+                })
                 .collect();
             if fed.len() >= 2 {
                 out.extend(fed);
@@ -6177,7 +6208,16 @@ fn level_sibling_frames(
             .filter(|e| e.1 - target < ALIGN_EPS)
             .filter_map(|e| tail(e.0))
             .fold(f64::NEG_INFINITY, f64::max);
-        let fanned = fan_into(&blocks, li);
+        // A block is held where one node outside feeds its first row
+        // with another's, or is fed by its last row with another's: the
+        // fan's legs, their chips and turns, were laid out for the blocks
+        // where they stand. Moved, a block's leg of a fan into one node
+        // ran across the room a sibling's chip had on its own leg (three
+        // nested blocks drawn TD into one end below their parent: the
+        // chip 21 px beside its line), or left its node sideways through
+        // two frame walls (the same drawn BT).
+        let mut fanned = fan_into(&blocks, li);
+        fanned.extend(fan_from_lasts(&blocks));
         for (c, e) in edges {
             let within = tail(c).is_some_and(|t| t <= reach + STAGGER_SLACK);
             if within || held(c, li) || fanned.contains(&c) {
