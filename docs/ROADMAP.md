@@ -41,11 +41,21 @@ It is built in four steps. Each is merged behind an internal switch that is off,
 | step | what | state |
 |---|---|---|
 | 1 | Structure: the tree of blocks, layering, ordering | merged behind the switch, which is off: no drawing changes |
-| 2 | Geometry: frames, coordinates, room for gaps and labels | first part merged behind the switch, which is off: frames sized to their titles, room for labels in the gaps between blocks, edge ends kept clear of frame titles. No drawing changes. Drawing the frames tighter round their content waits until after step 3, because it depends on the paths step 3 draws under a drag |
-| 3 | Routing under a drag: `route()`, `route_sized()` and `route_partial()` in block mode | next |
-| 4 | Comparison sweep against mermaid and against the previous release, then on by default | not started |
+| 2 | Geometry: frames, coordinates, room for gaps and labels | first part merged behind the switch, which is off: frames sized to their titles, room for labels in the gaps between blocks, edge ends kept clear of frame titles. No drawing changes. The second part, frames drawn tighter round their content and chains kept straight across levels, is not done: two rounds of work did not reach the bar, which is mermaid 12.2.0 on the same diagrams. It gets a design study first (see Next) |
+| 3 | Routing under a drag: `route()`, `route_sized()` and `route_partial()` in block mode | done on the work branch, behind the switch, not yet merged: `route()` draws what the static layout draws. A drag redraws only what it moves, and an edge that would gain a crossing by following a moved box is redrawn instead. The drag time budgets hold. Corridors between the blocks for the edges a drag redraws, and faster drags on dense diagrams, move to step 4 |
+| 4 | Corridors for redrawn edges, comparison sweep against mermaid and against the previous release, then on by default | not started |
 
-**The dense test diagram.** It used to draw more than twice as many crossings in block mode as it has today. After step 1 it drew fewer: 49 crossings against 66 in today's layout (`tests/fixtures/quality/dense-td.mmd`, the static drawing), and after the first part of step 2, 42. Redrawn by `route()`, which a drag uses, it still has more, 107 against 76, until step 3.
+**The dense test diagram.** It used to draw more than twice as many crossings in block mode as it has today. After step 1 it drew fewer: 49 crossings against 66 in today's layout (`tests/fixtures/quality/dense-td.mmd`, the static drawing), and after the first part of step 2, 42. Redrawn by `route()`, which a drag uses, it still has more, 107 against 76, until step 3. With step 3 on the work branch, `route()` draws the static drawing: 42 crossings both ways, against 66 static and 76 redrawn in today's layout.
+
+## Next
+
+Work on subgraphs as blocks is paused (2026-11-19). When it resumes, in this order:
+
+1. **A design study for tighter blocks.** Several ways to draw the frames tighter round their content and keep chains straight are prototyped side by side and compared, picture by picture, with mermaid 12.2.0 on the same diagrams. One is chosen before it is built into the layout.
+2. **Steps 2 (second part) and 3 into dev,** behind the switch, once the review passes.
+3. **Step 4,** then the new layout on by default in a release.
+
+Under consideration: shipping the block layout earlier as an opt-in, with today's layout kept as the default, for diagrams where it already draws tidier than today's layout.
 
 ## After that
 
