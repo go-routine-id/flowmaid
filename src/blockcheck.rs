@@ -4059,6 +4059,66 @@ fn a_frames_pins_and_its_displaced_entries_are_one_set_of_columns() {
     }
 }
 
+/// How far (px) edge `e`'s chip centre lies from its own drawn line.
+fn chip_off_its_line(e: &SceneEdge) -> f64 {
+    let Some((_, at, _)) = &e.label else {
+        return 0.0;
+    };
+    let seg = |a: (f64, f64), b: (f64, f64)| {
+        let (dx, dy) = (b.0 - a.0, b.1 - a.1);
+        let l2 = dx * dx + dy * dy;
+        let t = if l2 > 0.0 {
+            (((at.0 - a.0) * dx + (at.1 - a.1) * dy) / l2).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        (a.0 + t * dx - at.0).hypot(a.1 + t * dy - at.1)
+    };
+    crate::scene::edge_polyline(e)
+        .windows(2)
+        .map(|s| seg(s[0], s[1]))
+        .fold(f64::INFINITY, f64::min)
+}
+
+#[test]
+fn a_chip_returns_to_its_line_however_near_another_line_passes() {
+    // The final pass returns a chip the builders' pass set beside its
+    // line (before the ports spread the ends) to its spot on the line.
+    // B12 G3's air (no other line within CLEAR_GAP of a chip) must not
+    // keep it beside the line: a chip on its line beats one beside it
+    // however near the strokes (lead ruling on G3). Three `deploy` lines
+    // from one registry into three members of a block, drawn TD: `reg ->
+    // web`'s chip stayed 21 px beside its line, where a sibling's line
+    // passed within CLEAR_GAP of its spot on the line.
+    let src = "flowchart TD
+  subgraph Build[Build pipeline]
+    git[repo] -->|push| ci[CI runner] -->|image| reg[(registry)]
+  end
+  subgraph Run[Runtime]
+    web[web] -->|read| db[(db)]
+    api[api] -->|write| db
+    job[job] -->|write| db
+  end
+  subgraph Obs[Observability]
+    scr[scraper] -->|scrape| tsdb[(tsdb)]
+  end
+  reg -->|deploy| web
+  reg -->|deploy| api
+  reg -->|deploy| job
+  scr -.->|scrape| web
+  scr -.->|scrape| api
+  scr -.->|scrape| job";
+    let g = graph(src);
+    let sc = block_scene(&g);
+    let e = sc
+        .edges
+        .iter()
+        .find(|e| e.from == "reg" && e.to == "web")
+        .expect("reg -> web");
+    let off = chip_off_its_line(e);
+    assert!(off <= 3.0, "`deploy` {off:.1} px beside its line");
+}
+
 #[test]
 fn a_block_layouts_chips_keep_clear_of_other_lines() {
     // B12 G3: a block layout's chip keeps `CLEAR_GAP` from every other

@@ -73,6 +73,10 @@ const LABEL_SPOT_CHUNK: usize = 32;
 const LABEL_SLIDE_STEP: f64 = 6.0;
 /// Overlap (px, per axis) below which two boxes count as just touching.
 const TOUCH_EPS: f64 = 0.5;
+/// How far (px) a chip's centre may lie from its own line and still
+/// read as sitting on it, as mermaid centres every chip on its line;
+/// one farther out hangs beside the line (see [`Field::keeps_air`]).
+const ON_LINE_TOL: f64 = 3.0;
 /// Half-thickness of the band a subgraph frame's border line blocks
 /// for edge labels (the line is drawn 1.4px wide).
 pub(crate) const FRAME_BORDER_BAND: f64 = 1.0;
@@ -937,6 +941,13 @@ fn point_seg_dist2(c: (f64, f64), a: (f64, f64), b: (f64, f64)) -> f64 {
     px * px + py * py
 }
 
+/// Does point `c` (a chip's centre) lie on polyline `line`, within
+/// [`ON_LINE_TOL`]?
+fn centre_on_line(c: (f64, f64), line: &[(f64, f64)]) -> bool {
+    line.windows(2)
+        .any(|w| point_seg_dist2(c, w[0], w[1]) <= ON_LINE_TOL * ON_LINE_TOL)
+}
+
 /// Bounding box of segment `a`–`b`.
 fn seg_box(a: (f64, f64), b: (f64, f64)) -> Rect {
     (a.0.min(b.0), a.1.min(b.1), a.0.max(b.0), a.1.max(b.1))
@@ -1419,6 +1430,24 @@ impl Field<'_> {
         } else {
             0
         }
+    }
+
+    /// May label `ei` move from its spot `at` to box `to` (both of
+    /// width `w`) as far as B12 G3's air goes ([`Field::near`])? Yes
+    /// when `to` has no other edge's stroke within [`CLEAR_GAP`], no
+    /// more than `at` has, or `at` lies off its own line `pts` (by more
+    /// than [`ON_LINE_TOL`]): a chip on its line beats one beside it
+    /// however near the strokes, as in [`best_spot`]'s ranking. The
+    /// final pass's returns to a line's middle asked for no stroke near
+    /// at all, so a chip the builders' pass had set beside its line
+    /// (before the ports spread the ends) stayed there whenever a line
+    /// passed within CLEAR_GAP of its spot on the line: 21 px beside a
+    /// TD `deploy` run whose middle another fan line passes 6 px away.
+    fn keeps_air(&self, to: Rect, at: (f64, f64), w: f64, pts: &[(f64, f64)], ei: usize) -> bool {
+        let near = self.near(to, ei, usize::MAX);
+        near == 0
+            || !centre_on_line(at, pts)
+            || near <= self.near(label_rect(at, w), ei, usize::MAX)
     }
 
     /// Has the pass spent its work budget? Counted as the items the
@@ -2201,7 +2230,7 @@ fn place_long(
             if field.hits(&placed, ei, r).none()
                 && placed.clear(ei, r, keep[ei])
                 && field.strokes().count(r, ei, 0) == 0
-                && field.near(r, ei, 0) == 0
+                && field.keeps_air(r, at, w, pts, ei)
             {
                 if let Some((_, m, _)) = &mut edges[ei].label {
                     *m = to;
@@ -2419,7 +2448,7 @@ fn place_long(
                 && field.untouched(r)
                 && placed.clear(ei, r, keep[ei])
                 && field.strokes().count(r, ei, 0) == 0
-                && field.near(r, ei, 0) == 0
+                && field.keeps_air(r, at, w, pts, ei)
             {
                 if let Some((_, m, _)) = &mut edges[ei].label {
                     *m = to;
